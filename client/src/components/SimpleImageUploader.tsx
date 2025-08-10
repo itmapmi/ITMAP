@@ -57,9 +57,12 @@ export function SimpleImageUploader({ value, onChange, className }: SimpleImageU
       }
 
       console.log("Upload successful");
-      // Extract the public URL from the upload URL
-      const publicUrl = uploadURL.split('?')[0]; // Remove query parameters
-      onChange(publicUrl);
+      // Convert the upload URL to a proper object path
+      const urlParts = uploadURL.split('?')[0]; // Remove query parameters
+      const pathMatch = urlParts.match(/\.private\/uploads\/(.+)$/);
+      const objectPath = pathMatch ? `/objects/uploads/${pathMatch[1]}` : uploadURL;
+      console.log("Setting object path:", objectPath);
+      onChange(objectPath);
       
       toast({
         title: "Success",
