@@ -120,7 +120,8 @@ export default function ResearchReportsManagement() {
     }
   };
 
-  const getFileIcon = (mimeType: string) => {
+  const getFileIcon = (mimeType: string | null) => {
+    if (!mimeType) return "📄";
     if (mimeType.includes("pdf")) return "📄";
     if (mimeType.includes("word") || mimeType.includes("document")) return "📝";
     if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "📊";
@@ -238,7 +239,7 @@ export default function ResearchReportsManagement() {
                   >
                     <div className="flex items-start gap-4">
                       <div className="text-2xl">
-                        {getFileIcon(report.mimeType || "")}
+                        {getFileIcon(report.mimeType)}
                       </div>
                       <div>
                         <h4 className="font-medium">{report.title}</h4>
