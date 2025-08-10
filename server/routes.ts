@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -225,6 +225,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating vendor news:", error);
       res.status(400).json({ error: "Failed to update vendor news" });
+    }
+  });
+
+  // Feature Categories
+  app.get("/api/markets/:marketId/feature-categories", async (req, res) => {
+    try {
+      const categories = await storage.getMarketFeatureCategories(req.params.marketId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching feature categories:", error);
+      res.status(500).json({ error: "Failed to fetch feature categories" });
+    }
+  });
+
+  app.post("/api/feature-categories", async (req, res) => {
+    try {
+      const categoryData = insertFeatureCategorySchema.parse(req.body);
+      const category = await storage.createFeatureCategory(categoryData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating feature category:", error);
+      res.status(400).json({ error: "Failed to create feature category" });
     }
   });
 

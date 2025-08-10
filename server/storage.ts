@@ -11,6 +11,8 @@ import {
   type InsertVendorScore,
   type VendorNews,
   type InsertVendorNews,
+  type FeatureCategory,
+  type InsertFeatureCategory,
   type Feature,
   type InsertFeature,
   type VendorFeatureSupport,
@@ -25,6 +27,7 @@ import {
   criteria,
   vendorScores,
   vendorNews,
+  featureCategories,
   features,
   vendorFeatureSupport,
   researchReports,
@@ -73,8 +76,15 @@ export interface IStorage {
   createVendorNews(news: InsertVendorNews): Promise<VendorNews>;
   updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews>;
   
+  // Feature Categories
+  getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]>;
+  createFeatureCategory(category: InsertFeatureCategory): Promise<FeatureCategory>;
+  updateFeatureCategory(id: string, category: Partial<InsertFeatureCategory>): Promise<FeatureCategory>;
+  deleteFeatureCategory(id: string): Promise<void>;
+  
   // Features
   getMarketFeatures(marketId: string): Promise<Feature[]>;
+  getCategoryFeatures(categoryId: string): Promise<Feature[]>;
   createFeature(feature: InsertFeature): Promise<Feature>;
   updateFeature(id: string, feature: Partial<InsertFeature>): Promise<Feature>;
   deleteFeature(id: string): Promise<void>;
@@ -353,13 +363,76 @@ export class DatabaseStorage implements IStorage {
     return updatedNews;
   }
 
+  // Feature Categories
+  async getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]> {
+    const categories = await db
+      .select()
+      .from(featureCategories)
+      .where(eq(featureCategories.marketId, marketId))
+      .orderBy(featureCategories.displayOrder, featureCategories.name);
+
+    const result = [];
+    for (const category of categories) {
+      const categoryFeatures = await db
+        .select()
+        .from(features)
+        .where(eq(features.categoryId, category.id))
+        .orderBy(features.displayOrder, features.name);
+
+      result.push({
+        ...category,
+        features: categoryFeatures
+      });
+    }
+
+    return result;
+  }
+
+  async createFeatureCategory(category: InsertFeatureCategory): Promise<FeatureCategory> {
+    const [newCategory] = await db
+      .insert(featureCategories)
+      .values(category)
+      .returning();
+    return newCategory;
+  }
+
+  async updateFeatureCategory(id: string, category: Partial<InsertFeatureCategory>): Promise<FeatureCategory> {
+    const [updatedCategory] = await db
+      .update(featureCategories)
+      .set(category)
+      .where(eq(featureCategories.id, id))
+      .returning();
+    return updatedCategory;
+  }
+
+  async deleteFeatureCategory(id: string): Promise<void> {
+    await db.delete(featureCategories).where(eq(featureCategories.id, id));
+  }
+
   // Features
   async getMarketFeatures(marketId: string): Promise<Feature[]> {
+    // Get all features for a market by joining through categories
+    return await db
+      .select({
+        id: features.id,
+        name: features.name,
+        description: features.description,
+        categoryId: features.categoryId,
+        displayOrder: features.displayOrder,
+        createdAt: features.createdAt,
+      })
+      .from(features)
+      .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+      .where(eq(featureCategories.marketId, marketId))
+      .orderBy(features.displayOrder, features.name);
+  }
+
+  async getCategoryFeatures(categoryId: string): Promise<Feature[]> {
     return await db
       .select()
       .from(features)
-      .where(eq(features.marketId, marketId))
-      .orderBy(features.name);
+      .where(eq(features.categoryId, categoryId))
+      .orderBy(features.displayOrder, features.name);
   }
 
   async createFeature(feature: InsertFeature): Promise<Feature> {

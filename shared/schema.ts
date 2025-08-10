@@ -77,11 +77,21 @@ export const vendorNews = pgTable("vendor_news", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
-export const features = pgTable("features", {
+export const featureCategories = pgTable("feature_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const features = pgTable("features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  categoryId: varchar("category_id").notNull().references(() => featureCategories.id, { onDelete: "cascade" }),
+  displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -119,7 +129,7 @@ export const historicalPositions = pgTable("historical_positions", {
 export const marketsRelations = relations(markets, ({ many }) => ({
   subMarkets: many(subMarkets),
   vendors: many(vendors),
-  features: many(features),
+  featureCategories: many(featureCategories),
   researchReports: many(researchReports),
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
@@ -160,10 +170,18 @@ export const vendorScoresRelations = relations(vendorScores, ({ one }) => ({
   }),
 }));
 
-export const featuresRelations = relations(features, ({ one, many }) => ({
+export const featureCategoriesRelations = relations(featureCategories, ({ one, many }) => ({
   market: one(markets, {
-    fields: [features.marketId],
+    fields: [featureCategories.marketId],
     references: [markets.id],
+  }),
+  features: many(features),
+}));
+
+export const featuresRelations = relations(features, ({ one, many }) => ({
+  category: one(featureCategories, {
+    fields: [features.categoryId],
+    references: [featureCategories.id],
   }),
   vendorSupport: many(vendorFeatureSupport),
 }));
@@ -212,6 +230,11 @@ export const insertVendorNewsSchema = createInsertSchema(vendorNews).omit({
   createdAt: true,
 });
 
+export const insertFeatureCategorySchema = createInsertSchema(featureCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertFeatureSchema = createInsertSchema(features).omit({
   id: true,
   createdAt: true,
@@ -246,6 +269,9 @@ export type VendorScore = typeof vendorScores.$inferSelect;
 
 export type InsertVendorNews = z.infer<typeof insertVendorNewsSchema>;
 export type VendorNews = typeof vendorNews.$inferSelect;
+
+export type InsertFeatureCategory = z.infer<typeof insertFeatureCategorySchema>;
+export type FeatureCategory = typeof featureCategories.$inferSelect;
 
 export type InsertFeature = z.infer<typeof insertFeatureSchema>;
 export type Feature = typeof features.$inferSelect;

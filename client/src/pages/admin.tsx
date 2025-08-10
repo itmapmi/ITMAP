@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarketManagement from "@/components/admin/market-management";
 import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
-import FeatureManagement from "@/components/admin/feature-management";
+import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import NewsAnalysis from "@/components/admin/news-analysis";
 
 export default function Admin() {
@@ -39,7 +39,7 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="feature-management" className="mt-6">
-            <FeatureManagement />
+            <FeatureCategoryManagement />
           </TabsContent>
 
           <TabsContent value="news-analysis" className="mt-6">
