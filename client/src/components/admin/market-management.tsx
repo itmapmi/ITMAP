@@ -10,8 +10,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, TrendingUp } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Upload, Image } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function MarketManagement() {
   const { toast } = useToast();
@@ -95,6 +97,66 @@ export default function MarketManagement() {
       });
     },
   });
+
+  const updateMarketImageMutation = useMutation({
+    mutationFn: async ({ marketId, imageURL }: { marketId: string; imageURL: string }) => {
+      const response = await apiRequest("PUT", `/api/markets/${marketId}/image`, { imageURL });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      toast({
+        title: "Success",
+        description: "Market image updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update market image",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImageUpload = async () => {
+    try {
+      const response = await apiRequest("POST", "/api/objects/upload");
+      const data = await response.json();
+      return {
+        method: "PUT" as const,
+        url: data.uploadURL,
+      };
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get upload URL",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleImageUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      const imageURL = uploadedFile.uploadURL;
+      
+      if (editingMarket && imageURL) {
+        // Update the form field immediately with the upload URL
+        form.setValue("imageUrl", imageURL);
+        
+        // Also update the market in the backend
+        updateMarketImageMutation.mutate({ 
+          marketId: editingMarket.id, 
+          imageURL 
+        });
+      } else if (!editingMarket && imageURL) {
+        // For new markets, just set the form field
+        form.setValue("imageUrl", imageURL);
+      }
+    }
+  };
 
   const onSubmit = (data: InsertMarket) => {
     if (editingMarket) {
@@ -198,10 +260,55 @@ export default function MarketManagement() {
                 name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Image URL (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ""} />
-                    </FormControl>
+                    <FormLabel>Market Thumbnail Image</FormLabel>
+                    <div className="space-y-3">
+                      {/* Current image preview */}
+                      {field.value && (
+                        <div className="relative">
+                          <img 
+                            src={field.value} 
+                            alt="Market thumbnail" 
+                            className="w-32 h-20 object-cover rounded-lg border"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => field.onChange("")}
+                          >
+                            Remove Image
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {/* Upload options */}
+                      <div className="flex flex-col space-y-2">
+                        {/* File upload option */}
+                        <ObjectUploader
+                          maxNumberOfFiles={1}
+                          maxFileSize={5242880} // 5MB
+                          allowedFileTypes={['image/*']}
+                          onGetUploadParameters={handleImageUpload}
+                          onComplete={handleImageUploadComplete}
+                          buttonClassName="w-full"
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload Image File
+                        </ObjectUploader>
+                        
+                        {/* Manual URL input as fallback */}
+                        <div className="relative">
+                          <FormControl>
+                            <Input 
+                              placeholder="Or enter image URL manually" 
+                              {...field} 
+                              value={field.value || ""} 
+                            />
+                          </FormControl>
+                        </div>
+                      </div>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

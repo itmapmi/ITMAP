@@ -16,22 +16,22 @@ export default function Navigation() {
             </Link>
             <div className="ml-10 flex space-x-8">
               <Link href="/">
-                <a className={`px-3 py-2 text-sm font-medium ${
+                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
                   location === "/" 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}>
                   Markets
-                </a>
+                </div>
               </Link>
               <Link href="/admin">
-                <a className={`px-3 py-2 text-sm font-medium ${
+                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
                   location.startsWith("/admin") 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}>
                   Admin
-                </a>
+                </div>
               </Link>
             </div>
           </div>
