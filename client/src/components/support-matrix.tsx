@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Users, Eye, EyeOff, Settings } from "lucide-react";
 import type { Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -56,11 +60,14 @@ const HarveyBall = ({ level }: { level: number }) => {
 };
 
 export default function SupportMatrix({ marketId }: SupportMatrixProps) {
+  const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
+  const [showVendorSelection, setShowVendorSelection] = useState(false);
+
   const { data: features, isLoading: featuresLoading } = useQuery<Feature[]>({
     queryKey: ["/api/markets", marketId, "features"],
   });
 
-  const { data: vendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
   });
 
@@ -69,6 +76,38 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   });
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
+
+  // Initialize with all vendors selected when data loads
+  useEffect(() => {
+    if (allVendors && selectedVendors.size === 0) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+    }
+  }, [allVendors, selectedVendors.size]);
+
+  // Filter vendors based on selection
+  const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
+
+  const toggleVendor = (vendorId: string) => {
+    setSelectedVendors(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(vendorId)) {
+        newSet.delete(vendorId);
+      } else {
+        newSet.add(vendorId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllVendors = () => {
+    if (allVendors) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+    }
+  };
+
+  const clearAllVendors = () => {
+    setSelectedVendors(new Set());
+  };
 
   if (isLoading) {
     return (
@@ -119,30 +158,107 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Feature Support Matrix</CardTitle>
-        <CardDescription>
-          Harvey ball indicators showing vendor feature support levels (● Full, ◕ Good, ◑ Partial, ◔ Limited, ○ None)
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <div className="min-w-full">
-            {/* Header with vendor names */}
-            <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
-              <div className="font-semibold text-sm text-gray-600 flex items-center">
-                Features
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Feature Support Matrix
+              <Badge variant="secondary" className="text-xs">
+                {vendors.length} of {allVendors?.length || 0} vendors
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Harvey ball indicators showing vendor feature support levels (● Full, ◕ Good, ◑ Partial, ◔ Limited, ○ None)
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowVendorSelection(!showVendorSelection)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              {showVendorSelection ? "Hide" : "Select"} Vendors
+            </Button>
+          </div>
+        </div>
+        
+        {/* Vendor Selection Panel */}
+        {showVendorSelection && allVendors && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-sm">Choose Vendors to Compare</h4>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={selectAllVendors}>
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={clearAllVendors}>
+                  Clear All
+                </Button>
               </div>
-              {vendors.map(vendor => (
-                <div key={vendor.id} className="text-center">
-                  <div className="font-medium text-sm text-gray-900 mb-1">
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {allVendors.map(vendor => (
+                <div key={vendor.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={vendor.id}
+                    checked={selectedVendors.has(vendor.id)}
+                    onCheckedChange={() => toggleVendor(vendor.id)}
+                  />
+                  <label
+                    htmlFor={vendor.id}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
                     {vendor.name}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    Vendor
-                  </Badge>
+                  </label>
                 </div>
               ))}
             </div>
+            {selectedVendors.size === 0 && (
+              <p className="text-sm text-amber-600 mt-3 flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Select at least one vendor to view the comparison matrix
+              </p>
+            )}
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        {vendors.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-lg font-medium text-gray-900 mb-2">No Vendors Selected</p>
+            <p className="text-gray-500 mb-4">
+              Choose vendors from the selection panel above to compare their feature support
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setShowVendorSelection(true)}
+              className="flex items-center gap-2 mx-auto"
+            >
+              <Settings className="h-4 w-4" />
+              Select Vendors
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              {/* Header with vendor names */}
+              <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
+                <div className="font-semibold text-sm text-gray-600 flex items-center">
+                  Features
+                </div>
+                {vendors.map(vendor => (
+                  <div key={vendor.id} className="text-center">
+                    <div className="font-medium text-sm text-gray-900 mb-1">
+                      {vendor.name}
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      Vendor
+                    </Badge>
+                  </div>
+                ))}
+              </div>
 
             {/* Feature rows */}
             <div className="space-y-3">
@@ -162,7 +278,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                       </div>
                     )}
                     <Badge variant="secondary" className="text-xs w-fit mt-2">
-                      {feature.category}
+                      {feature.categoryId}
                     </Badge>
                   </div>
                   
@@ -186,34 +302,35 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Legend */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h4 className="font-medium text-sm text-gray-900 mb-3">Harvey Ball Legend</h4>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <HarveyBall level={4} />
-              <span className="text-gray-600">Full Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={3} />
-              <span className="text-gray-600">Good Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={2} />
-              <span className="text-gray-600">Partial Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={1} />
-              <span className="text-gray-600">Limited Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={0} />
-              <span className="text-gray-600">No Support</span>
+          {/* Legend */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h4 className="font-medium text-sm text-gray-900 mb-3">Harvey Ball Legend</h4>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <HarveyBall level={4} />
+                <span className="text-gray-600">Full Support</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HarveyBall level={3} />
+                <span className="text-gray-600">Good Support</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HarveyBall level={2} />
+                <span className="text-gray-600">Partial Support</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HarveyBall level={1} />
+                <span className="text-gray-600">Limited Support</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HarveyBall level={0} />
+                <span className="text-gray-600">No Support</span>
+              </div>
             </div>
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
