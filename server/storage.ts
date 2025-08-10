@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(featureCategories)
       .where(eq(featureCategories.marketId, marketId))
-      .orderBy(featureCategories.displayOrder);
+      .orderBy(featureCategories.displayOrder, featureCategories.name);
 
     const result = [];
     for (const category of categories) {
@@ -377,7 +377,7 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(features)
         .where(eq(features.categoryId, category.id))
-        .orderBy(features.displayOrder);
+        .orderBy(features.displayOrder, features.name);
 
       result.push({
         ...category,
