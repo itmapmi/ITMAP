@@ -453,6 +453,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Research Reports routes
+  // GET research reports for a market
+  app.get("/api/markets/:marketId/research-reports", async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const reports = await storage.getResearchReportsByMarket(marketId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching research reports:", error);
+      res.status(500).json({ error: "Failed to fetch research reports" });
+    }
+  });
+
+  // POST create research report
+  app.post("/api/research-reports", async (req, res) => {
+    try {
+      const report = insertResearchReportSchema.parse(req.body);
+      const newReport = await storage.createResearchReport(report);
+      res.status(201).json(newReport);
+    } catch (error) {
+      console.error("Error creating research report:", error);
+      res.status(500).json({ error: "Failed to create research report" });
+    }
+  });
+
+  // DELETE research report
+  app.delete("/api/research-reports/:reportId", async (req, res) => {
+    try {
+      const reportId = req.params.reportId;
+      await storage.deleteResearchReport(reportId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting research report:", error);
+      res.status(500).json({ error: "Failed to delete research report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

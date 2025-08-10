@@ -20,7 +20,6 @@ interface ObjectUploaderProps {
   ) => void;
   buttonClassName?: string;
   children: ReactNode;
-  allowedFileTypes?: string[];
 }
 
 /**
@@ -50,7 +49,6 @@ interface ObjectUploaderProps {
  *   policies.
  * @param props.buttonClassName - Optional CSS class name for the button
  * @param props.children - Content to be rendered inside the button
- * @param props.allowedFileTypes - Array of allowed MIME types
  */
 export function ObjectUploader({
   maxNumberOfFiles = 1,
@@ -59,53 +57,24 @@ export function ObjectUploader({
   onComplete,
   buttonClassName,
   children,
-  allowedFileTypes = ['image/*'],
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
-  const [uppy] = useState(() => {
-    console.log("Initializing Uppy with restrictions:", {
-      maxNumberOfFiles,
-      maxFileSize,
-      allowedFileTypes,
-    });
-    
-    return new Uppy({
+  const [uppy] = useState(() =>
+    new Uppy({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
-        allowedFileTypes,
       },
       autoProceed: false,
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
-        getUploadParameters: async (file) => {
-          console.log("Getting upload parameters for file:", file.name);
-          try {
-            const params = await onGetUploadParameters();
-            console.log("Upload parameters received:", params);
-            return params;
-          } catch (error) {
-            console.error("Error getting upload parameters:", error);
-            throw error;
-          }
-        },
-      })
-      .on("upload", () => {
-        console.log("Upload started");
-      })
-      .on("upload-success", (file, response) => {
-        console.log("Upload success:", file.name, response);
-      })
-      .on("upload-error", (file, error) => {
-        console.error("Upload error:", file?.name || "unknown file", error);
+        getUploadParameters: onGetUploadParameters,
       })
       .on("complete", (result) => {
-        console.log("Upload complete:", result);
         onComplete?.(result);
-        setShowModal(false); // Close modal after upload
-      });
-  });
+      })
+  );
 
   return (
     <div>

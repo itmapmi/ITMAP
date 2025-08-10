@@ -95,7 +95,9 @@ export interface IStorage {
   
   // Research Reports
   getMarketResearchReports(marketId: string): Promise<ResearchReport[]>;
+  getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]>;
   createResearchReport(report: InsertResearchReport): Promise<ResearchReport>;
+  deleteResearchReport(id: string): Promise<void>;
   
   // Historical Positions
   getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
@@ -554,6 +556,35 @@ export class DatabaseStorage implements IStorage {
       .values(position)
       .returning();
     return newPosition;
+  }
+
+  // Research Reports
+  async getMarketResearchReports(marketId: string): Promise<ResearchReport[]> {
+    return await db
+      .select()
+      .from(researchReports)
+      .where(eq(researchReports.marketId, marketId))
+      .orderBy(desc(researchReports.createdAt));
+  }
+
+  async getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]> {
+    return await db
+      .select()
+      .from(researchReports)
+      .where(eq(researchReports.marketId, marketId))
+      .orderBy(desc(researchReports.uploadedAt));
+  }
+
+  async createResearchReport(report: InsertResearchReport): Promise<ResearchReport> {
+    const [newReport] = await db
+      .insert(researchReports)
+      .values(report)
+      .returning();
+    return newReport;
+  }
+
+  async deleteResearchReport(id: string): Promise<void> {
+    await db.delete(researchReports).where(eq(researchReports.id, id));
   }
 }
 

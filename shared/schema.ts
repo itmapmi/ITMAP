@@ -111,6 +111,9 @@ export const researchReports = pgTable("research_reports", {
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   fileUrl: text("file_url"),
   reportType: text("report_type"),
+  fileSize: integer("file_size"), // File size in bytes
+  mimeType: text("mime_type"), // MIME type of the uploaded file
+  uploadedAt: timestamp("uploaded_at").default(sql`now()`), // When the file was uploaded
   publishedAt: timestamp("published_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
@@ -197,6 +200,13 @@ export const vendorFeatureSupportRelations = relations(vendorFeatureSupport, ({ 
   }),
 }));
 
+export const researchReportsRelations = relations(researchReports, ({ one }) => ({
+  market: one(markets, {
+    fields: [researchReports.marketId],
+    references: [markets.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -251,6 +261,7 @@ export const insertResearchReportSchema = createInsertSchema(researchReports).om
   id: true,
   createdAt: true,
   publishedAt: true,
+  uploadedAt: true,
 });
 
 // Types

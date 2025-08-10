@@ -5,6 +5,7 @@ import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
 import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import NewsAnalysis from "@/components/admin/news-analysis";
+import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
@@ -39,11 +40,12 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
+            <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
             <TabsTrigger value="news-analysis">News Analysis</TabsTrigger>
           </TabsList>
 
@@ -61,6 +63,10 @@ export default function Admin() {
 
           <TabsContent value="feature-management" className="mt-6">
             <FeatureCategoryManagement />
+          </TabsContent>
+
+          <TabsContent value="research-reports" className="mt-6">
+            <ResearchReportsManagement />
           </TabsContent>
 
           <TabsContent value="news-analysis" className="mt-6">
