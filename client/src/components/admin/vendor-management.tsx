@@ -192,7 +192,11 @@ export default function VendorManagement() {
     const key = `${vendorId}-${criteriaId}`;
     const score = vendorScores[key];
     
-    console.log("Saving score for vendor:", vendorId, "criteria:", criteriaId, "score:", score);
+    console.log("Full vendor object:", vendors?.find(v => v.id === vendorId));
+    console.log("Full criteria object:", criteria?.find(c => c.id === criteriaId));
+    console.log("Saving score - vendorId:", vendorId, "length:", vendorId.length);
+    console.log("Saving score - criteriaId:", criteriaId, "length:", criteriaId.length);
+    console.log("Score:", score);
     
     if (score === undefined) {
       toast({
