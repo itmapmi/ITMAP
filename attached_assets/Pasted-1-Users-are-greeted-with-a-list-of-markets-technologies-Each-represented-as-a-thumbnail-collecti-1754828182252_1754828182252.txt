@@ -1,0 +1,16 @@
+1.	Users are greeted with a list of markets (technologies), Each represented as a thumbnail collectively forming a grid. User Selects a Market
+2.	Users are greeted with a list of sub-markets. Sub-markets are represented as grids as well. User selects a Sub-Market. 
+3.	A page with the name of the market is displayed. Let’s call this Market page for reference. The page has four tabs – Vendor Evaluation, Vendor News, Support Matrix, Research Reports. 
+4.	Under the Vendor Evaluation tab, Magic Quadrant shows up with vendor positions. The X-axis of the quadrant is Product Strategy and Execution. The Y-axis represents Vendor viability. 
+5.	On the Right side of the magic quadrant graphic, weights are displayed. Eight weights are displayed one below the other. Four weights represent the position of vendors over X axis. The other four weights represent the positions of the vendors over Y-axis.  Weights are in scroll bar and can be adjusted to change the dot positions dynamically. 
+6.	Below the magic quadrant is a date line scroll bar which shows change in the vendor position over a period.
+7.	Each vendor dot can be hovered. Information on revenue and year over year position will be shown (up or down)
+8.	Below the graphic is a section called Compare vendors.
+9.	In this ‘Compare vendors’ section, all the vendors are listed with a check box next to them.
+10.	Users select vendors that need to be compared and the scores for these vendors for each criteria appear below them.  
+11.	Below this there is button called view detailed report. This link leads directly to a detailed report that opens onto a different page and can be downloaded as pdf.
+12.	The next tab under the market page is the vendor news page. Here vendors news is displayed from various sources. This will be mainly sources from press release/newsroom of each vendor website. News can be sorted by date or by vendor. Each news item is analyzed, and an impact score is assigned next to it.  Impact score between 0 to 5 is assigned, 5 being the max. 
+13.	The system automatically analyzes the vendor news and matches it to one of the eight criteria in the Magic Quadrant. It then either increases or decreases the score of the specific criteria based on the news. This score input is always manually approved but suggested by the platform. 
+14.	The next tab under the market page is the support matrix page. A table with list of features and what each vendor supports is provided. The support matrix has a Harvey ball design. Where the completeness of the Harvey ball is dependent on the extent of feature supported. When user hovers around the Harvey ball, user can view the comments associated with the specific feature.
+15.	The next tab is the research reports tab. This provides a list of reports in a grid format, all associated with the specific market. Research reports can be downloaded. 
+
