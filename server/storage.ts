@@ -300,7 +300,7 @@ export class DatabaseStorage implements IStorage {
 
   // Vendor News
   async getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria })[]> {
-    let query = db
+    const baseQuery = db
       .select({
         id: vendorNews.id,
         vendorId: vendorNews.vendorId,
@@ -321,13 +321,17 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(vendors, eq(vendorNews.vendorId, vendors.id))
       .leftJoin(criteria, eq(vendorNews.affectedCriteriaId, criteria.id));
 
+    let conditions = [];
     if (marketId) {
-      query = query.where(eq(vendors.marketId, marketId));
+      conditions.push(eq(vendors.marketId, marketId));
+    }
+    if (vendorId) {
+      conditions.push(eq(vendorNews.vendorId, vendorId));
     }
 
-    if (vendorId) {
-      query = query.where(eq(vendorNews.vendorId, vendorId));
-    }
+    const query = conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
 
     return await query.orderBy(desc(vendorNews.createdAt));
   }
@@ -444,7 +448,7 @@ export class DatabaseStorage implements IStorage {
 
   // Historical Positions
   async getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]> {
-    let query = db
+    const baseQuery = db
       .select({
         id: historicalPositions.id,
         vendorId: historicalPositions.vendorId,
@@ -456,12 +460,14 @@ export class DatabaseStorage implements IStorage {
         vendor: vendors,
       })
       .from(historicalPositions)
-      .innerJoin(vendors, eq(historicalPositions.vendorId, vendors.id))
-      .where(eq(historicalPositions.marketId, marketId));
+      .innerJoin(vendors, eq(historicalPositions.vendorId, vendors.id));
 
+    let conditions = [eq(historicalPositions.marketId, marketId)];
     if (vendorId) {
-      query = query.where(eq(historicalPositions.vendorId, vendorId));
+      conditions.push(eq(historicalPositions.vendorId, vendorId));
     }
+
+    const query = baseQuery.where(and(...conditions));
 
     return await query.orderBy(desc(historicalPositions.recordedAt));
   }

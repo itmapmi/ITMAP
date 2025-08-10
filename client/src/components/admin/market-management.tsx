@@ -160,6 +160,7 @@ export default function MarketManagement() {
                         placeholder="Market description..."
                         rows={3}
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -199,7 +200,7 @@ export default function MarketManagement() {
                   <FormItem>
                     <FormLabel>Image URL (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com/image.jpg" {...field} />
+                      <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

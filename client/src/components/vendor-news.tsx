@@ -60,7 +60,7 @@ export default function VendorNews({ marketId }: VendorNewsProps) {
       break;
     default: // date
       filteredNews.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       );
   }
 
@@ -147,7 +147,7 @@ export default function VendorNews({ marketId }: VendorNewsProps) {
                       {item.vendor.name}
                     </Badge>
                     <span className="text-sm text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'No date'}
                     </span>
                   </div>
                   {item.impactScore && (

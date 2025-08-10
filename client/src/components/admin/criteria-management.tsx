@@ -172,6 +172,7 @@ export default function CriteriaManagement() {
                         placeholder="Criteria description..."
                         rows={3}
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />

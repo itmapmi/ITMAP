@@ -246,6 +246,7 @@ export default function VendorManagement() {
                               placeholder="Vendor description..."
                               rows={3}
                               {...field}
+                              value={field.value || ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -260,7 +261,7 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Website</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://example.com" {...field} />
+                            <Input placeholder="https://example.com" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -274,7 +275,7 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Revenue (Billions)</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., 75.0" type="number" step="0.1" {...field} />
+                            <Input placeholder="e.g., 75.0" type="number" step="0.1" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
