@@ -86,7 +86,8 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
     );
   }
 
-  const getReportTypeColor = (type: string) => {
+  const getReportTypeColor = (type: string | null) => {
+    if (!type) return 'bg-gray-100 text-gray-800';
     switch (type.toLowerCase()) {
       case 'magic-quadrant': return 'bg-blue-100 text-blue-800';
       case 'market-analysis': return 'bg-green-100 text-green-800';
@@ -101,7 +102,7 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
       // Create a temporary link and trigger download
       const link = document.createElement('a');
       link.href = report.fileUrl;
-      link.download = report.fileName || `${report.title}.pdf`;
+      link.download = `${report.title}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -158,19 +159,9 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
                         )}
                       </div>
 
-                      {report.tags && report.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {report.tags.map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-
-                      {report.fileName && (
+                      {report.fileSize && (
                         <p className="text-sm text-gray-500">
-                          <span className="font-medium">File:</span> {report.fileName}
+                          <span className="font-medium">Size:</span> {Math.round(report.fileSize / 1024)} KB
                         </p>
                       )}
                     </div>
@@ -190,17 +181,7 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
                     </Button>
                   )}
                   
-                  {report.externalUrl && (
-                    <Button
-                      onClick={() => handleExternalLink(report.externalUrl)}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      View Online
-                    </Button>
-                  )}
+
                 </div>
               </div>
             </div>
