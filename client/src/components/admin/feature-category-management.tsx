@@ -165,6 +165,21 @@ export function FeatureCategoryManagement() {
     },
   });
 
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (categoryId: string) => {
+      const response = await apiRequest("DELETE", `/api/feature-categories/${categoryId}`);
+      if (!response.ok) throw new Error("Failed to delete category");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-categories"] });
+      toast({ title: "Feature category deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete feature category", variant: "destructive" });
+    },
+  });
+
   const updateSupportMutation = useMutation({
     mutationFn: async ({ vendorId, featureId, supportLevel }: { vendorId: string; featureId: string; supportLevel: number }) => {
       const response = await fetch("/api/vendor-feature-support", {
@@ -204,6 +219,12 @@ export function FeatureCategoryManagement() {
 
   const handleSupportChange = (vendorId: string, featureId: string, supportLevel: number) => {
     updateSupportMutation.mutate({ vendorId, featureId, supportLevel });
+  };
+
+  const handleDeleteCategory = (categoryId: string) => {
+    if (confirm("Are you sure you want to delete this category? This will also delete all features in this category.")) {
+      deleteCategoryMutation.mutate(categoryId);
+    }
   };
 
   const getSupportLevel = (vendorId: string, featureId: string): number => {
@@ -425,7 +446,16 @@ export function FeatureCategoryManagement() {
                           <Button variant="outline" size="sm">
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCategory(category.id);
+                            }}
+                            disabled={deleteCategoryMutation.isPending}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

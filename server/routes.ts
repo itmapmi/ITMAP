@@ -251,6 +251,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/feature-categories/:id", async (req, res) => {
+    try {
+      await storage.deleteFeatureCategory(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting feature category:", error);
+      res.status(400).json({ error: "Failed to delete feature category" });
+    }
+  });
+
   // Features
   app.get("/api/markets/:marketId/features", async (req, res) => {
     try {
