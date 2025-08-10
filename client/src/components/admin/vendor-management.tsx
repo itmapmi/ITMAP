@@ -169,7 +169,7 @@ export default function VendorManagement() {
 
   const getVendorScore = (vendorId: string, criteriaId: string): number => {
     const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
-    return score?.score || 0;
+    return Number(score?.score) || 0;
   };
 
   const handleScoreChange = (vendorId: string, criteriaId: string, score: number) => {
@@ -217,6 +217,39 @@ export default function VendorManagement() {
       delete newState[key];
       return newState;
     });
+  };
+
+  const saveAllPendingScores = () => {
+    const pendingEntries = Object.entries(vendorScores);
+    
+    if (pendingEntries.length === 0) {
+      toast({
+        title: "No Changes",
+        description: "No pending scores to save",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate all scores before saving
+    const invalidScores = pendingEntries.filter(([_, score]) => score < 0 || score > 10);
+    if (invalidScores.length > 0) {
+      toast({
+        title: "Invalid Scores",
+        description: "All scores must be between 0 and 10",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Save all scores
+    pendingEntries.forEach(([key, score]) => {
+      const [vendorId, criteriaId] = key.split('-');
+      saveScoreMutation.mutate({ vendorId, criteriaId, score });
+    });
+
+    // Clear all pending scores
+    setVendorScores({});
   };
 
   return (
@@ -443,6 +476,20 @@ export default function VendorManagement() {
                         ))}
                       </TableBody>
                     </Table>
+                    
+                    {/* Bulk Save Button */}
+                    {Object.keys(vendorScores).length > 0 && (
+                      <div className="mt-4 flex justify-end">
+                        <Button 
+                          onClick={saveAllPendingScores}
+                          disabled={saveScoreMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          Save All Changes ({Object.keys(vendorScores).length})
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
