@@ -253,14 +253,17 @@ export class DatabaseStorage implements IStorage {
     if (existing.length > 0) {
       const [updated] = await db
         .update(vendorScores)
-        .set({ score: score.score, updatedAt: new Date() })
+        .set({ score: score.score.toString(), updatedAt: new Date() })
         .where(eq(vendorScores.id, existing[0].id))
         .returning();
       return updated;
     } else {
       const [newScore] = await db
         .insert(vendorScores)
-        .values(score)
+        .values({
+          ...score,
+          score: score.score.toString()
+        })
         .returning();
       return newScore;
     }

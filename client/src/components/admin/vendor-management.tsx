@@ -192,6 +192,8 @@ export default function VendorManagement() {
     const key = `${vendorId}-${criteriaId}`;
     const score = vendorScores[key];
     
+    console.log("Saving score for vendor:", vendorId, "criteria:", criteriaId, "score:", score);
+    
     if (score === undefined) {
       toast({
         title: "No Score to Save",

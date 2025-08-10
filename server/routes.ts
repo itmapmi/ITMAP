@@ -161,7 +161,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/vendor-scores", async (req, res) => {
     try {
+      console.log("Received score data:", req.body);
       const scoreData = insertVendorScoreSchema.parse(req.body);
+      console.log("Parsed score data:", scoreData);
       const score = await storage.createOrUpdateVendorScore(scoreData);
       res.json(score);
     } catch (error) {
