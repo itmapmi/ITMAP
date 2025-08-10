@@ -173,7 +173,7 @@ export default function VendorManagement() {
   };
 
   const handleScoreChange = (vendorId: string, criteriaId: string, score: number) => {
-    const key = `${vendorId}-${criteriaId}`;
+    const key = `${vendorId}:::${criteriaId}`;
     
     // Validate score range 0-10
     if (score < 0 || score > 10) {
@@ -189,7 +189,7 @@ export default function VendorManagement() {
   };
 
   const saveScore = (vendorId: string, criteriaId: string) => {
-    const key = `${vendorId}-${criteriaId}`;
+    const key = `${vendorId}:::${criteriaId}`;
     const score = vendorScores[key];
     
     console.log("Full vendor object:", vendors?.find(v => v.id === vendorId));
@@ -250,7 +250,8 @@ export default function VendorManagement() {
 
     // Save all scores
     pendingEntries.forEach(([key, score]) => {
-      const [vendorId, criteriaId] = key.split('-');
+      const [vendorId, criteriaId] = key.split(':::');
+      console.log("Bulk save - key:", key, "split vendorId:", vendorId, "split criteriaId:", criteriaId);
       saveScoreMutation.mutate({ vendorId, criteriaId, score });
     });
 
@@ -435,7 +436,7 @@ export default function VendorManagement() {
                             </TableCell>
                             {criteria?.map(criterion => {
                               const currentScore = getVendorScore(vendor.id, criterion.id);
-                              const key = `${vendor.id}-${criterion.id}`;
+                              const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
                               return (
                                 <TableCell key={criterion.id} className="text-center">
@@ -460,7 +461,7 @@ export default function VendorManagement() {
                             <TableCell className="text-center">
                               <div className="flex flex-col space-y-1">
                                 {criteria?.map(criterion => {
-                                  const key = `${vendor.id}-${criterion.id}`;
+                                  const key = `${vendor.id}:::${criterion.id}`;
                                   const hasChanges = vendorScores[key] !== undefined;
                                   return hasChanges ? (
                                     <Button
