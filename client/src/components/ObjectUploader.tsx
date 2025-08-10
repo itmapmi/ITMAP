@@ -98,7 +98,7 @@ export function ObjectUploader({
         console.log("Upload success:", file.name, response);
       })
       .on("upload-error", (file, error) => {
-        console.error("Upload error:", file?.name, error);
+        console.error("Upload error:", file?.name || "unknown file", error);
       })
       .on("complete", (result) => {
         console.log("Upload complete:", result);

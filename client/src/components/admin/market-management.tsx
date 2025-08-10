@@ -13,8 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, TrendingUp, Upload, Plus } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { SimpleImageUploader } from "@/components/SimpleImageUploader";
 
 export default function MarketManagement() {
   const { toast } = useToast();
@@ -124,41 +123,15 @@ export default function MarketManagement() {
     },
   });
 
-  const handleImageUpload = async () => {
-    try {
-      const response = await apiRequest("POST", "/api/objects/upload");
-      const data = await response.json();
-      return {
-        method: "PUT" as const,
-        url: data.uploadURL,
-      };
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to get upload URL",
-        variant: "destructive",
+  const handleImageChange = (url: string) => {
+    form.setValue("imageUrl", url);
+    
+    // If editing a market, also update in the backend
+    if (editingMarket && url) {
+      updateMarketImageMutation.mutate({ 
+        marketId: editingMarket.id, 
+        imageURL: url 
       });
-      throw error;
-    }
-  };
-
-  const handleImageUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful && result.successful.length > 0) {
-      const uploadedFile = result.successful[0];
-      const imageURL = uploadedFile.uploadURL;
-      
-      if (imageURL) {
-        // Update the form field immediately to show the uploaded image
-        form.setValue("imageUrl", imageURL);
-        
-        // If editing a market, also update in the backend
-        if (editingMarket) {
-          updateMarketImageMutation.mutate({ 
-            marketId: editingMarket.id, 
-            imageURL 
-          });
-        }
-      }
     }
   };
 
@@ -270,54 +243,12 @@ export default function MarketManagement() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Market Thumbnail Image</FormLabel>
-              <div className="space-y-3">
-                {/* Current image preview */}
-                {field.value && (
-                  <div className="relative">
-                    <img 
-                      src={field.value} 
-                      alt="Market thumbnail" 
-                      className="w-32 h-20 object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => field.onChange("")}
-                    >
-                      Remove Image
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Upload options */}
-                <div className="flex flex-col space-y-2">
-                  {/* File upload option */}
-                  <ObjectUploader
-                    maxNumberOfFiles={1}
-                    maxFileSize={5242880} // 5MB
-                    allowedFileTypes={['image/*']}
-                    onGetUploadParameters={handleImageUpload}
-                    onComplete={handleImageUploadComplete}
-                    buttonClassName="w-full"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Image File
-                  </ObjectUploader>
-                  
-                  {/* Manual URL input as fallback */}
-                  <div className="relative">
-                    <FormControl>
-                      <Input 
-                        placeholder="Or enter image URL manually" 
-                        {...field} 
-                        value={field.value || ""} 
-                      />
-                    </FormControl>
-                  </div>
-                </div>
-              </div>
+              <FormControl>
+                <SimpleImageUploader
+                  value={field.value || ""}
+                  onChange={handleImageChange}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
