@@ -57,7 +57,7 @@ export const vendorScores = pgTable("vendor_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
   criteriaId: varchar("criteria_id").notNull().references(() => criteria.id, { onDelete: "cascade" }),
-  score: integer("score").notNull(), // 0-100
+  score: decimal("score", { precision: 3, scale: 1 }).notNull(), // 0-10, allows decimal values like 8.5
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -223,6 +223,8 @@ export const insertVendorScoreSchema = createInsertSchema(vendorScores).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  score: z.number().min(0, "Score must be at least 0").max(10, "Score cannot exceed 10"),
 });
 
 export const insertVendorNewsSchema = createInsertSchema(vendorNews).omit({

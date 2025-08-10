@@ -174,15 +174,49 @@ export default function VendorManagement() {
 
   const handleScoreChange = (vendorId: string, criteriaId: string, score: number) => {
     const key = `${vendorId}-${criteriaId}`;
+    
+    // Validate score range 0-10
+    if (score < 0 || score > 10) {
+      toast({
+        title: "Invalid Score",
+        description: "Score must be between 0 and 10",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setVendorScores(prev => ({ ...prev, [key]: score }));
   };
 
   const saveScore = (vendorId: string, criteriaId: string) => {
     const key = `${vendorId}-${criteriaId}`;
     const score = vendorScores[key];
-    if (score !== undefined && score >= 0 && score <= 100) {
-      saveScoreMutation.mutate({ vendorId, criteriaId, score });
+    
+    if (score === undefined) {
+      toast({
+        title: "No Score to Save",
+        description: "Please enter a score first",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (score < 0 || score > 10) {
+      toast({
+        title: "Invalid Score",
+        description: "Score must be between 0 and 10",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    saveScoreMutation.mutate({ vendorId, criteriaId, score });
+    // Clear the pending score after saving
+    setVendorScores(prev => {
+      const newState = { ...prev };
+      delete newState[key];
+      return newState;
+    });
   };
 
   return (
@@ -369,10 +403,17 @@ export default function VendorManagement() {
                                   <Input
                                     type="number"
                                     min="0"
-                                    max="100"
+                                    max="10"
+                                    step="0.1"
                                     value={pendingScore !== undefined ? pendingScore : currentScore}
-                                    onChange={(e) => handleScoreChange(vendor.id, criterion.id, parseInt(e.target.value) || 0)}
-                                    className="w-16 text-center"
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value) || e.target.value === '') {
+                                        handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
+                                      }
+                                    }}
+                                    className="w-20 text-center"
+                                    placeholder="0-10"
                                   />
                                 </TableCell>
                               );
