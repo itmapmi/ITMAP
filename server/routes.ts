@@ -272,6 +272,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/vendor-feature-support", async (req, res) => {
+    try {
+      const { vendorId, featureId, supportLevel } = z.object({
+        vendorId: z.string(),
+        featureId: z.string(),
+        supportLevel: z.number().min(0).max(4)
+      }).parse(req.body);
+      
+      const supportData = { vendorId, featureId, supportLevel };
+      const support = await storage.createOrUpdateVendorFeatureSupport(supportData);
+      res.json(support);
+    } catch (error) {
+      console.error("Error updating feature support:", error);
+      res.status(400).json({ error: "Failed to update feature support" });
+    }
+  });
+
   // Research Reports
   app.get("/api/markets/:marketId/reports", async (req, res) => {
     try {
