@@ -1,0 +1,413 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Edit, Trash2, Building2, Save } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
+
+export default function VendorManagement() {
+  const { toast } = useToast();
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [vendorScores, setVendorScores] = useState<{ [key: string]: number }>({});
+
+  const { data: markets } = useQuery<Market[]>({
+    queryKey: ["/api/markets"],
+  });
+
+  const { data: vendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+    queryKey: ["/api/markets", selectedMarket, "vendors"],
+    enabled: !!selectedMarket,
+  });
+
+  const { data: criteria } = useQuery<Criteria[]>({
+    queryKey: ["/api/criteria"],
+  });
+
+  const { data: scores, isLoading: scoresLoading } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
+    queryKey: ["/api/markets", selectedMarket, "scores"],
+    enabled: !!selectedMarket,
+  });
+
+  const vendorForm = useForm<InsertVendor>({
+    resolver: zodResolver(insertVendorSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      website: "",
+      revenue: "",
+      marketId: "",
+    },
+  });
+
+  const createVendorMutation = useMutation({
+    mutationFn: async (data: InsertVendor) => {
+      const response = await apiRequest("POST", "/api/vendors", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      vendorForm.reset();
+      toast({
+        title: "Success",
+        description: "Vendor created successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create vendor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateVendorMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertVendor> }) => {
+      const response = await apiRequest("PUT", `/api/vendors/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      setEditingVendor(null);
+      vendorForm.reset();
+      toast({
+        title: "Success",
+        description: "Vendor updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update vendor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteVendorMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/vendors/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      toast({
+        title: "Success",
+        description: "Vendor deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete vendor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveScoreMutation = useMutation({
+    mutationFn: async (scoreData: { vendorId: string; criteriaId: string; score: number }) => {
+      const response = await apiRequest("POST", "/api/vendor-scores", scoreData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      toast({
+        title: "Success",
+        description: "Score saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save score",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitVendor = (data: InsertVendor) => {
+    const vendorData = { ...data, marketId: selectedMarket };
+    if (editingVendor) {
+      updateVendorMutation.mutate({ id: editingVendor.id, data: vendorData });
+    } else {
+      createVendorMutation.mutate(vendorData);
+    }
+  };
+
+  const handleEditVendor = (vendor: Vendor) => {
+    setEditingVendor(vendor);
+    vendorForm.reset({
+      name: vendor.name,
+      description: vendor.description || "",
+      website: vendor.website || "",
+      revenue: vendor.revenue || "",
+      marketId: vendor.marketId,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingVendor(null);
+    vendorForm.reset({
+      name: "",
+      description: "",
+      website: "",
+      revenue: "",
+      marketId: "",
+    });
+  };
+
+  const getVendorScore = (vendorId: string, criteriaId: string): number => {
+    const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
+    return score?.score || 0;
+  };
+
+  const handleScoreChange = (vendorId: string, criteriaId: string, score: number) => {
+    const key = `${vendorId}-${criteriaId}`;
+    setVendorScores(prev => ({ ...prev, [key]: score }));
+  };
+
+  const saveScore = (vendorId: string, criteriaId: string) => {
+    const key = `${vendorId}-${criteriaId}`;
+    const score = vendorScores[key];
+    if (score !== undefined && score >= 0 && score <= 100) {
+      saveScoreMutation.mutate({ vendorId, criteriaId, score });
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Market Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Select Market</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Choose a market to manage vendors" />
+            </SelectTrigger>
+            <SelectContent>
+              {markets?.map(market => (
+                <SelectItem key={market.id} value={market.id}>
+                  {market.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {selectedMarket && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Add Vendor Form */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {editingVendor ? "Edit Vendor" : "Add New Vendor"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...vendorForm}>
+                  <form onSubmit={vendorForm.handleSubmit(onSubmitVendor)} className="space-y-4">
+                    <FormField
+                      control={vendorForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vendor Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Amazon Web Services" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Vendor description..."
+                              rows={3}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Website</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="revenue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Revenue (Billions)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 75.0" type="number" step="0.1" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex space-x-2">
+                      <Button 
+                        type="submit" 
+                        className="flex-1"
+                        disabled={createVendorMutation.isPending || updateVendorMutation.isPending}
+                      >
+                        {editingVendor ? "Update Vendor" : "Add Vendor"}
+                      </Button>
+                      {editingVendor && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Vendor Scoring */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vendor Scoring</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorsLoading || scoresLoading ? (
+                  <Skeleton className="h-64 w-full" />
+                ) : !vendors || vendors.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building2 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+                    <p>No vendors in this market</p>
+                    <p className="text-sm text-gray-400 mt-1">Add vendors to start scoring</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vendor</TableHead>
+                          {criteria?.map(criterion => (
+                            <TableHead key={criterion.id} className="text-center min-w-[100px]">
+                              {criterion.name}
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {vendors.map(vendor => (
+                          <TableRow key={vendor.id}>
+                            <TableCell className="font-medium">
+                              <div>
+                                <div>{vendor.name}</div>
+                                <div className="flex space-x-2 mt-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleEditVendor(vendor)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => deleteVendorMutation.mutate(vendor.id)}
+                                    disabled={deleteVendorMutation.isPending}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </TableCell>
+                            {criteria?.map(criterion => {
+                              const currentScore = getVendorScore(vendor.id, criterion.id);
+                              const key = `${vendor.id}-${criterion.id}`;
+                              const pendingScore = vendorScores[key];
+                              return (
+                                <TableCell key={criterion.id} className="text-center">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={pendingScore !== undefined ? pendingScore : currentScore}
+                                    onChange={(e) => handleScoreChange(vendor.id, criterion.id, parseInt(e.target.value) || 0)}
+                                    className="w-16 text-center"
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-center">
+                              <div className="flex flex-col space-y-1">
+                                {criteria?.map(criterion => {
+                                  const key = `${vendor.id}-${criterion.id}`;
+                                  const hasChanges = vendorScores[key] !== undefined;
+                                  return hasChanges ? (
+                                    <Button
+                                      key={criterion.id}
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => saveScore(vendor.id, criterion.id)}
+                                      disabled={saveScoreMutation.isPending}
+                                      className="text-xs"
+                                    >
+                                      <Save className="h-3 w-3 mr-1" />
+                                      {criterion.name}
+                                    </Button>
+                                  ) : null;
+                                })}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
