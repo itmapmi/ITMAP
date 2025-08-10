@@ -5,18 +5,39 @@ import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
 import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import NewsAnalysis from "@/components/admin/news-analysis";
+import { motion } from "framer-motion";
+import { FadeInSection } from "@/components/ui/animated-card";
 
 export default function Admin() {
   const [selectedMarket, setSelectedMarket] = useState<string>("");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Portal</h2>
-        <p className="text-gray-600">Manage markets, vendors, features, and analysis criteria</p>
-      </div>
+      <FadeInSection className="mb-8">
+        <motion.h2 
+          className="text-3xl font-bold text-gray-900 mb-2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          Admin Portal
+        </motion.h2>
+        <motion.p 
+          className="text-gray-600"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        >
+          Manage markets, vendors, features, and analysis criteria
+        </motion.p>
+      </FadeInSection>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <motion.div 
+        className="bg-white rounded-xl shadow-sm p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+      >
         <Tabs defaultValue="market-management" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
@@ -46,7 +67,7 @@ export default function Admin() {
             <NewsAnalysis />
           </TabsContent>
         </Tabs>
-      </div>
+      </motion.div>
     </div>
   );
 }

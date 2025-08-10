@@ -1,6 +1,8 @@
 import { Link } from "wouter";
 import { TrendingUp } from "lucide-react";
 import type { Market } from "@shared/schema";
+import { motion } from "framer-motion";
+import { AnimatedCard } from "@/components/ui/animated-card";
 
 interface MarketGridProps {
   markets: Market[];
@@ -22,8 +24,21 @@ export default function MarketGrid({ markets }: MarketGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {markets.map((market, index) => (
-        <Link key={market.id} href={`/market/${market.id}`}>
-          <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden cursor-pointer group">
+        <motion.div
+          key={market.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ 
+            duration: 0.4,
+            delay: index * 0.1,
+            ease: [0.25, 0.25, 0, 1]
+          }}
+        >
+          <Link href={`/market/${market.id}`}>
+            <AnimatedCard 
+              className="cursor-pointer group overflow-hidden" 
+              hover={true}
+            >
             <div className={`h-48 bg-gradient-to-br ${getGradientClass(index)} relative`}>
               {market.imageUrl ? (
                 <img 
@@ -58,8 +73,9 @@ export default function MarketGrid({ markets }: MarketGridProps) {
                 </span>
               </div>
             </div>
-          </div>
-        </Link>
+            </AnimatedCard>
+          </Link>
+        </motion.div>
       ))}
     </div>
   );
