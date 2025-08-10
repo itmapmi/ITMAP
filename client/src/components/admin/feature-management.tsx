@@ -18,7 +18,7 @@ import { z } from "zod";
 
 interface FeatureManagementProps {}
 
-const featureFormSchema = insertFeatureSchema.omit({ id: true });
+const featureFormSchema = insertFeatureSchema.omit({ id: true, createdAt: true });
 type FeatureFormData = z.infer<typeof featureFormSchema>;
 
 // Harvey Ball component for support level display
@@ -68,8 +68,7 @@ export default function FeatureManagement({}: FeatureManagementProps) {
     defaultValues: {
       name: "",
       description: "",
-      category: "",
-      marketId: selectedMarket,
+      marketId: "",
     },
   });
 
@@ -153,7 +152,6 @@ export default function FeatureManagement({}: FeatureManagementProps) {
     form.reset({
       name: feature.name,
       description: feature.description || "",
-      category: feature.category,
       marketId: feature.marketId,
     });
   };
@@ -177,16 +175,6 @@ export default function FeatureManagement({}: FeatureManagementProps) {
   const handleSupportChange = (vendorId: string, featureId: string, supportLevel: number) => {
     updateSupportMutation.mutate({ vendorId, featureId, supportLevel });
   };
-
-  if (!selectedMarket) {
-    return (
-      <div className="text-center py-8">
-        <Grid3X3 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Market</h3>
-        <p className="text-gray-500">Choose a market to manage its features and support matrix.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -225,7 +213,15 @@ export default function FeatureManagement({}: FeatureManagementProps) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {!selectedMarket ? (
+        <div className="text-center py-12">
+          <Grid3X3 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Market</h3>
+          <p className="text-gray-500">Choose a market from the dropdown above to manage its features and support matrix.</p>
+        </div>
+      ) : (
+        <>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Feature Form */}
         <Card>
           <CardHeader>
@@ -268,19 +264,7 @@ export default function FeatureManagement({}: FeatureManagementProps) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Core Features, Advanced Features" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
 
                 <div className="flex space-x-2">
                   <Button 
@@ -338,9 +322,6 @@ export default function FeatureManagement({}: FeatureManagementProps) {
                       {feature.description && (
                         <div className="text-sm text-gray-500 mt-1">{feature.description}</div>
                       )}
-                      <Badge variant="secondary" className="text-xs mt-2">
-                        {feature.category}
-                      </Badge>
                     </div>
                     <div className="flex space-x-2">
                       <Button
@@ -367,8 +348,8 @@ export default function FeatureManagement({}: FeatureManagementProps) {
         </Card>
       </div>
 
-      {/* Support Matrix */}
-      {showSupportMatrix && (
+        {/* Support Matrix */}
+        {showSupportMatrix && (
         <Card>
           <CardHeader>
             <CardTitle>Harvey Ball Support Matrix</CardTitle>
@@ -420,9 +401,9 @@ export default function FeatureManagement({}: FeatureManagementProps) {
                           <div className="font-medium text-sm text-gray-900">
                             {feature.name}
                           </div>
-                          <Badge variant="outline" className="text-xs w-fit mt-1">
-                            {feature.category}
-                          </Badge>
+                          {feature.description && (
+                            <div className="text-xs text-gray-500 mt-1">{feature.description}</div>
+                          )}
                         </div>
                         
                         {vendors.map(vendor => {
@@ -482,6 +463,8 @@ export default function FeatureManagement({}: FeatureManagementProps) {
             )}
           </CardContent>
         </Card>
+        )}
+        </>
       )}
     </div>
   );
