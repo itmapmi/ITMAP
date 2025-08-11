@@ -519,6 +519,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Cron Job Management endpoints
+  app.get("/api/admin/cron-jobs/status", async (req, res) => {
+    try {
+      const { cronJobManager } = await import("./cronJobs");
+      const status = cronJobManager.getJobStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting cron job status:", error);
+      res.status(500).json({ error: "Failed to get cron job status" });
+    }
+  });
+
+  app.post("/api/admin/cron-jobs/:jobName/start", async (req, res) => {
+    try {
+      const { cronJobManager } = await import("./cronJobs");
+      const success = cronJobManager.startJob(req.params.jobName);
+      if (success) {
+        res.json({ message: `Job ${req.params.jobName} started successfully` });
+      } else {
+        res.status(404).json({ error: "Job not found" });
+      }
+    } catch (error) {
+      console.error("Error starting cron job:", error);
+      res.status(500).json({ error: "Failed to start cron job" });
+    }
+  });
+
+  app.post("/api/admin/cron-jobs/:jobName/stop", async (req, res) => {
+    try {
+      const { cronJobManager } = await import("./cronJobs");
+      const success = cronJobManager.stopJob(req.params.jobName);
+      if (success) {
+        res.json({ message: `Job ${req.params.jobName} stopped successfully` });
+      } else {
+        res.status(404).json({ error: "Job not found" });
+      }
+    } catch (error) {
+      console.error("Error stopping cron job:", error);
+      res.status(500).json({ error: "Failed to stop cron job" });
+    }
+  });
+
+  app.post("/api/admin/news-processing/trigger", async (req, res) => {
+    try {
+      const { cronJobManager } = await import("./cronJobs");
+      await cronJobManager.triggerDailyNewsProcessing();
+      res.json({ message: "Daily news processing triggered successfully" });
+    } catch (error) {
+      console.error("Error triggering news processing:", error);
+      res.status(500).json({ error: "Failed to trigger news processing" });
+    }
+  });
+
+  // Vendor News management endpoints
+  app.get("/api/admin/vendor-news", async (req, res) => {
+    try {
+      const { marketId, vendorId, approved } = req.query;
+      let news = await storage.getVendorNews(
+        marketId as string | undefined,
+        vendorId as string | undefined
+      );
+      
+      // Filter by approval status if specified
+      if (approved !== undefined) {
+        const isApproved = approved === 'true';
+        news = news.filter(n => n.approved === isApproved);
+      }
+      
+      res.json(news);
+    } catch (error) {
+      console.error("Error fetching vendor news:", error);
+      res.status(500).json({ error: "Failed to fetch vendor news" });
+    }
+  });
+
+  app.put("/api/admin/vendor-news/:id/approve", async (req, res) => {
+    try {
+      const { approved } = z.object({ approved: z.boolean() }).parse(req.body);
+      const news = await storage.updateVendorNews(req.params.id, { approved });
+      res.json(news);
+    } catch (error) {
+      console.error("Error updating news approval:", error);
+      res.status(400).json({ error: "Failed to update news approval" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

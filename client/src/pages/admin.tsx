@@ -5,6 +5,7 @@ import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
 import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import NewsAnalysis from "@/components/admin/news-analysis";
+import NewsManagement from "@/components/admin/news-management";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
@@ -40,13 +41,14 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
-            <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
-            <TabsTrigger value="news-analysis">News Analysis</TabsTrigger>
+            <TabsTrigger value="research-reports">Reports</TabsTrigger>
+            <TabsTrigger value="news-analysis">News</TabsTrigger>
+            <TabsTrigger value="news-management">Automation</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -71,6 +73,10 @@ export default function Admin() {
 
           <TabsContent value="news-analysis" className="mt-6">
             <NewsAnalysis />
+          </TabsContent>
+
+          <TabsContent value="news-management" className="mt-6">
+            <NewsManagement />
           </TabsContent>
         </Tabs>
       </motion.div>

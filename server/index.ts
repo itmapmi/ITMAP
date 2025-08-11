@@ -47,6 +47,29 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Initialize and start cron jobs
+  try {
+    const { cronJobManager } = await import("./cronJobs");
+    cronJobManager.initializeCronJobs();
+    cronJobManager.startAllJobs();
+    log("✓ Cron jobs initialized and started");
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      log('SIGTERM received, stopping cron jobs...');
+      cronJobManager.stopAllJobs();
+      process.exit(0);
+    });
+
+    process.on('SIGINT', () => {
+      log('SIGINT received, stopping cron jobs...');
+      cronJobManager.stopAllJobs();
+      process.exit(0);
+    });
+  } catch (error) {
+    log('Warning: Could not initialize cron jobs:', error);
+  }
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
