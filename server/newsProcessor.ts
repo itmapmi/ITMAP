@@ -89,6 +89,7 @@ export class NewsProcessor {
 
   /**
    * Fetch news items for a specific vendor focusing on press releases and official announcements
+   * First tries direct vendor website scraping, then falls back to NewsAPI
    */
   private async fetchVendorNews(vendor: Vendor, market: Market): Promise<NewsItem[]> {
     if (!this.newsApiKey) {
@@ -97,6 +98,16 @@ export class NewsProcessor {
     }
 
     try {
+      // First, try to fetch directly from vendor website
+      const directNews = await this.fetchDirectVendorNews(vendor, market);
+      if (directNews.length > 0) {
+        console.log(`Found ${directNews.length} articles directly from ${vendor.name} website`);
+        return directNews;
+      }
+
+      // Fall back to NewsAPI for third-party coverage
+      console.log(`No direct articles found for ${vendor.name}, falling back to NewsAPI`);
+      
       // Create a more targeted query for official vendor communications
       const vendorDomain = vendor.website ? vendor.website.replace(/^https?:\/\//, '').replace(/^www\./, '') : '';
       
@@ -129,6 +140,8 @@ export class NewsProcessor {
           if (vendorDomain) {
             url.searchParams.set('domains', vendorDomain);
           }
+          
+          console.log(`Searching for: ${query} from domain: ${vendorDomain || 'all sources'}`);
           
           const response = await fetch(url.toString(), {
             headers: {
@@ -238,6 +251,143 @@ export class NewsProcessor {
     ];
     
     return businessSources.some(bizSource => source.includes(bizSource));
+  }
+
+  /**
+   * Attempt to fetch news directly from vendor websites
+   */
+  private async fetchDirectVendorNews(vendor: Vendor, market: Market): Promise<NewsItem[]> {
+    if (!vendor.website) {
+      return [];
+    }
+
+    const baseUrl = vendor.website.replace(/\/$/, '');
+    const newsUrls = [
+      `${baseUrl}/news`,
+      `${baseUrl}/newsroom`, 
+      `${baseUrl}/press-releases`,
+      `${baseUrl}/media`,
+      `${baseUrl}/blog`,
+      `${baseUrl}/company/news`,
+      `${baseUrl}/about/news`,
+      `${baseUrl}/investors/news`
+    ];
+
+    console.log(`Attempting direct fetch from ${vendor.name} website: ${baseUrl}`);
+
+    for (const newsUrl of newsUrls) {
+      try {
+        console.log(`Trying: ${newsUrl}`);
+        
+        // Check if the URL exists and try to extract news
+        const response = await fetch(newsUrl, {
+          headers: {
+            'User-Agent': 'MarketScope Research Bot 1.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+          
+          // Basic extraction of news items from common patterns
+          const articles = this.extractNewsFromHTML(html, newsUrl, vendor);
+          
+          if (articles.length > 0) {
+            console.log(`Found ${articles.length} articles from ${newsUrl}`);
+            return articles.slice(0, 10); // Limit to recent articles
+          }
+        }
+      } catch (error) {
+        console.log(`Failed to fetch from ${newsUrl}: ${error.message}`);
+        continue;
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * Extract news articles from HTML content using common patterns
+   */
+  private extractNewsFromHTML(html: string, sourceUrl: string, vendor: Vendor): NewsItem[] {
+    const articles: NewsItem[] = [];
+    
+    try {
+      // Look for common news/press release patterns in HTML
+      const articlePatterns = [
+        // Look for press release titles and links
+        /<a[^>]*href="([^"]*)"[^>]*>([^<]*(?:press release|announces|news|release)[^<]*)<\/a>/gi,
+        // Look for news item titles
+        /<h[1-6][^>]*>([^<]*(?:announces|launches|introduces|partnership|acquisition)[^<]*)<\/h[1-6]>/gi,
+        // Look for article links with dates
+        /<article[^>]*>[\s\S]*?<a[^>]*href="([^"]*)"[^>]*>([^<]+)<\/a>[\s\S]*?<\/article>/gi,
+      ];
+
+      let matches: RegExpExecArray | null;
+      
+      for (const pattern of articlePatterns) {
+        while ((matches = pattern.exec(html)) !== null && articles.length < 10) {
+          const link = matches[1];
+          const title = matches[2]?.trim();
+          
+          if (title && title.length > 10 && link) {
+            // Make URL absolute
+            const fullUrl = link.startsWith('http') ? link : new URL(link, sourceUrl).toString();
+            
+            // Check if this looks like a real article
+            if (this.isValidArticleUrl(fullUrl, title)) {
+              articles.push({
+                title: title.replace(/\s+/g, ' ').trim(),
+                content: `Official announcement from ${vendor.name}`,
+                url: fullUrl,
+                source: `${vendor.name} Official`,
+                publishedAt: new Date(), // Use current date since we can't easily extract publish dates
+              });
+            }
+          }
+        }
+      }
+
+      // Remove duplicates
+      const uniqueArticles = articles.filter((article, index, self) => 
+        index === self.findIndex(a => a.url === article.url || a.title === article.title)
+      );
+
+      return uniqueArticles;
+    } catch (error) {
+      console.error('Error extracting news from HTML:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Validate if a URL and title look like a real news article
+   */
+  private isValidArticleUrl(url: string, title: string): boolean {
+    const urlLower = url.toLowerCase();
+    const titleLower = title.toLowerCase();
+    
+    // Skip obviously non-article URLs
+    const skipPatterns = [
+      '/css/', '/js/', '/images/', '/img/', '.pdf', '.jpg', '.png', '.gif',
+      '/admin/', '/login/', '/search/', 'javascript:', 'mailto:', '#'
+    ];
+    
+    if (skipPatterns.some(pattern => urlLower.includes(pattern))) {
+      return false;
+    }
+    
+    // Look for article indicators
+    const articleIndicators = [
+      'press-release', 'news', 'announcement', 'blog', 'article',
+      'announces', 'launches', 'introduces', 'partnership', 'acquisition'
+    ];
+    
+    return articleIndicators.some(indicator => 
+      urlLower.includes(indicator) || titleLower.includes(indicator)
+    );
   }
 
   /**
