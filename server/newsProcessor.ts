@@ -290,26 +290,19 @@ export class NewsProcessor {
     }
     const baseUrl = vendor.website.replace(/\/$/, '').replace(/^https?:\/\//, '');
     
-    // Common RSS feed URLs for enterprise vendors
-    const rssUrls = [
-      `https://${baseUrl}/rss.xml`,
-      `https://${baseUrl}/feed.xml`,
-      `https://${baseUrl}/news/rss`,
-      `https://${baseUrl}/news/feed`,
-      `https://${baseUrl}/newsroom/rss`,
-      `https://${baseUrl}/newsroom/feed`,
-      `https://${baseUrl}/press-releases/rss`,
-      `https://${baseUrl}/press-releases/feed`,
-      `https://${baseUrl}/blog/rss`,
-      `https://${baseUrl}/blog/feed`,
-      `https://${baseUrl}/company/news/rss`,
-      `https://${baseUrl}/about/news/rss`,
-      `https://${baseUrl}/investors/news/rss`,
-      // Specific vendor patterns
-      `https://${baseUrl}/feeds/press-releases.xml`,
-      `https://${baseUrl}/feeds/news.xml`,
-      `https://${baseUrl}/xml/rss.xml`,
-    ];
+    // Get vendor-specific RSS URLs based on known patterns
+    const rssUrls = this.getKnownVendorRSSFeeds(vendor.name, baseUrl);
+    
+    // Add common fallback patterns if no specific URLs found
+    if (rssUrls.length === 0) {
+      rssUrls.push(
+        `https://${baseUrl}/rss.xml`,
+        `https://${baseUrl}/feed.xml`,
+        `https://${baseUrl}/news/feed`,
+        `https://${baseUrl}/newsroom/feed`,
+        `https://${baseUrl}/blog/feed`
+      );
+    }
 
     console.log(`Attempting RSS feeds for ${vendor.name}: ${baseUrl}`);
 
@@ -481,6 +474,84 @@ export class NewsProcessor {
     return articleIndicators.some(indicator => 
       urlLower.includes(indicator) || titleLower.includes(indicator)
     );
+  }
+
+  /**
+   * Get known working RSS feeds for specific vendors
+   */
+  private getKnownVendorRSSFeeds(vendorName: string, baseUrl: string): string[] {
+    const vendorLower = vendorName.toLowerCase();
+    
+    // Known working RSS feeds for major enterprise vendors
+    const knownFeeds: { [key: string]: string[] } = {
+      'microsoft': [
+        'https://news.microsoft.com/feed/',
+        'https://blogs.microsoft.com/feed/',
+        'https://azure.microsoft.com/en-us/blog/feed/'
+      ],
+      'amazon': [
+        'https://aws.amazon.com/about-aws/whats-new/recent/feed/',
+        'https://aws.amazon.com/blogs/aws/feed/'
+      ],
+      'aws': [
+        'https://aws.amazon.com/about-aws/whats-new/recent/feed/',
+        'https://aws.amazon.com/blogs/aws/feed/'
+      ],
+      'google': [
+        'https://cloud.google.com/blog/rss/',
+        'https://blog.google/rss/'
+      ],
+      'oracle': [
+        'https://blogs.oracle.com/rss/'
+      ],
+      'ibm': [
+        'https://www.ibm.com/blog/rss/',
+        'https://newsroom.ibm.com/rss'
+      ],
+      'salesforce': [
+        'https://www.salesforce.com/news/feed/'
+      ],
+      'vmware': [
+        'https://blogs.vmware.com/feed'
+      ],
+      'cisco': [
+        'https://blogs.cisco.com/feed'
+      ],
+      'dell': [
+        'https://www.dell.com/learn/us/en/uscorp1/corp-comm/dell-news-rss'
+      ],
+      'hpe': [
+        'https://community.hpe.com/hpeb/rss/board?board.id=HPE_News'
+      ],
+      'netapp': [
+        'https://blog.netapp.com/feed/'
+      ],
+      'purestorage': [
+        'https://blog.purestorage.com/feed/'
+      ],
+      'nutanix': [
+        'https://www.nutanix.com/blog/feed'
+      ],
+      'lenovo': [
+        'https://news.lenovo.com/feed/'
+      ]
+    };
+
+    // Check for exact matches first
+    if (knownFeeds[vendorLower]) {
+      console.log(`Using known RSS feeds for ${vendorName}`);
+      return knownFeeds[vendorLower];
+    }
+
+    // Check for partial matches (e.g., "Pure Storage" matches "purestorage")
+    for (const [key, feeds] of Object.entries(knownFeeds)) {
+      if (vendorLower.includes(key) || key.includes(vendorLower.replace(/\s+/g, ''))) {
+        console.log(`Using known RSS feeds for ${vendorName} (matched ${key})`);
+        return feeds;
+      }
+    }
+
+    return [];
   }
 
   /**
