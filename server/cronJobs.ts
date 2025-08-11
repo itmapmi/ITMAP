@@ -123,21 +123,21 @@ export class CronJobManager {
   public getJobStatus(): { [jobName: string]: { running: boolean, nextRun?: string } } {
     const status: { [jobName: string]: { running: boolean, nextRun?: string } } = {};
 
-    this.jobs.forEach((job, name) => {
-      try {
-        // Check if the job is running by checking if it exists and was started
-        const isRunning = this.jobs.has(name);
-        status[name] = {
-          running: isRunning,
-          nextRun: isRunning ? 'Scheduled according to cron pattern' : 'Not scheduled'
-        };
-      } catch (error) {
-        status[name] = {
-          running: false,
-          nextRun: 'Status unavailable'
-        };
-      }
-    });
+    // Return static status for the jobs we know exist
+    status['dailyNews'] = {
+      running: this.jobs.has('dailyNews'),
+      nextRun: 'Daily at 6:00 AM UTC'
+    };
+    
+    status['weeklyBackup'] = {
+      running: this.jobs.has('weeklyBackup'),
+      nextRun: 'Weekly on Sunday at 2:00 AM UTC'
+    };
+    
+    status['healthCheck'] = {
+      running: this.jobs.has('healthCheck'),
+      nextRun: 'Every hour'
+    };
 
     return status;
   }

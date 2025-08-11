@@ -22,7 +22,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import type { Market, VendorNews, Vendor } from "@shared/schema";
+import type { Market, VendorNews, Vendor, Criteria } from "@shared/schema";
 
 interface CronJobStatus {
   running: boolean;
@@ -58,14 +58,17 @@ export default function NewsManagement() {
 
   // Fetch vendor news
   const { data: vendorNews, isLoading: newsLoading } = useQuery({
-    queryKey: [
-      "/api/admin/vendor-news", 
-      { 
-        marketId: selectedMarketId || undefined,
-        vendorId: selectedVendorId || undefined,
-        approved: showOnlyPending ? "false" : undefined
-      }
-    ],
+    queryKey: ["/api/admin/vendor-news"],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedMarketId) params.append('marketId', selectedMarketId);
+      if (selectedVendorId) params.append('vendorId', selectedVendorId);
+      if (showOnlyPending) params.append('approved', 'false');
+      
+      const response = await fetch(`/api/admin/vendor-news?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch vendor news');
+      return response.json();
+    },
     enabled: true,
   });
 
@@ -170,7 +173,7 @@ export default function NewsManagement() {
     return "text-blue-600";
   };
 
-  const selectedMarket = markets?.find((m: Market) => m.id === selectedMarketId);
+  const selectedMarket = Array.isArray(markets) ? markets.find((m: Market) => m.id === selectedMarketId) : undefined;
 
   return (
     <div className="space-y-6">
@@ -294,7 +297,7 @@ export default function NewsManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All markets</SelectItem>
-                    {markets?.map((market: Market) => (
+                    {Array.isArray(markets) && markets.map((market: Market) => (
                       <SelectItem key={market.id} value={market.id}>
                         {market.name}
                       </SelectItem>
@@ -315,7 +318,7 @@ export default function NewsManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All vendors</SelectItem>
-                    {vendors?.map((vendor: Vendor) => (
+                    {Array.isArray(vendors) && vendors.map((vendor: Vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         {vendor.name}
                       </SelectItem>
@@ -362,7 +365,7 @@ export default function NewsManagement() {
             </div>
           ) : vendorNews && vendorNews.length > 0 ? (
             <div className="space-y-4">
-              {vendorNews.map((news: VendorNews & { vendor: Vendor; criteria?: any }) => (
+              {vendorNews.map((news: VendorNews & { vendor: Vendor; criteria?: Criteria | null }) => (
                 <div key={news.id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -382,7 +385,7 @@ export default function NewsManagement() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => window.open(news.url, "_blank")}
+                          onClick={() => news.url && window.open(news.url, "_blank")}
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
