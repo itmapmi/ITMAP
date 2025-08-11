@@ -227,7 +227,16 @@ export default function NewsManagement() {
                       </h4>
                       {status.nextRun && (
                         <p className="text-sm text-gray-500">
-                          Next run: {format(new Date(status.nextRun), "PPp")}
+                          Next run: {status.nextRun && status.nextRun !== 'Not scheduled' && status.nextRun !== 'Status unavailable' 
+                            ? (() => {
+                                try {
+                                  return format(new Date(status.nextRun), "PPp");
+                                } catch {
+                                  return status.nextRun;
+                                }
+                              })()
+                            : status.nextRun || 'Not scheduled'
+                          }
                         </p>
                       )}
                     </div>

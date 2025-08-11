@@ -131,7 +131,7 @@ export class CronJobManager {
     
     status['weeklyBackup'] = {
       running: this.jobs.has('weeklyBackup'),
-      nextRun: 'Weekly on Sunday at 2:00 AM UTC'
+      nextRun: 'Weekly on Sunday at 2:00 AM UTC'  
     };
     
     status['healthCheck'] = {
