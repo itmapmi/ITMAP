@@ -105,7 +105,10 @@ The platform is designed to scale horizontally with its serverless database arch
 - **Created historical position tracking** for vendor movement analysis over time
 
 ### Technical Implementation Details
-- Daily news processing fetches vendor-specific news from NewsAPI.org with market context filtering
+- Daily news processing fetches vendor-specific press releases and official announcements from NewsAPI.org
+- Enhanced news filtering targets vendor newsrooms, press releases, and official company communications
+- Multi-query approach searches for product launches, partnerships, and market-specific announcements
+- Prioritizes official vendor domains and business news sources for authenticity
 - OpenAI GPT-4o-mini analyzes news articles for business impact on evaluation criteria
 - Automated score changes (±2 point range) require admin approval before applying to vendor ratings
 - System includes backup mechanisms for API failures and comprehensive logging

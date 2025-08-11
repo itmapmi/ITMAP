@@ -88,7 +88,7 @@ export class NewsProcessor {
   }
 
   /**
-   * Fetch news items for a specific vendor
+   * Fetch news items for a specific vendor focusing on press releases and official announcements
    */
   private async fetchVendorNews(vendor: Vendor, market: Market): Promise<NewsItem[]> {
     if (!this.newsApiKey) {
@@ -97,42 +97,147 @@ export class NewsProcessor {
     }
 
     try {
-      // Search for news about the vendor in the context of the market
-      const query = `"${vendor.name}" AND ("${market.name}" OR technology OR software OR enterprise)`;
+      // Create a more targeted query for official vendor communications
+      const vendorDomain = vendor.website ? vendor.website.replace(/^https?:\/\//, '').replace(/^www\./, '') : '';
+      
+      // Focus on press releases, announcements, and official company communications
+      const queries = [
+        // Official press releases and announcements
+        `"${vendor.name}" AND ("press release" OR "announces" OR "announcement" OR "newsroom")`,
+        // Product launches and market-specific news
+        `"${vendor.name}" AND ("${market.name}" OR "new product" OR "launches" OR "introduces")`,
+        // Company updates and financial news
+        `"${vendor.name}" AND ("company" OR "earnings" OR "partnership" OR "acquisition")`
+      ];
+
       const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - 1); // Yesterday
+      fromDate.setDate(fromDate.getDate() - 7); // Last 7 days for better coverage
       
-      const url = new URL('https://newsapi.org/v2/everything');
-      url.searchParams.set('q', query);
-      url.searchParams.set('from', fromDate.toISOString().split('T')[0]);
-      url.searchParams.set('sortBy', 'publishedAt');
-      url.searchParams.set('language', 'en');
-      url.searchParams.set('pageSize', '10');
-      
-      const response = await fetch(url.toString(), {
-        headers: {
-          'X-API-Key': this.newsApiKey
+      let allArticles: any[] = [];
+
+      // Execute multiple queries to get comprehensive coverage
+      for (const query of queries) {
+        try {
+          const url = new URL('https://newsapi.org/v2/everything');
+          url.searchParams.set('q', query);
+          url.searchParams.set('from', fromDate.toISOString().split('T')[0]);
+          url.searchParams.set('sortBy', 'publishedAt');
+          url.searchParams.set('language', 'en');
+          url.searchParams.set('pageSize', '5'); // Smaller page size per query
+          
+          // If we have vendor domain, try to prioritize articles from their site
+          if (vendorDomain) {
+            url.searchParams.set('domains', vendorDomain);
+          }
+          
+          const response = await fetch(url.toString(), {
+            headers: {
+              'X-API-Key': this.newsApiKey
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.articles) {
+              allArticles.push(...data.articles);
+            }
+          } else {
+            console.log(`Query failed: ${query} - ${response.status}`);
+          }
+          
+          // Add delay between requests to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (queryError) {
+          console.log(`Error with query "${query}":`, queryError);
+          continue;
         }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`News API error: ${response.status} ${response.statusText}`);
+      }
+
+      // If domain-specific search didn't yield results, try broader search
+      if (allArticles.length === 0) {
+        console.log(`No domain-specific results for ${vendor.name}, trying broader search`);
+        const fallbackQuery = `"${vendor.name}" AND ("${market.name}" OR technology OR enterprise)`;
+        
+        const url = new URL('https://newsapi.org/v2/everything');
+        url.searchParams.set('q', fallbackQuery);
+        url.searchParams.set('from', fromDate.toISOString().split('T')[0]);
+        url.searchParams.set('sortBy', 'publishedAt');
+        url.searchParams.set('language', 'en');
+        url.searchParams.set('pageSize', '10');
+        
+        const response = await fetch(url.toString(), {
+          headers: {
+            'X-API-Key': this.newsApiKey
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.articles) {
+            allArticles.push(...data.articles);
+          }
+        }
       }
       
-      const data = await response.json();
-      
-      return data.articles?.map((article: any) => ({
+      // Remove duplicates and filter for relevance
+      const uniqueArticles = allArticles.filter((article, index, self) => 
+        index === self.findIndex(a => a.url === article.url)
+      );
+
+      // Prioritize official sources and press releases
+      const prioritizedArticles = uniqueArticles.sort((a, b) => {
+        const aIsOfficial = this.isOfficialSource(a, vendor, vendorDomain);
+        const bIsOfficial = this.isOfficialSource(b, vendor, vendorDomain);
+        
+        if (aIsOfficial && !bIsOfficial) return -1;
+        if (!aIsOfficial && bIsOfficial) return 1;
+        
+        // Then sort by publication date
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      });
+
+      return prioritizedArticles.slice(0, 10).map((article: any) => ({
         title: article.title,
         content: article.description || article.content || '',
         url: article.url,
         source: article.source.name,
         publishedAt: new Date(article.publishedAt)
-      })) || [];
+      }));
       
     } catch (error) {
       console.error(`Error fetching news for ${vendor.name}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Check if a news source is likely official for the vendor
+   */
+  private isOfficialSource(article: any, vendor: Vendor, vendorDomain: string): boolean {
+    const url = article.url?.toLowerCase() || '';
+    const source = article.source?.name?.toLowerCase() || '';
+    const title = article.title?.toLowerCase() || '';
+    
+    // Check if URL is from vendor's domain
+    if (vendorDomain && url.includes(vendorDomain.toLowerCase())) {
+      return true;
+    }
+    
+    // Check for press release indicators
+    if (title.includes('press release') || 
+        title.includes('announces') || 
+        source.includes('newsroom') ||
+        source.includes(vendor.name.toLowerCase())) {
+      return true;
+    }
+    
+    // Check for known business/tech news sources that typically publish official announcements
+    const businessSources = [
+      'business wire', 'pr newswire', 'marketwatch', 'reuters', 
+      'bloomberg', 'techcrunch', 'venture beat', 'crunchbase'
+    ];
+    
+    return businessSources.some(bizSource => source.includes(bizSource));
   }
 
   /**
@@ -171,12 +276,13 @@ export class NewsProcessor {
       const criteriaList = criteria.map(c => `${c.name}: ${c.description || 'No description'}`).join('\n');
       
       const prompt = `
-Analyze this news article about ${vendor.name} in the ${market.name} market and determine its impact on vendor evaluation criteria.
+Analyze this official news/press release about ${vendor.name} in the ${market.name} market and determine its impact on vendor evaluation criteria.
 
 News Article:
 Title: ${newsItem.title}
 Content: ${newsItem.content}
 Source: ${newsItem.source}
+URL: ${newsItem.url}
 
 Vendor: ${vendor.name}
 Market: ${market.name}
@@ -191,15 +297,17 @@ Please analyze this news and provide a JSON response with:
 3. scoreChange: Estimated score change from -2 to +2 (negative for bad news, positive for good news, null if neutral)
 4. summary: Brief explanation of the impact (max 200 characters)
 
-Consider factors like:
-- Product launches, updates, or innovations
-- Financial performance and funding
-- Market position changes
-- Partnerships and acquisitions
-- Customer wins or losses
-- Technical capabilities and reliability
-- Leadership changes
-- Regulatory or compliance issues
+Focus specifically on official company announcements and evaluate impact on:
+- Product innovations and new launches specific to ${market.name}
+- Market position and competitive advantages
+- Financial health and business growth
+- Strategic partnerships and acquisitions
+- Customer wins and major contracts
+- Technical capabilities and platform improvements
+- Executive leadership and strategic direction
+- Compliance, security, and reliability updates
+
+Prioritize news that directly affects the vendor's ${market.name} market capabilities and competitive position.
 
 Return only valid JSON without any additional text.`;
 
