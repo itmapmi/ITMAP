@@ -57,17 +57,25 @@ export default function NewsManagement() {
   });
 
   // Fetch vendor news
-  const { data: vendorNews, isLoading: newsLoading } = useQuery({
-    queryKey: ["/api/admin/vendor-news"],
+  const { data: vendorNews, isLoading: newsLoading, error: newsError } = useQuery({
+    queryKey: ["/api/admin/vendor-news", selectedMarketId, selectedVendorId, showOnlyPending],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedMarketId) params.append('marketId', selectedMarketId);
-      if (selectedVendorId) params.append('vendorId', selectedVendorId);
-      if (showOnlyPending) params.append('approved', 'false');
-      
-      const response = await fetch(`/api/admin/vendor-news?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch vendor news');
-      return response.json();
+      try {
+        const params = new URLSearchParams();
+        if (selectedMarketId) params.append('marketId', selectedMarketId);
+        if (selectedVendorId) params.append('vendorId', selectedVendorId);
+        if (showOnlyPending) params.append('approved', 'false');
+        
+        const response = await fetch(`/api/admin/vendor-news?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching vendor news:', error);
+        throw error;
+      }
     },
     enabled: true,
   });
@@ -353,7 +361,19 @@ export default function NewsManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {newsLoading ? (
+          {newsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-600">Error loading news: {newsError.message}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/admin/vendor-news"] })}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : newsLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="p-4 border rounded-lg space-y-3">
@@ -363,15 +383,15 @@ export default function NewsManagement() {
                 </div>
               ))}
             </div>
-          ) : vendorNews && vendorNews.length > 0 ? (
+          ) : Array.isArray(vendorNews) && vendorNews.length > 0 ? (
             <div className="space-y-4">
-              {vendorNews.map((news: VendorNews & { vendor: Vendor; criteria?: Criteria | null }) => (
+              {vendorNews.map((news: any) => (
                 <div key={news.id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h4 className="font-medium mb-1">{news.title}</h4>
+                      <h4 className="font-medium mb-1">{news.title || 'No title'}</h4>
                       <p className="text-sm text-gray-600 mb-2">
-                        {news.vendor.name} • {news.source}
+                        {news.vendor?.name || 'Unknown vendor'} • {news.source || 'Unknown source'}
                       </p>
                       {news.content && (
                         <p className="text-sm text-gray-700 mb-3 line-clamp-2">
