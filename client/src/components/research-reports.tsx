@@ -169,6 +169,18 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
                 </div>
 
                 <div className="flex flex-col gap-2 ml-4">
+                  {report.htmlContent && (
+                    <Button
+                      onClick={() => window.open(`/report/${report.id}`, "_blank")}
+                      variant="default"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      View Online
+                    </Button>
+                  )}
+                  
                   {report.fileUrl && (
                     <Button
                       onClick={() => handleDownload(report)}
@@ -180,8 +192,6 @@ export default function ResearchReports({ marketId }: ResearchReportsProps) {
                       Download
                     </Button>
                   )}
-                  
-
                 </div>
               </div>
             </div>

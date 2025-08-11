@@ -466,6 +466,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET individual research report
+  app.get("/api/research-reports/:reportId", async (req, res) => {
+    try {
+      const report = await storage.getResearchReportById(req.params.reportId);
+      if (!report) {
+        return res.status(404).json({ error: "Research report not found" });
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching research report:", error);
+      res.status(500).json({ error: "Failed to fetch research report" });
+    }
+  });
+
   // POST create research report
   app.post("/api/research-reports", async (req, res) => {
     try {
@@ -475,6 +489,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating research report:", error);
       res.status(500).json({ error: "Failed to create research report" });
+    }
+  });
+
+  // PUT update research report
+  app.put("/api/research-reports/:reportId", async (req, res) => {
+    try {
+      const reportData = insertResearchReportSchema.partial().parse(req.body);
+      const updatedReport = await storage.updateResearchReport(req.params.reportId, reportData);
+      if (!updatedReport) {
+        return res.status(404).json({ error: "Research report not found" });
+      }
+      res.json(updatedReport);
+    } catch (error) {
+      console.error("Error updating research report:", error);
+      res.status(400).json({ error: "Failed to update research report" });
     }
   });
 

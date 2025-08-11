@@ -110,6 +110,7 @@ export const researchReports = pgTable("research_reports", {
   description: text("description"),
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   fileUrl: text("file_url"),
+  htmlContent: text("html_content"), // HTML content for online viewing
   reportType: text("report_type"),
   fileSize: integer("file_size"), // File size in bytes
   mimeType: text("mime_type"), // MIME type of the uploaded file

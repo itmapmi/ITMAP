@@ -6,15 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Download, Trash2, Upload, Calendar, FileIcon } from "lucide-react";
+import { FileText, Download, Trash2, Upload, Calendar, FileIcon, Edit, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import ReportEditor from "@/components/admin/report-editor";
 import type { Market, ResearchReport } from "@shared/schema";
 import type { UploadResult } from "@uppy/core";
 
 export default function ResearchReportsManagement() {
   const [selectedMarketId, setSelectedMarketId] = useState<string>("");
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingReport, setEditingReport] = useState<ResearchReport | undefined>(undefined);
   const { toast } = useToast();
 
   // Fetch markets for selection
@@ -138,6 +141,38 @@ export default function ResearchReportsManagement() {
 
   const selectedMarket = markets?.find(m => m.id === selectedMarketId);
 
+  const handleCreateNew = () => {
+    setEditingReport(undefined);
+    setShowEditor(true);
+  };
+
+  const handleEditReport = (report: ResearchReport) => {
+    setEditingReport(report);
+    setShowEditor(true);
+  };
+
+  const handleEditorClose = () => {
+    setShowEditor(false);
+    setEditingReport(undefined);
+  };
+
+  const handleEditorSave = () => {
+    setShowEditor(false);
+    setEditingReport(undefined);
+    queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "research-reports"] });
+  };
+
+  if (showEditor) {
+    return (
+      <ReportEditor
+        markets={markets || []}
+        existingReport={editingReport}
+        onClose={handleEditorClose}
+        onSave={handleEditorSave}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -175,34 +210,62 @@ export default function ResearchReportsManagement() {
         </CardContent>
       </Card>
 
-      {/* Upload Section */}
+      {/* Create and Upload Section */}
       {selectedMarketId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Research Report
-            </CardTitle>
-            <CardDescription>
-              Upload research reports for <strong>{selectedMarket?.name}</strong>. 
-              Supported formats: PDF, Word, PowerPoint, Excel (max 30MB)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ObjectUploader
-              maxNumberOfFiles={1}
-              maxFileSize={30 * 1024 * 1024} // 30MB
-              onGetUploadParameters={handleGetUploadParameters}
-              onComplete={handleUploadComplete}
-              buttonClassName="w-full"
-            >
-              <div className="flex items-center justify-center gap-2 py-8">
-                <FileText className="h-6 w-6" />
-                <span className="text-lg">Upload Research Report</span>
-              </div>
-            </ObjectUploader>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Create HTML Report */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Create HTML Report
+              </CardTitle>
+              <CardDescription>
+                Create a new research report with rich HTML content for online viewing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={handleCreateNew}
+                className="w-full"
+                variant="outline"
+              >
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <FileText className="h-6 w-6" />
+                  <span className="text-lg">Create New Report</span>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Upload File Report */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Upload File Report
+              </CardTitle>
+              <CardDescription>
+                Upload research reports for <strong>{selectedMarket?.name}</strong>. 
+                Supported formats: PDF, Word, PowerPoint, Excel (max 30MB)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ObjectUploader
+                maxNumberOfFiles={1}
+                maxFileSize={30 * 1024 * 1024} // 30MB
+                onGetUploadParameters={handleGetUploadParameters}
+                onComplete={handleUploadComplete}
+                buttonClassName="w-full"
+              >
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <FileText className="h-6 w-6" />
+                  <span className="text-lg">Upload File Report</span>
+                </div>
+              </ObjectUploader>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Reports List */}
@@ -264,16 +327,40 @@ export default function ResearchReportsManagement() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {report.htmlContent && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`/report/${report.id}`, "_blank")}
+                          className="flex items-center gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Online
+                        </Button>
+                      )}
+                      
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => report.fileUrl && window.open(report.fileUrl, "_blank")}
-                        disabled={!report.fileUrl}
+                        onClick={() => handleEditReport(report)}
                         className="flex items-center gap-2"
                       >
-                        <Download className="h-4 w-4" />
-                        Download
+                        <Edit className="h-4 w-4" />
+                        Edit
                       </Button>
+                      
+                      {report.fileUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(report.fileUrl, "_blank")}
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download
+                        </Button>
+                      )}
+                      
                       <Button
                         variant="outline"
                         size="sm"

@@ -72,7 +72,7 @@ export interface IStorage {
   updateMarketCriteriaWeight(marketId: string, criteriaId: string, weight: number): Promise<MarketCriteriaWeight>;
   
   // Vendor News
-  getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria })[]>;
+  getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria | null })[]>;
   createVendorNews(news: InsertVendorNews): Promise<VendorNews>;
   updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews>;
   
@@ -96,7 +96,9 @@ export interface IStorage {
   // Research Reports
   getMarketResearchReports(marketId: string): Promise<ResearchReport[]>;
   getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]>;
+  getResearchReportById(id: string): Promise<ResearchReport | undefined>;
   createResearchReport(report: InsertResearchReport): Promise<ResearchReport>;
+  updateResearchReport(id: string, report: Partial<InsertResearchReport>): Promise<ResearchReport | undefined>;
   deleteResearchReport(id: string): Promise<void>;
   
   // Historical Positions
@@ -314,7 +316,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vendor News
-  async getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria })[]> {
+  async getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria | null })[]> {
     const baseQuery = db
       .select({
         id: vendorNews.id,
@@ -516,12 +518,37 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(researchReports.publishedAt));
   }
 
+  async getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]> {
+    return this.getMarketResearchReports(marketId);
+  }
+
+  async getResearchReportById(id: string): Promise<ResearchReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(researchReports)
+      .where(eq(researchReports.id, id));
+    return report || undefined;
+  }
+
   async createResearchReport(report: InsertResearchReport): Promise<ResearchReport> {
     const [newReport] = await db
       .insert(researchReports)
       .values({ ...report, publishedAt: new Date() })
       .returning();
     return newReport;
+  }
+
+  async updateResearchReport(id: string, report: Partial<InsertResearchReport>): Promise<ResearchReport | undefined> {
+    const [updatedReport] = await db
+      .update(researchReports)
+      .set(report)
+      .where(eq(researchReports.id, id))
+      .returning();
+    return updatedReport || undefined;
+  }
+
+  async deleteResearchReport(id: string): Promise<void> {
+    await db.delete(researchReports).where(eq(researchReports.id, id));
   }
 
   // Historical Positions
@@ -558,34 +585,7 @@ export class DatabaseStorage implements IStorage {
     return newPosition;
   }
 
-  // Research Reports
-  async getMarketResearchReports(marketId: string): Promise<ResearchReport[]> {
-    return await db
-      .select()
-      .from(researchReports)
-      .where(eq(researchReports.marketId, marketId))
-      .orderBy(desc(researchReports.createdAt));
-  }
 
-  async getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]> {
-    return await db
-      .select()
-      .from(researchReports)
-      .where(eq(researchReports.marketId, marketId))
-      .orderBy(desc(researchReports.uploadedAt));
-  }
-
-  async createResearchReport(report: InsertResearchReport): Promise<ResearchReport> {
-    const [newReport] = await db
-      .insert(researchReports)
-      .values(report)
-      .returning();
-    return newReport;
-  }
-
-  async deleteResearchReport(id: string): Promise<void> {
-    await db.delete(researchReports).where(eq(researchReports.id, id));
-  }
 }
 
 export const storage = new DatabaseStorage();

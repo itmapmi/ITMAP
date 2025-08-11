@@ -7,6 +7,7 @@ import Navigation from "@/components/navigation";
 import Home from "@/pages/home";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
+import ReportViewer from "@/pages/report-viewer";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/market/:marketId" component={MarketDetails} />
         <Route path="/admin" component={Admin} />
+        <Route path="/report/:reportId" component={ReportViewer} />
         <Route component={NotFound} />
       </Switch>
     </div>
