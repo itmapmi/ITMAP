@@ -299,12 +299,12 @@ export default function NewsManagement() {
               {marketsLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
-                <Select value={selectedMarketId} onValueChange={setSelectedMarketId}>
+                <Select value={selectedMarketId || "all"} onValueChange={(value) => setSelectedMarketId(value === "all" ? "" : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All markets" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All markets</SelectItem>
+                    <SelectItem value="all">All markets</SelectItem>
                     {Array.isArray(markets) && markets.map((market: Market) => (
                       <SelectItem key={market.id} value={market.id}>
                         {market.name}
@@ -320,12 +320,12 @@ export default function NewsManagement() {
               {vendorsLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
-                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                <Select value={selectedVendorId || "all"} onValueChange={(value) => setSelectedVendorId(value === "all" ? "" : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All vendors" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All vendors</SelectItem>
+                    <SelectItem value="all">All vendors</SelectItem>
                     {Array.isArray(vendors) && vendors.map((vendor: Vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id}>
                         {vendor.name}
