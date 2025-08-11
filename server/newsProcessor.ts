@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import type { Market, Vendor, Criteria, InsertVendorNews } from "@shared/schema";
+import Parser from 'rss-parser';
 
 interface NewsItem {
   title: string;
@@ -19,10 +20,17 @@ interface NewsAnalysis {
 export class NewsProcessor {
   private newsApiKey: string | undefined;
   private openaiApiKey: string | undefined;
+  private rssParser: Parser;
 
   constructor() {
     this.newsApiKey = process.env.NEWS_API_KEY;
     this.openaiApiKey = process.env.OPENAI_API_KEY;
+    this.rssParser = new Parser({
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'MarketScope Research Bot 1.0'
+      }
+    });
   }
 
   /**
@@ -254,13 +262,101 @@ export class NewsProcessor {
   }
 
   /**
-   * Attempt to fetch news directly from vendor websites
+   * Attempt to fetch news directly from vendor RSS feeds and websites
    */
   private async fetchDirectVendorNews(vendor: Vendor, market: Market): Promise<NewsItem[]> {
     if (!vendor.website) {
       return [];
     }
 
+    // First try RSS feeds (most reliable)
+    const rssNews = await this.fetchVendorRSSFeeds(vendor, market);
+    if (rssNews.length > 0) {
+      console.log(`Found ${rssNews.length} articles from ${vendor.name} RSS feeds`);
+      return rssNews;
+    }
+
+    // Fall back to HTML scraping
+    const htmlNews = await this.fetchVendorHTMLPages(vendor, market);
+    return htmlNews;
+  }
+
+  /**
+   * Fetch news from vendor RSS feeds
+   */
+  private async fetchVendorRSSFeeds(vendor: Vendor, market: Market): Promise<NewsItem[]> {
+    if (!vendor.website) {
+      return [];
+    }
+    const baseUrl = vendor.website.replace(/\/$/, '').replace(/^https?:\/\//, '');
+    
+    // Common RSS feed URLs for enterprise vendors
+    const rssUrls = [
+      `https://${baseUrl}/rss.xml`,
+      `https://${baseUrl}/feed.xml`,
+      `https://${baseUrl}/news/rss`,
+      `https://${baseUrl}/news/feed`,
+      `https://${baseUrl}/newsroom/rss`,
+      `https://${baseUrl}/newsroom/feed`,
+      `https://${baseUrl}/press-releases/rss`,
+      `https://${baseUrl}/press-releases/feed`,
+      `https://${baseUrl}/blog/rss`,
+      `https://${baseUrl}/blog/feed`,
+      `https://${baseUrl}/company/news/rss`,
+      `https://${baseUrl}/about/news/rss`,
+      `https://${baseUrl}/investors/news/rss`,
+      // Specific vendor patterns
+      `https://${baseUrl}/feeds/press-releases.xml`,
+      `https://${baseUrl}/feeds/news.xml`,
+      `https://${baseUrl}/xml/rss.xml`,
+    ];
+
+    console.log(`Attempting RSS feeds for ${vendor.name}: ${baseUrl}`);
+
+    for (const rssUrl of rssUrls) {
+      try {
+        console.log(`Trying RSS: ${rssUrl}`);
+        
+        const feed = await this.rssParser.parseURL(rssUrl);
+        
+        if (feed.items && feed.items.length > 0) {
+          console.log(`Found RSS feed with ${feed.items.length} items: ${rssUrl}`);
+          
+          // Filter recent items (last 30 days)
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          const recentItems = feed.items
+            .filter(item => {
+              const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+              return pubDate >= thirtyDaysAgo;
+            })
+            .slice(0, 10); // Limit to 10 most recent
+          
+          return recentItems.map(item => ({
+            title: item.title || 'Untitled',
+            content: item.contentSnippet || item.content || item.summary || '',
+            url: item.link || rssUrl,
+            source: `${vendor.name} Official RSS`,
+            publishedAt: item.pubDate ? new Date(item.pubDate) : new Date()
+          }));
+        }
+      } catch (error) {
+        console.log(`RSS feed failed ${rssUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        continue;
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * Fetch news from vendor HTML pages (fallback method)
+   */
+  private async fetchVendorHTMLPages(vendor: Vendor, market: Market): Promise<NewsItem[]> {
+    if (!vendor.website) {
+      return [];
+    }
     const baseUrl = vendor.website.replace(/\/$/, '');
     const newsUrls = [
       `${baseUrl}/news`,
@@ -273,13 +369,12 @@ export class NewsProcessor {
       `${baseUrl}/investors/news`
     ];
 
-    console.log(`Attempting direct fetch from ${vendor.name} website: ${baseUrl}`);
+    console.log(`Attempting HTML scraping for ${vendor.name}: ${baseUrl}`);
 
     for (const newsUrl of newsUrls) {
       try {
-        console.log(`Trying: ${newsUrl}`);
+        console.log(`Trying HTML: ${newsUrl}`);
         
-        // Check if the URL exists and try to extract news
         const response = await fetch(newsUrl, {
           headers: {
             'User-Agent': 'MarketScope Research Bot 1.0',
@@ -290,17 +385,15 @@ export class NewsProcessor {
 
         if (response.ok) {
           const html = await response.text();
-          
-          // Basic extraction of news items from common patterns
           const articles = this.extractNewsFromHTML(html, newsUrl, vendor);
           
           if (articles.length > 0) {
             console.log(`Found ${articles.length} articles from ${newsUrl}`);
-            return articles.slice(0, 10); // Limit to recent articles
+            return articles.slice(0, 10);
           }
         }
       } catch (error) {
-        console.log(`Failed to fetch from ${newsUrl}: ${error.message}`);
+        console.log(`HTML scraping failed ${newsUrl}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         continue;
       }
     }
