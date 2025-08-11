@@ -91,3 +91,23 @@ The platform supports document uploads for research reports using:
 - **Drizzle Zod**: Integration between database schema and validation
 
 The platform is designed to scale horizontally with its serverless database architecture while maintaining real-time data synchronization through optimistic updates and background refetching strategies.
+
+## Recent Changes
+
+### Automated News Processing System (August 11, 2025)
+- **Implemented comprehensive automated daily cron jobs** for vendor news analysis and scoring updates
+- **Created newsProcessor.ts** with OpenAI integration for intelligent news impact analysis (0-5 scoring scale)
+- **Added cronJobs.ts** with scheduled tasks: daily news processing (6 AM UTC), weekly position backups (Sunday 2 AM UTC), hourly health checks
+- **Integrated News API and OpenAI API** for automated news fetching and AI-powered impact analysis
+- **Built admin news management interface** with real-time cron job status monitoring, manual trigger controls, and news approval workflow
+- **Added automated vendor score updates** based on news impact analysis with admin approval requirements
+- **Implemented graceful error handling** with fallback to keyword-based analysis when AI services are rate-limited
+- **Created historical position tracking** for vendor movement analysis over time
+
+### Technical Implementation Details
+- Daily news processing fetches vendor-specific news from NewsAPI.org with market context filtering
+- OpenAI GPT-4o-mini analyzes news articles for business impact on evaluation criteria
+- Automated score changes (±2 point range) require admin approval before applying to vendor ratings
+- System includes backup mechanisms for API failures and comprehensive logging
+- Cron jobs can be individually controlled (start/stop) through admin interface
+- News processing includes duplicate detection and content validation

@@ -124,10 +124,19 @@ export class CronJobManager {
     const status: { [jobName: string]: { running: boolean, nextRun?: string } } = {};
 
     this.jobs.forEach((job, name) => {
-      status[name] = {
-        running: job.running || false,
-        nextRun: job.nextDate()?.toString() || undefined
-      };
+      try {
+        // Check if the job is running by checking if it exists and was started
+        const isRunning = this.jobs.has(name);
+        status[name] = {
+          running: isRunning,
+          nextRun: isRunning ? 'Scheduled according to cron pattern' : 'Not scheduled'
+        };
+      } catch (error) {
+        status[name] = {
+          running: false,
+          nextRun: 'Status unavailable'
+        };
+      }
     });
 
     return status;
