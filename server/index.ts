@@ -67,7 +67,7 @@ app.use((req, res, next) => {
       process.exit(0);
     });
   } catch (error) {
-    log('Warning: Could not initialize cron jobs:', error);
+    log('Warning: Could not initialize cron jobs:', String(error));
   }
 
   // importantly only setup vite in development and after
