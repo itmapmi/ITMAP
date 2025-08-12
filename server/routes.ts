@@ -737,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to check vendor domain
-  function checkVendorDomain(newsUrl: string, vendorWebsite: string | null): boolean {
+  function checkVendorDomain(newsUrl: string, vendorWebsite: string): boolean {
     if (!vendorWebsite || !newsUrl) return false;
     
     try {
