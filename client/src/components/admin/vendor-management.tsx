@@ -120,8 +120,23 @@ export default function VendorManagement() {
       const response = await apiRequest("POST", "/api/vendor-scores", scoreData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Clear only the specific pending score that was just saved
+      const key = `${variables.vendorId}:::${variables.criteriaId}`;
+      setVendorScores(prev => {
+        const newState = { ...prev };
+        delete newState[key];
+        return newState;
+      });
+      
+      // Invalidate all related queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-scores"] });
+      
+      // Force a refetch of the scores data
+      queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      
       toast({
         title: "Success",
         description: "Score saved successfully",
@@ -217,12 +232,7 @@ export default function VendorManagement() {
     }
     
     saveScoreMutation.mutate({ vendorId, criteriaId, score });
-    // Clear the pending score after saving
-    setVendorScores(prev => {
-      const newState = { ...prev };
-      delete newState[key];
-      return newState;
-    });
+    // Don't clear the pending score until mutation succeeds - it will be handled in onSuccess
   };
 
   const saveAllPendingScores = () => {
