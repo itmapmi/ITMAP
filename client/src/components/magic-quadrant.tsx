@@ -234,69 +234,39 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     
-    // Base white background for the entire chart
+    // Challengers (entire background - subtle blue)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", margin.top)
       .attr("width", chartWidth)
       .attr("height", chartHeight)
-      .attr("fill", "#ffffff")
+      .attr("fill", "url(#challengersGradient)")
       .attr("stroke", "#e2e8f0")
       .attr("stroke-width", 1);
-
-    // Challengers quadrant - covers all areas except Leaders and Emerging Players
-    // Top-left area (0-60 x 60-100)
-    svg.append("rect")
-      .attr("x", margin.left)
-      .attr("y", margin.top)
-      .attr("width", xScale(60) - margin.left)
-      .attr("height", yScale(60) - margin.top)
-      .attr("fill", "url(#challengersGradient)")
-      .attr("fill-opacity", 0.8);
-
-    // Bottom-middle and bottom-right area (30-100 x 0-60) 
-    svg.append("rect")
-      .attr("x", xScale(30))
-      .attr("y", yScale(60))
-      .attr("width", width - margin.right - xScale(30))
-      .attr("height", height - margin.bottom - yScale(60))
-      .attr("fill", "url(#challengersGradient)")
-      .attr("fill-opacity", 0.8);
-
-    // Middle area (0-30 x 30-60) - remaining challengers space
-    svg.append("rect")
-      .attr("x", margin.left)
-      .attr("y", yScale(60))
-      .attr("width", xScale(30) - margin.left)
-      .attr("height", yScale(30) - yScale(60))
-      .attr("fill", "url(#challengersGradient)")
-      .attr("fill-opacity", 0.8);
     
-    // Emerging Players (bottom-left 30x30 coordinates: 0-30 x 0-30)
+    // Emerging Players (bottom-left 30x30 coordinates)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", yScale(30))
       .attr("width", xScale(30) - margin.left)
       .attr("height", height - margin.bottom - yScale(30))
       .attr("fill", "url(#emergingGradient)")
-      .attr("fill-opacity", 0.9)
       .attr("stroke", "#f59e0b")
       .attr("stroke-width", 2)
-      .attr("rx", 6)
-      .attr("ry", 6);
+      .attr("rx", 8)
+      .attr("ry", 8);
 
-    // Leaders (top-right 40x40 area: 60-100 x 60-100)
+    // Leaders (top-right 60-100 x 60-100 coordinates - 40x40 area)
     svg.append("rect")
       .attr("x", xScale(60))
       .attr("y", margin.top)
       .attr("width", width - margin.right - xScale(60))
       .attr("height", yScale(60) - margin.top)
       .attr("fill", "url(#leadersGradient)")
-      .attr("fill-opacity", 0.9)
       .attr("stroke", "#16a34a")
       .attr("stroke-width", 2)
-      .attr("rx", 6)
-      .attr("ry", 6);
+      .attr("rx", 8)
+      .attr("ry", 8);
 
     // Add professional-looking axes
     const xAxis = d3.axisBottom(xScale)
