@@ -449,18 +449,79 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
         });
       });
 
-    // Add vendor labels with collision-adjusted positions
-    vendorGroups.append("text")
-      .attr("class", "vendor-label")
-      .attr("x", d => xScale(d.adjustedX))
-      .attr("y", d => yScale(d.adjustedY) - 12)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#374151")
-      .attr("font-size", "11px")
-      .attr("font-weight", "600")
-      .style("pointer-events", "none")
-      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
-      .text(d => d.name);
+    // Function to calculate optimal label position to avoid overlaps
+    const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { x: number, y: number, anchor: string } => {
+      const baseX = xScale(vendor.adjustedX);
+      const baseY = yScale(vendor.adjustedY);
+      const labelOffset = 16;
+      
+      // Possible positions around the dot (clockwise from top)
+      const positions = [
+        { x: baseX, y: baseY - labelOffset, anchor: "middle", priority: 1 }, // top
+        { x: baseX + labelOffset * 0.8, y: baseY - labelOffset * 0.6, anchor: "start", priority: 2 }, // top-right
+        { x: baseX + labelOffset, y: baseY, anchor: "start", priority: 3 }, // right
+        { x: baseX + labelOffset * 0.8, y: baseY + labelOffset * 0.8, anchor: "start", priority: 4 }, // bottom-right
+        { x: baseX, y: baseY + labelOffset + 4, anchor: "middle", priority: 5 }, // bottom
+        { x: baseX - labelOffset * 0.8, y: baseY + labelOffset * 0.8, anchor: "end", priority: 6 }, // bottom-left
+        { x: baseX - labelOffset, y: baseY, anchor: "end", priority: 7 }, // left
+        { x: baseX - labelOffset * 0.8, y: baseY - labelOffset * 0.6, anchor: "end", priority: 8 }, // top-left
+      ];
+      
+      // Check each position for conflicts with other labels
+      for (const position of positions) {
+        let hasConflict = false;
+        
+        // Check against all other vendors
+        for (let i = 0; i < allVendors.length; i++) {
+          if (i === index) continue;
+          
+          const otherVendor = allVendors[i];
+          const otherX = xScale(otherVendor.adjustedX);
+          const otherY = yScale(otherVendor.adjustedY);
+          
+          // Check distance to other vendor dots
+          const distanceToDot = Math.sqrt((position.x - otherX) ** 2 + (position.y - otherY) ** 2);
+          if (distanceToDot < 20) {
+            hasConflict = true;
+            break;
+          }
+          
+          // Estimate other vendor's label position (assume it uses top position for this check)
+          const otherLabelX = otherX;
+          const otherLabelY = otherY - labelOffset;
+          const distanceToLabel = Math.sqrt((position.x - otherLabelX) ** 2 + (position.y - otherLabelY) ** 2);
+          if (distanceToLabel < 25) {
+            hasConflict = true;
+            break;
+          }
+        }
+        
+        if (!hasConflict) {
+          return position;
+        }
+      }
+      
+      // If no conflict-free position found, use top position as fallback
+      return positions[0];
+    };
+
+    // Add vendor labels with intelligent positioning
+    adjustedVendors.forEach((vendor, index) => {
+      const labelPos = calculateLabelPosition(vendor, index, adjustedVendors);
+      
+      vendorGroups.filter((d, i) => i === index)
+        .append("text")
+        .attr("class", "vendor-label")
+        .attr("x", labelPos.x)
+        .attr("y", labelPos.y)
+        .attr("text-anchor", labelPos.anchor)
+        .attr("fill", "#374151")
+        .attr("font-size", "10px")
+        .attr("font-weight", "600")
+        .style("pointer-events", "none")
+        .style("text-shadow", "0 0 4px white, 0 0 4px white, 0 0 4px white, 0 0 4px white")
+        .text(vendor.name);
+    });
 
   }, [vendorsWithScores, criteriaWeights]);
 
