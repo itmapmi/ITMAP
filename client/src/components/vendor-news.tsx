@@ -17,7 +17,8 @@ export default function VendorNews({ marketId }: VendorNewsProps) {
   const [filterVendor, setFilterVendor] = useState("all");
 
   const { data: news, isLoading: newsLoading } = useQuery<(VendorNews & { vendor: Vendor; criteria?: Criteria })[]>({
-    queryKey: ["/api/vendor-news", { marketId }],
+    queryKey: ["/api/vendor-news", marketId],
+    queryFn: () => fetch(`/api/vendor-news?marketId=${marketId}`).then(res => res.json()),
   });
 
   const { data: vendors } = useQuery<Vendor[]>({
