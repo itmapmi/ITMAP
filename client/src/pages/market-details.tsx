@@ -15,7 +15,7 @@ import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
 
 export default function MarketDetails() {
-  const [match, params] = useRoute("/market/:marketId");
+  const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
 
   const { data: market, isLoading, error } = useQuery<Market>({
