@@ -86,7 +86,7 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       const initialWeights: { [id: string]: number } = {};
       criteria.forEach(c => {
         const weight = weights.find(w => w.criteriaId === c.id);
-        initialWeights[c.id] = weight?.weight || 25;
+        initialWeights[c.id] = weight?.weight || 100;
       });
       setCriteriaWeights(initialWeights);
     }
@@ -534,14 +534,14 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
                       {criterion.name}
                     </label>
                     <Slider
-                      value={[criteriaWeights[criterion.id] || 25]}
+                      value={[criteriaWeights[criterion.id] || 100]}
                       onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                       max={100}
                       step={1}
                       className="w-full"
                     />
                     <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] || 25}%
+                      {criteriaWeights[criterion.id] || 100}%
                     </div>
                   </div>
                 ))}
@@ -557,14 +557,14 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
                       {criterion.name}
                     </label>
                     <Slider
-                      value={[criteriaWeights[criterion.id] || 25]}
+                      value={[criteriaWeights[criterion.id] || 100]}
                       onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                       max={100}
                       step={1}
                       className="w-full"
                     />
                     <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] || 25}%
+                      {criteriaWeights[criterion.id] || 100}%
                     </div>
                   </div>
                 ))}
