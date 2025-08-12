@@ -316,65 +316,35 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("fill", "#374151")
       .text("Vendor Viability");
 
-    // Add elegant quadrant labels with background boxes
+    // Add clean quadrant labels without background boxes
     // Emerging Players label (bottom-left corner)
-    const emergingLabelG = svg.append("g");
-    emergingLabelG.append("rect")
-      .attr("x", margin.left + 5)
-      .attr("y", height - margin.bottom - 25)
-      .attr("width", 100)
-      .attr("height", 20)
-      .attr("fill", "#f59e0b")
-      .attr("fill-opacity", 0.95)
-      .attr("rx", 10)
-      .attr("stroke", "#d97706")
-      .attr("stroke-width", 2);
-    emergingLabelG.append("text")
+    svg.append("text")
       .attr("x", margin.left + 55)
       .attr("y", height - margin.bottom - 11)
       .attr("text-anchor", "middle")
       .attr("class", "text-sm font-bold")
-      .attr("fill", "white")
+      .attr("fill", "#f59e0b")
+      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text("Emerging Players");
 
     // Leaders label (top-right corner)
-    const leadersLabelG = svg.append("g");
-    leadersLabelG.append("rect")
-      .attr("x", width - margin.right - 55)
-      .attr("y", margin.top + 5)
-      .attr("width", 50)
-      .attr("height", 20)
-      .attr("fill", "#16a34a")
-      .attr("fill-opacity", 0.95)
-      .attr("rx", 10)
-      .attr("stroke", "#15803d")
-      .attr("stroke-width", 2);
-    leadersLabelG.append("text")
+    svg.append("text")
       .attr("x", width - margin.right - 30)
       .attr("y", margin.top + 19)
       .attr("text-anchor", "middle")
       .attr("class", "text-sm font-bold")
-      .attr("fill", "white")
+      .attr("fill", "#16a34a")
+      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text("Leaders");
 
     // Challengers label (positioned in top-left corner)
-    const challengersLabelG = svg.append("g");
-    challengersLabelG.append("rect")
-      .attr("x", margin.left + 5)
-      .attr("y", margin.top + 5)
-      .attr("width", 80)
-      .attr("height", 20)
-      .attr("fill", "#1d4ed8")
-      .attr("fill-opacity", 0.95)
-      .attr("rx", 10)
-      .attr("stroke", "#1e40af")
-      .attr("stroke-width", 2);
-    challengersLabelG.append("text")
+    svg.append("text")
       .attr("x", margin.left + 45)
       .attr("y", margin.top + 19)
       .attr("text-anchor", "middle")
       .attr("class", "text-sm font-bold")
-      .attr("fill", "white")
+      .attr("fill", "#1d4ed8")
+      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text("Challengers");
 
     // Function to apply collision detection and spacing
