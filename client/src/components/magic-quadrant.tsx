@@ -230,29 +230,61 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("stop-color", "#1d4ed8")
       .attr("stop-opacity", 0.12);
     
-    // Add custom quadrant backgrounds with improved styling
+    // Add custom quadrant backgrounds with proper shading
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     
-    // Challengers (entire background - subtle blue)
+    // Base background (light gray for the entire chart area)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", margin.top)
       .attr("width", chartWidth)
       .attr("height", chartHeight)
-      .attr("fill", "url(#challengersGradient)")
+      .attr("fill", "#f8fafc")
       .attr("stroke", "#e2e8f0")
       .attr("stroke-width", 1);
     
-    // Emerging Players (bottom-left 30x30 coordinates)
+    // Challengers quadrant (remaining area after Leaders and Emerging Players)
+    // This covers the areas: top-left (0-60, 60-100), bottom-right (30-60, 0-60), and middle areas
+    
+    // Top-left section of Challengers (0-60 x 60-100)
+    svg.append("rect")
+      .attr("x", margin.left)
+      .attr("y", margin.top)
+      .attr("width", xScale(60) - margin.left)
+      .attr("height", yScale(60) - margin.top)
+      .attr("fill", "url(#challengersGradient)")
+      .attr("fill-opacity", 0.4)
+      .attr("stroke", "#3b82f6")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5")
+      .attr("rx", 6)
+      .attr("ry", 6);
+    
+    // Bottom section of Challengers (30-100 x 0-60)
+    svg.append("rect")
+      .attr("x", xScale(30))
+      .attr("y", yScale(60))
+      .attr("width", width - margin.right - xScale(30))
+      .attr("height", height - margin.bottom - yScale(60))
+      .attr("fill", "url(#challengersGradient)")
+      .attr("fill-opacity", 0.4)
+      .attr("stroke", "#3b82f6")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5")
+      .attr("rx", 6)
+      .attr("ry", 6);
+    
+    // Emerging Players (bottom-left 30x30 coordinates - 0-30 x 0-30)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", yScale(30))
       .attr("width", xScale(30) - margin.left)
       .attr("height", height - margin.bottom - yScale(30))
       .attr("fill", "url(#emergingGradient)")
+      .attr("fill-opacity", 0.5)
       .attr("stroke", "#f59e0b")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 3)
       .attr("rx", 8)
       .attr("ry", 8);
 
@@ -263,8 +295,9 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("width", width - margin.right - xScale(60))
       .attr("height", yScale(60) - margin.top)
       .attr("fill", "url(#leadersGradient)")
+      .attr("fill-opacity", 0.5)
       .attr("stroke", "#16a34a")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 3)
       .attr("rx", 8)
       .attr("ry", 8);
 
