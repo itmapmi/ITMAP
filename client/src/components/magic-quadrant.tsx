@@ -25,9 +25,33 @@ interface VendorModalData {
 
 export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [timelineValue, setTimelineValue] = useState([0]);
+  const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
+
+  // Calculate date range for 36 months (156 weeks)
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setMonth(startDate.getMonth() - 36);
+  
+  // Generate weekly dates from start to current
+  const getDateForWeek = (weekIndex: number): Date => {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + (weekIndex * 7));
+    return date;
+  };
+  
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+  
+  const currentWeekIndex = timelineValue[0];
+  const selectedDate = getDateForWeek(currentWeekIndex);
+  const weeksAgo = Math.floor((today.getTime() - selectedDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
 
   const { data: vendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
@@ -283,18 +307,19 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
                 <svg ref={svgRef} className="border border-gray-300 rounded-lg bg-white" />
                 <div className="mt-4 px-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Historical View
+                    Historical View - {formatDate(selectedDate)} 
+                    {weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}
                   </label>
                   <Slider
                     value={timelineValue}
                     onValueChange={setTimelineValue}
-                    max={36}
+                    max={156}
                     step={1}
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>36 months ago</span>
-                    <span>Current</span>
+                    <span>{formatDate(startDate)}</span>
+                    <span>{formatDate(today)}</span>
                   </div>
                 </div>
               </div>
