@@ -357,40 +357,85 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("fill", "white")
       .text("Leaders");
 
-    // Challengers label (center of remaining area)
+    // Challengers label (positioned in top-left of challengers area to avoid vendor dots)
     const challengersLabelG = svg.append("g");
     challengersLabelG.append("rect")
-      .attr("x", xScale(50) - 35)
-      .attr("y", yScale(50) - 10)
+      .attr("x", xScale(35) - 35)
+      .attr("y", yScale(85) - 10)
       .attr("width", 70)
       .attr("height", 20)
       .attr("fill", "#3b82f6")
-      .attr("fill-opacity", 0.9)
+      .attr("fill-opacity", 0.95)
       .attr("rx", 10)
       .attr("stroke", "#1d4ed8")
       .attr("stroke-width", 1);
     challengersLabelG.append("text")
-      .attr("x", xScale(50))
-      .attr("y", yScale(50) + 4)
+      .attr("x", xScale(35))
+      .attr("y", yScale(85) + 4)
       .attr("text-anchor", "middle")
       .attr("class", "text-sm font-bold")
       .attr("fill", "white")
       .text("Challengers");
 
-    // Add enhanced vendor dots with hover effects
-    svg.selectAll(".vendor-dot")
-      .data(vendorsWithScores)
+    // Function to apply collision detection and spacing
+    const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
+      const minDistance = 25; // Minimum distance between dots
+      const vendorsWithPositions = vendors.map(vendor => ({
+        ...vendor,
+        adjustedX: vendor.executionScore,
+        adjustedY: vendor.viabilityScore,
+      }));
+
+      // Simple collision detection - spread overlapping vendors
+      for (let i = 0; i < vendorsWithPositions.length; i++) {
+        for (let j = i + 1; j < vendorsWithPositions.length; j++) {
+          const v1 = vendorsWithPositions[i];
+          const v2 = vendorsWithPositions[j];
+          
+          const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
+          const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < minDistance) {
+            const angle = Math.atan2(dy, dx);
+            const targetDistance = minDistance;
+            const offsetX = Math.cos(angle) * (targetDistance - distance) / 2;
+            const offsetY = Math.sin(angle) * (targetDistance - distance) / 2;
+            
+            // Convert back to data coordinates
+            const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
+            const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
+            
+            v1.adjustedX = Math.min(100, Math.max(0, v1.adjustedX + offsetXData));
+            v1.adjustedY = Math.min(100, Math.max(0, v1.adjustedY + offsetYData));
+            v2.adjustedX = Math.min(100, Math.max(0, v2.adjustedX - offsetXData));
+            v2.adjustedY = Math.min(100, Math.max(0, v2.adjustedY - offsetYData));
+          }
+        }
+      }
+      
+      return vendorsWithPositions;
+    };
+
+    const adjustedVendors = applyCollisionDetection(vendorsWithScores);
+
+    // Add enhanced vendor dots with collision detection
+    const vendorGroups = svg.selectAll(".vendor-group")
+      .data(adjustedVendors)
       .enter()
-      .append("circle")
+      .append("g")
+      .attr("class", "vendor-group");
+
+    vendorGroups.append("circle")
       .attr("class", "vendor-dot")
-      .attr("cx", d => xScale(d.executionScore))
-      .attr("cy", d => yScale(d.viabilityScore))
-      .attr("r", 10)
+      .attr("cx", d => xScale(d.adjustedX))
+      .attr("cy", d => yScale(d.adjustedY))
+      .attr("r", 8)
       .attr("fill", "#6366f1")
       .attr("stroke", "#4338ca")
-      .attr("stroke-width", 3)
+      .attr("stroke-width", 2)
       .style("cursor", "pointer")
-      .style("filter", "drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3))")
+      .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.3))")
       .on("mouseover", function(event, d) {
         d3.select(this).attr("r", 12);
       })
@@ -400,20 +445,21 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .on("click", function(event, d) {
         setSelectedVendor({
           vendor: d,
-          position: { x: d.executionScore, y: d.viabilityScore }
+          position: { x: d.adjustedX, y: d.adjustedY }
         });
       });
 
-    // Add vendor labels
-    svg.selectAll(".vendor-label")
-      .data(vendorsWithScores)
-      .enter()
-      .append("text")
+    // Add vendor labels with collision-adjusted positions
+    vendorGroups.append("text")
       .attr("class", "vendor-label")
-      .attr("x", d => xScale(d.executionScore))
-      .attr("y", d => yScale(d.viabilityScore) - 15)
+      .attr("x", d => xScale(d.adjustedX))
+      .attr("y", d => yScale(d.adjustedY) - 12)
       .attr("text-anchor", "middle")
-      .attr("class", "text-xs font-medium fill-gray-700")
+      .attr("fill", "#374151")
+      .attr("font-size", "11px")
+      .attr("font-weight", "600")
+      .style("pointer-events", "none")
+      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text(d => d.name);
 
   }, [vendorsWithScores, criteriaWeights]);
