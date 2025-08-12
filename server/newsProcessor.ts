@@ -70,12 +70,20 @@ export class NewsProcessor {
         
         // Process each news item
         for (const newsItem of newsItems) {
+          // STRICT: Only process news from vendor's official domain
+          if (!this.isOfficialVendorSource(newsItem, vendor)) {
+            console.log(`Skipping non-official source: ${newsItem.source} for ${newsItem.title}`);
+            continue;
+          }
+
           // Check if we already have this news item
           const existingNews = await this.checkExistingNews(newsItem.url);
           if (existingNews) {
             console.log(`News item already exists: ${newsItem.title}`);
             continue;
           }
+          
+          console.log(`Processing official vendor news: ${newsItem.title}`);
           
           // Analyze the news with AI
           const analysis = await this.analyzeNews(newsItem, vendor, market, criteria);
@@ -96,134 +104,22 @@ export class NewsProcessor {
   }
 
   /**
-   * Fetch news items for a specific vendor focusing on press releases and official announcements
-   * First tries direct vendor website scraping, then falls back to NewsAPI
+   * Fetch news items for a specific vendor focusing ONLY on press releases from official vendor websites
+   * NO third-party sources allowed
    */
   private async fetchVendorNews(vendor: Vendor, market: Market): Promise<NewsItem[]> {
-    if (!this.newsApiKey) {
-      console.log("NEWS_API_KEY not configured, skipping news fetch");
-      return [];
-    }
 
     try {
-      // First, try to fetch directly from vendor website
+      // ONLY fetch directly from vendor website - NO third-party sources
       const directNews = await this.fetchDirectVendorNews(vendor, market);
       if (directNews.length > 0) {
         console.log(`Found ${directNews.length} articles directly from ${vendor.name} website`);
         return directNews;
       }
 
-      // Fall back to NewsAPI for third-party coverage
-      console.log(`No direct articles found for ${vendor.name}, falling back to NewsAPI`);
-      
-      // Create a more targeted query for official vendor communications
-      const vendorDomain = vendor.website ? vendor.website.replace(/^https?:\/\//, '').replace(/^www\./, '') : '';
-      
-      // Focus on press releases, announcements, and official company communications
-      const queries = [
-        // Official press releases and announcements
-        `"${vendor.name}" AND ("press release" OR "announces" OR "announcement" OR "newsroom")`,
-        // Product launches and market-specific news
-        `"${vendor.name}" AND ("${market.name}" OR "new product" OR "launches" OR "introduces")`,
-        // Company updates and financial news
-        `"${vendor.name}" AND ("company" OR "earnings" OR "partnership" OR "acquisition")`
-      ];
-
-      const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - 7); // Last 7 days for better coverage
-      
-      let allArticles: any[] = [];
-
-      // Execute multiple queries to get comprehensive coverage
-      for (const query of queries) {
-        try {
-          const url = new URL('https://newsapi.org/v2/everything');
-          url.searchParams.set('q', query);
-          url.searchParams.set('from', fromDate.toISOString().split('T')[0]);
-          url.searchParams.set('sortBy', 'publishedAt');
-          url.searchParams.set('language', 'en');
-          url.searchParams.set('pageSize', '5'); // Smaller page size per query
-          
-          // If we have vendor domain, try to prioritize articles from their site
-          if (vendorDomain) {
-            url.searchParams.set('domains', vendorDomain);
-          }
-          
-          console.log(`Searching for: ${query} from domain: ${vendorDomain || 'all sources'}`);
-          
-          const response = await fetch(url.toString(), {
-            headers: {
-              'X-API-Key': this.newsApiKey
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.articles) {
-              allArticles.push(...data.articles);
-            }
-          } else {
-            console.log(`Query failed: ${query} - ${response.status}`);
-          }
-          
-          // Add delay between requests to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (queryError) {
-          console.log(`Error with query "${query}":`, queryError);
-          continue;
-        }
-      }
-
-      // If domain-specific search didn't yield results, try broader search
-      if (allArticles.length === 0) {
-        console.log(`No domain-specific results for ${vendor.name}, trying broader search`);
-        const fallbackQuery = `"${vendor.name}" AND ("${market.name}" OR technology OR enterprise)`;
-        
-        const url = new URL('https://newsapi.org/v2/everything');
-        url.searchParams.set('q', fallbackQuery);
-        url.searchParams.set('from', fromDate.toISOString().split('T')[0]);
-        url.searchParams.set('sortBy', 'publishedAt');
-        url.searchParams.set('language', 'en');
-        url.searchParams.set('pageSize', '10');
-        
-        const response = await fetch(url.toString(), {
-          headers: {
-            'X-API-Key': this.newsApiKey
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.articles) {
-            allArticles.push(...data.articles);
-          }
-        }
-      }
-      
-      // Remove duplicates and filter for relevance
-      const uniqueArticles = allArticles.filter((article, index, self) => 
-        index === self.findIndex(a => a.url === article.url)
-      );
-
-      // Prioritize official sources and press releases
-      const prioritizedArticles = uniqueArticles.sort((a, b) => {
-        const aIsOfficial = this.isOfficialSource(a, vendor, vendorDomain);
-        const bIsOfficial = this.isOfficialSource(b, vendor, vendorDomain);
-        
-        if (aIsOfficial && !bIsOfficial) return -1;
-        if (!aIsOfficial && bIsOfficial) return 1;
-        
-        // Then sort by publication date
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-      });
-
-      return prioritizedArticles.slice(0, 10).map((article: any) => ({
-        title: article.title,
-        content: article.description || article.content || '',
-        url: article.url,
-        source: article.source.name,
-        publishedAt: new Date(article.publishedAt)
-      }));
+      // NO FALLBACK TO THIRD-PARTY SOURCES
+      console.log(`No direct articles found for ${vendor.name} - skipping third-party sources`);
+      return [];
       
     } catch (error) {
       console.error(`Error fetching news for ${vendor.name}:`, error);
@@ -232,33 +128,28 @@ export class NewsProcessor {
   }
 
   /**
-   * Check if a news source is likely official for the vendor
+   * Check if a URL is from the vendor's official domain
    */
-  private isOfficialSource(article: any, vendor: Vendor, vendorDomain: string): boolean {
-    const url = article.url?.toLowerCase() || '';
-    const source = article.source?.name?.toLowerCase() || '';
-    const title = article.title?.toLowerCase() || '';
+  private isVendorOfficialDomain(url: string, vendor: Vendor): boolean {
+    if (!vendor.website || !url) return false;
     
-    // Check if URL is from vendor's domain
-    if (vendorDomain && url.includes(vendorDomain.toLowerCase())) {
-      return true;
+    try {
+      const vendorDomain = vendor.website.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+      const articleDomain = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+      
+      return articleDomain === vendorDomain || articleDomain.endsWith(`.${vendorDomain}`);
+    } catch {
+      return false;
     }
-    
-    // Check for press release indicators
-    if (title.includes('press release') || 
-        title.includes('announces') || 
-        source.includes('newsroom') ||
-        source.includes(vendor.name.toLowerCase())) {
-      return true;
-    }
-    
-    // Check for known business/tech news sources that typically publish official announcements
-    const businessSources = [
-      'business wire', 'pr newswire', 'marketwatch', 'reuters', 
-      'bloomberg', 'techcrunch', 'venture beat', 'crunchbase'
-    ];
-    
-    return businessSources.some(bizSource => source.includes(bizSource));
+  }
+
+  /**
+   * Check if a news source is from official vendor channels only
+   */
+  private isOfficialVendorSource(newsItem: NewsItem, vendor: Vendor): boolean {
+    // ONLY accept news from vendor's official domain
+    return this.isVendorOfficialDomain(newsItem.url, vendor) &&
+           newsItem.source.toLowerCase().includes(vendor.name.toLowerCase());
   }
 
   /**

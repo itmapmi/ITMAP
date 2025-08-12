@@ -50,6 +50,7 @@ export interface IStorage {
   deleteMarket(id: string): Promise<void>;
   
   // Vendors
+  getAllVendors(): Promise<Vendor[]>;
   getVendorsByMarket(marketId: string): Promise<Vendor[]>;
   getVendorById(id: string): Promise<Vendor | undefined>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -75,6 +76,7 @@ export interface IStorage {
   getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria | null })[]>;
   createVendorNews(news: InsertVendorNews): Promise<VendorNews>;
   updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews>;
+  deleteVendorNews(id: string): Promise<void>;
   
   // Feature Categories
   getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]>;
@@ -157,6 +159,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vendors
+  async getAllVendors(): Promise<Vendor[]> {
+    return await db.select().from(vendors).orderBy(vendors.name);
+  }
+
   async getVendorsByMarket(marketId: string): Promise<Vendor[]> {
     return await db
       .select()
@@ -368,6 +374,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vendorNews.id, id))
       .returning();
     return updatedNews;
+  }
+
+  async deleteVendorNews(id: string): Promise<void> {
+    await db.delete(vendorNews).where(eq(vendorNews.id, id));
   }
 
   // Feature Categories

@@ -104,14 +104,16 @@ The platform is designed to scale horizontally with its serverless database arch
 - **Implemented graceful error handling** with fallback to keyword-based analysis when AI services are rate-limited
 - **Created historical position tracking** for vendor movement analysis over time
 
-### Technical Implementation Details
+### Technical Implementation Details  
+- **VENDOR-ONLY NEWS SOURCES**: 100% strict vendor-domain validation with zero tolerance for third-party sources
 - **Direct vendor RSS feed parsing** for authentic press releases from official vendor newsrooms
-- **Fallback HTML scraping** when RSS feeds are unavailable, targeting official vendor websites
-- **Third-party NewsAPI integration** as final fallback for comprehensive market coverage
-- **Multi-tier approach**: RSS feeds → Direct website scraping → NewsAPI aggregation
+- **Vendor HTML scraping** when RSS feeds are unavailable, targeting official vendor websites ONLY
+- **NO third-party sources**: Completely removed NewsAPI and all external news aggregator fallbacks
+- **Strict domain validation**: News must originate from vendor's official website domain
 - **Vendor-specific RSS patterns** including /rss.xml, /newsroom/feed, /press-releases/rss
 - **30-day content filtering** to focus on recent announcements and press releases
 - **Blog content filtering** - Excludes /blog/, /blogs/, /insights/, /thought-leadership/ URLs to focus only on press releases
+- **Database cleanup completed**: Removed 63 third-party news items, keeping only official vendor sources
 - **Refined impact scoring rules**:
   - Product/Feature launches: Impact score 2, 3, or 4 based on significance
   - Partnerships & Sales wins: Impact score 2
@@ -123,3 +125,4 @@ The platform is designed to scale horizontally with its serverless database arch
 - System includes backup mechanisms for API failures and comprehensive logging
 - Cron jobs can be individually controlled (start/stop) through admin interface
 - News processing includes duplicate detection and content validation
+- **Admin cleanup endpoint**: `/api/admin/vendor-news/cleanup-third-party` to remove non-vendor sources

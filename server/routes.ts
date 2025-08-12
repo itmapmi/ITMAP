@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
@@ -604,6 +604,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: "Failed to update news approval" });
     }
   });
+
+  // Cleanup third-party news (vendor domain validation)
+  app.delete("/api/admin/vendor-news/cleanup-third-party", async (req, res) => {
+    try {
+      const allNews = await storage.getVendorNews();
+      const vendors = await storage.getAllVendors();
+      let deletedCount = 0;
+
+      for (const news of allNews) {
+        const vendor = vendors.find((v: Vendor) => v.id === news.vendorId);
+        if (vendor && vendor.website) {
+          // Check if this news is from vendor's official domain
+          const isOfficial = checkVendorDomain(news.url, vendor.website);
+          if (!isOfficial) {
+            await storage.deleteVendorNews(news.id);
+            deletedCount++;
+            console.log(`Deleted third-party news: ${news.title} from ${news.source}`);
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Cleaned up ${deletedCount} third-party news items`,
+        deletedCount 
+      });
+    } catch (error) {
+      console.error("Error cleaning up third-party news:", error);
+      res.status(500).json({ error: "Failed to cleanup third-party news" });
+    }
+  });
+
+  // Helper function to check vendor domain
+  function checkVendorDomain(newsUrl: string, vendorWebsite: string | null): boolean {
+    if (!vendorWebsite || !newsUrl) return false;
+    
+    try {
+      const vendorDomain = vendorWebsite.replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase();
+      const newsDomain = new URL(newsUrl).hostname.replace(/^www\./, '').toLowerCase();
+      
+      return newsDomain === vendorDomain || newsDomain.endsWith(`.${vendorDomain}`);
+    } catch {
+      return false;
+    }
+  }
 
   const httpServer = createServer(app);
   return httpServer;
