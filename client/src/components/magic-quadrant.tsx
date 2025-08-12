@@ -163,45 +163,35 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
 
-    // Add quadrant backgrounds
-    const quadrantWidth = (width - margin.left - margin.right) / 2;
-    const quadrantHeight = (height - margin.top - margin.bottom) / 2;
-
-    // Niche Players (bottom left)
+    // Add custom quadrant backgrounds based on coordinates
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    
+    // Emerging Players (bottom-left 30x30 coordinates)
     svg.append("rect")
       .attr("x", margin.left)
-      .attr("y", margin.top + quadrantHeight)
-      .attr("width", quadrantWidth)
-      .attr("height", quadrantHeight)
-      .attr("fill", "#f8fafc")
-      .attr("stroke", "#e2e8f0");
-
-    // Leaders (top right)  
-    svg.append("rect")
-      .attr("x", margin.left + quadrantWidth)
-      .attr("y", margin.top)
-      .attr("width", quadrantWidth)
-      .attr("height", quadrantHeight)
-      .attr("fill", "#eff6ff")
-      .attr("stroke", "#e2e8f0");
-
-    // Challengers (bottom right)
-    svg.append("rect")
-      .attr("x", margin.left + quadrantWidth)
-      .attr("y", margin.top + quadrantHeight)
-      .attr("width", quadrantWidth)
-      .attr("height", quadrantHeight)
+      .attr("y", yScale(30))
+      .attr("width", xScale(30) - margin.left)
+      .attr("height", height - margin.bottom - yScale(30))
       .attr("fill", "#fef3c7")
-      .attr("stroke", "#e2e8f0");
+      .attr("fill-opacity", 0.3)
+      .attr("stroke", "#f59e0b")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5");
 
-    // Visionaries (top left)
+    // Leaders (top-right 70-100 x 70-100 coordinates)
     svg.append("rect")
-      .attr("x", margin.left)
+      .attr("x", xScale(70))
       .attr("y", margin.top)
-      .attr("width", quadrantWidth)
-      .attr("height", quadrantHeight)
-      .attr("fill", "#d1fae5")
-      .attr("stroke", "#e2e8f0");
+      .attr("width", width - margin.right - xScale(70))
+      .attr("height", yScale(70) - margin.top)
+      .attr("fill", "#dcfce7")
+      .attr("fill-opacity", 0.4)
+      .attr("stroke", "#16a34a")
+      .attr("stroke-width", 2);
+
+    // Challengers (remaining area - everything else)
+    // This is represented by the default background, so we'll add a subtle indication
 
     // Add axes
     const xAxis = d3.axisBottom(xScale);
@@ -231,33 +221,29 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("class", "text-sm font-medium fill-gray-700")
       .text("Vendor Viability");
 
-    // Add quadrant labels
+    // Add custom quadrant labels
+    // Emerging Players label (bottom-left)
     svg.append("text")
-      .attr("x", margin.left + quadrantWidth * 0.5)
-      .attr("y", margin.top + 20)
+      .attr("x", xScale(15))
+      .attr("y", yScale(15))
       .attr("text-anchor", "middle")
-      .attr("class", "text-xs font-medium fill-gray-500")
-      .text("Visionaries");
+      .attr("class", "text-sm font-bold fill-orange-700")
+      .text("Emerging Players");
 
+    // Leaders label (top-right)
     svg.append("text")
-      .attr("x", margin.left + quadrantWidth * 1.5)
-      .attr("y", margin.top + 20)
+      .attr("x", xScale(85))
+      .attr("y", margin.top + 15)
       .attr("text-anchor", "middle")
-      .attr("class", "text-xs font-medium fill-gray-500")
+      .attr("class", "text-sm font-bold fill-green-700")
       .text("Leaders");
 
+    // Challengers label (center of remaining area)
     svg.append("text")
-      .attr("x", margin.left + quadrantWidth * 0.5)
-      .attr("y", margin.top + quadrantHeight + 30)
+      .attr("x", xScale(50))
+      .attr("y", yScale(50))
       .attr("text-anchor", "middle")
-      .attr("class", "text-xs font-medium fill-gray-500")
-      .text("Niche Players");
-
-    svg.append("text")
-      .attr("x", margin.left + quadrantWidth * 1.5)
-      .attr("y", margin.top + quadrantHeight + 30)
-      .attr("text-anchor", "middle")
-      .attr("class", "text-xs font-medium fill-gray-500")
+      .attr("class", "text-sm font-bold fill-blue-700")
       .text("Challengers");
 
     // Add vendor dots
