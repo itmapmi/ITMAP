@@ -353,7 +353,7 @@ export default function ResearchReportsManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(report.fileUrl, "_blank")}
+                          onClick={() => report.fileUrl && window.open(report.fileUrl, "_blank")}
                           className="flex items-center gap-2"
                         >
                           <Download className="h-4 w-4" />

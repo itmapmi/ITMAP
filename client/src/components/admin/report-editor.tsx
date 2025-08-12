@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
 import ReactQuill, { Quill } from "react-quill";
+// @ts-ignore - No types available for quill-better-table
 import QuillBetterTable from "quill-better-table";
 import "react-quill/dist/quill.snow.css";
 import "quill-better-table/dist/quill-better-table.css";
@@ -88,6 +89,19 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     reportType: existingReport?.reportType || "",
     htmlContent: existingReport?.htmlContent || "",
   });
+
+  // Update form data when existingReport changes
+  useEffect(() => {
+    if (existingReport) {
+      setFormData({
+        title: existingReport.title || "",
+        description: existingReport.description || "",
+        marketId: existingReport.marketId || "",
+        reportType: existingReport.reportType || "",
+        htmlContent: existingReport.htmlContent || "",
+      });
+    }
+  }, [existingReport]);
   const [showPreview, setShowPreview] = useState(false);
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
@@ -213,16 +227,20 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      if (existingReport?.marketId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/markets", existingReport.marketId, "research-reports"] });
+      }
       toast({
         title: "Success",
         description: `Research report ${existingReport ? 'updated' : 'created'} successfully`,
       });
       onSave();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Save report error:", error);
       toast({
         title: "Error",
-        description: `Failed to ${existingReport ? 'update' : 'create'} research report`,
+        description: `Failed to ${existingReport ? 'update' : 'create'} research report: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     },
