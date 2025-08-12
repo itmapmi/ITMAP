@@ -198,11 +198,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     emergingGradient.append("stop")
       .attr("offset", "0%")
       .attr("stop-color", "#fbbf24")
-      .attr("stop-opacity", 0.15);
+      .attr("stop-opacity", 0.25);
     emergingGradient.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", "#f59e0b")
-      .attr("stop-opacity", 0.25);
+      .attr("stop-opacity", 0.35);
 
     // Leaders gradient
     const leadersGradient = defs.append("linearGradient")
@@ -211,11 +211,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     leadersGradient.append("stop")
       .attr("offset", "0%")
       .attr("stop-color", "#22c55e")
-      .attr("stop-opacity", 0.15);
+      .attr("stop-opacity", 0.25);
     leadersGradient.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", "#16a34a")
-      .attr("stop-opacity", 0.25);
+      .attr("stop-opacity", 0.35);
 
     // Challengers gradient
     const challengersGradient = defs.append("linearGradient")
@@ -224,11 +224,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     challengersGradient.append("stop")
       .attr("offset", "0%")
       .attr("stop-color", "#3b82f6")
-      .attr("stop-opacity", 0.08);
+      .attr("stop-opacity", 0.15);
     challengersGradient.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", "#1d4ed8")
-      .attr("stop-opacity", 0.12);
+      .attr("stop-opacity", 0.25);
     
     // Add custom quadrant backgrounds with improved styling
     const chartWidth = width - margin.left - margin.right;
@@ -324,11 +324,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("y", yScale(15) - 10)
       .attr("width", 90)
       .attr("height", 20)
-      .attr("fill", "#fbbf24")
-      .attr("fill-opacity", 0.9)
+      .attr("fill", "#f59e0b")
+      .attr("fill-opacity", 0.95)
       .attr("rx", 10)
-      .attr("stroke", "#f59e0b")
-      .attr("stroke-width", 1);
+      .attr("stroke", "#d97706")
+      .attr("stroke-width", 2);
     emergingLabelG.append("text")
       .attr("x", xScale(15))
       .attr("y", yScale(15) + 4)
@@ -344,11 +344,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("y", margin.top + 5)
       .attr("width", 50)
       .attr("height", 20)
-      .attr("fill", "#22c55e")
-      .attr("fill-opacity", 0.9)
+      .attr("fill", "#16a34a")
+      .attr("fill-opacity", 0.95)
       .attr("rx", 10)
-      .attr("stroke", "#16a34a")
-      .attr("stroke-width", 1);
+      .attr("stroke", "#15803d")
+      .attr("stroke-width", 2);
     leadersLabelG.append("text")
       .attr("x", xScale(85))
       .attr("y", margin.top + 19)
@@ -364,11 +364,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("y", yScale(85) - 10)
       .attr("width", 70)
       .attr("height", 20)
-      .attr("fill", "#3b82f6")
+      .attr("fill", "#1d4ed8")
       .attr("fill-opacity", 0.95)
       .attr("rx", 10)
-      .attr("stroke", "#1d4ed8")
-      .attr("stroke-width", 1);
+      .attr("stroke", "#1e40af")
+      .attr("stroke-width", 2);
     challengersLabelG.append("text")
       .attr("x", xScale(35))
       .attr("y", yScale(85) + 4)
