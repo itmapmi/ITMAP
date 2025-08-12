@@ -34,7 +34,7 @@ export default function MarketGrid({ markets }: MarketGridProps) {
             ease: [0.25, 0.25, 0, 1]
           }}
         >
-          <Link href={`/market/${market.id}`}>
+          <Link href={`/markets/${market.id}`}>
             <AnimatedCard 
               className="cursor-pointer group overflow-hidden" 
               hover={true}

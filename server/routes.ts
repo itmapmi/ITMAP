@@ -717,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendor = vendors.find((v: Vendor) => v.id === news.vendorId);
         if (vendor && vendor.website) {
           // Check if this news is from vendor's official domain
-          const isOfficial = vendor.website ? checkVendorDomain(news.url, vendor.website) : false;
+          const isOfficial = checkVendorDomain(news.url, vendor.website);
           if (!isOfficial) {
             await storage.deleteVendorNews(news.id);
             deletedCount++;
