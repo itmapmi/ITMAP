@@ -107,8 +107,8 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
         return {
           ...vendor,
           scores: vendorScores,
-          executionScore: parseFloat(historicalPosition.executionScore) || 0,
-          viabilityScore: parseFloat(historicalPosition.viabilityScore) || 0,
+          executionScore: parseFloat(historicalPosition.executionScore) || 50,
+          viabilityScore: parseFloat(historicalPosition.viabilityScore) || 50,
         };
       }
     }
@@ -131,11 +131,15 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       });
     }
 
+    // Convert 0-10 scores to 0-100 scale for proper quadrant positioning
+    const executionScore = executionWeight > 0 ? (executionTotal / executionWeight) * 10 : 50;
+    const viabilityScore = viabilityWeight > 0 ? (viabilityTotal / viabilityWeight) * 10 : 50;
+    
     return {
       ...vendor,
       scores: vendorScores,
-      executionScore: executionWeight > 0 ? executionTotal / executionWeight : 50,
-      viabilityScore: viabilityWeight > 0 ? viabilityTotal / viabilityWeight : 50,
+      executionScore,
+      viabilityScore,
     };
   });
 
