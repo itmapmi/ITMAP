@@ -163,9 +163,86 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
 
-    // Add custom quadrant backgrounds based on coordinates
+    // Add subtle grid lines for better readability
+    svg.selectAll(".grid-line-x")
+      .data(xScale.ticks(10))
+      .enter()
+      .append("line")
+      .attr("class", "grid-line-x")
+      .attr("x1", d => xScale(d))
+      .attr("x2", d => xScale(d))
+      .attr("y1", margin.top)
+      .attr("y2", height - margin.bottom)
+      .attr("stroke", "#f1f5f9")
+      .attr("stroke-width", 1);
+
+    svg.selectAll(".grid-line-y")
+      .data(yScale.ticks(10))
+      .enter()
+      .append("line")
+      .attr("class", "grid-line-y")
+      .attr("x1", margin.left)
+      .attr("x2", width - margin.right)
+      .attr("y1", d => yScale(d))
+      .attr("y2", d => yScale(d))
+      .attr("stroke", "#f1f5f9")
+      .attr("stroke-width", 1);
+
+    // Add gradient definitions for sophisticated shading
+    const defs = svg.append("defs");
+    
+    // Emerging Players gradient
+    const emergingGradient = defs.append("linearGradient")
+      .attr("id", "emergingGradient")
+      .attr("gradientUnits", "objectBoundingBox");
+    emergingGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#fbbf24")
+      .attr("stop-opacity", 0.15);
+    emergingGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#f59e0b")
+      .attr("stop-opacity", 0.25);
+
+    // Leaders gradient
+    const leadersGradient = defs.append("linearGradient")
+      .attr("id", "leadersGradient")
+      .attr("gradientUnits", "objectBoundingBox");
+    leadersGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#22c55e")
+      .attr("stop-opacity", 0.15);
+    leadersGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#16a34a")
+      .attr("stop-opacity", 0.25);
+
+    // Challengers gradient
+    const challengersGradient = defs.append("linearGradient")
+      .attr("id", "challengersGradient")
+      .attr("gradientUnits", "objectBoundingBox");
+    challengersGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#3b82f6")
+      .attr("stop-opacity", 0.08);
+    challengersGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#1d4ed8")
+      .attr("stop-opacity", 0.12);
+    
+    // Add custom quadrant backgrounds with improved styling
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
+    
+    // Challengers (entire background - subtle blue)
+    svg.append("rect")
+      .attr("x", margin.left)
+      .attr("y", margin.top)
+      .attr("width", chartWidth)
+      .attr("height", chartHeight)
+      .attr("fill", "url(#challengersGradient)")
+      .attr("stroke", "#e2e8f0")
+      .attr("stroke-width", 1);
     
     // Emerging Players (bottom-left 30x30 coordinates)
     svg.append("rect")
@@ -173,11 +250,11 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("y", yScale(30))
       .attr("width", xScale(30) - margin.left)
       .attr("height", height - margin.bottom - yScale(30))
-      .attr("fill", "#fef3c7")
-      .attr("fill-opacity", 0.3)
+      .attr("fill", "url(#emergingGradient)")
       .attr("stroke", "#f59e0b")
       .attr("stroke-width", 2)
-      .attr("stroke-dasharray", "5,5");
+      .attr("rx", 8)
+      .attr("ry", 8);
 
     // Leaders (top-right 70-100 x 70-100 coordinates)
     svg.append("rect")
@@ -185,68 +262,122 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("y", margin.top)
       .attr("width", width - margin.right - xScale(70))
       .attr("height", yScale(70) - margin.top)
-      .attr("fill", "#dcfce7")
-      .attr("fill-opacity", 0.4)
+      .attr("fill", "url(#leadersGradient)")
       .attr("stroke", "#16a34a")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 2)
+      .attr("rx", 8)
+      .attr("ry", 8);
 
-    // Challengers (remaining area - everything else)
-    // This is represented by the default background, so we'll add a subtle indication
-
-    // Add axes
-    const xAxis = d3.axisBottom(xScale);
-    const yAxis = d3.axisLeft(yScale);
+    // Add professional-looking axes
+    const xAxis = d3.axisBottom(xScale)
+      .tickSize(-chartHeight)
+      .tickFormat(d => d === 0 || d === 100 ? `${d}` : '');
+    const yAxis = d3.axisLeft(yScale)
+      .tickSize(-chartWidth)
+      .tickFormat(d => d === 0 || d === 100 ? `${d}` : '');
 
     svg.append("g")
+      .attr("class", "x-axis")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(xAxis);
+      .call(xAxis)
+      .selectAll(".tick line")
+      .attr("stroke", "#e2e8f0")
+      .attr("stroke-width", 1);
 
     svg.append("g")
+      .attr("class", "y-axis")
       .attr("transform", `translate(${margin.left},0)`)
-      .call(yAxis);
+      .call(yAxis)
+      .selectAll(".tick line")
+      .attr("stroke", "#e2e8f0")
+      .attr("stroke-width", 1);
 
-    // Add axis labels
+    // Style axis text
+    svg.selectAll(".x-axis text, .y-axis text")
+      .attr("fill", "#64748b")
+      .attr("font-size", "12px")
+      .attr("font-weight", "600");
+
+    // Add professional axis labels
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", height - 10)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-medium fill-gray-700")
+      .attr("class", "text-base font-semibold")
+      .attr("fill", "#374151")
       .text("Product Strategy and Execution");
 
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", 20)
+      .attr("y", 15)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-medium fill-gray-700")
+      .attr("class", "text-base font-semibold")
+      .attr("fill", "#374151")
       .text("Vendor Viability");
 
-    // Add custom quadrant labels
+    // Add elegant quadrant labels with background boxes
     // Emerging Players label (bottom-left)
-    svg.append("text")
+    const emergingLabelG = svg.append("g");
+    emergingLabelG.append("rect")
+      .attr("x", xScale(15) - 45)
+      .attr("y", yScale(15) - 10)
+      .attr("width", 90)
+      .attr("height", 20)
+      .attr("fill", "#fbbf24")
+      .attr("fill-opacity", 0.9)
+      .attr("rx", 10)
+      .attr("stroke", "#f59e0b")
+      .attr("stroke-width", 1);
+    emergingLabelG.append("text")
       .attr("x", xScale(15))
-      .attr("y", yScale(15))
+      .attr("y", yScale(15) + 4)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold fill-orange-700")
+      .attr("class", "text-sm font-bold")
+      .attr("fill", "white")
       .text("Emerging Players");
 
     // Leaders label (top-right)
-    svg.append("text")
+    const leadersLabelG = svg.append("g");
+    leadersLabelG.append("rect")
+      .attr("x", xScale(85) - 25)
+      .attr("y", margin.top + 5)
+      .attr("width", 50)
+      .attr("height", 20)
+      .attr("fill", "#22c55e")
+      .attr("fill-opacity", 0.9)
+      .attr("rx", 10)
+      .attr("stroke", "#16a34a")
+      .attr("stroke-width", 1);
+    leadersLabelG.append("text")
       .attr("x", xScale(85))
-      .attr("y", margin.top + 15)
+      .attr("y", margin.top + 19)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold fill-green-700")
+      .attr("class", "text-sm font-bold")
+      .attr("fill", "white")
       .text("Leaders");
 
     // Challengers label (center of remaining area)
-    svg.append("text")
+    const challengersLabelG = svg.append("g");
+    challengersLabelG.append("rect")
+      .attr("x", xScale(50) - 35)
+      .attr("y", yScale(50) - 10)
+      .attr("width", 70)
+      .attr("height", 20)
+      .attr("fill", "#3b82f6")
+      .attr("fill-opacity", 0.9)
+      .attr("rx", 10)
+      .attr("stroke", "#1d4ed8")
+      .attr("stroke-width", 1);
+    challengersLabelG.append("text")
       .attr("x", xScale(50))
-      .attr("y", yScale(50))
+      .attr("y", yScale(50) + 4)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold fill-blue-700")
+      .attr("class", "text-sm font-bold")
+      .attr("fill", "white")
       .text("Challengers");
 
-    // Add vendor dots
+    // Add enhanced vendor dots with hover effects
     svg.selectAll(".vendor-dot")
       .data(vendorsWithScores)
       .enter()
@@ -254,11 +385,12 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.executionScore))
       .attr("cy", d => yScale(d.viabilityScore))
-      .attr("r", 8)
-      .attr("fill", "#3b82f6")
-      .attr("stroke", "#1e40af")
-      .attr("stroke-width", 2)
+      .attr("r", 10)
+      .attr("fill", "#6366f1")
+      .attr("stroke", "#4338ca")
+      .attr("stroke-width", 3)
       .style("cursor", "pointer")
+      .style("filter", "drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3))")
       .on("mouseover", function(event, d) {
         d3.select(this).attr("r", 12);
       })
@@ -319,7 +451,7 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
             </CardHeader>
             <CardContent>
               <div className="relative">
-                <svg ref={svgRef} className="border border-gray-300 rounded-lg bg-white" />
+                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm" />
                 <div className="mt-4 px-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Historical View - {formatDate(selectedDate)} 
