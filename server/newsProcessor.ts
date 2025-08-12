@@ -450,6 +450,7 @@ export class NewsProcessor {
 
   /**
    * Validate if a URL and title look like a real news article
+   * Focus on press releases and newsroom content, exclude blogs
    */
   private isValidArticleUrl(url: string, title: string): boolean {
     const urlLower = url.toLowerCase();
@@ -465,13 +466,24 @@ export class NewsProcessor {
       return false;
     }
     
-    // Look for article indicators
-    const articleIndicators = [
-      'press-release', 'news', 'announcement', 'blog', 'article',
-      'announces', 'launches', 'introduces', 'partnership', 'acquisition'
+    // EXCLUDE blogs - only focus on press releases and newsroom content
+    const blogPatterns = [
+      '/blog/', '/blogs/', 'blog.', 'blogs.', '/insights/', '/thought-leadership/',
+      '/opinion/', '/commentary/', '/editorial/', '/perspective/'
     ];
     
-    return articleIndicators.some(indicator => 
+    if (blogPatterns.some(pattern => urlLower.includes(pattern))) {
+      return false;
+    }
+    
+    // Look for press release and newsroom indicators ONLY
+    const pressReleaseIndicators = [
+      'press-release', 'press_release', 'newsroom', 'news-release',
+      'announcement', 'announces', 'launches', 'introduces', 
+      'partnership', 'acquisition', '/news/', 'news.'
+    ];
+    
+    return pressReleaseIndicators.some(indicator => 
       urlLower.includes(indicator) || titleLower.includes(indicator)
     );
   }
@@ -611,17 +623,22 @@ Please analyze this news and provide a JSON response with:
 3. scoreChange: Estimated score change from -2 to +2 (negative for bad news, positive for good news, null if neutral)
 4. summary: Brief explanation of the impact (max 200 characters)
 
-Focus specifically on official company announcements and evaluate impact on:
-- Product innovations and new launches specific to ${market.name}
-- Market position and competitive advantages
-- Financial health and business growth
-- Strategic partnerships and acquisitions
-- Customer wins and major contracts
-- Technical capabilities and platform improvements
-- Executive leadership and strategic direction
-- Compliance, security, and reliability updates
+**STRICT IMPACT SCORING RULES:**
+- Product/Feature Launches: impactScore 2, 3, or 4 depending on significance
+- Partnerships & Sales Wins: impactScore 2
+- Positive Financial News (earnings, funding, growth): impactScore 3
+- Major acquisitions or strategic moves: impactScore 4
+- Minor updates or routine news: impactScore 1-2
 
-Prioritize news that directly affects the vendor's ${market.name} market capabilities and competitive position.
+**ONLY ANALYZE PRESS RELEASES AND NEWSROOM CONTENT:**
+- Focus exclusively on official company announcements
+- Ignore blog posts, opinion pieces, or editorial content
+- Prioritize product launches, partnerships, financial results, acquisitions
+- Evaluate impact on vendor's ${market.name} market position and capabilities
+
+**CONTENT FILTERING:**
+- Skip if URL contains: /blog/, /blogs/, /insights/, /thought-leadership/
+- Prioritize URLs with: /press-release/, /newsroom/, /news/, /announcement/
 
 Return only valid JSON without any additional text.`;
 
@@ -694,33 +711,84 @@ Return only valid JSON without any additional text.`;
 
   /**
    * Simple fallback analysis when AI is not available
+   * Implements the refined impact scoring rules
    */
   private simpleNewsAnalysis(newsItem: NewsItem, criteria: Criteria[]): NewsAnalysis {
     const content = (newsItem.title + ' ' + newsItem.content).toLowerCase();
     
-    // Simple keyword matching for impact
-    const positiveKeywords = ['launch', 'partnership', 'funding', 'growth', 'award', 'acquisition', 'innovation', 'breakthrough'];
-    const negativeKeywords = ['breach', 'hack', 'lawsuit', 'decline', 'loss', 'vulnerability', 'outage', 'issue'];
+    // Check if this is a blog post and should be excluded
+    const blogIndicators = ['/blog/', '/blogs/', '/insights/', '/thought-leadership/', '/opinion/', '/commentary/'];
+    if (blogIndicators.some(indicator => newsItem.url.toLowerCase().includes(indicator))) {
+      return {
+        impactScore: 0,
+        affectedCriteriaId: null,
+        scoreChange: null,
+        summary: 'Blog content excluded from analysis'
+      };
+    }
+    
+    // Refined keyword matching based on requirements
+    const productLaunchKeywords = ['launch', 'launches', 'introduces', 'unveils', 'announces new', 'new product', 'new feature', 'releases', 'debuts'];
+    const partnershipKeywords = ['partnership', 'partners with', 'collaboration', 'alliance', 'joint venture', 'strategic partnership'];
+    const salesWinKeywords = ['wins', 'contract', 'deal', 'customer', 'signs', 'secures', 'lands'];
+    const financialKeywords = ['earnings', 'revenue', 'profit', 'funding', 'investment', 'financial results', 'growth', 'record'];
+    const acquisitionKeywords = ['acquisition', 'acquires', 'merger', 'buys', 'purchase'];
     
     let impactScore = 1;
-    let scoreChange = null;
+    let scoreChange = 0;
     
-    const positiveMatches = positiveKeywords.filter(keyword => content.includes(keyword)).length;
-    const negativeMatches = negativeKeywords.filter(keyword => content.includes(keyword)).length;
+    // Apply refined scoring rules
+    if (productLaunchKeywords.some(keyword => content.includes(keyword))) {
+      // Product/Feature launches: 2, 3, or 4 depending on significance
+      if (content.includes('major') || content.includes('breakthrough') || content.includes('revolutionary')) {
+        impactScore = 4;
+        scoreChange = 2;
+      } else if (content.includes('significant') || content.includes('innovative') || content.includes('advanced')) {
+        impactScore = 3;
+        scoreChange = 1;
+      } else {
+        impactScore = 2;
+        scoreChange = 1;
+      }
+    } else if (partnershipKeywords.some(keyword => content.includes(keyword)) || 
+               salesWinKeywords.some(keyword => content.includes(keyword))) {
+      // Partnerships & Sales wins: impact score 2
+      impactScore = 2;
+      scoreChange = 1;
+    } else if (financialKeywords.some(keyword => content.includes(keyword))) {
+      // Positive financial news: impact score 3
+      impactScore = 3;
+      scoreChange = content.includes('record') || content.includes('growth') ? 2 : 1;
+    } else if (acquisitionKeywords.some(keyword => content.includes(keyword))) {
+      // Major acquisitions: impact score 4
+      impactScore = 4;
+      scoreChange = 2;
+    }
     
-    if (positiveMatches > 0) {
-      impactScore = Math.min(5, 2 + positiveMatches);
-      scoreChange = Math.min(2, positiveMatches);
-    } else if (negativeMatches > 0) {
-      impactScore = Math.min(5, 2 + negativeMatches);
-      scoreChange = -Math.min(2, negativeMatches);
+    // Check for negative indicators
+    const negativeKeywords = ['breach', 'hack', 'lawsuit', 'decline', 'loss', 'vulnerability', 'outage', 'issue', 'problem'];
+    if (negativeKeywords.some(keyword => content.includes(keyword))) {
+      scoreChange = -1;
+    }
+    
+    // Find relevant criteria based on content
+    let affectedCriteriaId = null;
+    const executionKeywords = ['technology', 'innovation', 'product', 'feature', 'capability', 'performance'];
+    const viabilityKeywords = ['partnership', 'financial', 'market', 'strategy', 'business', 'revenue'];
+    
+    if (executionKeywords.some(keyword => content.includes(keyword))) {
+      const executionCriteria = criteria.find(c => c.category === 'execution');
+      affectedCriteriaId = executionCriteria?.id || null;
+    } else if (viabilityKeywords.some(keyword => content.includes(keyword))) {
+      const viabilityCriteria = criteria.find(c => c.category === 'viability');
+      affectedCriteriaId = viabilityCriteria?.id || null;
     }
     
     return {
       impactScore,
-      affectedCriteriaId: null, // Would need more sophisticated matching
+      affectedCriteriaId,
       scoreChange,
-      summary: "Simple keyword-based analysis - manual review recommended"
+      summary: `${impactScore > 2 ? 'High' : 'Medium'} impact news - ${scoreChange > 0 ? 'positive' : scoreChange < 0 ? 'negative' : 'neutral'} for vendor`
     };
   }
 

@@ -111,6 +111,13 @@ The platform is designed to scale horizontally with its serverless database arch
 - **Multi-tier approach**: RSS feeds → Direct website scraping → NewsAPI aggregation
 - **Vendor-specific RSS patterns** including /rss.xml, /newsroom/feed, /press-releases/rss
 - **30-day content filtering** to focus on recent announcements and press releases
+- **Blog content filtering** - Excludes /blog/, /blogs/, /insights/, /thought-leadership/ URLs to focus only on press releases
+- **Refined impact scoring rules**:
+  - Product/Feature launches: Impact score 2, 3, or 4 based on significance
+  - Partnerships & Sales wins: Impact score 2
+  - Positive financial news: Impact score 3
+  - Major acquisitions: Impact score 4
+  - Blog posts: Excluded from analysis (impact score 0)
 - OpenAI GPT-4o-mini analyzes news articles for business impact on evaluation criteria
 - Automated score changes (±2 point range) require admin approval before applying to vendor ratings
 - System includes backup mechanisms for API failures and comprehensive logging
