@@ -211,6 +211,8 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
         : "/api/research-reports";
       const method = existingReport ? "PUT" : "POST";
       
+      console.log(`Making ${method} request to ${url} with data:`, data);
+      
       const response = await fetch(url, {
         method,
         body: JSON.stringify(data),
@@ -219,11 +221,17 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
         },
       });
       
+      console.log(`Response status: ${response.status}`, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`Failed to ${method === 'PUT' ? 'update' : 'create'} report`);
+        const errorText = await response.text();
+        console.error(`Error response:`, errorText);
+        throw new Error(`Failed to ${method === 'PUT' ? 'update' : 'create'} report: ${errorText}`);
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('Success response:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
@@ -256,14 +264,19 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
       return;
     }
 
-    saveReportMutation.mutate({
+    const saveData = {
       title: formData.title,
       description: formData.description || null,
       marketId: formData.marketId,
       reportType: formData.reportType || null,
       htmlContent: formData.htmlContent,
       fileUrl: null, // HTML reports don't have file URLs
-    });
+    };
+
+    console.log('About to save with data:', saveData);
+    console.log('Existing report:', existingReport);
+
+    saveReportMutation.mutate(saveData);
   };
 
   const selectedMarket = markets.find(m => m.id === formData.marketId);
