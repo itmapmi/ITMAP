@@ -69,6 +69,17 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     queryKey: ["/api/criteria"],
   });
 
+  // Query historical positions for the selected date
+  const { data: historicalPositions } = useQuery<any[]>({
+    queryKey: ["/api/markets", marketId, "historical-positions"],
+    queryFn: async () => {
+      const response = await fetch(`/api/markets/${marketId}/historical-positions?date=${selectedDate.toISOString()}`);
+      if (!response.ok) throw new Error('Failed to fetch historical positions');
+      return response.json();
+    },
+    enabled: !!marketId && weeksAgo > 0, // Only fetch historical data when not on current week
+  });
+
   // Initialize weights when data loads
   useEffect(() => {
     if (weights && criteria) {
@@ -81,7 +92,7 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     }
   }, [weights, criteria]);
 
-  // Calculate vendor positions
+  // Calculate vendor positions (use historical data if available and not current week)
   const vendorsWithScores: VendorWithScores[] = (vendors || []).map(vendor => {
     const vendorScores: { [criteriaId: string]: number } = {};
     let executionTotal = 0;
@@ -89,17 +100,31 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
     let executionWeight = 0;
     let viabilityWeight = 0;
 
+    // Use historical positions if available and not current week
+    if (weeksAgo > 0 && historicalPositions) {
+      const historicalPosition = historicalPositions.find(pos => pos.vendorId === vendor.id);
+      if (historicalPosition) {
+        return {
+          ...vendor,
+          scores: vendorScores,
+          executionScore: parseFloat(historicalPosition.executionScore) || 0,
+          viabilityScore: parseFloat(historicalPosition.viabilityScore) || 0,
+        };
+      }
+    }
+
+    // Use current scores for current week or when no historical data
     if (scores && criteria) {
       scores.forEach(score => {
         if (score.vendorId === vendor.id) {
-          vendorScores[score.criteriaId] = score.score;
+          vendorScores[score.criteriaId] = parseFloat(score.score);
           
           const weight = criteriaWeights[score.criteriaId] || 25;
           if (score.criteria.category === "execution") {
-            executionTotal += score.score * weight;
+            executionTotal += parseFloat(score.score) * weight;
             executionWeight += weight;
           } else if (score.criteria.category === "viability") {
-            viabilityTotal += score.score * weight;
+            viabilityTotal += parseFloat(score.score) * weight;
             viabilityWeight += weight;
           }
         }

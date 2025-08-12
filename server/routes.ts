@@ -183,6 +183,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Historical Positions
+  app.get("/api/markets/:marketId/historical-positions", async (req, res) => {
+    try {
+      const { date, vendorId } = req.query;
+      const positions = await storage.getHistoricalPositions(
+        req.params.marketId,
+        vendorId as string | undefined
+      );
+      
+      // Filter by date if provided
+      let filteredPositions = positions;
+      if (date) {
+        const targetDate = new Date(date as string);
+        const startOfWeek = new Date(targetDate);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Start of week
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 7); // End of week
+        
+        filteredPositions = positions.filter(pos => {
+          const recordedAt = new Date(pos.recordedAt);
+          return recordedAt >= startOfWeek && recordedAt < endOfWeek;
+        });
+      }
+      
+      res.json(filteredPositions);
+    } catch (error) {
+      console.error("Error fetching historical positions:", error);
+      res.status(500).json({ error: "Failed to fetch historical positions" });
+    }
+  });
+
+  // Generate sample historical data (for testing timeline)
+  app.post("/api/markets/:marketId/generate-historical-data", async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const vendors = await storage.getVendorsByMarket(marketId);
+      const scores = await storage.getMarketVendorScores(marketId);
+      
+      if (vendors.length === 0) {
+        return res.status(400).json({ error: "No vendors found for this market" });
+      }
+
+      // Generate historical positions for the past 36 months (weekly)
+      const now = new Date();
+      const generatedPositions = [];
+      
+      for (let weekOffset = 1; weekOffset <= 156; weekOffset++) { // 156 weeks = 3 years
+        const recordDate = new Date(now);
+        recordDate.setDate(recordDate.getDate() - (weekOffset * 7));
+        
+        // Generate every 4th week to avoid too much data
+        if (weekOffset % 4 === 0) {
+          for (const vendor of vendors) {
+            const currentVendorScores = scores.filter(s => s.vendorId === vendor.id);
+            
+            // Add some variation to historical scores (±5 points from current)
+            const executionVariation = (Math.random() - 0.5) * 10; // -5 to +5
+            const viabilityVariation = (Math.random() - 0.5) * 10;
+            
+            let executionScore = 50; // Default
+            let viabilityScore = 50; // Default
+            
+            if (currentVendorScores.length > 0) {
+              const execScores = currentVendorScores.filter(s => s.criteria.category === 'execution');
+              const viabilityScores = currentVendorScores.filter(s => s.criteria.category === 'viability');
+              
+              if (execScores.length > 0) {
+                executionScore = execScores.reduce((sum, s) => sum + parseFloat(s.score), 0) / execScores.length;
+              }
+              if (viabilityScores.length > 0) {
+                viabilityScore = viabilityScores.reduce((sum, s) => sum + parseFloat(s.score), 0) / viabilityScores.length;
+              }
+            }
+            
+            // Apply variation and clamp to 0-100
+            executionScore = Math.max(0, Math.min(100, executionScore + executionVariation));
+            viabilityScore = Math.max(0, Math.min(100, viabilityScore + viabilityVariation));
+            
+            const position = await storage.saveHistoricalPosition({
+              vendorId: vendor.id,
+              marketId: marketId,
+              executionScore: executionScore.toString(),
+              viabilityScore: viabilityScore.toString(),
+              recordedAt: recordDate,
+            });
+            
+            generatedPositions.push(position);
+          }
+        }
+      }
+      
+      res.json({ 
+        message: `Generated ${generatedPositions.length} historical positions`,
+        count: generatedPositions.length 
+      });
+    } catch (error) {
+      console.error("Error generating historical data:", error);
+      res.status(500).json({ error: "Failed to generate historical data" });
+    }
+  });
+
   app.put("/api/markets/:marketId/weights/:criteriaId", async (req, res) => {
     try {
       const { weight } = z.object({ weight: z.number().min(0).max(100) }).parse(req.body);
@@ -616,7 +717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const vendor = vendors.find((v: Vendor) => v.id === news.vendorId);
         if (vendor && vendor.website) {
           // Check if this news is from vendor's official domain
-          const isOfficial = checkVendorDomain(news.url, vendor.website);
+          const isOfficial = vendor.website ? checkVendorDomain(news.url, vendor.website) : false;
           if (!isOfficial) {
             await storage.deleteVendorNews(news.id);
             deletedCount++;

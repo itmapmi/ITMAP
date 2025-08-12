@@ -94,6 +94,24 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### Historical Timeline Implementation (August 12, 2025)
+- **Implemented functional Magic Quadrant historical timeline** with real dates instead of "36 months ago"
+- **Added 156-week timeline range** (3 years of weekly historical data navigation)
+- **Created historical positions API endpoint** (`/api/markets/:marketId/historical-positions`) with date filtering
+- **Built historical data visualization** that switches between current scores and historical positions
+- **Added sample data generation** endpoint for testing timeline functionality with vendor position variations
+- **Positioned current date on right side** of timeline slider with weekly backward navigation
+- **Dynamic date display** showing selected date and weeks ago counter
+- **Integrated historical position storage** with existing database schema and storage methods
+
+### Vendor-Only News Sources Implementation (August 12, 2025)
+- **Achieved 100% vendor-authentic news sources** by completely removing all third-party content
+- **Eliminated NewsAPI fallback system** and all external news aggregator dependencies
+- **Implemented strict vendor-domain validation** ensuring news originates only from official vendor websites
+- **Cleaned database of 63 third-party news items** keeping only official vendor sources
+- **Added cleanup endpoint** (`/api/admin/vendor-news/cleanup-third-party`) for removing non-vendor sources
+- **Updated news processing** to skip third-party sources entirely with zero tolerance policy
+
 ### Automated News Processing System (August 11, 2025)
 - **Implemented comprehensive automated daily cron jobs** for vendor news analysis and scoring updates
 - **Created newsProcessor.ts** with OpenAI integration for intelligent news impact analysis (0-5 scoring scale)
