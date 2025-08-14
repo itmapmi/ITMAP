@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide TinyMCE setup dialogs */
+.tox-dialog-wrap[aria-label*="setup"],
+.tox-dialog-wrap[aria-label*="Finish setting up"],
+.tox-dialog__header:has-text("Finish setting up") {
+  display: none !important;
+}
+
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(210 25% 7.8431%);

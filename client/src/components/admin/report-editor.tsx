@@ -147,6 +147,18 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
   const editorConfig = {
     height: 400,
     menubar: true,
+    promotion: false, // Disable promotion messages
+    branding: false, // Remove "Powered by TinyMCE" branding
+    setup: (editor: any) => {
+      // Hide any setup dialogs or overlays
+      editor.on('init', () => {
+        // Remove any setup overlays that might appear
+        const setupOverlay = document.querySelector('.tox-dialog-wrap');
+        if (setupOverlay) {
+          setupOverlay.remove();
+        }
+      });
+    },
     plugins: [
       'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
       'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -298,13 +310,28 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
         <div className="space-y-2">
           <Label>Report Content</Label>
           <div className="border rounded-lg">
-            <Editor
-              apiKey={tinymceConfig?.apiKey || "no-api-key"}
-              onInit={(evt, editor) => editorRef.current = editor}
-              initialValue={formData.htmlContent}
-              init={editorConfig}
-              onEditorChange={handleEditorChange}
-            />
+            {tinymceConfig?.apiKey ? (
+              <Editor
+                apiKey={tinymceConfig.apiKey}
+                onInit={(evt, editor) => {
+                  editorRef.current = editor;
+                  // Hide any setup dialogs after initialization
+                  setTimeout(() => {
+                    const setupDialog = document.querySelector('.tox-dialog-wrap');
+                    if (setupDialog) {
+                      setupDialog.remove();
+                    }
+                  }, 1000);
+                }}
+                initialValue={formData.htmlContent}
+                init={editorConfig}
+                onEditorChange={handleEditorChange}
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                Loading editor...
+              </div>
+            )}
           </div>
           <p className="text-sm text-gray-500">
             Use the toolbar above to format your content. You can add headings, lists, links, images, tables, and more.
