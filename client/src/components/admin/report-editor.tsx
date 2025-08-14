@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,12 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
   const [showPreview, setShowPreview] = useState(false);
   const editorRef = useRef<any>(null);
   const { toast } = useToast();
+
+  // Fetch TinyMCE API key
+  const { data: tinymceConfig } = useQuery<{ apiKey: string }>({
+    queryKey: ["/api/config/tinymce"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Handle editor content change
   const handleEditorChange = (content: string) => {
@@ -138,7 +144,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
   const selectedMarket = markets.find(m => m.id === formData.marketId);
 
   // TinyMCE configuration
-  const tinymceConfig = {
+  const editorConfig = {
     height: 400,
     menubar: true,
     plugins: [
@@ -157,7 +163,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     paste_data_images: true,
     automatic_uploads: true,
     file_picker_types: 'image',
-    images_upload_handler: async (blobInfo: any, progress: any) => {
+    images_upload_handler: async (blobInfo: any, progress: any): Promise<string> => {
       return new Promise(async (resolve, reject) => {
         try {
           // Get upload URL from backend
@@ -293,10 +299,10 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
           <Label>Report Content</Label>
           <div className="border rounded-lg">
             <Editor
-              apiKey="no-api-key"
+              apiKey={tinymceConfig?.apiKey || "no-api-key"}
               onInit={(evt, editor) => editorRef.current = editor}
               initialValue={formData.htmlContent}
-              init={tinymceConfig}
+              init={editorConfig}
               onEditorChange={handleEditorChange}
             />
           </div>

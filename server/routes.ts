@@ -6,6 +6,17 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configuration
+  app.get("/api/config/tinymce", async (req, res) => {
+    try {
+      const apiKey = process.env.TINYMCE_API_KEY || "no-api-key";
+      res.json({ apiKey });
+    } catch (error) {
+      console.error("Error fetching TinyMCE config:", error);
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
   // Markets
   app.get("/api/markets", async (req, res) => {
     try {
