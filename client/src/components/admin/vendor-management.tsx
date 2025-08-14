@@ -20,6 +20,7 @@ export default function VendorManagement() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<string>("");
   const [vendorScores, setVendorScores] = useState<{ [key: string]: number }>({});
+  const [vendorNotes, setVendorNotes] = useState<{ [key: string]: string }>({});
 
   const { data: markets } = useQuery<Market[]>({
     queryKey: ["/api/markets"],
@@ -116,14 +117,19 @@ export default function VendorManagement() {
   });
 
   const saveScoreMutation = useMutation({
-    mutationFn: async (scoreData: { vendorId: string; criteriaId: string; score: number }) => {
+    mutationFn: async (scoreData: { vendorId: string; criteriaId: string; score: number; notes?: string }) => {
       const response = await apiRequest("POST", "/api/vendor-scores", scoreData);
       return response.json();
     },
     onSuccess: (data, variables) => {
-      // Clear only the specific pending score that was just saved
+      // Clear only the specific pending score and notes that were just saved
       const key = `${variables.vendorId}:::${variables.criteriaId}`;
       setVendorScores(prev => {
+        const newState = { ...prev };
+        delete newState[key];
+        return newState;
+      });
+      setVendorNotes(prev => {
         const newState = { ...prev };
         delete newState[key];
         return newState;
@@ -139,7 +145,7 @@ export default function VendorManagement() {
       
       toast({
         title: "Success",
-        description: "Score saved successfully",
+        description: "Score and notes saved successfully",
       });
     },
     onError: () => {
@@ -187,6 +193,16 @@ export default function VendorManagement() {
     return Number(score?.score) || 0;
   };
 
+  const getVendorNotes = (vendorId: string, criteriaId: string): string => {
+    const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
+    return score?.notes || "";
+  };
+
+  const handleNotesChange = (vendorId: string, criteriaId: string, notes: string) => {
+    const key = `${vendorId}:::${criteriaId}`;
+    setVendorNotes(prev => ({ ...prev, [key]: notes }));
+  };
+
   const handleScoreChange = (vendorId: string, criteriaId: string, score: number) => {
     const key = `${vendorId}:::${criteriaId}`;
     
@@ -206,12 +222,14 @@ export default function VendorManagement() {
   const saveScore = (vendorId: string, criteriaId: string) => {
     const key = `${vendorId}:::${criteriaId}`;
     const score = vendorScores[key];
+    const notes = vendorNotes[key];
     
     console.log("Full vendor object:", vendors?.find(v => v.id === vendorId));
     console.log("Full criteria object:", criteria?.find(c => c.id === criteriaId));
     console.log("Saving score - vendorId:", vendorId, "length:", vendorId.length);
     console.log("Saving score - criteriaId:", criteriaId, "length:", criteriaId.length);
     console.log("Score:", score);
+    console.log("Notes:", notes);
     
     if (score === undefined) {
       toast({
@@ -231,7 +249,7 @@ export default function VendorManagement() {
       return;
     }
     
-    saveScoreMutation.mutate({ vendorId, criteriaId, score });
+    saveScoreMutation.mutate({ vendorId, criteriaId, score, notes: notes || "" });
     // Don't clear the pending score until mutation succeeds - it will be handled in onSuccess
   };
 
@@ -261,12 +279,14 @@ export default function VendorManagement() {
     // Save all scores
     pendingEntries.forEach(([key, score]) => {
       const [vendorId, criteriaId] = key.split(':::');
+      const notes = vendorNotes[key] || "";
       console.log("Bulk save - key:", key, "split vendorId:", vendorId, "split criteriaId:", criteriaId);
-      saveScoreMutation.mutate({ vendorId, criteriaId, score });
+      saveScoreMutation.mutate({ vendorId, criteriaId, score, notes });
     });
 
-    // Clear all pending scores
+    // Clear all pending scores and notes
     setVendorScores({});
+    setVendorNotes({});
   };
 
   return (
@@ -450,25 +470,36 @@ export default function VendorManagement() {
                             </TableCell>
                             {criteria?.filter(criterion => criterion.category === 'execution').map(criterion => {
                               const currentScore = getVendorScore(vendor.id, criterion.id);
+                              const currentNotes = getVendorNotes(vendor.id, criterion.id);
                               const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
+                              const pendingNotes = vendorNotes[key];
                               return (
                                 <TableCell key={criterion.id} className="text-center">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    step="0.1"
-                                    value={pendingScore !== undefined ? pendingScore : currentScore}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value);
-                                      if (!isNaN(value) || e.target.value === '') {
-                                        handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
-                                      }
-                                    }}
-                                    className="w-20 text-center"
-                                    placeholder="0-10"
-                                  />
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="10"
+                                      step="0.1"
+                                      value={pendingScore !== undefined ? pendingScore : currentScore}
+                                      onChange={(e) => {
+                                        const value = parseFloat(e.target.value);
+                                        if (!isNaN(value) || e.target.value === '') {
+                                          handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
+                                        }
+                                      }}
+                                      className="w-20 text-center"
+                                      placeholder="0-10"
+                                    />
+                                    <Textarea
+                                      placeholder="Add notes..."
+                                      value={pendingNotes !== undefined ? pendingNotes : currentNotes}
+                                      onChange={(e) => handleNotesChange(vendor.id, criterion.id, e.target.value)}
+                                      className="w-full min-h-[60px] text-xs"
+                                      rows={2}
+                                    />
+                                  </div>
                                 </TableCell>
                               );
                             })}
@@ -476,7 +507,9 @@ export default function VendorManagement() {
                               <div className="flex flex-col space-y-1">
                                 {criteria?.filter(criterion => criterion.category === 'execution').map(criterion => {
                                   const key = `${vendor.id}:::${criterion.id}`;
-                                  const hasChanges = vendorScores[key] !== undefined;
+                                  const hasScoreChanges = vendorScores[key] !== undefined;
+                                  const hasNotesChanges = vendorNotes[key] !== undefined;
+                                  const hasChanges = hasScoreChanges || hasNotesChanges;
                                   return hasChanges ? (
                                     <Button
                                       key={criterion.id}
@@ -560,25 +593,36 @@ export default function VendorManagement() {
                             </TableCell>
                             {criteria?.filter(criterion => criterion.category === 'viability').map(criterion => {
                               const currentScore = getVendorScore(vendor.id, criterion.id);
+                              const currentNotes = getVendorNotes(vendor.id, criterion.id);
                               const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
+                              const pendingNotes = vendorNotes[key];
                               return (
                                 <TableCell key={criterion.id} className="text-center">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    step="0.1"
-                                    value={pendingScore !== undefined ? pendingScore : currentScore}
-                                    onChange={(e) => {
-                                      const value = parseFloat(e.target.value);
-                                      if (!isNaN(value) || e.target.value === '') {
-                                        handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
-                                      }
-                                    }}
-                                    className="w-20 text-center"
-                                    placeholder="0-10"
-                                  />
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="10"
+                                      step="0.1"
+                                      value={pendingScore !== undefined ? pendingScore : currentScore}
+                                      onChange={(e) => {
+                                        const value = parseFloat(e.target.value);
+                                        if (!isNaN(value) || e.target.value === '') {
+                                          handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
+                                        }
+                                      }}
+                                      className="w-20 text-center"
+                                      placeholder="0-10"
+                                    />
+                                    <Textarea
+                                      placeholder="Add notes..."
+                                      value={pendingNotes !== undefined ? pendingNotes : currentNotes}
+                                      onChange={(e) => handleNotesChange(vendor.id, criterion.id, e.target.value)}
+                                      className="w-full min-h-[60px] text-xs"
+                                      rows={2}
+                                    />
+                                  </div>
                                 </TableCell>
                               );
                             })}
@@ -586,7 +630,9 @@ export default function VendorManagement() {
                               <div className="flex flex-col space-y-1">
                                 {criteria?.filter(criterion => criterion.category === 'viability').map(criterion => {
                                   const key = `${vendor.id}:::${criterion.id}`;
-                                  const hasChanges = vendorScores[key] !== undefined;
+                                  const hasScoreChanges = vendorScores[key] !== undefined;
+                                  const hasNotesChanges = vendorNotes[key] !== undefined;
+                                  const hasChanges = hasScoreChanges || hasNotesChanges;
                                   return hasChanges ? (
                                     <Button
                                       key={criterion.id}
