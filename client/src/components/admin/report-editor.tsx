@@ -13,15 +13,24 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
 import ReactQuill, { Quill } from "react-quill";
-// @ts-ignore - No types available for quill-better-table
-import QuillBetterTable from "quill-better-table";
 import "react-quill/dist/quill.snow.css";
-import "quill-better-table/dist/quill-better-table.css";
 
-// Register the better-table module
-Quill.register({
-  'modules/better-table': QuillBetterTable
-}, true);
+// Safely register table module only if it exists
+let tableModuleRegistered = false;
+try {
+  // @ts-ignore - No types available for quill-better-table
+  const QuillBetterTable = require("quill-better-table");
+  if (QuillBetterTable && typeof QuillBetterTable === 'function') {
+    Quill.register({
+      'modules/better-table': QuillBetterTable
+    }, true);
+    tableModuleRegistered = true;
+    // Import CSS only if module is available
+    require("quill-better-table/dist/quill-better-table.css");
+  }
+} catch (error) {
+  console.warn('quill-better-table not available, using basic table functionality');
+}
 
 interface ReportEditorProps {
   markets: Market[];
@@ -40,46 +49,59 @@ const REPORT_TYPES = [
 ];
 
 // Enhanced Quill modules with table support and custom handlers
-const createQuillModules = (imageHandler: () => void, tableHandler: () => void) => ({
-  toolbar: {
-    container: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'table'],
-      ['blockquote', 'code-block'],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      ['clean']
-    ],
-    handlers: {
-      image: imageHandler,
-      table: tableHandler,
-    }
-  },
-  table: true,
-  'better-table': {
-    operationMenu: {
-      items: {
-        unmergeCells: {
-          text: 'Another unmerge cells name'
-        }
+const createQuillModules = (imageHandler: () => void, tableHandler: () => void) => {
+  const modules: any = {
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ['link', 'image', 'table'],
+        ['blockquote', 'code-block'],
+        [{ 'script': 'sub'}, { 'script': 'super' }],
+        ['clean']
+      ],
+      handlers: {
+        image: imageHandler,
+        table: tableHandler,
       }
-    },
-    keyboard: {
-      'table-cell-line-break': 'Enter'
     }
-  }
-});
+  };
 
-const QUILL_FORMATS = [
+  // Only add table modules if better-table is available
+  if (tableModuleRegistered) {
+    modules.table = true;
+    modules['better-table'] = {
+      operationMenu: {
+        items: {
+          unmergeCells: {
+            text: 'Another unmerge cells name'
+          }
+        }
+      },
+      keyboard: {
+        'table-cell-line-break': 'Enter'
+      }
+    };
+  }
+
+  return modules;
+};
+
+// Base formats available in Quill
+const baseFormats = [
   'header', 'bold', 'italic', 'underline', 'strike',
   'color', 'background', 'list', 'bullet', 'indent',
-  'align', 'link', 'image', 'blockquote', 'code-block',
-  'script', 'table', 'table-cell-line', 'table-cell', 'table-col', 'table-row'
+  'align', 'link', 'image', 'blockquote', 'code-block', 'script'
 ];
+
+// Add table formats only if better-table module is available
+const QUILL_FORMATS = tableModuleRegistered 
+  ? [...baseFormats, 'table', 'table-cell-line', 'table-cell', 'table-col', 'table-row']
+  : baseFormats;
 
 export default function ReportEditor({ markets, existingReport, onClose, onSave }: ReportEditorProps) {
   const [formData, setFormData] = useState({
@@ -180,22 +202,32 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     if (quill) {
       const range = quill.getSelection(true);
       
-      // Create table HTML
-      let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 10px 0;"><tbody>';
-      for (let i = 0; i < tableRows; i++) {
-        tableHTML += '<tr>';
-        for (let j = 0; j < tableCols; j++) {
-          const cellStyle = 'border: 1px solid #ddd; padding: 8px; text-align: left;';
-          const headerStyle = i === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
-          tableHTML += `<td style="${cellStyle} ${headerStyle}">Cell ${i + 1},${j + 1}</td>`;
+      if (tableModuleRegistered) {
+        // Use better-table if available
+        const tableModule = quill.getModule('better-table');
+        if (tableModule) {
+          tableModule.insertTable(tableRows, tableCols);
         }
-        tableHTML += '</tr>';
-      }
-      tableHTML += '</tbody></table><p><br></p>';
+      } else {
+        // Fallback to basic HTML table insertion
+        let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"><tbody>';
+        for (let i = 0; i < tableRows; i++) {
+          tableHTML += '<tr>';
+          for (let j = 0; j < tableCols; j++) {
+            const cellStyle = 'border: 1px solid #ddd; padding: 8px; text-align: left; min-width: 100px;';
+            const headerStyle = i === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
+            tableHTML += `<td style="${cellStyle} ${headerStyle}">Cell ${i + 1},${j + 1}</td>`;
+          }
+          tableHTML += '</tr>';
+        }
+        tableHTML += '</tbody></table><p><br></p>';
 
-      // Insert table
-      quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
-      quill.setSelection({ index: range.index + 1, length: 0 });
+        // Insert table using clipboard
+        if (range) {
+          quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
+          quill.setSelection({ index: range.index + 1, length: 0 });
+        }
+      }
     }
     
     setShowTableDialog(false);
