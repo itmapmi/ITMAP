@@ -46,12 +46,17 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
     return score?.notes || "";
   };
 
-  const toggleNotes = (vendorId: string, criteriaId: string) => {
-    const key = `${vendorId}-${criteriaId}`;
+  const toggleNotes = (criteriaId: string) => {
     setExpandedNotes(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [criteriaId]: !prev[criteriaId]
     }));
+  };
+
+  const hasNotesForCriteria = (criteriaId: string): boolean => {
+    return selectedVendorData.some(vendor => 
+      getVendorNotes(vendor.id, criteriaId).trim() !== ""
+    );
   };
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
@@ -90,53 +95,71 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
                     {selectedVendorData.map(vendor => (
                       <TableHead key={vendor.id}>{vendor.name}</TableHead>
                     ))}
+                    <TableHead className="text-center">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {criteria?.map(criterion => (
-                    <TableRow key={criterion.id}>
-                      <TableCell className="font-medium">{criterion.name}</TableCell>
-                      {selectedVendorData.map(vendor => {
-                        const notes = getVendorNotes(vendor.id, criterion.id);
-                        const key = `${vendor.id}-${criterion.id}`;
-                        const isExpanded = expandedNotes[key];
-                        
-                        return (
-                          <TableCell key={vendor.id} className="space-y-2">
-                            <div className="flex items-center justify-between">
+                  {criteria?.map(criterion => {
+                    const isExpanded = expandedNotes[criterion.id];
+                    const hasNotes = hasNotesForCriteria(criterion.id);
+                    
+                    return (
+                      <>
+                        <TableRow key={criterion.id}>
+                          <TableCell className="font-medium">{criterion.name}</TableCell>
+                          {selectedVendorData.map(vendor => (
+                            <TableCell key={vendor.id} className="text-center">
                               <span className="font-semibold">
                                 {getVendorScore(vendor.id, criterion.id)}
                               </span>
-                              {notes && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleNotes(vendor.id, criterion.id)}
-                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                                >
-                                  <FileText className="mr-1 h-3 w-3" />
-                                  View Notes
-                                  {isExpanded ? (
-                                    <ChevronDown className="ml-1 h-3 w-3" />
-                                  ) : (
-                                    <ChevronRight className="ml-1 h-3 w-3" />
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                            
-                            {notes && isExpanded && (
-                              <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs border-l-2 border-blue-500">
-                                <div className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                                  {notes}
-                                </div>
-                              </div>
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-center">
+                            {hasNotes && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleNotes(criterion.id)}
+                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                <FileText className="mr-1 h-3 w-3" />
+                                View Notes
+                                {isExpanded ? (
+                                  <ChevronDown className="ml-1 h-3 w-3" />
+                                ) : (
+                                  <ChevronRight className="ml-1 h-3 w-3" />
+                                )}
+                              </Button>
                             )}
                           </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
+                        </TableRow>
+                        
+                        {hasNotes && isExpanded && (
+                          <TableRow>
+                            <TableCell colSpan={selectedVendorData.length + 2} className="p-4 bg-gray-50 dark:bg-gray-800">
+                              <div className="space-y-3">
+                                {selectedVendorData.map(vendor => {
+                                  const notes = getVendorNotes(vendor.id, criterion.id);
+                                  if (!notes.trim()) return null;
+                                  
+                                  return (
+                                    <div key={vendor.id} className="border-l-3 border-blue-500 pl-3">
+                                      <div className="font-medium text-sm text-blue-700 dark:text-blue-300 mb-1">
+                                        {vendor.name}
+                                      </div>
+                                      <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                                        {notes}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
