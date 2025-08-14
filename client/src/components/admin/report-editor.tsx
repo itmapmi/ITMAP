@@ -149,6 +149,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     menubar: true,
     promotion: false, // Disable promotion messages
     branding: false, // Remove "Powered by TinyMCE" branding
+    license_key: 'gpl', // Use GPL license to avoid domain restrictions
     setup: (editor: any) => {
       // Hide any setup dialogs or overlays
       editor.on('init', () => {
@@ -310,28 +311,30 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
         <div className="space-y-2">
           <Label>Report Content</Label>
           <div className="border rounded-lg">
-            {tinymceConfig?.apiKey ? (
-              <Editor
-                apiKey={tinymceConfig.apiKey}
-                onInit={(evt, editor) => {
-                  editorRef.current = editor;
-                  // Hide any setup dialogs after initialization
-                  setTimeout(() => {
-                    const setupDialog = document.querySelector('.tox-dialog-wrap');
-                    if (setupDialog) {
-                      setupDialog.remove();
-                    }
-                  }, 1000);
-                }}
-                initialValue={formData.htmlContent}
-                init={editorConfig}
-                onEditorChange={handleEditorChange}
-              />
-            ) : (
-              <div className="p-4 text-center text-gray-500">
-                Loading editor...
-              </div>
-            )}
+            <Editor
+              onInit={(evt, editor) => {
+                editorRef.current = editor;
+                console.log('TinyMCE initialized successfully');
+                // Hide any setup dialogs after initialization
+                setTimeout(() => {
+                  const setupDialog = document.querySelector('.tox-dialog-wrap');
+                  if (setupDialog) {
+                    setupDialog.remove();
+                  }
+                }, 1000);
+              }}
+              initialValue={formData.htmlContent}
+              init={{
+                ...editorConfig,
+                // Use self-hosted version without API key requirements
+                base_url: '/tinymce',
+                suffix: '.min',
+              }}
+              onEditorChange={handleEditorChange}
+              onLoadError={(error) => {
+                console.error('TinyMCE load error:', error);
+              }}
+            />
           </div>
           <p className="text-sm text-gray-500">
             Use the toolbar above to format your content. You can add headings, lists, links, images, tables, and more.
