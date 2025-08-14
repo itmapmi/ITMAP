@@ -58,6 +58,7 @@ export const vendorScores = pgTable("vendor_scores", {
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
   criteriaId: varchar("criteria_id").notNull().references(() => criteria.id, { onDelete: "cascade" }),
   score: decimal("score", { precision: 3, scale: 1 }).notNull(), // 0-10, allows decimal values like 8.5
+  notes: text("notes"), // Notes for the score
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

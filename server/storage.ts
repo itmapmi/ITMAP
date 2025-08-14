@@ -238,6 +238,7 @@ export class DatabaseStorage implements IStorage {
         vendorId: vendorScores.vendorId,
         criteriaId: vendorScores.criteriaId,
         score: vendorScores.score,
+        notes: vendorScores.notes,
         createdAt: vendorScores.createdAt,
         updatedAt: vendorScores.updatedAt,
         vendor: vendors,
