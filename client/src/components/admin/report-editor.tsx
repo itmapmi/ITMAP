@@ -143,66 +143,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
 
   const selectedMarket = markets.find(m => m.id === formData.marketId);
 
-  // TinyMCE configuration
-  const editorConfig = {
-    height: 400,
-    menubar: true,
-    promotion: false, // Disable promotion messages
-    branding: false, // Remove "Powered by TinyMCE" branding
-    license_key: 'gpl', // Use GPL license to avoid domain restrictions
-    setup: (editor: any) => {
-      // Hide any setup dialogs or overlays
-      editor.on('init', () => {
-        // Remove any setup overlays that might appear
-        const setupOverlay = document.querySelector('.tox-dialog-wrap');
-        if (setupOverlay) {
-          setupOverlay.remove();
-        }
-      });
-    },
-    plugins: [
-      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-      'insertdatetime', 'media', 'table', 'help', 'wordcount', 'paste'
-    ],
-    toolbar: 
-      'undo redo | blocks | bold italic forecolor | alignleft aligncenter ' +
-      'alignright alignjustify | bullist numlist outdent indent | ' +
-      'removeformat | table tabledelete | tableprops tablerowprops tablecellprops | ' +
-      'tableinsertrowbefore tableinsertrowafter tabledeleterow | ' +
-      'tableinsertcolbefore tableinsertcolafter tabledeletecol | ' +
-      'image link media | code fullscreen preview | help',
-    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-    paste_data_images: true,
-    automatic_uploads: true,
-    file_picker_types: 'image',
-    images_upload_handler: async (blobInfo: any, progress: any): Promise<string> => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          // Get upload URL from backend
-          const uploadResponse = await fetch('/api/objects/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          const { uploadURL } = await uploadResponse.json();
 
-          // Upload image to object storage
-          await fetch(uploadURL, {
-            method: 'PUT',
-            body: blobInfo.blob(),
-          });
-
-          // Return the object URL
-          const objectUrl = uploadURL.split('?')[0];
-          const objectPath = `/objects/${objectUrl.split('/').slice(-2).join('/')}`;
-          resolve(objectPath);
-        } catch (error) {
-          console.error('Image upload failed:', error);
-          reject('Image upload failed');
-        }
-      });
-    }
-  };
 
   if (showPreview) {
     return (
@@ -312,28 +253,35 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
           <Label>Report Content</Label>
           <div className="border rounded-lg">
             <Editor
+              apiKey="no-api-key"
               onInit={(evt, editor) => {
                 editorRef.current = editor;
                 console.log('TinyMCE initialized successfully');
-                // Hide any setup dialogs after initialization
-                setTimeout(() => {
-                  const setupDialog = document.querySelector('.tox-dialog-wrap');
-                  if (setupDialog) {
-                    setupDialog.remove();
-                  }
-                }, 1000);
               }}
               initialValue={formData.htmlContent}
               init={{
-                ...editorConfig,
-                // Use self-hosted version without API key requirements
-                base_url: '/tinymce',
-                suffix: '.min',
+                height: 400,
+                menubar: false,
+                plugins: [
+                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                  'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                ],
+                toolbar: 
+                  'undo redo | formatselect | bold italic backcolor | ' +
+                  'alignleft aligncenter alignright alignjustify | ' +
+                  'bullist numlist outdent indent | removeformat | table | help',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; min-height: 300px; }',
+                paste_data_images: true,
+                setup: (editor: any) => {
+                  editor.on('init', () => {
+                    // Enable editing
+                    editor.setMode('design');
+                    console.log('TinyMCE editor ready for input');
+                  });
+                }
               }}
               onEditorChange={handleEditorChange}
-              onLoadError={(error) => {
-                console.error('TinyMCE load error:', error);
-              }}
             />
           </div>
           <p className="text-sm text-gray-500">
