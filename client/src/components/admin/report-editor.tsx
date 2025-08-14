@@ -12,25 +12,8 @@ import { Save, Eye, FileText, X, Table, Plus, Trash2, Image, Upload } from "luci
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
-import ReactQuill, { Quill } from "react-quill";
+import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-
-// Safely register table module only if it exists
-let tableModuleRegistered = false;
-try {
-  // @ts-ignore - No types available for quill-better-table
-  const QuillBetterTable = require("quill-better-table");
-  if (QuillBetterTable && typeof QuillBetterTable === 'function') {
-    Quill.register({
-      'modules/better-table': QuillBetterTable
-    }, true);
-    tableModuleRegistered = true;
-    // Import CSS only if module is available
-    require("quill-better-table/dist/quill-better-table.css");
-  }
-} catch (error) {
-  console.warn('quill-better-table not available, using basic table functionality');
-}
 
 interface ReportEditorProps {
   markets: Market[];
@@ -48,60 +31,34 @@ const REPORT_TYPES = [
   { value: "technology-overview", label: "Technology Overview" },
 ];
 
-// Enhanced Quill modules with table support and custom handlers
-const createQuillModules = (imageHandler: () => void, tableHandler: () => void) => {
-  const modules: any = {
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
-        [{ 'align': [] }],
-        ['link', 'image', 'table'],
-        ['blockquote', 'code-block'],
-        [{ 'script': 'sub'}, { 'script': 'super' }],
-        ['clean']
-      ],
-      handlers: {
-        image: imageHandler,
-        table: tableHandler,
-      }
+// Simple Quill modules with basic functionality
+const createQuillModules = (imageHandler: () => void, tableHandler: () => void) => ({
+  toolbar: {
+    container: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['link', 'image', 'table'],
+      ['blockquote', 'code-block'],
+      [{ 'script': 'sub'}, { 'script': 'super' }],
+      ['clean']
+    ],
+    handlers: {
+      image: imageHandler,
+      table: tableHandler,
     }
-  };
-
-  // Only add table modules if better-table is available
-  if (tableModuleRegistered) {
-    modules.table = true;
-    modules['better-table'] = {
-      operationMenu: {
-        items: {
-          unmergeCells: {
-            text: 'Another unmerge cells name'
-          }
-        }
-      },
-      keyboard: {
-        'table-cell-line-break': 'Enter'
-      }
-    };
   }
+});
 
-  return modules;
-};
-
-// Base formats available in Quill
-const baseFormats = [
+// Standard Quill formats
+const QUILL_FORMATS = [
   'header', 'bold', 'italic', 'underline', 'strike',
   'color', 'background', 'list', 'bullet', 'indent',
   'align', 'link', 'image', 'blockquote', 'code-block', 'script'
 ];
-
-// Add table formats only if better-table module is available
-const QUILL_FORMATS = tableModuleRegistered 
-  ? [...baseFormats, 'table', 'table-cell-line', 'table-cell', 'table-col', 'table-row']
-  : baseFormats;
 
 export default function ReportEditor({ markets, existingReport, onClose, onSave }: ReportEditorProps) {
   const [formData, setFormData] = useState({
@@ -202,31 +159,23 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
     if (quill) {
       const range = quill.getSelection(true);
       
-      if (tableModuleRegistered) {
-        // Use better-table if available
-        const tableModule = quill.getModule('better-table');
-        if (tableModule) {
-          tableModule.insertTable(tableRows, tableCols);
+      // Create a simple HTML table
+      let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"><tbody>';
+      for (let i = 0; i < tableRows; i++) {
+        tableHTML += '<tr>';
+        for (let j = 0; j < tableCols; j++) {
+          const cellStyle = 'border: 1px solid #ddd; padding: 8px; text-align: left; min-width: 100px;';
+          const headerStyle = i === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
+          tableHTML += `<td style="${cellStyle} ${headerStyle}">Cell ${i + 1},${j + 1}</td>`;
         }
-      } else {
-        // Fallback to basic HTML table insertion
-        let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"><tbody>';
-        for (let i = 0; i < tableRows; i++) {
-          tableHTML += '<tr>';
-          for (let j = 0; j < tableCols; j++) {
-            const cellStyle = 'border: 1px solid #ddd; padding: 8px; text-align: left; min-width: 100px;';
-            const headerStyle = i === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
-            tableHTML += `<td style="${cellStyle} ${headerStyle}">Cell ${i + 1},${j + 1}</td>`;
-          }
-          tableHTML += '</tr>';
-        }
-        tableHTML += '</tbody></table><p><br></p>';
+        tableHTML += '</tr>';
+      }
+      tableHTML += '</tbody></table><p><br></p>';
 
-        // Insert table using clipboard
-        if (range) {
-          quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
-          quill.setSelection({ index: range.index + 1, length: 0 });
-        }
+      // Insert table using clipboard
+      if (range) {
+        quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
+        quill.setSelection({ index: range.index + 1, length: 0 });
       }
     }
     
