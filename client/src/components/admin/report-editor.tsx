@@ -6,14 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Save, Eye, FileText, X, Table, Plus, Trash2, Image, Upload } from "lucide-react";
+import { Save, Eye, FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
+import { Editor } from "@tinymce/tinymce-react";
 
 interface ReportEditorProps {
   markets: Market[];
@@ -29,35 +26,6 @@ const REPORT_TYPES = [
   { value: "trend-report", label: "Trend Report" },
   { value: "competitive-analysis", label: "Competitive Analysis" },
   { value: "technology-overview", label: "Technology Overview" },
-];
-
-// Simple Quill modules with basic functionality
-const createQuillModules = (imageHandler: () => void, tableHandler: () => void) => ({
-  toolbar: {
-    container: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'table'],
-      ['blockquote', 'code-block'],
-      [{ 'script': 'sub'}, { 'script': 'super' }],
-      ['clean']
-    ],
-    handlers: {
-      image: imageHandler,
-      table: tableHandler,
-    }
-  }
-});
-
-// Standard Quill formats
-const QUILL_FORMATS = [
-  'header', 'bold', 'italic', 'underline', 'strike',
-  'color', 'background', 'list', 'bullet', 'indent',
-  'align', 'link', 'image', 'blockquote', 'code-block', 'script'
 ];
 
 export default function ReportEditor({ markets, existingReport, onClose, onSave }: ReportEditorProps) {
@@ -81,107 +49,14 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
       });
     }
   }, [existingReport]);
+
   const [showPreview, setShowPreview] = useState(false);
-  const [showTableDialog, setShowTableDialog] = useState(false);
-  const [showImageDialog, setShowImageDialog] = useState(false);
-  const [tableRows, setTableRows] = useState(3);
-  const [tableCols, setTableCols] = useState(3);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const quillRef = useRef<ReactQuill>(null);
+  const editorRef = useRef<any>(null);
   const { toast } = useToast();
 
-  // Image upload handler
-  const handleImageUpload = async () => {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
-    input.click();
-
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (file) {
-        setUploadingImage(true);
-        try {
-          // Get upload URL from backend
-          const uploadResponse = await fetch('/api/objects/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          const { uploadURL } = await uploadResponse.json();
-
-          // Upload image to object storage
-          await fetch(uploadURL, {
-            method: 'PUT',
-            body: file,
-          });
-
-          // Get the object URL
-          const objectUrl = uploadURL.split('?')[0]; // Remove query params
-          const objectPath = `/objects/${objectUrl.split('/').slice(-2).join('/')}`;
-
-          // Insert image into editor
-          const quill = quillRef.current?.getEditor();
-          if (quill) {
-            const range = quill.getSelection(true);
-            if (range) {
-              quill.insertEmbed(range.index, 'image', objectPath);
-              quill.setSelection({ index: range.index + 1, length: 0 });
-            }
-          }
-
-          toast({
-            title: "Success",
-            description: "Image uploaded successfully",
-          });
-        } catch (error) {
-          console.error('Image upload failed:', error);
-          toast({
-            title: "Error",
-            description: "Failed to upload image",
-            variant: "destructive",
-          });
-        } finally {
-          setUploadingImage(false);
-        }
-      }
-    };
-  };
-
-  // Table insertion handler
-  const handleTableInsert = () => {
-    setShowTableDialog(true);
-  };
-
-  // Insert table into editor
-  const insertTable = () => {
-    const quill = quillRef.current?.getEditor();
-    if (quill) {
-      const range = quill.getSelection(true);
-      
-      // Create a simple HTML table
-      let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"><tbody>';
-      for (let i = 0; i < tableRows; i++) {
-        tableHTML += '<tr>';
-        for (let j = 0; j < tableCols; j++) {
-          const cellStyle = 'border: 1px solid #ddd; padding: 8px; text-align: left; min-width: 100px;';
-          const headerStyle = i === 0 ? 'background-color: #f5f5f5; font-weight: bold;' : '';
-          tableHTML += `<td style="${cellStyle} ${headerStyle}">Cell ${i + 1},${j + 1}</td>`;
-        }
-        tableHTML += '</tr>';
-      }
-      tableHTML += '</tbody></table><p><br></p>';
-
-      // Insert table using clipboard
-      if (range) {
-        quill.clipboard.dangerouslyPasteHTML(range.index, tableHTML);
-        quill.setSelection({ index: range.index + 1, length: 0 });
-      }
-    }
-    
-    setShowTableDialog(false);
-    setTableRows(3);
-    setTableCols(3);
+  // Handle editor content change
+  const handleEditorChange = (content: string) => {
+    setFormData(prev => ({ ...prev, htmlContent: content }));
   };
 
   // Save report mutation
@@ -262,6 +137,54 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
 
   const selectedMarket = markets.find(m => m.id === formData.marketId);
 
+  // TinyMCE configuration
+  const tinymceConfig = {
+    height: 400,
+    menubar: true,
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+      'insertdatetime', 'media', 'table', 'help', 'wordcount', 'paste'
+    ],
+    toolbar: 
+      'undo redo | blocks | bold italic forecolor | alignleft aligncenter ' +
+      'alignright alignjustify | bullist numlist outdent indent | ' +
+      'removeformat | table tabledelete | tableprops tablerowprops tablecellprops | ' +
+      'tableinsertrowbefore tableinsertrowafter tabledeleterow | ' +
+      'tableinsertcolbefore tableinsertcolafter tabledeletecol | ' +
+      'image link media | code fullscreen preview | help',
+    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+    paste_data_images: true,
+    automatic_uploads: true,
+    file_picker_types: 'image',
+    images_upload_handler: async (blobInfo: any, progress: any) => {
+      return new Promise(async (resolve, reject) => {
+        try {
+          // Get upload URL from backend
+          const uploadResponse = await fetch('/api/objects/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const { uploadURL } = await uploadResponse.json();
+
+          // Upload image to object storage
+          await fetch(uploadURL, {
+            method: 'PUT',
+            body: blobInfo.blob(),
+          });
+
+          // Return the object URL
+          const objectUrl = uploadURL.split('?')[0];
+          const objectPath = `/objects/${objectUrl.split('/').slice(-2).join('/')}`;
+          resolve(objectPath);
+        } catch (error) {
+          console.error('Image upload failed:', error);
+          reject('Image upload failed');
+        }
+      });
+    }
+  };
+
   if (showPreview) {
     return (
       <Card className="w-full max-w-6xl mx-auto">
@@ -306,9 +229,10 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
             <Label htmlFor="title">Report Title</Label>
             <Input
               id="title"
+              placeholder="Enter report title..."
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Enter report title..."
+              className="w-full"
             />
           </div>
           
@@ -319,10 +243,10 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
               onValueChange={(value) => setFormData(prev => ({ ...prev, marketId: value }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a market" />
+                <SelectValue placeholder="Select a market..." />
               </SelectTrigger>
               <SelectContent>
-                {markets.map((market) => (
+                {markets.map(market => (
                   <SelectItem key={market.id} value={market.id}>
                     {market.name}
                   </SelectItem>
@@ -340,10 +264,10 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
               onValueChange={(value) => setFormData(prev => ({ ...prev, reportType: value }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select report type" />
+                <SelectValue placeholder="Select report type..." />
               </SelectTrigger>
               <SelectContent>
-                {REPORT_TYPES.map((type) => (
+                {REPORT_TYPES.map(type => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
                   </SelectItem>
@@ -351,32 +275,29 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
               </SelectContent>
             </Select>
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Input
+              id="description"
+              placeholder="Brief description of the report..."
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full"
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Brief description of the report..."
-            rows={3}
-          />
-        </div>
-
-        {/* HTML Editor */}
+        {/* Rich Text Editor */}
         <div className="space-y-2">
           <Label>Report Content</Label>
           <div className="border rounded-lg">
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={formData.htmlContent}
-              onChange={(content) => setFormData(prev => ({ ...prev, htmlContent: content }))}
-              modules={createQuillModules(handleImageUpload, handleTableInsert)}
-              formats={QUILL_FORMATS}
-              style={{ minHeight: '400px' }}
-              placeholder="Write your report content here..."
+            <Editor
+              apiKey="no-api-key"
+              onInit={(evt, editor) => editorRef.current = editor}
+              initialValue={formData.htmlContent}
+              init={tinymceConfig}
+              onEditorChange={handleEditorChange}
             />
           </div>
           <p className="text-sm text-gray-500">
@@ -384,61 +305,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
           </p>
         </div>
 
-        {/* Table Creation Dialog */}
-        <Dialog open={showTableDialog} onOpenChange={setShowTableDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Table className="h-5 w-5" />
-                Insert Table
-              </DialogTitle>
-              <DialogDescription>
-                Choose the dimensions for your table
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Rows</Label>
-                  <Select value={tableRows.toString()} onValueChange={(value) => setTableRows(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                        <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Columns</Label>
-                  <Select value={tableCols.toString()} onValueChange={(value) => setTableCols(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2, 3, 4, 5, 6, 7, 8].map(num => (
-                        <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowTableDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={insertTable} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Insert Table
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Actions */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-4">
           <Button
             onClick={handleSave}
