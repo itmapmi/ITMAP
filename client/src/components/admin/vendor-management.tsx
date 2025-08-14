@@ -390,11 +390,15 @@ export default function VendorManagement() {
             </Card>
           </div>
 
-          {/* Vendor Scoring */}
-          <div className="lg:col-span-2">
+          {/* Vendor Scoring - Split into X-axis and Y-axis */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* X-axis Criteria (Execution) */}
             <Card>
               <CardHeader>
-                <CardTitle>Vendor Scoring</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-blue-600">X-axis Criteria</span>
+                  <span className="text-sm text-gray-500 font-normal">(Execution)</span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {vendorsLoading || scoresLoading ? (
@@ -411,7 +415,7 @@ export default function VendorManagement() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Vendor</TableHead>
-                          {criteria?.map(criterion => (
+                          {criteria?.filter(criterion => criterion.category === 'execution').map(criterion => (
                             <TableHead key={criterion.id} className="text-center min-w-[100px]">
                               {criterion.name}
                             </TableHead>
@@ -444,7 +448,7 @@ export default function VendorManagement() {
                                 </div>
                               </div>
                             </TableCell>
-                            {criteria?.map(criterion => {
+                            {criteria?.filter(criterion => criterion.category === 'execution').map(criterion => {
                               const currentScore = getVendorScore(vendor.id, criterion.id);
                               const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
@@ -470,7 +474,7 @@ export default function VendorManagement() {
                             })}
                             <TableCell className="text-center">
                               <div className="flex flex-col space-y-1">
-                                {criteria?.map(criterion => {
+                                {criteria?.filter(criterion => criterion.category === 'execution').map(criterion => {
                                   const key = `${vendor.id}:::${criterion.id}`;
                                   const hasChanges = vendorScores[key] !== undefined;
                                   return hasChanges ? (
@@ -493,24 +497,134 @@ export default function VendorManagement() {
                         ))}
                       </TableBody>
                     </Table>
-                    
-                    {/* Bulk Save Button */}
-                    {Object.keys(vendorScores).length > 0 && (
-                      <div className="mt-4 flex justify-end">
-                        <Button 
-                          onClick={saveAllPendingScores}
-                          disabled={saveScoreMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          Save All Changes ({Object.keys(vendorScores).length})
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Y-axis Criteria (Viability) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-green-600">Y-axis Criteria</span>
+                  <span className="text-sm text-gray-500 font-normal">(Viability)</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {vendorsLoading || scoresLoading ? (
+                  <Skeleton className="h-64 w-full" />
+                ) : !vendors || vendors.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building2 className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+                    <p>No vendors in this market</p>
+                    <p className="text-sm text-gray-400 mt-1">Add vendors to start scoring</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vendor</TableHead>
+                          {criteria?.filter(criterion => criterion.category === 'viability').map(criterion => (
+                            <TableHead key={criterion.id} className="text-center min-w-[100px]">
+                              {criterion.name}
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {vendors.map(vendor => (
+                          <TableRow key={vendor.id}>
+                            <TableCell className="font-medium">
+                              <div>
+                                <div>{vendor.name}</div>
+                                <div className="flex space-x-2 mt-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleEditVendor(vendor)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => deleteVendorMutation.mutate(vendor.id)}
+                                    disabled={deleteVendorMutation.isPending}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </TableCell>
+                            {criteria?.filter(criterion => criterion.category === 'viability').map(criterion => {
+                              const currentScore = getVendorScore(vendor.id, criterion.id);
+                              const key = `${vendor.id}:::${criterion.id}`;
+                              const pendingScore = vendorScores[key];
+                              return (
+                                <TableCell key={criterion.id} className="text-center">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    step="0.1"
+                                    value={pendingScore !== undefined ? pendingScore : currentScore}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value);
+                                      if (!isNaN(value) || e.target.value === '') {
+                                        handleScoreChange(vendor.id, criterion.id, isNaN(value) ? 0 : value);
+                                      }
+                                    }}
+                                    className="w-20 text-center"
+                                    placeholder="0-10"
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-center">
+                              <div className="flex flex-col space-y-1">
+                                {criteria?.filter(criterion => criterion.category === 'viability').map(criterion => {
+                                  const key = `${vendor.id}:::${criterion.id}`;
+                                  const hasChanges = vendorScores[key] !== undefined;
+                                  return hasChanges ? (
+                                    <Button
+                                      key={criterion.id}
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => saveScore(vendor.id, criterion.id)}
+                                      disabled={saveScoreMutation.isPending}
+                                      className="text-xs"
+                                    >
+                                      <Save className="h-3 w-3 mr-1" />
+                                      {criterion.name}
+                                    </Button>
+                                  ) : null;
+                                })}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bulk Save Button for All Changes */}
+            {Object.keys(vendorScores).length > 0 && (
+              <div className="flex justify-end">
+                <Button 
+                  onClick={saveAllPendingScores}
+                  disabled={saveScoreMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save All Changes ({Object.keys(vendorScores).length})
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

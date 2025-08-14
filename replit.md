@@ -94,6 +94,15 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### Vendor Scoring Table Restructure (August 14, 2025)
+- **Split vendor scoring tables into separate X-axis and Y-axis criteria tables** in the admin portal
+- **Created dedicated X-axis (Execution) criteria table** with blue color theme for better visual distinction
+- **Created dedicated Y-axis (Viability) criteria table** with green color theme for clear categorization
+- **Maintained all existing scoring functionality** including individual save buttons and bulk save operations
+- **Improved scoring workflow organization** by separating criteria categories for easier vendor evaluation
+- **Enhanced visual hierarchy** with color-coded headers and clear section separation
+- **Preserved vendor management actions** (edit/delete) in both tables for consistent user experience
+
 ### Historical Timeline Implementation (August 12, 2025)
 - **Implemented functional Magic Quadrant historical timeline** with real dates instead of "36 months ago"
 - **Added 156-week timeline range** (3 years of weekly historical data navigation)
