@@ -8,7 +8,8 @@ import { FadeInSection } from "@/components/ui/animated-card";
 import { LoadingGrid, SkeletonCard } from "@/components/ui/loading-animations";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
-import { BarChart3, TrendingUp, Users, Shield } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Shield, CheckCircle, Play } from "lucide-react";
+import itmapLogo from "@assets/New_!_1755236929587.png";
 
 export default function Home() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -23,7 +24,7 @@ export default function Home() {
   // Landing page for unauthenticated users
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
         {/* Hero Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <motion.div 
@@ -32,21 +33,28 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl">
-              Enterprise Market
-              <span className="text-blue-600"> Intelligence</span>
+            <div className="flex justify-center mb-8">
+              <img src={itmapLogo} alt="ITMAP" className="h-16 w-auto" />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl mb-4">
+              Enterprise Technology Intelligence
             </h1>
-            <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-              Get comprehensive vendor analysis, competitive intelligence, and detailed market insights with interactive Magic Quadrant visualizations.
+            <div className="text-xl text-blue-600 font-semibold mb-6 tracking-wide">
+              Unbiased. Comprehensive.
+            </div>
+            <p className="mt-3 max-w-3xl mx-auto text-lg text-gray-600 leading-relaxed">
+              ITMAP delivers unbiased technology vendor analysis and comprehensive market intelligence. 
+              Make informed decisions with our interactive Magic Quadrant visualizations, real-time competitive intelligence, 
+              and detailed research reports.
             </p>
-            <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto mr-3">
-                  Get Started Free
+                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white px-8 py-3">
+                  Start Free Trial
                 </Button>
               </Link>
               <Link href="/login">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto mt-3 sm:mt-0">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white px-8 py-3">
                   Sign In
                 </Button>
               </Link>
@@ -54,70 +62,105 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Features Section */}
+        {/* Value Proposition Section */}
         <div className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div 
-              className="text-center"
+              className="text-center mb-16"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
-              <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-                Everything you need for market research
+              <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
+                Why Technology Leaders Choose ITMAP
               </h2>
-              <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
-                Comprehensive tools and insights to make informed technology decisions
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Our platform combines deep market expertise with cutting-edge analytics to deliver actionable insights
               </p>
             </motion.div>
 
             <motion.div 
-              className="mt-16"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
             >
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="text-center">
-                  <div className="flex justify-center">
-                    <BarChart3 className="h-12 w-12 text-blue-600" />
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Unbiased Analysis You Can Trust</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <p className="text-gray-600">Independent research methodology free from vendor influence</p>
                   </div>
-                  <h3 className="mt-6 text-lg font-medium text-gray-900">Magic Quadrant Analysis</h3>
-                  <p className="mt-2 text-base text-gray-500">
-                    Interactive vendor positioning with detailed scoring across execution and viability criteria.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="flex justify-center">
-                    <TrendingUp className="h-12 w-12 text-blue-600" />
+                  <div className="flex items-start">
+                    <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <p className="text-gray-600">Transparent scoring criteria across execution and viability dimensions</p>
                   </div>
-                  <h3 className="mt-6 text-lg font-medium text-gray-900">Market Intelligence</h3>
-                  <p className="mt-2 text-base text-gray-500">
-                    Real-time vendor news analysis and automated impact scoring on market positions.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="flex justify-center">
-                    <Users className="h-12 w-12 text-blue-600" />
+                  <div className="flex items-start">
+                    <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <p className="text-gray-600">Real-time updates based on authentic vendor news and developments</p>
                   </div>
-                  <h3 className="mt-6 text-lg font-medium text-gray-900">Competitive Analysis</h3>
-                  <p className="mt-2 text-base text-gray-500">
-                    Side-by-side vendor comparisons with detailed feature matrices and capability assessments.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="flex justify-center">
-                    <Shield className="h-12 w-12 text-blue-600" />
-                  </div>
-                  <h3 className="mt-6 text-lg font-medium text-gray-900">Research Reports</h3>
-                  <p className="mt-2 text-base text-gray-500">
-                    Downloadable comprehensive market analysis with rich HTML formatting and insights.
-                  </p>
                 </div>
               </div>
+              <div className="bg-gradient-to-br from-teal-50 to-blue-50 p-8 rounded-xl">
+                <BarChart3 className="h-16 w-16 text-blue-600 mb-4" />
+                <h4 className="text-xl font-semibold text-gray-900 mb-2">Interactive Magic Quadrants</h4>
+                <p className="text-gray-600">Explore vendor positioning with dynamic visualizations and drill-down capabilities</p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-3 gap-8"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+            >
+              <div className="text-center p-6 bg-gray-50 rounded-xl">
+                <TrendingUp className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Market Intelligence</h3>
+                <p className="text-gray-600">
+                  AI-powered analysis of vendor news, market movements, and competitive dynamics
+                </p>
+              </div>
+
+              <div className="text-center p-6 bg-gray-50 rounded-xl">
+                <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Competitive Analysis</h3>
+                <p className="text-gray-600">
+                  Side-by-side comparisons with feature matrices and capability assessments
+                </p>
+              </div>
+
+              <div className="text-center p-6 bg-gray-50 rounded-xl">
+                <Shield className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Research Reports</h3>
+                <p className="text-gray-600">
+                  Comprehensive market analysis with downloadable insights and recommendations
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="py-16 bg-gradient-to-r from-teal-500 to-blue-600">
+          <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.9 }}
+            >
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Ready to Transform Your Technology Decisions?
+              </h2>
+              <p className="text-xl text-blue-100 mb-8">
+                Join thousands of technology leaders who trust ITMAP for unbiased market intelligence
+              </p>
+              <Link href="/register">
+                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold">
+                  Start Your Free Trial Today
+                </Button>
+              </Link>
             </motion.div>
           </div>
         </div>

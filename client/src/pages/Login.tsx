@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { LogIn, Chrome, Linkedin } from "lucide-react";
+import itmapLogo from "@assets/New_!_1755236929587.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -42,10 +43,14 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Sign in to MarketScope</CardTitle>
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <img src={itmapLogo} alt="ITMAP" className="h-12 w-auto" />
+          </div>
+          <CardTitle className="text-2xl text-center">Welcome to ITMAP</CardTitle>
           <CardDescription className="text-center">
-            Choose your preferred sign-in method
+            <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
+            Sign in to access your technology intelligence platform
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

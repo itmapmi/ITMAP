@@ -94,6 +94,21 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### ITMAP Rebranding Implementation (August 15, 2025)
+- **Complete homepage redesign** with new ITMAP branding and logo integration
+- **Updated navigation component** to display ITMAP logo instead of text-based branding
+- **Redesigned landing page** featuring "Unbiased. Comprehensive." tagline and professional layout
+- **Enhanced value proposition sections** with gradient backgrounds and improved visual hierarchy
+- **Updated Login and Register pages** with consistent ITMAP branding and tagline placement
+- **Implemented gradient CTA buttons** matching the teal-to-purple brand color scheme
+- **Added comprehensive feature showcase** highlighting Magic Quadrant analysis, market intelligence, and research capabilities
+
+### Authentication System Fixes (August 15, 2025)
+- **Resolved infinite 401 request loop** by configuring proper error handling in useAuth hook
+- **Fixed undefined variable references** that were causing application crashes
+- **Implemented graceful authentication state management** with proper fallback for unauthenticated users
+- **Updated query configuration** to handle 401 errors without infinite retries
+
 ### Vendor Scoring Table Restructure (August 14, 2025)
 - **Split vendor scoring tables into separate X-axis and Y-axis criteria tables** in the admin portal
 - **Created dedicated X-axis (Execution) criteria table** with blue color theme for better visual distinction

@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import itmapLogo from "@assets/New_!_1755236929587.png";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -39,7 +40,9 @@ export default function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/">
-              <div className="text-2xl font-bold text-primary-700">MarketScope</div>
+              <div className="flex items-center space-x-3">
+                <img src={itmapLogo} alt="ITMAP" className="h-8 w-auto" />
+              </div>
             </Link>
             <div className="ml-10 flex space-x-8">
               <Link href="/">
