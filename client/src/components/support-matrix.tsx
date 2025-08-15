@@ -72,6 +72,8 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
+    staleTime: 0, // Force fresh data
+    refetchOnMount: true,
   });
 
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
@@ -84,6 +86,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   useEffect(() => {
     if (allVendors && selectedVendors.size === 0) {
       setSelectedVendors(new Set(allVendors.map(v => v.id)));
+      console.log("Support Matrix vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
     }
   }, [allVendors, selectedVendors.size]);
 
