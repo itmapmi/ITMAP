@@ -36,7 +36,7 @@ export default function Home() {
             <div className="flex justify-center mb-12">
               <img src={itmapLogo} alt="ITMAP" className="h-40 w-auto" />
             </div>
-            <h1 className="text-5xl font-bold text-gray-900 sm:text-6xl md:text-7xl mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl mb-6">
               Enterprise Technology Intelligence
             </h1>
             <div className="text-2xl text-blue-600 font-bold mb-8 tracking-wide">
