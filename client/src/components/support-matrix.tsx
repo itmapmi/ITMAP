@@ -129,6 +129,8 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [editMode, setEditMode] = useState(false);
+  const [editingFeature, setEditingFeature] = useState<string | null>(null);
+  const [featureEditData, setFeatureEditData] = useState<{ name: string; description: string }>({ name: '', description: '' });
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -238,6 +240,59 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const handleSupportLevelChange = (vendorId: string, featureId: string, supportLevel: number) => {
     if (!editMode) return;
     updateSupportMutation.mutate({ vendorId, featureId, supportLevel });
+  };
+
+  // Mutation for updating feature details
+  const updateFeatureMutation = useMutation({
+    mutationFn: async ({ featureId, name, description }: { featureId: string; name: string; description: string }) => {
+      const response = await fetch(`/api/features/${featureId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, description })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update feature');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/markets', marketId, 'features'] });
+      toast({
+        title: "Feature Updated",
+        description: "Feature details have been updated successfully.",
+      });
+      setEditingFeature(null);
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update feature. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFeatureEdit = (feature: FeatureWithCategory) => {
+    setEditingFeature(feature.id);
+    setFeatureEditData({ name: feature.name, description: feature.description || '' });
+  };
+
+  const handleFeatureSave = () => {
+    if (!editingFeature) return;
+    updateFeatureMutation.mutate({
+      featureId: editingFeature,
+      name: featureEditData.name,
+      description: featureEditData.description
+    });
+  };
+
+  const handleFeatureCancel = () => {
+    setEditingFeature(null);
+    setFeatureEditData({ name: '', description: '' });
   };
 
   if (isLoading) {
@@ -478,12 +533,63 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                               style={{ gridTemplateColumns: `280px repeat(${vendors.length}, 120px)` }}
                             >
                               <div className="flex flex-col justify-center">
-                                <div className="font-medium text-sm text-gray-900">
-                                  {feature.name}
-                                </div>
-                                {feature.description && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {feature.description}
+                                {editingFeature === feature.id ? (
+                                  <div className="space-y-2">
+                                    <input
+                                      type="text"
+                                      value={featureEditData.name}
+                                      onChange={(e) => setFeatureEditData({ ...featureEditData, name: e.target.value })}
+                                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Feature name"
+                                    />
+                                    <textarea
+                                      value={featureEditData.description}
+                                      onChange={(e) => setFeatureEditData({ ...featureEditData, description: e.target.value })}
+                                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      placeholder="Feature description"
+                                      rows={2}
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={handleFeatureSave}
+                                        disabled={updateFeatureMutation.isPending}
+                                        className="px-2 py-1 text-xs"
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleFeatureCancel}
+                                        className="px-2 py-1 text-xs"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="group flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm text-gray-900">
+                                        {feature.name}
+                                      </div>
+                                      {feature.description && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          {feature.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {user?.role === 'admin' && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleFeatureEdit(feature)}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 h-auto"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                    )}
                                   </div>
                                 )}
                               </div>

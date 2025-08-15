@@ -487,6 +487,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/features/:id", async (req, res) => {
+    try {
+      const { name, description } = z.object({
+        name: z.string().min(1),
+        description: z.string().optional()
+      }).parse(req.body);
+      
+      const feature = await storage.updateFeature(req.params.id, { name, description });
+      res.json(feature);
+    } catch (error) {
+      console.error("Error updating feature:", error);
+      res.status(400).json({ error: "Failed to update feature" });
+    }
+  });
+
   // Vendor Feature Support
   app.get("/api/markets/:marketId/feature-support", async (req, res) => {
     try {
