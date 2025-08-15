@@ -37,7 +37,7 @@ export default function Navigation() {
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-32">
+        <div className="flex justify-between h-20">
           <div className="flex items-center">
             <Link href="/">
               <div className="flex items-center space-x-3">
@@ -46,7 +46,7 @@ export default function Navigation() {
             </Link>
             <div className="ml-10 flex space-x-8">
               <Link href="/">
-                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/" 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
@@ -55,7 +55,7 @@ export default function Navigation() {
                 </div>
               </Link>
               <Link href="/about">
-                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/about" 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
@@ -64,7 +64,7 @@ export default function Navigation() {
                 </div>
               </Link>
               <Link href="/platform">
-                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/platform" 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
@@ -73,7 +73,7 @@ export default function Navigation() {
                 </div>
               </Link>
               <Link href="/contact">
-                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/contact" 
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
@@ -84,7 +84,7 @@ export default function Navigation() {
               {isAuthenticated && (
                 <>
                   <Link href="/markets">
-                    <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                    <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                       location === "/markets" 
                         ? "text-gray-900 hover:text-primary-600" 
                         : "text-gray-500 hover:text-gray-700"
@@ -94,7 +94,7 @@ export default function Navigation() {
                   </Link>
                   {isAdmin && (
                     <Link href="/admin">
-                      <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                      <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                         location.startsWith("/admin") 
                           ? "text-gray-900 hover:text-primary-600" 
                           : "text-gray-500 hover:text-gray-700"
