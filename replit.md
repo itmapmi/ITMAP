@@ -114,6 +114,8 @@ The platform is designed to scale horizontally with its serverless database arch
 - **Fixed undefined variable references** that were causing application crashes
 - **Implemented graceful authentication state management** with proper fallback for unauthenticated users
 - **Updated query configuration** to handle 401 errors without infinite retries
+- **Admin Portal Access Setup**: Created admin user (admin@itmap.com / admin123) with role-based access control
+- **Database Schema Migration**: Updated users table with proper role field and complete user profile structure
 
 ### Vendor Scoring Table Restructure (August 14, 2025)
 - **Split vendor scoring tables into separate X-axis and Y-axis criteria tables** in the admin portal
