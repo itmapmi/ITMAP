@@ -1,16 +1,20 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
     queryKey: ["/api/auth/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchInterval: false,
     refetchIntervalInBackground: false,
+    throwOnError: false,
+    retryOnMount: false,
+    refetchOnMount: false,
   });
 
   const loginMutation = useMutation({
@@ -22,7 +26,6 @@ export function useAuth() {
       return response;
     },
     onSuccess: (user) => {
-      setAuthChecked(false); // Allow refetch
       queryClient.setQueryData(["/api/auth/user"], user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
@@ -37,7 +40,6 @@ export function useAuth() {
       return response;
     },
     onSuccess: (user) => {
-      setAuthChecked(false); // Allow refetch
       queryClient.setQueryData(["/api/auth/user"], user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
@@ -50,7 +52,6 @@ export function useAuth() {
       });
     },
     onSuccess: () => {
-      setAuthChecked(true); // Prevent refetch
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
@@ -58,7 +59,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading: isLoading && !authChecked,
+    isLoading,
     isAuthenticated: !!user && !error,
     isAdmin: user?.role === 'admin',
     login: loginMutation.mutateAsync,
