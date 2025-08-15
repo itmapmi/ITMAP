@@ -289,7 +289,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         ) : (
           <div className="overflow-x-auto">
             <div className="min-w-full">
-              {/* Header with vendor names */}
+              {/* Header with vendor names and products */}
               <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
                 <div className="font-semibold text-sm text-gray-600 flex items-center">
                   Features
@@ -299,8 +299,13 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     <div className="font-medium text-sm text-gray-900 mb-1">
                       {vendor.name}
                     </div>
+                    {vendor.product && (
+                      <div className="text-xs text-gray-600 mb-1 font-medium">
+                        {vendor.product}
+                      </div>
+                    )}
                     <Badge variant="outline" className="text-xs">
-                      Vendor
+                      {vendor.product ? "Product" : "Vendor"}
                     </Badge>
                   </div>
                 ))}

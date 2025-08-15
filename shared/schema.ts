@@ -59,6 +59,7 @@ export const vendors = pgTable("vendors", {
   description: text("description"),
   website: text("website"),
   revenue: decimal("revenue", { precision: 15, scale: 2 }),
+  product: text("product"), // Product being evaluated for this vendor
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

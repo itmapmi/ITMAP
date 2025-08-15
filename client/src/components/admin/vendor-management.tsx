@@ -47,6 +47,7 @@ export default function VendorManagement() {
       description: "",
       website: "",
       revenue: "",
+      product: "",
       marketId: "",
     },
   });
@@ -180,6 +181,7 @@ export default function VendorManagement() {
       description: vendor.description || "",
       website: vendor.website || "",
       revenue: vendor.revenue || "",
+      product: vendor.product || "",
       marketId: vendor.marketId,
     });
   };
@@ -191,6 +193,7 @@ export default function VendorManagement() {
       description: "",
       website: "",
       revenue: "",
+      product: "",
       marketId: "",
     });
   };
@@ -387,6 +390,20 @@ export default function VendorManagement() {
                           <FormLabel>Revenue (Billions)</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., 75.0" type="number" step="0.1" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="product"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., PowerMax 8500, Alletra 9000" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
