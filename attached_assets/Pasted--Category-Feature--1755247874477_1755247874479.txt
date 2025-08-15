@@ -1,0 +1,196 @@
+| **Category**            | **Feature**                                        |
+| ----------------------- | -------------------------------------------------- |
+| **AI-based Operations** | Predictive analytics for failure detection         |
+|                         | Predictive analytics for remediation               |
+|                         | Automated anomaly detection                        |
+|                         | Automated root cause analysis                      |
+|                         | AI-driven workload placement                       |
+|                         | AI-driven workload optimization                    |
+|                         | Intelligent tiering                                |
+|                         | Intelligent data migration                         |
+|                         | Adaptive performance tuning                        |
+|                         | Automated capacity forecasting                     |
+|                         | Automated capacity planning                        |
+|                         | Self-healing mechanisms                            |
+|                         | AI/ML-based anomaly detection for security threats |
+|                         | Autonomous policy creation based on usage patterns |
+| **Availability**        | Active-active high-availability configuration      |
+|                         | Active-passive high-availability configuration     |
+|                         | Redundant controllers                              |
+|                         | Redundant components                               |
+|                         | Non-disruptive firmware upgrades                   |
+|                         | Non-disruptive microcode upgrades                  |
+|                         | Non-disruptive software upgrades                   |
+|                         | Hot-swappable drives                               |
+|                         | Hot-swappable controllers                          |
+|                         | Hot-swappable fans                                 |
+|                         | Hot-swappable power supplies                       |
+|                         | Synchronous replication                            |
+|                         | Asynchronous replication                           |
+|                         | Geo-redundancy support                             |
+|                         | Disaster recovery capabilities                     |
+|                         | Continuous data protection (CDP)                   |
+|                         | Snapshot frequency configuration                   |
+|                         | Snapshot granularity configuration                 |
+|                         | NVMe-oF protocol support for HA                    |
+|                         | Fibre Channel protocol support for HA              |
+|                         | iSCSI protocol support for HA                      |
+|                         | NFS protocol support for HA                        |
+|                         | SMB protocol support for HA                        |
+|                         | S3 protocol support for HA                         |
+|                         | SLA uptime guarantee                               |
+|                         | SLA recovery objectives                            |
+| **Data Management**     | Space-efficient snapshots                          |
+|                         | Instant restore snapshots                          |
+|                         | Cloning support                                    |
+|                         | Thin provisioning                                  |
+|                         | Inline deduplication                               |
+|                         | Post-process deduplication                         |
+|                         | Inline compression                                 |
+|                         | Post-process compression                           |
+|                         | Erasure coding support                             |
+|                         | RAID level configuration options                   |
+|                         | Automated data classification                      |
+|                         | Automated data tagging                             |
+|                         | Policy-based data retention                        |
+|                         | Policy-based data lifecycle management             |
+|                         | Native cloud tiering to AWS                        |
+|                         | Native cloud tiering to Azure                      |
+|                         | Native cloud tiering to GCP                        |
+|                         | Native cloud tiering to OCI                        |
+|                         | Native cloud tiering to IBM Cloud                  |
+|                         | Native cloud tiering to Wasabi                     |
+|                         | Native cloud tiering to Backblaze                  |
+|                         | File data management                               |
+|                         | Block data management                              |
+|                         | Object data management                             |
+|                         | Metadata search                                    |
+|                         | Metadata indexing                                  |
+|                         | Fibre Channel protocol support                     |
+|                         | iSCSI protocol support                             |
+|                         | NVMe-oF protocol support                           |
+|                         | NFS protocol support                               |
+|                         | SMB protocol support                               |
+|                         | S3 protocol support                                |
+|                         | HDFS protocol support                              |
+|                         | Backup platform integration with Commvault         |
+|                         | Backup platform integration with Veeam             |
+|                         | Backup platform integration with Rubrik            |
+|                         | Backup platform integration with Cohesity          |
+|                         | Backup platform integration with Veritas           |
+|                         | Backup platform integration with NetBackup         |
+|                         | Backup platform integration with Dell PPDM         |
+|                         | Backup platform integration with HYCU              |
+| **Ecosystem Support**   | VMware certification                               |
+|                         | Hyper-V certification                              |
+|                         | KVM certification                                  |
+|                         | Citrix certification                               |
+|                         | Kubernetes CSI driver support                      |
+|                         | OpenShift compatibility                            |
+|                         | Tanzu compatibility                                |
+|                         | Anthos compatibility                               |
+|                         | AWS integration                                    |
+|                         | Azure integration                                  |
+|                         | GCP integration                                    |
+|                         | OCI integration                                    |
+|                         | IBM Cloud integration                              |
+|                         | Wasabi integration                                 |
+|                         | Backblaze integration                              |
+|                         | AI/ML workload support for NVIDIA DGX              |
+|                         | AI/ML workload support for Habana                  |
+|                         | AI/ML workload support for TensorFlow              |
+|                         | AI/ML workload support for PyTorch                 |
+|                         | Oracle database integration                        |
+|                         | Microsoft SQL Server integration                   |
+|                         | SAP HANA integration                               |
+|                         | PostgreSQL integration                             |
+|                         | MySQL integration                                  |
+|                         | Hadoop integration                                 |
+|                         | Spark integration                                  |
+|                         | Splunk integration                                 |
+|                         | Elastic integration                                |
+|                         | REST API availability                              |
+|                         | Python SDK availability                            |
+|                         | PowerShell SDK availability                        |
+|                         | Java SDK availability                              |
+|                         | SAP certification                                  |
+|                         | EDA tools certification                            |
+|                         | Media workflow certification                       |
+| **Efficiency**          | Inline deduplication                               |
+|                         | Post-process deduplication                         |
+|                         | Inline compression                                 |
+|                         | Inline decompression                               |
+|                         | Thin provisioning                                  |
+|                         | Reclaim capabilities                               |
+|                         | Auto-tiering support                               |
+|                         | Energy Star certification                          |
+|                         | Climate Neutral certification                      |
+|                         | UNMAP support                                      |
+|                         | TRIM support                                       |
+|                         | Space-efficient snapshots                          |
+|                         | Space-efficient clones                             |
+|                         | Multi-tenancy support                              |
+|                         | Efficiency monitoring dashboards                   |
+|                         | Granular QoS control                               |
+| **Performance**         | Fibre Channel performance benchmark                |
+|                         | NVMe-oF performance benchmark                      |
+|                         | iSCSI performance benchmark                        |
+|                         | NFS performance benchmark                          |
+|                         | SMB performance benchmark                          |
+|                         | S3 performance benchmark                           |
+|                         | Read latency                                       |
+|                         | Write latency                                      |
+|                         | Mixed I/O latency                                  |
+|                         | Sequential IOPS                                    |
+|                         | Random IOPS                                        |
+|                         | Sequential throughput                              |
+|                         | Random throughput                                  |
+|                         | Read caching                                       |
+|                         | Write caching                                      |
+|                         | Tiering between NVMe and SSD                       |
+|                         | Tiering between SSD and HDD                        |
+|                         | End-to-end NVMe support                            |
+|                         | QoS with performance guarantees                    |
+|                         | GPU Direct Storage support                         |
+|                         | Multi-stream parallelism                           |
+| **Scalability**         | Maximum raw capacity                               |
+|                         | Maximum usable capacity                            |
+|                         | Scale-up expansion support                         |
+|                         | Scale-out expansion support                        |
+|                         | Maximum drives per node                            |
+|                         | Maximum nodes per cluster                          |
+|                         | Maximum controllers per cluster                    |
+|                         | Maximum namespace size                             |
+|                         | Maximum file system size                           |
+|                         | Maximum object count per bucket                    |
+|                         | Maximum concurrent protocol connections            |
+|                         | Mixed workload scaling                             |
+|                         | Multi-site stretch clustering support              |
+|                         | Cloud-bursting capability                          |
+| **Security**            | Data-at-rest encryption                            |
+|                         | AES-256 encryption support                         |
+|                         | FIPS 140-2 certification                           |
+|                         | Data-in-flight encryption                          |
+|                         | TLS 1.2 support                                    |
+|                         | TLS 1.3 support                                    |
+|                         | IPsec support                                      |
+|                         | Role-based access control (RBAC)                   |
+|                         | Multi-factor authentication (MFA)                  |
+|                         | Secure erase                                       |
+|                         | Crypto-shredding                                   |
+|                         | Ransomware detection                               |
+|                         | Ransomware protection                              |
+|                         | Immutable snapshots                                |
+|                         | WORM compliance                                    |
+|                         | HIPAA compliance                                   |
+|                         | GDPR compliance                                    |
+|                         | FedRAMP compliance                                 |
+|                         | ISO 27001 compliance                               |
+|                         | Internal key management                            |
+|                         | External key management                            |
+|                         | KMIP server support                                |
+|                         | Kerberos for NFS                                   |
+|                         | SMB signing                                        |
+|                         | S3 object lock                                     |
+|                         | Audit logging                                      |
+|                         | Tamper-proof event records                         |
