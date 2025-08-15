@@ -37,11 +37,11 @@ export default function Navigation() {
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-28">
+        <div className="flex justify-between h-20">
           <div className="flex items-center">
             <Link href="/">
               <div className="flex items-center space-x-3">
-                <img src={itmapLogo} alt="ITMAP" className="h-20 w-auto" />
+                <img src={itmapLogo} alt="ITMAP" className="h-16 w-auto" />
               </div>
             </Link>
             <div className="ml-10 flex space-x-8">
@@ -51,19 +51,59 @@ export default function Navigation() {
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}>
-                  Markets
+                  Home
                 </div>
               </Link>
-              {isAdmin && (
-                <Link href="/admin">
-                  <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
-                    location.startsWith("/admin") 
-                      ? "text-gray-900 hover:text-primary-600" 
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}>
-                    Admin
-                  </div>
-                </Link>
+              <Link href="/about">
+                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                  location === "/about" 
+                    ? "text-gray-900 hover:text-primary-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}>
+                  About Us
+                </div>
+              </Link>
+              <Link href="/platform">
+                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                  location === "/platform" 
+                    ? "text-gray-900 hover:text-primary-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}>
+                  The ITMAP Platform
+                </div>
+              </Link>
+              <Link href="/contact">
+                <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                  location === "/contact" 
+                    ? "text-gray-900 hover:text-primary-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}>
+                  Contact Us
+                </div>
+              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link href="/markets">
+                    <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                      location === "/markets" 
+                        ? "text-gray-900 hover:text-primary-600" 
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}>
+                      Markets
+                    </div>
+                  </Link>
+                  {isAdmin && (
+                    <Link href="/admin">
+                      <div className={`px-3 py-2 text-sm font-medium cursor-pointer ${
+                        location.startsWith("/admin") 
+                          ? "text-gray-900 hover:text-primary-600" 
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}>
+                        Admin
+                      </div>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>

@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
 import Home from "@/pages/home";
+import About from "@/pages/About";
+import Platform from "@/pages/Platform";
+import Contact from "@/pages/Contact";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
 import ReportViewer from "@/pages/report-viewer";
@@ -48,6 +51,9 @@ function Router() {
       <Navigation />
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/about" component={About} />
+        <Route path="/platform" component={Platform} />
+        <Route path="/contact" component={Contact} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/markets/:marketId" component={MarketDetails} />
