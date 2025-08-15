@@ -326,6 +326,15 @@ export type FeatureCategory = typeof featureCategories.$inferSelect;
 export type InsertFeature = z.infer<typeof insertFeatureSchema>;
 export type Feature = typeof features.$inferSelect;
 
+// Feature with category information for support matrix
+export type FeatureWithCategory = Feature & {
+  category: {
+    id: string;
+    name: string;
+    displayOrder: number;
+  };
+};
+
 export type InsertVendorFeatureSupport = z.infer<typeof insertVendorFeatureSupportSchema>;
 export type VendorFeatureSupport = typeof vendorFeatureSupport.$inferSelect;
 

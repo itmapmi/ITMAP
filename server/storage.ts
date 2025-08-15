@@ -14,6 +14,7 @@ import {
   type FeatureCategory,
   type InsertFeatureCategory,
   type Feature,
+  type FeatureWithCategory,
   type InsertFeature,
   type VendorFeatureSupport,
   type InsertVendorFeatureSupport,
@@ -440,7 +441,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Features
-  async getMarketFeatures(marketId: string): Promise<Feature[]> {
+  async getMarketFeatures(marketId: string): Promise<FeatureWithCategory[]> {
     // Get all features for a market by joining through categories
     return await db
       .select({
@@ -450,11 +451,16 @@ export class DatabaseStorage implements IStorage {
         categoryId: features.categoryId,
         displayOrder: features.displayOrder,
         createdAt: features.createdAt,
+        category: {
+          id: featureCategories.id,
+          name: featureCategories.name,
+          displayOrder: featureCategories.displayOrder,
+        }
       })
       .from(features)
       .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
       .where(eq(featureCategories.marketId, marketId))
-      .orderBy(features.displayOrder, features.name);
+      .orderBy(featureCategories.displayOrder, features.displayOrder);
   }
 
   async getCategoryFeatures(categoryId: string): Promise<Feature[]> {

@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Users, Eye, EyeOff, Settings } from "lucide-react";
-import type { Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
+import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
   marketId: string;
@@ -63,7 +63,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
 
-  const { data: features, isLoading: featuresLoading } = useQuery<Feature[]>({
+  const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
   });
 
@@ -260,40 +260,74 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 ))}
               </div>
 
-            {/* Feature rows */}
-            <div className="space-y-3">
-              {features.map(feature => (
-                <div 
-                  key={feature.id} 
-                  className="grid gap-4 py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2"
-                  style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
-                >
-                  <div className="flex flex-col justify-center">
-                    <div className="font-medium text-sm text-gray-900">
-                      {feature.name}
+            {/* Feature rows grouped by categories */}
+            <div className="space-y-6">
+              {features && (() => {
+                // Group features by category
+                const featuresByCategory = features.reduce((acc, feature) => {
+                  const categoryName = feature.category.name;
+                  if (!acc[categoryName]) {
+                    acc[categoryName] = {
+                      category: feature.category,
+                      features: []
+                    };
+                  }
+                  acc[categoryName].features.push(feature);
+                  return acc;
+                }, {} as Record<string, { category: FeatureWithCategory['category'], features: FeatureWithCategory[] }>);
+
+                // Sort categories by display order
+                const sortedCategories = Object.values(featuresByCategory).sort(
+                  (a, b) => a.category.displayOrder - b.category.displayOrder
+                );
+
+                return sortedCategories.map(({ category, features: categoryFeatures }) => (
+                  <div key={category.id} className="space-y-3">
+                    {/* Category Header */}
+                    <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r">
+                      <h3 className="font-semibold text-lg text-blue-900">
+                        {category.name}
+                      </h3>
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {categoryFeatures.length} features
+                      </Badge>
                     </div>
-                    {feature.description && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        {feature.description}
-                      </div>
-                    )}
-                    <Badge variant="secondary" className="text-xs w-fit mt-2">
-                      {feature.categoryId}
-                    </Badge>
-                  </div>
-                  
-                  {vendors.map(vendor => {
-                    const supportKey = `${vendor.id}-${feature.id}`;
-                    const supportLevel = supportLookup.get(supportKey) || 0;
                     
-                    return (
-                      <div key={vendor.id} className="flex justify-center items-center">
-                        <HarveyBall level={supportLevel} />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                    {/* Features in this category */}
+                    <div className="space-y-2 ml-4">
+                      {categoryFeatures.map(feature => (
+                        <div 
+                          key={feature.id} 
+                          className="grid gap-4 py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2"
+                          style={{ gridTemplateColumns: `280px repeat(${vendors.length}, 120px)` }}
+                        >
+                          <div className="flex flex-col justify-center">
+                            <div className="font-medium text-sm text-gray-900">
+                              {feature.name}
+                            </div>
+                            {feature.description && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {feature.description}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {vendors.map(vendor => {
+                            const supportKey = `${vendor.id}-${feature.id}`;
+                            const supportLevel = supportLookup.get(supportKey) || 0;
+                            
+                            return (
+                              <div key={vendor.id} className="flex justify-center items-center">
+                                <HarveyBall level={supportLevel} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
 
             {features.length === 0 && (
