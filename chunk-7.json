@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Rubrik",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Cohesity",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Veritas",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with NetBackup",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Dell PPDM",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with HYCU",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "VMware certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "VMware certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hyper-V certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "KVM certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "KVM certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Citrix certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Citrix certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Kubernetes CSI driver support",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "OpenShift compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    }
+  ]
+}

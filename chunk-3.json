@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Synchronous replication",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Asynchronous replication",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Geo-redundancy support",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Disaster recovery capabilities",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Continuous data protection (CDP)",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Snapshot frequency configuration",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Snapshot granularity configuration",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "NVMe-oF protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Fibre Channel protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "iSCSI protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "NFS protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SMB protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    }
+  ]
+}

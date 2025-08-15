@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Object data management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Object data management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Metadata search",
+      "supportLevel": 2,
+      "notes": "No mention of automated data classification or tagging features in accessible documentation【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Metadata search",
+      "supportLevel": 2,
+      "notes": "No automated classification or tagging features described."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Metadata search",
+      "supportLevel": 0,
+      "notes": "No data classification or tagging features documented."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Metadata search",
+      "supportLevel": 2,
+      "notes": "No dedicated classification features; considered partial support."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Metadata search",
+      "supportLevel": 0,
+      "notes": "No automated data classification features described."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Metadata search",
+      "supportLevel": 2,
+      "notes": "No explicit classification features documented."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Metadata search",
+      "supportLevel": 2,
+      "notes": "No automated classification features are highlighted."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Metadata search",
+      "supportLevel": 3,
+      "notes": "Cloud Data Sense provides classification and compliance insights (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Metadata indexing",
+      "supportLevel": 2,
+      "notes": "No mention of automated data classification or tagging features in accessible documentation【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Metadata indexing",
+      "supportLevel": 2,
+      "notes": "No automated classification or tagging features described."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Metadata indexing",
+      "supportLevel": 0,
+      "notes": "No data classification or tagging features documented."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Metadata indexing",
+      "supportLevel": 2,
+      "notes": "No dedicated classification features; considered partial support."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Metadata indexing",
+      "supportLevel": 0,
+      "notes": "No automated data classification features described."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Metadata indexing",
+      "supportLevel": 2,
+      "notes": "No explicit classification features documented."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Metadata indexing",
+      "supportLevel": 2,
+      "notes": "No automated classification features are highlighted."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Metadata indexing",
+      "supportLevel": 3,
+      "notes": "Cloud Data Sense provides classification and compliance insights (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Fibre Channel protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "iSCSI protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "NVMe-oF protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "NFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "NFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "NFS protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "NFS protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "NFS protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "NFS protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "NFS protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "NFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SMB protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SMB protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SMB protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SMB protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SMB protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SMB protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SMB protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SMB protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "S3 protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "S3 protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "S3 protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "S3 protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "S3 protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "S3 protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "S3 protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "S3 protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "HDFS protocol support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Commvault",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backup platform integration with Veeam",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    }
+  ]
+}

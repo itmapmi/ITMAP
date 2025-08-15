@@ -1,0 +1,1774 @@
+{
+  "categories": [
+    {
+      "name": "AI-based Operations",
+      "displayOrder": 1
+    },
+    {
+      "name": "Availability",
+      "displayOrder": 2
+    },
+    {
+      "name": "Data Management",
+      "displayOrder": 3
+    },
+    {
+      "name": "Ecosystem Support",
+      "displayOrder": 4
+    },
+    {
+      "name": "Efficiency",
+      "displayOrder": 5
+    },
+    {
+      "name": "Performance",
+      "displayOrder": 6
+    },
+    {
+      "name": "Scalability",
+      "displayOrder": 7
+    },
+    {
+      "name": "Security",
+      "displayOrder": 8
+    }
+  ],
+  "features": [
+    {
+      "name": "Predictive analytics for failure detection",
+      "description": "AI-based Operations - Predictive analytics for failure detection",
+      "category": "AI-based Operations",
+      "displayOrder": 1
+    },
+    {
+      "name": "Predictive analytics for remediation",
+      "description": "AI-based Operations - Predictive analytics for remediation",
+      "category": "AI-based Operations",
+      "displayOrder": 2
+    },
+    {
+      "name": "Automated anomaly detection",
+      "description": "AI-based Operations - Automated anomaly detection",
+      "category": "AI-based Operations",
+      "displayOrder": 3
+    },
+    {
+      "name": "Automated root cause analysis",
+      "description": "AI-based Operations - Automated root cause analysis",
+      "category": "AI-based Operations",
+      "displayOrder": 4
+    },
+    {
+      "name": "AI-driven workload placement",
+      "description": "AI-based Operations - AI-driven workload placement",
+      "category": "AI-based Operations",
+      "displayOrder": 5
+    },
+    {
+      "name": "AI-driven workload optimization",
+      "description": "AI-based Operations - AI-driven workload optimization",
+      "category": "AI-based Operations",
+      "displayOrder": 6
+    },
+    {
+      "name": "Intelligent tiering",
+      "description": "AI-based Operations - Intelligent tiering",
+      "category": "AI-based Operations",
+      "displayOrder": 7
+    },
+    {
+      "name": "Intelligent data migration",
+      "description": "AI-based Operations - Intelligent data migration",
+      "category": "AI-based Operations",
+      "displayOrder": 8
+    },
+    {
+      "name": "Adaptive performance tuning",
+      "description": "AI-based Operations - Adaptive performance tuning",
+      "category": "AI-based Operations",
+      "displayOrder": 9
+    },
+    {
+      "name": "Automated capacity forecasting",
+      "description": "AI-based Operations - Automated capacity forecasting",
+      "category": "AI-based Operations",
+      "displayOrder": 10
+    },
+    {
+      "name": "Automated capacity planning",
+      "description": "AI-based Operations - Automated capacity planning",
+      "category": "AI-based Operations",
+      "displayOrder": 11
+    },
+    {
+      "name": "Self-healing mechanisms",
+      "description": "AI-based Operations - Self-healing mechanisms",
+      "category": "AI-based Operations",
+      "displayOrder": 12
+    },
+    {
+      "name": "AI/ML-based anomaly detection for security threats",
+      "description": "AI-based Operations - AI/ML-based anomaly detection for security threats",
+      "category": "AI-based Operations",
+      "displayOrder": 13
+    },
+    {
+      "name": "Autonomous policy creation based on usage patterns",
+      "description": "AI-based Operations - Autonomous policy creation based on usage patterns",
+      "category": "AI-based Operations",
+      "displayOrder": 14
+    },
+    {
+      "name": "Active-active high-availability configuration",
+      "description": "Availability - Active-active high-availability configuration",
+      "category": "Availability",
+      "displayOrder": 15
+    },
+    {
+      "name": "Active-passive high-availability configuration",
+      "description": "Availability - Active-passive high-availability configuration",
+      "category": "Availability",
+      "displayOrder": 16
+    },
+    {
+      "name": "Redundant controllers",
+      "description": "Availability - Redundant controllers",
+      "category": "Availability",
+      "displayOrder": 17
+    },
+    {
+      "name": "Redundant components",
+      "description": "Availability - Redundant components",
+      "category": "Availability",
+      "displayOrder": 18
+    },
+    {
+      "name": "Non-disruptive firmware upgrades",
+      "description": "Availability - Non-disruptive firmware upgrades",
+      "category": "Availability",
+      "displayOrder": 19
+    },
+    {
+      "name": "Non-disruptive microcode upgrades",
+      "description": "Availability - Non-disruptive microcode upgrades",
+      "category": "Availability",
+      "displayOrder": 20
+    },
+    {
+      "name": "Non-disruptive software upgrades",
+      "description": "Availability - Non-disruptive software upgrades",
+      "category": "Availability",
+      "displayOrder": 21
+    },
+    {
+      "name": "Hot-swappable drives",
+      "description": "Availability - Hot-swappable drives",
+      "category": "Availability",
+      "displayOrder": 22
+    },
+    {
+      "name": "Hot-swappable controllers",
+      "description": "Availability - Hot-swappable controllers",
+      "category": "Availability",
+      "displayOrder": 23
+    },
+    {
+      "name": "Hot-swappable fans",
+      "description": "Availability - Hot-swappable fans",
+      "category": "Availability",
+      "displayOrder": 24
+    },
+    {
+      "name": "Hot-swappable power supplies",
+      "description": "Availability - Hot-swappable power supplies",
+      "category": "Availability",
+      "displayOrder": 25
+    },
+    {
+      "name": "Synchronous replication",
+      "description": "Availability - Synchronous replication",
+      "category": "Availability",
+      "displayOrder": 26
+    },
+    {
+      "name": "Asynchronous replication",
+      "description": "Availability - Asynchronous replication",
+      "category": "Availability",
+      "displayOrder": 27
+    },
+    {
+      "name": "Geo-redundancy support",
+      "description": "Availability - Geo-redundancy support",
+      "category": "Availability",
+      "displayOrder": 28
+    },
+    {
+      "name": "Disaster recovery capabilities",
+      "description": "Availability - Disaster recovery capabilities",
+      "category": "Availability",
+      "displayOrder": 29
+    },
+    {
+      "name": "Continuous data protection (CDP)",
+      "description": "Availability - Continuous data protection (CDP)",
+      "category": "Availability",
+      "displayOrder": 30
+    },
+    {
+      "name": "Snapshot frequency configuration",
+      "description": "Availability - Snapshot frequency configuration",
+      "category": "Availability",
+      "displayOrder": 31
+    },
+    {
+      "name": "Snapshot granularity configuration",
+      "description": "Availability - Snapshot granularity configuration",
+      "category": "Availability",
+      "displayOrder": 32
+    },
+    {
+      "name": "NVMe-oF protocol support for HA",
+      "description": "Availability - NVMe-oF protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 33
+    },
+    {
+      "name": "Fibre Channel protocol support for HA",
+      "description": "Availability - Fibre Channel protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 34
+    },
+    {
+      "name": "iSCSI protocol support for HA",
+      "description": "Availability - iSCSI protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 35
+    },
+    {
+      "name": "NFS protocol support for HA",
+      "description": "Availability - NFS protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 36
+    },
+    {
+      "name": "SMB protocol support for HA",
+      "description": "Availability - SMB protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 37
+    },
+    {
+      "name": "S3 protocol support for HA",
+      "description": "Availability - S3 protocol support for HA",
+      "category": "Availability",
+      "displayOrder": 38
+    },
+    {
+      "name": "SLA uptime guarantee",
+      "description": "Availability - SLA uptime guarantee",
+      "category": "Availability",
+      "displayOrder": 39
+    },
+    {
+      "name": "SLA recovery objectives",
+      "description": "Availability - SLA recovery objectives",
+      "category": "Availability",
+      "displayOrder": 40
+    },
+    {
+      "name": "Space-efficient snapshots",
+      "description": "Data Management - Space-efficient snapshots",
+      "category": "Data Management",
+      "displayOrder": 41
+    },
+    {
+      "name": "Instant restore snapshots",
+      "description": "Data Management - Instant restore snapshots",
+      "category": "Data Management",
+      "displayOrder": 42
+    },
+    {
+      "name": "Cloning support",
+      "description": "Data Management - Cloning support",
+      "category": "Data Management",
+      "displayOrder": 43
+    },
+    {
+      "name": "Thin provisioning",
+      "description": "Data Management - Thin provisioning",
+      "category": "Data Management",
+      "displayOrder": 44
+    },
+    {
+      "name": "Inline deduplication",
+      "description": "Data Management - Inline deduplication",
+      "category": "Data Management",
+      "displayOrder": 45
+    },
+    {
+      "name": "Post-process deduplication",
+      "description": "Data Management - Post-process deduplication",
+      "category": "Data Management",
+      "displayOrder": 46
+    },
+    {
+      "name": "Inline compression",
+      "description": "Data Management - Inline compression",
+      "category": "Data Management",
+      "displayOrder": 47
+    },
+    {
+      "name": "Post-process compression",
+      "description": "Data Management - Post-process compression",
+      "category": "Data Management",
+      "displayOrder": 48
+    },
+    {
+      "name": "Erasure coding support",
+      "description": "Data Management - Erasure coding support",
+      "category": "Data Management",
+      "displayOrder": 49
+    },
+    {
+      "name": "RAID level configuration options",
+      "description": "Data Management - RAID level configuration options",
+      "category": "Data Management",
+      "displayOrder": 50
+    },
+    {
+      "name": "Automated data classification",
+      "description": "Data Management - Automated data classification",
+      "category": "Data Management",
+      "displayOrder": 51
+    },
+    {
+      "name": "Automated data tagging",
+      "description": "Data Management - Automated data tagging",
+      "category": "Data Management",
+      "displayOrder": 52
+    },
+    {
+      "name": "Policy-based data retention",
+      "description": "Data Management - Policy-based data retention",
+      "category": "Data Management",
+      "displayOrder": 53
+    },
+    {
+      "name": "Policy-based data lifecycle management",
+      "description": "Data Management - Policy-based data lifecycle management",
+      "category": "Data Management",
+      "displayOrder": 54
+    },
+    {
+      "name": "Native cloud tiering to AWS",
+      "description": "Data Management - Native cloud tiering to AWS",
+      "category": "Data Management",
+      "displayOrder": 55
+    },
+    {
+      "name": "Native cloud tiering to Azure",
+      "description": "Data Management - Native cloud tiering to Azure",
+      "category": "Data Management",
+      "displayOrder": 56
+    },
+    {
+      "name": "Native cloud tiering to GCP",
+      "description": "Data Management - Native cloud tiering to GCP",
+      "category": "Data Management",
+      "displayOrder": 57
+    },
+    {
+      "name": "Native cloud tiering to OCI",
+      "description": "Data Management - Native cloud tiering to OCI",
+      "category": "Data Management",
+      "displayOrder": 58
+    },
+    {
+      "name": "Native cloud tiering to IBM Cloud",
+      "description": "Data Management - Native cloud tiering to IBM Cloud",
+      "category": "Data Management",
+      "displayOrder": 59
+    },
+    {
+      "name": "Native cloud tiering to Wasabi",
+      "description": "Data Management - Native cloud tiering to Wasabi",
+      "category": "Data Management",
+      "displayOrder": 60
+    },
+    {
+      "name": "Native cloud tiering to Backblaze",
+      "description": "Data Management - Native cloud tiering to Backblaze",
+      "category": "Data Management",
+      "displayOrder": 61
+    },
+    {
+      "name": "File data management",
+      "description": "Data Management - File data management",
+      "category": "Data Management",
+      "displayOrder": 62
+    },
+    {
+      "name": "Block data management",
+      "description": "Data Management - Block data management",
+      "category": "Data Management",
+      "displayOrder": 63
+    },
+    {
+      "name": "Object data management",
+      "description": "Data Management - Object data management",
+      "category": "Data Management",
+      "displayOrder": 64
+    },
+    {
+      "name": "Metadata search",
+      "description": "Data Management - Metadata search",
+      "category": "Data Management",
+      "displayOrder": 65
+    },
+    {
+      "name": "Metadata indexing",
+      "description": "Data Management - Metadata indexing",
+      "category": "Data Management",
+      "displayOrder": 66
+    },
+    {
+      "name": "Fibre Channel protocol support",
+      "description": "Data Management - Fibre Channel protocol support",
+      "category": "Data Management",
+      "displayOrder": 67
+    },
+    {
+      "name": "iSCSI protocol support",
+      "description": "Data Management - iSCSI protocol support",
+      "category": "Data Management",
+      "displayOrder": 68
+    },
+    {
+      "name": "NVMe-oF protocol support",
+      "description": "Data Management - NVMe-oF protocol support",
+      "category": "Data Management",
+      "displayOrder": 69
+    },
+    {
+      "name": "NFS protocol support",
+      "description": "Data Management - NFS protocol support",
+      "category": "Data Management",
+      "displayOrder": 70
+    },
+    {
+      "name": "SMB protocol support",
+      "description": "Data Management - SMB protocol support",
+      "category": "Data Management",
+      "displayOrder": 71
+    },
+    {
+      "name": "S3 protocol support",
+      "description": "Data Management - S3 protocol support",
+      "category": "Data Management",
+      "displayOrder": 72
+    },
+    {
+      "name": "HDFS protocol support",
+      "description": "Data Management - HDFS protocol support",
+      "category": "Data Management",
+      "displayOrder": 73
+    },
+    {
+      "name": "Backup platform integration with Commvault",
+      "description": "Data Management - Backup platform integration with Commvault",
+      "category": "Data Management",
+      "displayOrder": 74
+    },
+    {
+      "name": "Backup platform integration with Veeam",
+      "description": "Data Management - Backup platform integration with Veeam",
+      "category": "Data Management",
+      "displayOrder": 75
+    },
+    {
+      "name": "Backup platform integration with Rubrik",
+      "description": "Data Management - Backup platform integration with Rubrik",
+      "category": "Data Management",
+      "displayOrder": 76
+    },
+    {
+      "name": "Backup platform integration with Cohesity",
+      "description": "Data Management - Backup platform integration with Cohesity",
+      "category": "Data Management",
+      "displayOrder": 77
+    },
+    {
+      "name": "Backup platform integration with Veritas",
+      "description": "Data Management - Backup platform integration with Veritas",
+      "category": "Data Management",
+      "displayOrder": 78
+    },
+    {
+      "name": "Backup platform integration with NetBackup",
+      "description": "Data Management - Backup platform integration with NetBackup",
+      "category": "Data Management",
+      "displayOrder": 79
+    },
+    {
+      "name": "Backup platform integration with Dell PPDM",
+      "description": "Data Management - Backup platform integration with Dell PPDM",
+      "category": "Data Management",
+      "displayOrder": 80
+    },
+    {
+      "name": "Backup platform integration with HYCU",
+      "description": "Data Management - Backup platform integration with HYCU",
+      "category": "Data Management",
+      "displayOrder": 81
+    },
+    {
+      "name": "VMware certification",
+      "description": "Ecosystem Support - VMware certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 82
+    },
+    {
+      "name": "Hyper-V certification",
+      "description": "Ecosystem Support - Hyper-V certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 83
+    },
+    {
+      "name": "KVM certification",
+      "description": "Ecosystem Support - KVM certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 84
+    },
+    {
+      "name": "Citrix certification",
+      "description": "Ecosystem Support - Citrix certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 85
+    },
+    {
+      "name": "Kubernetes CSI driver support",
+      "description": "Ecosystem Support - Kubernetes CSI driver support",
+      "category": "Ecosystem Support",
+      "displayOrder": 86
+    },
+    {
+      "name": "OpenShift compatibility",
+      "description": "Ecosystem Support - OpenShift compatibility",
+      "category": "Ecosystem Support",
+      "displayOrder": 87
+    },
+    {
+      "name": "Tanzu compatibility",
+      "description": "Ecosystem Support - Tanzu compatibility",
+      "category": "Ecosystem Support",
+      "displayOrder": 88
+    },
+    {
+      "name": "Anthos compatibility",
+      "description": "Ecosystem Support - Anthos compatibility",
+      "category": "Ecosystem Support",
+      "displayOrder": 89
+    },
+    {
+      "name": "AWS integration",
+      "description": "Ecosystem Support - AWS integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 90
+    },
+    {
+      "name": "Azure integration",
+      "description": "Ecosystem Support - Azure integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 91
+    },
+    {
+      "name": "GCP integration",
+      "description": "Ecosystem Support - GCP integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 92
+    },
+    {
+      "name": "OCI integration",
+      "description": "Ecosystem Support - OCI integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 93
+    },
+    {
+      "name": "IBM Cloud integration",
+      "description": "Ecosystem Support - IBM Cloud integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 94
+    },
+    {
+      "name": "Wasabi integration",
+      "description": "Ecosystem Support - Wasabi integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 95
+    },
+    {
+      "name": "Backblaze integration",
+      "description": "Ecosystem Support - Backblaze integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 96
+    },
+    {
+      "name": "AI/ML workload support for NVIDIA DGX",
+      "description": "Ecosystem Support - AI/ML workload support for NVIDIA DGX",
+      "category": "Ecosystem Support",
+      "displayOrder": 97
+    },
+    {
+      "name": "AI/ML workload support for Habana",
+      "description": "Ecosystem Support - AI/ML workload support for Habana",
+      "category": "Ecosystem Support",
+      "displayOrder": 98
+    },
+    {
+      "name": "AI/ML workload support for TensorFlow",
+      "description": "Ecosystem Support - AI/ML workload support for TensorFlow",
+      "category": "Ecosystem Support",
+      "displayOrder": 99
+    },
+    {
+      "name": "AI/ML workload support for PyTorch",
+      "description": "Ecosystem Support - AI/ML workload support for PyTorch",
+      "category": "Ecosystem Support",
+      "displayOrder": 100
+    },
+    {
+      "name": "Oracle database integration",
+      "description": "Ecosystem Support - Oracle database integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 101
+    },
+    {
+      "name": "Microsoft SQL Server integration",
+      "description": "Ecosystem Support - Microsoft SQL Server integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 102
+    },
+    {
+      "name": "SAP HANA integration",
+      "description": "Ecosystem Support - SAP HANA integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 103
+    },
+    {
+      "name": "PostgreSQL integration",
+      "description": "Ecosystem Support - PostgreSQL integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 104
+    },
+    {
+      "name": "MySQL integration",
+      "description": "Ecosystem Support - MySQL integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 105
+    },
+    {
+      "name": "Hadoop integration",
+      "description": "Ecosystem Support - Hadoop integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 106
+    },
+    {
+      "name": "Spark integration",
+      "description": "Ecosystem Support - Spark integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 107
+    },
+    {
+      "name": "Splunk integration",
+      "description": "Ecosystem Support - Splunk integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 108
+    },
+    {
+      "name": "Elastic integration",
+      "description": "Ecosystem Support - Elastic integration",
+      "category": "Ecosystem Support",
+      "displayOrder": 109
+    },
+    {
+      "name": "REST API availability",
+      "description": "Ecosystem Support - REST API availability",
+      "category": "Ecosystem Support",
+      "displayOrder": 110
+    },
+    {
+      "name": "Python SDK availability",
+      "description": "Ecosystem Support - Python SDK availability",
+      "category": "Ecosystem Support",
+      "displayOrder": 111
+    },
+    {
+      "name": "PowerShell SDK availability",
+      "description": "Ecosystem Support - PowerShell SDK availability",
+      "category": "Ecosystem Support",
+      "displayOrder": 112
+    },
+    {
+      "name": "Java SDK availability",
+      "description": "Ecosystem Support - Java SDK availability",
+      "category": "Ecosystem Support",
+      "displayOrder": 113
+    },
+    {
+      "name": "SAP certification",
+      "description": "Ecosystem Support - SAP certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 114
+    },
+    {
+      "name": "EDA tools certification",
+      "description": "Ecosystem Support - EDA tools certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 115
+    },
+    {
+      "name": "Media workflow certification",
+      "description": "Ecosystem Support - Media workflow certification",
+      "category": "Ecosystem Support",
+      "displayOrder": 116
+    },
+    {
+      "name": "Inline decompression",
+      "description": "Efficiency - Inline decompression",
+      "category": "Efficiency",
+      "displayOrder": 117
+    },
+    {
+      "name": "Reclaim capabilities",
+      "description": "Efficiency - Reclaim capabilities",
+      "category": "Efficiency",
+      "displayOrder": 118
+    },
+    {
+      "name": "Auto-tiering support",
+      "description": "Efficiency - Auto-tiering support",
+      "category": "Efficiency",
+      "displayOrder": 119
+    },
+    {
+      "name": "Energy Star certification",
+      "description": "Efficiency - Energy Star certification",
+      "category": "Efficiency",
+      "displayOrder": 120
+    },
+    {
+      "name": "Climate Neutral certification",
+      "description": "Efficiency - Climate Neutral certification",
+      "category": "Efficiency",
+      "displayOrder": 121
+    },
+    {
+      "name": "UNMAP support",
+      "description": "Efficiency - UNMAP support",
+      "category": "Efficiency",
+      "displayOrder": 122
+    },
+    {
+      "name": "TRIM support",
+      "description": "Efficiency - TRIM support",
+      "category": "Efficiency",
+      "displayOrder": 123
+    },
+    {
+      "name": "Space-efficient clones",
+      "description": "Efficiency - Space-efficient clones",
+      "category": "Efficiency",
+      "displayOrder": 124
+    },
+    {
+      "name": "Multi-tenancy support",
+      "description": "Efficiency - Multi-tenancy support",
+      "category": "Efficiency",
+      "displayOrder": 125
+    },
+    {
+      "name": "Efficiency monitoring dashboards",
+      "description": "Efficiency - Efficiency monitoring dashboards",
+      "category": "Efficiency",
+      "displayOrder": 126
+    },
+    {
+      "name": "Granular QoS control",
+      "description": "Efficiency - Granular QoS control",
+      "category": "Efficiency",
+      "displayOrder": 127
+    },
+    {
+      "name": "Fibre Channel performance benchmark",
+      "description": "Performance - Fibre Channel performance benchmark",
+      "category": "Performance",
+      "displayOrder": 128
+    },
+    {
+      "name": "NVMe-oF performance benchmark",
+      "description": "Performance - NVMe-oF performance benchmark",
+      "category": "Performance",
+      "displayOrder": 129
+    },
+    {
+      "name": "iSCSI performance benchmark",
+      "description": "Performance - iSCSI performance benchmark",
+      "category": "Performance",
+      "displayOrder": 130
+    },
+    {
+      "name": "NFS performance benchmark",
+      "description": "Performance - NFS performance benchmark",
+      "category": "Performance",
+      "displayOrder": 131
+    },
+    {
+      "name": "SMB performance benchmark",
+      "description": "Performance - SMB performance benchmark",
+      "category": "Performance",
+      "displayOrder": 132
+    },
+    {
+      "name": "S3 performance benchmark",
+      "description": "Performance - S3 performance benchmark",
+      "category": "Performance",
+      "displayOrder": 133
+    },
+    {
+      "name": "Read latency",
+      "description": "Performance - Read latency",
+      "category": "Performance",
+      "displayOrder": 134
+    },
+    {
+      "name": "Write latency",
+      "description": "Performance - Write latency",
+      "category": "Performance",
+      "displayOrder": 135
+    },
+    {
+      "name": "Mixed I/O latency",
+      "description": "Performance - Mixed I/O latency",
+      "category": "Performance",
+      "displayOrder": 136
+    },
+    {
+      "name": "Sequential IOPS",
+      "description": "Performance - Sequential IOPS",
+      "category": "Performance",
+      "displayOrder": 137
+    },
+    {
+      "name": "Random IOPS",
+      "description": "Performance - Random IOPS",
+      "category": "Performance",
+      "displayOrder": 138
+    },
+    {
+      "name": "Sequential throughput",
+      "description": "Performance - Sequential throughput",
+      "category": "Performance",
+      "displayOrder": 139
+    },
+    {
+      "name": "Random throughput",
+      "description": "Performance - Random throughput",
+      "category": "Performance",
+      "displayOrder": 140
+    },
+    {
+      "name": "Read caching",
+      "description": "Performance - Read caching",
+      "category": "Performance",
+      "displayOrder": 141
+    },
+    {
+      "name": "Write caching",
+      "description": "Performance - Write caching",
+      "category": "Performance",
+      "displayOrder": 142
+    },
+    {
+      "name": "Tiering between NVMe and SSD",
+      "description": "Performance - Tiering between NVMe and SSD",
+      "category": "Performance",
+      "displayOrder": 143
+    },
+    {
+      "name": "Tiering between SSD and HDD",
+      "description": "Performance - Tiering between SSD and HDD",
+      "category": "Performance",
+      "displayOrder": 144
+    },
+    {
+      "name": "End-to-end NVMe support",
+      "description": "Performance - End-to-end NVMe support",
+      "category": "Performance",
+      "displayOrder": 145
+    },
+    {
+      "name": "QoS with performance guarantees",
+      "description": "Performance - QoS with performance guarantees",
+      "category": "Performance",
+      "displayOrder": 146
+    },
+    {
+      "name": "GPU Direct Storage support",
+      "description": "Performance - GPU Direct Storage support",
+      "category": "Performance",
+      "displayOrder": 147
+    },
+    {
+      "name": "Multi-stream parallelism",
+      "description": "Performance - Multi-stream parallelism",
+      "category": "Performance",
+      "displayOrder": 148
+    },
+    {
+      "name": "Maximum raw capacity",
+      "description": "Scalability - Maximum raw capacity",
+      "category": "Scalability",
+      "displayOrder": 149
+    },
+    {
+      "name": "Maximum usable capacity",
+      "description": "Scalability - Maximum usable capacity",
+      "category": "Scalability",
+      "displayOrder": 150
+    },
+    {
+      "name": "Scale-up expansion support",
+      "description": "Scalability - Scale-up expansion support",
+      "category": "Scalability",
+      "displayOrder": 151
+    },
+    {
+      "name": "Scale-out expansion support",
+      "description": "Scalability - Scale-out expansion support",
+      "category": "Scalability",
+      "displayOrder": 152
+    },
+    {
+      "name": "Maximum drives per node",
+      "description": "Scalability - Maximum drives per node",
+      "category": "Scalability",
+      "displayOrder": 153
+    },
+    {
+      "name": "Maximum nodes per cluster",
+      "description": "Scalability - Maximum nodes per cluster",
+      "category": "Scalability",
+      "displayOrder": 154
+    },
+    {
+      "name": "Maximum controllers per cluster",
+      "description": "Scalability - Maximum controllers per cluster",
+      "category": "Scalability",
+      "displayOrder": 155
+    },
+    {
+      "name": "Maximum namespace size",
+      "description": "Scalability - Maximum namespace size",
+      "category": "Scalability",
+      "displayOrder": 156
+    },
+    {
+      "name": "Maximum file system size",
+      "description": "Scalability - Maximum file system size",
+      "category": "Scalability",
+      "displayOrder": 157
+    },
+    {
+      "name": "Maximum object count per bucket",
+      "description": "Scalability - Maximum object count per bucket",
+      "category": "Scalability",
+      "displayOrder": 158
+    },
+    {
+      "name": "Maximum concurrent protocol connections",
+      "description": "Scalability - Maximum concurrent protocol connections",
+      "category": "Scalability",
+      "displayOrder": 159
+    },
+    {
+      "name": "Mixed workload scaling",
+      "description": "Scalability - Mixed workload scaling",
+      "category": "Scalability",
+      "displayOrder": 160
+    },
+    {
+      "name": "Multi-site stretch clustering support",
+      "description": "Scalability - Multi-site stretch clustering support",
+      "category": "Scalability",
+      "displayOrder": 161
+    },
+    {
+      "name": "Cloud-bursting capability",
+      "description": "Scalability - Cloud-bursting capability",
+      "category": "Scalability",
+      "displayOrder": 162
+    },
+    {
+      "name": "Data-at-rest encryption",
+      "description": "Security - Data-at-rest encryption",
+      "category": "Security",
+      "displayOrder": 163
+    },
+    {
+      "name": "AES-256 encryption support",
+      "description": "Security - AES-256 encryption support",
+      "category": "Security",
+      "displayOrder": 164
+    },
+    {
+      "name": "FIPS 140-2 certification",
+      "description": "Security - FIPS 140-2 certification",
+      "category": "Security",
+      "displayOrder": 165
+    },
+    {
+      "name": "Data-in-flight encryption",
+      "description": "Security - Data-in-flight encryption",
+      "category": "Security",
+      "displayOrder": 166
+    },
+    {
+      "name": "TLS 1.2 support",
+      "description": "Security - TLS 1.2 support",
+      "category": "Security",
+      "displayOrder": 167
+    },
+    {
+      "name": "TLS 1.3 support",
+      "description": "Security - TLS 1.3 support",
+      "category": "Security",
+      "displayOrder": 168
+    },
+    {
+      "name": "IPsec support",
+      "description": "Security - IPsec support",
+      "category": "Security",
+      "displayOrder": 169
+    },
+    {
+      "name": "Role-based access control (RBAC)",
+      "description": "Security - Role-based access control (RBAC)",
+      "category": "Security",
+      "displayOrder": 170
+    },
+    {
+      "name": "Multi-factor authentication (MFA)",
+      "description": "Security - Multi-factor authentication (MFA)",
+      "category": "Security",
+      "displayOrder": 171
+    },
+    {
+      "name": "Secure erase",
+      "description": "Security - Secure erase",
+      "category": "Security",
+      "displayOrder": 172
+    },
+    {
+      "name": "Crypto-shredding",
+      "description": "Security - Crypto-shredding",
+      "category": "Security",
+      "displayOrder": 173
+    },
+    {
+      "name": "Ransomware detection",
+      "description": "Security - Ransomware detection",
+      "category": "Security",
+      "displayOrder": 174
+    },
+    {
+      "name": "Ransomware protection",
+      "description": "Security - Ransomware protection",
+      "category": "Security",
+      "displayOrder": 175
+    },
+    {
+      "name": "Immutable snapshots",
+      "description": "Security - Immutable snapshots",
+      "category": "Security",
+      "displayOrder": 176
+    },
+    {
+      "name": "WORM compliance",
+      "description": "Security - WORM compliance",
+      "category": "Security",
+      "displayOrder": 177
+    },
+    {
+      "name": "HIPAA compliance",
+      "description": "Security - HIPAA compliance",
+      "category": "Security",
+      "displayOrder": 178
+    },
+    {
+      "name": "GDPR compliance",
+      "description": "Security - GDPR compliance",
+      "category": "Security",
+      "displayOrder": 179
+    },
+    {
+      "name": "FedRAMP compliance",
+      "description": "Security - FedRAMP compliance",
+      "category": "Security",
+      "displayOrder": 180
+    },
+    {
+      "name": "ISO 27001 compliance",
+      "description": "Security - ISO 27001 compliance",
+      "category": "Security",
+      "displayOrder": 181
+    },
+    {
+      "name": "Internal key management",
+      "description": "Security - Internal key management",
+      "category": "Security",
+      "displayOrder": 182
+    },
+    {
+      "name": "External key management",
+      "description": "Security - External key management",
+      "category": "Security",
+      "displayOrder": 183
+    },
+    {
+      "name": "KMIP server support",
+      "description": "Security - KMIP server support",
+      "category": "Security",
+      "displayOrder": 184
+    },
+    {
+      "name": "Kerberos for NFS",
+      "description": "Security - Kerberos for NFS",
+      "category": "Security",
+      "displayOrder": 185
+    },
+    {
+      "name": "SMB signing",
+      "description": "Security - SMB signing",
+      "category": "Security",
+      "displayOrder": 186
+    },
+    {
+      "name": "S3 object lock",
+      "description": "Security - S3 object lock",
+      "category": "Security",
+      "displayOrder": 187
+    },
+    {
+      "name": "Audit logging",
+      "description": "Security - Audit logging",
+      "category": "Security",
+      "displayOrder": 188
+    },
+    {
+      "name": "Tamper-proof event records",
+      "description": "Security - Tamper-proof event records",
+      "category": "Security",
+      "displayOrder": 189
+    }
+  ],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Predictive analytics for failure detection",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Predictive analytics for remediation",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated anomaly detection",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated root cause analysis",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI-driven workload placement",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI-driven workload optimization",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Intelligent tiering",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Intelligent data migration",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Adaptive performance tuning",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated capacity forecasting",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated capacity planning",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Self-healing mechanisms",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    }
+  ]
+}

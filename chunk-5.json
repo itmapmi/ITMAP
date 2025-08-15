@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated data classification",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated data classification",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Automated data tagging",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Automated data tagging",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Policy-based data retention",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Policy-based data lifecycle management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to AWS",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to Azure",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to GCP",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to OCI",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to IBM Cloud",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to Wasabi",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Native cloud tiering to Backblaze",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "File data management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "File data management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Block data management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Block data management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    }
+  ]
+}

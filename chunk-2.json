@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI/ML-based anomaly detection for security threats",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Autonomous policy creation based on usage patterns",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Active-active high-availability configuration",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Active-passive high-availability configuration",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Redundant controllers",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Redundant components",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Non-disruptive firmware upgrades",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Non-disruptive microcode upgrades",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Non-disruptive software upgrades",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hot-swappable drives",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hot-swappable controllers",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hot-swappable fans",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hot-swappable power supplies",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    }
+  ]
+}

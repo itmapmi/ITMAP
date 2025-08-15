@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Immutable snapshots",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "WORM compliance",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "HIPAA compliance",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "GDPR compliance",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "FedRAMP compliance",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "ISO 27001 compliance",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Internal key management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Internal key management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "External key management",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "External key management",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "KMIP server support",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Kerberos for NFS",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SMB signing",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "S3 object lock",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "S3 object lock",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "S3 object lock",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "S3 object lock",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "S3 object lock",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "S3 object lock",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "S3 object lock",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "S3 object lock",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    }
+  ]
+}

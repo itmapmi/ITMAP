@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "S3 protocol support for HA",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SLA uptime guarantee",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SLA recovery objectives",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Space-efficient snapshots",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Instant restore snapshots",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Cloning support",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Cloning support",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Thin provisioning",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Inline deduplication",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Inline deduplication",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Inline deduplication",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Post-process deduplication",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Inline compression",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Inline compression",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Inline compression",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Post-process compression",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Post-process compression",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Post-process compression",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Erasure coding support",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Erasure coding support",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Erasure coding support",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "RAID level configuration options",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    }
+  ]
+}

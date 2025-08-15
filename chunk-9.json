@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Oracle database integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Oracle database integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Oracle database integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Microsoft SQL Server integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SAP HANA integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "PostgreSQL integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "MySQL integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "MySQL integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "MySQL integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Hadoop integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Hadoop integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Hadoop integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Spark integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Spark integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Spark integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Splunk integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Splunk integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Splunk integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Elastic integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Elastic integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Elastic integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "REST API availability",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Python SDK availability",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "PowerShell SDK availability",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides high availability with active-active configurations, redundancy, and non-disruptive upgrades【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "Alletra 9000 delivers full hardware redundancy and software fault tolerance for mission‑critical workloads【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "Delivers seven‑nines (99.99999%) availability and high resilience for mainframe workloads【627125835211012†L100-L107】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "Guarantees 100% data availability and supports snapshots and synchronous replication【835461860673630†screenshot】."
+    }
+  ]
+}

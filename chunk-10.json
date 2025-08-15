@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "InfiniRAID ensures data integrity and multi‑site synchronous/active‑active replication offers high availability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "Provides 99.99999% availability with full‑mesh SmartMatrix architecture and active‑active clustering【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "FlashArray//XL is built for mission‑critical workloads with non‑disruptive upgrades and ActiveCluster replication (vendor claims)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Java SDK availability",
+      "supportLevel": 4,
+      "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "SAP certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "SAP certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "EDA tools certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "EDA tools certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Media workflow certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Media workflow certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "Offers thin provisioning, global inline deduplication and hardware-based compression for efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "Effective capacity assumes 4:1 data compaction via thin provisioning, deduplication and compression (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Inline decompression",
+      "supportLevel": 0,
+      "notes": "Third‑party sources note that DS8900F lacks deduplication and compression algorithms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "Supports inline deduplication and compression with capacity reduction selectable per volume【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Inline decompression",
+      "supportLevel": 0,
+      "notes": "InfiniBox SSA does not emphasize deduplication or compression; these features are not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "Supports data deduplication, compression and tiering for efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "Provides always‑on inline deduplication, compression and pattern removal yielding up to 5:1 data reduction【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Inline decompression",
+      "supportLevel": 4,
+      "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Reclaim capabilities",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Auto-tiering support",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Energy Star certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Energy Star certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Climate Neutral certification",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression deliver strong efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression provide storage efficiency (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "UNMAP support",
+      "supportLevel": 1,
+      "notes": "Lacks deduplication and compression; thin provisioning may be available but not emphasized."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and capacity optimization features deliver high efficiency【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "UNMAP support",
+      "supportLevel": 2,
+      "notes": "Optimized for latency rather than data reduction; deduplication/compression not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and tiering deliver high efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Always‑on deduplication and compression deliver high efficiency【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "UNMAP support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression deliver strong efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression provide storage efficiency (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "TRIM support",
+      "supportLevel": 1,
+      "notes": "Lacks deduplication and compression; thin provisioning may be available but not emphasized."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and capacity optimization features deliver high efficiency【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "TRIM support",
+      "supportLevel": 2,
+      "notes": "Optimized for latency rather than data reduction; deduplication/compression not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and tiering deliver high efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Always‑on deduplication and compression deliver high efficiency【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "TRIM support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and thin clones; up to 64M secure snapshots per array with cyber recovery options【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Alletra supports snapshots and clones with a 100% availability guarantee (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Supports FlashCopy snapshots and advanced replication (Metro Mirror, Global Mirror) in Copy Services."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Provides snapshots, clones and replication with QoS controls【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "InfiniSafe provides immutable snapshots, logical air gaps and fenced forensic environments with recovery in under a minute【586655015228252†L452-L455】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Includes comprehensive data protection with replication, snapshots and disaster recovery【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "Supports snapshots and clones with instant restore via Purity OS (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Space-efficient clones",
+      "supportLevel": 4,
+      "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression deliver strong efficiency【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Thin provisioning, deduplication and compression provide storage efficiency (HPE data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 1,
+      "notes": "Lacks deduplication and compression; thin provisioning may be available but not emphasized."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and capacity optimization features deliver high efficiency【835461860673630†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 2,
+      "notes": "Optimized for latency rather than data reduction; deduplication/compression not documented."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and tiering deliver high efficiency【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Always‑on deduplication and compression deliver high efficiency【979305409725457†L228-L278】."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Multi-tenancy support",
+      "supportLevel": 4,
+      "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Audit logging",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "SED‑based encryption with internal/external key management, immutable snapshots and cyber recovery【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Provides encryption and secure snapshots; details not accessible."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Provides pervasive encryption and Safeguarded Copy for cyber resilience (IBM marketing materials)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Includes encryption and cyber‑resilience features (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "InfiniSafe offers cyber‑resilience with immutable snapshots, logical air gaps and rapid recovery【586655015228252†L452-L474】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Smart protection includes HyperDetect against ransomware and robust disaster‑recovery features【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Features encryption, SafeMode immutable snapshots and ransomware protection (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Tamper-proof event records",
+      "supportLevel": 3,
+      "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+    }
+  ]
+}

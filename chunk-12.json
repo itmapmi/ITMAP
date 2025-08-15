@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Random IOPS",
+      "supportLevel": 3,
+      "notes": "Neural Cache enables microsecond‑level latency and high performance【586655015228252†L443-L445】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Random IOPS",
+      "supportLevel": 3,
+      "notes": "Delivers up to 40 million IOPS with end‑to‑end NVMe performance【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Random IOPS",
+      "supportLevel": 3,
+      "notes": "Designed to deliver high performance and consistent latency for mission‑critical workloads (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Random IOPS",
+      "supportLevel": 3,
+      "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "All‑flash NVMe design provides high performance; specific benchmarks not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Described as a performance‑dense Tier‑0 system with low latency and high throughput【712691236166217†L84-L87】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "High‑performance all‑flash system for mainframe and IBM i workloads【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Flash‑optimized architecture ensures high throughput and low latency (vendor claims)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Neural Cache enables microsecond‑level latency and high performance【586655015228252†L443-L445】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Delivers up to 40 million IOPS with end‑to‑end NVMe performance【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Designed to deliver high performance and consistent latency for mission‑critical workloads (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Sequential throughput",
+      "supportLevel": 3,
+      "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "All‑flash NVMe design provides high performance; specific benchmarks not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Described as a performance‑dense Tier‑0 system with low latency and high throughput【712691236166217†L84-L87】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "High‑performance all‑flash system for mainframe and IBM i workloads【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Flash‑optimized architecture ensures high throughput and low latency (vendor claims)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Neural Cache enables microsecond‑level latency and high performance【586655015228252†L443-L445】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Delivers up to 40 million IOPS with end‑to‑end NVMe performance【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Designed to deliver high performance and consistent latency for mission‑critical workloads (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Random throughput",
+      "supportLevel": 3,
+      "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Read caching",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Read caching",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Write caching",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Write caching",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Tiering between NVMe and SSD",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Tiering between SSD and HDD",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 4,
+      "notes": "Supports block, file, mainframe (FICON), IBM i, vVols and container workloads with FC, iSCSI, NVMe-oF, NFS, SMB【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 4,
+      "notes": "Supports block and file protocols including NVMe/FC, iSCSI, NFS and SMB (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 2,
+      "notes": "Provides FICON and Fibre Channel connectivity; limited support for iSCSI or file protocols."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 4,
+      "notes": "Offers block and file protocols including NVMe‑oF, FC, iSCSI, NFS and SMB."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 3,
+      "notes": "Provides unified block and file access with high‑speed NFS and SMB protocols【586655015228252†L496-L501】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 4,
+      "notes": "End‑to‑end NVMe design supports NVMe‑oF; other protocol support not detailed."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 3,
+      "notes": "Supports FC, iSCSI and NVMe‑oF; object support via S3 is not primary."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "End-to-end NVMe support",
+      "supportLevel": 4,
+      "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "All‑flash NVMe design provides high performance; specific benchmarks not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Described as a performance‑dense Tier‑0 system with low latency and high throughput【712691236166217†L84-L87】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "High‑performance all‑flash system for mainframe and IBM i workloads【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Flash‑optimized architecture ensures high throughput and low latency (vendor claims)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Neural Cache enables microsecond‑level latency and high performance【586655015228252†L443-L445】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Delivers up to 40 million IOPS with end‑to‑end NVMe performance【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Designed to deliver high performance and consistent latency for mission‑critical workloads (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "QoS with performance guarantees",
+      "supportLevel": 3,
+      "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "All‑flash NVMe design provides high performance; specific benchmarks not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Described as a performance‑dense Tier‑0 system with low latency and high throughput【712691236166217†L84-L87】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "High‑performance all‑flash system for mainframe and IBM i workloads【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Flash‑optimized architecture ensures high throughput and low latency (vendor claims)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Neural Cache enables microsecond‑level latency and high performance【586655015228252†L443-L445】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Delivers up to 40 million IOPS with end‑to‑end NVMe performance【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Designed to deliver high performance and consistent latency for mission‑critical workloads (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "GPU Direct Storage support",
+      "supportLevel": 3,
+      "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not covered in available documentation; assumed partial support."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not documented or accessible; assumed partial support."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 1,
+      "notes": "Feature not documented; assumed limited support."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not mentioned; assumed partial."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not covered; assumed partial."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not documented; assumed partial."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Multi-stream parallelism",
+      "supportLevel": 2,
+      "notes": "Feature not described; assumed partial."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Supports multi‑petabyte scale and unified block/file workloads; detailed scalability data not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Supports scale‑up and scale‑out configurations (data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Scalable architecture with multiple models and high capacity options."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Can scale up or out through virtualization of external storage (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Multi‑site asynchronous and synchronous replication with active‑active capability provides scalability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Scale‑out architecture supports large capacities (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Scales up with additional shelves; details not available."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Maximum raw capacity",
+      "supportLevel": 3,
+      "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Supports multi‑petabyte scale and unified block/file workloads; detailed scalability data not provided【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Supports scale‑up and scale‑out configurations (data sheet)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Scalable architecture with multiple models and high capacity options."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Can scale up or out through virtualization of external storage (marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Multi‑site asynchronous and synchronous replication with active‑active capability provides scalability【586655015228252†L489-L494】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Scale‑out architecture supports large capacities (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Scales up with additional shelves; details not available."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Maximum usable capacity",
+      "supportLevel": 3,
+      "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+    }
+  ]
+}

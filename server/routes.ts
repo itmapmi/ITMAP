@@ -898,6 +898,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Bulk upload support matrix data
+  app.post("/api/admin/bulk-upload-support-matrix", requireAdmin, async (req, res) => {
+    try {
+      const { categories, features, supportData } = req.body;
+      console.log(`Received bulk upload: ${categories?.length} categories, ${features?.length} features, ${supportData?.length} support records`);
+      
+      // Get the High-End Storage market ID
+      const marketResult = await storage.getMarkets();
+      const market = marketResult.find(m => m.name === 'High-End Storage');
+      if (!market) {
+        return res.status(404).json({ error: 'High-End Storage market not found' });
+      }
+
+      let createdCategories = 0;
+      let createdFeatures = 0;
+      let updatedSupport = 0;
+
+      // Create feature categories
+      for (const category of categories) {
+        const existing = await storage.getFeatureCategories();
+        if (!existing.find(c => c.name === category.name)) {
+          await storage.createFeatureCategory({
+            name: category.name,
+            marketId: market.id,
+            displayOrder: category.displayOrder
+          });
+          createdCategories++;
+        }
+      }
+
+      // Get updated categories list
+      const allCategories = await storage.getFeatureCategories();
+      const categoryMap = {};
+      allCategories.forEach(c => categoryMap[c.name] = c.id);
+
+      // Create features
+      for (const feature of features) {
+        const existing = await storage.getMarketFeatures(market.id);
+        if (!existing.find(f => f.name === feature.name)) {
+          await storage.createFeature({
+            name: feature.name,
+            description: feature.description,
+            categoryId: categoryMap[feature.category],
+            displayOrder: feature.displayOrder
+          });
+          createdFeatures++;
+        }
+      }
+
+      // Get vendors and features for mapping
+      const vendors = await storage.getVendorsByMarket(market.id);
+      const vendorMap = {};
+      vendors.forEach(v => {
+        vendorMap[v.product || v.name] = v.id;
+      });
+
+      const allFeatures = await storage.getMarketFeatures(market.id);
+      const featureMap = {};
+      allFeatures.forEach(f => featureMap[f.name] = f.id);
+
+      // Update support data
+      for (const support of supportData) {
+        const vendorId = vendorMap[support.vendorProduct];
+        const featureId = featureMap[support.featureName];
+        
+        if (vendorId && featureId) {
+          await storage.createOrUpdateFeatureSupport({
+            vendorId,
+            featureId,
+            supportLevel: support.supportLevel,
+            notes: support.notes
+          });
+          updatedSupport++;
+        } else {
+          console.log(`Skipping support record - vendor: ${support.vendorProduct}, feature: ${support.featureName}`);
+        }
+      }
+
+      res.json({
+        success: true,
+        created: {
+          categories: createdCategories,
+          features: createdFeatures,
+          supportRecords: updatedSupport
+        }
+      });
+    } catch (error) {
+      console.error("Error bulk uploading support matrix:", error);
+      res.status(500).json({ error: "Failed to bulk upload support matrix" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

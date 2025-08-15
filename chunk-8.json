@@ -1,0 +1,606 @@
+{
+  "categories": [],
+  "features": [],
+  "supportData": [
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Tanzu compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Works with VMware, Kubernetes and automation frameworks as described in the tech specs【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Certified with VMware and supports Kubernetes via CSI; integrates with automation frameworks (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 1,
+      "notes": "Designed primarily for IBM Z and LinuxONE environments; limited certification for VMware or container platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Certified for Docker, Kubernetes and Red Hat OpenShift and integrates with OpenStack【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Supports Kubernetes via CSI and is suitable for consolidation, databases, virtualization and DevOps【586655015228252†L595-L601】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with virtualization and AI frameworks (details not accessible)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware, Kubernetes (via CSI) and automation frameworks (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Anthos compatibility",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AWS integration",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AWS integration",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AWS integration",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AWS integration",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AWS integration",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AWS integration",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AWS integration",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AWS integration",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Azure integration",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Azure integration",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Azure integration",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Azure integration",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Azure integration",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Azure integration",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Azure integration",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Azure integration",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "GCP integration",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "GCP integration",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "GCP integration",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "GCP integration",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "GCP integration",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "GCP integration",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "GCP integration",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "GCP integration",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "OCI integration",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "OCI integration",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "OCI integration",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "OCI integration",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "OCI integration",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "OCI integration",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "OCI integration",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "OCI integration",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 2,
+      "notes": "Documentation does not describe native cloud tiering; may require external solutions【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 3,
+      "notes": "Integrates with HPE Data Services Cloud and Cloud Bank for off‑site tiering (HPE materials)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 2,
+      "notes": "Offers Transparent Cloud Tiering to move cold data to cloud object storage (IBM documentation)."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 3,
+      "notes": "Supports virtualization of external arrays and integration with cloud via Hitachi virtualization (information from marketing)."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 3,
+      "notes": "InfuzeOS Cloud Edition enables hybrid multi‑cloud deployments across AWS and Azure【586655015228252†L615-L621】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 3,
+      "notes": "Offers hybrid deployment capabilities and supports multi‑cloud integration (marketing claims)."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 3,
+      "notes": "Cloud Block Store allows tiering to AWS and Azure (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "IBM Cloud integration",
+      "supportLevel": 4,
+      "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Wasabi integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Wasabi integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Wasabi integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "Integrates with VMware (VSI, SRM), Kubernetes (CSI plugin), Ansible, Terraform and OpenStack cinder driver【538739234350060†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "Works with Recovery Manager Central and third‑party backup applications (not detailed)."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "Backblaze integration",
+      "supportLevel": 1,
+      "notes": "Relies on IBM Copy Services Manager; limited integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "Provides Hitachi Data Instance Director for copy data management and recovery【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "Backblaze integration",
+      "supportLevel": 1,
+      "notes": "Focuses on replication; no explicit integration with third‑party backup platforms."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "Provides synchronous and asynchronous replication and advanced data protection【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "Integrates with Commvault, Veeam and other backup platforms (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "Backblaze integration",
+      "supportLevel": 3,
+      "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI/ML workload support for NVIDIA DGX",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI/ML workload support for Habana",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI/ML workload support for TensorFlow",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    },
+    {
+      "vendorProduct": "Dell PowerMax 8500",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "No explicit AI-driven analytics documented; PowerMax tech specs focus on data optimization and cloud integrations【50018936942370†screenshot】."
+    },
+    {
+      "vendorProduct": "HPE Alletra 9000",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "InfoSight provides AI‑driven analytics and predictive support for Alletra arrays, although accessible docs focus on availability【904929786410990†screenshot】."
+    },
+    {
+      "vendorProduct": "IBM DS8900F",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 1,
+      "notes": "Documentation emphasises performance and reliability; there are no AI‑driven analytics features【627125835211012†L56-L60】."
+    },
+    {
+      "vendorProduct": "Hitachi VSP 5600",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "Offers Hitachi Infrastructure Analytics Advisor and Hitachi Automation Director for AI‑driven insights and automated remediation【969335788775393†screenshot】."
+    },
+    {
+      "vendorProduct": "Infinidat InfiniBox SSA II",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "Neural Cache machine‑learning algorithms provide consistent microsecond latency; optional InfiniSafe Cyber Detection uses AI to scan immutable snapshots for ransomware【586655015228252†L440-L467】."
+    },
+    {
+      "vendorProduct": "Huawei Dorado 18000 V6",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "Built‑in AI acceleration and FLASHLINK architecture optimise performance for critical workloads【622529974344219†screenshot】."
+    },
+    {
+      "vendorProduct": "Pure Storage FlashArray//XL",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "Pure1 uses machine‑learning analytics for predictive insights and resource planning (marketing)."
+    },
+    {
+      "vendorProduct": "NetApp AFF A900",
+      "featureName": "AI/ML workload support for PyTorch",
+      "supportLevel": 3,
+      "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+    }
+  ]
+}

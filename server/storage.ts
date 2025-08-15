@@ -614,6 +614,53 @@ export class DatabaseStorage implements IStorage {
     return newPosition;
   }
 
+  // Feature Support Methods
+  async createOrUpdateFeatureSupport(supportData: {
+    vendorId: string;
+    featureId: string;
+    supportLevel: number;
+    notes?: string;
+  }): Promise<VendorFeatureSupport> {
+    // Check if record exists
+    const existing = await db
+      .select()
+      .from(vendorFeatureSupport)
+      .where(and(
+        eq(vendorFeatureSupport.vendorId, supportData.vendorId),
+        eq(vendorFeatureSupport.featureId, supportData.featureId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing record
+      const [updated] = await db
+        .update(vendorFeatureSupport)
+        .set({
+          supportLevel: supportData.supportLevel,
+          comments: supportData.notes || null,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(vendorFeatureSupport.vendorId, supportData.vendorId),
+          eq(vendorFeatureSupport.featureId, supportData.featureId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new record
+      const [newSupport] = await db
+        .insert(vendorFeatureSupport)
+        .values({
+          vendorId: supportData.vendorId,
+          featureId: supportData.featureId,
+          supportLevel: supportData.supportLevel,
+          comments: supportData.notes || null
+        })
+        .returning();
+      return newSupport;
+    }
+  }
+
 
 }
 
