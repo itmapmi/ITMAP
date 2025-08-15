@@ -52,9 +52,6 @@ export default function MarketGrid({ markets }: MarketGridProps) {
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              <div className="absolute bottom-4 left-4 text-white">
-                <div className="text-sm font-medium opacity-90">Market</div>
-              </div>
             </div>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
