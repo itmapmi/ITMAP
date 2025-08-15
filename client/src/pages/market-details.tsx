@@ -60,40 +60,32 @@ export default function MarketDetails() {
             <Skeleton className="h-10 w-32" />
           </div>
           
-          <Tabs defaultValue="quadrant" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="quadrant">Vendor Evaluation</TabsTrigger>
-              <TabsTrigger value="comparison">Vendor Comparison</TabsTrigger>
-              <TabsTrigger value="features">Support Matrix</TabsTrigger>
-              <TabsTrigger value="news">Vendor News</TabsTrigger>
-              <TabsTrigger value="reports">Research Reports</TabsTrigger>
+          <Tabs defaultValue="vendor-evaluation" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
+              <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
+              <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+              <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="quadrant" className="mt-6">
+            <TabsContent value="vendor-evaluation" className="mt-6">
               <ChartLoading />
             </TabsContent>
 
-            <TabsContent value="comparison" className="mt-6">
+            <TabsContent value="vendor-news" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SkeletonCard showAvatar={true} lines={4} />
-                <SkeletonCard showAvatar={true} lines={4} />
+                <SkeletonCard showAvatar={true} lines={3} />
+                <SkeletonCard showAvatar={true} lines={3} />
+                <SkeletonCard showAvatar={true} lines={3} />
+                <SkeletonCard showAvatar={true} lines={3} />
               </div>
             </TabsContent>
 
-            <TabsContent value="features" className="mt-6">
+            <TabsContent value="support-matrix" className="mt-6">
               <SkeletonCard lines={6} className="h-80" />
             </TabsContent>
 
-            <TabsContent value="news" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="reports" className="mt-6">
+            <TabsContent value="research-reports" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <SkeletonCard lines={2} />
                 <SkeletonCard lines={2} />
