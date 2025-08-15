@@ -64,7 +64,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/auth/google/callback", 
     passport.authenticate('google', { failureRedirect: '/login' }),
     (req, res) => {
-      res.redirect('/');
+      const user = req.user as any;
+      if (user?.role === 'admin') {
+        res.redirect('/admin');
+      } else {
+        res.redirect('/');
+      }
     }
   );
 
@@ -72,7 +77,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/auth/linkedin/callback", 
     passport.authenticate('linkedin', { failureRedirect: '/login' }),
     (req, res) => {
-      res.redirect('/');
+      const user = req.user as any;
+      if (user?.role === 'admin') {
+        res.redirect('/admin');
+      } else {
+        res.redirect('/');
+      }
     }
   );
 

@@ -25,12 +25,17 @@ export default function Login() {
     e.preventDefault();
     
     try {
-      await login(formData);
+      const user = await login(formData);
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
-      setLocation("/");
+      // Redirect admin users to admin portal, others to home
+      if (user?.role === 'admin') {
+        setLocation("/admin");
+      } else {
+        setLocation("/");
+      }
     } catch (error) {
       // Error is handled by useAuth hook
     }
