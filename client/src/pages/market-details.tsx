@@ -29,7 +29,7 @@ export default function MarketDetails() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-2">Error Loading Market</h1>
           <p className="text-gray-600">Unable to fetch market details. Please try again later.</p>
-          <Link href="/">
+          <Link href="/markets">
             <Button className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Markets
@@ -112,7 +112,7 @@ export default function MarketDetails() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Market Not Found</h1>
           <p className="text-gray-600">The requested market could not be found.</p>
-          <Link href="/">
+          <Link href="/markets">
             <Button className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Markets
@@ -145,7 +145,7 @@ export default function MarketDetails() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Link href="/">
+            <Link href="/markets">
               <Button variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Markets
