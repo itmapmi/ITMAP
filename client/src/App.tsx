@@ -45,7 +45,7 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {isAuthenticated && <Navigation />}
+      <Navigation />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
