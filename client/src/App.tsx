@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import About from "@/pages/About";
 import Platform from "@/pages/Platform";
 import Contact from "@/pages/Contact";
+import Markets from "@/pages/markets";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
 import ReportViewer from "@/pages/report-viewer";
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/contact" component={Contact} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
