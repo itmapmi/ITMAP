@@ -104,7 +104,7 @@ export default function Home() {
               </div>
               <div className="bg-gradient-to-br from-teal-50 to-blue-50 p-8 rounded-xl">
                 <BarChart3 className="h-16 w-16 text-blue-600 mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">Interactive Magic Quadrants</h4>
+                <h4 className="text-xl font-semibold text-gray-900 mb-2">Interactive Vendor Evaluations</h4>
                 <p className="text-gray-600">Explore vendor positioning with dynamic visualizations and drill-down capabilities</p>
               </div>
             </motion.div>

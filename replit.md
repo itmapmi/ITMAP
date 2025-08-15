@@ -2,7 +2,7 @@
 
 ## Overview
 
-MarketScope is a comprehensive enterprise market research platform that provides technology vendor analysis through interactive Magic Quadrant visualizations, competitive intelligence, and detailed market insights. The platform allows users to explore technology markets, compare vendors across multiple criteria, track vendor news and its impact on market positioning, and access detailed research reports.
+MarketScope is a comprehensive enterprise market research platform that provides technology vendor analysis through interactive Vendor Evaluation visualizations, competitive intelligence, and detailed market insights. The platform allows users to explore technology markets, compare vendors across multiple criteria, track vendor news and its impact on market positioning, and access detailed research reports.
 
 The application follows a full-stack architecture with a React frontend and Express.js backend, designed to handle complex data visualizations and analytical workflows for enterprise users researching technology markets and vendors.
 
@@ -19,7 +19,7 @@ Preferred communication style: Simple, everyday language.
 - **UI Framework**: Radix UI primitives with shadcn/ui components for accessible, customizable interface elements
 - **Styling**: Tailwind CSS with CSS variables for theming and responsive design
 - **Build Tool**: Vite for fast development builds and hot module replacement
-- **Data Visualization**: D3.js for complex Magic Quadrant charts and interactive vendor positioning visualizations
+- **Data Visualization**: D3.js for complex Vendor Evaluation charts and interactive vendor positioning visualizations
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework for RESTful API development
@@ -94,6 +94,12 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### Terminology Update (August 15, 2025)
+- **Replaced "Magic Quadrant" with "Vendor Evaluation"** throughout the application
+- **Updated navigation tabs** to reflect new terminology for better clarity
+- **Revised platform descriptions** to use consistent "Vendor Evaluation" language
+- **Updated documentation** to reflect the new terminology across all content
+
 ### ITMAP Rebranding Implementation (August 15, 2025)
 - **Complete homepage redesign** with new ITMAP branding and logo integration
 - **Updated navigation component** to display ITMAP logo instead of text-based branding
@@ -119,7 +125,7 @@ The platform is designed to scale horizontally with its serverless database arch
 - **Preserved vendor management actions** (edit/delete) in both tables for consistent user experience
 
 ### Historical Timeline Implementation (August 12, 2025)
-- **Implemented functional Magic Quadrant historical timeline** with real dates instead of "36 months ago"
+- **Implemented functional Vendor Evaluation historical timeline** with real dates instead of "36 months ago"
 - **Added 156-week timeline range** (3 years of weekly historical data navigation)
 - **Created historical positions API endpoint** (`/api/markets/:marketId/historical-positions`) with date filtering
 - **Built historical data visualization** that switches between current scores and historical positions

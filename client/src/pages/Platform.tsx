@@ -24,7 +24,7 @@ export default function Platform() {
             <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <BarChart3 className="h-8 w-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Magic Quadrant Analysis</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Vendor Evaluation Analysis</h3>
             <p className="text-gray-600">Interactive vendor positioning with detailed capability analysis.</p>
           </div>
 

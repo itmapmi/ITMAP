@@ -62,7 +62,7 @@ export default function MarketDetails() {
           
           <Tabs defaultValue="quadrant" className="w-full">
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="quadrant">Magic Quadrant</TabsTrigger>
+              <TabsTrigger value="quadrant">Vendor Evaluation</TabsTrigger>
               <TabsTrigger value="comparison">Vendor Comparison</TabsTrigger>
               <TabsTrigger value="features">Support Matrix</TabsTrigger>
               <TabsTrigger value="news">Vendor News</TabsTrigger>
