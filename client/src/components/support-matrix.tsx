@@ -339,7 +339,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     // Find existing support data
     const supportKey = `${vendorId}-${featureId}`;
     const supportLevel = supportLookup.get(supportKey) || 0;
-    const existingSupport = featureSupportData?.find((fs: VendorFeatureSupport) => fs.vendorId === vendorId && fs.featureId === featureId);
+    const existingSupport = supportMatrix?.find((fs: VendorFeatureSupport) => fs.vendorId === vendorId && fs.featureId === featureId);
     
     setEditingSupport({ vendorId, featureId, vendorName, featureName });
     setSupportEditData({
