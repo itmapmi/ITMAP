@@ -69,7 +69,7 @@ export default function Navigation() {
                     ? "text-gray-900 hover:text-primary-600" 
                     : "text-gray-500 hover:text-gray-700"
                 }`}>
-                  The ITMAP Platform
+                  Platform
                 </div>
               </Link>
               <Link href="/contact">
