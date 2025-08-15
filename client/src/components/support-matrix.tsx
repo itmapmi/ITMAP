@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { Users, Eye, EyeOff, Settings, ChevronDown, ChevronRight, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -131,6 +135,8 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [editMode, setEditMode] = useState(false);
   const [editingFeature, setEditingFeature] = useState<string | null>(null);
   const [featureEditData, setFeatureEditData] = useState<{ name: string; description: string }>({ name: '', description: '' });
+  const [editingSupport, setEditingSupport] = useState<{ vendorId: string; featureId: string; vendorName: string; featureName: string } | null>(null);
+  const [supportEditData, setSupportEditData] = useState<{ supportLevel: number; comments: string }>({ supportLevel: 0, comments: '' });
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -293,6 +299,68 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const handleFeatureCancel = () => {
     setEditingFeature(null);
     setFeatureEditData({ name: '', description: '' });
+  };
+
+  // Mutation for updating support with comments
+  const updateSupportWithCommentsMutation = useMutation({
+    mutationFn: async ({ vendorId, featureId, supportLevel, comments }: { vendorId: string; featureId: string; supportLevel: number; comments: string }) => {
+      const response = await fetch("/api/vendor-feature-support/with-comments", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ vendorId, featureId, supportLevel, comments })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update support');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/markets', marketId, 'feature-support'] });
+      toast({
+        title: "Support Updated",
+        description: "Vendor feature support and comments have been updated successfully.",
+      });
+      setEditingSupport(null);
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update support. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSupportEdit = (vendorId: string, featureId: string, vendorName: string, featureName: string) => {
+    // Find existing support data
+    const supportKey = `${vendorId}-${featureId}`;
+    const supportLevel = supportLookup.get(supportKey) || 0;
+    const existingSupport = featureSupportData?.find((fs: VendorFeatureSupport) => fs.vendorId === vendorId && fs.featureId === featureId);
+    
+    setEditingSupport({ vendorId, featureId, vendorName, featureName });
+    setSupportEditData({
+      supportLevel: supportLevel,
+      comments: existingSupport?.comments || ''
+    });
+  };
+
+  const handleSupportSave = () => {
+    if (!editingSupport) return;
+    updateSupportWithCommentsMutation.mutate({
+      vendorId: editingSupport.vendorId,
+      featureId: editingSupport.featureId,
+      supportLevel: supportEditData.supportLevel,
+      comments: supportEditData.comments
+    });
+  };
+
+  const handleSupportCancel = () => {
+    setEditingSupport(null);
+    setSupportEditData({ supportLevel: 0, comments: '' });
   };
 
   if (isLoading) {
@@ -600,12 +668,14 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                                 
                                 return (
                                   <div key={vendor.id} className="flex justify-center items-center">
-                                    {editMode ? (
-                                      <EditableHarveyBall
-                                        level={supportLevel}
-                                        onChange={(newLevel) => handleSupportLevelChange(vendor.id, feature.id, newLevel)}
-                                        disabled={updateSupportMutation.isPending}
-                                      />
+                                    {user?.role === 'admin' ? (
+                                      <button
+                                        onClick={() => handleSupportEdit(vendor.id, feature.id, vendor.name, feature.name)}
+                                        className="hover:bg-gray-100 p-2 rounded transition-colors duration-200"
+                                        title={`Edit support for ${vendor.name} - ${feature.name}`}
+                                      >
+                                        <HarveyBall level={supportLevel} />
+                                      </button>
                                     ) : (
                                       <HarveyBall level={supportLevel} />
                                     )}
@@ -658,6 +728,78 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         </div>
         )}
       </CardContent>
+
+      {/* Support Level Edit Dialog */}
+      <Dialog open={!!editingSupport} onOpenChange={() => setEditingSupport(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Support Level</DialogTitle>
+          </DialogHeader>
+          {editingSupport && (
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Vendor:</strong> {editingSupport.vendorName}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Feature:</strong> {editingSupport.featureName}
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <Label htmlFor="support-level">Support Level</Label>
+                <RadioGroup 
+                  value={supportEditData.supportLevel.toString()}
+                  onValueChange={(value) => setSupportEditData({ ...supportEditData, supportLevel: parseInt(value) })}
+                >
+                  {[
+                    { value: 0, label: "No Support", icon: "○", color: "text-gray-300" },
+                    { value: 1, label: "Limited Support", icon: "◔", color: "text-red-500" },
+                    { value: 2, label: "Partial Support", icon: "◑", color: "text-yellow-500" },
+                    { value: 3, label: "Good Support", icon: "◕", color: "text-blue-500" },
+                    { value: 4, label: "Full Support", icon: "●", color: "text-green-500" }
+                  ].map(({ value, label, icon, color }) => (
+                    <div key={value} className="flex items-center space-x-3">
+                      <RadioGroupItem value={value.toString()} id={`support-${value}`} />
+                      <label htmlFor={`support-${value}`} className="flex items-center space-x-2 cursor-pointer">
+                        <span className={`text-lg ${color}`}>{icon}</span>
+                        <span className="text-sm">{label}</span>
+                      </label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="comments">Comments</Label>
+                <Textarea
+                  id="comments"
+                  value={supportEditData.comments}
+                  onChange={(e) => setSupportEditData({ ...supportEditData, comments: e.target.value })}
+                  placeholder="Add notes about this vendor's support for this feature..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={handleSupportCancel}
+                  disabled={updateSupportWithCommentsMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSupportSave}
+                  disabled={updateSupportWithCommentsMutation.isPending}
+                >
+                  {updateSupportWithCommentsMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
