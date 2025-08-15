@@ -1,11 +1,91 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
+import passport from 'passport';
+import bcrypt from 'bcryptjs';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication
+  setupSession(app);
+  setupPassport(app);
+
+  // Authentication routes
+  app.post("/auth/register", async (req, res) => {
+    try {
+      const userData = registerUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ error: "User already exists with this email" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+        role: 'user',
+      });
+
+      // Log in the user
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: "Login failed after registration" });
+        }
+        const { password, ...userWithoutPassword } = user;
+        res.status(201).json(userWithoutPassword);
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/auth/login", passport.authenticate('local'), (req, res) => {
+    const { password, ...userWithoutPassword } = req.user as any;
+    res.json(userWithoutPassword);
+  });
+
+  app.post("/auth/logout", (req, res) => {
+    req.logout(() => {
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // OAuth routes
+  app.get("/auth/google", passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get("/auth/google/callback", 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+      res.redirect('/');
+    }
+  );
+
+  app.get("/auth/linkedin", passport.authenticate('linkedin'));
+  app.get("/auth/linkedin/callback", 
+    passport.authenticate('linkedin', { failureRedirect: '/login' }),
+    (req, res) => {
+      res.redirect('/');
+    }
+  );
+
+  // Get current user
+  app.get("/api/auth/user", (req, res) => {
+    if (req.isAuthenticated()) {
+      const { password, ...userWithoutPassword } = req.user as any;
+      res.json(userWithoutPassword);
+    } else {
+      res.status(401).json({ error: "Not authenticated" });
+    }
+  });
+
   // Configuration
   app.get("/api/config/tinymce", async (req, res) => {
     try {
@@ -41,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/markets", async (req, res) => {
+  app.post("/api/markets", requireAdmin, async (req, res) => {
     try {
       const marketData = insertMarketSchema.parse(req.body);
       const market = await storage.createMarket(marketData);
@@ -52,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/markets/:id", async (req, res) => {
+  app.put("/api/markets/:id", requireAdmin, async (req, res) => {
     try {
       const marketData = insertMarketSchema.partial().parse(req.body);
       const market = await storage.updateMarket(req.params.id, marketData);
@@ -63,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/markets/:id", async (req, res) => {
+  app.delete("/api/markets/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteMarket(req.params.id);
       res.status(204).send();
@@ -84,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vendors", async (req, res) => {
+  app.post("/api/vendors", requireAdmin, async (req, res) => {
     try {
       const vendorData = insertVendorSchema.parse(req.body);
       const vendor = await storage.createVendor(vendorData);
@@ -95,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/vendors/:id", async (req, res) => {
+  app.put("/api/vendors/:id", requireAdmin, async (req, res) => {
     try {
       const vendorData = insertVendorSchema.partial().parse(req.body);
       const vendor = await storage.updateVendor(req.params.id, vendorData);
@@ -106,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/vendors/:id", async (req, res) => {
+  app.delete("/api/vendors/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteVendor(req.params.id);
       res.status(204).send();
