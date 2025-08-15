@@ -53,7 +53,7 @@ export default function VendorManagement() {
 
   const createVendorMutation = useMutation({
     mutationFn: async (data: InsertVendor) => {
-      const response = await apiRequest("POST", "/api/vendors", data);
+      const response = await apiRequest("/api/vendors", "POST", data);
       return response.json();
     },
     onSuccess: () => {
@@ -76,7 +76,7 @@ export default function VendorManagement() {
   const updateVendorMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertVendor> }) => {
       console.log("Frontend: Attempting to update vendor", { id, data });
-      const response = await apiRequest("PUT", `/api/vendors/${id}`, data);
+      const response = await apiRequest(`/api/vendors/${id}`, "PUT", data);
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Frontend: Update failed", errorData);
@@ -105,7 +105,7 @@ export default function VendorManagement() {
 
   const deleteVendorMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/vendors/${id}`);
+      await apiRequest(`/api/vendors/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
@@ -125,7 +125,7 @@ export default function VendorManagement() {
 
   const saveScoreMutation = useMutation({
     mutationFn: async (scoreData: { vendorId: string; criteriaId: string; score: number; notes?: string }) => {
-      const response = await apiRequest("POST", "/api/vendor-scores", scoreData);
+      const response = await apiRequest("/api/vendor-scores", "POST", scoreData);
       return response.json();
     },
     onSuccess: (data, variables) => {
