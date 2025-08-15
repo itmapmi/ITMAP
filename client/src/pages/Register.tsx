@@ -78,7 +78,7 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src={itmapLogo} alt="ITMAP" className="h-20 w-auto" />
+            <img src={itmapLogo} alt="ITMAP" className="h-24 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Join ITMAP</CardTitle>
           <CardDescription className="text-center">

@@ -34,7 +34,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <div className="flex justify-center mb-12">
-              <img src={itmapLogo} alt="ITMAP" className="h-32 w-auto" />
+              <img src={itmapLogo} alt="ITMAP" className="h-40 w-auto" />
             </div>
             <h1 className="text-5xl font-bold text-gray-900 sm:text-6xl md:text-7xl mb-6">
               Enterprise Technology Intelligence
