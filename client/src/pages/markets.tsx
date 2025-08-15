@@ -24,7 +24,8 @@ export default function Markets() {
   // Extract unique categories from markets
   const categories = useMemo(() => {
     if (!markets) return [];
-    const uniqueCategories = [...new Set(markets.map(market => market.category).filter(Boolean))];
+    const categorySet = new Set(markets.map(market => market.category).filter(Boolean));
+    const uniqueCategories = Array.from(categorySet) as string[];
     return uniqueCategories.sort();
   }, [markets]);
 
