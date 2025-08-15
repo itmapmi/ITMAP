@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Eye, FileText, X, Bold, Italic, List, AlignLeft, AlignCenter, Type } from "lucide-react";
+import { Save, Eye, FileText, X, Bold, Italic, List, AlignLeft, AlignCenter, Type, Image, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
@@ -52,6 +52,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
 
   const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Handle editor content change
@@ -80,6 +81,57 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
       textarea.focus();
       textarea.setSelectionRange(start + openTag.length, start + openTag.length + selectedText.length);
     }, 0);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload to object storage
+      const response = await fetch('/api/objects/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const { url } = await response.json();
+      
+      // Insert image HTML at cursor position
+      const altText = file.name.split('.')[0];
+      const imageHtml = `<img src="${url}" alt="${altText}" style="max-width: 100%; height: auto;" />`;
+      insertHtml(imageHtml);
+
+      toast({
+        title: "Success",
+        description: "Image uploaded and inserted into report",
+      });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Trigger file input
+  const triggerImageUpload = () => {
+    fileInputRef.current?.click();
   };
 
   // Save report mutation
@@ -349,7 +401,26 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
               >
                 Link
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={triggerImageUpload}
+                className="flex items-center gap-1"
+              >
+                <Image className="h-3 w-3" />
+                Image
+              </Button>
             </div>
+            
+            {/* Hidden file input for image upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
             
             {/* HTML Content Textarea */}
             <Textarea
@@ -362,7 +433,7 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
             />
           </div>
           <p className="text-sm text-gray-500">
-            Use the toolbar buttons above to insert HTML formatting. You can write HTML directly or use the buttons to add headings, bold text, lists, tables, and links.
+            Use the toolbar buttons above to insert HTML formatting. You can write HTML directly or use the buttons to add headings, bold text, lists, tables, links, and images. Click the Image button to upload and insert pictures into your report.
           </p>
         </div>
 
