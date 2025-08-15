@@ -68,7 +68,7 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
-                Everything You Need to Evaluate Enterprise IT Vendors — in One Place
+                One Stop Shop for Vendor Selection
               </h2>
             </motion.div>
 
