@@ -1,11 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye, EyeOff, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Eye, EyeOff, Settings, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -59,10 +62,76 @@ const HarveyBall = ({ level }: { level: number }) => {
   );
 };
 
+// Editable Harvey Ball for admin editing mode
+const EditableHarveyBall = ({ level, onChange, disabled }: { 
+  level: number; 
+  onChange: (newLevel: number) => void;
+  disabled?: boolean;
+}) => {
+  const getHarveyBallIcon = (level: number) => {
+    switch (level) {
+      case 0: return "○"; // Empty circle - No support
+      case 1: return "◔"; // Quarter filled - Limited support
+      case 2: return "◑"; // Half filled - Partial support
+      case 3: return "◕"; // Three quarters filled - Good support
+      case 4: return "●"; // Full circle - Full support
+      default: return "○";
+    }
+  };
+
+  const getHarveyBallColor = (level: number) => {
+    switch (level) {
+      case 0: return "text-gray-300";
+      case 1: return "text-red-500";
+      case 2: return "text-yellow-500";
+      case 3: return "text-blue-500";
+      case 4: return "text-green-500";
+      default: return "text-gray-300";
+    }
+  };
+
+  const getSupportText = (level: number) => {
+    switch (level) {
+      case 0: return "No Support";
+      case 1: return "Limited";
+      case 2: return "Partial";
+      case 3: return "Good";
+      case 4: return "Full Support";
+      default: return "Unknown";
+    }
+  };
+
+  const handleClick = () => {
+    if (disabled) return;
+    // Cycle through support levels: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+    const nextLevel = (level + 1) % 5;
+    onChange(nextLevel);
+  };
+
+  return (
+    <div className="flex items-center justify-center">
+      <button
+        onClick={handleClick}
+        disabled={disabled}
+        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-110 transition-transform duration-200 ${
+          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-100 rounded-full p-1'
+        }`}
+        title={`Current: ${getSupportText(level)} (Click to change)`}
+      >
+        {getHarveyBallIcon(level)}
+      </button>
+    </div>
+  );
+};
+
 export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [editMode, setEditMode] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -131,6 +200,44 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
       const categoryIds = new Set(features.map(f => f.category.id));
       setCollapsedCategories(categoryIds);
     }
+  };
+
+  // Mutation for updating feature support
+  const updateSupportMutation = useMutation({
+    mutationFn: async ({ vendorId, featureId, supportLevel }: { vendorId: string; featureId: string; supportLevel: number }) => {
+      const response = await fetch(`/api/vendor-feature-support`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ vendorId, featureId, supportLevel })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update support level');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/markets', marketId, 'feature-support'] });
+      toast({
+        title: "Support Level Updated",
+        description: "Feature support level has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update feature support level. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSupportLevelChange = (vendorId: string, featureId: string, supportLevel: number) => {
+    if (!editMode) return;
+    updateSupportMutation.mutate({ vendorId, featureId, supportLevel });
   };
 
   if (isLoading) {
@@ -222,6 +329,17 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               <Settings className="h-4 w-4" />
               {showVendorSelection ? "Hide" : "Select"} Vendors
             </Button>
+            {user?.role === 'admin' && (
+              <Button
+                variant={editMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEditMode(!editMode)}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                {editMode ? "Exit Edit" : "Edit Support"}
+              </Button>
+            )}
           </div>
         </div>
         
@@ -376,7 +494,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                                 
                                 return (
                                   <div key={vendor.id} className="flex justify-center items-center">
-                                    <HarveyBall level={supportLevel} />
+                                    {editMode ? (
+                                      <EditableHarveyBall
+                                        level={supportLevel}
+                                        onChange={(newLevel) => handleSupportLevelChange(vendor.id, feature.id, newLevel)}
+                                        disabled={updateSupportMutation.isPending}
+                                      />
+                                    ) : (
+                                      <HarveyBall level={supportLevel} />
+                                    )}
                                   </div>
                                 );
                               })}
