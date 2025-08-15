@@ -178,6 +178,11 @@ export function requireAuth(req: any, res: any, next: any) {
 
 // Middleware to check if user is admin
 export function requireAdmin(req: any, res: any, next: any) {
+  console.log("Admin check:", {
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : null
+  });
+  
   if (req.isAuthenticated() && req.user?.role === 'admin') {
     return next();
   }

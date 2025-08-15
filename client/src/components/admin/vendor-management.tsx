@@ -75,7 +75,13 @@ export default function VendorManagement() {
 
   const updateVendorMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertVendor> }) => {
+      console.log("Frontend: Attempting to update vendor", { id, data });
       const response = await apiRequest("PUT", `/api/vendors/${id}`, data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Frontend: Update failed", errorData);
+        throw new Error(errorData.details || errorData.error || "Failed to update vendor");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -87,10 +93,11 @@ export default function VendorManagement() {
         description: "Vendor updated successfully",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Frontend: Mutation error", error);
       toast({
         title: "Error",
-        description: "Failed to update vendor",
+        description: error instanceof Error ? error.message : "Failed to update vendor",
         variant: "destructive",
       });
     },
