@@ -10,6 +10,7 @@ import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@share
 
 interface MagicQuadrantProps {
   marketId: string;
+  marketName: string;
 }
 
 interface VendorWithScores extends Vendor {
@@ -23,7 +24,7 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
-export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
@@ -524,7 +525,7 @@ export default function MagicQuadrant({ marketId }: MagicQuadrantProps) {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Magic Quadrant</CardTitle>
+              <CardTitle>ITMAP for {marketName}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative">

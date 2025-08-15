@@ -164,7 +164,7 @@ export default function MarketDetails() {
 
           <TabsContent value="vendor-evaluation" className="mt-6">
             <div className="space-y-8">
-              <MagicQuadrant marketId={marketId!} />
+              <MagicQuadrant marketId={marketId!} marketName={market.name} />
               <VendorComparison marketId={marketId!} />
             </div>
           </TabsContent>
