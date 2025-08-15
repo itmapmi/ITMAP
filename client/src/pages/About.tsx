@@ -6,7 +6,7 @@ export default function About() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-16">
           <div className="flex justify-center mb-8">
-            <img src={itmapLogo} alt="ITMAP" className="h-20 w-auto" />
+            <img src={itmapLogo} alt="ITMAP" className="h-28 w-auto" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-6">About ITMAP</h1>
           <div className="text-xl text-blue-600 font-semibold mb-8">
