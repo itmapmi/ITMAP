@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import itmapLogo from "@assets/New_!_1755236929587.png";
+import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -37,11 +37,11 @@ export default function Navigation() {
   return (
     <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20">
+        <div className="flex justify-between h-24">
           <div className="flex items-center">
             <Link href="/">
               <div className="flex items-center space-x-3">
-                <img src={itmapLogo} alt="ITMAP" className="h-12 w-auto" />
+                <img src={itmapLogo} alt="ITMAP" className="h-16 w-auto" />
               </div>
             </Link>
             <div className="ml-10 flex space-x-8">

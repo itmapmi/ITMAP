@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { LogIn, Chrome, Linkedin } from "lucide-react";
-import itmapLogo from "@assets/New_!_1755236929587.png";
+import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -45,7 +45,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src={itmapLogo} alt="ITMAP" className="h-16 w-auto" />
+            <img src={itmapLogo} alt="ITMAP" className="h-20 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Welcome to ITMAP</CardTitle>
           <CardDescription className="text-center">

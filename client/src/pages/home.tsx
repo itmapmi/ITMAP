@@ -9,7 +9,7 @@ import { LoadingGrid, SkeletonCard } from "@/components/ui/loading-animations";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { BarChart3, TrendingUp, Users, Shield, CheckCircle, Play } from "lucide-react";
-import itmapLogo from "@assets/New_!_1755236929587.png";
+import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
 
 export default function Home() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -34,7 +34,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <div className="flex justify-center mb-12">
-              <img src={itmapLogo} alt="ITMAP" className="h-24 w-auto" />
+              <img src={itmapLogo} alt="ITMAP" className="h-32 w-auto" />
             </div>
             <h1 className="text-5xl font-bold text-gray-900 sm:text-6xl md:text-7xl mb-6">
               Enterprise Technology Intelligence
