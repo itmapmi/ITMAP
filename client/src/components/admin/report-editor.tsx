@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Eye, FileText, X } from "lucide-react";
+import { Save, Eye, FileText, X, Bold, Italic, List, AlignLeft, AlignCenter, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { Market, ResearchReport, InsertResearchReport } from "@shared/schema";
-import { Editor } from "@tinymce/tinymce-react";
+// Using custom HTML editor instead of TinyMCE
 
 interface ReportEditorProps {
   markets: Market[];
@@ -51,18 +51,35 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
   }, [existingReport]);
 
   const [showPreview, setShowPreview] = useState(false);
-  const editorRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
-  // Fetch TinyMCE API key
-  const { data: tinymceConfig } = useQuery<{ apiKey: string }>({
-    queryKey: ["/api/config/tinymce"],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
   // Handle editor content change
-  const handleEditorChange = (content: string) => {
-    setFormData(prev => ({ ...prev, htmlContent: content }));
+  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, htmlContent: e.target.value }));
+  };
+
+  // Insert HTML formatting at cursor position
+  const insertHtml = (openTag: string, closeTag: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const newText = openTag + selectedText + closeTag;
+    
+    const beforeText = textarea.value.substring(0, start);
+    const afterText = textarea.value.substring(end);
+    
+    const newValue = beforeText + newText + afterText;
+    setFormData(prev => ({ ...prev, htmlContent: newValue }));
+    
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + openTag.length, start + openTag.length + selectedText.length);
+    }, 0);
   };
 
   // Save report mutation
@@ -248,44 +265,104 @@ export default function ReportEditor({ markets, existingReport, onClose, onSave 
           </div>
         </div>
 
-        {/* Rich Text Editor */}
+        {/* HTML Rich Text Editor */}
         <div className="space-y-2">
           <Label>Report Content</Label>
           <div className="border rounded-lg">
-            <Editor
-              apiKey="no-api-key"
-              onInit={(evt, editor) => {
-                editorRef.current = editor;
-                console.log('TinyMCE initialized successfully');
-              }}
-              initialValue={formData.htmlContent}
-              init={{
-                height: 400,
-                menubar: false,
-                plugins: [
-                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
-                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                  'insertdatetime', 'media', 'table', 'help', 'wordcount'
-                ],
-                toolbar: 
-                  'undo redo | formatselect | bold italic backcolor | ' +
-                  'alignleft aligncenter alignright alignjustify | ' +
-                  'bullist numlist outdent indent | removeformat | table | help',
-                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; min-height: 300px; }',
-                paste_data_images: true,
-                setup: (editor: any) => {
-                  editor.on('init', () => {
-                    // Enable editing
-                    editor.setMode('design');
-                    console.log('TinyMCE editor ready for input');
-                  });
-                }
-              }}
-              onEditorChange={handleEditorChange}
+            {/* Formatting Toolbar */}
+            <div className="flex flex-wrap gap-1 p-2 border-b bg-gray-50 dark:bg-gray-800">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<h1>', '</h1>')}
+                className="flex items-center gap-1"
+              >
+                <Type className="h-3 w-3" />
+                H1
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<h2>', '</h2>')}
+                className="flex items-center gap-1"
+              >
+                <Type className="h-3 w-3" />
+                H2
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<strong>', '</strong>')}
+              >
+                <Bold className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<em>', '</em>')}
+              >
+                <Italic className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<ul>\n  <li>', '</li>\n</ul>')}
+              >
+                <List className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<p style="text-align: center;">', '</p>')}
+              >
+                <AlignCenter className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<p style="text-align: left;">', '</p>')}
+              >
+                <AlignLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<table border="1">\n  <tr>\n    <th>Header 1</th>\n    <th>Header 2</th>\n  </tr>\n  <tr>\n    <td>', '</td>\n    <td>Cell 2</td>\n  </tr>\n</table>')}
+                className="text-xs"
+              >
+                Table
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => insertHtml('<a href="', '">Link Text</a>')}
+                className="text-xs"
+              >
+                Link
+              </Button>
+            </div>
+            
+            {/* HTML Content Textarea */}
+            <Textarea
+              ref={textareaRef}
+              value={formData.htmlContent}
+              onChange={handleEditorChange}
+              placeholder="Write your HTML content here. Use the toolbar buttons above to add formatting..."
+              className="min-h-[400px] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-sm"
+              style={{ resize: 'vertical' }}
             />
           </div>
           <p className="text-sm text-gray-500">
-            Use the toolbar above to format your content. You can add headings, lists, links, images, tables, and more.
+            Use the toolbar buttons above to insert HTML formatting. You can write HTML directly or use the buttons to add headings, bold text, lists, tables, and links.
           </p>
         </div>
 
