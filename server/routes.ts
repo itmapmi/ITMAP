@@ -187,12 +187,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/vendors/:id", requireAdmin, async (req, res) => {
     try {
+      console.log("Vendor update request:", {
+        id: req.params.id,
+        body: req.body,
+        user: req.user ? { id: (req.user as any).id, role: (req.user as any).role } : 'none'
+      });
+      
       const vendorData = insertVendorSchema.partial().parse(req.body);
+      console.log("Parsed vendor data:", vendorData);
+      
       const vendor = await storage.updateVendor(req.params.id, vendorData);
+      console.log("Updated vendor:", vendor);
+      
       res.json(vendor);
     } catch (error) {
       console.error("Error updating vendor:", error);
-      res.status(400).json({ error: "Failed to update vendor" });
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      res.status(400).json({ error: "Failed to update vendor", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
