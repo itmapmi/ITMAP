@@ -36,25 +36,21 @@ export default function Home() {
             <div className="flex justify-center mb-12">
               <img src={itmapLogo} alt="ITMAP" className="h-48 w-auto" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl mb-6">
-              Enterprise Technology Intelligence
+            <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl mb-8 max-w-5xl mx-auto leading-tight">
+              Cut Through the Noise in Enterprise IT Vendor Evaluation
             </h1>
-            <div className="text-2xl text-blue-600 font-bold mb-8 tracking-wide">
-              Unbiased. Comprehensive.
-            </div>
-            <p className="mt-3 max-w-3xl mx-auto text-lg text-gray-600 leading-relaxed">
-              ITMAP delivers unbiased technology vendor analysis and comprehensive market intelligence. 
-              Make informed decisions with our interactive Magic Quadrant visualizations, real-time competitive intelligence, 
-              and detailed research reports.
+            <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
+              ITMAP.com uses AI to analyze publicly available data, delivering vendor rankings, feature matrices, 
+              and competitive insights — without hidden agendas.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white px-8 py-3">
-                  Start Free Trial
+              <Link href="/markets">
+                <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 px-12 py-4 text-lg font-semibold">
+                  Explore Vendor Evaluations
                 </Button>
               </Link>
               <Link href="/login">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white px-8 py-3">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-gray-700 text-gray-700 hover:bg-gray-700 hover:text-white px-8 py-4 text-lg">
                   Sign In
                 </Button>
               </Link>
@@ -72,11 +68,8 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
-                Why Technology Leaders Choose ITMAP
+                Everything You Need to Evaluate Enterprise IT Vendors — in One Place
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our platform combines deep market expertise with cutting-edge analytics to deliver actionable insights
-              </p>
             </motion.div>
 
             <motion.div 
@@ -86,81 +79,101 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.5 }}
             >
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Unbiased Analysis You Can Trust</h3>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                    <p className="text-gray-600">Independent research methodology free from vendor influence</p>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">AI-Powered Analysis</h4>
+                      <p className="text-gray-600">Independent research methodology using artificial intelligence to process public data</p>
+                    </div>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                    <p className="text-gray-600">Transparent scoring criteria across execution and viability dimensions</p>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">Transparent Methodology</h4>
+                      <p className="text-gray-600">Clear scoring criteria across execution and viability dimensions with public data sources</p>
+                    </div>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="h-6 w-6 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                    <p className="text-gray-600">Real-time updates based on authentic vendor news and developments</p>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">Real-Time Intelligence</h4>
+                      <p className="text-gray-600">Live updates based on authentic vendor news and market developments</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-teal-50 to-blue-50 p-8 rounded-xl">
-                <BarChart3 className="h-16 w-16 text-blue-600 mb-4" />
+              <div className="bg-gradient-to-br from-cyan-50 to-purple-50 p-8 rounded-xl border border-gray-100">
+                <BarChart3 className="h-16 w-16 text-cyan-600 mb-4" />
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">Interactive Vendor Evaluations</h4>
                 <p className="text-gray-600">Explore vendor positioning with dynamic visualizations and drill-down capabilities</p>
               </div>
             </motion.div>
 
             <motion.div 
-              className="grid grid-cols-1 md:grid-cols-3 gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.7 }}
             >
-              <div className="text-center p-6 bg-gray-50 rounded-xl">
-                <TrendingUp className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Market Intelligence</h3>
+              <div className="text-center p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+                <BarChart3 className="h-12 w-12 text-cyan-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Vendor Evaluation Guide</h3>
                 <p className="text-gray-600">
-                  AI-powered analysis of vendor news, market movements, and competitive dynamics
+                  Instantly see which vendors lead the market.
                 </p>
               </div>
 
-              <div className="text-center p-6 bg-gray-50 rounded-xl">
+              <div className="text-center p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+                <TrendingUp className="h-12 w-12 text-purple-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Live Market News</h3>
+                <p className="text-gray-600">
+                  Stay ahead with up-to-date enterprise IT coverage.
+                </p>
+              </div>
+
+              <div className="text-center p-6 bg-white rounded-xl shadow-lg border border-gray-100">
                 <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Competitive Analysis</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Feature Support Matrix</h3>
                 <p className="text-gray-600">
-                  Side-by-side comparisons with feature matrices and capability assessments
+                  Quickly check product capabilities.
                 </p>
               </div>
 
-              <div className="text-center p-6 bg-gray-50 rounded-xl">
-                <Shield className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Research Reports</h3>
+              <div className="text-center p-6 bg-white rounded-xl shadow-lg border border-gray-100">
+                <Shield className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Detailed Research Reports</h3>
                 <p className="text-gray-600">
-                  Comprehensive market analysis with downloadable insights and recommendations
+                  Dive deep into unbiased market analysis.
                 </p>
               </div>
             </motion.div>
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="py-16 bg-gradient-to-r from-teal-500 to-blue-600">
-          <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+        {/* Why ITMAP is Different Section */}
+        <div className="py-16 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div 
+              className="text-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.9 }}
             >
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Ready to Transform Your Technology Decisions?
+              <h2 className="text-3xl font-bold text-gray-900 mb-8 sm:text-4xl">
+                Why ITMAP is Different
               </h2>
-              <p className="text-xl text-blue-100 mb-8">
-                Join thousands of technology leaders who trust ITMAP for unbiased market intelligence
-              </p>
-              <Link href="/register">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold">
-                  Start Your Free Trial Today
-                </Button>
-              </Link>
+              <div className="bg-gradient-to-br from-cyan-50 to-purple-50 p-8 rounded-2xl border border-gray-100">
+                <p className="text-xl text-gray-700 leading-relaxed mb-8">
+                  Unlike traditional analyst firms, ITMAP's evaluations aren't influenced by paid vendor relationships. 
+                  Every insight is based on public, verifiable data — processed and analyzed by AI.
+                </p>
+                <Link href="/markets">
+                  <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 px-12 py-4 text-lg font-semibold">
+                    Explore Vendor Evaluations
+                  </Button>
+                </Link>
+              </div>
             </motion.div>
           </div>
         </div>
