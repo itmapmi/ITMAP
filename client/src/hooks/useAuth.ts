@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, getQueryFn } from "@/lib/queryClient";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 
 export function useAuth() {
@@ -19,7 +19,7 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginUser) => {
-      const response = await apiRequest('/auth/login', 'POST', credentials);
+      const response = await apiRequestJson('/auth/login', 'POST', credentials);
       return response;
     },
     onSuccess: (user) => {
@@ -30,7 +30,7 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterUser) => {
-      const response = await apiRequest('/auth/register', 'POST', userData);
+      const response = await apiRequestJson('/auth/register', 'POST', userData);
       return response;
     },
     onSuccess: (user) => {
@@ -41,7 +41,7 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest('/auth/logout', 'POST');
+      await apiRequestJson('/auth/logout', 'POST');
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
