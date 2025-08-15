@@ -525,7 +525,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>ITMAP for {marketName}</CardTitle>
+              <CardTitle>ITmap for {marketName}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative">

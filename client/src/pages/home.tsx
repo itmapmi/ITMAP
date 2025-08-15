@@ -34,13 +34,13 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <div className="flex justify-center mb-12">
-              <img src={itmapLogo} alt="ITMAP" className="h-48 w-auto" />
+              <img src={itmapLogo} alt="ITmap" className="h-48 w-auto" />
             </div>
             <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl mb-8 max-w-5xl mx-auto leading-tight">
               Cut Through the Noise in Enterprise IT Vendor Evaluation
             </h1>
             <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
-              ITMAP.com uses AI to analyze publicly available data, delivering vendor rankings, feature matrices, 
+              ITmap.com uses AI to analyze publicly available data, delivering vendor rankings, feature matrices, 
               and competitive insights — without hidden agendas.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
@@ -151,7 +151,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Why ITMAP is Different Section */}
+        {/* Why ITmap is Different Section */}
         <div className="py-16 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div 
@@ -161,11 +161,11 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.9 }}
             >
               <h2 className="text-3xl font-bold text-gray-900 mb-8 sm:text-4xl">
-                Why ITMAP is Different
+                Why ITmap is Different
               </h2>
               <div className="bg-gradient-to-br from-cyan-50 to-purple-50 p-8 rounded-2xl border border-gray-100">
                 <p className="text-xl text-gray-700 leading-relaxed mb-8">
-                  Unlike traditional analyst firms, ITMAP's evaluations aren't influenced by paid vendor relationships. 
+                  Unlike traditional analyst firms, ITmap's evaluations aren't influenced by paid vendor relationships. 
                   Every insight is based on public, verifiable data — processed and analyzed by AI.
                 </p>
                 <Link href="/markets">
