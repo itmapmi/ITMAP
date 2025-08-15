@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye, EyeOff, Settings } from "lucide-react";
+import { Users, Eye, EyeOff, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -62,6 +62,7 @@ const HarveyBall = ({ level }: { level: number }) => {
 export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -107,6 +108,29 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const clearAllVendors = () => {
     setSelectedVendors(new Set());
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
+  const expandAllCategories = () => {
+    setCollapsedCategories(new Set());
+  };
+
+  const collapseAllCategories = () => {
+    if (features) {
+      const categoryIds = new Set(features.map(f => f.category.id));
+      setCollapsedCategories(categoryIds);
+    }
   };
 
   if (isLoading) {
@@ -171,6 +195,24 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={expandAllCategories}
+              className="flex items-center gap-2"
+            >
+              <ChevronDown className="h-4 w-4" />
+              Expand All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={collapseAllCategories}
+              className="flex items-center gap-2"
+            >
+              <ChevronRight className="h-4 w-4" />
+              Collapse All
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -281,52 +323,70 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                   (a, b) => a.category.displayOrder - b.category.displayOrder
                 );
 
-                return sortedCategories.map(({ category, features: categoryFeatures }) => (
-                  <div key={category.id} className="space-y-3">
-                    {/* Category Header */}
-                    <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r">
-                      <h3 className="font-semibold text-lg text-blue-900">
-                        {category.name}
-                      </h3>
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {categoryFeatures.length} features
-                      </Badge>
-                    </div>
-                    
-                    {/* Features in this category */}
-                    <div className="space-y-2 ml-4">
-                      {categoryFeatures.map(feature => (
-                        <div 
-                          key={feature.id} 
-                          className="grid gap-4 py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2"
-                          style={{ gridTemplateColumns: `280px repeat(${vendors.length}, 120px)` }}
-                        >
-                          <div className="flex flex-col justify-center">
-                            <div className="font-medium text-sm text-gray-900">
-                              {feature.name}
-                            </div>
-                            {feature.description && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                {feature.description}
-                              </div>
+                return sortedCategories.map(({ category, features: categoryFeatures }) => {
+                  const isCollapsed = collapsedCategories.has(category.id);
+                  
+                  return (
+                    <div key={category.id} className="space-y-3">
+                      {/* Category Header - Clickable */}
+                      <button
+                        onClick={() => toggleCategory(category.id)}
+                        className="w-full border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-r transition-colors duration-200 text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {isCollapsed ? (
+                              <ChevronRight className="h-5 w-5 text-blue-700" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5 text-blue-700" />
                             )}
+                            <h3 className="font-semibold text-lg text-blue-900">
+                              {category.name}
+                            </h3>
                           </div>
-                          
-                          {vendors.map(vendor => {
-                            const supportKey = `${vendor.id}-${feature.id}`;
-                            const supportLevel = supportLookup.get(supportKey) || 0;
-                            
-                            return (
-                              <div key={vendor.id} className="flex justify-center items-center">
-                                <HarveyBall level={supportLevel} />
-                              </div>
-                            );
-                          })}
+                          <Badge variant="outline" className="text-xs">
+                            {categoryFeatures.length} features
+                          </Badge>
                         </div>
-                      ))}
+                      </button>
+                      
+                      {/* Features in this category - Collapsible */}
+                      {!isCollapsed && (
+                        <div className="space-y-2 ml-4 animate-in slide-in-from-top-2 duration-200">
+                          {categoryFeatures.map(feature => (
+                            <div 
+                              key={feature.id} 
+                              className="grid gap-4 py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2"
+                              style={{ gridTemplateColumns: `280px repeat(${vendors.length}, 120px)` }}
+                            >
+                              <div className="flex flex-col justify-center">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {feature.name}
+                                </div>
+                                {feature.description && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {feature.description}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {vendors.map(vendor => {
+                                const supportKey = `${vendor.id}-${feature.id}`;
+                                const supportLevel = supportLookup.get(supportKey) || 0;
+                                
+                                return (
+                                  <div key={vendor.id} className="flex justify-center items-center">
+                                    <HarveyBall level={supportLevel} />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ));
+                  );
+                });
               })()}
             </div>
 
