@@ -394,7 +394,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     return (
                       <div key={category.id} className="space-y-3">
                         {/* Category header */}
-                        <div className="flex items-center justify-between sticky top-[70px] z-30 bg-white py-2 border-b border-gray-100">
+                        <div className="flex items-center justify-between sticky top-[70px] z-30 bg-white py-3 mt-4 border-b border-gray-100">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <button
@@ -410,7 +410,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
                         {/* Features in category */}
                         {!isCollapsed && (
-                          <div className="space-y-2 ml-4 animate-in slide-in-from-top-2 duration-200">
+                          <div className="space-y-2 ml-4 mt-4 animate-in slide-in-from-top-2 duration-200">
                             {categoryFeatures.map(feature => (
                               <div 
                                 key={feature.id}
