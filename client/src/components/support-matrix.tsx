@@ -340,8 +340,11 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         ) : (
           <div className="overflow-x-auto">
             <div className="min-w-full">
-              {/* Header with vendor names and products */}
-              <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
+              {/* Header with vendor names and products - STICKY */}
+              <div 
+                className="grid gap-4 mb-6 sticky top-0 bg-white z-10 py-4 border-b border-gray-200 shadow-sm" 
+                style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+              >
                 <div className="font-semibold text-sm text-gray-600 flex items-center">
                   Features
                 </div>
