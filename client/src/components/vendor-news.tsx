@@ -61,7 +61,7 @@ export default function VendorNews({ marketId }: VendorNewsProps) {
       break;
     default: // date
       filteredNews.sort((a, b) => 
-        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
       );
   }
 
