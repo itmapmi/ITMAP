@@ -111,6 +111,14 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     }
   }, [allVendors, selectedVendors.size]);
 
+  // Initialize with all categories collapsed when features load
+  useEffect(() => {
+    if (features && collapsedCategories.size === 0) {
+      const uniqueCategoryIds = new Set(features.map(f => f.category.id));
+      setCollapsedCategories(uniqueCategoryIds);
+    }
+  }, [features, collapsedCategories.size]);
+
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
 
