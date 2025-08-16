@@ -1002,11 +1002,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vendors in the market
       const vendors = await storage.getVendorsByMarket(marketId);
       
-      // Get all features in the market
+      // Get all features in the market  
       const features = await storage.getMarketFeatures(marketId);
       
       // Get all support data for the market
-      const supportData = await storage.getMarketFeatureSupport(marketId);
+      const supportData = await storage.getVendorFeatureSupport(marketId);
       
       // Find the Product Capabilities criteria
       const allCriteria = await storage.getAllCriteria();
@@ -1027,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate and update scores for each vendor
       for (const vendor of vendors) {
-        // Calculate vendor's total score
+        // Calculate vendor's total score using same logic as support matrix
         const totalScore = features.reduce((sum, feature) => {
           const supportKey = `${vendor.id}-${feature.id}`;
           const supportLevel = supportLookup.get(supportKey) || 0;
@@ -1047,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Calculate maximum possible score
         const maxScore = features.length * 1.0;
         
-        // Calculate normalized score out of 10
+        // Calculate normalized score out of 10 (exactly as shown in support matrix)
         const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
 
         // Update or create the vendor score

@@ -94,6 +94,14 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### Support Matrix - Vendor Evaluation Integration (August 16, 2025)
+- **Automatic Score Integration**: Support matrix normalized scores (out of 10) now directly feed into vendor evaluation Product Capabilities criteria
+- **Real-time Updates**: Added "Update Vendor Evaluation" button in support matrix for instant score synchronization
+- **Harvey Ball Scoring System**: Implemented consistent scoring (Full=1.0, Good=0.75, Partial=0.5, Limited/None=0) across both systems
+- **API Endpoint**: Created `/api/admin/update-product-capabilities-scores` endpoint for automated score updates
+- **Toast Notifications**: Added user feedback for successful score updates with vendor count confirmation
+- **Query Invalidation**: Automatic refresh of vendor evaluation charts after score updates for real-time visualization
+
 ### Terminology Update (August 15, 2025)
 - **Replaced "Magic Quadrant" with "Vendor Evaluation"** throughout the application
 - **Updated navigation tabs** to reflect new terminology for better clarity
