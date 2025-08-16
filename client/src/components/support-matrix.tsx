@@ -338,32 +338,41 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-full">
-              {/* Header with vendor names and products - STICKY */}
+          <div className="relative">
+            <div className="overflow-x-auto">
+              {/* Floating sticky header */}
               <div 
-                className="grid gap-4 mb-6 sticky top-0 bg-white z-10 py-4 border-b border-gray-200 shadow-sm" 
-                style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg"
+                style={{ 
+                  position: 'sticky',
+                  top: '0px',
+                  marginBottom: '0px'
+                }}
               >
-                <div className="font-semibold text-sm text-gray-600 flex items-center">
-                  Features
-                </div>
-                {vendors.map(vendor => (
-                  <div key={vendor.id} className="text-center">
-                    <div className="font-medium text-sm text-gray-900 mb-1">
-                      {vendor.name}
-                    </div>
-                    {vendor.product && (
-                      <div className="text-xs text-gray-600 font-medium">
-                        {vendor.product}
-                      </div>
-                    )}
+                <div 
+                  className="grid gap-4 py-4 px-4" 
+                  style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                >
+                  <div className="font-semibold text-sm text-gray-600 flex items-center">
+                    Features
                   </div>
-                ))}
+                  {vendors.map(vendor => (
+                    <div key={vendor.id} className="text-center">
+                      <div className="font-medium text-sm text-gray-900 mb-1">
+                        {vendor.name}
+                      </div>
+                      {vendor.product && (
+                        <div className="text-xs text-gray-600 font-medium">
+                          {vendor.product}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-            {/* Feature rows grouped by categories */}
-            <div className="space-y-6">
+              {/* Feature rows grouped by categories */}
+              <div className="space-y-6 px-4">
               {features && (() => {
                 // Group features by category
                 const featuresByCategory = features.reduce((acc, feature) => {
@@ -489,7 +498,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               </div>
             </div>
           </div>
-        </div>
+              </div>
+            </div>
+          </div>
         )}
       </CardContent>
 
