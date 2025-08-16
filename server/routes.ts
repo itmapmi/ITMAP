@@ -904,11 +904,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { categories, features, supportData } = req.body;
       console.log(`Received bulk upload: ${categories?.length} categories, ${features?.length} features, ${supportData?.length} support records`);
       
-      // Get the High-End Storage market ID
-      const marketResult = await storage.getMarkets();
-      const market = marketResult.find(m => m.name === 'High-End Storage');
+      // Get the Enterprise Storage market ID
+      const marketResult = await storage.getAllMarkets();
+      const market = marketResult.find(m => m.name === 'Enterprise Storage');
       if (!market) {
-        return res.status(404).json({ error: 'High-End Storage market not found' });
+        return res.status(404).json({ error: 'Enterprise Storage market not found' });
       }
 
       let createdCategories = 0;
@@ -917,8 +917,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create feature categories
       for (const category of categories) {
-        const existing = await storage.getFeatureCategories();
-        if (!existing.find(c => c.name === category.name)) {
+        const existing = await storage.getMarketFeatureCategories(market.id);
+        if (!existing.find((c: any) => c.name === category.name)) {
           await storage.createFeatureCategory({
             name: category.name,
             marketId: market.id,
@@ -929,14 +929,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get updated categories list
-      const allCategories = await storage.getFeatureCategories();
-      const categoryMap = {};
-      allCategories.forEach(c => categoryMap[c.name] = c.id);
+      const allCategories = await storage.getMarketFeatureCategories(market.id);
+      const categoryMap: {[key: string]: string} = {};
+      allCategories.forEach((c: any) => categoryMap[c.name] = c.id);
 
       // Create features
       for (const feature of features) {
         const existing = await storage.getMarketFeatures(market.id);
-        if (!existing.find(f => f.name === feature.name)) {
+        if (!existing.find((f: any) => f.name === feature.name)) {
           await storage.createFeature({
             name: feature.name,
             description: feature.description,
@@ -949,14 +949,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get vendors and features for mapping
       const vendors = await storage.getVendorsByMarket(market.id);
-      const vendorMap = {};
-      vendors.forEach(v => {
+      const vendorMap: {[key: string]: string} = {};
+      vendors.forEach((v: any) => {
         vendorMap[v.product || v.name] = v.id;
       });
 
       const allFeatures = await storage.getMarketFeatures(market.id);
-      const featureMap = {};
-      allFeatures.forEach(f => featureMap[f.name] = f.id);
+      const featureMap: {[key: string]: string} = {};
+      allFeatures.forEach((f: any) => featureMap[f.name] = f.id);
 
       // Update support data
       for (const support of supportData) {
