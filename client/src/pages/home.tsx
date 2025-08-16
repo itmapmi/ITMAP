@@ -193,7 +193,7 @@ export default function Home() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Markets Available for Evaluation</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Explore a Market</h1>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -217,7 +217,7 @@ export default function Home() {
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Markets Available for Evaluation
+          Explore a Market
         </h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
           Select a market to explore vendor evaluations, feature comparisons, and market insights.
