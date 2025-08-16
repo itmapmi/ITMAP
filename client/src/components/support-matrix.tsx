@@ -254,8 +254,13 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 {vendors.length} of {allVendors?.length || 0} vendors
               </Badge>
             </CardTitle>
-            <CardDescription>
-              Harvey ball indicators showing vendor feature support levels (● Full, ◕ Good, ◑ Partial, ◔ Limited, ○ None)
+            <CardDescription className="flex items-center gap-1 flex-wrap">
+              Harvey ball indicators showing vendor feature support levels (
+              <span className="text-green-500 font-bold">●</span> Full, 
+              <span className="text-blue-500 font-bold">◕</span> Good, 
+              <span className="text-yellow-500 font-bold">◑</span> Partial, 
+              <span className="text-red-500 font-bold">◔</span> Limited, 
+              <span className="text-gray-300 font-bold">○</span> None)
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
