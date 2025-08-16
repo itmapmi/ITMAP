@@ -342,7 +342,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             <div className="min-w-full">
               {/* Header with vendor names and products - STICKY */}
               <div 
-                className="grid gap-4 mb-6 sticky top-0 bg-white z-10 py-4 border-b border-gray-200 shadow-sm" 
+                className="grid gap-4 mb-6 sticky top-20 bg-white/95 backdrop-blur-sm z-20 py-4 border-b border-gray-200 shadow-md" 
                 style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
               >
                 <div className="font-semibold text-sm text-gray-600 flex items-center">
@@ -354,13 +354,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                       {vendor.name}
                     </div>
                     {vendor.product && (
-                      <div className="text-xs text-gray-600 mb-1 font-medium">
+                      <div className="text-xs text-gray-600 font-medium">
                         {vendor.product}
                       </div>
                     )}
-                    <Badge variant="outline" className="text-xs">
-                      {vendor.product ? "Product" : "Vendor"}
-                    </Badge>
                   </div>
                 ))}
               </div>
