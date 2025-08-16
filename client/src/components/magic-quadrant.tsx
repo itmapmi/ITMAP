@@ -70,6 +70,15 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     queryKey: ["/api/criteria"],
   });
 
+  // Query support matrix data for product capabilities scoring
+  const { data: features } = useQuery<any[]>({
+    queryKey: ["/api/markets", marketId, "features"],
+  });
+
+  const { data: supportMatrix } = useQuery<any[]>({
+    queryKey: ["/api/markets", marketId, "feature-support"],
+  });
+
   // Query historical positions for the selected date
   const { data: historicalPositions } = useQuery<any[]>({
     queryKey: ["/api/markets", marketId, "historical-positions"],
@@ -92,6 +101,41 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       setCriteriaWeights(initialWeights);
     }
   }, [weights, criteria]);
+
+  // Calculate support matrix scores for product capabilities
+  const calculateSupportMatrixScore = (vendorId: string): number => {
+    if (!features || !supportMatrix) return 0;
+    
+    // Create support lookup map
+    const supportLookup = new Map<string, number>();
+    supportMatrix.forEach(support => {
+      const key = `${support.vendorId}-${support.featureId}`;
+      supportLookup.set(key, support.supportLevel);
+    });
+
+    // Calculate vendor's total score
+    const totalScore = features.reduce((sum, feature) => {
+      const supportKey = `${vendorId}-${feature.id}`;
+      const supportLevel = supportLookup.get(supportKey) || 0;
+      
+      // Convert support level to score (same as support matrix)
+      let score = 0;
+      switch (supportLevel) {
+        case 4: score = 1.0; break;    // Full support
+        case 3: score = 0.75; break;   // Good support
+        case 2: score = 0.5; break;    // Partial support
+        case 1: score = 0; break;      // Limited support - no score
+        case 0: score = 0; break;      // No support - no score
+      }
+      return sum + score;
+    }, 0);
+
+    // Calculate maximum possible score
+    const maxScore = features.length * 1.0;
+    
+    // Return normalized score out of 10
+    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+  };
 
   // Calculate vendor positions (use historical data if available and not current week)
   const vendorsWithScores: VendorWithScores[] = (vendors || []).map(vendor => {
@@ -130,6 +174,17 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           }
         }
       });
+    }
+
+    // Add Product Capabilities score from support matrix to execution category
+    const supportMatrixScore = calculateSupportMatrixScore(vendor.id);
+    if (supportMatrixScore > 0) {
+      const productCapabilitiesWeight = 25; // Same weight as other criteria
+      executionTotal += supportMatrixScore * productCapabilitiesWeight;
+      executionWeight += productCapabilitiesWeight;
+      
+      // Add to vendor scores for display purposes
+      vendorScores['product-capabilities'] = supportMatrixScore;
     }
 
     // Convert 0-10 scores to 0-100 scale for proper quadrant positioning
@@ -577,6 +632,21 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                     </div>
                   </div>
                 ))}
+                
+                {/* Product Capabilities from Support Matrix */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Capabilities (Auto)
+                  </label>
+                  <div className="bg-green-50 p-2 rounded-md">
+                    <div className="text-xs text-green-700">
+                      Automatically calculated from Support Matrix
+                    </div>
+                    <div className="text-xs text-gray-500 text-right mt-1">
+                      25% (Fixed Weight)
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <hr className="my-4" />
@@ -631,6 +701,36 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                     <span className="font-medium">
                       {selectedVendor.vendor.website || 'N/A'}
                     </span>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Individual Scores</h4>
+                  <div className="space-y-2 text-sm">
+                    {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
+                      if (criteriaId === 'product-capabilities') {
+                        return (
+                          <div key={criteriaId} className="flex justify-between">
+                            <span className="text-gray-600">Product Capabilities:</span>
+                            <span className="font-medium text-green-600">
+                              {score.toFixed(1)}/10
+                            </span>
+                          </div>
+                        );
+                      }
+                      
+                      const criterion = criteria?.find(c => c.id === criteriaId);
+                      if (!criterion) return null;
+                      
+                      return (
+                        <div key={criteriaId} className="flex justify-between">
+                          <span className="text-gray-600">{criterion.name}:</span>
+                          <span className="font-medium">
+                            {score.toFixed(1)}/10
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
