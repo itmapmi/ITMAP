@@ -339,11 +339,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             <div className="overflow-x-auto">
               {/* Floating sticky header */}
               <div 
-                className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg"
+                className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-md"
                 style={{ 
                   position: 'sticky',
-                  top: '0px',
-                  marginBottom: '0px'
+                  top: '0px'
                 }}
               >
                 <div 
@@ -395,7 +394,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     return (
                       <div key={category.id} className="space-y-3">
                         {/* Category header */}
-                        <div className="flex items-center justify-between sticky top-[80px] z-10 bg-white py-2">
+                        <div className="flex items-center justify-between sticky top-[60px] z-40 bg-white py-2 border-b border-gray-100">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <button
