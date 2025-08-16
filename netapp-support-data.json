@@ -1,0 +1,1134 @@
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Predictive analytics for failure detection",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Predictive analytics for remediation",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated anomaly detection",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated root cause analysis",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI-driven workload placement",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI-driven workload optimization",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Intelligent tiering",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Intelligent data migration",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Adaptive performance tuning",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated capacity forecasting",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated capacity planning",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Self-healing mechanisms",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI/ML-based anomaly detection for security threats",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Autonomous policy creation based on usage patterns",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Active-active high-availability configuration",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Active-passive high-availability configuration",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Redundant controllers",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Redundant components",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Non-disruptive firmware upgrades",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Non-disruptive microcode upgrades",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Non-disruptive software upgrades",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hot-swappable drives",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hot-swappable controllers",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hot-swappable fans",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hot-swappable power supplies",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Synchronous replication",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Asynchronous replication",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Geo-redundancy support",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Disaster recovery capabilities",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Continuous data protection (CDP)",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Snapshot frequency configuration",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Snapshot granularity configuration",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NVMe-oF protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Fibre Channel protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "iSCSI protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NFS protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SMB protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "S3 protocol support for HA",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SLA uptime guarantee",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SLA recovery objectives",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Space-efficient snapshots",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Instant restore snapshots",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Cloning support",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Thin provisioning",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Inline deduplication",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Post-process deduplication",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Inline compression",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Post-process compression",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Erasure coding support",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "RAID level configuration options",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated data classification",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Automated data tagging",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Policy-based data retention",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Policy-based data lifecycle management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to AWS",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to Azure",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to GCP",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to OCI",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to IBM Cloud",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to Wasabi",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Native cloud tiering to Backblaze",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "File data management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Block data management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Object data management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Metadata search",
+  "supportLevel": 3,
+  "notes": "Cloud Data Sense provides classification and compliance insights (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Metadata indexing",
+  "supportLevel": 3,
+  "notes": "Cloud Data Sense provides classification and compliance insights (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Fibre Channel protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "iSCSI protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NVMe-oF protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NFS protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SMB protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "S3 protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "HDFS protocol support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Commvault",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Veeam",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Rubrik",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Cohesity",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Veritas",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with NetBackup",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with Dell PPDM",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backup platform integration with HYCU",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "VMware certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hyper-V certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "KVM certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Citrix certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Kubernetes CSI driver support",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "OpenShift compatibility",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Tanzu compatibility",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Anthos compatibility",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AWS integration",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Azure integration",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "GCP integration",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "OCI integration",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "IBM Cloud integration",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Wasabi integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Backblaze integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI/ML workload support for NVIDIA DGX",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI/ML workload support for Habana",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI/ML workload support for TensorFlow",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AI/ML workload support for PyTorch",
+  "supportLevel": 3,
+  "notes": "Active IQ provides AI‑based analytics for NetApp systems; not detailed in this article."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Oracle database integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Microsoft SQL Server integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SAP HANA integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "PostgreSQL integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "MySQL integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Hadoop integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Spark integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Splunk integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Elastic integration",
+  "supportLevel": 3,
+  "notes": "SnapMirror, MetroCluster, SnapRestore and SnapCenter provide replication, disaster recovery and backup capabilities【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "REST API availability",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Python SDK availability",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "PowerShell SDK availability",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Java SDK availability",
+  "supportLevel": 4,
+  "notes": "A900 offers high redundancy and high availability with hot‑swappable components【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SAP certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "EDA tools certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Media workflow certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Inline decompression",
+  "supportLevel": 4,
+  "notes": "OnTap includes deduplication, compression and compaction; FabricPool automates tiering (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Reclaim capabilities",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Auto-tiering support",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Energy Star certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Climate Neutral certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "UNMAP support",
+  "supportLevel": 4,
+  "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "TRIM support",
+  "supportLevel": 4,
+  "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Space-efficient clones",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Multi-tenancy support",
+  "supportLevel": 4,
+  "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Efficiency monitoring dashboards",
+  "supportLevel": 4,
+  "notes": "Deduplication, compression and compaction deliver high storage efficiency (NetApp documents)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Granular QoS control",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Fibre Channel performance benchmark",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NVMe-oF performance benchmark",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "iSCSI performance benchmark",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "NFS performance benchmark",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SMB performance benchmark",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "S3 performance benchmark",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Read latency",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Write latency",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Mixed I/O latency",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Sequential IOPS",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Random IOPS",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Sequential throughput",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Random throughput",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Read caching",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Write caching",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Tiering between NVMe and SSD",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Tiering between SSD and HDD",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "End-to-end NVMe support",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "QoS with performance guarantees",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "GPU Direct Storage support",
+  "supportLevel": 3,
+  "notes": "Delivers up to 2.4 M IOPS per chassis with 100 µs latency; scaling to 14.4 M IOPS in a cluster【767627302288965†L124-L128】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Multi-stream parallelism",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum raw capacity",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum usable capacity",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Scale-up expansion support",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Scale-out expansion support",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum drives per node",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum nodes per cluster",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum controllers per cluster",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum namespace size",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum file system size",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum object count per bucket",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Maximum concurrent protocol connections",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Mixed workload scaling",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Multi-site stretch clustering support",
+  "supportLevel": 3,
+  "notes": "Effective capacity up to 702.7 PB with clustering and controller upgrades【767627302288965†L136-L140】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Cloud-bursting capability",
+  "supportLevel": 4,
+  "notes": "FabricPool automatically tiers cold data to cloud object storage【767627302288965†L152-L154】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Data-at-rest encryption",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "AES-256 encryption support",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "FIPS 140-2 certification",
+  "supportLevel": 3,
+  "notes": "Integrates with VMware and Kubernetes (via Astra Trident) and supports major databases (not detailed)."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Data-in-flight encryption",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "TLS 1.2 support",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "TLS 1.3 support",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "IPsec support",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Role-based access control (RBAC)",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Multi-factor authentication (MFA)",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Secure erase",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Crypto-shredding",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Ransomware detection",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Ransomware protection",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Immutable snapshots",
+  "supportLevel": 4,
+  "notes": "OnTap Enterprise Edition includes FlexClone for virtual snapshots and SnapRestore for snapshot recovery【767627302288965†L152-L158】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "WORM compliance",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "HIPAA compliance",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "GDPR compliance",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "FedRAMP compliance",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "ISO 27001 compliance",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Internal key management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "External key management",
+  "supportLevel": 2,
+  "notes": "Feature not described; assumed partial."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "KMIP server support",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Kerberos for NFS",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "SMB signing",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "S3 object lock",
+  "supportLevel": 4,
+  "notes": "Supports block, Fibre Channel, iSCSI, NFS, SMB and Amazon S3 as well as NVMe/TCP and NVMe/FC【767627302288965†L145-L150】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Audit logging",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
+{
+  "vendorProduct": "NetApp AFF A900",
+  "featureName": "Tamper-proof event records",
+  "supportLevel": 3,
+  "notes": "Optional anti‑ransomware package includes FIPS 140‑2 compliance, immutable snapshots (WORM), secure purge, logging and MFA【767627302288965†L162-L165】."
+}
