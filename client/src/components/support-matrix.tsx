@@ -116,6 +116,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     if (features && collapsedCategories.size === 0) {
       const uniqueCategoryIds = new Set(features.map(f => f.category.id));
       setCollapsedCategories(uniqueCategoryIds);
+      console.log("Initializing collapsed categories:", Array.from(uniqueCategoryIds));
     }
   }, [features, collapsedCategories.size]);
 
@@ -158,12 +159,14 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const expandAllCategories = () => {
     setCollapsedCategories(new Set());
+    console.log("Expanding all categories");
   };
 
   const collapseAllCategories = () => {
     if (features) {
-      const categoryIds = new Set(features.map(f => f.category.id));
-      setCollapsedCategories(categoryIds);
+      const uniqueCategoryIds = new Set(features.map(f => f.category.id));
+      setCollapsedCategories(uniqueCategoryIds);
+      console.log("Collapsing categories:", Array.from(uniqueCategoryIds));
     }
   };
 
@@ -398,6 +401,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
                   return sortedCategories.map(({ category, features: categoryFeatures }) => {
                     const isCollapsed = collapsedCategories.has(category.id);
+                    console.log(`Category ${category.name} (${category.id}) - isCollapsed: ${isCollapsed}`);
 
                     return (
                       <div key={category.id} className="space-y-3">
