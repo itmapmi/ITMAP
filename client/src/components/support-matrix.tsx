@@ -270,6 +270,12 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     return allFeatures.length * 1.0; // 1.0 is the score for full support
   };
 
+  // Calculate normalized score out of 10
+  const calculateNormalizedScore = (actualScore: number, maxScore: number) => {
+    if (maxScore === 0) return 0;
+    return Number(((actualScore / maxScore) * 10).toFixed(2));
+  };
+
   const getSupportText = (level: number) => {
     switch (level) {
       case 0: return "No Support";
@@ -562,6 +568,48 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                                 </div>
                                 <div className="text-xs text-gray-600">
                                   {percentage}%
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Normalized Score Out of 10 Row */}
+                {features && features.length > 0 && (() => {
+                  const overallTotals = calculateOverallTotals(features, vendors);
+                  const maxScore = calculateMaximumScore(features);
+                  
+                  return (
+                    <div className="border-t border-gray-200 bg-green-50">
+                      <div 
+                        className="grid gap-4 py-4 px-4" 
+                        style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                      >
+                        <div className="flex flex-col justify-center">
+                          <div className="font-bold text-lg text-gray-900">
+                            Score (out of 10)
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            For Vendor Evaluation
+                          </div>
+                        </div>
+                        
+                        {vendors.map(vendor => {
+                          const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                          const normalizedScore = calculateNormalizedScore(vendorTotal, maxScore);
+                          
+                          return (
+                            <div key={vendor.id} className="flex justify-center items-center">
+                              <div className="text-center">
+                                <div className="font-bold text-xl text-green-700">
+                                  {normalizedScore}/10
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                  Normalized
                                 </div>
                               </div>
                             </div>
