@@ -990,6 +990,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update Product Capabilities scores from Support Matrix
+  app.post("/api/admin/update-product-capabilities-scores", requireAdmin, async (req, res) => {
+    try {
+      const { marketId } = req.body;
+      
+      if (!marketId) {
+        return res.status(400).json({ error: "Market ID is required" });
+      }
+
+      // Get all vendors in the market
+      const vendors = await storage.getVendorsByMarket(marketId);
+      
+      // Get all features in the market
+      const features = await storage.getMarketFeatures(marketId);
+      
+      // Get all support data for the market
+      const supportData = await storage.getMarketFeatureSupport(marketId);
+      
+      // Find the Product Capabilities criteria
+      const allCriteria = await storage.getAllCriteria();
+      const productCapabilitiesCriteria = allCriteria.find(c => c.name === 'Product Capabilities');
+      
+      if (!productCapabilitiesCriteria) {
+        return res.status(404).json({ error: "Product Capabilities criteria not found" });
+      }
+
+      // Create support lookup map
+      const supportLookup = new Map<string, number>();
+      supportData.forEach(support => {
+        const key = `${support.vendorId}-${support.featureId}`;
+        supportLookup.set(key, support.supportLevel);
+      });
+
+      let updatedScores = 0;
+
+      // Calculate and update scores for each vendor
+      for (const vendor of vendors) {
+        // Calculate vendor's total score
+        const totalScore = features.reduce((sum, feature) => {
+          const supportKey = `${vendor.id}-${feature.id}`;
+          const supportLevel = supportLookup.get(supportKey) || 0;
+          
+          // Convert support level to score (same as support matrix)
+          let score = 0;
+          switch (supportLevel) {
+            case 4: score = 1.0; break;    // Full support
+            case 3: score = 0.75; break;   // Good support
+            case 2: score = 0.5; break;    // Partial support
+            case 1: score = 0; break;      // Limited support - no score
+            case 0: score = 0; break;      // No support - no score
+          }
+          return sum + score;
+        }, 0);
+
+        // Calculate maximum possible score
+        const maxScore = features.length * 1.0;
+        
+        // Calculate normalized score out of 10
+        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+
+        // Update or create the vendor score
+        await storage.createOrUpdateVendorScore({
+          vendorId: vendor.id,
+          criteriaId: productCapabilitiesCriteria.id,
+          score: normalizedScore
+        });
+
+        updatedScores++;
+        console.log(`Updated Product Capabilities score for ${vendor.name}: ${normalizedScore}/10`);
+      }
+
+      res.json({
+        success: true,
+        message: `Updated Product Capabilities scores for ${updatedScores} vendors`,
+        updatedScores,
+        marketId
+      });
+    } catch (error) {
+      console.error("Error updating product capabilities scores:", error);
+      res.status(500).json({ error: "Failed to update product capabilities scores" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

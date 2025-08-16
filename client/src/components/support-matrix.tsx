@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,63 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
   marketId: string;
 }
+
+// Component for updating vendor evaluation scores from support matrix
+const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const updateScoresMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/update-product-capabilities-scores", {
+        method: "POST",
+        body: JSON.stringify({ marketId }),
+        headers: { "Content-Type": "application/json" }
+      });
+      return response;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Scores Updated Successfully",
+        description: `Updated Product Capabilities scores for ${data.updatedScores} vendors`,
+      });
+      // Invalidate vendor evaluation queries to refresh the visualization
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "vendor-scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "vendors"] });
+    },
+    onError: (error: any) => {
+      console.error("Error updating scores:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update vendor evaluation scores",
+        variant: "destructive",
+      });
+    }
+  });
+
+  return (
+    <Button
+      onClick={() => updateScoresMutation.mutate()}
+      disabled={updateScoresMutation.isPending}
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+    >
+      {updateScoresMutation.isPending ? (
+        <RefreshCw className="h-4 w-4 animate-spin" />
+      ) : (
+        <CheckCircle className="h-4 w-4" />
+      )}
+      {updateScoresMutation.isPending ? "Updating..." : "Update Vendor Evaluation"}
+    </Button>
+  );
+};
 
 // Harvey Ball icons representing different support levels
 const HarveyBall = ({ 
@@ -619,6 +670,29 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     </div>
                   );
                 })()}
+
+                {/* Integration Action Row */}
+                {features && features.length > 0 && (
+                  <div className="border-t border-gray-200 bg-purple-50">
+                    <div 
+                      className="grid gap-4 py-4 px-4" 
+                      style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                    >
+                      <div className="flex flex-col justify-center">
+                        <div className="font-bold text-lg text-gray-900">
+                          Vendor Evaluation Integration
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Update Product Capabilities scores
+                        </div>
+                      </div>
+                      
+                      <div className="col-span-full flex justify-center">
+                        <UpdateVendorScoresButton marketId={marketId} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {features.length === 0 && (
