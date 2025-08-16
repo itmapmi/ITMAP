@@ -80,6 +80,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [categoriesInitialized, setCategoriesInitialized] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
     featureName: string;
@@ -111,14 +112,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     }
   }, [allVendors, selectedVendors.size]);
 
-  // Initialize with all categories collapsed when features load
+  // Initialize with all categories collapsed when features load (only once)
   useEffect(() => {
-    if (features && collapsedCategories.size === 0) {
+    if (features && !categoriesInitialized) {
       const uniqueCategoryIds = new Set(features.map(f => f.category.id));
       setCollapsedCategories(uniqueCategoryIds);
+      setCategoriesInitialized(true);
       console.log("Initializing collapsed categories:", Array.from(uniqueCategoryIds));
     }
-  }, [features, collapsedCategories.size]);
+  }, [features, categoriesInitialized]);
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
