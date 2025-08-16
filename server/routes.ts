@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertVendorNewsSourceSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
@@ -897,6 +897,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return false;
     }
   }
+
+  // News Sources management endpoints
+  app.get("/api/admin/news-sources/:marketId?", async (req, res) => {
+    try {
+      const { marketId } = req.params;
+      const { vendorId } = req.query;
+      
+      const newsSources = await storage.getVendorNewsSources(
+        marketId || undefined,
+        vendorId as string | undefined
+      );
+      
+      res.json(newsSources);
+    } catch (error) {
+      console.error("Error fetching news sources:", error);
+      res.status(500).json({ error: "Failed to fetch news sources" });
+    }
+  });
+
+  app.get("/api/admin/news-sources/source/:id", async (req, res) => {
+    try {
+      const newsSource = await storage.getVendorNewsSourceById(req.params.id);
+      if (!newsSource) {
+        return res.status(404).json({ error: "News source not found" });
+      }
+      res.json(newsSource);
+    } catch (error) {
+      console.error("Error fetching news source:", error);
+      res.status(500).json({ error: "Failed to fetch news source" });
+    }
+  });
+
+  app.post("/api/admin/news-sources", async (req, res) => {
+    try {
+      const newsSourceData = insertVendorNewsSourceSchema.parse(req.body);
+      const newsSource = await storage.createVendorNewsSource(newsSourceData);
+      res.status(201).json(newsSource);
+    } catch (error) {
+      console.error("Error creating news source:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid news source data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create news source" });
+      }
+    }
+  });
+
+  app.put("/api/admin/news-sources/:id", async (req, res) => {
+    try {
+      const newsSourceData = insertVendorNewsSourceSchema.partial().parse(req.body);
+      const newsSource = await storage.updateVendorNewsSource(req.params.id, newsSourceData);
+      res.json(newsSource);
+    } catch (error) {
+      console.error("Error updating news source:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid news source data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update news source" });
+      }
+    }
+  });
+
+  app.delete("/api/admin/news-sources/:id", async (req, res) => {
+    try {
+      await storage.deleteVendorNewsSource(req.params.id);
+      res.json({ message: "News source deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting news source:", error);
+      res.status(500).json({ error: "Failed to delete news source" });
+    }
+  });
 
   // Bulk upload support matrix data
   app.post("/api/admin/bulk-upload-support-matrix", requireAdmin, async (req, res) => {

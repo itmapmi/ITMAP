@@ -97,6 +97,19 @@ export const vendorNews = pgTable("vendor_news", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const vendorNewsSources = pgTable("vendor_news_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  sourceType: text("source_type").notNull().default('rss'), // 'rss', 'api', 'html'
+  isActive: boolean("is_active").default(true),
+  lastFetched: timestamp("last_fetched"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const featureCategories = pgTable("feature_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -157,6 +170,7 @@ export const marketsRelations = relations(markets, ({ many }) => ({
   researchReports: many(researchReports),
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
+  newsSources: many(vendorNewsSources),
 }));
 
 export const subMarketsRelations = relations(subMarkets, ({ one }) => ({
@@ -173,6 +187,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   }),
   scores: many(vendorScores),
   news: many(vendorNews),
+  newsSources: many(vendorNewsSources),
   featureSupport: many(vendorFeatureSupport),
   historicalPositions: many(historicalPositions),
 }));
@@ -228,6 +243,17 @@ export const researchReportsRelations = relations(researchReports, ({ one }) => 
   }),
 }));
 
+export const vendorNewsSourcesRelations = relations(vendorNewsSources, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [vendorNewsSources.vendorId],
+    references: [vendors.id],
+  }),
+  market: one(markets, {
+    fields: [vendorNewsSources.marketId],
+    references: [markets.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -278,6 +304,12 @@ export const insertVendorNewsSchema = createInsertSchema(vendorNews).omit({
   createdAt: true,
 });
 
+export const insertVendorNewsSourceSchema = createInsertSchema(vendorNewsSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertFeatureCategorySchema = createInsertSchema(featureCategories).omit({
   id: true,
   createdAt: true,
@@ -320,6 +352,9 @@ export type VendorScore = typeof vendorScores.$inferSelect;
 
 export type InsertVendorNews = z.infer<typeof insertVendorNewsSchema>;
 export type VendorNews = typeof vendorNews.$inferSelect;
+
+export type InsertVendorNewsSource = z.infer<typeof insertVendorNewsSourceSchema>;
+export type VendorNewsSource = typeof vendorNewsSources.$inferSelect;
 
 export type InsertFeatureCategory = z.infer<typeof insertFeatureCategorySchema>;
 export type FeatureCategory = typeof featureCategories.$inferSelect;

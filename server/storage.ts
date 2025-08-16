@@ -11,6 +11,8 @@ import {
   type InsertVendorScore,
   type VendorNews,
   type InsertVendorNews,
+  type VendorNewsSource,
+  type InsertVendorNewsSource,
   type FeatureCategory,
   type InsertFeatureCategory,
   type Feature,
@@ -28,6 +30,7 @@ import {
   criteria,
   vendorScores,
   vendorNews,
+  vendorNewsSources,
   featureCategories,
   features,
   vendorFeatureSupport,
@@ -80,6 +83,13 @@ export interface IStorage {
   createVendorNews(news: InsertVendorNews): Promise<VendorNews>;
   updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews>;
   deleteVendorNews(id: string): Promise<void>;
+  
+  // Vendor News Sources
+  getVendorNewsSources(marketId?: string, vendorId?: string): Promise<(VendorNewsSource & { vendor?: Vendor; market?: Market })[]>;
+  getVendorNewsSourceById(id: string): Promise<VendorNewsSource | undefined>;
+  createVendorNewsSource(newsSource: InsertVendorNewsSource): Promise<VendorNewsSource>;
+  updateVendorNewsSource(id: string, newsSource: Partial<InsertVendorNewsSource>): Promise<VendorNewsSource>;
+  deleteVendorNewsSource(id: string): Promise<void>;
   
   // Feature Categories
   getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]>;
@@ -394,6 +404,75 @@ export class DatabaseStorage implements IStorage {
     await db.delete(vendorNews).where(eq(vendorNews.id, id));
   }
 
+  // Vendor News Sources
+  async getVendorNewsSources(marketId?: string, vendorId?: string): Promise<(VendorNewsSource & { vendor?: Vendor; market?: Market })[]> {
+    const baseQuery = db
+      .select({
+        id: vendorNewsSources.id,
+        vendorId: vendorNewsSources.vendorId,
+        marketId: vendorNewsSources.marketId,
+        sourceName: vendorNewsSources.sourceName,
+        sourceUrl: vendorNewsSources.sourceUrl,
+        sourceType: vendorNewsSources.sourceType,
+        isActive: vendorNewsSources.isActive,
+        lastFetched: vendorNewsSources.lastFetched,
+        createdAt: vendorNewsSources.createdAt,
+        updatedAt: vendorNewsSources.updatedAt,
+        vendor: vendors,
+        market: markets
+      })
+      .from(vendorNewsSources)
+      .leftJoin(vendors, eq(vendorNewsSources.vendorId, vendors.id))
+      .leftJoin(markets, eq(vendorNewsSources.marketId, markets.id));
+
+    const conditions = [];
+    if (marketId) {
+      conditions.push(eq(vendorNewsSources.marketId, marketId));
+    }
+    if (vendorId) {
+      conditions.push(eq(vendorNewsSources.vendorId, vendorId));
+    }
+
+    const query = conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
+
+    const results = await query.orderBy(vendorNewsSources.createdAt);
+    
+    // Transform results to handle nullable vendor
+    return results.map(result => ({
+      ...result,
+      vendor: result.vendor || undefined,
+      market: result.market || undefined,
+    }));
+  }
+
+  async getVendorNewsSourceById(id: string): Promise<VendorNewsSource | undefined> {
+    const [newsSource] = await db.select().from(vendorNewsSources).where(eq(vendorNewsSources.id, id));
+    return newsSource || undefined;
+  }
+
+  async createVendorNewsSource(newsSource: InsertVendorNewsSource): Promise<VendorNewsSource> {
+    const [newNewsSource] = await db
+      .insert(vendorNewsSources)
+      .values(newsSource)
+      .returning();
+    return newNewsSource;
+  }
+
+  async updateVendorNewsSource(id: string, newsSource: Partial<InsertVendorNewsSource>): Promise<VendorNewsSource> {
+    const [updatedNewsSource] = await db
+      .update(vendorNewsSources)
+      .set({ ...newsSource, updatedAt: new Date() })
+      .where(eq(vendorNewsSources.id, id))
+      .returning();
+    return updatedNewsSource;
+  }
+
+  async deleteVendorNewsSource(id: string): Promise<void> {
+    await db.delete(vendorNewsSources).where(eq(vendorNewsSources.id, id));
+  }
+
   // Feature Categories
   async getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]> {
     const categories = await db
@@ -454,13 +533,13 @@ export class DatabaseStorage implements IStorage {
         category: {
           id: featureCategories.id,
           name: featureCategories.name,
-          displayOrder: featureCategories.displayOrder,
+          displayOrder: featureCategories.displayOrder || 0,
         }
       })
       .from(features)
       .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
       .where(eq(featureCategories.marketId, marketId))
-      .orderBy(featureCategories.displayOrder, features.displayOrder);
+      .orderBy(featureCategories.displayOrder, features.displayOrder) as FeatureWithCategory[];
   }
 
   async getCategoryFeatures(categoryId: string): Promise<Feature[]> {
