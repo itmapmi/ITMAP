@@ -201,7 +201,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          Technology Markets
+          Welcome to ITmap
         </motion.h1>
         <motion.p 
           className="text-gray-600"
@@ -209,39 +209,84 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
         >
-          Explore comprehensive analysis across technology sectors
+          Your enterprise vendor evaluation platform
         </motion.p>
       </FadeInSection>
 
-      {isLoading ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <LoadingGrid 
-            columns={4} 
-            rows={2} 
-            className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          />
-        </motion.div>
-      ) : markets && markets.length > 0 ? (
-        <motion.div
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <motion.div 
+          className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-6 rounded-xl border border-cyan-200"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          <MarketGrid markets={markets} />
+          <BarChart3 className="h-12 w-12 text-cyan-600 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Vendor Evaluations</h3>
+          <p className="text-gray-600 mb-4">Explore interactive vendor positioning and market analysis</p>
+          <Link href="/markets">
+            <Button className="w-full bg-cyan-600 hover:bg-cyan-700">
+              View Markets
+            </Button>
+          </Link>
         </motion.div>
-      ) : (
+
         <motion.div 
-          className="text-center py-12"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Markets Available</h2>
-          <p className="text-gray-600">Markets will appear here once they are added by administrators.</p>
+          <Users className="h-12 w-12 text-purple-600 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Support Matrix</h3>
+          <p className="text-gray-600 mb-4">Compare vendor feature support across products</p>
+          <Link href="/markets">
+            <Button className="w-full bg-purple-600 hover:bg-purple-700">
+              Browse Features
+            </Button>
+          </Link>
+        </motion.div>
+
+        <motion.div 
+          className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          <TrendingUp className="h-12 w-12 text-blue-600 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Market News</h3>
+          <p className="text-gray-600 mb-4">Stay updated with latest vendor developments</p>
+          <Link href="/markets">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              Read News
+            </Button>
+          </Link>
+        </motion.div>
+      </div>
+
+      {markets && markets.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Available Markets</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {markets.slice(0, 8).map((market) => (
+              <Link key={market.id} href={`/markets/${market.id}`}>
+                <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-cyan-300 hover:shadow-md transition-all cursor-pointer">
+                  <h3 className="font-semibold text-gray-900 mb-2">{market.name}</h3>
+                  <p className="text-sm text-gray-600">{market.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {markets.length > 8 && (
+            <div className="text-center mt-6">
+              <Link href="/markets">
+                <Button variant="outline">View All Markets</Button>
+              </Link>
+            </div>
+          )}
         </motion.div>
       )}
     </div>
