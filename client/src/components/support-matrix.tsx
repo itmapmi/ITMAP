@@ -118,7 +118,6 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
       const uniqueCategoryIds = new Set(features.map(f => f.category.id));
       setCollapsedCategories(uniqueCategoryIds);
       setCategoriesInitialized(true);
-      console.log("Initializing collapsed categories:", Array.from(uniqueCategoryIds));
     }
   }, [features, categoriesInitialized]);
 
@@ -161,14 +160,12 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const expandAllCategories = () => {
     setCollapsedCategories(new Set());
-    console.log("Expanding all categories");
   };
 
   const collapseAllCategories = () => {
     if (features) {
       const uniqueCategoryIds = new Set(features.map(f => f.category.id));
       setCollapsedCategories(uniqueCategoryIds);
-      console.log("Collapsing categories:", Array.from(uniqueCategoryIds));
     }
   };
 
@@ -230,6 +227,30 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         supportLevel
       });
     }
+  };
+
+  // Calculate support level score
+  const getSupportScore = (level: number) => {
+    switch (level) {
+      case 4: return 1.0;    // Full support
+      case 3: return 0.75;   // Good support
+      case 2: return 0.5;    // Partial support
+      case 1: return 0;      // Limited support - no score
+      case 0: return 0;      // No support - no score
+      default: return 0;
+    }
+  };
+
+  // Calculate category totals for each vendor
+  const calculateCategoryTotals = (categoryFeatures: FeatureWithCategory[], vendors: Vendor[]) => {
+    return vendors.map(vendor => {
+      const total = categoryFeatures.reduce((sum, feature) => {
+        const supportKey = `${vendor.id}-${feature.id}`;
+        const supportData = supportLookup.get(supportKey) || { level: 0 };
+        return sum + getSupportScore(supportData.level);
+      }, 0);
+      return { vendorId: vendor.id, total: Number(total.toFixed(2)) };
+    });
   };
 
   const getSupportText = (level: number) => {
@@ -408,13 +429,16 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
                   return sortedCategories.map(({ category, features: categoryFeatures }) => {
                     const isCollapsed = collapsedCategories.has(category.id);
-                    console.log(`Category ${category.name} (${category.id}) - isCollapsed: ${isCollapsed}`);
+                    const categoryTotals = calculateCategoryTotals(categoryFeatures, vendors);
 
                     return (
                       <div key={category.id} className="space-y-3">
                         {/* Category header */}
-                        <div className="flex items-center justify-between py-4 mt-8 mb-4 border-b border-gray-200 bg-gray-50">
-                          <div className="flex items-center justify-between">
+                        <div className="py-4 mt-8 mb-4 border-b border-gray-200 bg-gray-50">
+                          <div 
+                            className="grid gap-4 px-4" 
+                            style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                          >
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => toggleCategory(category.id)}
@@ -424,6 +448,23 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                                 {category.name}
                               </button>
                             </div>
+                            
+                            {/* Show totals when collapsed */}
+                            {isCollapsed && vendors.map(vendor => {
+                              const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                              return (
+                                <div key={vendor.id} className="flex justify-center items-center">
+                                  <div className="text-center">
+                                    <div className="font-bold text-lg text-gray-900">
+                                      {vendorTotal}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Total Score
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
 
