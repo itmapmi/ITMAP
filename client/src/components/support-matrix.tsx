@@ -336,38 +336,38 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           </div>
         ) : (
           <div className="relative">
-            <div className="overflow-x-auto">
-              {/* Floating sticky header */}
+            {/* Floating sticky header - moved outside overflow container */}
+            <div 
+              className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-md"
+              style={{ 
+                position: 'sticky',
+                top: '0px'
+              }}
+            >
               <div 
-                className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-md"
-                style={{ 
-                  position: 'sticky',
-                  top: '0px'
-                }}
+                className="grid gap-4 py-4 px-4 overflow-x-auto" 
+                style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
               >
-                <div 
-                  className="grid gap-4 py-4 px-4" 
-                  style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
-                >
-                  <div className="font-semibold text-sm text-gray-600 flex items-center">
-                    Features
-                  </div>
-                  {vendors.map(vendor => (
-                    <div key={vendor.id} className="text-center">
-                      <div className="font-medium text-sm text-gray-900 mb-1">
-                        {vendor.name}
-                      </div>
-                      {vendor.product && (
-                        <div className="text-xs text-gray-600 font-medium">
-                          {vendor.product}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="font-semibold text-sm text-gray-600 flex items-center">
+                  Features
                 </div>
+                {vendors.map(vendor => (
+                  <div key={vendor.id} className="text-center">
+                    <div className="font-medium text-sm text-gray-900 mb-1">
+                      {vendor.name}
+                    </div>
+                    {vendor.product && (
+                      <div className="text-xs text-gray-600 font-medium">
+                        {vendor.product}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+            </div>
 
-              {/* Feature rows grouped by categories */}
+            {/* Feature rows grouped by categories */}
+            <div className="overflow-x-auto">
               <div className="space-y-6 px-4">
                 {features && (() => {
                   // Group features by category
@@ -394,7 +394,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     return (
                       <div key={category.id} className="space-y-3">
                         {/* Category header */}
-                        <div className="flex items-center justify-between sticky top-[60px] z-40 bg-white py-2 border-b border-gray-100">
+                        <div className="flex items-center justify-between sticky top-[70px] z-30 bg-white py-2 border-b border-gray-100">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <button
