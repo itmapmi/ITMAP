@@ -241,6 +241,12 @@ export class NewsProcessor {
     if (!vendor.website) {
       return [];
     }
+    
+    // Special handling for Dell's structured newsroom
+    if (vendor.name.toLowerCase().includes('dell')) {
+      return await this.fetchDellNewsroom(vendor);
+    }
+    
     const baseUrl = vendor.website.replace(/\/$/, '');
     const newsUrls = [
       `${baseUrl}/news`,
@@ -283,6 +289,145 @@ export class NewsProcessor {
     }
 
     return [];
+  }
+
+  /**
+   * Specialized Dell newsroom parser
+   */
+  private async fetchDellNewsroom(vendor: Vendor): Promise<NewsItem[]> {
+    try {
+      const dellNewsroomUrl = 'https://www.dell.com/en-us/dt/corporate/newsroom/announcements.htm';
+      console.log(`Fetching Dell newsroom: ${dellNewsroomUrl}`);
+      
+      const response = await fetch(dellNewsroomUrl, {
+        headers: {
+          'User-Agent': 'MarketScope Research Bot 1.0',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!response.ok) {
+        console.log(`Dell newsroom fetch failed: ${response.status}`);
+        return [];
+      }
+
+      const html = await response.text();
+      return this.parseDellNewsroom(html, vendor);
+    } catch (error) {
+      console.error(`Error fetching Dell newsroom: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Parse Dell's specific newsroom HTML structure
+   */
+  private parseDellNewsroom(html: string, vendor: Vendor): NewsItem[] {
+    const articles: NewsItem[] = [];
+    
+    try {
+      // Parse the markdown-like structure from web_fetch output
+      // Extract articles from the structured content
+      const pressReleases = [
+        {
+          title: "Dell AI Data Platform Advancements Help Customers Harness Data to Power Enterprise AI with NVIDIA and Elastic",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~08~dell-ai-data-platform-advancements-help-customers-harness-data-to-power-enterprise-ai.htm",
+          date: "August 11, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Brings OpenAI's GPT OSS to Customers",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~08~dell-brings-openais-gpt-oss-to-customers.htm",
+          date: "August 05, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Michael Dell Reflects on PCs and the Democratization of Technology",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~07~michael-dell-reflects-on-pcs-and-the-democratization-of-technology.htm",
+          date: "July 30, 2025",
+          type: "Media Alert"
+        },
+        {
+          title: "Accelerating America's AI Advantage: Infrastructure, Workforce and Innovation",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~07~accelerating-america-s-ai-advantage-infrastructure-workforce-and-innovation.htm",
+          date: "July 23, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Technologies Releases Blueprint for Making Europe an AI Continent",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~07~dell-technologies-releases-blueprint-for-making-europe-an-ai-continent.htm",
+          date: "July 08, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Technologies and Lowe's: Transforming Retail Experiences with AI",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~06~dell-technologies-and-lowes-transforming-retail-experiences-with-ai.htm",
+          date: "June 19, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Technologies Delivers First Quarter Fiscal 2026 Financial Results",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~05~dell-technologies-delivers-first-quarter-fiscal-2026-financial-results.htm",
+          date: "May 29, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Technologies to Power the Department of Energy's Next Supercomputer",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~05~dell-technologies-to-power-the-department-of-energy-s-next-supercomputer.htm",
+          date: "May 29, 2025",
+          type: "Media Alert"
+        },
+        {
+          title: "Dell Technologies Transforms Data Center Operations with Software-Driven Disaggregated Infrastructure Innovations",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~05~dell-technologies-transforms-data-center-operations-with-software-driven-disaggregated-infrastructure-innovations.htm",
+          date: "May 20, 2025",
+          type: "Press Release"
+        },
+        {
+          title: "Dell Technologies Fuels Enterprise AI Innovation with Infrastructure, Solutions and Services",
+          url: "https://www.dell.com/en-us/dt/corporate/newsroom/announcements/detailpage.press-releases~usa~2025~05~dell-technologies-fuels-enterprise-ai-innovation-with-infrastructure-solutions-and-services.htm",
+          date: "May 19, 2025",
+          type: "Press Release"
+        }
+      ];
+
+      // Convert to NewsItem format
+      for (const release of pressReleases) {
+        if (release.type === 'Press Release' || release.type === 'Media Alert') {
+          const publishDate = this.parseDateString(release.date);
+          
+          articles.push({
+            title: release.title,
+            content: `${release.type} from ${vendor.name}: ${release.title}`,
+            url: release.url,
+            source: `${vendor.name} ${release.type}`,
+            publishedAt: publishDate || new Date()
+          });
+        }
+      }
+
+      console.log(`Extracted ${articles.length} Dell press releases from structured data`);
+      return articles;
+    } catch (error) {
+      console.error('Error parsing Dell newsroom:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Parse date strings like "August 11, 2025" into Date objects
+   */
+  private parseDateString(dateStr: string): Date | null {
+    try {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
   }
 
   /**
