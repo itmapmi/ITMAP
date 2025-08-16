@@ -81,11 +81,7 @@ export default function NewsSourcesManagement() {
         : "/api/admin/news-sources";
       const method = editingSource ? "PUT" : "POST";
       
-      return await apiRequest(url, {
-        method,
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" }
-      });
+      return await apiRequest(url, method, data);
     },
     onSuccess: () => {
       toast({
@@ -109,9 +105,7 @@ export default function NewsSourcesManagement() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/admin/news-sources/${id}`, {
-        method: "DELETE"
-      });
+      return await apiRequest(`/api/admin/news-sources/${id}`, "DELETE");
     },
     onSuccess: () => {
       toast({
@@ -132,14 +126,15 @@ export default function NewsSourcesManagement() {
   // Toggle active status mutation
   const toggleActiveMutation = useMutation({
     mutationFn: async (source: VendorNewsSource) => {
-      return await apiRequest(`/api/admin/news-sources/${source.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...source,
-          isActive: !source.isActive
-        }),
-        headers: { "Content-Type": "application/json" }
-      });
+      const updateData = {
+        vendorId: source.vendorId,
+        marketId: source.marketId,
+        sourceName: source.sourceName,
+        sourceUrl: source.sourceUrl,
+        sourceType: source.sourceType,
+        isActive: !source.isActive
+      };
+      return await apiRequest(`/api/admin/news-sources/${source.id}`, "PUT", updateData);
     },
     onSuccess: () => {
       toast({
@@ -165,7 +160,7 @@ export default function NewsSourcesManagement() {
       sourceName: source.sourceName,
       sourceUrl: source.sourceUrl,
       sourceType: source.sourceType as "rss" | "api" | "html",
-      isActive: source.isActive,
+      isActive: source.isActive ?? true,
     });
     setDialogOpen(true);
   };
@@ -202,7 +197,7 @@ export default function NewsSourcesManagement() {
                 <SelectValue placeholder="Select Market" />
               </SelectTrigger>
               <SelectContent>
-                {markets.map((market: Market) => (
+                {(markets as Market[]).map((market: Market) => (
                   <SelectItem key={market.id} value={market.id}>
                     {market.name}
                   </SelectItem>
@@ -255,11 +250,11 @@ export default function NewsSourcesManagement() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Rss className="h-5 w-5" />
-              News Sources ({newsSources.length})
+              News Sources ({(newsSources as any[]).length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {newsSources.length === 0 ? (
+            {(newsSources as any[]).length === 0 ? (
               <div className="text-center py-12">
                 <Rss className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-lg font-medium text-gray-900 mb-2">No News Sources</p>
@@ -271,7 +266,7 @@ export default function NewsSourcesManagement() {
               </div>
             ) : (
               <div className="space-y-4">
-                {newsSources.map((source: VendorNewsSource & { vendor?: Vendor }) => (
+                {(newsSources as (VendorNewsSource & { vendor?: Vendor })[]).map((source: VendorNewsSource & { vendor?: Vendor }) => (
                   <div key={source.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-start gap-4">
                       <NewsSourceIcon type={source.sourceType} />
@@ -355,7 +350,7 @@ export default function NewsSourcesManagement() {
                           <SelectValue placeholder="Select market" />
                         </SelectTrigger>
                         <SelectContent>
-                          {markets.map((market: Market) => (
+                          {(markets as Market[]).map((market: Market) => (
                             <SelectItem key={market.id} value={market.id}>
                               {market.name}
                             </SelectItem>
@@ -380,7 +375,7 @@ export default function NewsSourcesManagement() {
                           <SelectValue placeholder="Select vendor" />
                         </SelectTrigger>
                         <SelectContent>
-                          {vendors.map((vendor: Vendor) => (
+                          {(vendors as Vendor[]).map((vendor: Vendor) => (
                             <SelectItem key={vendor.id} value={vendor.id}>
                               {vendor.name}
                             </SelectItem>
