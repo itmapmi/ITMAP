@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Users, Eye, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -13,7 +14,19 @@ interface SupportMatrixProps {
 }
 
 // Harvey Ball icons representing different support levels
-const HarveyBall = ({ level }: { level: number }) => {
+const HarveyBall = ({ 
+  level, 
+  notes, 
+  vendorName, 
+  featureName, 
+  onClick 
+}: { 
+  level: number; 
+  notes?: string; 
+  vendorName: string; 
+  featureName: string; 
+  onClick: () => void; 
+}) => {
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
       case 0: return "○"; // Empty circle - No support
@@ -49,12 +62,16 @@ const HarveyBall = ({ level }: { level: number }) => {
 
   return (
     <div className="flex items-center justify-center">
-      <span 
-        className={`text-2xl ${getHarveyBallColor(level)}`}
-        title={getSupportText(level)}
+      <button
+        onClick={onClick}
+        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-110 transition-transform cursor-pointer relative group`}
+        title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
       >
         {getHarveyBallIcon(level)}
-      </span>
+        {notes && (
+          <FileText className="absolute -top-1 -right-1 h-3 w-3 text-blue-600 opacity-75" />
+        )}
+      </button>
     </div>
   );
 };
@@ -65,6 +82,12 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [selectedNotes, setSelectedNotes] = useState<{
+    vendorName: string;
+    featureName: string;
+    notes: string;
+    supportLevel: number;
+  } | null>(null);
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -179,12 +202,37 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     );
   }
 
-  // Create support lookup map
-  const supportLookup = new Map<string, number>();
+  // Create support lookup map with notes
+  const supportLookup = new Map<string, { level: number; notes?: string }>();
   supportMatrix.forEach(support => {
     const key = `${support.vendorId}-${support.featureId}`;
-    supportLookup.set(key, support.supportLevel);
+    supportLookup.set(key, { 
+      level: support.supportLevel, 
+      notes: support.comments || undefined 
+    });
   });
+
+  const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string) => {
+    if (notes) {
+      setSelectedNotes({
+        vendorName,
+        featureName, 
+        notes,
+        supportLevel
+      });
+    }
+  };
+
+  const getSupportText = (level: number) => {
+    switch (level) {
+      case 0: return "No Support";
+      case 1: return "Limited";
+      case 2: return "Partial";
+      case 3: return "Good";
+      case 4: return "Full Support";
+      default: return "Unknown";
+    }
+  };
 
   return (
     <Card>
@@ -384,11 +432,17 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                               
                               {vendors.map(vendor => {
                                 const supportKey = `${vendor.id}-${feature.id}`;
-                                const supportLevel = supportLookup.get(supportKey) || 0;
+                                const supportData = supportLookup.get(supportKey) || { level: 0 };
                                 
                                 return (
                                   <div key={vendor.id} className="flex justify-center items-center">
-                                    <HarveyBall level={supportLevel} />
+                                    <HarveyBall 
+                                      level={supportData.level}
+                                      notes={supportData.notes}
+                                      vendorName={vendor.name}
+                                      featureName={feature.name}
+                                      onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
+                                    />
                                   </div>
                                 );
                               })}
@@ -414,23 +468,23 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             <h4 className="font-medium text-sm text-gray-900 mb-3">Harvey Ball Legend</h4>
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <HarveyBall level={4} />
+                <HarveyBall level={4} vendorName="" featureName="" onClick={() => {}} />
                 <span className="text-gray-600">Full Support</span>
               </div>
               <div className="flex items-center gap-2">
-                <HarveyBall level={3} />
+                <HarveyBall level={3} vendorName="" featureName="" onClick={() => {}} />
                 <span className="text-gray-600">Good Support</span>
               </div>
               <div className="flex items-center gap-2">
-                <HarveyBall level={2} />
+                <HarveyBall level={2} vendorName="" featureName="" onClick={() => {}} />
                 <span className="text-gray-600">Partial Support</span>
               </div>
               <div className="flex items-center gap-2">
-                <HarveyBall level={1} />
+                <HarveyBall level={1} vendorName="" featureName="" onClick={() => {}} />
                 <span className="text-gray-600">Limited Support</span>
               </div>
               <div className="flex items-center gap-2">
-                <HarveyBall level={0} />
+                <HarveyBall level={0} vendorName="" featureName="" onClick={() => {}} />
                 <span className="text-gray-600">No Support</span>
               </div>
             </div>
@@ -439,6 +493,51 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         )}
       </CardContent>
 
+      {/* Notes Modal */}
+      <Dialog open={!!selectedNotes} onOpenChange={() => setSelectedNotes(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Feature Support Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedNotes && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Vendor</label>
+                  <p className="text-lg font-semibold">{selectedNotes.vendorName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Feature</label>
+                  <p className="text-lg font-semibold">{selectedNotes.featureName}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <HarveyBall 
+                  level={selectedNotes.supportLevel} 
+                  vendorName="" 
+                  featureName="" 
+                  onClick={() => {}} 
+                />
+                <div>
+                  <span className="font-medium">{getSupportText(selectedNotes.supportLevel)}</span>
+                  <p className="text-sm text-gray-600">Support Level: {selectedNotes.supportLevel}/4</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Notes</label>
+                <div className="p-4 bg-white border rounded-lg min-h-[100px] text-sm text-gray-900 whitespace-pre-wrap">
+                  {selectedNotes.notes}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </Card>
   );
