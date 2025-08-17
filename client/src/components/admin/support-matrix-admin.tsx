@@ -200,6 +200,51 @@ export function SupportMatrixAdmin() {
     (a, b) => a.category.displayOrder - b.category.displayOrder
   );
 
+  // Calculate ecosystem support totals
+  const ecosystemFeatures = features.filter(feature => 
+    feature.category.name.toLowerCase().includes('ecosystem')
+  );
+
+  const getEcosystemTotals = () => {
+    const vendorTotals: Record<string, { totalScore: number; maxScore: number; normalizedScore: number }> = {};
+    
+    vendors.forEach(vendor => {
+      let totalScore = 0;
+      let maxScore = 0;
+      
+      ecosystemFeatures.forEach(feature => {
+        const supportKey = `${vendor.id}-${feature.id}`;
+        const support = supportLookup.get(supportKey);
+        const level = support?.level || 0;
+        
+        // Convert support level to score
+        let score = 0;
+        switch (level) {
+          case 4: score = 1.0; break;    // Full support
+          case 3: score = 0.75; break;   // Good support  
+          case 2: score = 0.5; break;    // Partial support
+          case 1: score = 0; break;      // Limited support
+          case 0: score = 0; break;      // No support
+        }
+        
+        totalScore += score;
+        maxScore += 1.0;
+      });
+      
+      const normalizedScore = maxScore > 0 ? (totalScore / maxScore) * 10 : 0;
+      
+      vendorTotals[vendor.id] = {
+        totalScore: Number(totalScore.toFixed(2)),
+        maxScore,
+        normalizedScore: Number(normalizedScore.toFixed(2))
+      };
+    });
+    
+    return vendorTotals;
+  };
+
+  const ecosystemTotals = getEcosystemTotals();
+
   return (
     <Card>
       <CardHeader>
@@ -373,6 +418,40 @@ export function SupportMatrixAdmin() {
                 </div>
               );
             })}
+
+            {/* Ecosystem Support Summary */}
+            {ecosystemFeatures.length > 0 && (
+              <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border-2 border-purple-200">
+                <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
+                  🌐 Ecosystem Support Summary
+                  <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                    {ecosystemFeatures.length} features
+                  </Badge>
+                </h3>
+                
+                <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
+                  <div className="font-semibold text-purple-800">
+                    Total Scores
+                  </div>
+                  {vendors.map(vendor => {
+                    const totals = ecosystemTotals[vendor.id];
+                    return (
+                      <div key={vendor.id} className="text-center bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
+                        <div className="font-bold text-2xl text-purple-700 mb-1">
+                          {totals.totalScore}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          out of {totals.maxScore}
+                        </div>
+                        <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
+                          {totals.normalizedScore}/10
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Legend */}
             <div className="mt-8 pt-6 border-t border-gray-200">
