@@ -1073,8 +1073,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vendors in the market
       const vendors = await storage.getVendorsByMarket(marketId);
       
-      // Get all features in the market  
-      const features = await storage.getMarketFeatures(marketId);
+      // Get all features in the market but filter out ecosystem-related features
+      const allFeatures = await storage.getMarketFeatures(marketId);
+      const features = allFeatures.filter(feature => {
+        const categoryName = feature.category?.name?.toLowerCase() || '';
+        return !categoryName.includes('ecosystem') &&
+               !categoryName.includes('integration') &&
+               !categoryName.includes('partnership') &&
+               !categoryName.includes('third-party');
+      });
       
       // Get all support data for the market
       const supportData = await storage.getVendorFeatureSupport(marketId);
