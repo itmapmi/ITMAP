@@ -112,6 +112,16 @@ export default function VendorManagement() {
   };
 
   const { categoryScores, featuresByCategory } = calculateCategoryScores();
+  
+  // Debug logging
+  console.log("Admin Portal Debug:", {
+    selectedMarket,
+    featuresCount: features?.length,
+    vendorsCount: vendors?.length,
+    supportMatrixCount: supportMatrix?.length,
+    categoriesCount: featuresByCategory ? Object.keys(featuresByCategory).length : 0,
+    categoryScoresKeys: categoryScores ? Object.keys(categoryScores) : []
+  });
 
   const vendorForm = useForm<InsertVendor>({
     resolver: zodResolver(insertVendorSchema),
@@ -756,7 +766,7 @@ export default function VendorManagement() {
             </Card>
 
             {/* Product Capability Category Scores */}
-            {selectedMarket && categoryScores && featuresByCategory && vendors && Object.keys(featuresByCategory).length > 0 && (
+            {selectedMarket && features && vendors && supportMatrix && categoryScores && featuresByCategory && Object.keys(featuresByCategory).length > 0 && (
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -774,12 +784,12 @@ export default function VendorManagement() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Vendor</TableHead>
-                          {Object.keys(featuresByCategory).sort().map(categoryName => (
+                          {Object.keys(featuresByCategory || {}).sort().map(categoryName => (
                             <TableHead key={categoryName} className="text-center min-w-[120px]">
                               <div>
                                 <div className="font-medium">{categoryName}</div>
                                 <div className="text-xs text-gray-500 font-normal">
-                                  Max: {featuresByCategory[categoryName].length}
+                                  Max: {featuresByCategory?.[categoryName]?.length || 0}
                                 </div>
                               </div>
                             </TableHead>
@@ -791,9 +801,9 @@ export default function VendorManagement() {
                       </TableHeader>
                       <TableBody>
                         {vendors.map(vendor => {
-                          const vendorCategoryScores = categoryScores[vendor.id] || {};
+                          const vendorCategoryScores = categoryScores?.[vendor.id] || {};
                           const totalScore = Object.values(vendorCategoryScores).reduce((sum, score) => sum + score, 0);
-                          const maxTotalScore = Object.values(featuresByCategory).reduce((sum, features) => sum + features.length, 0);
+                          const maxTotalScore = Object.values(featuresByCategory || {}).reduce((sum, features) => sum + features.length, 0);
                           const normalizedScore = maxTotalScore > 0 ? ((totalScore / maxTotalScore) * 10).toFixed(2) : '0.00';
                           
                           return (
@@ -806,9 +816,9 @@ export default function VendorManagement() {
                                   )}
                                 </div>
                               </TableCell>
-                              {Object.keys(featuresByCategory).sort().map(categoryName => {
+                              {Object.keys(featuresByCategory || {}).sort().map(categoryName => {
                                 const score = vendorCategoryScores[categoryName] || 0;
-                                const maxScore = featuresByCategory[categoryName].length;
+                                const maxScore = featuresByCategory?.[categoryName]?.length || 0;
                                 const percentage = maxScore > 0 ? ((score / maxScore) * 100).toFixed(1) : '0.0';
                                 
                                 return (
