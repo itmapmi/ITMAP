@@ -251,6 +251,33 @@ export function SupportMatrixAdmin() {
             {sortedCategories.map(({ category, features: categoryFeatures }) => {
               const isCollapsed = collapsedCategories.has(category.id);
               
+              // Calculate vendor scores for this category
+              const getVendorCategoryScore = (vendorId: string) => {
+                let totalScore = 0;
+                let maxScore = 0;
+                
+                categoryFeatures.forEach(feature => {
+                  const supportKey = `${vendorId}-${feature.id}`;
+                  const support = supportLookup.get(supportKey);
+                  const level = support?.level || 0;
+                  
+                  // Convert support level to score (same as frontend)
+                  let score = 0;
+                  switch (level) {
+                    case 4: score = 1.0; break;    // Full support
+                    case 3: score = 0.75; break;   // Good support  
+                    case 2: score = 0.5; break;    // Partial support
+                    case 1: score = 0; break;      // Limited support
+                    case 0: score = 0; break;      // No support
+                  }
+                  
+                  totalScore += score;
+                  maxScore += 1.0; // Each feature can contribute max 1.0
+                });
+                
+                return { totalScore: Number(totalScore.toFixed(2)), maxScore, percentage: maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(1) : '0.0' };
+              };
+              
               return (
                 <div key={category.id} className="space-y-3">
                   {/* Category Header - Clickable */}
@@ -274,6 +301,30 @@ export function SupportMatrixAdmin() {
                       </Badge>
                     </div>
                   </button>
+
+                  {/* Collapsed view - Show vendor totals */}
+                  {isCollapsed && (
+                    <div className="ml-8 bg-gray-50 rounded-lg p-4">
+                      <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
+                        <div className="font-medium text-sm text-gray-700">
+                          Category Totals
+                        </div>
+                        {vendors.map(vendor => {
+                          const { totalScore, percentage } = getVendorCategoryScore(vendor.id);
+                          return (
+                            <div key={vendor.id} className="text-center bg-white rounded p-2 border">
+                              <div className="font-bold text-lg text-blue-700">
+                                {totalScore}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {percentage}%
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Features in this category - Collapsible */}
                   {!isCollapsed && (
