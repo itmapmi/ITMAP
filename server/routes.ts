@@ -1151,6 +1151,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update ISV Ecosystem scores from Support Matrix
+  app.post("/api/admin/update-isv-ecosystem-scores", requireAdmin, async (req, res) => {
+    try {
+      const { marketId } = req.body;
+      
+      if (!marketId) {
+        return res.status(400).json({ error: "Market ID is required" });
+      }
+
+      // Get all vendors in the market
+      const vendors = await storage.getVendorsByMarket(marketId);
+      
+      // Get all features in the market but filter to only ecosystem-related features
+      const allFeatures = await storage.getMarketFeatures(marketId);
+      const ecosystemFeatures = allFeatures.filter(feature => {
+        const categoryName = feature.category?.name?.toLowerCase() || '';
+        return categoryName.includes('ecosystem') ||
+               categoryName.includes('integration') ||
+               categoryName.includes('partnership') ||
+               categoryName.includes('third-party');
+      });
+      
+      // Get all support data for the market
+      const supportData = await storage.getVendorFeatureSupport(marketId);
+      
+      // Find the ISV Ecosystem criteria
+      const allCriteria = await storage.getAllCriteria();
+      const isvEcosystemCriteria = allCriteria.find(c => 
+        c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
+      );
+      
+      if (!isvEcosystemCriteria) {
+        return res.status(404).json({ error: "ISV Ecosystem criteria not found" });
+      }
+
+      if (ecosystemFeatures.length === 0) {
+        return res.status(400).json({ error: "No ecosystem features found in this market" });
+      }
+
+      // Create support lookup map
+      const supportLookup = new Map<string, number>();
+      supportData.forEach(support => {
+        const key = `${support.vendorId}-${support.featureId}`;
+        supportLookup.set(key, support.supportLevel);
+      });
+
+      let updatedScores = 0;
+
+      // Calculate and update scores for each vendor
+      for (const vendor of vendors) {
+        // Calculate vendor's total ecosystem score using same logic as ecosystem support
+        const totalScore = ecosystemFeatures.reduce((sum, feature) => {
+          const supportKey = `${vendor.id}-${feature.id}`;
+          const supportLevel = supportLookup.get(supportKey) || 0;
+          
+          // Convert support level to score (same as ecosystem support)
+          let score = 0;
+          switch (supportLevel) {
+            case 4: score = 1.0; break;    // Full support
+            case 3: score = 0.75; break;   // Good support
+            case 2: score = 0.5; break;    // Partial support
+            case 1: score = 0; break;      // Limited support
+            case 0: score = 0; break;      // No support
+          }
+          return sum + score;
+        }, 0);
+
+        // Calculate maximum possible score
+        const maxScore = ecosystemFeatures.length * 1.0;
+        
+        // Calculate normalized score out of 10 (exactly as shown in ecosystem support)
+        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+
+        // Update or create the vendor score
+        await storage.createOrUpdateVendorScore({
+          vendorId: vendor.id,
+          criteriaId: isvEcosystemCriteria.id,
+          score: normalizedScore
+        });
+
+        updatedScores++;
+        console.log(`Updated ISV Ecosystem score for ${vendor.name}: ${normalizedScore}/10`);
+      }
+
+      res.json({
+        success: true,
+        message: `Updated ISV Ecosystem scores for ${updatedScores} vendors`,
+        updatedScores,
+        marketId,
+        ecosystemFeatures: ecosystemFeatures.length
+      });
+    } catch (error) {
+      console.error("Error updating ISV ecosystem scores:", error);
+      res.status(500).json({ error: "Failed to update ISV ecosystem scores" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

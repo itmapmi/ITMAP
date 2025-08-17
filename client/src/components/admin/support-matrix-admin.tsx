@@ -127,6 +127,39 @@ export function SupportMatrixAdmin() {
     },
   });
 
+  // Mutation for updating ISV ecosystem scores
+  const updateEcosystemScoresMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/update-isv-ecosystem-scores", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ marketId: selectedMarket })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update ISV ecosystem scores');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/markets', selectedMarket, 'scores'] });
+      toast({
+        title: "ISV Ecosystem Scores Updated",
+        description: `Updated ecosystem scores for ${data.updatedScores} vendors based on ${data.ecosystemFeatures} ecosystem features.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update ISV ecosystem scores. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSupportEdit = (vendorId: string, featureId: string, vendorName: string, featureName: string) => {
     const supportKey = `${vendorId}-${featureId}`;
     const existingSupport = supportLookup.get(supportKey);
@@ -422,12 +455,22 @@ export function SupportMatrixAdmin() {
             {/* Ecosystem Support Summary */}
             {ecosystemFeatures.length > 0 && (
               <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border-2 border-purple-200">
-                <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                  🌐 Ecosystem Support Summary
-                  <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                    {ecosystemFeatures.length} features
-                  </Badge>
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-purple-900 flex items-center gap-2">
+                    🌐 Ecosystem Support Summary
+                    <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                      {ecosystemFeatures.length} features
+                    </Badge>
+                  </h3>
+                  
+                  <Button
+                    onClick={() => updateEcosystemScoresMutation.mutate()}
+                    disabled={updateEcosystemScoresMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    {updateEcosystemScoresMutation.isPending ? "Updating..." : "Update ISV Ecosystem"}
+                  </Button>
+                </div>
                 
                 <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
                   <div className="font-semibold text-purple-800">
@@ -449,6 +492,10 @@ export function SupportMatrixAdmin() {
                       </div>
                     );
                   })}
+                </div>
+                
+                <div className="mt-4 text-sm text-purple-700 bg-purple-100 rounded-lg p-3">
+                  <strong>Note:</strong> Click "Update ISV Ecosystem" to sync these normalized scores (/10) with the ISV Ecosystem criteria in the Vendor Evaluation chart.
                 </div>
               </div>
             )}

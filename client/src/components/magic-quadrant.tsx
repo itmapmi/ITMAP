@@ -102,9 +102,17 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     }
   }, [weights, criteria]);
 
-  // Calculate support matrix scores for product capabilities
+  // Calculate support matrix scores for product capabilities (excluding ecosystem features)
   const calculateSupportMatrixScore = (vendorId: string): number => {
     if (!features || !supportMatrix) return 0;
+    
+    // Filter out ecosystem features for product capabilities scoring
+    const productCapabilityFeatures = features.filter(feature => 
+      !feature.category.name.toLowerCase().includes('ecosystem') &&
+      !feature.category.name.toLowerCase().includes('integration') &&
+      !feature.category.name.toLowerCase().includes('partnership') &&
+      !feature.category.name.toLowerCase().includes('third-party')
+    );
     
     // Create support lookup map
     const supportLookup = new Map<string, number>();
@@ -113,8 +121,8 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       supportLookup.set(key, support.supportLevel);
     });
 
-    // Calculate vendor's total score
-    const totalScore = features.reduce((sum, feature) => {
+    // Calculate vendor's total score for product capabilities only
+    const totalScore = productCapabilityFeatures.reduce((sum, feature) => {
       const supportKey = `${vendorId}-${feature.id}`;
       const supportLevel = supportLookup.get(supportKey) || 0;
       
@@ -131,7 +139,52 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     }, 0);
 
     // Calculate maximum possible score
-    const maxScore = features.length * 1.0;
+    const maxScore = productCapabilityFeatures.length * 1.0;
+    
+    // Return normalized score out of 10
+    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+  };
+
+  // Calculate ecosystem support scores
+  const calculateEcosystemScore = (vendorId: string): number => {
+    if (!features || !supportMatrix) return 0;
+    
+    // Filter to only ecosystem-related features
+    const ecosystemFeatures = features.filter(feature => 
+      feature.category.name.toLowerCase().includes('ecosystem') ||
+      feature.category.name.toLowerCase().includes('integration') ||
+      feature.category.name.toLowerCase().includes('partnership') ||
+      feature.category.name.toLowerCase().includes('third-party')
+    );
+
+    if (ecosystemFeatures.length === 0) return 0;
+    
+    // Create support lookup map
+    const supportLookup = new Map<string, number>();
+    supportMatrix.forEach(support => {
+      const key = `${support.vendorId}-${support.featureId}`;
+      supportLookup.set(key, support.supportLevel);
+    });
+
+    // Calculate vendor's total ecosystem score
+    const totalScore = ecosystemFeatures.reduce((sum, feature) => {
+      const supportKey = `${vendorId}-${feature.id}`;
+      const supportLevel = supportLookup.get(supportKey) || 0;
+      
+      // Convert support level to score (same as ecosystem support component)
+      let score = 0;
+      switch (supportLevel) {
+        case 4: score = 1.0; break;    // Full support
+        case 3: score = 0.75; break;   // Good support
+        case 2: score = 0.5; break;    // Partial support
+        case 1: score = 0; break;      // Limited support
+        case 0: score = 0; break;      // No support
+      }
+      return sum + score;
+    }, 0);
+
+    // Calculate maximum possible score
+    const maxScore = ecosystemFeatures.length * 1.0;
     
     // Return normalized score out of 10
     return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
@@ -185,6 +238,25 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       
       // Add to vendor scores for display purposes
       vendorScores['product-capabilities'] = supportMatrixScore;
+    }
+
+    // Add Ecosystem Support score from support matrix to execution category (ISV Ecosystem)
+    const ecosystemScore = calculateEcosystemScore(vendor.id);
+    if (ecosystemScore > 0) {
+      const ecosystemWeight = 25; // Same weight as other criteria
+      executionTotal += ecosystemScore * ecosystemWeight;
+      executionWeight += ecosystemWeight;
+      
+      // Add to vendor scores for display purposes - look for ISV ecosystem criterion
+      const isvEcosystemCriteria = criteria?.find(c => 
+        c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
+      );
+      if (isvEcosystemCriteria) {
+        vendorScores[isvEcosystemCriteria.id] = ecosystemScore;
+      } else {
+        // Fallback: use a standard key for ecosystem scores
+        vendorScores['isv-ecosystem'] = ecosystemScore;
+      }
     }
 
     // Convert 0-10 scores to 0-100 scale for proper quadrant positioning
