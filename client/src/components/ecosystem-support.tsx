@@ -79,7 +79,7 @@ const HarveyBall = ({
 export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [showVendorSelection, setShowVendorSelection] = useState(false);
+  const [showVendorSelection, setShowVendorSelection] = useState(true);
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
     featureName: string;
@@ -111,10 +111,9 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     feature.category.name.toLowerCase().includes('third-party')
   ) || [];
 
-  // Initialize selected vendors to first 3 vendors if none selected
+  // Initialize selected vendors to all vendors if none selected
   if (allVendors && selectedVendors.size === 0) {
-    const initialVendors = allVendors.slice(0, 3).map(v => v.id);
-    setSelectedVendors(new Set(initialVendors));
+    setSelectedVendors(new Set(allVendors.map(v => v.id)));
   }
 
   // Filter vendors based on selection
