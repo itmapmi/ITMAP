@@ -59,6 +59,7 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
+        <Route path="/market/:marketId" component={MarketDetails} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route component={NotFound} />
