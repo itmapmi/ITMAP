@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
 import VendorComparison from "@/components/vendor-comparison";
 import SupportMatrix from "@/components/support-matrix";
+import EcosystemSupport from "@/components/ecosystem-support";
 import VendorNews from "@/components/vendor-news";
 import ResearchReports from "@/components/research-reports";
 import type { Market } from "@shared/schema";
@@ -61,10 +62,11 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
               <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
               <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+              <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
               <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
             </TabsList>
 
@@ -147,10 +149,11 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
             <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
             <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+            <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
             <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
           </TabsList>
 
@@ -167,6 +170,10 @@ export default function MarketDetails() {
 
           <TabsContent value="support-matrix" className="mt-6">
             <SupportMatrix marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="ecosystem-support" className="mt-6">
+            <EcosystemSupport marketId={marketId!} />
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">

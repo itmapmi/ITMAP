@@ -94,6 +94,14 @@ The platform is designed to scale horizontally with its serverless database arch
 
 ## Recent Changes
 
+### Ecosystem Support Separation (August 17, 2025)
+- **Separated Ecosystem Support**: Created dedicated "Ecosystem Support" tab between Support Matrix and Research Reports
+- **Product Capabilities Focus**: Support Matrix now excludes ecosystem-related features from product capabilities scoring
+- **New Component**: Created ecosystem-support.tsx component dedicated to third-party integrations and partnerships
+- **Filtered Scoring**: Product capabilities scoring only includes non-ecosystem features (excluding integration, partnership, third-party categories)
+- **UI Updates**: Changed Support Matrix title to "Product Capabilities Support Matrix" with updated descriptions
+- **Tab Structure**: Updated market details page to include 5 tabs: Vendor Evaluation, Vendor News, Support Matrix, Ecosystem Support, Research Reports
+
 ### Support Matrix - Vendor Evaluation Integration (August 16, 2025)
 - **Automatic Score Integration**: Support matrix normalized scores (out of 10) now directly feed into vendor evaluation Product Capabilities criteria
 - **Real-time Updates**: Added "Update Vendor Evaluation" button in support matrix for instant score synchronization

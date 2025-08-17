@@ -175,6 +175,14 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
 
+  // Filter out ecosystem-related features from product capabilities scoring
+  const productCapabilityFeatures = features?.filter(feature => 
+    !feature.category.name.toLowerCase().includes('ecosystem') &&
+    !feature.category.name.toLowerCase().includes('integration') &&
+    !feature.category.name.toLowerCase().includes('partnership') &&
+    !feature.category.name.toLowerCase().includes('third-party')
+  ) || [];
+
   const toggleVendor = (vendorId: string) => {
     setSelectedVendors(prev => {
       const newSet = new Set(prev);
@@ -214,8 +222,8 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   };
 
   const collapseAllCategories = () => {
-    if (features) {
-      const uniqueCategoryIds = new Set(features.map(f => f.category.id));
+    if (productCapabilityFeatures) {
+      const uniqueCategoryIds = new Set(productCapabilityFeatures.map(f => f.category.id));
       setCollapsedCategories(uniqueCategoryIds);
     }
   };
@@ -245,15 +253,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     );
   }
 
-  if (!features || !vendors || !supportMatrix) {
+  if (!productCapabilityFeatures || !vendors || !supportMatrix) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Feature Support Matrix</CardTitle>
-          <CardDescription>Harvey ball indicators showing vendor feature support levels</CardDescription>
+          <CardTitle>Product Capabilities Support Matrix</CardTitle>
+          <CardDescription>Harvey ball indicators showing vendor product capabilities (excluding ecosystem features)</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-500">No feature support data available for this market.</p>
+          <p className="text-gray-500">No product capability features available for this market.</p>
         </CardContent>
       </Card>
     );
@@ -344,13 +352,13 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              Feature Support Matrix
+              Product Capabilities Support Matrix
               <Badge variant="secondary" className="text-xs">
                 {vendors.length} of {allVendors?.length || 0} vendors
               </Badge>
             </CardTitle>
             <CardDescription className="flex items-center gap-1 flex-wrap">
-              Harvey ball indicators showing vendor feature support levels (
+              Product capabilities only (ecosystem support excluded) (
               <span className="text-green-500 font-bold">●</span> Full, 
               <span className="text-blue-500 font-bold">◕</span> Good, 
               <span className="text-yellow-500 font-bold">◑</span> Partial, 
@@ -482,9 +490,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             {/* Feature rows grouped by categories */}
             <div className="overflow-x-auto">
               <div className="space-y-6 px-4 pt-4">
-                {features && (() => {
+                {productCapabilityFeatures && (() => {
                   // Group features by category
-                  const featuresByCategory = features.reduce((acc, feature) => {
+                  const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
                     const categoryName = feature.category.name;
                     if (!acc[categoryName]) {
                       acc[categoryName] = {
@@ -588,9 +596,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 })()}
 
                 {/* Total Score Row */}
-                {features && features.length > 0 && (() => {
-                  const overallTotals = calculateOverallTotals(features, vendors);
-                  const maxScore = calculateMaximumScore(features);
+                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
+                  const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
+                  const maxScore = calculateMaximumScore(productCapabilityFeatures);
                   
                   return (
                     <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-blue-50">
@@ -630,9 +638,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 })()}
 
                 {/* Normalized Score Out of 10 Row */}
-                {features && features.length > 0 && (() => {
-                  const overallTotals = calculateOverallTotals(features, vendors);
-                  const maxScore = calculateMaximumScore(features);
+                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
+                  const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
+                  const maxScore = calculateMaximumScore(productCapabilityFeatures);
                   
                   return (
                     <div className="border-t border-gray-200 bg-green-50">
@@ -672,7 +680,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 })()}
 
                 {/* Integration Action Row */}
-                {features && features.length > 0 && (
+                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (
                   <div className="border-t border-gray-200 bg-purple-50">
                     <div 
                       className="grid gap-4 py-4 px-4" 
@@ -695,9 +703,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 )}
               </div>
 
-              {features.length === 0 && (
+              {productCapabilityFeatures.length === 0 && (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No features defined for this market yet.</p>
+                  <p className="text-gray-500">No product capability features defined for this market yet.</p>
                 </div>
               )}
             </div>
