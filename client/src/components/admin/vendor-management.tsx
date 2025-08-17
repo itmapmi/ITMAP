@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, Building2, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
+import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type FeatureWithCategory, type VendorFeatureSupport } from "@shared/schema";
 
 export default function VendorManagement() {
   const { toast } = useToast();
@@ -39,6 +39,79 @@ export default function VendorManagement() {
     queryKey: ["/api/markets", selectedMarket, "scores"],
     enabled: !!selectedMarket,
   });
+
+  const { data: features } = useQuery<FeatureWithCategory[]>({
+    queryKey: ["/api/markets", selectedMarket, "features"],
+    enabled: !!selectedMarket,
+  });
+
+  const { data: supportMatrix } = useQuery<VendorFeatureSupport[]>({
+    queryKey: ["/api/markets", selectedMarket, "feature-support"],
+    enabled: !!selectedMarket,
+  });
+
+  // Calculate support level score (same as support matrix)
+  const getSupportScore = (level: number) => {
+    switch (level) {
+      case 4: return 1.0;    // Full support
+      case 3: return 0.75;   // Good support
+      case 2: return 0.5;    // Partial support
+      case 1: return 0;      // Limited support - no score
+      case 0: return 0;      // No support - no score
+      default: return 0;
+    }
+  };
+
+  // Calculate category scores for all vendors
+  const calculateCategoryScores = () => {
+    if (!features || !vendors || !supportMatrix) return {};
+
+    // Filter out ecosystem-related features from product capabilities scoring
+    const productCapabilityFeatures = features.filter(feature => 
+      !feature.category.name.toLowerCase().includes('ecosystem') &&
+      !feature.category.name.toLowerCase().includes('integration') &&
+      !feature.category.name.toLowerCase().includes('partnership') &&
+      !feature.category.name.toLowerCase().includes('third-party')
+    );
+
+    // Create support lookup map
+    const supportLookup = new Map<string, number>();
+    supportMatrix.forEach(support => {
+      const key = `${support.vendorId}-${support.featureId}`;
+      supportLookup.set(key, support.supportLevel);
+    });
+
+    // Group features by category
+    const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
+      const categoryName = feature.category.name;
+      if (!acc[categoryName]) {
+        acc[categoryName] = [];
+      }
+      acc[categoryName].push(feature);
+      return acc;
+    }, {} as Record<string, FeatureWithCategory[]>);
+
+    // Calculate scores for each vendor and category
+    const categoryScores: Record<string, Record<string, number>> = {};
+    
+    vendors.forEach(vendor => {
+      categoryScores[vendor.id] = {};
+      
+      Object.entries(featuresByCategory).forEach(([categoryName, categoryFeatures]) => {
+        const total = categoryFeatures.reduce((sum, feature) => {
+          const supportKey = `${vendor.id}-${feature.id}`;
+          const supportLevel = supportLookup.get(supportKey) || 0;
+          return sum + getSupportScore(supportLevel);
+        }, 0);
+        
+        categoryScores[vendor.id][categoryName] = Number(total.toFixed(2));
+      });
+    });
+
+    return { categoryScores, featuresByCategory };
+  };
+
+  const { categoryScores, featuresByCategory } = calculateCategoryScores();
 
   const vendorForm = useForm<InsertVendor>({
     resolver: zodResolver(insertVendorSchema),
@@ -681,6 +754,87 @@ export default function VendorManagement() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Product Capability Category Scores */}
+            {selectedMarket && categoryScores && featuresByCategory && vendors && Object.keys(featuresByCategory).length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    Product Capability Category Scores
+                    <span className="text-sm text-gray-500 font-normal">(Support Matrix Integration)</span>
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">
+                    These scores are calculated from the Support Matrix data and exclude ecosystem features. 
+                    Scores range from 0 to the maximum possible for each category.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vendor</TableHead>
+                          {Object.keys(featuresByCategory).sort().map(categoryName => (
+                            <TableHead key={categoryName} className="text-center min-w-[120px]">
+                              <div>
+                                <div className="font-medium">{categoryName}</div>
+                                <div className="text-xs text-gray-500 font-normal">
+                                  Max: {featuresByCategory[categoryName].length}
+                                </div>
+                              </div>
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center font-bold bg-blue-50">
+                            Total Score
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {vendors.map(vendor => {
+                          const vendorCategoryScores = categoryScores[vendor.id] || {};
+                          const totalScore = Object.values(vendorCategoryScores).reduce((sum, score) => sum + score, 0);
+                          const maxTotalScore = Object.values(featuresByCategory).reduce((sum, features) => sum + features.length, 0);
+                          const normalizedScore = maxTotalScore > 0 ? ((totalScore / maxTotalScore) * 10).toFixed(2) : '0.00';
+                          
+                          return (
+                            <TableRow key={vendor.id}>
+                              <TableCell className="font-medium">
+                                <div>
+                                  <div>{vendor.name}</div>
+                                  {vendor.product && (
+                                    <div className="text-xs text-gray-500">{vendor.product}</div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              {Object.keys(featuresByCategory).sort().map(categoryName => {
+                                const score = vendorCategoryScores[categoryName] || 0;
+                                const maxScore = featuresByCategory[categoryName].length;
+                                const percentage = maxScore > 0 ? ((score / maxScore) * 100).toFixed(1) : '0.0';
+                                
+                                return (
+                                  <TableCell key={categoryName} className="text-center">
+                                    <div>
+                                      <div className="font-bold text-lg">{score}</div>
+                                      <div className="text-xs text-gray-500">{percentage}%</div>
+                                    </div>
+                                  </TableCell>
+                                );
+                              })}
+                              <TableCell className="text-center bg-blue-50">
+                                <div>
+                                  <div className="font-bold text-xl text-blue-700">{totalScore.toFixed(2)}</div>
+                                  <div className="text-xs text-gray-600">{normalizedScore}/10</div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Bulk Save Button for All Changes */}
             {Object.keys(vendorScores).length > 0 && (
