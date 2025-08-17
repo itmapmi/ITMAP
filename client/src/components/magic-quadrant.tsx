@@ -475,10 +475,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text("Challengers");
 
-    // Enhanced collision detection and spacing with force simulation approach
+    // Enhanced collision detection with stronger separation for overlapping vendors
     const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
-      const minDistance = 35; // Increased minimum distance for better visibility
-      const iterations = 10; // Number of force simulation iterations
+      const minDistance = 45; // Increased minimum distance for better separation
+      const iterations = 20; // More iterations for better convergence
       
       const vendorsWithPositions = vendors.map(vendor => ({
         ...vendor,
@@ -488,8 +488,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         originalY: vendor.viabilityScore,
       }));
 
-      // Force-based collision detection with multiple iterations
+      // Multi-pass collision detection with stronger forces
       for (let iter = 0; iter < iterations; iter++) {
+        let hasChanges = false;
+        
         for (let i = 0; i < vendorsWithPositions.length; i++) {
           for (let j = i + 1; j < vendorsWithPositions.length; j++) {
             const v1 = vendorsWithPositions[i];
@@ -500,30 +502,65 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance < minDistance && distance > 0) {
+              hasChanges = true;
               const angle = Math.atan2(dy, dx);
-              const targetDistance = minDistance;
-              const force = (targetDistance - distance) / targetDistance * 0.2; // Reduced force for smoother adjustment
               
-              const offsetX = Math.cos(angle) * force * targetDistance / 2;
-              const offsetY = Math.sin(angle) * force * targetDistance / 2;
+              // Use stronger force for closer vendors
+              const overlap = minDistance - distance;
+              const force = Math.min(overlap / minDistance * 0.6, 0.8); // Stronger force, capped at 0.8
+              
+              const offsetX = Math.cos(angle) * force * minDistance / 2;
+              const offsetY = Math.sin(angle) * force * minDistance / 2;
               
               // Convert back to data coordinates
               const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
               const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
               
-              // Apply forces while keeping vendors close to original positions
-              const maxDeviation = 8; // Maximum deviation from original position
+              // Increased maximum deviation for better separation
+              const maxDeviation = 15; // Allow larger deviation to avoid overlaps
               const newX1 = v1.adjustedX + offsetXData;
               const newY1 = v1.adjustedY + offsetYData;
               const newX2 = v2.adjustedX - offsetXData;
               const newY2 = v2.adjustedY - offsetYData;
               
-              // Constrain to max deviation and chart bounds
+              // Apply constraints with bias towards original positions
               v1.adjustedX = Math.min(100, Math.max(0, Math.min(v1.originalX + maxDeviation, Math.max(v1.originalX - maxDeviation, newX1))));
               v1.adjustedY = Math.min(100, Math.max(0, Math.min(v1.originalY + maxDeviation, Math.max(v1.originalY - maxDeviation, newY1))));
               v2.adjustedX = Math.min(100, Math.max(0, Math.min(v2.originalX + maxDeviation, Math.max(v2.originalX - maxDeviation, newX2))));
               v2.adjustedY = Math.min(100, Math.max(0, Math.min(v2.originalY + maxDeviation, Math.max(v2.originalY - maxDeviation, newY2))));
             }
+          }
+        }
+        
+        // Early termination if no changes
+        if (!hasChanges) break;
+      }
+      
+      // Final pass: ensure no vendor is completely hidden
+      for (let i = 0; i < vendorsWithPositions.length; i++) {
+        for (let j = i + 1; j < vendorsWithPositions.length; j++) {
+          const v1 = vendorsWithPositions[i];
+          const v2 = vendorsWithPositions[j];
+          
+          const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
+          const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // If still too close, apply emergency separation
+          if (distance < 20) {
+            const angle = Math.random() * 2 * Math.PI; // Random direction
+            const emergencyOffset = 25; // Minimum emergency separation
+            
+            const offsetX = Math.cos(angle) * emergencyOffset / 2;
+            const offsetY = Math.sin(angle) * emergencyOffset / 2;
+            
+            const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
+            const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
+            
+            v1.adjustedX = Math.min(100, Math.max(0, v1.adjustedX + offsetXData));
+            v1.adjustedY = Math.min(100, Math.max(0, v1.adjustedY + offsetYData));
+            v2.adjustedX = Math.min(100, Math.max(0, v2.adjustedX - offsetXData));
+            v2.adjustedY = Math.min(100, Math.max(0, v2.adjustedY - offsetYData));
           }
         }
       }
