@@ -475,39 +475,55 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
       .text("Challengers");
 
-    // Function to apply collision detection and spacing
+    // Enhanced collision detection and spacing with force simulation approach
     const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
-      const minDistance = 25; // Minimum distance between dots
+      const minDistance = 35; // Increased minimum distance for better visibility
+      const iterations = 10; // Number of force simulation iterations
+      
       const vendorsWithPositions = vendors.map(vendor => ({
         ...vendor,
         adjustedX: vendor.executionScore,
         adjustedY: vendor.viabilityScore,
+        originalX: vendor.executionScore,
+        originalY: vendor.viabilityScore,
       }));
 
-      // Simple collision detection - spread overlapping vendors
-      for (let i = 0; i < vendorsWithPositions.length; i++) {
-        for (let j = i + 1; j < vendorsWithPositions.length; j++) {
-          const v1 = vendorsWithPositions[i];
-          const v2 = vendorsWithPositions[j];
-          
-          const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
-          const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          if (distance < minDistance) {
-            const angle = Math.atan2(dy, dx);
-            const targetDistance = minDistance;
-            const offsetX = Math.cos(angle) * (targetDistance - distance) / 2;
-            const offsetY = Math.sin(angle) * (targetDistance - distance) / 2;
+      // Force-based collision detection with multiple iterations
+      for (let iter = 0; iter < iterations; iter++) {
+        for (let i = 0; i < vendorsWithPositions.length; i++) {
+          for (let j = i + 1; j < vendorsWithPositions.length; j++) {
+            const v1 = vendorsWithPositions[i];
+            const v2 = vendorsWithPositions[j];
             
-            // Convert back to data coordinates
-            const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
-            const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
+            const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
+            const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
+            const distance = Math.sqrt(dx * dx + dy * dy);
             
-            v1.adjustedX = Math.min(100, Math.max(0, v1.adjustedX + offsetXData));
-            v1.adjustedY = Math.min(100, Math.max(0, v1.adjustedY + offsetYData));
-            v2.adjustedX = Math.min(100, Math.max(0, v2.adjustedX - offsetXData));
-            v2.adjustedY = Math.min(100, Math.max(0, v2.adjustedY - offsetYData));
+            if (distance < minDistance && distance > 0) {
+              const angle = Math.atan2(dy, dx);
+              const targetDistance = minDistance;
+              const force = (targetDistance - distance) / targetDistance * 0.2; // Reduced force for smoother adjustment
+              
+              const offsetX = Math.cos(angle) * force * targetDistance / 2;
+              const offsetY = Math.sin(angle) * force * targetDistance / 2;
+              
+              // Convert back to data coordinates
+              const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
+              const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
+              
+              // Apply forces while keeping vendors close to original positions
+              const maxDeviation = 8; // Maximum deviation from original position
+              const newX1 = v1.adjustedX + offsetXData;
+              const newY1 = v1.adjustedY + offsetYData;
+              const newX2 = v2.adjustedX - offsetXData;
+              const newY2 = v2.adjustedY - offsetYData;
+              
+              // Constrain to max deviation and chart bounds
+              v1.adjustedX = Math.min(100, Math.max(0, Math.min(v1.originalX + maxDeviation, Math.max(v1.originalX - maxDeviation, newX1))));
+              v1.adjustedY = Math.min(100, Math.max(0, Math.min(v1.originalY + maxDeviation, Math.max(v1.originalY - maxDeviation, newY1))));
+              v2.adjustedX = Math.min(100, Math.max(0, Math.min(v2.originalX + maxDeviation, Math.max(v2.originalX - maxDeviation, newX2))));
+              v2.adjustedY = Math.min(100, Math.max(0, Math.min(v2.originalY + maxDeviation, Math.max(v2.originalY - maxDeviation, newY2))));
+            }
           }
         }
       }
@@ -524,21 +540,40 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .append("g")
       .attr("class", "vendor-group");
 
+    // Add enhanced vendor dots with better visibility
     vendorGroups.append("circle")
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.adjustedX))
       .attr("cy", d => yScale(d.adjustedY))
-      .attr("r", 8)
+      .attr("r", 10) // Increased base size for better visibility
       .attr("fill", "#6366f1")
-      .attr("stroke", "#4338ca")
-      .attr("stroke-width", 2)
+      .attr("stroke", "#ffffff")
+      .attr("stroke-width", 3)
       .style("cursor", "pointer")
-      .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.3))")
+      .style("filter", "drop-shadow(0 3px 6px rgba(99, 102, 241, 0.4))")
       .on("mouseover", function(event, d) {
-        d3.select(this).attr("r", 12);
+        d3.select(this)
+          .attr("r", 14)
+          .attr("stroke-width", 4)
+          .style("filter", "drop-shadow(0 4px 8px rgba(99, 102, 241, 0.6))");
+          
+        // Highlight the label
+        d3.select(this.parentNode)
+          .select(".vendor-label")
+          .attr("font-weight", "700")
+          .attr("font-size", "12px");
       })
       .on("mouseout", function(event, d) {
-        d3.select(this).attr("r", 8);
+        d3.select(this)
+          .attr("r", 10)
+          .attr("stroke-width", 3)
+          .style("filter", "drop-shadow(0 3px 6px rgba(99, 102, 241, 0.4))");
+          
+        // Reset the label
+        d3.select(this.parentNode)
+          .select(".vendor-label")
+          .attr("font-weight", "600")
+          .attr("font-size", "11px");
       })
       .on("click", function(event, d) {
         setSelectedVendor({
@@ -547,29 +582,43 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         });
       });
 
-    // Function to calculate optimal label position to avoid overlaps
-    const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { x: number, y: number, anchor: string } => {
+    // Enhanced label positioning with better conflict detection and readability
+    const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { x: number, y: number, anchor: string, background?: boolean } => {
       const baseX = xScale(vendor.adjustedX);
       const baseY = yScale(vendor.adjustedY);
-      const labelOffset = 16;
+      const labelOffset = 20; // Increased offset for better readability
+      const textWidth = vendor.name.length * 7; // Estimate text width
       
-      // Possible positions around the dot (clockwise from top)
+      // Preferred positions with better spacing (prioritize top and bottom for readability)
       const positions = [
-        { x: baseX, y: baseY - labelOffset, anchor: "middle", priority: 1 }, // top
-        { x: baseX + labelOffset * 0.8, y: baseY - labelOffset * 0.6, anchor: "start", priority: 2 }, // top-right
-        { x: baseX + labelOffset, y: baseY, anchor: "start", priority: 3 }, // right
-        { x: baseX + labelOffset * 0.8, y: baseY + labelOffset * 0.8, anchor: "start", priority: 4 }, // bottom-right
-        { x: baseX, y: baseY + labelOffset + 4, anchor: "middle", priority: 5 }, // bottom
-        { x: baseX - labelOffset * 0.8, y: baseY + labelOffset * 0.8, anchor: "end", priority: 6 }, // bottom-left
-        { x: baseX - labelOffset, y: baseY, anchor: "end", priority: 7 }, // left
-        { x: baseX - labelOffset * 0.8, y: baseY - labelOffset * 0.6, anchor: "end", priority: 8 }, // top-left
+        { x: baseX, y: baseY - labelOffset, anchor: "middle", priority: 1, bounds: { width: textWidth, height: 12 } }, // top
+        { x: baseX, y: baseY + labelOffset + 8, anchor: "middle", priority: 2, bounds: { width: textWidth, height: 12 } }, // bottom
+        { x: baseX - labelOffset - 5, y: baseY + 4, anchor: "end", priority: 3, bounds: { width: textWidth, height: 12 } }, // left
+        { x: baseX + labelOffset + 5, y: baseY + 4, anchor: "start", priority: 4, bounds: { width: textWidth, height: 12 } }, // right
+        { x: baseX - labelOffset * 0.7, y: baseY - labelOffset * 0.7, anchor: "end", priority: 5, bounds: { width: textWidth, height: 12 } }, // top-left
+        { x: baseX + labelOffset * 0.7, y: baseY - labelOffset * 0.7, anchor: "start", priority: 6, bounds: { width: textWidth, height: 12 } }, // top-right
+        { x: baseX - labelOffset * 0.7, y: baseY + labelOffset * 0.9, anchor: "end", priority: 7, bounds: { width: textWidth, height: 12 } }, // bottom-left
+        { x: baseX + labelOffset * 0.7, y: baseY + labelOffset * 0.9, anchor: "start", priority: 8, bounds: { width: textWidth, height: 12 } }, // bottom-right
       ];
       
-      // Check each position for conflicts with other labels
+      // Check each position for conflicts
       for (const position of positions) {
         let hasConflict = false;
         
-        // Check against all other vendors
+        // Check against chart bounds
+        const labelLeft = position.anchor === "end" ? position.x - position.bounds.width : 
+                          position.anchor === "middle" ? position.x - position.bounds.width / 2 : position.x;
+        const labelRight = labelLeft + position.bounds.width;
+        const labelTop = position.y - position.bounds.height;
+        const labelBottom = position.y + 4;
+        
+        if (labelLeft < margin.left || labelRight > width - margin.right || 
+            labelTop < margin.top || labelBottom > height - margin.bottom) {
+          hasConflict = true;
+          continue;
+        }
+        
+        // Check against other vendor dots and labels
         for (let i = 0; i < allVendors.length; i++) {
           if (i === index) continue;
           
@@ -577,21 +626,35 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           const otherX = xScale(otherVendor.adjustedX);
           const otherY = yScale(otherVendor.adjustedY);
           
-          // Check distance to other vendor dots
+          // Check distance to other vendor dots (minimum 25px clearance)
           const distanceToDot = Math.sqrt((position.x - otherX) ** 2 + (position.y - otherY) ** 2);
-          if (distanceToDot < 20) {
+          if (distanceToDot < 25) {
             hasConflict = true;
             break;
           }
           
-          // Estimate other vendor's label position (assume it uses top position for this check)
-          const otherLabelX = otherX;
-          const otherLabelY = otherY - labelOffset;
-          const distanceToLabel = Math.sqrt((position.x - otherLabelX) ** 2 + (position.y - otherLabelY) ** 2);
-          if (distanceToLabel < 25) {
-            hasConflict = true;
-            break;
+          // Check overlap with estimated other label positions
+          const otherTextWidth = otherVendor.name.length * 7;
+          const possibleOtherPositions = [
+            { x: otherX, y: otherY - labelOffset, w: otherTextWidth }, // top
+            { x: otherX, y: otherY + labelOffset + 8, w: otherTextWidth }, // bottom
+          ];
+          
+          for (const otherPos of possibleOtherPositions) {
+            const otherLeft = otherPos.x - otherPos.w / 2;
+            const otherRight = otherPos.x + otherPos.w / 2;
+            const otherTop = otherPos.y - 12;
+            const otherBottom = otherPos.y + 4;
+            
+            // Check rectangular overlap
+            if (!(labelRight < otherLeft || labelLeft > otherRight || 
+                  labelBottom < otherTop || labelTop > otherBottom)) {
+              hasConflict = true;
+              break;
+            }
           }
+          
+          if (hasConflict) break;
         }
         
         if (!hasConflict) {
@@ -599,25 +662,45 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         }
       }
       
-      // If no conflict-free position found, use top position as fallback
-      return positions[0];
+      // If no conflict-free position found, use top position with background
+      return { ...positions[0], background: true };
     };
 
-    // Add vendor labels with intelligent positioning
+    // Add vendor labels with enhanced positioning and readability
     adjustedVendors.forEach((vendor, index) => {
       const labelPos = calculateLabelPosition(vendor, index, adjustedVendors);
       
-      vendorGroups.filter((d, i) => i === index)
-        .append("text")
+      const labelGroup = vendorGroups.filter((d, i) => i === index);
+      
+      // Add background rectangle for better readability when needed
+      if (labelPos.background) {
+        const textWidth = vendor.name.length * 7.5;
+        labelGroup.append("rect")
+          .attr("class", "label-background")
+          .attr("x", labelPos.anchor === "middle" ? labelPos.x - textWidth/2 - 3 : 
+                     labelPos.anchor === "end" ? labelPos.x - textWidth - 3 : labelPos.x - 3)
+          .attr("y", labelPos.y - 11)
+          .attr("width", textWidth + 6)
+          .attr("height", 16)
+          .attr("fill", "rgba(255, 255, 255, 0.9)")
+          .attr("stroke", "rgba(100, 116, 139, 0.2)")
+          .attr("stroke-width", 1)
+          .attr("rx", 3)
+          .attr("ry", 3)
+          .style("pointer-events", "none");
+      }
+      
+      // Add the text label
+      labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.x)
         .attr("y", labelPos.y)
         .attr("text-anchor", labelPos.anchor)
-        .attr("fill", "#374151")
-        .attr("font-size", "10px")
+        .attr("fill", "#1f2937")
+        .attr("font-size", "11px")
         .attr("font-weight", "600")
         .style("pointer-events", "none")
-        .style("text-shadow", "0 0 4px white, 0 0 4px white, 0 0 4px white, 0 0 4px white")
+        .style("text-shadow", labelPos.background ? "none" : "0 0 6px white, 0 0 6px white, 0 0 6px white")
         .text(vendor.name);
     });
 
