@@ -58,7 +58,7 @@ export default function MarketGrid({ markets }: MarketGridProps) {
                 {market.name}
               </h3>
               <p className="text-gray-600 text-sm mt-2">
-                {market.description || "Comprehensive market analysis"}
+                {market.shortDescription || market.description || "Comprehensive market analysis"}
               </p>
               <div className="mt-4 flex items-center text-sm text-gray-500">
                 <TrendingUp className="mr-2 h-4 w-4" />

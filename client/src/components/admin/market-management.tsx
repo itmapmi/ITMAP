@@ -30,6 +30,7 @@ export default function MarketManagement() {
     defaultValues: {
       name: "",
       description: "",
+      shortDescription: "",
       category: "",
       imageUrl: "",
     },
@@ -150,6 +151,7 @@ export default function MarketManagement() {
     form.reset({
       name: market.name,
       description: market.description || "",
+      shortDescription: market.shortDescription || "",
       category: market.category || "",
       imageUrl: market.imageUrl || "",
     });
@@ -161,6 +163,7 @@ export default function MarketManagement() {
     form.reset({
       name: "",
       description: "",
+      shortDescription: "",
       category: "",
       imageUrl: "",
     });
@@ -171,6 +174,7 @@ export default function MarketManagement() {
     form.reset({
       name: "",
       description: "",
+      shortDescription: "",
       category: "",
       imageUrl: "",
     });
@@ -196,14 +200,33 @@ export default function MarketManagement() {
 
         <FormField
           control={form.control}
+          name="shortDescription"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Short Description</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Brief description for market thumbnails..."
+                  rows={2}
+                  {...field}
+                  value={field.value || ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Full Description</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Market description..."
-                  rows={3}
+                  placeholder="Detailed market description..."
+                  rows={4}
                   {...field}
                   value={field.value || ""}
                 />

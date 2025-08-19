@@ -247,7 +247,7 @@ export default function Home() {
                     {market.name}
                   </h3>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    {market.description}
+                    {market.shortDescription || market.description}
                   </p>
                   <div className="mt-4 flex items-center text-cyan-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                     Explore Market →

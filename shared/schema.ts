@@ -31,6 +31,7 @@ export const markets = pgTable("markets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  shortDescription: text("short_description"),
   category: text("category"),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at").default(sql`now()`),
