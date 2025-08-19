@@ -73,10 +73,11 @@ export default function MarketManagement() {
         description: "Market updated successfully",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error("Market update error:", error);
       toast({
         title: "Error",
-        description: "Failed to update market",
+        description: error.message || "Failed to update market",
         variant: "destructive",
       });
     },

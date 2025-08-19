@@ -144,12 +144,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/markets/:id", requireAdmin, async (req, res) => {
     try {
+      console.log("Market update request:", {
+        id: req.params.id,
+        body: req.body,
+        user: req.user ? { id: (req.user as any).id, role: (req.user as any).role } : 'none'
+      });
+      
       const marketData = insertMarketSchema.partial().parse(req.body);
+      console.log("Parsed market data:", marketData);
+      
       const market = await storage.updateMarket(req.params.id, marketData);
+      console.log("Updated market:", market);
+      
       res.json(market);
     } catch (error) {
       console.error("Error updating market:", error);
-      res.status(400).json({ error: "Failed to update market" });
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: "Failed to update market" });
+      }
     }
   });
 
