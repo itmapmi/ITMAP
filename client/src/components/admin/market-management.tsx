@@ -37,7 +37,7 @@ export default function MarketManagement() {
 
   const createMarketMutation = useMutation({
     mutationFn: async (data: InsertMarket) => {
-      const response = await apiRequest("POST", "/api/markets", data);
+      const response = await apiRequest("/api/markets", "POST", data);
       return response.json();
     },
     onSuccess: () => {
@@ -60,7 +60,7 @@ export default function MarketManagement() {
 
   const updateMarketMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertMarket }) => {
-      const response = await apiRequest("PUT", `/api/markets/${id}`, data);
+      const response = await apiRequest(`/api/markets/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
@@ -85,7 +85,7 @@ export default function MarketManagement() {
 
   const deleteMarketMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/markets/${id}`);
+      await apiRequest(`/api/markets/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
@@ -105,7 +105,7 @@ export default function MarketManagement() {
 
   const updateMarketImageMutation = useMutation({
     mutationFn: async ({ marketId, imageURL }: { marketId: string; imageURL: string }) => {
-      const response = await apiRequest("PUT", `/api/markets/${marketId}/image`, { imageURL });
+      const response = await apiRequest(`/api/markets/${marketId}/image`, "PUT", { imageURL });
       return response.json();
     },
     onSuccess: () => {
