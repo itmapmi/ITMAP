@@ -39,7 +39,12 @@ export function SimpleImageUploader({ value, onChange, className }: SimpleImageU
     setUploading(true);
     try {
       console.log("Getting upload URL...");
-      const response = await apiRequest("POST", "/api/objects/upload");
+      
+      // Check authentication status first
+      const authResponse = await fetch("/api/auth/user", { credentials: "include" });
+      console.log("Auth status:", authResponse.status);
+      
+      const response = await apiRequest("/api/objects/upload", "POST", {});
       const { uploadURL } = await response.json();
       console.log("Got upload URL:", uploadURL);
 
@@ -72,7 +77,7 @@ export function SimpleImageUploader({ value, onChange, className }: SimpleImageU
       console.error("Upload failed:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload image. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload image. Please try again.",
         variant: "destructive",
       });
     } finally {
