@@ -285,6 +285,12 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  revenue: z.string().optional().transform((val) => {
+    if (!val || val.trim() === '') return null;
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? null : parsed.toString();
+  }),
 });
 
 export const insertCriteriaSchema = createInsertSchema(criteria).omit({

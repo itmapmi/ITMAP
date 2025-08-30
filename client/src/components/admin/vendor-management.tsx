@@ -48,7 +48,7 @@ export default function VendorManagement() {
       name: "",
       description: "",
       website: "",
-      revenue: "",
+      revenue: undefined,
       product: "",
       marketId: "",
     },
