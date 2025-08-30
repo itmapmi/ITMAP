@@ -384,12 +384,12 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("rx", 8)
       .attr("ry", 8);
 
-    // Leaders (top-right 60-100 x 60-100 coordinates - 40x40 area)
+    // Leaders (top-right 50-100 x 50-100 coordinates - 50x50 area)
     svg.append("rect")
-      .attr("x", xScale(60))
+      .attr("x", xScale(50))
       .attr("y", margin.top)
-      .attr("width", width - margin.right - xScale(60))
-      .attr("height", yScale(60) - margin.top)
+      .attr("width", width - margin.right - xScale(50))
+      .attr("height", yScale(50) - margin.top)
       .attr("fill", "url(#leadersGradient)")
       .attr("stroke", "#16a34a")
       .attr("stroke-width", 2)
