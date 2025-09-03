@@ -60,6 +60,8 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
 
   const { data: scores, isLoading: scoresLoading } = useQuery<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>({
     queryKey: ["/api/markets", marketId, "scores"],
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always refetch to ensure fresh data
   });
 
   const { data: weights, isLoading: weightsLoading } = useQuery<(MarketCriteriaWeight & { criteria: Criteria })[]>({

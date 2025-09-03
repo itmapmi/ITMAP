@@ -150,8 +150,12 @@ export default function VendorManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
       queryClient.invalidateQueries({ queryKey: ["/api/vendor-scores"] });
       
-      // Force a refetch of the scores data
+      // Force a refetch of ALL market-related data to ensure Magic Quadrant updates
       queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket] });
+      
+      // Also invalidate any magic quadrant specific queries
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
       
       toast({
         title: "Success",
