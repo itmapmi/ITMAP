@@ -483,6 +483,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/feature-categories/:id", async (req, res) => {
+    try {
+      const categoryData = insertFeatureCategorySchema.parse(req.body);
+      const category = await storage.updateFeatureCategory(req.params.id, categoryData);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating feature category:", error);
+      res.status(400).json({ error: "Failed to update feature category" });
+    }
+  });
+
   app.delete("/api/feature-categories/:id", async (req, res) => {
     try {
       await storage.deleteFeatureCategory(req.params.id);

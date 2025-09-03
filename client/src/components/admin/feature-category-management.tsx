@@ -165,9 +165,26 @@ export function FeatureCategoryManagement() {
     },
   });
 
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof categoryFormSchema> }) => {
+      const response = await apiRequest(`/api/feature-categories/${id}`, "PUT", data);
+      if (!response.ok) throw new Error("Failed to update category");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-categories"] });
+      setEditingCategory(null);
+      categoryForm.reset();
+      toast({ title: "Feature category updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update feature category", variant: "destructive" });
+    },
+  });
+
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId: string) => {
-      const response = await apiRequest("DELETE", `/api/feature-categories/${categoryId}`);
+      const response = await apiRequest(`/api/feature-categories/${categoryId}`, "DELETE");
       if (!response.ok) throw new Error("Failed to delete category");
       return response.json();
     },
@@ -200,11 +217,30 @@ export function FeatureCategoryManagement() {
   });
 
   const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
-    createCategoryMutation.mutate(data);
+    if (editingCategory) {
+      updateCategoryMutation.mutate({ id: editingCategory.id, data });
+    } else {
+      createCategoryMutation.mutate(data);
+    }
   };
 
   const onFeatureSubmit = (data: z.infer<typeof featureFormSchema>) => {
     createFeatureMutation.mutate(data);
+  };
+
+  const handleDeleteCategory = (categoryId: string) => {
+    if (window.confirm("Are you sure you want to delete this category? This will also delete all features in this category.")) {
+      deleteCategoryMutation.mutate(categoryId);
+    }
+  };
+
+  const handleEditCategory = (category: FeatureCategory) => {
+    setEditingCategory(category);
+    categoryForm.reset({
+      name: category.name,
+      description: category.description || "",
+      marketId: category.marketId,
+    });
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -219,12 +255,6 @@ export function FeatureCategoryManagement() {
 
   const handleSupportChange = (vendorId: string, featureId: string, supportLevel: number) => {
     updateSupportMutation.mutate({ vendorId, featureId, supportLevel });
-  };
-
-  const handleDeleteCategory = (categoryId: string) => {
-    if (confirm("Are you sure you want to delete this category? This will also delete all features in this category.")) {
-      deleteCategoryMutation.mutate(categoryId);
-    }
   };
 
   const getSupportLevel = (vendorId: string, featureId: string): number => {
@@ -318,10 +348,27 @@ export function FeatureCategoryManagement() {
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" disabled={createCategoryMutation.isPending}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        {editingCategory 
+                          ? (updateCategoryMutation.isPending ? "Updating..." : "Update Category")
+                          : (createCategoryMutation.isPending ? "Creating..." : "Create Category")
+                        }
+                      </Button>
+                      {editingCategory && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setEditingCategory(null);
+                            categoryForm.reset();
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </form>
                 </Form>
               </CardContent>
@@ -443,7 +490,14 @@ export function FeatureCategoryManagement() {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditCategory(category);
+                            }}
+                          >
                             <Edit2 className="h-4 w-4" />
                           </Button>
                           <Button 
