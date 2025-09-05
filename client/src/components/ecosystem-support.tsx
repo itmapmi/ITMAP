@@ -509,30 +509,55 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
             {/* Ecosystem Support Summary */}
             {ecosystemFeatures.length > 0 && vendors.length > 0 && (
-              <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border-2 border-purple-200 mx-4">
-                <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                  🌐 Ecosystem Support Summary
-                  <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                    {ecosystemFeatures.length} features
-                  </Badge>
-                </h3>
+              <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border-2 border-purple-200 mx-4">
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
+                    🌐 Ecosystem Support Summary
+                    <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                      {ecosystemFeatures.length} features
+                    </Badge>
+                  </h3>
+                </div>
                 
-                <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
-                  <div className="font-semibold text-purple-800">
-                    Total Scores
+                {/* Frozen header for summary */}
+                <div className="sticky top-0 bg-white z-20 border-b border-purple-200">
+                  <div 
+                    className="grid gap-4 py-3 px-6 bg-purple-100"
+                    style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                  >
+                    <div className="font-semibold text-purple-800">
+                      Total Scores
+                    </div>
+                    {vendors.map(vendor => (
+                      <div key={vendor.id} className="text-center font-medium text-purple-800">
+                        {vendor.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Summary scores aligned with vendor columns */}
+                <div 
+                  className="grid gap-4 px-6 py-4" 
+                  style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                >
+                  <div className="font-semibold text-purple-800 flex items-center">
+                    Normalized Scores
                   </div>
                   {vendors.map(vendor => {
                     const totals = ecosystemTotals[vendor.id];
                     return (
-                      <div key={vendor.id} className="text-center bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
-                        <div className="font-bold text-2xl text-purple-700 mb-1">
-                          {totals.totalScore}
-                        </div>
-                        <div className="text-xs text-gray-500 mb-2">
-                          out of {totals.maxScore}
-                        </div>
-                        <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
-                          {totals.normalizedScore}/10
+                      <div key={vendor.id} className="text-center">
+                        <div className="bg-white rounded-lg p-3 border-2 border-purple-200 shadow-sm">
+                          <div className="font-bold text-xl text-purple-700 mb-1">
+                            {totals.totalScore}
+                          </div>
+                          <div className="text-xs text-gray-500 mb-2">
+                            out of {totals.maxScore}
+                          </div>
+                          <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
+                            {totals.normalizedScore}/10
+                          </div>
                         </div>
                       </div>
                     );
