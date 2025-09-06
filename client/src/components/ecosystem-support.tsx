@@ -386,22 +386,22 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
         {selectedVendors.size > 0 && (
           <CardContent>
             <div className="overflow-x-auto">
-              {/* Vendor Header Row */}
-              <div className="sticky top-0 bg-white z-10 border-b border-gray-200">
+              {/* Floating Frozen Vendor Header Row */}
+              <div className="sticky top-0 bg-white z-50 border-b-2 border-blue-200 shadow-md">
                 <div 
-                  className="grid gap-4 py-4 px-4 bg-gray-50"
+                  className="grid gap-4 py-4 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100"
                   style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
                 >
-                  <div className="flex items-center font-semibold text-gray-900">
-                    Ecosystem Features
+                  <div className="flex items-center font-bold text-gray-900 text-lg">
+                    🌐 Ecosystem Features
                   </div>
                   {vendors.map(vendor => (
-                    <div key={vendor.id} className="text-center">
-                      <div className="font-medium text-sm text-gray-900 mb-1">
+                    <div key={vendor.id} className="text-center bg-white rounded-lg px-2 py-2 shadow-sm border border-blue-200">
+                      <div className="font-bold text-sm text-blue-900 mb-1">
                         {vendor.name}
                       </div>
                       {vendor.description && (
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-blue-600 truncate">
                           {vendor.description}
                         </div>
                       )}
@@ -520,17 +520,19 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                 </div>
                 
                 {/* Frozen header for summary */}
-                <div className="sticky top-0 bg-white z-20 border-b border-purple-200">
+                <div className="sticky top-0 bg-white z-50 border-b-2 border-purple-200 shadow-md">
                   <div 
-                    className="grid gap-4 py-3 px-6 bg-purple-100"
+                    className="grid gap-4 py-4 px-6 bg-gradient-to-r from-purple-100 to-indigo-100 border-b border-purple-100"
                     style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
                   >
-                    <div className="font-semibold text-purple-800">
-                      Total Scores
+                    <div className="font-bold text-purple-900 text-lg">
+                      📊 Total Scores
                     </div>
                     {vendors.map(vendor => (
-                      <div key={vendor.id} className="text-center font-medium text-purple-800">
-                        {vendor.name}
+                      <div key={vendor.id} className="text-center bg-white rounded-lg px-2 py-2 shadow-sm border border-purple-200">
+                        <div className="font-bold text-sm text-purple-900">
+                          {vendor.name}
+                        </div>
                       </div>
                     ))}
                   </div>
