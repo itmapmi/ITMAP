@@ -321,7 +321,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     // Add gradient definitions for sophisticated shading
     const defs = svg.append("defs");
     
-    // Emerging Players gradient
+    // Emerging Players gradient (bottom-left)
     const emergingGradient = defs.append("linearGradient")
       .attr("id", "emergingGradient")
       .attr("gradientUnits", "objectBoundingBox");
@@ -334,7 +334,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("stop-color", "#f59e0b")
       .attr("stop-opacity", 0.35);
 
-    // Leaders gradient
+    // Leaders gradient (top-right)
     const leadersGradient = defs.append("linearGradient")
       .attr("id", "leadersGradient")
       .attr("gradientUnits", "objectBoundingBox");
@@ -347,64 +347,114 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("stop-color", "#16a34a")
       .attr("stop-opacity", 0.35);
 
-    // Challengers gradient
+    // Challengers gradient (top-left)
     const challengersGradient = defs.append("linearGradient")
       .attr("id", "challengersGradient")
       .attr("gradientUnits", "objectBoundingBox");
     challengersGradient.append("stop")
       .attr("offset", "0%")
       .attr("stop-color", "#3b82f6")
-      .attr("stop-opacity", 0.15);
+      .attr("stop-opacity", 0.25);
     challengersGradient.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", "#1d4ed8")
+      .attr("stop-opacity", 0.35);
+
+    // Innovators gradient (bottom-right)
+    const innovatorsGradient = defs.append("linearGradient")
+      .attr("id", "innovatorsGradient")
+      .attr("gradientUnits", "objectBoundingBox");
+    innovatorsGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#8b5cf6")
       .attr("stop-opacity", 0.25);
+    innovatorsGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#7c3aed")
+      .attr("stop-opacity", 0.35);
     
-    // Add custom quadrant backgrounds with improved styling
+    // Add four distinct 5x5 quadrant backgrounds with improved styling
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
+    const midX = xScale(50);
+    const midY = yScale(50);
     
-    // Challengers (entire background - subtle blue)
+    // Challengers (top-left: 0-50 x, 50-100 y)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", margin.top)
-      .attr("width", chartWidth)
-      .attr("height", chartHeight)
+      .attr("width", midX - margin.left)
+      .attr("height", midY - margin.top)
       .attr("fill", "url(#challengersGradient)")
-      .attr("stroke", "#e2e8f0")
-      .attr("stroke-width", 1);
+      .attr("stroke", "#1d4ed8")
+      .attr("stroke-width", 2)
+      .attr("rx", 8)
+      .attr("ry", 8);
+
+    // Leaders (top-right: 50-100 x, 50-100 y)
+    svg.append("rect")
+      .attr("x", midX)
+      .attr("y", margin.top)
+      .attr("width", width - margin.right - midX)
+      .attr("height", midY - margin.top)
+      .attr("fill", "url(#leadersGradient)")
+      .attr("stroke", "#16a34a")
+      .attr("stroke-width", 2)
+      .attr("rx", 8)
+      .attr("ry", 8);
     
-    // Emerging Players (bottom-left 30x30 coordinates)
+    // Emerging Players (bottom-left: 0-50 x, 0-50 y)
     svg.append("rect")
       .attr("x", margin.left)
-      .attr("y", yScale(30))
-      .attr("width", xScale(30) - margin.left)
-      .attr("height", height - margin.bottom - yScale(30))
+      .attr("y", midY)
+      .attr("width", midX - margin.left)
+      .attr("height", height - margin.bottom - midY)
       .attr("fill", "url(#emergingGradient)")
       .attr("stroke", "#f59e0b")
       .attr("stroke-width", 2)
       .attr("rx", 8)
       .attr("ry", 8);
 
-    // Leaders (top-right 50-100 x 50-100 coordinates - 50x50 area)
+    // Innovators (bottom-right: 50-100 x, 0-50 y)
     svg.append("rect")
-      .attr("x", xScale(50))
-      .attr("y", margin.top)
-      .attr("width", width - margin.right - xScale(50))
-      .attr("height", yScale(50) - margin.top)
-      .attr("fill", "url(#leadersGradient)")
-      .attr("stroke", "#16a34a")
+      .attr("x", midX)
+      .attr("y", midY)
+      .attr("width", width - margin.right - midX)
+      .attr("height", height - margin.bottom - midY)
+      .attr("fill", "url(#innovatorsGradient)")
+      .attr("stroke", "#7c3aed")
       .attr("stroke-width", 2)
       .attr("rx", 8)
       .attr("ry", 8);
 
+    // Add prominent center dividing lines for 5x5 quadrant structure
+    // Vertical center line (x = 50)
+    svg.append("line")
+      .attr("x1", midX)
+      .attr("x2", midX)
+      .attr("y1", margin.top)
+      .attr("y2", height - margin.bottom)
+      .attr("stroke", "#374151")
+      .attr("stroke-width", 3)
+      .attr("stroke-dasharray", "5,5");
+
+    // Horizontal center line (y = 50)
+    svg.append("line")
+      .attr("x1", margin.left)
+      .attr("x2", width - margin.right)
+      .attr("y1", midY)
+      .attr("y2", midY)
+      .attr("stroke", "#374151")
+      .attr("stroke-width", 3)
+      .attr("stroke-dasharray", "5,5");
+
     // Add professional-looking axes
     const xAxis = d3.axisBottom(xScale)
       .tickSize(-chartHeight)
-      .tickFormat(d => d === 0 || d === 100 ? `${d}` : '');
+      .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
       .tickSize(-chartWidth)
-      .tickFormat(d => d === 0 || d === 100 ? `${d}` : '');
+      .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
 
     svg.append("g")
       .attr("class", "x-axis")
@@ -446,36 +496,49 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("fill", "#374151")
       .text("Vendor Viability");
 
-    // Add clean quadrant labels without background boxes
-    // Emerging Players label (bottom-left corner)
+    // Add clean quadrant labels for four distinct 5x5 quadrants
+    const quadrantLabelStyle = "text-sm font-bold";
+    const textShadow = "0 0 3px white, 0 0 3px white, 0 0 3px white";
+    
+    // Challengers label (top-left quadrant center)
     svg.append("text")
-      .attr("x", margin.left + 55)
-      .attr("y", height - margin.bottom - 11)
+      .attr("x", margin.left + (midX - margin.left) / 2)
+      .attr("y", margin.top + (midY - margin.top) / 2)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold")
-      .attr("fill", "#f59e0b")
-      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
-      .text("Emerging Players");
+      .attr("class", quadrantLabelStyle)
+      .attr("fill", "#1d4ed8")
+      .style("text-shadow", textShadow)
+      .text("Challengers");
 
-    // Leaders label (top-right corner)
+    // Leaders label (top-right quadrant center)
     svg.append("text")
-      .attr("x", width - margin.right - 30)
-      .attr("y", margin.top + 19)
+      .attr("x", midX + (width - margin.right - midX) / 2)
+      .attr("y", margin.top + (midY - margin.top) / 2)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold")
+      .attr("class", quadrantLabelStyle)
       .attr("fill", "#16a34a")
-      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
+      .style("text-shadow", textShadow)
       .text("Leaders");
 
-    // Challengers label (positioned in top-left corner)
+    // Emerging Players label (bottom-left quadrant center)
     svg.append("text")
-      .attr("x", margin.left + 45)
-      .attr("y", margin.top + 19)
+      .attr("x", margin.left + (midX - margin.left) / 2)
+      .attr("y", midY + (height - margin.bottom - midY) / 2)
       .attr("text-anchor", "middle")
-      .attr("class", "text-sm font-bold")
-      .attr("fill", "#1d4ed8")
-      .style("text-shadow", "0 0 3px white, 0 0 3px white, 0 0 3px white")
-      .text("Challengers");
+      .attr("class", quadrantLabelStyle)
+      .attr("fill", "#f59e0b")
+      .style("text-shadow", textShadow)
+      .text("Emerging Players");
+
+    // Innovators label (bottom-right quadrant center)
+    svg.append("text")
+      .attr("x", midX + (width - margin.right - midX) / 2)
+      .attr("y", midY + (height - margin.bottom - midY) / 2)
+      .attr("text-anchor", "middle")
+      .attr("class", quadrantLabelStyle)
+      .attr("fill", "#7c3aed")
+      .style("text-shadow", textShadow)
+      .text("Innovators");
 
     // Enhanced collision detection with stronger separation for overlapping vendors
     const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
@@ -525,11 +588,21 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
               const newX2 = v2.adjustedX - offsetXData;
               const newY2 = v2.adjustedY - offsetYData;
               
-              // Apply constraints with bias towards original positions
-              v1.adjustedX = Math.min(100, Math.max(0, Math.min(v1.originalX + maxDeviation, Math.max(v1.originalX - maxDeviation, newX1))));
-              v1.adjustedY = Math.min(100, Math.max(0, Math.min(v1.originalY + maxDeviation, Math.max(v1.originalY - maxDeviation, newY1))));
-              v2.adjustedX = Math.min(100, Math.max(0, Math.min(v2.originalX + maxDeviation, Math.max(v2.originalX - maxDeviation, newX2))));
-              v2.adjustedY = Math.min(100, Math.max(0, Math.min(v2.originalY + maxDeviation, Math.max(v2.originalY - maxDeviation, newY2))));
+              // Apply constraints with bias towards original positions and preserve quadrant boundaries
+              const constrainToQuadrant = (originalVal: number, newVal: number, maxDev: number): number => {
+                // Determine which side of 50 the original value is on and constrain to same side
+                const boundedVal = Math.min(originalVal + maxDev, Math.max(originalVal - maxDev, newVal));
+                if (originalVal < 50) {
+                  return Math.min(49.5, Math.max(0, boundedVal)); // Keep in left/bottom quadrant
+                } else {
+                  return Math.min(100, Math.max(50.5, boundedVal)); // Keep in right/top quadrant
+                }
+              };
+              
+              v1.adjustedX = constrainToQuadrant(v1.originalX, newX1, maxDeviation);
+              v1.adjustedY = constrainToQuadrant(v1.originalY, newY1, maxDeviation);
+              v2.adjustedX = constrainToQuadrant(v2.originalX, newX2, maxDeviation);
+              v2.adjustedY = constrainToQuadrant(v2.originalY, newY2, maxDeviation);
             }
           }
         }
