@@ -384,12 +384,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
         </CardHeader>
 
         {selectedVendors.size > 0 && (
-          <CardContent>
-            <div className="overflow-x-auto">
-              {/* Floating Frozen Vendor Header Row */}
-              <div className="sticky top-0 bg-white z-50 border-b-2 border-blue-200 shadow-md">
+          <>
+            {/* Floating Frozen Vendor Header Row - Outside CardContent */}
+            <div className="sticky top-0 bg-white z-[100] border-b-2 border-blue-200 shadow-lg mx-6 rounded-t-lg">
+              <div className="overflow-x-auto">
                 <div 
-                  className="grid gap-4 py-4 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100"
+                  className="grid gap-4 py-4 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-lg"
                   style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
                 >
                   <div className="flex items-center font-bold text-gray-900 text-lg">
@@ -409,9 +409,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                   ))}
                 </div>
               </div>
-
-              {/* Feature rows grouped by categories */}
-              <div className="space-y-6 px-4 pt-4">
+            </div>
+            
+            <CardContent>
+              <div className="overflow-x-auto">
+                {/* Feature rows grouped by categories */}
+                <div className="space-y-6 px-4 pt-4">
                 {(() => {
                   // Group features by category
                   const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
@@ -595,6 +598,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
               </div>
             </div>
           </CardContent>
+          </>
         )}
       </Card>
 
