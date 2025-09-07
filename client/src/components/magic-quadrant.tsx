@@ -496,45 +496,46 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("fill", "#374151")
       .text("Vendor Viability");
 
-    // Add clean quadrant labels for four distinct 5x5 quadrants
+    // Add quadrant labels positioned in corners
     const quadrantLabelStyle = "text-sm font-bold";
     const textShadow = "0 0 3px white, 0 0 3px white, 0 0 3px white";
+    const labelOffset = 15; // Distance from corner
     
-    // Challengers label (top-left quadrant center)
+    // Challengers label (top-left quadrant - top right corner)
     svg.append("text")
-      .attr("x", margin.left + (midX - margin.left) / 2)
-      .attr("y", margin.top + (midY - margin.top) / 2)
-      .attr("text-anchor", "middle")
+      .attr("x", midX - labelOffset)
+      .attr("y", margin.top + labelOffset)
+      .attr("text-anchor", "end")
       .attr("class", quadrantLabelStyle)
       .attr("fill", "#1d4ed8")
       .style("text-shadow", textShadow)
       .text("Challengers");
 
-    // Leaders label (top-right quadrant center)
+    // Leaders label (top-right quadrant - top right corner)
     svg.append("text")
-      .attr("x", midX + (width - margin.right - midX) / 2)
-      .attr("y", margin.top + (midY - margin.top) / 2)
-      .attr("text-anchor", "middle")
+      .attr("x", width - margin.right - labelOffset)
+      .attr("y", margin.top + labelOffset)
+      .attr("text-anchor", "end")
       .attr("class", quadrantLabelStyle)
       .attr("fill", "#16a34a")
       .style("text-shadow", textShadow)
       .text("Leaders");
 
-    // Emerging Players label (bottom-left quadrant center)
+    // Emerging Players label (bottom-left quadrant - bottom right corner)
     svg.append("text")
-      .attr("x", margin.left + (midX - margin.left) / 2)
-      .attr("y", midY + (height - margin.bottom - midY) / 2)
-      .attr("text-anchor", "middle")
+      .attr("x", midX - labelOffset)
+      .attr("y", midY - labelOffset)
+      .attr("text-anchor", "end")
       .attr("class", quadrantLabelStyle)
       .attr("fill", "#f59e0b")
       .style("text-shadow", textShadow)
       .text("Emerging Players");
 
-    // Innovators label (bottom-right quadrant center)
+    // Innovators label (bottom-right quadrant - bottom right corner)
     svg.append("text")
-      .attr("x", midX + (width - margin.right - midX) / 2)
-      .attr("y", midY + (height - margin.bottom - midY) / 2)
-      .attr("text-anchor", "middle")
+      .attr("x", width - margin.right - labelOffset)
+      .attr("y", midY - labelOffset)
+      .attr("text-anchor", "end")
       .attr("class", quadrantLabelStyle)
       .attr("fill", "#7c3aed")
       .style("text-shadow", textShadow)
