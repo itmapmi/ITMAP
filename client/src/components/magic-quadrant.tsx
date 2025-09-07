@@ -670,14 +670,14 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           .attr("stroke-width", 3)
           .style("filter", "drop-shadow(0 3px 6px rgba(99, 102, 241, 0.6))");
           
-        // Highlight the label and arrow
+        // Highlight the label
         const parentGroup = d3.select(this.parentNode as Element);
         parentGroup.select(".vendor-label")
           .attr("font-weight", "700")
           .attr("font-size", "12px");
-        parentGroup.select(".label-arrow")
-          .attr("stroke-width", 2)
-          .attr("stroke", "#4338ca");
+        parentGroup.select(".label-background")
+          .attr("fill", "rgba(255, 255, 255, 1.0)")
+          .attr("stroke", "rgba(99, 102, 241, 0.6)");
       })
       .on("mouseout", function(event, d) {
         d3.select(this)
@@ -685,14 +685,14 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           .attr("stroke-width", 2)
           .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4))");
           
-        // Reset the label and arrow
+        // Reset the label
         const parentGroup = d3.select(this.parentNode as Element);
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
           .attr("font-size", "11px");
-        parentGroup.select(".label-arrow")
-          .attr("stroke-width", 1)
-          .attr("stroke", "#94a3b8");
+        parentGroup.select(".label-background")
+          .attr("fill", "rgba(255, 255, 255, 0.9)")
+          .attr("stroke", "rgba(148, 163, 184, 0.4)");
       })
       .on("click", function(event, d) {
         setSelectedVendor({
@@ -701,34 +701,28 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         });
       });
 
-    // Enhanced label positioning with arrow connectors
+    // Simplified left/right label positioning with collision detection
     const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { 
-      labelX: number, labelY: number, anchor: string, dotX: number, dotY: number, needsArrow: boolean 
+      labelX: number, labelY: number, anchor: string, dotX: number, dotY: number
     } => {
       const dotX = xScale(vendor.adjustedX);
       const dotY = yScale(vendor.adjustedY);
-      const labelOffset = 28; // Larger offset for arrow space
+      const labelOffset = 12; // Direct adjacent positioning
       const textWidth = vendor.name.length * 7.5;
+      const labelHeight = 16;
       
-      // Preferred label positions (further from dot for arrow space)
+      // Only left and right positions
       const positions = [
-        { x: dotX, y: dotY - labelOffset, anchor: "middle", priority: 1 }, // top
-        { x: dotX, y: dotY + labelOffset + 8, anchor: "middle", priority: 2 }, // bottom
-        { x: dotX - labelOffset, y: dotY + 4, anchor: "end", priority: 3 }, // left
-        { x: dotX + labelOffset, y: dotY + 4, anchor: "start", priority: 4 }, // right
-        { x: dotX - labelOffset * 0.8, y: dotY - labelOffset * 0.8, anchor: "end", priority: 5 }, // top-left
-        { x: dotX + labelOffset * 0.8, y: dotY - labelOffset * 0.8, anchor: "start", priority: 6 }, // top-right
-        { x: dotX - labelOffset * 0.8, y: dotY + labelOffset * 0.8, anchor: "end", priority: 7 }, // bottom-left
-        { x: dotX + labelOffset * 0.8, y: dotY + labelOffset * 0.8, anchor: "start", priority: 8 }, // bottom-right
+        { x: dotX + labelOffset, y: dotY + 4, anchor: "start", side: "right" }, // right (preferred)
+        { x: dotX - labelOffset, y: dotY + 4, anchor: "end", side: "left" }     // left
       ];
       
-      // Find the best position without conflicts
+      // Check each position for conflicts
       for (const position of positions) {
         let hasConflict = false;
         
         // Calculate label bounds
-        const labelLeft = position.anchor === "end" ? position.x - textWidth : 
-                          position.anchor === "middle" ? position.x - textWidth / 2 : position.x;
+        const labelLeft = position.anchor === "end" ? position.x - textWidth : position.x;
         const labelRight = labelLeft + textWidth;
         const labelTop = position.y - 12;
         const labelBottom = position.y + 4;
@@ -739,7 +733,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           continue;
         }
         
-        // Check conflicts with other vendors
+        // Check conflicts with other vendor dots and labels
         for (let i = 0; i < allVendors.length; i++) {
           if (i === index) continue;
           
@@ -747,86 +741,81 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           const otherX = xScale(otherVendor.adjustedX);
           const otherY = yScale(otherVendor.adjustedY);
           
-          // Check distance to other dots (minimum 20px clearance)
+          // Check distance to other dots (minimum 15px clearance)
           const distanceToOtherDot = Math.sqrt((position.x - otherX) ** 2 + (position.y - otherY) ** 2);
-          if (distanceToOtherDot < 20) {
+          if (distanceToOtherDot < 15) {
             hasConflict = true;
             break;
           }
+          
+          // Check for label overlap with other potential label positions
+          // Calculate other vendor's preferred label position for overlap check
+          const otherTextWidth = otherVendor.name.length * 7.5;
+          const otherLabelPositions = [
+            { x: otherX + labelOffset, anchor: "start" }, // right
+            { x: otherX - labelOffset, anchor: "end" }    // left
+          ];
+          
+          for (const otherPos of otherLabelPositions) {
+            const otherLabelLeft = otherPos.anchor === "end" ? otherPos.x - otherTextWidth : otherPos.x;
+            const otherLabelRight = otherLabelLeft + otherTextWidth;
+            const otherLabelTop = otherY - 8;
+            const otherLabelBottom = otherY + 8;
+            
+            // Check for rectangle overlap
+            if (!(labelRight < otherLabelLeft || labelLeft > otherLabelRight || 
+                  labelBottom < otherLabelTop || labelTop > otherLabelBottom)) {
+              hasConflict = true;
+              break;
+            }
+          }
+          
+          if (hasConflict) break;
         }
         
         if (!hasConflict) {
-          const needsArrow = Math.sqrt((position.x - dotX) ** 2 + (position.y - dotY) ** 2) > 15;
           return {
             labelX: position.x,
             labelY: position.y,
             anchor: position.anchor,
             dotX,
-            dotY,
-            needsArrow
+            dotY
           };
         }
       }
       
-      // Fallback to top position
+      // Fallback to right position (may overlap but at least visible)
       return {
-        labelX: dotX,
-        labelY: dotY - labelOffset,
-        anchor: "middle",
+        labelX: dotX + labelOffset,
+        labelY: dotY + 4,
+        anchor: "start",
         dotX,
-        dotY,
-        needsArrow: true
+        dotY
       };
     };
 
-    // Add vendor labels with arrow connectors
+    // Add vendor labels positioned left or right of dots
     adjustedVendors.forEach((vendor, index) => {
       const labelPos = calculateLabelPosition(vendor, index, adjustedVendors);
       
       const labelGroup = vendorGroups.filter((d, i) => i === index);
       
-      // Add arrow connector when needed
-      if (labelPos.needsArrow) {
-        // Calculate arrow start and end points (avoiding the dot)
-        const dx = labelPos.labelX - labelPos.dotX;
-        const dy = labelPos.labelY - labelPos.dotY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Start arrow 8px from dot edge, end 5px from label
-        const arrowStartX = labelPos.dotX + (dx / distance) * 8;
-        const arrowStartY = labelPos.dotY + (dy / distance) * 8;
-        const arrowEndX = labelPos.labelX - (dx / distance) * 5;
-        const arrowEndY = labelPos.labelY - (dy / distance) * 5;
-        
-        labelGroup.append("line")
-          .attr("class", "label-arrow")
-          .attr("x1", arrowStartX)
-          .attr("y1", arrowStartY)
-          .attr("x2", arrowEndX)
-          .attr("y2", arrowEndY)
-          .attr("stroke", "#94a3b8")
-          .attr("stroke-width", 1)
-          .attr("opacity", 0.7)
-          .style("pointer-events", "none");
-      }
-      
       // Add semi-transparent background for label readability
       const textWidth = vendor.name.length * 7.5;
       labelGroup.append("rect")
         .attr("class", "label-background")
-        .attr("x", labelPos.anchor === "middle" ? labelPos.labelX - textWidth/2 - 4 : 
-                   labelPos.anchor === "end" ? labelPos.labelX - textWidth - 4 : labelPos.labelX - 4)
+        .attr("x", labelPos.anchor === "end" ? labelPos.labelX - textWidth - 3 : labelPos.labelX - 3)
         .attr("y", labelPos.labelY - 12)
-        .attr("width", textWidth + 8)
+        .attr("width", textWidth + 6)
         .attr("height", 16)
-        .attr("fill", "rgba(255, 255, 255, 0.95)")
-        .attr("stroke", "rgba(148, 163, 184, 0.3)")
+        .attr("fill", "rgba(255, 255, 255, 0.9)")
+        .attr("stroke", "rgba(148, 163, 184, 0.4)")
         .attr("stroke-width", 1)
         .attr("rx", 3)
         .attr("ry", 3)
         .style("pointer-events", "none");
       
-      // Add the text label
+      // Add the text label directly adjacent to dot
       labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
