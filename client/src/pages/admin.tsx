@@ -49,7 +49,7 @@ export default function Admin() {
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
-            <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+            <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="news-sources">News Sources</TabsTrigger>

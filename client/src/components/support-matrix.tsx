@@ -15,7 +15,7 @@ interface SupportMatrixProps {
   marketId: string;
 }
 
-// Component for updating vendor evaluation scores from support matrix
+// Component for updating vendor evaluation scores from product evaluation
 const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -159,7 +159,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   useEffect(() => {
     if (allVendors && selectedVendors.size === 0) {
       setSelectedVendors(new Set(allVendors.map(v => v.id)));
-      console.log("Support Matrix vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
+      console.log("Product Evaluation vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
     }
   }, [allVendors, selectedVendors.size]);
 
@@ -234,9 +234,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
-            Product Capabilities Support Matrix
+            Product Evaluation
           </CardTitle>
-          <CardDescription>Harvey ball indicators showing vendor feature support levels</CardDescription>
+          <CardDescription>Harvey ball indicators showing vendor product evaluation levels</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -262,7 +262,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-5 w-5 text-blue-500" />
-            Product Capabilities Support Matrix
+            Product Evaluation
           </CardTitle>
           <CardDescription>Harvey ball indicators showing vendor product capabilities (excluding ecosystem features)</CardDescription>
         </CardHeader>

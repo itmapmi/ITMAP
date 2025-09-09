@@ -65,7 +65,7 @@ export default function MarketDetails() {
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
               <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
-              <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+              <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
               <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
               <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
             </TabsList>
@@ -152,7 +152,7 @@ export default function MarketDetails() {
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
             <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
-            <TabsTrigger value="support-matrix">Support Matrix</TabsTrigger>
+            <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
             <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
           </TabsList>
