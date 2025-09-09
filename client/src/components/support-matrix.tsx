@@ -355,7 +355,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-md">
                 <LayoutGrid className="h-5 w-5 text-white" />
               </div>
-              Product Capabilities Support Matrix
+              Product Evaluation
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 shadow-sm">
                 <Award className="h-3 w-3 mr-1" />
                 {vendors.length} of {allVendors?.length || 0} vendors
