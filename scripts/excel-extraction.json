@@ -1,0 +1,1289 @@
+{
+  "cellData": [
+    {
+      "address": "A1",
+      "row": 0,
+      "col": 0,
+      "value": "Feature",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "B1",
+      "row": 0,
+      "col": 1,
+      "value": "Evaluation Criteria",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "C1",
+      "row": 0,
+      "col": 2,
+      "value": "Commvault",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "D1",
+      "row": 0,
+      "col": 3,
+      "value": "Cohesity",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "E1",
+      "row": 0,
+      "col": 4,
+      "value": "Dell",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "F1",
+      "row": 0,
+      "col": 5,
+      "value": "Druva",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "G1",
+      "row": 0,
+      "col": 6,
+      "value": "HYCU",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "H1",
+      "row": 0,
+      "col": 7,
+      "value": "IBM",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "I1",
+      "row": 0,
+      "col": 8,
+      "value": "Rubrik",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "J1",
+      "row": 0,
+      "col": 9,
+      "value": "Veeam",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "K1",
+      "row": 0,
+      "col": 10,
+      "value": "Huawei",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "L1",
+      "row": 0,
+      "col": 11,
+      "value": "NinjaOne",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "M1",
+      "row": 0,
+      "col": 12,
+      "value": "Arcserve",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "N1",
+      "row": 0,
+      "col": 13,
+      "value": "Unitrends",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "O1",
+      "row": 0,
+      "col": 14,
+      "value": "Storware",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "P1",
+      "row": 0,
+      "col": 15,
+      "value": "Nakivo",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "Q1",
+      "row": 0,
+      "col": 16,
+      "value": "Opentext",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "A2",
+      "row": 1,
+      "col": 0,
+      "value": "Ransomware Detection capabilities",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "B2",
+      "row": 1,
+      "col": 1,
+      "value": "Vendors should be evaluated on their ability to detect early indicators of ransomware or cyberattacks within the backup environment. This includes monitoring for:\r\n\r\nAnomalous backup job size changes that may indicate active encryption of data.\r\n\r\nDetection of encryption within backup data as a sign of a potential attack.\r\n\r\nEntropy analysis within backup data to identify suspicious randomness patterns caused by encryption.\r\n\r\nReal-time or near real-time monitoring of anomalous increases in write traffic on protected hosts as an early warning indicator.\r\n\r\nAdditional anomaly detection techniques provided by the vendor, beyond the above, to strengthen cyber resilience.",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "C2",
+      "row": 1,
+      "col": 2,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides machine-learning-based anomaly detection (backup job size changes, encryption detection, entropy analysis) and Threat Scan. However, coverage varies by workload and requires baseline learning; limited real‑time host write monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "D2",
+      "row": 1,
+      "col": 3,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Helios ML-based change-rate anomalies and threat protection scanning; Tenable CyberScan vulnerability assessment. Lacks detailed documentation on encryption or write-traffic detection; focus on certain workloads.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "E2",
+      "row": 1,
+      "col": 4,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "PowerProtect provides anomaly detection alerts and CyberSense scanning in cyber recovery vault. Detection is limited to certain appliances and vault environments; lacks real‑time host write monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "F2",
+      "row": 1,
+      "col": 5,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Offers anomaly detection and restore-time malware scanning. Capabilities limited to some workloads and triggered during restore; not continuous or comprehensive.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "G2",
+      "row": 1,
+      "col": 6,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Marketing references to R-Shield anomaly detection, but little technical detail or documentation on how encryption or entropy analysis is detected; no evidence of write-traffic monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "H2",
+      "row": 1,
+      "col": 7,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Spectrum Protect focuses on immutability and general alerts; no evidence of built-in ML anomaly detection or ransomware-specific detection capabilities.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "I2",
+      "row": 1,
+      "col": 8,
+      "value": "Full",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Comprehensive anomaly detection with ML-based encryption and unusual access alerts; includes threat hunting across backups. Some customization limits remain but overall strong coverage.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "J2",
+      "row": 1,
+      "col": 9,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "v12.1 introduces anomaly and malware detection using entropy and file activity analysis with YARA scanning. Early release with limited maturity and workload coverage; may produce false positives.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "K2",
+      "row": 1,
+      "col": 10,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "OceanProtect mentions a ransomware detection policy and WORM; lacks detailed anomaly detection, entropy analysis or host write monitoring across backups.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "L2",
+      "row": 1,
+      "col": 11,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Primarily endpoint management and integrated antivirus/EDR; no evidence of backup-specific anomaly detection or ransomware detection within the backup environment.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "M2",
+      "row": 1,
+      "col": 12,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Focuses on immutable storage and prevention; no integrated anomaly detection or early indicators of ransomware within backup operations.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "N2",
+      "row": 1,
+      "col": 13,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Includes ransomware detection heuristics based on entropy/ML; limited detail on detection scope and may not cover advanced patterns or all workloads.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "O2",
+      "row": 1,
+      "col": 14,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No publicly available documentation of anomaly detection or ransomware-specific features in the backup product.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "P2",
+      "row": 1,
+      "col": 15,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Emphasizes immutability and air-gapping; no built-in anomaly detection or ransomware detection capabilities.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "Q2",
+      "row": 1,
+      "col": 16,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Data Protector marketing mentions cyber resilience but lacks documented anomaly detection or ransomware-specific detection features.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "A3",
+      "row": 2,
+      "col": 0,
+      "value": "SIEM Integration",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "B3",
+      "row": 2,
+      "col": 1,
+      "value": "SIEM Integration for Anomaly Alerts\r\n\r\nEvaluate whether the BDPP solution integrates with Security Information and Event Management (SIEM) platforms to automatically generate alerts when anomalies or ransomware indicators are detected. Vendors should provide a list of supported SIEM platforms (e.g., Splunk, IBM QRadar, Microsoft Sentinel, ArcSight, etc.) to demonstrate interoperability with enterprise security monitoring workflows.",
+      "formula": null,
+      "type": "s"
+    },
+    {
+      "address": "C3",
+      "row": 2,
+      "col": 2,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Supports integrations with Microsoft Sentinel and Splunk for forwarding anomaly alerts and logs. Integration list limited and may require configuration.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "D3",
+      "row": 2,
+      "col": 3,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides Splunk integration and some SIEM connectors; documentation on supported platforms is sparse and connectors may require add-ons or third-party tools.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "E3",
+      "row": 2,
+      "col": 4,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Cyber Recovery vault can forward logs to SIEM platforms (e.g., Splunk); integrations limited to vault environment and not across all PowerProtect appliances.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "F3",
+      "row": 2,
+      "col": 5,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Offers Splunk and Microsoft Sentinel apps for forwarding alerts; decent SIEM coverage though integration details vary by platform.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "G3",
+      "row": 2,
+      "col": 6,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Limited or no documented SIEM integrations for forwarding anomaly alerts; reliance on general logging rather than dedicated connectors.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "H3",
+      "row": 2,
+      "col": 7,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of built-in SIEM integrations for anomaly alerts; administrators must rely on external logging or manual monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "I3",
+      "row": 2,
+      "col": 8,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides official Splunk add-on and integration guidance for SIEM platforms; integration is available but may require extra configuration.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "J3",
+      "row": 2,
+      "col": 9,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Supports Splunk via official app and can forward logs to SIEM; integration covers key events but isn’t comprehensive across all SIEM products.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "K3",
+      "row": 2,
+      "col": 10,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No documented SIEM integrations for backup anomaly alerts; limited to basic logging features.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "L3",
+      "row": 2,
+      "col": 11,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Focused on RMM and endpoint monitoring; no evidence of SIEM integrations for backup-related alerts.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "M3",
+      "row": 2,
+      "col": 12,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Lacks documented SIEM integration for anomaly alerts; reliance on standard syslog, if at all.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "N3",
+      "row": 2,
+      "col": 13,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of SIEM integration capabilities for forwarding ransomware detection alerts.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "O3",
+      "row": 2,
+      "col": 14,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No public documentation of SIEM integrations; likely not supported.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "P3",
+      "row": 2,
+      "col": 15,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of SIEM integration for anomaly alerts or event forwarding.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    }
+  ],
+  "cellComments": [
+    {
+      "address": "C2",
+      "row": 1,
+      "col": 2,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides machine-learning-based anomaly detection (backup job size changes, encryption detection, entropy analysis) and Threat Scan. However, coverage varies by workload and requires baseline learning; limited real‑time host write monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "D2",
+      "row": 1,
+      "col": 3,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Helios ML-based change-rate anomalies and threat protection scanning; Tenable CyberScan vulnerability assessment. Lacks detailed documentation on encryption or write-traffic detection; focus on certain workloads.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "E2",
+      "row": 1,
+      "col": 4,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "PowerProtect provides anomaly detection alerts and CyberSense scanning in cyber recovery vault. Detection is limited to certain appliances and vault environments; lacks real‑time host write monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "F2",
+      "row": 1,
+      "col": 5,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Offers anomaly detection and restore-time malware scanning. Capabilities limited to some workloads and triggered during restore; not continuous or comprehensive.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "G2",
+      "row": 1,
+      "col": 6,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Marketing references to R-Shield anomaly detection, but little technical detail or documentation on how encryption or entropy analysis is detected; no evidence of write-traffic monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "H2",
+      "row": 1,
+      "col": 7,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Spectrum Protect focuses on immutability and general alerts; no evidence of built-in ML anomaly detection or ransomware-specific detection capabilities.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "I2",
+      "row": 1,
+      "col": 8,
+      "value": "Full",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Comprehensive anomaly detection with ML-based encryption and unusual access alerts; includes threat hunting across backups. Some customization limits remain but overall strong coverage.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "J2",
+      "row": 1,
+      "col": 9,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "v12.1 introduces anomaly and malware detection using entropy and file activity analysis with YARA scanning. Early release with limited maturity and workload coverage; may produce false positives.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "K2",
+      "row": 1,
+      "col": 10,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "OceanProtect mentions a ransomware detection policy and WORM; lacks detailed anomaly detection, entropy analysis or host write monitoring across backups.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "L2",
+      "row": 1,
+      "col": 11,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Primarily endpoint management and integrated antivirus/EDR; no evidence of backup-specific anomaly detection or ransomware detection within the backup environment.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "M2",
+      "row": 1,
+      "col": 12,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Focuses on immutable storage and prevention; no integrated anomaly detection or early indicators of ransomware within backup operations.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "N2",
+      "row": 1,
+      "col": 13,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Includes ransomware detection heuristics based on entropy/ML; limited detail on detection scope and may not cover advanced patterns or all workloads.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "O2",
+      "row": 1,
+      "col": 14,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No publicly available documentation of anomaly detection or ransomware-specific features in the backup product.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "P2",
+      "row": 1,
+      "col": 15,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Emphasizes immutability and air-gapping; no built-in anomaly detection or ransomware detection capabilities.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "Q2",
+      "row": 1,
+      "col": 16,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Data Protector marketing mentions cyber resilience but lacks documented anomaly detection or ransomware-specific detection features.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "C3",
+      "row": 2,
+      "col": 2,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Supports integrations with Microsoft Sentinel and Splunk for forwarding anomaly alerts and logs. Integration list limited and may require configuration.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "D3",
+      "row": 2,
+      "col": 3,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides Splunk integration and some SIEM connectors; documentation on supported platforms is sparse and connectors may require add-ons or third-party tools.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "E3",
+      "row": 2,
+      "col": 4,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Cyber Recovery vault can forward logs to SIEM platforms (e.g., Splunk); integrations limited to vault environment and not across all PowerProtect appliances.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "F3",
+      "row": 2,
+      "col": 5,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Offers Splunk and Microsoft Sentinel apps for forwarding alerts; decent SIEM coverage though integration details vary by platform.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "G3",
+      "row": 2,
+      "col": 6,
+      "value": "Limited",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Limited or no documented SIEM integrations for forwarding anomaly alerts; reliance on general logging rather than dedicated connectors.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "H3",
+      "row": 2,
+      "col": 7,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of built-in SIEM integrations for anomaly alerts; administrators must rely on external logging or manual monitoring.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "I3",
+      "row": 2,
+      "col": 8,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Provides official Splunk add-on and integration guidance for SIEM platforms; integration is available but may require extra configuration.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "J3",
+      "row": 2,
+      "col": 9,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Supports Splunk via official app and can forward logs to SIEM; integration covers key events but isn’t comprehensive across all SIEM products.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "K3",
+      "row": 2,
+      "col": 10,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No documented SIEM integrations for backup anomaly alerts; limited to basic logging features.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "L3",
+      "row": 2,
+      "col": 11,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Focused on RMM and endpoint monitoring; no evidence of SIEM integrations for backup-related alerts.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "M3",
+      "row": 2,
+      "col": 12,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Lacks documented SIEM integration for anomaly alerts; reliance on standard syslog, if at all.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "N3",
+      "row": 2,
+      "col": 13,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of SIEM integration capabilities for forwarding ransomware detection alerts.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "O3",
+      "row": 2,
+      "col": 14,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No public documentation of SIEM integrations; likely not supported.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "P3",
+      "row": 2,
+      "col": 15,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of SIEM integration for anomaly alerts or event forwarding.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "Q3",
+      "row": 2,
+      "col": 16,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Data Protector has limited details on SIEM integration; no specific connectors documented.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "C4",
+      "row": 3,
+      "col": 2,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Threat Scan performs malware scanning on backup data with updated signatures and integration with external scanners; scanning may not cover all file types and may require additional licensing.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "D4",
+      "row": 3,
+      "col": 3,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Threat protection includes threat-intel driven scanning and Tenable-powered vulnerability scan; details on malware scanning scope and third‑party integrations are limited.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "E4",
+      "row": 3,
+      "col": 4,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "CyberSense scanning detects encryption/deletions in the cyber recovery vault; lacks full signature-based malware scanning and is limited to vault deployments.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "F4",
+      "row": 3,
+      "col": 5,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Restore-time malware scanning and integration with external tools; scanning occurs during restore and does not provide continuous signature-based scans.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "G4",
+      "row": 3,
+      "col": 6,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No documented native or third-party malware scanning capabilities within the backup solution.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "H4",
+      "row": 3,
+      "col": 7,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of malware scanning within backup operations; relies on external security tools.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "I4",
+      "row": 3,
+      "col": 8,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Threat monitoring and threat hunting with YARA and hash-based scanning across backups; strong scanning but may require manual threat hunting.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "J4",
+      "row": 3,
+      "col": 9,
+      "value": "Good",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "v12.1 includes inline malware scanning using entropy and YARA rules; provides detection but early in maturity and coverage; scanning may produce false positives.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "K4",
+      "row": 3,
+      "col": 10,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No documented malware scanning features in backup solutions; focus on storage immutability and WORM only.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "L4",
+      "row": 3,
+      "col": 11,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Primarily uses endpoint antivirus/EDR outside of backup; no evidence of malware scanning of backup data.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "M4",
+      "row": 3,
+      "col": 12,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No integrated malware scanning; focuses on backup immutability and external security solutions.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "N4",
+      "row": 3,
+      "col": 13,
+      "value": "Partial",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "Ransomware detection heuristics identify anomalies but do not provide comprehensive malware scanning capabilities.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "O4",
+      "row": 3,
+      "col": 14,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No evidence of native or integrated malware scanning within the product.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "P4",
+      "row": 3,
+      "col": 15,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No malware scanning features; emphasizes immutability.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    },
+    {
+      "address": "Q4",
+      "row": 3,
+      "col": 16,
+      "value": "None",
+      "formula": null,
+      "type": "s",
+      "comments": [
+        {
+          "text": "No documented native or third-party malware scanning in Data Protector.",
+          "author": "GPT-5",
+          "hidden": false
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "totalCells": 68,
+    "cellsWithComments": 45,
+    "sheetRange": "A1:Q4"
+  }
+}
