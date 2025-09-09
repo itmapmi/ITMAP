@@ -64,10 +64,10 @@ export default function MarketDetails() {
           <Tabs defaultValue="vendor-evaluation" className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
-              <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
               <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
               <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
               <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
+              <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
             </TabsList>
 
             <TabsContent value="vendor-evaluation" className="mt-6">
@@ -151,10 +151,10 @@ export default function MarketDetails() {
         <Tabs defaultValue="vendor-evaluation" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
-            <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
             <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
+            <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
           </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
@@ -162,10 +162,6 @@ export default function MarketDetails() {
               <MagicQuadrant marketId={marketId!} marketName={market.name} />
               <VendorComparison marketId={marketId!} />
             </div>
-          </TabsContent>
-
-          <TabsContent value="vendor-news" className="mt-6">
-            <VendorNews marketId={marketId!} />
           </TabsContent>
 
           <TabsContent value="support-matrix" className="mt-6">
@@ -178,6 +174,10 @@ export default function MarketDetails() {
 
           <TabsContent value="research-reports" className="mt-6">
             <ResearchReports marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="vendor-news" className="mt-6">
+            <VendorNews marketId={marketId!} />
           </TabsContent>
         </Tabs>
       </motion.div>
