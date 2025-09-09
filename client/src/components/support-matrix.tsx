@@ -467,10 +467,13 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             >
               <div 
                 className="grid gap-4 py-5 px-4 overflow-x-auto" 
-                style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
               >
                 <div className="font-semibold text-sm text-gray-600 flex items-center">
                   Features
+                </div>
+                <div className="font-semibold text-sm text-gray-600 flex items-center">
+                  Evaluation Criteria
                 </div>
                 {vendors.map(vendor => (
                   <div key={vendor.id} className="text-center">
@@ -519,9 +522,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                         <div className="py-4 mt-8 mb-4 border-b border-gray-200 bg-gray-50">
                           <div 
                             className="grid gap-4 px-4" 
-                            style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                            style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 col-span-2">
                               <button
                                 onClick={() => toggleCategory(category.id)}
                                 className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
@@ -557,17 +560,18 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                               <div 
                                 key={feature.id}
                                 className="grid gap-4 py-3 border-b border-gray-100 last:border-b-0"
-                                style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                                style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
                               >
                                 <div className="flex flex-col justify-center">
                                   <div className="font-medium text-sm text-gray-900">
                                     {feature.name}
                                   </div>
-                                  {feature.description && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      {feature.description}
-                                    </div>
-                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col justify-center">
+                                  <div className="text-sm text-gray-700">
+                                    {feature.description || 'No evaluation criteria specified'}
+                                  </div>
                                 </div>
                                 
                                 {vendors.map(vendor => {
@@ -604,9 +608,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-blue-50">
                       <div 
                         className="grid gap-4 py-4 px-4" 
-                        style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                        style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
                       >
-                        <div className="flex flex-col justify-center">
+                        <div className="flex flex-col justify-center col-span-2">
                           <div className="font-bold text-lg text-gray-900">
                             Total Score
                           </div>
