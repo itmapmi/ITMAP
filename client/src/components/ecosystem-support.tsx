@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -77,6 +77,10 @@ const HarveyBall = ({
 };
 
 export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
+  // Refs for scroll synchronization
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
@@ -112,9 +116,39 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
   ) || [];
 
   // Initialize selected vendors to all vendors if none selected
-  if (allVendors && selectedVendors.size === 0) {
-    setSelectedVendors(new Set(allVendors.map(v => v.id)));
-  }
+  useEffect(() => {
+    if (allVendors && selectedVendors.size === 0) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+    }
+  }, [allVendors, selectedVendors.size]);
+
+  // Scroll synchronization effect
+  useEffect(() => {
+    const headerElement = headerScrollRef.current;
+    const contentElement = contentScrollRef.current;
+
+    if (!headerElement || !contentElement) return;
+
+    const syncHeaderToContent = () => {
+      if (contentElement && headerElement) {
+        headerElement.scrollLeft = contentElement.scrollLeft;
+      }
+    };
+
+    const syncContentToHeader = () => {
+      if (headerElement && contentElement) {
+        contentElement.scrollLeft = headerElement.scrollLeft;
+      }
+    };
+
+    headerElement.addEventListener('scroll', syncContentToHeader);
+    contentElement.addEventListener('scroll', syncHeaderToContent);
+
+    return () => {
+      headerElement.removeEventListener('scroll', syncContentToHeader);
+      contentElement.removeEventListener('scroll', syncHeaderToContent);
+    };
+  }, []);
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
@@ -450,7 +484,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           <div className="relative">
             {/* Sticky header - positioned outside scrolling container */}
             <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" ref={headerScrollRef}>
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
@@ -481,7 +515,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
             </div>
 
             {/* Content with horizontal scrolling */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" ref={contentScrollRef}>
               <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -128,6 +128,10 @@ const HarveyBall = ({
 };
 
 export default function SupportMatrix({ marketId }: SupportMatrixProps) {
+  // Refs for scroll synchronization
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -162,6 +166,34 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
       console.log("Product Evaluation vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
     }
   }, [allVendors, selectedVendors.size]);
+
+  // Scroll synchronization effect
+  useEffect(() => {
+    const headerElement = headerScrollRef.current;
+    const contentElement = contentScrollRef.current;
+
+    if (!headerElement || !contentElement) return;
+
+    const syncHeaderToContent = () => {
+      if (contentElement && headerElement) {
+        headerElement.scrollLeft = contentElement.scrollLeft;
+      }
+    };
+
+    const syncContentToHeader = () => {
+      if (headerElement && contentElement) {
+        contentElement.scrollLeft = headerElement.scrollLeft;
+      }
+    };
+
+    headerElement.addEventListener('scroll', syncContentToHeader);
+    contentElement.addEventListener('scroll', syncHeaderToContent);
+
+    return () => {
+      headerElement.removeEventListener('scroll', syncContentToHeader);
+      contentElement.removeEventListener('scroll', syncHeaderToContent);
+    };
+  }, []);
 
   // Initialize with all categories collapsed when features load (only once)
   useEffect(() => {
@@ -491,7 +523,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           <div className="relative">
             {/* Sticky header - positioned outside scrolling container */}
             <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" ref={headerScrollRef}>
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
@@ -522,7 +554,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </div>
 
             {/* Content with horizontal scrolling */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" ref={contentScrollRef}>
               <div className="px-6 pt-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {productCapabilityFeatures && (() => {
                 // Group features by category
