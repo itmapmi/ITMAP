@@ -489,35 +489,40 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           </div>
         ) : (
           <div className="relative">
-            {/* Floating sticky header */}
-            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-              <div 
-                className="grid gap-4 py-4 px-6" 
-                style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
-              >
-                <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Features
-                </div>
-                <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Evaluation Criteria
-                </div>
-                {vendors.map(vendor => (
-                  <div key={vendor.id} className="text-center">
-                    <div className="font-medium text-sm text-gray-900 mb-1">
-                      {vendor.name}
-                    </div>
-                    {vendor.product && (
-                      <div className="text-xs text-gray-600 font-medium">
-                        {vendor.product}
-                      </div>
-                    )}
+            {/* Horizontal scrolling container */}
+            <div className="overflow-x-auto">
+              {/* Floating sticky header */}
+              <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+                <div 
+                  className="grid gap-4 py-4 px-6" 
+                  style={{ 
+                    gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                    minWidth: `${500 + (vendors.length * 140)}px`
+                  }}
+                >
+                  <div className="font-semibold text-sm text-gray-700 flex items-center">
+                    Features
                   </div>
-                ))}
+                  <div className="font-semibold text-sm text-gray-700 flex items-center">
+                    Evaluation Criteria
+                  </div>
+                  {vendors.map(vendor => (
+                    <div key={vendor.id} className="text-center min-w-0">
+                      <div className="font-medium text-sm text-gray-900 mb-1 truncate px-2">
+                        {vendor.name}
+                      </div>
+                      {vendor.product && (
+                        <div className="text-xs text-gray-600 font-medium truncate px-2">
+                          {vendor.product}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Feature rows grouped by categories */}
-            <div className="px-6 pt-6 space-y-8">
+              {/* Feature rows grouped by categories */}
+              <div className="px-6 pt-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {productCapabilityFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
@@ -547,7 +552,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                       <div className="py-4 bg-gradient-to-r from-gray-50 to-blue-50/50 rounded-lg border border-gray-200 shadow-sm">
                         <div 
                           className="grid gap-4 px-4" 
-                          style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
+                          style={{ 
+                            gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                            minWidth: `${500 + (vendors.length * 140)}px`
+                          }}
                         >
                           <div className="flex items-center gap-3 col-span-2">
                             <button
@@ -588,7 +596,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                             <div 
                               key={feature.id}
                               className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-blue-50/20 rounded-lg transition-colors px-2"
-                              style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
+                              style={{ 
+                                gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                                minWidth: `${500 + (vendors.length * 140)}px`
+                              }}
                             >
                               <div className="flex flex-col justify-center">
                                 <div className="font-medium text-sm text-gray-900">
@@ -636,7 +647,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                   <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-blue-200 to-purple-200 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow-sm">
                     <div 
                       className="grid gap-4 py-4 px-4" 
-                      style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
+                      style={{ 
+                        gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                        minWidth: `${500 + (vendors.length * 140)}px`
+                      }}
                     >
                       <div className="flex flex-col justify-center col-span-2">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
@@ -677,6 +691,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                   </div>
                 );
               })()}
+            </div>
             </div>
           </div>
         )}
