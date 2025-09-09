@@ -448,15 +448,14 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           </div>
         ) : (
           <div className="relative">
-            {/* Horizontal scrolling container */}
-            <div className="overflow-x-auto w-full">
-              {/* Floating sticky header */}
-              <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg" style={{ minWidth: `${500 + (vendors.length * 140)}px`, position: 'sticky' }}>
+            {/* Sticky header - positioned outside scrolling container */}
+            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg">
+              <div className="overflow-x-auto">
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
                     gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                    width: `${500 + (vendors.length * 140)}px`
+                    minWidth: `${500 + (vendors.length * 140)}px`
                   }}
                 >
                   <div className="font-semibold text-sm text-gray-700 flex items-center">
@@ -479,8 +478,10 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Feature rows grouped by categories */}
+            {/* Content with horizontal scrolling */}
+            <div className="overflow-x-auto">
               <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
@@ -578,7 +579,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                   );
                 });
               })()}
-            </div>
+              </div>
             </div>
           </div>
         )}
