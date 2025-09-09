@@ -10,9 +10,11 @@ const dataPath = path.join(__dirname, 'extracted-backup-data.json');
 const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
 const API_BASE = 'http://localhost:5000';
+const BACKUP_MARKET_ID = 'b9a22e91-6aef-4434-96f7-3222a9dc3d5e'; // Backup Solutions market
 
 async function addCategoriesAndFeatures() {
     console.log('🔄 Adding backup solution data to admin portal...\n');
+    console.log(`📍 Target market: Backup Solutions (${BACKUP_MARKET_ID})\n`);
     
     try {
         // First, add all feature categories
@@ -30,6 +32,7 @@ async function addCategoriesAndFeatures() {
                 body: JSON.stringify({
                     name: category.name,
                     description: category.description,
+                    marketId: BACKUP_MARKET_ID,
                     displayOrder: category.displayOrder
                 })
             });
