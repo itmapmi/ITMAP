@@ -492,7 +492,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             {/* Horizontal scrolling container */}
             <div className="overflow-x-auto">
               {/* Floating sticky header */}
-              <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+              <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg" style={{ minWidth: `${500 + (vendors.length * 140)}px`, position: 'sticky' }}>
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
