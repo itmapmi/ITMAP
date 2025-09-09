@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle } from "lucide-react";
+import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
@@ -22,12 +22,12 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
 
   const updateScoresMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("/api/admin/update-product-capabilities-scores", {
+      const response = await fetch("/api/admin/update-product-capabilities-scores", {
         method: "POST",
         body: JSON.stringify({ marketId }),
         headers: { "Content-Type": "application/json" }
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data) => {
       toast({
@@ -52,12 +52,12 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
     <Button
       onClick={() => updateScoresMutation.mutate()}
       disabled={updateScoresMutation.isPending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md"
     >
       {updateScoresMutation.isPending ? (
         <RefreshCw className="h-4 w-4 animate-spin" />
       ) : (
-        <CheckCircle className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" />
       )}
       {updateScoresMutation.isPending ? "Updating..." : "Update Vendor Evaluation"}
     </Button>
@@ -92,7 +92,7 @@ const HarveyBall = ({
   const getHarveyBallColor = (level: number) => {
     switch (level) {
       case 0: return "text-gray-300";
-      case 1: return "text-red-500";
+      case 1: return "text-orange-500";
       case 2: return "text-yellow-500";
       case 3: return "text-blue-500";
       case 4: return "text-green-500";
@@ -115,7 +115,7 @@ const HarveyBall = ({
     <div className="flex items-center justify-center">
       <button
         onClick={onClick}
-        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-110 transition-transform cursor-pointer relative group`}
+        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full p-1`}
         title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
       >
         {getHarveyBallIcon(level)}
@@ -230,12 +230,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Feature Support Matrix</CardTitle>
+      <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-blue-500" />
+            Product Capabilities Support Matrix
+          </CardTitle>
           <CardDescription>Harvey ball indicators showing vendor feature support levels</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex space-x-4">
@@ -255,12 +258,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   if (!productCapabilityFeatures || !vendors || !supportMatrix) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Capabilities Support Matrix</CardTitle>
+      <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-blue-500" />
+            Product Capabilities Support Matrix
+          </CardTitle>
           <CardDescription>Harvey ball indicators showing vendor product capabilities (excluding ecosystem features)</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <p className="text-gray-500">No product capability features available for this market.</p>
         </CardContent>
       </Card>
@@ -329,12 +335,6 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     return allFeatures.length * 1.0; // 1.0 is the score for full support
   };
 
-  // Calculate normalized score out of 10
-  const calculateNormalizedScore = (actualScore: number, maxScore: number) => {
-    if (maxScore === 0) return 0;
-    return Number(((actualScore / maxScore) * 10).toFixed(2));
-  };
-
   const getSupportText = (level: number) => {
     switch (level) {
       case 0: return "No Support";
@@ -347,77 +347,107 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-md">
+                <LayoutGrid className="h-5 w-5 text-white" />
+              </div>
               Product Capabilities Support Matrix
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 shadow-sm">
+                <Award className="h-3 w-3 mr-1" />
                 {vendors.length} of {allVendors?.length || 0} vendors
               </Badge>
             </CardTitle>
-            <CardDescription className="flex items-center gap-1 flex-wrap">
-              Product capabilities only (ecosystem support excluded) (
-              <span className="text-green-500 font-bold">●</span> Full, 
-              <span className="text-blue-500 font-bold">◕</span> Good, 
-              <span className="text-yellow-500 font-bold">◑</span> Partial, 
-              <span className="text-red-500 font-bold">◔</span> Limited, 
-              <span className="text-gray-300 font-bold">○</span> None)
+            <CardDescription className="flex items-center gap-4 flex-wrap mt-3">
+              <span className="text-gray-600 flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Product capabilities only (ecosystem support excluded)
+              </span>
+              <div className="flex items-center gap-3 p-2 bg-white/60 rounded-lg border border-white/40 backdrop-blur-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-green-500 text-lg font-bold">●</span>
+                  <span className="text-xs font-medium">Full</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-blue-500 text-lg font-bold">◕</span>
+                  <span className="text-xs font-medium">Good</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-yellow-500 text-lg font-bold">◑</span>
+                  <span className="text-xs font-medium">Partial</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-orange-500 text-lg font-bold">◔</span>
+                  <span className="text-xs font-medium">Limited</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400 text-lg font-bold">○</span>
+                  <span className="text-xs font-medium">None</span>
+                </div>
+              </div>
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expandAllCategories}
+                className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+              >
+                <ChevronDown className="h-4 w-4" />
+                Expand All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={collapseAllCategories}
+                className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+              >
+                <ChevronRight className="h-4 w-4" />
+                Collapse All
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={expandAllCategories}
-              className="flex items-center gap-2"
-            >
-              <ChevronDown className="h-4 w-4" />
-              Expand All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={collapseAllCategories}
-              className="flex items-center gap-2"
-            >
-              <ChevronRight className="h-4 w-4" />
-              Collapse All
-            </Button>
-            <Button
-              variant="outline"
+              variant={showVendorSelection ? "default" : "outline"}
               size="sm"
               onClick={() => setShowVendorSelection(!showVendorSelection)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-md transition-all duration-200"
             >
-              <Settings className="h-4 w-4" />
-              {showVendorSelection ? "Hide" : "Select"} Vendors
+              <Filter className="h-4 w-4" />
+              {showVendorSelection ? "Hide Filters" : "Filter Vendors"}
             </Button>
           </div>
         </div>
         
         {/* Vendor Selection Panel */}
         {showVendorSelection && allVendors && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-sm">Choose Vendors to Compare</h4>
+          <div className="mt-6 p-4 bg-white/70 rounded-lg border border-blue-200 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-500" />
+                Choose Vendors to Compare
+              </h4>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={selectAllVendors}>
+                <Button variant="outline" size="sm" onClick={selectAllVendors} className="hover:bg-blue-50">
                   Select All
                 </Button>
-                <Button variant="outline" size="sm" onClick={clearAllVendors}>
+                <Button variant="outline" size="sm" onClick={clearAllVendors} className="hover:bg-red-50">
                   Clear All
                 </Button>
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {allVendors.map(vendor => (
-                <div key={vendor.id} className="flex items-center space-x-2">
+                <div key={vendor.id} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/50 transition-colors">
                   <Checkbox
                     id={vendor.id}
                     checked={selectedVendors.has(vendor.id)}
                     onCheckedChange={() => toggleVendor(vendor.id)}
+                    className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                   />
                   <label
                     htmlFor={vendor.id}
@@ -429,7 +459,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               ))}
             </div>
             {selectedVendors.size === 0 && (
-              <p className="text-sm text-amber-600 mt-3 flex items-center gap-2">
+              <p className="text-sm text-amber-600 mt-3 flex items-center gap-2 p-2 bg-amber-50 rounded-lg">
                 <Eye className="h-4 w-4" />
                 Select at least one vendor to view the comparison matrix
               </p>
@@ -438,41 +468,37 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         )}
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-0">
         {vendors.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <div className="text-center py-16 px-6">
+            <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
+              <Users className="h-8 w-8 text-gray-400" />
+            </div>
             <p className="text-lg font-medium text-gray-900 mb-2">No Vendors Selected</p>
-            <p className="text-gray-500 mb-4">
-              Choose vendors from the selection panel above to compare their feature support
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Choose vendors from the filters above to compare their feature support capabilities
             </p>
             <Button
               variant="outline"
               onClick={() => setShowVendorSelection(true)}
-              className="flex items-center gap-2 mx-auto"
+              className="flex items-center gap-2 mx-auto hover:bg-blue-50"
             >
-              <Settings className="h-4 w-4" />
-              Select Vendors
+              <Filter className="h-4 w-4" />
+              Filter Vendors
             </Button>
           </div>
         ) : (
           <div className="relative">
-            {/* Floating sticky header - moved outside overflow container */}
-            <div 
-              className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-md"
-              style={{ 
-                position: 'sticky',
-                top: '0px'
-              }}
-            >
+            {/* Floating sticky header */}
+            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
               <div 
-                className="grid gap-4 py-5 px-4 overflow-x-auto" 
+                className="grid gap-4 py-4 px-6" 
                 style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
               >
-                <div className="font-semibold text-sm text-gray-600 flex items-center">
+                <div className="font-semibold text-sm text-gray-700 flex items-center">
                   Features
                 </div>
-                <div className="font-semibold text-sm text-gray-600 flex items-center">
+                <div className="font-semibold text-sm text-gray-700 flex items-center">
                   Evaluation Criteria
                 </div>
                 {vendors.map(vendor => (
@@ -491,257 +517,169 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </div>
 
             {/* Feature rows grouped by categories */}
-            <div className="overflow-x-auto">
-              <div className="space-y-6 px-4 pt-4">
-                {productCapabilityFeatures && (() => {
-                  // Group features by category
-                  const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
-                    const categoryName = feature.category.name;
-                    if (!acc[categoryName]) {
-                      acc[categoryName] = {
-                        category: feature.category,
-                        features: []
-                      };
-                    }
-                    acc[categoryName].features.push(feature);
-                    return acc;
-                  }, {} as Record<string, { category: FeatureWithCategory['category'], features: FeatureWithCategory[] }>);
+            <div className="px-6 pt-6 space-y-8">
+              {productCapabilityFeatures && (() => {
+                // Group features by category
+                const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
+                  const categoryName = feature.category.name;
+                  if (!acc[categoryName]) {
+                    acc[categoryName] = {
+                      category: feature.category,
+                      features: []
+                    };
+                  }
+                  acc[categoryName].features.push(feature);
+                  return acc;
+                }, {} as Record<string, { category: FeatureWithCategory['category'], features: FeatureWithCategory[] }>);
 
-                  // Sort categories by display order
-                  const sortedCategories = Object.values(featuresByCategory).sort(
-                    (a, b) => a.category.displayOrder - b.category.displayOrder
-                  );
+                // Sort categories by display order
+                const sortedCategories = Object.values(featuresByCategory).sort(
+                  (a, b) => a.category.displayOrder - b.category.displayOrder
+                );
 
-                  return sortedCategories.map(({ category, features: categoryFeatures }) => {
-                    const isCollapsed = collapsedCategories.has(category.id);
-                    const categoryTotals = calculateCategoryTotals(categoryFeatures, vendors);
+                return sortedCategories.map(({ category, features: categoryFeatures }) => {
+                  const isCollapsed = collapsedCategories.has(category.id);
+                  const categoryTotals = calculateCategoryTotals(categoryFeatures, vendors);
 
-                    return (
-                      <div key={category.id} className="space-y-3">
-                        {/* Category header */}
-                        <div className="py-4 mt-8 mb-4 border-b border-gray-200 bg-gray-50">
-                          <div 
-                            className="grid gap-4 px-4" 
-                            style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
-                          >
-                            <div className="flex items-center gap-3 col-span-2">
-                              <button
-                                onClick={() => toggleCategory(category.id)}
-                                className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-                              >
-                                {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                {category.name}
-                              </button>
-                            </div>
-                            
-                            {/* Show totals when collapsed */}
-                            {isCollapsed && vendors.map(vendor => {
-                              const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
-                              return (
-                                <div key={vendor.id} className="flex justify-center items-center">
-                                  <div className="text-center">
-                                    <div className="font-bold text-lg text-gray-900">
-                                      {vendorTotal}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      Total Score
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Features in category */}
-                        {!isCollapsed && (
-                          <div className="space-y-4 ml-4 animate-in slide-in-from-top-2 duration-200">
-                            {categoryFeatures.map(feature => (
-                              <div 
-                                key={feature.id}
-                                className="grid gap-4 py-3 border-b border-gray-100 last:border-b-0"
-                                style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
-                              >
-                                <div className="flex flex-col justify-center">
-                                  <div className="font-medium text-sm text-gray-900">
-                                    {feature.name}
-                                  </div>
-                                </div>
-                                
-                                <div className="flex flex-col justify-center">
-                                  <div className="text-sm text-gray-700">
-                                    {feature.description || 'No evaluation criteria specified'}
-                                  </div>
-                                </div>
-                                
-                                {vendors.map(vendor => {
-                                  const supportKey = `${vendor.id}-${feature.id}`;
-                                  const supportData = supportLookup.get(supportKey) || { level: 0 };
-                                  
-                                  return (
-                                    <div key={vendor.id} className="flex justify-center items-center">
-                                      <HarveyBall 
-                                        level={supportData.level}
-                                        notes={supportData.notes}
-                                        vendorName={vendor.name}
-                                        featureName={feature.name}
-                                        onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-
-                {/* Total Score Row */}
-                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
-                  const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
-                  const maxScore = calculateMaximumScore(productCapabilityFeatures);
-                  
                   return (
-                    <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-blue-50">
-                      <div 
-                        className="grid gap-4 py-4 px-4" 
-                        style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
-                      >
-                        <div className="flex flex-col justify-center col-span-2">
-                          <div className="font-bold text-lg text-gray-900">
-                            Total Score
+                    <div key={category.id} className="space-y-4">
+                      {/* Category header */}
+                      <div className="py-4 bg-gradient-to-r from-gray-50 to-blue-50/50 rounded-lg border border-gray-200 shadow-sm">
+                        <div 
+                          className="grid gap-4 px-4" 
+                          style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
+                        >
+                          <div className="flex items-center gap-3 col-span-2">
+                            <button
+                              onClick={() => toggleCategory(category.id)}
+                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50"
+                            >
+                              {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                              {category.name}
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {categoryFeatures.length} features
+                              </Badge>
+                            </button>
                           </div>
-                          <div className="text-sm text-gray-600">
-                            Maximum: {maxScore}
-                          </div>
-                        </div>
-                        
-                        {vendors.map(vendor => {
-                          const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
-                          const percentage = maxScore > 0 ? ((vendorTotal / maxScore) * 100).toFixed(1) : 0;
                           
-                          return (
-                            <div key={vendor.id} className="flex justify-center items-center">
-                              <div className="text-center">
-                                <div className="font-bold text-xl text-blue-700">
-                                  {vendorTotal}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  {percentage}%
+                          {/* Show totals when collapsed */}
+                          {isCollapsed && vendors.map(vendor => {
+                            const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                            return (
+                              <div key={vendor.id} className="flex justify-center items-center">
+                                <div className="text-center p-2 bg-white/70 rounded-lg border border-blue-200">
+                                  <div className="font-bold text-lg text-blue-700">
+                                    {vendorTotal}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Total Score
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
+
+                      {/* Features in category */}
+                      {!isCollapsed && (
+                        <div className="space-y-2 ml-4 animate-in slide-in-from-top-2 duration-200">
+                          {categoryFeatures.map(feature => (
+                            <div 
+                              key={feature.id}
+                              className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-blue-50/20 rounded-lg transition-colors px-2"
+                              style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
+                            >
+                              <div className="flex flex-col justify-center">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {feature.name}
+                                </div>
+                              </div>
+                              
+                              <div className="flex flex-col justify-center">
+                                <div className="text-sm text-gray-700 leading-relaxed">
+                                  {feature.description || 'No evaluation criteria specified'}
+                                </div>
+                              </div>
+                              
+                              {vendors.map(vendor => {
+                                const supportKey = `${vendor.id}-${feature.id}`;
+                                const supportData = supportLookup.get(supportKey) || { level: 0 };
+                                
+                                return (
+                                  <div key={vendor.id} className="flex justify-center items-center">
+                                    <HarveyBall 
+                                      level={supportData.level}
+                                      notes={supportData.notes}
+                                      vendorName={vendor.name}
+                                      featureName={feature.name}
+                                      onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
-                })()}
+                });
+              })()}
 
-                {/* Normalized Score Out of 10 Row */}
-                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
-                  const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
-                  const maxScore = calculateMaximumScore(productCapabilityFeatures);
-                  
-                  return (
-                    <div className="border-t border-gray-200 bg-green-50">
-                      <div 
-                        className="grid gap-4 py-4 px-4" 
-                        style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
-                      >
-                        <div className="flex flex-col justify-center">
-                          <div className="font-bold text-lg text-gray-900">
-                            Score (out of 10)
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            For Vendor Evaluation
-                          </div>
-                        </div>
-                        
-                        {vendors.map(vendor => {
-                          const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
-                          const normalizedScore = calculateNormalizedScore(vendorTotal, maxScore);
-                          
-                          return (
-                            <div key={vendor.id} className="flex justify-center items-center">
-                              <div className="text-center">
-                                <div className="font-bold text-xl text-green-700">
-                                  {normalizedScore}/10
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  Normalized
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Integration Action Row */}
-                {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (
-                  <div className="border-t border-gray-200 bg-purple-50">
+              {/* Total Score Row */}
+              {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
+                const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
+                const maxScore = calculateMaximumScore(productCapabilityFeatures);
+                
+                return (
+                  <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-blue-200 to-purple-200 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow-sm">
                     <div 
                       className="grid gap-4 py-4 px-4" 
-                      style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}
+                      style={{ gridTemplateColumns: `200px 300px repeat(${vendors.length}, 120px)` }}
                     >
-                      <div className="flex flex-col justify-center">
-                        <div className="font-bold text-lg text-gray-900">
-                          Vendor Evaluation Integration
+                      <div className="flex flex-col justify-center col-span-2">
+                        <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-blue-500" />
+                          Total Score
                         </div>
                         <div className="text-sm text-gray-600">
-                          Update Product Capabilities scores
+                          Maximum: {maxScore} points
                         </div>
                       </div>
                       
-                      <div className="col-span-full flex justify-center">
-                        <UpdateVendorScoresButton marketId={marketId} />
-                      </div>
+                      {vendors.map(vendor => {
+                        const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                        const percentage = maxScore > 0 ? ((vendorTotal / maxScore) * 100).toFixed(1) : 0;
+                        
+                        return (
+                          <div key={vendor.id} className="flex justify-center items-center">
+                            <div className="text-center p-3 bg-white rounded-lg border-2 border-blue-200 shadow-sm">
+                              <div className="font-bold text-xl text-blue-700">
+                                {vendorTotal}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {percentage}%
+                              </div>
+                              <div className="text-xs text-blue-600 font-medium">
+                                of {maxScore}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Update button */}
+                    <div className="flex justify-center pt-4 pb-2">
+                      <UpdateVendorScoresButton marketId={marketId} />
                     </div>
                   </div>
-                )}
-              </div>
-
-              {productCapabilityFeatures.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">No product capability features defined for this market yet.</p>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}
-
-        {/* Legend */}
-        <div className="mt-8 pt-6 border-t border-gray-200 px-4">
-          <h4 className="font-medium text-sm text-gray-900 mb-3">Harvey Ball Legend</h4>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <HarveyBall level={4} vendorName="" featureName="" onClick={() => {}} />
-              <span className="text-gray-600">Full Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={3} vendorName="" featureName="" onClick={() => {}} />
-              <span className="text-gray-600">Good Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={2} vendorName="" featureName="" onClick={() => {}} />
-              <span className="text-gray-600">Partial Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={1} vendorName="" featureName="" onClick={() => {}} />
-              <span className="text-gray-600">Limited Support</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <HarveyBall level={0} vendorName="" featureName="" onClick={() => {}} />
-              <span className="text-gray-600">No Support</span>
-            </div>
-          </div>
-        </div>
       </CardContent>
 
       {/* Notes Modal */}
