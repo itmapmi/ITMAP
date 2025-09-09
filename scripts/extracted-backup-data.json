@@ -1,0 +1,732 @@
+{
+  "categories": [
+    {
+      "name": "Artifical Intelligence",
+      "description": "Feature category for Artifical Intelligence",
+      "displayOrder": 1
+    },
+    {
+      "name": "Manageability",
+      "description": "Feature category for Manageability",
+      "displayOrder": 2
+    },
+    {
+      "name": "Ransomware Detection and Recove",
+      "description": "Feature category for Ransomware Detection and Recove",
+      "displayOrder": 3
+    },
+    {
+      "name": "Data Management",
+      "description": "Feature category for Data Management",
+      "displayOrder": 4
+    },
+    {
+      "name": "Platform Security",
+      "description": "Feature category for Platform Security",
+      "displayOrder": 5
+    },
+    {
+      "name": "Ecosystem Support",
+      "description": "Feature category for Ecosystem Support",
+      "displayOrder": 6
+    }
+  ],
+  "features": [
+    {
+      "name": "AI capabilities",
+      "description": "Use of proprietory AI model. Use of Gen AI.\r\nAbility to monitor backup infrastructure using AI.\r\nAbility to use AI models to detect and alert on insider and outside threats.\r\nAbility to detect ransomware\r\nProvide Guided resolution of an issue once issue is identified.",
+      "category": "Artifical Intelligence",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Agentic AI Capabilities",
+      "description": "Semi-autonomous Operations: Evaluate whether the BDPP solution’s agentic AI supports semi-autonomous operations with appropriate human oversight.\r\nAdaptability & Self-Improvement: Assess how effectively the AI adapts, learns, and self-improves to meet evolving customer expectations for autonomy.\r\nRegulatory & Compliance Alignment: Examine how the AI addresses compliance requirements and regulatory obligations around data privacy and security.\r\nValidation & Testing: Review the solution’s ability to test, validate, and continuously ensure compliance with established objectives.\r\nScope of Agentic AI Functions: Identify which operational areas leverage agentic AI, including:\r\nFailure remediation\r\nOperational recovery\r\nCyber recovery\r\nDisaster recovery orchestration\r\nManagement operations (e.g., updates, client management)",
+      "category": "Artifical Intelligence",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Answer Guidance: Please attach a reference architecture diagram to support your referenced deployment. PPT or PDF format is preferred.",
+      "description": "",
+      "category": "Artifical Intelligence",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Attached File Name (0)",
+      "description": "",
+      "category": "Artifical Intelligence",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Privacy Notice:",
+      "description": "",
+      "category": "Artifical Intelligence",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Control Plane Capabilities",
+      "description": "Centralized Management Functions: Assess whether the Backup solution solution provides a true single pane of glass for global management tasks — including job creation, monitoring, search across data types, restore, policy creation and enforcement, and file search across VMs, backups, and SaaS data stores.\r\n\r\nFlexible Access to Management Interface: Evaluate the availability and breadth of management GUI options, such as a traditional Windows desktop console (MMC or custom app), a web-based interface, web-optimized mobile access, and dedicated mobile applications for iOS and Android.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Deployment on public Cloud",
+      "description": "AWS Support: Evaluate whether the Backup solution offering supports deployment on AWS, is available in the AWS Marketplace, and can integrate with both customer-managed and provider-managed storage types (block and object).\r\n\r\nAzure Support: Assess whether the Backup solution offering is supported on Azure and available via the Azure Marketplace for self-managed deployments.\r\n\r\nGCP Support: Review whether the Backup solution offering is supported on GCP and accessible through the GCP Marketplace for self-managed deployments.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Managing remote branch office locations",
+      "description": "Assess how the offering manages distributed backup instances in remote offices.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Application onboarding and policy automation.",
+      "description": "Automated Workload Protection: Assess whether the solution can automatically detect and add new, unprotected workloads and apply default protection policies without manual intervention.\r\n\r\nPolicy-Driven Scheduling & Optimization: Evaluate support for policy-based scheduling of backup jobs, as well as the ability to fully automate and optimize backup job scheduling for efficiency and compliance.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Backup storage tiering",
+      "description": "Policy-Driven Data Movement: Assess whether the solution can automate data movement between cloud storage tiers (e.g., block to object) and from on-premises to cloud based on defined policies. Evaluate supported policy triggers such as retention period, data age, size, or replica count.\r\n\r\nMulti-Cloud Data Mobility: Review the range of supported cloud platforms for automated data movement (e.g., AWS, Azure, GCP, Huawei Cloud, Alibaba Cloud) and identify any additional methods available for moving data between storage tiers.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "APIs and extensibility",
+      "description": "API Integration & Extensibility: Assess whether the solution provides application programming interfaces (APIs) to enable integration with other tools, platforms, and automation workflows.\r\n\r\nScripting & Command-Line Support: Evaluate availability of automation through PowerShell toolkits, cmdlets, and scripting extensions, as well as command-line interfaces (e.g., Bash) for advanced customization and automation of backup operations.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Upgrades",
+      "description": "Upgrade Process & Automation: Evaluate how the vendor handles system and agent upgrades — including whether the process is documented, automated, and streamlined to minimize administrative overhead.\r\n\r\nDisruption & Continuity: Assess whether backup system or agent upgrades are disruptive to ongoing operations, and if the vendor provides mechanisms for seamless or online upgrades with minimal downtime.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Integration with third party management platforms",
+      "description": "Cloud Management Platform Plug-ins: Assess the breadth of plug-ins offered as part of the backup solution to integrate with different cloud management platforms, ensuring seamless deployment and administration.\r\n\r\nITSM Tool Integration: Evaluate native support for leading IT service management (ITSM) tools such as ManageEngine, Jira Service Management, Splunk, BMC Software, Broadcom, Microsoft, and ServiceNow, to enable streamlined incident, change, and service management workflows.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Reporting",
+      "description": "Reporting Capabilities\r\n\r\nVendors should be evaluated on the richness and flexibility of their reporting features. This includes the ability to provide different levels of detail tailored to different user roles (e.g., administrators vs. executives). Solutions should offer out-of-the-box reporting templates such as capacity reports (covering total system capacity, used capacity, and unused capacity) and task reports (capturing execution status, task type, protected resources, execution time, processed data volume, and performance metrics). Beyond predefined templates, solutions should also support simplified tools for building custom reports to meet specific organizational needs.\r\n\r\nReport Export & Integration\r\n\r\nThe ability to export reports in multiple formats such as PDF, Excel, or other commonly used formats is essential for sharing and compliance purposes. In addition, solutions should be assessed for whether they integrate with third-party reporting and analytics platforms, enabling advanced visualization, BI integration, and cross-system analysis.\r\n\r\nAlerting & Notifications\r\n\r\nEffective monitoring requires robust alerting mechanisms. Vendors should be evaluated on whether their solution supports multiple alert channels, including email, SMS/text messages, push notifications to mobile apps, alerts within the management console, and integration with ITSM systems for automatic ticket creation. This ensures that administrators receive timely notifications and can respond quickly to issues.\r\n\r\nCapacity Planning\r\n\r\nAnother critical aspect is how the backup solution supports capacity planning. The evaluation should consider whether the solution provides predictive analytics, trending reports, or modeling capabilities to help administrators anticipate growth, optimize resource allocation, and avoid capacity bottlenecks.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Backup data migration to cloud",
+      "description": "Backup Data Migration Technologies\r\n\r\nVendors should be evaluated on their support for industry-standard data transfer technologies that enable movement of backup data to and from the cloud. This includes integration with AWS Snowball, Azure Data Box, and Google Cloud Storage Transfer Service to handle large-scale data transfers efficiently and securely.\r\n\r\nBaseline Copy Transfers\r\n\r\nAssess how the solution facilitates faster baseline copy transfers from the customer’s data center to the cloud. This may include seeding mechanisms, bandwidth optimization, deduplication, or compression to reduce transfer times and costs.\r\n\r\nOn-Premises to Cloud Copying Processes\r\n\r\nEvaluate the flexibility of the solution in supporting multiple transfer modes when copying on-premises backups to public cloud storage. Specifically, whether transfers can be performed manually or automated via policies, enabling organizations to align cloud migration with operational policies and compliance requirements.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Scalability",
+      "description": "Cloud Scaling Capabilities\r\n\r\nVendors should be assessed on how their solution scales up and scales out in cloud environments. This includes whether scaling is automated or manual, and whether it is achieved by adding servers/nodes, launching additional instances, or other mechanisms. The evaluation should also consider how scaling meets performance expectations in public cloud environments and whether it is customer-initiated or dynamically managed by the platform. Ideally, vendors should provide detail on scaling behavior across each supported public cloud (e.g., AWS, Azure, GCP).\r\n\r\nHybrid Cloud Deployments\r\n\r\nVendors should demonstrate proven scalability in large hybrid cloud deployments (covering on-premises, public cloud, and SaaS workloads). Evaluation should include details of their largest customer deployments, with specifics on protected workload counts, data sizes, backup compute and storage requirements, and how the solution achieves RTO/RPO compliance at scale.\r\n\r\nOn-Premises Scaling\r\n\r\nAssessment should also cover how the solution scales when deployed on-premises, whether as an integrated appliance or a software-only deployment. This includes the ability to add compute and storage resources flexibly to handle growth, while maintaining performance and availability.",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Efficiency",
+      "description": "Deduplication Technologies: Evaluate support for multiple deduplication approaches, including:\r\nClient-based preprocessing\r\nClient-based inline processing\r\nClient-based global deduplication\r\nMedia server/node-based inline processing\r\nMedia server/node-based postprocessing\r\nMedia server/node-based global deduplication across multiple targets\r\nMedia server/node-based global deduplication across multiple media servers\r\nCompression Capabilities: Assess whether compression is supported, and in which modes:\r\nClient-based preprocessing\r\nClient-based inline processing\r\nMedia server/node-based inline processing\r\nMedia server/node-based postprocessing\r\nData Reduction Ratios: Review typical performance metrics for data reduction, including:\r\nCompression alone\r\nDeduplication alone\r\nCombined compression and deduplication\r\nBackup Methods Supported: Verify support for efficient backup methods such as:\r\nImage-based backup\r\nBlock-level incremental backups for image-based backup\r\nIncremental forever with full hydration (truly forever)\r\nIncremental forever with regular full and full hydration\r\nIncremental forever with synthetic full",
+      "category": "Manageability",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Ransomware Detection capabilities",
+      "description": "Vendors should be evaluated on their ability to detect early indicators of ransomware or cyberattacks within the backup environment. This includes monitoring for:\r\n\r\nAnomalous backup job size changes that may indicate active encryption of data.\r\n\r\nDetection of encryption within backup data as a sign of a potential attack.\r\n\r\nEntropy analysis within backup data to identify suspicious randomness patterns caused by encryption.\r\n\r\nReal-time or near real-time monitoring of anomalous increases in write traffic on protected hosts as an early warning indicator.\r\n\r\nAdditional anomaly detection techniques provided by the vendor, beyond the above, to strengthen cyber resilience.",
+      "category": "Ransomware Detection and Recove",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "SIEM Integration",
+      "description": "SIEM Integration for Anomaly Alerts\r\n\r\nEvaluate whether the BDPP solution integrates with Security Information and Event Management (SIEM) platforms to automatically generate alerts when anomalies or ransomware indicators are detected. Vendors should provide a list of supported SIEM platforms (e.g., Splunk, IBM QRadar, Microsoft Sentinel, ArcSight, etc.) to demonstrate interoperability with enterprise security monitoring workflows.",
+      "category": "Ransomware Detection and Recove",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Malware scanning capabilities",
+      "description": "Anomaly & Ransomware Detection\r\n\r\nDetect suspicious changes in backup job sizes, encryption within backup data, and entropy analysis as early signs of ransomware.\r\n\r\nMonitor anomalous increases in write traffic in real time (or near real time) on protected hosts.\r\n\r\nScan incoming backup streams for ransomware using malware signatures.\r\n\r\nProvide innovative anomaly detection processes designed to reduce false positives and improve detection accuracy.\r\n\r\nOffer aids to quickly identify the last known good backup prior to data encryption or compromise.\r\n\r\nMalware Scanning (Native & Third-Party)\r\n\r\nSupport vendor-developed scanning during backup operations, post-backup, and during recovery, with continuous updates to malware signatures.\r\n\r\nRun signature-based scans of existing backup data, with the ability to automatically trigger re-scans whenever malware signatures are updated.\r\n\r\nEnable integration with third-party malware scanners (e.g., Microsoft Defender, Symantec, CrowdStrike, McAfee) for layered protection.\r\n\r\nClearly detail capabilities of native malware scanners and supported third-party integrations.\r\n\r\nRecovery Assurance & Threat Hunting\r\n\r\nProvide mechanisms for identifying the last clean backup copy to ensure reliable restores.\r\n\r\nDeliver advanced threat hunting capabilities within the backup environment, enabling investigation of attack patterns and compromise indicators.\r\n\r\nIntegrate with SIEM platforms (Splunk, Microsoft Sentinel, QRadar, ArcSight, etc.) for centralized alerting, monitoring, and incident correlation.",
+      "category": "Ransomware Detection and Recove",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Support for ediscovery",
+      "description": "Ability to scan backup data and provide insights during investigation. Ability to identify sensitive data such as PII Information etc.,",
+      "category": "Data Management",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Support for Search, Data classification and Indexing",
+      "description": "Metadata Integration\r\n\r\nCross-SaaS Metadata Search: Assess whether the solution can integrate and correlate metadata across SaaS applications (e.g., finding all customer-related emails in Microsoft 365 alongside Salesforce records).\r\n\r\nCross-Source Metadata Search: Evaluate the ability to unify metadata across heterogeneous environments (e.g., discovering all versions of a file whether stored on-premises NAS or in OneDrive).\r\n\r\nSearch & Restore Capabilities\r\n\r\nSearch Scope: Determine whether searches can be performed across different data types and environments, including file backups (NAS), virtual machines, and within database content.\r\n\r\nSearch in Hybrid/Multi-Cloud Environments: Review how the solution handles differences or limitations when searching data stored across hybrid, multicloud, or SaaS platforms.\r\n\r\nSearch Results Handling: Evaluate options for restoring or exporting search results — for example, restoring directly into a folder or packaging them into a single downloadable file (such as a ZIP archive).",
+      "category": "Data Management",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Platform Security & Hardening",
+      "description": "Whether the solution runs on hardened/customized operating systems (e.g., secure Linux kernel).\r\nVendor responsibility for OS patching and timely remediation of vulnerabilities.\r\nAvailability of scripts/tools to implement recommended security settings and assess security posture.\r\nSupport for “four-eyes” workflows (dual authorization for critical changes).\r\nAvailability of knowledge base or white papers on best practices for securing the platform.\r\nSafeguards preventing backup agents or components from being tampered with or disabled.",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Access Control & Authentication",
+      "description": "Support for local account management vs. Active Directory integration.\r\nMultifactor authentication (MFA) for all logins.\r\nRestriction/allowlist of login locations.\r\nAuthorization required for API use.\r\nRole-based access control (RBAC) with predefined roles (e.g., admin, auditor, DR admin) and the ability to create custom roles with fine-grained permissions.\r\nSupport for distinct privilege levels and multi-tenancy.",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Backup Data Integrity & Resilience",
+      "description": "Immutability of backups and methods used to achieve it (e.g., immutable file systems, object-lock storage).\r\nSupport for WORM (write once, read many) media and list of supported types.\r\nAvailability of isolated vaults/air-gapped copies (logical or physical).\r\nProtection mechanisms against accidental or malicious deletion (e.g., recycle bin, retention locks).\r\nSafeguards against NTP-based attacks that could disrupt schedules or retention policies.\r\nMethods for protecting and rebuilding the backup catalog.",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Encryption & Key Management",
+      "description": "Encryption of data in all scenarios (at rest, in transit, to/from cloud).\r\nSupported encryption standards (AES, FIPS 140-2, etc.).\r\nOptions for customers to provide and manage their own encryption keys.\r\nKey rotation procedures.\r\nSupported key management integrations (built-in, Thales, IBM Guardium, AWS KMS, Azure Key Vault, etc.).",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Compliance & Certifications",
+      "description": "FIPS 140-2\r\nISO/IEC 27001:2013\r\nNIST 800-53 CP9/CP10\r\nSOC 2 Type II (for BaaS/managed services)\r\nVPAT 2.0 / WCAG / 508\r\nCIS Benchmarks\r\nFedRAMP certification for U.S. federal workloads.",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "SIEM & Security Ecosystem Integration",
+      "description": "Ability to send security-related alerts to SIEM platforms.\r\nAbility to receive alerts from SIEM and act on them (closed-loop integration).\r\nIntegration with major cloud provider security features (AWS, Azure, GCP, Huawei, Alibaba Cloud IAM)",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Data Recovery & Restore Granularity",
+      "description": "File-level restore support across operating systems (Windows, Linux, AIX, Solaris, HDFS).\r\nFile-level recovery from VM-level backups, including supported hypervisors (VMware, Hyper-V, Huawei FusionCompute, etc.).\r\nFile-level recovery for NAS (CIFS/NFS).",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Deployment & Hardware Flexibility",
+      "description": "Supported hardware vendors for third-party servers (for appliance-based software).\r\nMulti-tenancy support for managed service environments.",
+      "category": "Platform Security",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Primary/Secondary Storage Integration",
+      "description": "Native integrations with primary SAN/FC arrays, NAS, object stores, and HCI stacks (snapshots, change-tracking/SnapDiff, array offloads).\r\n\r\nAPI coverage depth per vendor/platform and ability to orchestrate app-consistent storage snapshots.\r\n\r\nSupport for direct-to-object and bypass of primary backup pools where applicable.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "NAS (CIFS/NFS)",
+      "description": "Agentless direct backup, parallel/multistream support, vendor API integrations (e.g., SnapDiff), direct-to-object options, change tracking accuracy.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Object storage",
+      "description": "Compatibility with leading vendors, support for tiering, immutability options, performance at scale.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Vmware",
+      "description": "Support for image-based backup using VADP; CBT/changed-block tracking; app-consistent snapshots; file-level recovery from VM backups; restore acceleration (live mount, instant VM recovery); maximum concurrent restores; cluster/HA awareness.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Nutanix AHV",
+      "description": "Agentless backup at the hypervisor layer; support for VSS-based app-consistent snapshots; granular recovery (files, VMs); file-level restore; support for clustered Hyper-V deployments.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Openstack",
+      "description": "Support for VM-level backup and restore of workloads running inside OpenShift; protection of associated Kubernetes metadata; consistency across stateful apps.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Proxmox VE",
+      "description": "Hypervisor-level protection of VMs; integration with snapshot APIs; incremental backups where supported; full + file-level restores.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft Hyper-V",
+      "description": "Agentless backup at the hypervisor layer; support for VSS-based app-consistent snapshots; granular recovery (files, VMs); file-level restore; support for clustered Hyper-V deployments",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AWS EC2 Instances",
+      "description": "Agentless protection via API snapshots; consistent volume snapshots; file-level restore; cross-platform conversion (e.g., to on-prem VM); metadata indexing.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AWS VMware Cloud (VMC on AWS)",
+      "description": "VADP-based image backups; multi-disk consistency; file-level restore; hybrid on-prem + VMC support.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AWS EKS",
+      "description": "Backup of cluster metadata, namespaces, PVs, statefulsets; restore to same/alternate cluster; application discovery and dependency mapping.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AWS ECS",
+      "description": "Backup of task definitions and persistent volumes; application-consistent recovery of services and tasks.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AWS OpenShift on AWS (ARO)",
+      "description": "Protection of OpenShift projects and Kubernetes resources; integration with persistent storage.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure Virtual Machines",
+      "description": "Agentless VM backup with crash- and app-consistency; file-level restore; support for Premium/Ultra disks; cross-region recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure VMware on Azure",
+      "description": "VADP-based backup/restore; consistent snapshots; file-level recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure Hyper-V on Azure",
+      "description": "Backup of Hyper-V workloads in Azure; VM/file-level restore.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure AKS",
+      "description": "Cluster, namespace, PV, statefulset protection; restore to alternate cluster; app discovery and dependency mapping.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure Container Apps",
+      "description": "Backup of environment configs and deployed apps; recovery of stateful data with PVs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure ACI",
+      "description": "Backup of container configs and volumes; restore as standalone container or migration target.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure Red Hat OpenShift (ARO)",
+      "description": "Backup of OpenShift projects, PVs, cluster state; restore to same/new cluster.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "GCP GCE",
+      "description": "Backup of VM snapshots/disk images; file-level restore; background catalog indexing; cross-region/on-prem restore.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "GCP VMware on GCP",
+      "description": "VADP-based image backup; file-level restore; multi-disk consistency.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "GCP GKE",
+      "description": "Backup of metadata, namespaces, PVs, statefulsets; restore to same/alternate cluster; app-aware discovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "GCP OpenShift on Google Cloud",
+      "description": "Full project + persistent storage protection; application-consistent recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Alibaba/Huawei/IBM/Tencent VMs",
+      "description": "API-based agentless VM backup; file- and disk-level restore; metadata indexing; cross-region recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "OpenShift on Alibaba/Huawei/IBM/Tencent",
+      "description": "Namespace, config, PV protection; restore across clusters/regions.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Docker Swarm",
+      "description": "Backup of service definitions, volumes, configs; restore with dependency mapping.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Target storage systems",
+      "description": "Support for Data Domain, ExaGrid, Infinidat; protocols (NFS, CIFS, S3 APIs, FC, iSCSI, DD Boost).",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Tape integration",
+      "description": "Built-in tape support, library/drive/media mgmt, disk→tape staging, format compliance (e.g., MTF).",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AI infrastructure - Vector Databases",
+      "description": "Native/API integration with leading vector DBs (e.g., Pinecone, Milvus, Weaviate); capture metadata (schema, similarity metrics, ANN indexes); PIT restore of vector collections; restore performance for large embeddings; multi-cluster and cross-region backup awareness.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AI infrastructure -Training Data",
+      "description": "Support for scalable storage (object stores, Lustre, GPFS, HDFS); integration with dataset versioning (DVC, MLflow); metadata cataloging for dataset versions; dataset integrity via checksums; tiering/archive strategies for older data.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AI infrastructure -Inference Data",
+      "description": "Automated capture of inference requests/responses; metadata tagging (model ID, version, input/output); integration with observability tools (Prometheus, ELK, Datadog); retention and tiering policies for long-term storage.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AI infrastructure  - Metadata & Logs",
+      "description": "Integration with experiment tracking systems (MLflow, Weights & Biases); structured log capture; search/indexing of metadata; secure retention policies; compliance-ready audit logs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft SQL Server",
+      "description": "Full/incremental backup support; Always On AG support; app-consistent snapshots; granular restore (DB, table, log); rapid recovery (live mount, PIT restore).",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Oracle",
+      "description": "RAC awareness; log backup and replay; AIX/Exadata platform support; app-consistent backups; integration with RMAN where applicable.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "IBM Db2",
+      "description": "Clustered and standalone protection; consistency across distributed nodes; rapid recovery SLAs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "MySQL",
+      "description": "Transaction-consistent backup across replicas; PIT restore; sharding support if applicable.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "PostgreSQL",
+      "description": "Logical and physical backup options; cluster/HA support; PIT and granular recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "MongoDB",
+      "description": "Sharding and replica set awareness; consistency across nodes; restore of specific collections.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "NoSQL (general)",
+      "description": "Application-consistent snapshots; schema-less handling; restore of key-value/document stores.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "SQL Server Always On AG",
+      "description": "Integrated backup for AGs, log replay, failover consistency.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Oracle RAC",
+      "description": "Backup of clustered nodes; log replay; recovery orchestration.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Apache Cassandra",
+      "description": "Sharding/partition awareness; restore across clusters.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "MongoDB Sharding",
+      "description": "Per-shard consistency; cluster-wide restores.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon Aurora",
+      "description": "API-level integration with Aurora clusters; support for multi-AZ and read replica configurations; PIT recovery using transaction logs; storage-efficient snapshots; cross-region replication awareness.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon RDS (Relational Database Service)",
+      "description": "Support for all engines (MySQL, PostgreSQL, Oracle, SQL Server, MariaDB); automated backups via RDS APIs; PIT restore; snapshot management; log backup support; cross-region recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon DynamoDB",
+      "description": "Consistent backups of tables and global tables; on-demand and PIT restore; handling of large-scale key-value stores; support for capacity and partitioning structures; recovery into new regions.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon Redshift",
+      "description": "Cluster-aware snapshot backups; PIT restore of data warehouses; preservation of cluster configuration (nodes, WLM queues); incremental copy to S3 for archiving.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon ElastiCache (Redis/Memcached)",
+      "description": "Snapshot integration for Redis; consistent backup of cache state; replication group awareness; PIT restore where supported.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon MemoryDB",
+      "description": "Native backup API usage; full snapshot restore; replication cluster coverage; integration with AWS KMS for secure backups.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon DocumentDB (MongoDB compatibility)",
+      "description": "Consistent backups of sharded/replicated clusters; PIT restore; compatibility with MongoDB tools; integration with storage snapshots.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon Neptune",
+      "description": "Backup of graph databases; snapshot/restore for cluster metadata and graph structure; consistency across replicas; PIT restore.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon Keyspaces (Cassandra)",
+      "description": "PIT restore for tables; consistency for large-scale Cassandra-like workloads; compliance with AWS security standards.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Amazon Timestream",
+      "description": "Backup of time-series data; efficient restore with indexing metadata; performance of incremental vs. full backups; query restoration validation.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure SQL Database",
+      "description": "PIT restore up to 35 days; geo-redundant backups; integration with managed instance backups; support for long-term retention policies.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure Cosmos DB",
+      "description": "Multi-model backup support (document, key-value, graph, table); continuous backup with PIT restore; consistency across multiple regions; ability to restore specific containers.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Cloud SQL",
+      "description": "Backup of MySQL, PostgreSQL, SQL Server engines; PIT restore; cross-region replication support; log backup integration.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "BigQuery",
+      "description": "Backup/export of datasets and metadata; consistency across partitions; ability to restore tables or datasets; integration with IAM for access recovery.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Bigtable",
+      "description": "Consistent backup of wide-column store; PIT restore; replication cluster awareness; incremental backup efficiency.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "AlloyDB for PostgreSQL",
+      "description": "Full PostgreSQL compatibility; PIT restore; integration with high availability clusters; log backup and replay.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "MongoDB Atlas (on GCP)",
+      "description": "Snapshot integration; sharding and replica set coverage; PIT restore; restore to new clusters.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Alibaba Cloud RDS (MySQL, SQL Server, PostgreSQL, Oracle)",
+      "description": "PIT restore; multi-zone awareness; log backup integration; snapshot management.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Huawei Cloud GaussDB",
+      "description": "Full cluster backup; PIT restore; support for distributed architecture; compliance with KMS.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "IBM Db2 on IBM Cloud",
+      "description": "Backup of hosted Db2 instances; PIT restore; multi-region support.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Oracle Cloud Autonomous Database",
+      "description": "Automated backup integration; PIT restore; export/import compatibility.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — Exchange Online",
+      "description": "Objects & Scope: User/shared mailboxes, archive mailboxes, public folders, resource mailboxes, mail flow rules.\r\n\r\nGranularity: Item (email), folder, mailbox, public folder; calendar items, contacts, tasks.\r\n\r\nRetention & RPO: Backup frequency (incl. intra-day), PIT restore windows, MRM/retention tag preservation.\r\n\r\nRestore Targets: In-place, to different mailbox/tenant, PST/EML export; keep/merge conflicts.\r\n\r\nMetadata & eDiscovery: Index From/To/CC/BCC, subject, headers, message-ID; legal hold awareness.\r\n\r\nPermissions & Delegation: Rehydrate mailbox permissions/delegations; send-as, full-access.\r\n\r\nSecurity: In-transit/at-rest encryption, BYOK, OAuth/Graph scopes, audit trails.\r\n\r\nThrottling & Scale: Graph throttling handling, concurrency controls, delta sync efficiency.\r\n\r\nRansomware/Threats: Malware/URL detonation artifacts handling; anomaly detection in mailbox deltas.\r\n\r\nAutomation: API/webhooks for job events; SIEM/ITSM integrations.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — SharePoint Online",
+      "description": "Objects: Site collections, subsites, modern sites, lists/libraries, pages, hub sites, Teams-connected sites.\r\n\r\nGranularity: Site, library/list, folder, item, version; column metadata and content types.\r\n\r\nPermissions: Rehydrate site/list/item permissions; sharing links; site features/settings.\r\n\r\nRestore Targets: Original or alternate site/tenant; preserve/ remap URLs, hub associations.\r\n\r\nMetadata/Search: Managed metadata, custom columns, views, JSON formatting, IRM labels.\r\n\r\nSpecials: Site templates, web parts, Power Automate flows attached to lists.\r\n\r\nScale/Performance: Large libraries (millions of items), version sprawl, 5k view thresholds.\r\n\r\nSecurity/Compliance: Encryption/BYOK, retention labels, legal holds; audit trails.\r\n\r\nThrottling: CSOM/Graph throttling backoff; differential (delta) capture.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — OneDrive for Business",
+      "description": "Objects: Files/folders, versions, sharing links, recycle bin.\r\n\r\nGranularity: File-level and version restore; shared-with-me content treatment.\r\n\r\nRestore Targets: In-place, to another OneDrive, to local/NAS; maintain sharing.\r\n\r\nPermissions: Rehydrate item-level sharing and external links.\r\n\r\nScale: Large file/large tree handling; delta API usage.\r\n\r\nSecurity/Compliance: Labels, DLP, encryption; activity audit.\r\n\r\nRansomware Rollback: Mass encryption detection, last-good snapshot identification.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — Teams",
+      "description": "Objects: Teams, channels (standard/private/shared), chats (1:1/group), posts, files, wikis/notes, apps/tabs, meeting artifacts (recordings, transcripts).\r\n\r\nGranularity: Team, channel, chat thread, message, file; private channel separation.\r\n\r\nCross-Service Links: OneDrive/SharePoint storage mapping, meeting recordings in Stream/OneDrive.\r\n\r\nRestore Targets: In-place or to new team/channel; chat export; mapping of owners/members.\r\n\r\nPermissions: Team roles, channel membership, private/shared channel scoping.\r\n\r\nCompliance: Retention policies, eDiscovery holds, audit logs.\r\n\r\nAPI/Throttling: Graph limitations for chat content; pagination and backoff strategies.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — Groups (M365 Groups)",
+      "description": "Objects: Group mailbox, files (SP site), membership, connectors.\r\n\r\nGranularity & Restore: Group/membership, mailbox folders, files; cross-tenant recreation.\r\n\r\nPermissions/Links: Owners/members, sharing links rehydration.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — Planner",
+      "description": "Objects: Plans, buckets, tasks, checklists, comments, attachments, assignments.\r\n\r\nGranularity: Plan/bucket/task-level restore; member mappings.\r\n\r\nCross-App: Links to Teams/Groups; attachment storage (SP/OD).",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft 365 — Project (Project Online / Project for the Web)",
+      "description": "Objects: Projects, tasks, assignments, calendars, dependencies, custom fields.\r\n\r\nGranularity: Project/task-level restore; baselines and calendars.\r\n\r\nInterop: Links to SharePoint artifacts and Power BI datasets.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft Entra ID (Azure AD)",
+      "description": "Objects: Users, groups (security/M365), roles, admin units, enterprise apps/app registrations, Conditional Access policies, devices/BitLocker keys, audit/sign-in logs, Intune policies/profiles.\r\n\r\nGranularity: Object-level restore (user, group, app, policy), membership restoration.\r\n\r\nSecurity: Secrets/cert rehydration approach (reference vs. value), service principal permissions.\r\n\r\nChange Monitoring: Drift detection, malicious change rollback, alerting.\r\n\r\nCross-Tenant: Migration/restore options across tenants with mapping rules.\r\n\r\nCompliance: Auditability of changes/restores; least-privileged scopes.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Salesforce",
+      "description": "Data: Standard/custom objects, records, attachments, files; large objects.\r\n\r\nMetadata: Apex classes/flows, layouts, profiles, permission sets, validation rules, reports/dashboards.\r\n\r\nGranularity: Record/object/Org-level restore; partial restore with dependencies.\r\n\r\nSandbox Ops: Seeding by subset rules; masking/anonymization of PII.\r\n\r\nCross-Org: Restore to another org; ID remapping; reference integrity.\r\n\r\nAPI/Throttling: Bulk API/Async API use; governor limits handling.\r\n\r\nSecurity: Shield encryption awareness; field-level security/permissions rehydration.\r\n\r\nCompliance: Audit trails, field history, legal holds.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Google Workspace",
+      "description": "Gmail: Labels, threads, attachments, delegates; item-level restore; MTA headers.\r\n\r\nDrive & Shared Drives: Files/folders/versions; shortcuts; permissions/shares; domain-wide restores.\r\n\r\nCalendar/Contacts: Single item recovery; shared calendars.\r\n\r\nChat/Meet: Chat messages, spaces, attachments; meeting recordings in Drive.\r\n\r\nSecurity/Throttling: Admin SDK scopes, backoff; Vault/legal holds alignment.\r\n\r\nExport/Interop: MBOX/EML, Drive exports; cross-domain restore.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Atlassian Jira (Cloud)",
+      "description": "Objects: Projects, issues, subtasks, comments, attachments, worklogs, sprints, boards, filters, dashboards, workflows, schemes, custom fields.\r\n\r\nGranularity: Issue/project-level restore; config-only vs. data-only options.\r\n\r\nCross-Instance: Restore/migrate with key and user remapping.\r\n\r\nAutomation: Webhooks/automation rules backup.\r\n\r\nSecurity: Permissions/roles rehydration; audit logs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Azure DevOps (Services)",
+      "description": "Artifacts: Repos (Git), Pipelines (YAML/Classic), Boards (work items), Artifacts (packages), Test Plans, Wiki.\r\n\r\nGranularity: Repo/branch/commit snapshot; pipeline definitions and variable groups; work item sets.\r\n\r\nSecrets: Library/variable groups, service connections handling.\r\n\r\nRestore Targets: Same org/project vs. new org; identity mapping.\r\n\r\nCompliance: Build/release history preservation, audit.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "ServiceNow",
+      "description": "Objects: Tables/records (incidents, changes, problems), CMDB (CIs/relationships), KB articles, catalog items, flows.\r\n\r\nGranularity: Record/table/scope-app level restore; referential integrity.\r\n\r\nCustomizations: Update sets, scripts, ACLs, UI policies.\r\n\r\nSecurity: Roles/ACLs rehydration; audit; PII masking.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Workday",
+      "description": "Objects: HCM (workers, orgs, comp), Time/Absence, Financials, Payroll setups (metadata).\r\n\r\nGranularity: Business object-level restore (subject to API); effective-dated corrections.\r\n\r\nCompliance: SoD, audit trails, PII masking/anonymization.\r\n\r\nThrottling: EIB/API performance limits.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Okta",
+      "description": "Objects: Users, groups, apps (SWA/OIDC/SAML), policies (sign-on/Password/MFA), rules, factors, admin roles, system logs.\r\n\r\nGranularity: Object/policy-level restore; group memberships.\r\n\r\nSecurity: Secret material handling (certs/keys) via reference; audit of admin actions.\r\n\r\nCross-Tenant: Tenant-to-tenant replication/migration.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Box",
+      "description": "Objects: Files/folders/versions, shared links, comments, tasks.\r\n\r\nGranularity: Item/version restore; collaboration permissions rehydration.\r\n\r\nSecurity: Classification/retention policies; shield events; external shares.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Dropbox (Business)",
+      "description": "Objects: Files/folders/versions, team folders, Paper docs.\r\n\r\nGranularity: Item/version restore; sharing link recreation.\r\n\r\nSecurity: Team/role mapping; audit logs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Slack",
+      "description": "Objects: Workspaces, public/private channels, DMs, threads, files, pins, bookmarks, apps.\r\n\r\nGranularity: Channel/message/file-level export/restore (within API/legal constraints).\r\n\r\nCompliance: E-discovery/retention policies; Enterprise Grid org support.\r\n\r\nSecurity: SCIM/SSO mapping; audit logs.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "SAP Concur",
+      "description": "Objects: Expense reports, line items, receipts (images), credit card feeds, travel bookings.\r\n\r\nGranularity: Report/transaction-level restore; attachments.\r\n\r\nCompliance: Policy/audit trails; PII handling",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "SAP SuccessFactors",
+      "description": "Objects: Employee profiles, performance/goal plans, learning, succession.\r\n\r\nGranularity: Module-level and record-level restore.\r\n\r\nCompliance: PII masking, audit history.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    },
+    {
+      "name": "Microsoft Power Platform (Power Apps / Power Automate / Dataverse)",
+      "description": "Power Apps: Apps, connections, environment variables, solutions.\r\n\r\nPower Automate: Flows (cloud/desktop), triggers, actions, connections.\r\n\r\nDataverse: Tables, columns, relationships, model-driven apps.\r\n\r\nGranularity: Solution-level and object-level restore; environment to environment migration.\r\n\r\nSecurity: Connection secrets/credentials handling; DLP policies.\r\n\r\nDependencies: Managed/unmanaged solutions; dependency graph validation.",
+      "category": "Ecosystem Support",
+      "evaluationCriteria": ""
+    }
+  ]
+}
