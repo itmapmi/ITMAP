@@ -449,7 +449,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
         ) : (
           <div className="relative">
             {/* Horizontal scrolling container */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               {/* Floating sticky header */}
               <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
                 <div 
@@ -481,7 +481,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
               </div>
 
               {/* Feature rows grouped by categories */}
-              <div className="px-6 pt-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+              <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
