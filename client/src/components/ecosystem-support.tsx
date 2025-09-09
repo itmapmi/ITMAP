@@ -578,50 +578,6 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                   );
                 });
               })()}
-
-              {/* Ecosystem Support Summary */}
-              {ecosystemFeatures.length > 0 && vendors.length > 0 && (
-                <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
-                  <div 
-                    className="grid gap-4 py-4 px-4" 
-                    style={{ 
-                      gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                      width: `${500 + (vendors.length * 140)}px`
-                    }}
-                  >
-                    <div className="flex flex-col justify-center col-span-2">
-                      <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                        <Network className="h-5 w-5 text-green-500" />
-                        Ecosystem Support Summary
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Total integrations: {ecosystemFeatures.length} features
-                      </div>
-                    </div>
-                    
-                    {vendors.map(vendor => {
-                      const totals = ecosystemTotals[vendor.id];
-                      const percentage = totals.maxScore > 0 ? ((totals.totalScore / totals.maxScore) * 100).toFixed(1) : 0;
-                      
-                      return (
-                        <div key={vendor.id} className="flex justify-center items-center">
-                          <div className="text-center p-3 bg-white rounded-lg border-2 border-green-200 shadow-sm">
-                            <div className="font-bold text-xl text-green-700">
-                              {totals.totalScore}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {percentage}%
-                            </div>
-                            <div className="text-xs text-green-600 font-medium">
-                              {totals.normalizedScore}/10
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
             </div>
           </div>
