@@ -451,12 +451,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
             {/* Horizontal scrolling container */}
             <div className="overflow-x-auto w-full">
               {/* Floating sticky header */}
-              <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+              <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
                     gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                    minWidth: `${500 + (vendors.length * 140)}px`
+                    width: `${500 + (vendors.length * 140)}px`
                   }}
                 >
                   <div className="font-semibold text-sm text-gray-700 flex items-center">
@@ -581,12 +581,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
               {/* Ecosystem Support Summary */}
               {ecosystemFeatures.length > 0 && vendors.length > 0 && (
-                <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm">
+                <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
                   <div 
                     className="grid gap-4 py-4 px-4" 
                     style={{ 
                       gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                      minWidth: `${500 + (vendors.length * 140)}px`
+                      width: `${500 + (vendors.length * 140)}px`
                     }}
                   >
                     <div className="flex flex-col justify-center col-span-2">
