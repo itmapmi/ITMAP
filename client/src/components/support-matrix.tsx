@@ -683,11 +683,6 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                         );
                       })}
                     </div>
-                    
-                    {/* Update button */}
-                    <div className="flex justify-center pt-4 pb-2">
-                      <UpdateVendorScoresButton marketId={marketId} />
-                    </div>
                   </div>
                 );
               })()}
