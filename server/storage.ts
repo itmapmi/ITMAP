@@ -22,6 +22,8 @@ import {
   type InsertVendorFeatureSupport,
   type ResearchReport,
   type InsertResearchReport,
+  type ResearchMethodology,
+  type InsertResearchMethodology,
   type MarketCriteriaWeight,
   type HistoricalPosition,
   users,
@@ -35,6 +37,7 @@ import {
   features,
   vendorFeatureSupport,
   researchReports,
+  researchMethodology,
   marketCriteriaWeights,
   historicalPositions,
 } from "@shared/schema";
@@ -115,6 +118,10 @@ export interface IStorage {
   createResearchReport(report: InsertResearchReport): Promise<ResearchReport>;
   updateResearchReport(id: string, report: Partial<InsertResearchReport>): Promise<ResearchReport | undefined>;
   deleteResearchReport(id: string): Promise<void>;
+
+  // Research Methodology
+  getResearchMethodologyByMarketId(marketId: string): Promise<ResearchMethodology | undefined>;
+  createOrUpdateResearchMethodology(methodology: InsertResearchMethodology): Promise<ResearchMethodology>;
   
   // Historical Positions
   getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
@@ -657,6 +664,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteResearchReport(id: string): Promise<void> {
     await db.delete(researchReports).where(eq(researchReports.id, id));
+  }
+
+  // Research Methodology
+  async getResearchMethodologyByMarketId(marketId: string): Promise<ResearchMethodology | undefined> {
+    const [methodology] = await db
+      .select()
+      .from(researchMethodology)
+      .where(eq(researchMethodology.marketId, marketId));
+    return methodology;
+  }
+
+  async createOrUpdateResearchMethodology(methodologyData: InsertResearchMethodology): Promise<ResearchMethodology> {
+    // Check if methodology already exists for this market
+    const existing = await this.getResearchMethodologyByMarketId(methodologyData.marketId);
+    
+    if (existing) {
+      // Update existing methodology
+      const [updated] = await db
+        .update(researchMethodology)
+        .set({ content: methodologyData.content, updatedAt: new Date() })
+        .where(eq(researchMethodology.marketId, methodologyData.marketId))
+        .returning();
+      return updated;
+    } else {
+      // Create new methodology
+      const [newMethodology] = await db
+        .insert(researchMethodology)
+        .values(methodologyData)
+        .returning();
+      return newMethodology;
+    }
   }
 
   // Historical Positions

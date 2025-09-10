@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertVendorNewsSourceSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertVendorNewsSourceSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
@@ -790,6 +790,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting research report:", error);
       res.status(500).json({ error: "Failed to delete research report" });
+    }
+  });
+
+  // Research Methodology routes
+  // GET research methodology for a market
+  app.get("/api/markets/:marketId/research-methodology", async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const methodology = await storage.getResearchMethodologyByMarketId(marketId);
+      res.json(methodology);
+    } catch (error) {
+      console.error("Error fetching research methodology:", error);
+      res.status(500).json({ error: "Failed to fetch research methodology" });
+    }
+  });
+
+  // POST/PUT create or update research methodology
+  app.post("/api/markets/:marketId/research-methodology", requireAdmin, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const methodologyData = insertResearchMethodologySchema.parse({ ...req.body, marketId });
+      const methodology = await storage.createOrUpdateResearchMethodology(methodologyData);
+      res.json(methodology);
+    } catch (error) {
+      console.error("Error creating/updating research methodology:", error);
+      res.status(500).json({ error: "Failed to create/update research methodology" });
     }
   });
 
