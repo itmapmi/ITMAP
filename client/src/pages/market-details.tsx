@@ -10,6 +10,7 @@ import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
 import VendorNews from "@/components/vendor-news";
 import ResearchReports from "@/components/research-reports";
+import ResearchMethodology from "@/components/research-methodology";
 import type { Market } from "@shared/schema";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
@@ -62,11 +63,12 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
               <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
               <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
               <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
+              <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
               <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
             </TabsList>
 
@@ -93,6 +95,10 @@ export default function MarketDetails() {
                 <SkeletonCard lines={2} />
                 <SkeletonCard lines={2} />
               </div>
+            </TabsContent>
+
+            <TabsContent value="research-methodology" className="mt-6">
+              <SkeletonCard lines={8} className="h-96" />
             </TabsContent>
           </Tabs>
         </motion.div>
@@ -174,6 +180,10 @@ export default function MarketDetails() {
 
           <TabsContent value="research-reports" className="mt-6">
             <ResearchReports marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="research-methodology" className="mt-6">
+            <ResearchMethodology marketId={marketId!} />
           </TabsContent>
 
           <TabsContent value="vendor-news" className="mt-6">
