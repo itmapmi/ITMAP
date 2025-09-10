@@ -174,35 +174,28 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
     if (!headerElement || !contentElement) return;
 
-    let isHeaderScrolling = false;
-    let isContentScrolling = false;
+    let syncing = false;
 
-    const syncHeaderToContent = () => {
-      if (isContentScrolling) return;
-      isHeaderScrolling = true;
-      contentElement.scrollLeft = headerElement.scrollLeft;
-      requestAnimationFrame(() => {
-        isHeaderScrolling = false;
-      });
+    const syncScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
+      if (syncing) return;
+      syncing = true;
+      target.scrollLeft = source.scrollLeft;
+      setTimeout(() => {
+        syncing = false;
+      }, 50);
     };
 
-    const syncContentToHeader = () => {
-      if (isHeaderScrolling) return;
-      isContentScrolling = true;
-      headerElement.scrollLeft = contentElement.scrollLeft;
-      requestAnimationFrame(() => {
-        isContentScrolling = false;
-      });
-    };
+    const onHeaderScroll = () => syncScroll(headerElement, contentElement);
+    const onContentScroll = () => syncScroll(contentElement, headerElement);
 
-    headerElement.addEventListener('scroll', syncHeaderToContent, { passive: true });
-    contentElement.addEventListener('scroll', syncContentToHeader, { passive: true });
+    headerElement.addEventListener('scroll', onHeaderScroll, { passive: true });
+    contentElement.addEventListener('scroll', onContentScroll, { passive: true });
 
     return () => {
-      headerElement.removeEventListener('scroll', syncHeaderToContent);
-      contentElement.removeEventListener('scroll', syncContentToHeader);
+      headerElement.removeEventListener('scroll', onHeaderScroll);
+      contentElement.removeEventListener('scroll', onContentScroll);
     };
-  }, [headerScrollRef.current, contentScrollRef.current]);
+  }, []);
 
   // Initialize with all categories collapsed when features load (only once)
   useEffect(() => {
