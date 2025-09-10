@@ -14,6 +14,11 @@ export default function ResearchMethodology({ marketId }: ResearchMethodologyPro
     queryKey: ["/api/markets", marketId, "research-methodology"],
   });
 
+  console.log("ResearchMethodology - marketId:", marketId);
+  console.log("ResearchMethodology - isLoading:", isLoading);
+  console.log("ResearchMethodology - error:", error);
+  console.log("ResearchMethodology - methodology:", methodology);
+
   if (isLoading) {
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
