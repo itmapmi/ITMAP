@@ -129,26 +129,35 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
     if (!headerElement || !contentElement) return;
 
+    let isHeaderScrolling = false;
+    let isContentScrolling = false;
+
     const syncHeaderToContent = () => {
-      if (contentElement && headerElement) {
-        headerElement.scrollLeft = contentElement.scrollLeft;
-      }
+      if (isContentScrolling) return;
+      isHeaderScrolling = true;
+      contentElement.scrollLeft = headerElement.scrollLeft;
+      requestAnimationFrame(() => {
+        isHeaderScrolling = false;
+      });
     };
 
     const syncContentToHeader = () => {
-      if (headerElement && contentElement) {
-        contentElement.scrollLeft = headerElement.scrollLeft;
-      }
+      if (isHeaderScrolling) return;
+      isContentScrolling = true;
+      headerElement.scrollLeft = contentElement.scrollLeft;
+      requestAnimationFrame(() => {
+        isContentScrolling = false;
+      });
     };
 
-    headerElement.addEventListener('scroll', syncContentToHeader);
-    contentElement.addEventListener('scroll', syncHeaderToContent);
+    headerElement.addEventListener('scroll', syncHeaderToContent, { passive: true });
+    contentElement.addEventListener('scroll', syncContentToHeader, { passive: true });
 
     return () => {
-      headerElement.removeEventListener('scroll', syncContentToHeader);
-      contentElement.removeEventListener('scroll', syncHeaderToContent);
+      headerElement.removeEventListener('scroll', syncHeaderToContent);
+      contentElement.removeEventListener('scroll', syncContentToHeader);
     };
-  }, []);
+  }, [headerScrollRef.current, contentScrollRef.current]);
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
@@ -484,7 +493,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           <div className="relative">
             {/* Sticky header - positioned outside scrolling container */}
             <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg">
-              <div className="overflow-x-auto" ref={headerScrollRef}>
+              <div className="overflow-x-auto scrollbar-hide" ref={headerScrollRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <div 
                   className="grid gap-4 py-4 px-6" 
                   style={{ 
