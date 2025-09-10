@@ -709,6 +709,55 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                   </div>
                 );
               })()}
+
+              {/* Normalized Score Row - Product Capabilities out of 10 */}
+              {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
+                const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
+                const maxScore = calculateMaximumScore(productCapabilityFeatures);
+                
+                return (
+                  <div className="mt-4 pt-6 border-t-2 border-gradient-to-r from-purple-200 to-blue-200 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+                    <div 
+                      className="grid gap-4 py-4 px-4" 
+                      style={{ 
+                        gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                        width: `${500 + (vendors.length * 140)}px`
+                      }}
+                    >
+                      <div className="flex flex-col justify-center col-span-2">
+                        <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5 text-purple-500" />
+                          Product Capabilities Score
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Normalized score out of 10 points
+                        </div>
+                      </div>
+                      
+                      {vendors.map(vendor => {
+                        const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                        const normalizedScore = maxScore > 0 ? (vendorTotal / maxScore) * 10 : 0;
+                        
+                        return (
+                          <div key={vendor.id} className="flex justify-center items-center">
+                            <div className="text-center p-3 bg-white rounded-lg border-2 border-purple-200 shadow-sm">
+                              <div className="font-bold text-xl text-purple-700">
+                                {normalizedScore.toFixed(1)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                out of 10
+                              </div>
+                              <div className="text-xs text-purple-600 font-medium">
+                                Product Score
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
               </div>
             </div>
           </div>
