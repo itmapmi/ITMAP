@@ -68,8 +68,8 @@ export default function MarketDetails() {
               <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
               <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
               <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
-              <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
               <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
+              <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             </TabsList>
 
             <TabsContent value="vendor-evaluation" className="mt-6">
@@ -155,12 +155,13 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
             <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
             <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
+            <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
           </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
