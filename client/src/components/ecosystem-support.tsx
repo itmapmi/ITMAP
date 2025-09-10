@@ -78,8 +78,8 @@ const HarveyBall = ({
 
 export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
   // Refs for scroll synchronization
-  const headerScrollRef = useRef<HTMLDivElement>(null);
-  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stickyHeaderRef = useRef<HTMLDivElement>(null);
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -124,31 +124,20 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
   // Scroll synchronization effect
   useEffect(() => {
-    const headerElement = headerScrollRef.current;
-    const contentElement = contentScrollRef.current;
+    const container = containerRef.current;
+    const stickyHeader = stickyHeaderRef.current;
 
-    if (!headerElement || !contentElement) return;
+    if (!container || !stickyHeader) return;
 
-    let syncing = false;
-
-    const syncScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
-      if (syncing) return;
-      syncing = true;
-      target.scrollLeft = source.scrollLeft;
-      setTimeout(() => {
-        syncing = false;
-      }, 50);
+    const handleScroll = () => {
+      const scrollLeft = container.scrollLeft;
+      stickyHeader.style.transform = `translateX(-${scrollLeft}px)`;
     };
 
-    const onHeaderScroll = () => syncScroll(headerElement, contentElement);
-    const onContentScroll = () => syncScroll(contentElement, headerElement);
-
-    headerElement.addEventListener('scroll', onHeaderScroll, { passive: true });
-    contentElement.addEventListener('scroll', onContentScroll, { passive: true });
+    container.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      headerElement.removeEventListener('scroll', onHeaderScroll);
-      contentElement.removeEventListener('scroll', onContentScroll);
+      container.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -484,40 +473,39 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           </div>
         ) : (
           <div className="relative">
-            {/* Sticky header - positioned outside scrolling container */}
-            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg">
-              <div className="overflow-x-auto scrollbar-hide" ref={headerScrollRef} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                <div 
-                  className="grid gap-4 py-4 px-6" 
-                  style={{ 
-                    gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                    minWidth: `${500 + (vendors.length * 140)}px`
-                  }}
-                >
-                  <div className="font-semibold text-sm text-gray-700 flex items-center">
-                    Features
-                  </div>
-                  <div className="font-semibold text-sm text-gray-700 flex items-center">
-                    Evaluation Criteria
-                  </div>
-                  {vendors.map(vendor => (
-                    <div key={vendor.id} className="text-center min-w-0">
-                      <div className="font-medium text-sm text-gray-900 mb-1 truncate px-2">
-                        {vendor.name}
-                      </div>
-                      {vendor.product && (
-                        <div className="text-xs text-gray-600 font-medium truncate px-2">
-                          {vendor.product}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+            {/* Sticky header that moves with horizontal scroll */}
+            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden">
+              <div 
+                ref={stickyHeaderRef}
+                className="grid gap-4 py-4 px-6" 
+                style={{ 
+                  gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                  minWidth: `${500 + (vendors.length * 140)}px`
+                }}
+              >
+                <div className="font-semibold text-sm text-gray-700 flex items-center">
+                  Features
                 </div>
+                <div className="font-semibold text-sm text-gray-700 flex items-center">
+                  Evaluation Criteria
+                </div>
+                {vendors.map(vendor => (
+                  <div key={vendor.id} className="text-center min-w-0">
+                    <div className="font-medium text-sm text-gray-900 mb-1 truncate px-2">
+                      {vendor.name}
+                    </div>
+                    {vendor.product && (
+                      <div className="text-xs text-gray-600 font-medium truncate px-2">
+                        {vendor.product}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Content with horizontal scrolling */}
-            <div className="overflow-x-auto" ref={contentScrollRef}>
+            <div className="overflow-x-auto" ref={containerRef}>
               <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
