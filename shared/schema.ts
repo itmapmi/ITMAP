@@ -38,6 +38,14 @@ export const markets = pgTable("markets", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const researchMethodology = pgTable("research_methodology", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  content: text("content").notNull().default(""),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const subMarkets = pgTable("sub_markets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -164,7 +172,7 @@ export const historicalPositions = pgTable("historical_positions", {
 });
 
 // Relations
-export const marketsRelations = relations(markets, ({ many }) => ({
+export const marketsRelations = relations(markets, ({ many, one }) => ({
   subMarkets: many(subMarkets),
   vendors: many(vendors),
   featureCategories: many(featureCategories),
@@ -172,6 +180,7 @@ export const marketsRelations = relations(markets, ({ many }) => ({
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
   newsSources: many(vendorNewsSources),
+  researchMethodology: one(researchMethodology),
 }));
 
 export const subMarketsRelations = relations(subMarkets, ({ one }) => ({
@@ -240,6 +249,13 @@ export const vendorFeatureSupportRelations = relations(vendorFeatureSupport, ({ 
 export const researchReportsRelations = relations(researchReports, ({ one }) => ({
   market: one(markets, {
     fields: [researchReports.marketId],
+    references: [markets.id],
+  }),
+}));
+
+export const researchMethodologyRelations = relations(researchMethodology, ({ one }) => ({
+  market: one(markets, {
+    fields: [researchMethodology.marketId],
     references: [markets.id],
   }),
 }));
@@ -339,6 +355,12 @@ export const insertResearchReportSchema = createInsertSchema(researchReports).om
   uploadedAt: true,
 });
 
+export const insertResearchMethodologySchema = createInsertSchema(researchMethodology).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -383,6 +405,9 @@ export type VendorFeatureSupport = typeof vendorFeatureSupport.$inferSelect;
 
 export type InsertResearchReport = z.infer<typeof insertResearchReportSchema>;
 export type ResearchReport = typeof researchReports.$inferSelect;
+
+export type InsertResearchMethodology = z.infer<typeof insertResearchMethodologySchema>;
+export type ResearchMethodology = typeof researchMethodology.$inferSelect;
 
 export type MarketCriteriaWeight = typeof marketCriteriaWeights.$inferSelect;
 export type HistoricalPosition = typeof historicalPositions.$inferSelect;
