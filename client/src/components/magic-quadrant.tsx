@@ -95,10 +95,28 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   // Initialize weights when data loads
   useEffect(() => {
     if (weights && criteria) {
+      // Default weights mapping based on criteria names
+      const defaultWeightsByName: { [name: string]: number } = {
+        'ISV Ecosystem': 100,
+        'Innovation': 50,
+        'Pricing strategy': 100,
+        'Product capabilities': 100,
+        'Business Model': 50,
+        'Customer experience': 100,
+        'Partner Ecosystem': 75,
+        'Revenue': 50
+      };
+
       const initialWeights: { [id: string]: number } = {};
       criteria.forEach(c => {
-        const weight = weights.find(w => w.criteriaId === c.id);
-        initialWeights[c.id] = weight?.weight || 100;
+        const existingWeight = weights.find(w => w.criteriaId === c.id);
+        if (existingWeight) {
+          // Use existing saved weight
+          initialWeights[c.id] = existingWeight.weight;
+        } else {
+          // Use default weight based on criteria name, fallback to 100
+          initialWeights[c.id] = defaultWeightsByName[c.name] || 100;
+        }
       });
       setCriteriaWeights(initialWeights);
     }
