@@ -222,7 +222,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   };
 
   // Min-max normalization function
-  const normalizeToRange = (values: number[], min: number = 10, max: number = 90): number[] => {
+  const normalizeToRange = (values: number[], min: number = 25, max: number = 75): number[] => {
     if (values.length === 0) return [];
     
     const rawMin = Math.min(...values);
