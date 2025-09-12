@@ -811,9 +811,9 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         });
       });
 
-    // Simplified left/right label positioning with collision detection
+    // Enhanced four-direction label positioning with collision detection
     const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { 
-      labelX: number, labelY: number, anchor: string, dotX: number, dotY: number
+      labelX: number, labelY: number, anchor: string, dotX: number, dotY: number, side: string
     } => {
       const dotX = xScale(vendor.adjustedX);
       const dotY = yScale(vendor.adjustedY);
@@ -821,21 +821,34 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       const textWidth = vendor.name.length * 7.5;
       const labelHeight = 16;
       
-      // Only left and right positions
+      // All four positions: right, left, top, bottom
       const positions = [
         { x: dotX + labelOffset, y: dotY + 4, anchor: "start", side: "right" }, // right (preferred)
-        { x: dotX - labelOffset, y: dotY + 4, anchor: "end", side: "left" }     // left
+        { x: dotX - labelOffset, y: dotY + 4, anchor: "end", side: "left" },     // left
+        { x: dotX, y: dotY - labelOffset - 4, anchor: "middle", side: "top" },   // top
+        { x: dotX, y: dotY + labelOffset + 12, anchor: "middle", side: "bottom" } // bottom
       ];
       
       // Check each position for conflicts
       for (const position of positions) {
         let hasConflict = false;
         
-        // Calculate label bounds
-        const labelLeft = position.anchor === "end" ? position.x - textWidth : position.x;
-        const labelRight = labelLeft + textWidth;
-        const labelTop = position.y - 12;
-        const labelBottom = position.y + 4;
+        // Calculate label bounds based on position
+        let labelLeft, labelRight, labelTop, labelBottom;
+        
+        if (position.side === "right" || position.side === "left") {
+          // Horizontal labels
+          labelLeft = position.anchor === "end" ? position.x - textWidth : position.x;
+          labelRight = labelLeft + textWidth;
+          labelTop = position.y - 12;
+          labelBottom = position.y + 4;
+        } else {
+          // Vertical labels (top/bottom)
+          labelLeft = position.x - textWidth / 2;
+          labelRight = position.x + textWidth / 2;
+          labelTop = position.y - 12;
+          labelBottom = position.y + 4;
+        }
         
         // Check chart bounds
         if (labelLeft < margin.left + 5 || labelRight > width - margin.right - 5 || 
@@ -859,18 +872,28 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           }
           
           // Check for label overlap with other potential label positions
-          // Calculate other vendor's preferred label position for overlap check
           const otherTextWidth = otherVendor.name.length * 7.5;
           const otherLabelPositions = [
-            { x: otherX + labelOffset, anchor: "start" }, // right
-            { x: otherX - labelOffset, anchor: "end" }    // left
+            { x: otherX + labelOffset, anchor: "start", side: "right" },
+            { x: otherX - labelOffset, anchor: "end", side: "left" },
+            { x: otherX, anchor: "middle", side: "top" },
+            { x: otherX, anchor: "middle", side: "bottom" }
           ];
           
           for (const otherPos of otherLabelPositions) {
-            const otherLabelLeft = otherPos.anchor === "end" ? otherPos.x - otherTextWidth : otherPos.x;
-            const otherLabelRight = otherLabelLeft + otherTextWidth;
-            const otherLabelTop = otherY - 8;
-            const otherLabelBottom = otherY + 8;
+            let otherLabelLeft, otherLabelRight, otherLabelTop, otherLabelBottom;
+            
+            if (otherPos.side === "right" || otherPos.side === "left") {
+              otherLabelLeft = otherPos.anchor === "end" ? otherPos.x - otherTextWidth : otherPos.x;
+              otherLabelRight = otherLabelLeft + otherTextWidth;
+              otherLabelTop = otherY - 8;
+              otherLabelBottom = otherY + 8;
+            } else {
+              otherLabelLeft = otherPos.x - otherTextWidth / 2;
+              otherLabelRight = otherPos.x + otherTextWidth / 2;
+              otherLabelTop = otherPos.side === "top" ? otherY - labelOffset - 16 : otherY + labelOffset;
+              otherLabelBottom = otherLabelTop + 16;
+            }
             
             // Check for rectangle overlap
             if (!(labelRight < otherLabelLeft || labelLeft > otherLabelRight || 
@@ -888,6 +911,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
             labelX: position.x,
             labelY: position.y,
             anchor: position.anchor,
+            side: position.side,
             dotX,
             dotY
           };
@@ -899,12 +923,13 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         labelX: dotX + labelOffset,
         labelY: dotY + 4,
         anchor: "start",
+        side: "right",
         dotX,
         dotY
       };
     };
 
-    // Add vendor labels positioned left or right of dots
+    // Add vendor labels positioned in all four directions around dots
     adjustedVendors.forEach((vendor, index) => {
       const labelPos = calculateLabelPosition(vendor, index, adjustedVendors);
       
@@ -912,10 +937,25 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       
       // Add semi-transparent background for label readability
       const textWidth = vendor.name.length * 7.5;
+      let backgroundX, backgroundY;
+      
+      // Calculate background position based on label side
+      if (labelPos.side === "right") {
+        backgroundX = labelPos.labelX - 3;
+        backgroundY = labelPos.labelY - 12;
+      } else if (labelPos.side === "left") {
+        backgroundX = labelPos.labelX - textWidth - 3;
+        backgroundY = labelPos.labelY - 12;
+      } else {
+        // top or bottom
+        backgroundX = labelPos.labelX - textWidth / 2 - 3;
+        backgroundY = labelPos.labelY - 12;
+      }
+      
       labelGroup.append("rect")
         .attr("class", "label-background")
-        .attr("x", labelPos.anchor === "end" ? labelPos.labelX - textWidth - 3 : labelPos.labelX - 3)
-        .attr("y", labelPos.labelY - 12)
+        .attr("x", backgroundX)
+        .attr("y", backgroundY)
         .attr("width", textWidth + 6)
         .attr("height", 16)
         .attr("fill", "rgba(255, 255, 255, 0.9)")
@@ -925,7 +965,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .attr("ry", 3)
         .style("pointer-events", "none");
       
-      // Add the text label directly adjacent to dot
+      // Add the text label positioned around the dot
       labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
