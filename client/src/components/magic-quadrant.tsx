@@ -17,6 +17,8 @@ interface VendorWithScores extends Vendor {
   scores: { [criteriaId: string]: number };
   executionScore: number;
   viabilityScore: number;
+  rawExecutionScore?: number;
+  rawViabilityScore?: number;
 }
 
 interface VendorModalData {
@@ -28,6 +30,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   const svgRef = useRef<SVGSVGElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
+  const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; vendor?: VendorWithScores } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
 
   // Calculate date range for 36 months (156 weeks)
@@ -210,40 +213,65 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
   };
 
-  // Calculate vendor positions (use historical data if available and not current week)
-  const vendorsWithScores: VendorWithScores[] = (vendors || []).map(vendor => {
+  // Weight to multiplier mapping function
+  const weightToMultiplier = (weightPercent: number): number => {
+    if (weightPercent <= 25) return 0.5;
+    if (weightPercent <= 45) return 1.5;
+    if (weightPercent <= 65) return 2.5;
+    return 3.0; // 65-100%
+  };
+
+  // Min-max normalization function
+  const normalizeToRange = (values: number[], min: number = 10, max: number = 90): number[] => {
+    if (values.length === 0) return [];
+    
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    
+    // If all values are the same, set all to middle value
+    if (rawMax === rawMin) {
+      return values.map(() => 50);
+    }
+    
+    return values.map(value => 
+      min + (max - min) * (value - rawMin) / (rawMax - rawMin)
+    );
+  };
+
+  // Calculate raw scores for all vendors first
+  const vendorsWithRawScores = (vendors || []).map(vendor => {
     const vendorScores: { [criteriaId: string]: number } = {};
-    let executionTotal = 0;
-    let viabilityTotal = 0;
-    let executionWeight = 0;
-    let viabilityWeight = 0;
+    let executionRawScore = 0;
+    let viabilityRawScore = 0;
 
     // Use historical positions if available and not current week
     if (weeksAgo > 0 && historicalPositions) {
       const historicalPosition = historicalPositions.find(pos => pos.vendorId === vendor.id);
       if (historicalPosition) {
         return {
-          ...vendor,
-          scores: vendorScores,
-          executionScore: parseFloat(historicalPosition.executionScore) || 50,
-          viabilityScore: parseFloat(historicalPosition.viabilityScore) || 50,
+          vendor,
+          vendorScores,
+          executionRawScore: parseFloat(historicalPosition.executionScore) || 50,
+          viabilityRawScore: parseFloat(historicalPosition.viabilityScore) || 50,
+          isHistorical: true
         };
       }
     }
 
-    // Use current scores for current week or when no historical data
+    // Calculate current scores using new multiplier logic
     if (scores && criteria) {
       scores.forEach(score => {
         if (score.vendorId === vendor.id) {
-          vendorScores[score.criteriaId] = parseFloat(score.score);
+          const scoreValue = parseFloat(score.score);
+          vendorScores[score.criteriaId] = scoreValue;
           
-          const weight = criteriaWeights[score.criteriaId] || 25;
+          const weight = criteriaWeights[score.criteriaId] || 100;
+          const multiplier = weightToMultiplier(weight);
+          
           if (score.criteria.category === "execution") {
-            executionTotal += parseFloat(score.score) * weight;
-            executionWeight += weight;
+            executionRawScore += scoreValue * multiplier;
           } else if (score.criteria.category === "viability") {
-            viabilityTotal += parseFloat(score.score) * weight;
-            viabilityWeight += weight;
+            viabilityRawScore += scoreValue * multiplier;
           }
         }
       });
@@ -252,42 +280,81 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     // Add Product Capabilities score from support matrix to execution category
     const supportMatrixScore = calculateSupportMatrixScore(vendor.id);
     if (supportMatrixScore > 0) {
-      const productCapabilitiesWeight = 25; // Same weight as other criteria
-      executionTotal += supportMatrixScore * productCapabilitiesWeight;
-      executionWeight += productCapabilitiesWeight;
+      // Find Product Capabilities criteria to get its weight
+      const productCapabilitiesCriteria = criteria?.find(c => 
+        c.name.toLowerCase().includes('product') && c.name.toLowerCase().includes('capabilities')
+      );
+      const weight = productCapabilitiesCriteria ? criteriaWeights[productCapabilitiesCriteria.id] || 100 : 100;
+      const multiplier = weightToMultiplier(weight);
       
-      // Add to vendor scores for display purposes
+      executionRawScore += supportMatrixScore * multiplier;
       vendorScores['product-capabilities'] = supportMatrixScore;
     }
 
-    // Add Ecosystem Support score from support matrix to execution category (ISV Ecosystem)
+    // Add ISV Ecosystem score from support matrix to execution category
     const ecosystemScore = calculateEcosystemScore(vendor.id);
     if (ecosystemScore > 0) {
-      const ecosystemWeight = 25; // Same weight as other criteria
-      executionTotal += ecosystemScore * ecosystemWeight;
-      executionWeight += ecosystemWeight;
-      
-      // Add to vendor scores for display purposes - look for ISV ecosystem criterion
+      // Find ISV Ecosystem criteria to get its weight
       const isvEcosystemCriteria = criteria?.find(c => 
         c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
       );
+      const weight = isvEcosystemCriteria ? criteriaWeights[isvEcosystemCriteria.id] || 100 : 100;
+      const multiplier = weightToMultiplier(weight);
+      
+      executionRawScore += ecosystemScore * multiplier;
+      
       if (isvEcosystemCriteria) {
         vendorScores[isvEcosystemCriteria.id] = ecosystemScore;
       } else {
-        // Fallback: use a standard key for ecosystem scores
         vendorScores['isv-ecosystem'] = ecosystemScore;
       }
     }
 
-    // Convert 0-10 scores to 0-100 scale for proper quadrant positioning
-    const executionScore = executionWeight > 0 ? (executionTotal / executionWeight) * 10 : 50;
-    const viabilityScore = viabilityWeight > 0 ? (viabilityTotal / viabilityWeight) * 10 : 50;
+    return {
+      vendor,
+      vendorScores,
+      executionRawScore,
+      viabilityRawScore,
+      isHistorical: false
+    };
+  });
+
+  // Separate current and historical vendors for normalization
+  const currentVendors = vendorsWithRawScores.filter(v => !v.isHistorical);
+  const historicalVendors = vendorsWithRawScores.filter(v => v.isHistorical);
+
+  // Normalize current vendors' scores
+  let normalizedExecutionScores: number[] = [];
+  let normalizedViabilityScores: number[] = [];
+
+  if (currentVendors.length > 0) {
+    const executionRawScores = currentVendors.map(v => v.executionRawScore);
+    const viabilityRawScores = currentVendors.map(v => v.viabilityRawScore);
+    
+    normalizedExecutionScores = normalizeToRange(executionRawScores);
+    normalizedViabilityScores = normalizeToRange(viabilityRawScores);
+  }
+
+  // Create final vendor scores array
+  const vendorsWithScores: VendorWithScores[] = vendorsWithRawScores.map((vendorData, index) => {
+    if (vendorData.isHistorical) {
+      return {
+        ...vendorData.vendor,
+        scores: vendorData.vendorScores,
+        executionScore: vendorData.executionRawScore,
+        viabilityScore: vendorData.viabilityRawScore,
+      };
+    }
+    
+    const currentIndex = currentVendors.findIndex(v => v.vendor.id === vendorData.vendor.id);
     
     return {
-      ...vendor,
-      scores: vendorScores,
-      executionScore,
-      viabilityScore,
+      ...vendorData.vendor,
+      scores: vendorData.vendorScores,
+      executionScore: normalizedExecutionScores[currentIndex] || 50,
+      viabilityScore: normalizedViabilityScores[currentIndex] || 50,
+      rawExecutionScore: vendorData.executionRawScore,
+      rawViabilityScore: vendorData.viabilityRawScore,
     };
   });
 
@@ -696,6 +763,28 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         parentGroup.select(".label-background")
           .attr("fill", "rgba(255, 255, 255, 1.0)")
           .attr("stroke", "rgba(99, 102, 241, 0.6)");
+          
+        // Show tooltip with raw and normalized scores
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        if (svgRect) {
+          setTooltip({
+            visible: true,
+            x: event.clientX - svgRect.left + 10,
+            y: event.clientY - svgRect.top - 10,
+            vendor: d
+          });
+        }
+      })
+      .on("mousemove", function(event, d) {
+        // Update tooltip position
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        if (svgRect && tooltip?.visible) {
+          setTooltip(prev => prev ? {
+            ...prev,
+            x: event.clientX - svgRect.left + 10,
+            y: event.clientY - svgRect.top - 10
+          } : null);
+        }
       })
       .on("mouseout", function(event, d) {
         d3.select(this)
@@ -711,6 +800,9 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         parentGroup.select(".label-background")
           .attr("fill", "rgba(255, 255, 255, 0.9)")
           .attr("stroke", "rgba(148, 163, 184, 0.4)");
+          
+        // Hide tooltip
+        setTooltip(null);
       })
       .on("click", function(event, d) {
         setSelectedVendor({
@@ -882,6 +974,44 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
             <CardContent>
               <div className="relative">
                 <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm" />
+                
+                {/* Tooltip for vendor details */}
+                {tooltip && tooltip.visible && tooltip.vendor && (
+                  <div 
+                    className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-none"
+                    style={{
+                      left: tooltip.x,
+                      top: tooltip.y,
+                      transform: 'translate(-50%, -100%)',
+                      minWidth: '200px'
+                    }}
+                  >
+                    <div className="font-semibold text-gray-900 mb-2">{tooltip.vendor.name}</div>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Product Strategy & Execution:</span>
+                        <span className="font-medium">{tooltip.vendor.executionScore.toFixed(1)}</span>
+                      </div>
+                      {tooltip.vendor.rawExecutionScore !== undefined && (
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Raw Score:</span>
+                          <span>{tooltip.vendor.rawExecutionScore.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Vendor Viability:</span>
+                        <span className="font-medium">{tooltip.vendor.viabilityScore.toFixed(1)}</span>
+                      </div>
+                      {tooltip.vendor.rawViabilityScore !== undefined && (
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Raw Score:</span>
+                          <span>{tooltip.vendor.rawViabilityScore.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="mt-4 px-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Historical View - {formatDate(selectedDate)} 
