@@ -6,10 +6,9 @@ import { FadeInSection } from "@/components/ui/animated-card";
 import { LoadingGrid } from "@/components/ui/loading-animations";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Grid, BarChart3, TrendingUp, Users } from "lucide-react";
+import { Filter, Grid, BarChart3, TrendingUp, Users } from "lucide-react";
 import type { Market } from "@shared/schema";
 
 export default function Markets() {
@@ -19,7 +18,6 @@ export default function Markets() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Extract unique categories from markets
   const categories = useMemo(() => {
@@ -29,19 +27,16 @@ export default function Markets() {
     return uniqueCategories.sort();
   }, [markets]);
 
-  // Filter markets based on category and search
+  // Filter markets based on category
   const filteredMarkets = useMemo(() => {
     if (!markets) return [];
     
     return markets.filter(market => {
       const matchesCategory = selectedCategory === "all" || market.category === selectedCategory;
-      const matchesSearch = searchTerm === "" || 
-        market.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        market.description?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      return matchesCategory && matchesSearch;
+      return matchesCategory;
     });
-  }, [markets, selectedCategory, searchTerm]);
+  }, [markets, selectedCategory]);
 
   if (authLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
@@ -119,7 +114,7 @@ export default function Markets() {
           </motion.div>
         )}
 
-        {/* Filters and Search Section */}
+        {/* Category Filter Section */}
         <motion.div 
           className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -128,21 +123,10 @@ export default function Markets() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Filter className="h-5 w-5 text-gray-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Filter & Search</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Filter</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search markets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
+          <div className="max-w-md">
             {/* Category Filter */}
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
@@ -160,41 +144,25 @@ export default function Markets() {
           </div>
 
           {/* Active Filters */}
-          {(selectedCategory !== "all" || searchTerm !== "") && (
+          {selectedCategory !== "all" && (
             <div className="flex items-center gap-2 mt-4">
               <span className="text-sm text-gray-500">Active filters:</span>
-              {selectedCategory !== "all" && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  Category: {selectedCategory}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2 h-4 w-4 p-0 hover:bg-blue-200"
-                    onClick={() => setSelectedCategory("all")}
-                  >
-                    ×
-                  </Button>
-                </Badge>
-              )}
-              {searchTerm !== "" && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Search: "{searchTerm}"
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2 h-4 w-4 p-0 hover:bg-green-200"
-                    onClick={() => setSearchTerm("")}
-                  >
-                    ×
-                  </Button>
-                </Badge>
-              )}
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                Category: {selectedCategory}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-2 h-4 w-4 p-0 hover:bg-blue-200"
+                  onClick={() => setSelectedCategory("all")}
+                >
+                  ×
+                </Button>
+              </Badge>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setSelectedCategory("all");
-                  setSearchTerm("");
                 }}
                 className="ml-2"
               >
@@ -234,20 +202,19 @@ export default function Markets() {
           >
             <div className="max-w-md mx-auto">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="h-8 w-8 text-gray-400" />
+                <Filter className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No markets found</h3>
               <p className="text-gray-600 mb-4">
-                Try adjusting your search terms or category filter.
+                Try adjusting your category filter.
               </p>
               <Button
                 variant="outline"
                 onClick={() => {
                   setSelectedCategory("all");
-                  setSearchTerm("");
                 }}
               >
-                Clear Filters
+                Clear Filter
               </Button>
             </div>
           </motion.div>
