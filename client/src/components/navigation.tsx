@@ -1,6 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Search, LogOut, User, Settings } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -108,17 +107,6 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {isAuthenticated && (
-              <div className="relative">
-                <Input 
-                  type="text" 
-                  placeholder="Search markets..." 
-                  className="w-64 pl-10"
-                />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              </div>
-            )}
-            
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
