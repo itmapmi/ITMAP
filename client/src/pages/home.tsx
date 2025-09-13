@@ -33,7 +33,7 @@ export default function Home() {
               <img src={itmapLogo} alt="ITmap" className="h-48 w-auto" />
             </div>
             <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl mb-8 max-w-5xl mx-auto leading-tight">
-              Cut Through the Noise in Enterprise IT Vendor Evaluation
+              Select Enterprise IT Vendors with Confidence
             </h1>
             <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
               ITmap.com uses AI to analyze publicly available data, delivering vendor rankings, feature matrices, 
