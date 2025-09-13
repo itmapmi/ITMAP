@@ -191,7 +191,7 @@ export default function Markets() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <MarketGrid markets={filteredMarkets} />
+            <MarketGrid markets={filteredMarkets} isAuthenticated={isAuthenticated} />
           </motion.div>
         ) : markets && markets.length > 0 ? (
           <motion.div 
