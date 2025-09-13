@@ -42,12 +42,12 @@ export default function Home() {
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/markets">
                 <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 px-12 py-4 text-lg font-semibold">
-                  Explore Vendor Evaluations
+                  Explore Markets
                 </Button>
               </Link>
               <Link href="/login">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 border-gray-700 text-gray-700 hover:bg-gray-700 hover:text-white px-8 py-4 text-lg">
-                  Sign In
+                  Sign-in/Register
                 </Button>
               </Link>
             </div>
@@ -166,7 +166,7 @@ export default function Home() {
                 </p>
                 <Link href="/markets">
                   <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 px-12 py-4 text-lg font-semibold">
-                    Explore Vendor Evaluations
+                    Explore Markets
                   </Button>
                 </Link>
               </div>
