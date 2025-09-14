@@ -79,7 +79,7 @@ export function setupPassport(app: Express) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/auth/google/callback",
+        callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -126,7 +126,7 @@ export function setupPassport(app: Express) {
       {
         clientID: process.env.LINKEDIN_CLIENT_ID,
         clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-        callbackURL: "/auth/linkedin/callback",
+        callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN}/auth/linkedin/callback`,
         scope: ['r_emailaddress', 'r_liteprofile'],
       },
       async (accessToken, refreshToken, profile, done) => {
