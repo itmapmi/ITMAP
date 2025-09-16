@@ -746,11 +746,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const marketId = req.params.marketId;
       const reportConfig = req.body;
       
-      // Generate PDF using pdf-lib
-      const { PDFDocument, rgb } = await import('pdf-lib');
+      // Generate PDF using pdf-lib with metadata
+      const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
       
       const pdfDoc = await PDFDocument.create();
+      
+      // Set PDF metadata to help with security detection
+      pdfDoc.setTitle(reportConfig.title || 'Market Report');
+      pdfDoc.setSubject('Market Research Report');
+      pdfDoc.setKeywords(['market research', 'vendors', 'analysis']);
+      pdfDoc.setProducer('MarketScope Platform');
+      pdfDoc.setCreator('MarketScope Platform');
+      pdfDoc.setCreationDate(new Date());
+      pdfDoc.setModificationDate(new Date());
+      
       const page = pdfDoc.addPage([612, 792]); // Standard US Letter size
+      
+      // Use standard font to avoid encoding issues
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       
       const title = reportConfig.title || 'Market Report';
       const description = reportConfig.description || '';
@@ -771,6 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         x: 50,
         y: yPosition,
         size: 20,
+        font: font,
         color: rgb(0, 0, 0)
       });
       yPosition -= 40;
@@ -780,41 +794,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cleanMarketId = String(marketId).replace(/[^\x00-\x7F]/g, "?");
       const cleanReportType = String(reportConfig.reportType || 'Custom').replace(/[^\x00-\x7F]/g, "?");
       
-      page.drawText(`Title: ${cleanTitle}`, { x: 50, y: yPosition, size: 12 });
+      page.drawText(`Title: ${cleanTitle}`, { x: 50, y: yPosition, size: 12, font: font });
       yPosition -= 20;
-      page.drawText(`Market ID: ${cleanMarketId}`, { x: 50, y: yPosition, size: 12 });
+      page.drawText(`Market ID: ${cleanMarketId}`, { x: 50, y: yPosition, size: 12, font: font });
       yPosition -= 20;
-      page.drawText(`Report Type: ${cleanReportType}`, { x: 50, y: yPosition, size: 12 });
+      page.drawText(`Report Type: ${cleanReportType}`, { x: 50, y: yPosition, size: 12, font: font });
       yPosition -= 20;
-      page.drawText(`Generated: ${new Date().toLocaleDateString()}`, { x: 50, y: yPosition, size: 12 });
+      page.drawText(`Generated: ${new Date().toLocaleDateString()}`, { x: 50, y: yPosition, size: 12, font: font });
       yPosition -= 40;
       
       // Description
       if (description) {
-        page.drawText('DESCRIPTION', { x: 50, y: yPosition, size: 14, color: rgb(0, 0, 0) });
+        page.drawText('DESCRIPTION', { x: 50, y: yPosition, size: 14, font: font, color: rgb(0, 0, 0) });
         yPosition -= 25;
         const cleanDescription = String(description).replace(/[^\x00-\x7F]/g, "?");
-        page.drawText(cleanDescription, { x: 50, y: yPosition, size: 10, maxWidth: 500 });
+        page.drawText(cleanDescription, { x: 50, y: yPosition, size: 10, font: font, maxWidth: 500 });
         yPosition -= 40;
       }
       
       // Vendors
-      page.drawText(`INCLUDED VENDORS (${vendorCount})`, { x: 50, y: yPosition, size: 14 });
+      page.drawText(`INCLUDED VENDORS (${vendorCount})`, { x: 50, y: yPosition, size: 14, font: font });
       yPosition -= 25;
       if (vendorCount > 0) {
         reportConfig.includedVendors?.forEach((vendorId: string) => {
           const cleanVendorId = String(vendorId).replace(/[^\x00-\x7F]/g, "?");
-          page.drawText(`• Vendor ${cleanVendorId.substring(0, 8)}`, { x: 60, y: yPosition, size: 10 });
+          page.drawText(`• Vendor ${cleanVendorId.substring(0, 8)}`, { x: 60, y: yPosition, size: 10, font: font });
           yPosition -= 15;
         });
       } else {
-        page.drawText('No vendors selected', { x: 60, y: yPosition, size: 10 });
+        page.drawText('No vendors selected', { x: 60, y: yPosition, size: 10, font: font });
         yPosition -= 15;
       }
       yPosition -= 20;
       
       // Content sections
-      page.drawText('REPORT CONTENT SECTIONS', { x: 50, y: yPosition, size: 14 });
+      page.drawText('REPORT CONTENT SECTIONS', { x: 50, y: yPosition, size: 14, font: font });
       yPosition -= 25;
       
       console.log('Content sections to render:', contentSections);
@@ -823,20 +837,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Processing section ${index}: "${section}" (type: ${typeof section})`);
         // Strip any problematic Unicode characters
         const cleanSection = String(section).replace(/[^\x00-\x7F]/g, "?");
-        page.drawText(`+ ${cleanSection}`, { x: 60, y: yPosition, size: 10 });
+        page.drawText(`+ ${cleanSection}`, { x: 60, y: yPosition, size: 10, font: font });
         yPosition -= 15;
       });
       yPosition -= 20;
       
       // Summary
-      page.drawText('REPORT SUMMARY', { x: 50, y: yPosition, size: 14 });
+      page.drawText('REPORT SUMMARY', { x: 50, y: yPosition, size: 14, font: font });
       yPosition -= 25;
-      page.drawText(`• Total Vendors: ${vendorCount}`, { x: 60, y: yPosition, size: 10 });
+      page.drawText(`• Total Vendors: ${vendorCount}`, { x: 60, y: yPosition, size: 10, font: font });
       yPosition -= 15;
-      page.drawText(`• Content Sections: ${contentSections.length}`, { x: 60, y: yPosition, size: 10 });
+      page.drawText(`• Content Sections: ${contentSections.length}`, { x: 60, y: yPosition, size: 10, font: font });
       yPosition -= 15;
       const userEmail = String((req.user as any)?.email || 'System').replace(/[^\x00-\x7F]/g, "?");
-      page.drawText(`• Generated By: ${userEmail}`, { x: 60, y: yPosition, size: 10 });
+      page.drawText(`• Generated By: ${userEmail}`, { x: 60, y: yPosition, size: 10, font: font });
       yPosition -= 40;
       
       // Footer
@@ -844,16 +858,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         x: 50,
         y: 50,
         size: 8,
+        font: font,
         color: rgb(0.5, 0.5, 0.5)
       });
       
       // Generate PDF buffer
       const pdfBuffer = await pdfDoc.save();
       
-      // Set proper headers and send PDF
+      // Set proper headers and send PDF with security-friendly headers
+      const filename = `${(reportConfig.title || 'Market Report').replace(/[^a-zA-Z0-9\s\-]/g, '')}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${reportConfig.title || 'Market Report'}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
       res.send(pdfBuffer);
       
     } catch (error) {
