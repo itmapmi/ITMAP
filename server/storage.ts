@@ -42,7 +42,7 @@ import {
   historicalPositions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -108,7 +108,7 @@ export interface IStorage {
   deleteFeature(id: string): Promise<void>;
   
   // Vendor Feature Support
-  getVendorFeatureSupport(marketId: string): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]>;
+  getVendorFeatureSupport(marketId: string, vendorIds?: string[]): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]>;
   createOrUpdateVendorFeatureSupport(support: InsertVendorFeatureSupport): Promise<VendorFeatureSupport>;
   
   // Research Reports
@@ -587,7 +587,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vendor Feature Support
-  async getVendorFeatureSupport(marketId: string): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]> {
+  async getVendorFeatureSupport(marketId: string, vendorIds?: string[]): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]> {
+    // Build the where condition based on whether vendorIds are provided
+    const whereCondition = vendorIds && vendorIds.length > 0
+      ? and(
+          eq(vendors.marketId, marketId),
+          vendorIds.length === 1 
+            ? eq(vendors.id, vendorIds[0])
+            : inArray(vendors.id, vendorIds)
+        )
+      : eq(vendors.marketId, marketId);
+
     return await db
       .select({
         id: vendorFeatureSupport.id,
@@ -602,7 +612,7 @@ export class DatabaseStorage implements IStorage {
       .from(vendorFeatureSupport)
       .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
       .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
-      .where(eq(vendors.marketId, marketId));
+      .where(whereCondition);
   }
 
   async createOrUpdateVendorFeatureSupport(support: InsertVendorFeatureSupport): Promise<VendorFeatureSupport> {

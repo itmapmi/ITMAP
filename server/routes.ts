@@ -544,7 +544,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vendor Feature Support
   app.get("/api/markets/:marketId/feature-support", async (req, res) => {
     try {
-      const support = await storage.getVendorFeatureSupport(req.params.marketId);
+      const { marketId } = req.params;
+      const vendorIds = req.query.vendorIds ? 
+        (typeof req.query.vendorIds === 'string' ? req.query.vendorIds.split(',') : undefined) : 
+        undefined;
+      
+      const support = await storage.getVendorFeatureSupport(marketId, vendorIds);
       res.json(support);
     } catch (error) {
       console.error("Error fetching feature support:", error);
