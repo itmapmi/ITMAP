@@ -320,6 +320,7 @@ export const insertVendorScoreSchema = createInsertSchema(vendorScores).omit({
   updatedAt: true,
 }).extend({
   score: z.number().min(0, "Score must be at least 0").max(10, "Score cannot exceed 10"),
+  notes: z.string().optional(),
 });
 
 export const insertVendorNewsSchema = createInsertSchema(vendorNews).omit({
