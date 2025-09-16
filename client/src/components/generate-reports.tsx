@@ -78,7 +78,7 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${reportConfig.title || 'Market Report'}.pdf`;
+      link.download = `${reportConfig.title || 'Market Report'}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -440,7 +440,7 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
               </Button>
               
               <p className="text-xs text-gray-500 text-center mt-2">
-                Report will be generated as a PDF file
+                Report will be generated as a ZIP file containing a PDF
               </p>
             </CardContent>
           </Card>
