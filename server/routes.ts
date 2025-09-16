@@ -740,6 +740,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST generate custom report
+  app.post("/api/markets/:marketId/generate-report", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const reportConfig = req.body;
+      
+      // For now, return a mock PDF response
+      // In a real implementation, this would generate an actual PDF
+      const mockPdf = Buffer.from(`Mock PDF Report: ${reportConfig.title}\nMarket ID: ${marketId}\nGenerated: ${new Date().toISOString()}`);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${reportConfig.title || 'Market Report'}.pdf"`);
+      res.send(mockPdf);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
   // GET individual research report
   app.get("/api/research-reports/:reportId", async (req, res) => {
     try {

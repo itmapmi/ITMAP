@@ -9,7 +9,7 @@ import VendorComparison from "@/components/vendor-comparison";
 import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
 import VendorNews from "@/components/vendor-news";
-import ResearchReports from "@/components/research-reports";
+import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
 import type { Market } from "@shared/schema";
 import { motion } from "framer-motion";
@@ -67,7 +67,7 @@ export default function MarketDetails() {
               <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
               <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
               <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
-              <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
+              <TabsTrigger value="generate-reports">Generate Reports</TabsTrigger>
               <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
               <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             </TabsList>
@@ -89,7 +89,7 @@ export default function MarketDetails() {
               <SkeletonCard lines={6} className="h-80" />
             </TabsContent>
 
-            <TabsContent value="research-reports" className="mt-6">
+            <TabsContent value="generate-reports" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <SkeletonCard lines={2} />
                 <SkeletonCard lines={2} />
@@ -159,7 +159,7 @@ export default function MarketDetails() {
             <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
-            <TabsTrigger value="research-reports">Research Reports</TabsTrigger>
+            <TabsTrigger value="generate-reports">Generate Reports</TabsTrigger>
             <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
           </TabsList>
@@ -179,8 +179,8 @@ export default function MarketDetails() {
             <EcosystemSupport marketId={marketId!} />
           </TabsContent>
 
-          <TabsContent value="research-reports" className="mt-6">
-            <ResearchReports marketId={marketId!} />
+          <TabsContent value="generate-reports" className="mt-6">
+            <GenerateReports marketId={marketId!} />
           </TabsContent>
 
           <TabsContent value="research-methodology" className="mt-6">
