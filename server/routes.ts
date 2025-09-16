@@ -810,8 +810,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Content sections
       page.drawText('REPORT CONTENT SECTIONS', { x: 50, y: yPosition, size: 14 });
       yPosition -= 25;
-      contentSections.forEach(section => {
-        page.drawText(`+ ${section}`, { x: 60, y: yPosition, size: 10 });
+      
+      console.log('Content sections to render:', contentSections);
+      
+      contentSections.forEach((section, index) => {
+        console.log(`Processing section ${index}: "${section}" (type: ${typeof section})`);
+        // Strip any problematic Unicode characters
+        const cleanSection = String(section).replace(/[^\x00-\x7F]/g, "?");
+        page.drawText(`+ ${cleanSection}`, { x: 60, y: yPosition, size: 10 });
         yPosition -= 15;
       });
       yPosition -= 20;
