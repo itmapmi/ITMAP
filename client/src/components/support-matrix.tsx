@@ -184,7 +184,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [allVendors, selectedVendors]); // Re-run when vendor data changes to ensure DOM is ready
 
   // Initialize with all categories collapsed when features load (only once)
   useEffect(() => {
@@ -513,9 +513,10 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         ) : (
           <div className="relative">
             {/* Sticky header that moves with horizontal scroll */}
-            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden">
+            <div 
+              ref={stickyHeaderRef}
+              className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden">
               <div 
-                ref={stickyHeaderRef}
                 className="grid gap-4 py-4 px-6" 
                 style={{ 
                   gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
