@@ -442,6 +442,9 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
               <p className="text-xs text-gray-500 text-center mt-2">
                 Report will be generated as a ZIP file containing a PDF
               </p>
+              <p className="text-xs text-gray-500 text-center mt-1">
+                Ensure your Anti-virus scanner is not blocking the file download
+              </p>
             </CardContent>
           </Card>
 
