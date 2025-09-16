@@ -91,34 +91,21 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     supportLevel: number;
   } | null>(null);
 
-  // Only load vendors initially for selection
-  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/markets", marketId, "vendors"],
-  });
-
-  // Load features only for filtering purposes (needed for ecosystem feature filtering)
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
   });
 
-  // Load support matrix only after vendor selection
-  const selectedVendorIds = Array.from(selectedVendors);
+  const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+    queryKey: ["/api/markets", marketId, "vendors"],
+  });
+
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<
     (VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]
   >({
-    queryKey: ["/api/markets", marketId, "feature-support", { vendorIds: selectedVendorIds }],
-    enabled: selectedVendorIds.length > 0, // Only load after vendor selection
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set('vendorIds', selectedVendorIds.join(','));
-      const response = await fetch(`/api/markets/${marketId}/feature-support?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch support data');
-      return response.json();
-    }
+    queryKey: ["/api/markets", marketId, "feature-support"],
   });
 
-  const isInitialLoading = vendorsLoading || featuresLoading;
-  const isDataLoading = supportLoading;
+  const isLoading = featuresLoading || vendorsLoading || supportLoading;
 
   // Filter features to only include ecosystem-related categories
   const ecosystemFeatures = features?.filter(feature => 
@@ -128,7 +115,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     feature.category.name.toLowerCase().includes('third-party')
   ) || [];
 
-  // No auto-initialization - require explicit vendor selection
+  // Initialize selected vendors to all vendors if none selected
+  useEffect(() => {
+    if (allVendors && selectedVendors.size === 0) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+    }
+  }, [allVendors, selectedVendors.size]);
 
   // Scroll synchronization effect
   useEffect(() => {
@@ -197,7 +189,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     }
   };
 
-  if (isInitialLoading) {
+  if (isLoading) {
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -478,25 +470,6 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
               <Filter className="h-4 w-4" />
               Filter Vendors
             </Button>
-          </div>
-        ) : isDataLoading ? (
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
-                Loading ecosystem support data for selected vendors...
-              </div>
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex space-x-4">
-                  <Skeleton className="h-8 w-48" />
-                  <div className="flex space-x-2">
-                    {[...Array(selectedVendors.size)].map((_, j) => (
-                      <Skeleton key={j} className="h-8 w-8 rounded-full" />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="relative">

@@ -3,8 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -134,7 +132,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
 
-  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
+  const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [showVendorSelection, setShowVendorSelection] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [categoriesInitialized, setCategoriesInitialized] = useState(false);
@@ -145,36 +143,29 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     supportLevel: number;
   } | null>(null);
 
-  // Only load vendors initially for selection
+  const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
+    queryKey: ["/api/markets", marketId, "features"],
+  });
+
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
     staleTime: 0,
     refetchOnMount: true,
   });
 
-  // Load features only for filtering purposes (needed for product capability filtering)
-  const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
-    queryKey: ["/api/markets", marketId, "features"],
-  });
-
-  // Load support matrix only after vendor selection (single vendor)
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
-    queryKey: ["/api/markets", marketId, "feature-support", { vendorIds: selectedVendor ? [selectedVendor] : [] }],
-    enabled: !!selectedVendor, // Only load after vendor selection
-    queryFn: async () => {
-      if (!selectedVendor) return [];
-      const params = new URLSearchParams();
-      params.set('vendorIds', selectedVendor);
-      const response = await fetch(`/api/markets/${marketId}/feature-support?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch support data');
-      return response.json();
-    }
+    queryKey: ["/api/markets", marketId, "feature-support"],
   });
 
-  const isInitialLoading = vendorsLoading || featuresLoading;
-  const isDataLoading = supportLoading;
+  const isLoading = featuresLoading || vendorsLoading || supportLoading;
 
-  // No auto-initialization - require explicit single vendor selection
+  // Initialize with all vendors selected when data loads
+  useEffect(() => {
+    if (allVendors && selectedVendors.size === 0) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+      console.log("Product Evaluation vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
+    }
+  }, [allVendors, selectedVendors.size]);
 
   // Scroll synchronization effect
   useEffect(() => {
@@ -193,7 +184,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [allVendors, selectedVendor]); // Re-run when vendor data changes to ensure DOM is ready
+  }, [allVendors, selectedVendors]); // Re-run when vendor data changes to ensure DOM is ready
 
   // Initialize with all categories collapsed when features load (only once)
   useEffect(() => {
@@ -205,7 +196,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   }, [features, categoriesInitialized]);
 
   // Filter vendors based on selection
-  const vendors = selectedVendor ? allVendors?.filter(vendor => vendor.id === selectedVendor) || [] : [];
+  const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
 
   // Filter out ecosystem-related features from product capabilities scoring
   const productCapabilityFeatures = features?.filter(feature => 
@@ -215,7 +206,27 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     !feature.category.name.toLowerCase().includes('third-party')
   ) || [];
 
-  // Single vendor selection - functions no longer needed
+  const toggleVendor = (vendorId: string) => {
+    setSelectedVendors(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(vendorId)) {
+        newSet.delete(vendorId);
+      } else {
+        newSet.add(vendorId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllVendors = () => {
+    if (allVendors) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+    }
+  };
+
+  const clearAllVendors = () => {
+    setSelectedVendors(new Set());
+  };
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories(prev => {
@@ -240,7 +251,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     }
   };
 
-  if (isInitialLoading) {
+  if (isLoading) {
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
@@ -441,36 +452,39 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
                 <Filter className="h-4 w-4 text-blue-500" />
-                Choose One Vendor to Evaluate
+                Choose Vendors to Compare
               </h4>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedVendor(null)} className="hover:bg-red-50">
-                  Clear Selection
+                <Button variant="outline" size="sm" onClick={selectAllVendors} className="hover:bg-blue-50">
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={clearAllVendors} className="hover:bg-red-50">
+                  Clear All
                 </Button>
               </div>
             </div>
-            <RadioGroup value={selectedVendor || ""} onValueChange={setSelectedVendor}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {allVendors.map(vendor => (
-                  <div key={vendor.id} className="flex items-center space-x-2 p-3 rounded-lg hover:bg-white/50 transition-colors border border-gray-200 hover:border-blue-300">
-                    <RadioGroupItem value={vendor.id} id={vendor.id} />
-                    <Label
-                      htmlFor={vendor.id}
-                      className="flex-1 text-sm font-medium leading-none cursor-pointer"
-                    >
-                      <div className="font-semibold text-gray-900">{vendor.name}</div>
-                      {vendor.product && (
-                        <div className="text-xs text-gray-600 mt-1">{vendor.product}</div>
-                      )}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </RadioGroup>
-            {!selectedVendor && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {allVendors.map(vendor => (
+                <div key={vendor.id} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/50 transition-colors">
+                  <Checkbox
+                    id={vendor.id}
+                    checked={selectedVendors.has(vendor.id)}
+                    onCheckedChange={() => toggleVendor(vendor.id)}
+                    className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                  />
+                  <label
+                    htmlFor={vendor.id}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {vendor.name}
+                  </label>
+                </div>
+              ))}
+            </div>
+            {selectedVendors.size === 0 && (
               <p className="text-sm text-amber-600 mt-3 flex items-center gap-2 p-2 bg-amber-50 rounded-lg">
                 <Eye className="h-4 w-4" />
-                Select a vendor to view detailed product evaluation matrix
+                Select at least one vendor to view the comparison matrix
               </p>
             )}
           </div>
@@ -483,9 +497,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
               <Users className="h-8 w-8 text-gray-400" />
             </div>
-            <p className="text-lg font-medium text-gray-900 mb-2">No Vendor Selected</p>
+            <p className="text-lg font-medium text-gray-900 mb-2">No Vendors Selected</p>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Choose a vendor from the filters above to evaluate their product capabilities in detail
+              Choose vendors from the filters above to compare their feature support capabilities
             </p>
             <Button
               variant="outline"
@@ -495,21 +509,6 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               <Filter className="h-4 w-4" />
               Filter Vendors
             </Button>
-          </div>
-        ) : isDataLoading ? (
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-blue-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-                Loading product evaluation data for selected vendor...
-              </div>
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex space-x-4">
-                  <Skeleton className="h-8 w-48" />
-                  <Skeleton className="h-8 w-32" />
-                </div>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="relative">
