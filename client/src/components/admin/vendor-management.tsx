@@ -171,6 +171,44 @@ export default function VendorManagement() {
     },
   });
 
+  const saveNotesMutation = useMutation({
+    mutationFn: async (notesData: { vendorId: string; criteriaId: string; notes: string }) => {
+      // Get current score to preserve it when saving notes
+      const currentScore = getVendorScore(notesData.vendorId, notesData.criteriaId);
+      const response = await apiRequest("/api/vendor-scores", "POST", {
+        ...notesData,
+        score: currentScore
+      });
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      // Clear only the specific pending notes that were just saved
+      const key = `${variables.vendorId}:::${variables.criteriaId}`;
+      setVendorNotes(prev => {
+        const newState = { ...prev };
+        delete newState[key];
+        return newState;
+      });
+      
+      // Invalidate all related queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-scores"] });
+      
+      toast({
+        title: "Success",
+        description: "Notes saved successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notes",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmitVendor = (data: InsertVendor) => {
     const vendorData = { ...data, marketId: selectedMarket };
     if (editingVendor) {
@@ -267,6 +305,33 @@ export default function VendorManagement() {
     
     saveScoreMutation.mutate({ vendorId, criteriaId, score, notes: notes || "" });
     // Don't clear the pending score until mutation succeeds - it will be handled in onSuccess
+  };
+
+  const saveNotes = (vendorId: string, criteriaId: string) => {
+    const key = `${vendorId}:::${criteriaId}`;
+    const notes = vendorNotes[key];
+    
+    if (notes === undefined) {
+      toast({
+        title: "No Notes to Save",
+        description: "Please enter some notes first",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if a score exists for this vendor-criteria combination
+    const existingScore = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
+    if (!existingScore) {
+      toast({
+        title: "Score Required",
+        description: "Please set a score before saving notes",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    saveNotesMutation.mutate({ vendorId, criteriaId, notes });
   };
 
   const saveAllPendingScores = () => {
@@ -539,20 +604,37 @@ export default function VendorManagement() {
                                   const key = `${vendor.id}:::${criterion.id}`;
                                   const hasScoreChanges = vendorScores[key] !== undefined;
                                   const hasNotesChanges = vendorNotes[key] !== undefined;
-                                  const hasChanges = hasScoreChanges || hasNotesChanges;
-                                  return hasChanges ? (
-                                    <Button
-                                      key={criterion.id}
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => saveScore(vendor.id, criterion.id)}
-                                      disabled={saveScoreMutation.isPending}
-                                      className="text-xs"
-                                    >
-                                      <Save className="h-3 w-3 mr-1" />
-                                      {criterion.name}
-                                    </Button>
-                                  ) : null;
+                                  
+                                  return (
+                                    <div key={criterion.id} className="flex flex-col space-y-1">
+                                      {hasScoreChanges && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => saveScore(vendor.id, criterion.id)}
+                                          disabled={saveScoreMutation.isPending}
+                                          className="text-xs"
+                                          data-testid={`save-score-${vendor.id}-${criterion.id}`}
+                                        >
+                                          <Save className="h-3 w-3 mr-1" />
+                                          Save Score
+                                        </Button>
+                                      )}
+                                      {hasNotesChanges && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => saveNotes(vendor.id, criterion.id)}
+                                          disabled={saveNotesMutation.isPending}
+                                          className="text-xs"
+                                          data-testid={`save-notes-${vendor.id}-${criterion.id}`}
+                                        >
+                                          <Save className="h-3 w-3 mr-1" />
+                                          Save Notes
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
                                 })}
                               </div>
                             </TableCell>
@@ -662,20 +744,37 @@ export default function VendorManagement() {
                                   const key = `${vendor.id}:::${criterion.id}`;
                                   const hasScoreChanges = vendorScores[key] !== undefined;
                                   const hasNotesChanges = vendorNotes[key] !== undefined;
-                                  const hasChanges = hasScoreChanges || hasNotesChanges;
-                                  return hasChanges ? (
-                                    <Button
-                                      key={criterion.id}
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => saveScore(vendor.id, criterion.id)}
-                                      disabled={saveScoreMutation.isPending}
-                                      className="text-xs"
-                                    >
-                                      <Save className="h-3 w-3 mr-1" />
-                                      {criterion.name}
-                                    </Button>
-                                  ) : null;
+                                  
+                                  return (
+                                    <div key={criterion.id} className="flex flex-col space-y-1">
+                                      {hasScoreChanges && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => saveScore(vendor.id, criterion.id)}
+                                          disabled={saveScoreMutation.isPending}
+                                          className="text-xs"
+                                          data-testid={`save-score-${vendor.id}-${criterion.id}`}
+                                        >
+                                          <Save className="h-3 w-3 mr-1" />
+                                          Save Score
+                                        </Button>
+                                      )}
+                                      {hasNotesChanges && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => saveNotes(vendor.id, criterion.id)}
+                                          disabled={saveNotesMutation.isPending}
+                                          className="text-xs"
+                                          data-testid={`save-notes-${vendor.id}-${criterion.id}`}
+                                        >
+                                          <Save className="h-3 w-3 mr-1" />
+                                          Save Notes
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
                                 })}
                               </div>
                             </TableCell>
