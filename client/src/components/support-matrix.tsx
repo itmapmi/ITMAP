@@ -133,7 +133,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
-  const [showVendorSelection, setShowVendorSelection] = useState(false);
+  const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [categoriesInitialized, setCategoriesInitialized] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<{
@@ -159,13 +159,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
 
-  // Initialize with all vendors selected when data loads
-  useEffect(() => {
-    if (allVendors && selectedVendors.size === 0) {
-      setSelectedVendors(new Set(allVendors.map(v => v.id)));
-      console.log("Product Evaluation vendors loaded:", allVendors.map(v => ({ name: v.name, product: v.product })));
-    }
-  }, [allVendors, selectedVendors.size]);
+  // Do not auto-select vendors - require user selection
 
   // Scroll synchronization effect
   useEffect(() => {
@@ -197,6 +191,12 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
+
+  const handleProceedWithSelection = () => {
+    if (selectedVendors.size > 0) {
+      setShowVendorSelection(false);
+    }
+  };
 
   // Filter out ecosystem-related features from product capabilities scoring
   const productCapabilityFeatures = features?.filter(feature => 
@@ -274,6 +274,101 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show vendor selection interface first
+  if (showVendorSelection || selectedVendors.size === 0) {
+    return (
+      <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-blue-500" />
+            Product Evaluation
+          </CardTitle>
+          <CardDescription>Select vendors to compare their product features and capabilities</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {allVendors && allVendors.length > 0 ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Vendors to Evaluate</h3>
+                <p className="text-gray-600 mb-4">Select one or more vendors to compare their product capabilities in detail</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {allVendors.map(vendor => (
+                  <div 
+                    key={vendor.id} 
+                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                      selectedVendors.has(vendor.id) 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => toggleVendor(vendor.id)}
+                    data-testid={`vendor-card-${vendor.id}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">{vendor.name}</h4>
+                        {vendor.product && (
+                          <p className="text-sm text-gray-600 mt-1">{vendor.product}</p>
+                        )}
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        selectedVendors.has(vendor.id)
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedVendors.has(vendor.id) && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="text-sm text-gray-600">
+                  {selectedVendors.size === 0 ? 'No vendors selected' : `${selectedVendors.size} vendor${selectedVendors.size === 1 ? '' : 's'} selected`}
+                </div>
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedVendors(new Set())}
+                    disabled={selectedVendors.size === 0}
+                    data-testid="clear-vendors-button"
+                  >
+                    Clear All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedVendors(new Set(allVendors.map(v => v.id)))}
+                    data-testid="select-all-vendors-button"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    onClick={handleProceedWithSelection}
+                    disabled={selectedVendors.size === 0}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="proceed-with-selection-button"
+                  >
+                    View Product Evaluation ({selectedVendors.size})
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>No vendors available for this market.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -414,6 +509,18 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowVendorSelection(true)}
+              className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+              data-testid="back-to-vendor-selection-button"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Change Selection
+            </Button>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"

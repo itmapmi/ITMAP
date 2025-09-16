@@ -83,7 +83,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [showVendorSelection, setShowVendorSelection] = useState(false);
+  const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
     featureName: string;
@@ -115,12 +115,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     feature.category.name.toLowerCase().includes('third-party')
   ) || [];
 
-  // Initialize selected vendors to all vendors if none selected
-  useEffect(() => {
-    if (allVendors && selectedVendors.size === 0) {
-      setSelectedVendors(new Set(allVendors.map(v => v.id)));
-    }
-  }, [allVendors, selectedVendors.size]);
+  // Do not auto-select vendors - require user selection
 
   // Scroll synchronization effect
   useEffect(() => {
@@ -143,6 +138,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
+
+  const handleProceedWithSelection = () => {
+    if (selectedVendors.size > 0) {
+      setShowVendorSelection(false);
+    }
+  };
 
   const toggleVendor = (vendorId: string) => {
     setSelectedVendors(prev => {
@@ -212,6 +213,112 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show vendor selection interface first
+  if (showVendorSelection || selectedVendors.size === 0) {
+    return (
+      <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
+          <CardTitle className="flex items-center gap-2">
+            <Network className="h-5 w-5 text-green-500" />
+            Ecosystem Support
+          </CardTitle>
+          <CardDescription>Select vendors to compare their third-party integrations and ecosystem partnerships</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {isLoading ? (
+            <div className="space-y-4">
+              <div className="text-center text-gray-500">Loading vendors...</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="p-4 border rounded-lg">
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : allVendors && allVendors.length > 0 ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Vendors to Compare</h3>
+                <p className="text-gray-600 mb-4">Select one or more vendors to view their ecosystem support capabilities</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {allVendors.map(vendor => (
+                  <div 
+                    key={vendor.id} 
+                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                      selectedVendors.has(vendor.id) 
+                        ? 'border-green-500 bg-green-50 shadow-md' 
+                        : 'border-gray-200 hover:border-green-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => toggleVendor(vendor.id)}
+                    data-testid={`vendor-card-${vendor.id}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900">{vendor.name}</h4>
+                        {vendor.product && (
+                          <p className="text-sm text-gray-600 mt-1">{vendor.product}</p>
+                        )}
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        selectedVendors.has(vendor.id)
+                          ? 'border-green-500 bg-green-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedVendors.has(vendor.id) && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="text-sm text-gray-600">
+                  {selectedVendors.size === 0 ? 'No vendors selected' : `${selectedVendors.size} vendor${selectedVendors.size === 1 ? '' : 's'} selected`}
+                </div>
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedVendors(new Set())}
+                    disabled={selectedVendors.size === 0}
+                    data-testid="clear-vendors-button"
+                  >
+                    Clear All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedVendors(new Set(allVendors.map(v => v.id)))}
+                    data-testid="select-all-vendors-button"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    onClick={handleProceedWithSelection}
+                    disabled={selectedVendors.size === 0}
+                    className="bg-green-600 hover:bg-green-700"
+                    data-testid="proceed-with-selection-button"
+                  >
+                    View Ecosystem Support ({selectedVendors.size})
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>No vendors available for this market.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -375,6 +482,18 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowVendorSelection(true)}
+              className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+              data-testid="back-to-vendor-selection-button"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Change Selection
+            </Button>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
