@@ -746,167 +746,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const marketId = req.params.marketId;
       const reportConfig = req.body;
       
-      // Import PDF generation library
-      const pdf = require('html-pdf-node');
+      // Generate PDF using pdf-lib
+      const { PDFDocument, rgb } = await import('pdf-lib');
       
-      // Generate HTML content for the report
-      const reportHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>${reportConfig.title || 'Market Report'}</title>
-          <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              line-height: 1.6; 
-              margin: 40px;
-              color: #333;
-            }
-            .header { 
-              text-align: center; 
-              margin-bottom: 30px; 
-              border-bottom: 2px solid #e1e5e9;
-              padding-bottom: 20px;
-            }
-            .title { 
-              font-size: 28px; 
-              font-weight: bold; 
-              color: #1a1a1a;
-              margin-bottom: 10px;
-            }
-            .subtitle { 
-              font-size: 16px; 
-              color: #6b7280;
-              margin-bottom: 5px;
-            }
-            .section { 
-              margin: 30px 0; 
-            }
-            .section h2 { 
-              color: #374151; 
-              border-left: 4px solid #3b82f6;
-              padding-left: 15px;
-              margin-bottom: 15px;
-            }
-            .vendor-list { 
-              background: #f8fafc; 
-              padding: 20px; 
-              border-radius: 8px;
-              margin: 15px 0;
-            }
-            .vendor-item { 
-              display: inline-block; 
-              background: white; 
-              padding: 8px 16px; 
-              margin: 5px; 
-              border-radius: 4px;
-              border: 1px solid #e5e7eb;
-            }
-            .content-sections { 
-              display: grid; 
-              grid-template-columns: 1fr 1fr; 
-              gap: 20px; 
-              margin: 20px 0;
-            }
-            .content-item { 
-              background: #f0f9ff; 
-              padding: 15px; 
-              border-radius: 6px;
-              border-left: 3px solid #0ea5e9;
-            }
-            .meta-info { 
-              background: #f9fafb; 
-              padding: 20px; 
-              border-radius: 8px; 
-              margin-top: 30px;
-              border: 1px solid #e5e7eb;
-            }
-            .footer { 
-              margin-top: 50px; 
-              text-align: center; 
-              font-size: 12px; 
-              color: #9ca3af;
-              border-top: 1px solid #e5e7eb;
-              padding-top: 20px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">${reportConfig.title || 'Market Report'}</div>
-            <div class="subtitle">Market ID: ${marketId}</div>
-            <div class="subtitle">Report Type: ${reportConfig.reportType || 'Custom'}</div>
-            <div class="subtitle">Generated: ${new Date().toLocaleDateString()}</div>
-          </div>
-
-          ${reportConfig.description ? `
-          <div class="section">
-            <h2>Report Description</h2>
-            <p>${reportConfig.description}</p>
-          </div>
-          ` : ''}
-
-          <div class="section">
-            <h2>Included Vendors (${reportConfig.includedVendors?.length || 0})</h2>
-            <div class="vendor-list">
-              ${reportConfig.includedVendors?.map((vendorId: string) => 
-                `<span class="vendor-item">Vendor ${vendorId.substring(0, 8)}</span>`
-              ).join('') || '<p>No vendors selected</p>'}
-            </div>
-          </div>
-
-          <div class="section">
-            <h2>Report Content Sections</h2>
-            <div class="content-sections">
-              ${reportConfig.includeVendorEvaluation ? '<div class="content-item">✓ Vendor Evaluation Analysis</div>' : ''}
-              ${reportConfig.includeProductCapabilities ? '<div class="content-item">✓ Product Capabilities Matrix</div>' : ''}
-              ${reportConfig.includeEcosystemSupport ? '<div class="content-item">✓ Ecosystem Support Analysis</div>' : ''}
-              ${reportConfig.includeVendorNews ? '<div class="content-item">✓ Recent Vendor News</div>' : ''}
-              ${reportConfig.includeMethodology ? '<div class="content-item">✓ Research Methodology</div>' : ''}
-            </div>
-          </div>
-
-          <div class="section">
-            <h2>Report Summary</h2>
-            <div class="meta-info">
-              <p><strong>Report Configuration:</strong></p>
-              <ul>
-                <li>Total Vendors: ${reportConfig.includedVendors?.length || 0}</li>
-                <li>Content Sections: ${[
-                  reportConfig.includeVendorEvaluation && 'Vendor Evaluation',
-                  reportConfig.includeProductCapabilities && 'Product Capabilities',
-                  reportConfig.includeEcosystemSupport && 'Ecosystem Support',
-                  reportConfig.includeVendorNews && 'Vendor News',
-                  reportConfig.includeMethodology && 'Methodology'
-                ].filter(Boolean).length}</li>
-                <li>Report Type: ${reportConfig.reportType || 'Custom'}</li>
-                <li>Generated By: ${(req.user as any)?.email || 'System'}</li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>This report was generated by MarketScope - Enterprise Market Research Platform</p>
-            <p>Generated on ${new Date().toISOString()}</p>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // PDF generation options
-      const options = {
-        format: 'A4',
-        margin: {
-          top: '0.5in',
-          right: '0.5in',
-          bottom: '0.5in',
-          left: '0.5in'
-        }
-      };
-
-      // Generate PDF from HTML
-      const pdfBuffer = await pdf.generatePdf({ content: reportHtml }, options);
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([612, 792]); // Standard US Letter size
+      
+      const title = reportConfig.title || 'Market Report';
+      const description = reportConfig.description || '';
+      const vendorCount = reportConfig.includedVendors?.length || 0;
+      const contentSections = [
+        reportConfig.includeVendorEvaluation && 'Vendor Evaluation',
+        reportConfig.includeProductCapabilities && 'Product Capabilities', 
+        reportConfig.includeEcosystemSupport && 'Ecosystem Support',
+        reportConfig.includeVendorNews && 'Vendor News',
+        reportConfig.includeMethodology && 'Methodology'
+      ].filter(Boolean);
+      
+      // Add content to PDF
+      let yPosition = 750;
+      
+      // Title
+      page.drawText('MARKET RESEARCH REPORT', {
+        x: 50,
+        y: yPosition,
+        size: 20,
+        color: rgb(0, 0, 0)
+      });
+      yPosition -= 40;
+      
+      // Report details
+      page.drawText(`Title: ${title}`, { x: 50, y: yPosition, size: 12 });
+      yPosition -= 20;
+      page.drawText(`Market ID: ${marketId}`, { x: 50, y: yPosition, size: 12 });
+      yPosition -= 20;
+      page.drawText(`Report Type: ${reportConfig.reportType || 'Custom'}`, { x: 50, y: yPosition, size: 12 });
+      yPosition -= 20;
+      page.drawText(`Generated: ${new Date().toLocaleDateString()}`, { x: 50, y: yPosition, size: 12 });
+      yPosition -= 40;
+      
+      // Description
+      if (description) {
+        page.drawText('DESCRIPTION', { x: 50, y: yPosition, size: 14, color: rgb(0, 0, 0) });
+        yPosition -= 25;
+        page.drawText(description, { x: 50, y: yPosition, size: 10, maxWidth: 500 });
+        yPosition -= 40;
+      }
+      
+      // Vendors
+      page.drawText(`INCLUDED VENDORS (${vendorCount})`, { x: 50, y: yPosition, size: 14 });
+      yPosition -= 25;
+      if (vendorCount > 0) {
+        reportConfig.includedVendors?.forEach((vendorId: string) => {
+          page.drawText(`• Vendor ${vendorId.substring(0, 8)}`, { x: 60, y: yPosition, size: 10 });
+          yPosition -= 15;
+        });
+      } else {
+        page.drawText('No vendors selected', { x: 60, y: yPosition, size: 10 });
+        yPosition -= 15;
+      }
+      yPosition -= 20;
+      
+      // Content sections
+      page.drawText('REPORT CONTENT SECTIONS', { x: 50, y: yPosition, size: 14 });
+      yPosition -= 25;
+      contentSections.forEach(section => {
+        page.drawText(`✓ ${section}`, { x: 60, y: yPosition, size: 10 });
+        yPosition -= 15;
+      });
+      yPosition -= 20;
+      
+      // Summary
+      page.drawText('REPORT SUMMARY', { x: 50, y: yPosition, size: 14 });
+      yPosition -= 25;
+      page.drawText(`• Total Vendors: ${vendorCount}`, { x: 60, y: yPosition, size: 10 });
+      yPosition -= 15;
+      page.drawText(`• Content Sections: ${contentSections.length}`, { x: 60, y: yPosition, size: 10 });
+      yPosition -= 15;
+      page.drawText(`• Generated By: ${(req.user as any)?.email || 'System'}`, { x: 60, y: yPosition, size: 10 });
+      yPosition -= 40;
+      
+      // Footer
+      page.drawText('Generated by MarketScope - Enterprise Market Research Platform', {
+        x: 50,
+        y: 50,
+        size: 8,
+        color: rgb(0.5, 0.5, 0.5)
+      });
+      
+      // Generate PDF buffer
+      const pdfBuffer = await pdfDoc.save();
       
       // Set proper headers and send PDF
       res.setHeader('Content-Type', 'application/pdf');

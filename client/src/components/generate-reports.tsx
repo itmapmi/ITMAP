@@ -59,7 +59,18 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
 
   const generateReportMutation = useMutation({
     mutationFn: async (config: ReportConfig) => {
-      const response = await apiRequest(`/api/markets/${marketId}/generate-report`, 'POST', config);
+      const response = await fetch(`/api/markets/${marketId}/generate-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate report');
+      }
+      
       return response.blob();
     },
     onSuccess: (blob) => {
