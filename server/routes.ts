@@ -811,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       page.drawText('REPORT CONTENT SECTIONS', { x: 50, y: yPosition, size: 14 });
       yPosition -= 25;
       contentSections.forEach(section => {
-        page.drawText(`✓ ${section}`, { x: 60, y: yPosition, size: 10 });
+        page.drawText(`+ ${section}`, { x: 60, y: yPosition, size: 10 });
         yPosition -= 15;
       });
       yPosition -= 20;
