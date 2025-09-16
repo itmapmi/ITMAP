@@ -6,6 +6,12 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 
 interface MagicQuadrantProps {
@@ -32,6 +38,9 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; vendor?: VendorWithScores } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
+  const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Calculate date range for 36 months (156 weeks)
   const today = new Date();
@@ -94,6 +103,48 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     },
     enabled: !!marketId && weeksAgo > 0, // Only fetch historical data when not on current week
   });
+
+  // Mutation for saving notes
+  const saveNotesMutation = useMutation({
+    mutationFn: async (data: { vendorId: string; criteriaId: string; notes: string }) => {
+      return apiRequest(`/api/vendor-scores`, {
+        method: 'POST',
+        body: JSON.stringify({
+          vendorId: data.vendorId,
+          criteriaId: data.criteriaId,
+          score: scores?.find(s => s.vendorId === data.vendorId && s.criteriaId === data.criteriaId)?.score || 0,
+          notes: data.notes
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "scores"] });
+      toast({
+        title: "Notes Saved",
+        description: "Your notes have been saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Initialize notes when scores load
+  useEffect(() => {
+    if (scores) {
+      const notesMap: { [key: string]: string } = {};
+      scores.forEach(score => {
+        if (score.notes) {
+          notesMap[`${score.vendorId}-${score.criteriaId}`] = score.notes;
+        }
+      });
+      setNotes(notesMap);
+    }
+  }, [scores]);
 
   // Initialize weights when data loads
   useEffect(() => {
@@ -1144,88 +1195,169 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       </div>
 
       <Dialog open={!!selectedVendor} onOpenChange={() => setSelectedVendor(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedVendor?.vendor.name}</DialogTitle>
           </DialogHeader>
           
           {selectedVendor && (
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Financial Performance</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Revenue:</span>
-                    <span className="font-medium">
-                      {selectedVendor.vendor.revenue ? 
-                        `$${Number(selectedVendor.vendor.revenue).toFixed(1)}B` : 
-                        'N/A'
-                      }
-                    </span>
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="scores">Scores</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="mt-4">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Financial Performance</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Revenue:</span>
+                        <span className="font-medium">
+                          {selectedVendor.vendor.revenue ? 
+                            `$${Number(selectedVendor.vendor.revenue).toFixed(1)}B` : 
+                            'N/A'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Website:</span>
+                        <span className="font-medium">
+                          {selectedVendor.vendor.website || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Website:</span>
-                    <span className="font-medium">
-                      {selectedVendor.vendor.website || 'N/A'}
-                    </span>
+                  
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Quadrant Position</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Execution Score:</span>
+                        <span className="font-medium">
+                          {selectedVendor.vendor.executionScore.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Viability Score:</span>
+                        <span className="font-medium">
+                          {selectedVendor.vendor.viabilityScore.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Position:</span>
+                        <span className="font-medium">
+                          ({selectedVendor.position.x.toFixed(1)}, {selectedVendor.position.y.toFixed(1)})
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Individual Scores</h4>
-                  <div className="space-y-2 text-sm">
-                    {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
-                      if (criteriaId === 'product-capabilities') {
-                        return (
-                          <div key={criteriaId} className="flex justify-between">
-                            <span className="text-gray-600">Product Capabilities:</span>
-                            <span className="font-medium text-green-600">
-                              {score.toFixed(1)}/10
-                            </span>
-                          </div>
-                        );
-                      }
-                      
-                      const criterion = criteria?.find(c => c.id === criteriaId);
-                      if (!criterion) return null;
-                      
+              </TabsContent>
+              
+              <TabsContent value="scores" className="mt-4">
+                <h4 className="font-medium text-gray-900 mb-4">Individual Criteria Scores</h4>
+                <div className="space-y-3">
+                  {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
+                    if (criteriaId === 'product-capabilities') {
                       return (
-                        <div key={criteriaId} className="flex justify-between">
-                          <span className="text-gray-600">{criterion.name}:</span>
-                          <span className="font-medium">
+                        <div key={criteriaId} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                          <span className="text-gray-900 font-medium">Product Capabilities</span>
+                          <span className="font-bold text-green-600 text-lg">
                             {score.toFixed(1)}/10
                           </span>
                         </div>
                       );
-                    })}
-                  </div>
+                    }
+                    
+                    const criterion = criteria?.find(c => c.id === criteriaId);
+                    if (!criterion) return null;
+                    
+                    return (
+                      <div key={criteriaId} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-gray-900 font-medium">{criterion.name}</span>
+                        <span className="font-bold text-blue-600 text-lg">
+                          {score.toFixed(1)}/10
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              </TabsContent>
               
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Quadrant Position</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Execution Score:</span>
-                    <span className="font-medium">
-                      {selectedVendor.vendor.executionScore.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Viability Score:</span>
-                    <span className="font-medium">
-                      {selectedVendor.vendor.viabilityScore.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Position:</span>
-                    <span className="font-medium">
-                      ({selectedVendor.position.x.toFixed(1)}, {selectedVendor.position.y.toFixed(1)})
-                    </span>
-                  </div>
+              <TabsContent value="notes" className="mt-4">
+                <h4 className="font-medium text-gray-900 mb-4">Criteria Notes</h4>
+                <div className="space-y-4">
+                  {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
+                    const criterion = criteria?.find(c => c.id === criteriaId);
+                    const noteKey = `${selectedVendor.vendor.id}-${criteriaId}`;
+                    const currentNote = notes[noteKey] || '';
+                    
+                    if (criteriaId === 'product-capabilities') {
+                      return (
+                        <div key={criteriaId} className="border rounded-lg p-4">
+                          <Label className="font-medium text-gray-900 mb-2 block">
+                            Product Capabilities (Score: {score.toFixed(1)}/10)
+                          </Label>
+                          <Textarea
+                            placeholder="Add your notes about this vendor's product capabilities..."
+                            value={currentNote}
+                            onChange={(e) => setNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                            className="min-h-[80px]"
+                            data-testid={`notes-product-capabilities-${selectedVendor.vendor.id}`}
+                          />
+                          <Button
+                            onClick={() => saveNotesMutation.mutate({
+                              vendorId: selectedVendor.vendor.id,
+                              criteriaId: criteriaId,
+                              notes: currentNote
+                            })}
+                            className="mt-2"
+                            size="sm"
+                            disabled={saveNotesMutation.isPending}
+                            data-testid={`save-notes-product-capabilities-${selectedVendor.vendor.id}`}
+                          >
+                            {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+                          </Button>
+                        </div>
+                      );
+                    }
+                    
+                    if (!criterion) return null;
+                    
+                    return (
+                      <div key={criteriaId} className="border rounded-lg p-4">
+                        <Label className="font-medium text-gray-900 mb-2 block">
+                          {criterion.name} (Score: {score.toFixed(1)}/10)
+                        </Label>
+                        <Textarea
+                          placeholder={`Add your notes about ${criterion.name}...`}
+                          value={currentNote}
+                          onChange={(e) => setNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                          className="min-h-[80px]"
+                          data-testid={`notes-${criteriaId}-${selectedVendor.vendor.id}`}
+                        />
+                        <Button
+                          onClick={() => saveNotesMutation.mutate({
+                            vendorId: selectedVendor.vendor.id,
+                            criteriaId: criteriaId,
+                            notes: currentNote
+                          })}
+                          className="mt-2"
+                          size="sm"
+                          disabled={saveNotesMutation.isPending}
+                          data-testid={`save-notes-${criteriaId}-${selectedVendor.vendor.id}`}
+                        >
+                          {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
