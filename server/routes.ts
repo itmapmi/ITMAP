@@ -1254,18 +1254,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vendors in the market
       const vendors = await storage.getVendorsByMarket(marketId);
       
-      // Get all features in the market but filter out ecosystem-related features
+      // Get support data first to determine which features have actual vendor support
+      const supportData = await storage.getVendorFeatureSupport(marketId);
+      const featuresWithSupport = new Set(supportData.map(s => s.featureId));
+      
+      // Get all features in the market but filter to only those with support data and exclude ecosystem-related features
       const allFeatures = await storage.getMarketFeatures(marketId);
       const features = allFeatures.filter(feature => {
         const categoryName = feature.category?.name?.toLowerCase() || '';
-        return !categoryName.includes('ecosystem') &&
-               !categoryName.includes('integration') &&
-               !categoryName.includes('partnership') &&
-               !categoryName.includes('third-party');
+        const isProductFeature = !categoryName.includes('ecosystem') &&
+                                !categoryName.includes('integration') &&
+                                !categoryName.includes('partnership') &&
+                                !categoryName.includes('third-party');
+        return isProductFeature && featuresWithSupport.has(feature.id);
       });
-      
-      // Get all support data for the market
-      const supportData = await storage.getVendorFeatureSupport(marketId);
       
       // Find the Product Capabilities criteria
       const allCriteria = await storage.getAllCriteria();
