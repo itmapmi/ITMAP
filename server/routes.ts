@@ -1303,21 +1303,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + score;
         }, 0);
 
-        // Calculate maximum possible score
-        const maxScore = features.length * 1.0;
-        
-        // Calculate normalized score out of 10 (exactly as shown in support matrix)
-        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+        // Use raw total score directly (not normalized) to match Product Evaluation "Total Score" section
+        const rawTotalScore = Number(totalScore.toFixed(2));
 
-        // Update or create the vendor score
+        // Update or create the vendor score using raw total score
         await storage.createOrUpdateVendorScore({
           vendorId: vendor.id,
           criteriaId: productCapabilitiesCriteria.id,
-          score: normalizedScore
+          score: rawTotalScore
         });
 
         updatedScores++;
-        console.log(`Updated Product Capabilities score for ${vendor.name}: ${normalizedScore}/10`);
+        console.log(`Updated Product Capabilities score for ${vendor.name}: ${rawTotalScore} (raw total)`);
       }
 
       res.json({
