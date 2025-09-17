@@ -1254,20 +1254,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all vendors in the market
       const vendors = await storage.getVendorsByMarket(marketId);
       
-      // Get support data first to determine which features have actual vendor support
-      const supportData = await storage.getVendorFeatureSupport(marketId);
-      const featuresWithSupport = new Set(supportData.map(s => s.featureId));
-      
-      // Get all features in the market but filter to only those with support data and exclude ecosystem-related features
+      // Get all product features in the market (excluding ecosystem-related features)
+      // Use total count as denominator, not just features with support data
       const allFeatures = await storage.getMarketFeatures(marketId);
       const features = allFeatures.filter(feature => {
         const categoryName = feature.category?.name?.toLowerCase() || '';
-        const isProductFeature = !categoryName.includes('ecosystem') &&
-                                !categoryName.includes('integration') &&
-                                !categoryName.includes('partnership') &&
-                                !categoryName.includes('third-party');
-        return isProductFeature && featuresWithSupport.has(feature.id);
+        return !categoryName.includes('ecosystem') &&
+               !categoryName.includes('integration') &&
+               !categoryName.includes('partnership') &&
+               !categoryName.includes('third-party');
       });
+      
+      // Get support data for the market
+      const supportData = await storage.getVendorFeatureSupport(marketId);
       
       // Find the Product Capabilities criteria
       const allCriteria = await storage.getAllCriteria();
@@ -1288,10 +1287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate and update scores for each vendor
       for (const vendor of vendors) {
-        // Calculate vendor's total score using same logic as support matrix
+        // Calculate vendor's total score using all product features (missing support defaults to 0)
         const totalScore = features.reduce((sum, feature) => {
           const supportKey = `${vendor.id}-${feature.id}`;
-          const supportLevel = supportLookup.get(supportKey) || 0;
+          const supportLevel = supportLookup.get(supportKey) || 0; // Default to 0 for missing support
           
           // Convert support level to score (same as support matrix)
           let score = 0;
