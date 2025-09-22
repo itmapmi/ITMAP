@@ -110,8 +110,9 @@ export function SupportMatrixAdmin() {
       
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
       toast({
         title: "Support Updated",
         description: "Vendor feature support has been updated successfully.",
@@ -145,7 +146,7 @@ export function SupportMatrixAdmin() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/markets', selectedMarket, 'scores'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
       toast({
         title: "ISV Ecosystem Scores Updated",
         description: `Updated ecosystem scores for ${data.updatedScores} vendors based on ${data.ecosystemFeatures} ecosystem features.`,
