@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronRight, Edit } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit, MessageSquare } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport, Market } from "@shared/schema";
 
 // Harvey Ball icons representing different support levels
@@ -79,6 +79,16 @@ export function SupportMatrixAdmin() {
   supportMatrix.forEach(support => {
     const key = `${support.vendorId}-${support.featureId}`;
     supportLookup.set(key, { level: support.supportLevel, comments: support.comments || '' });
+    // Debug logging for comments
+    if (support.comments && support.comments.trim() !== '') {
+      console.log('Support with comments:', {
+        key,
+        vendorId: support.vendorId,
+        featureId: support.featureId,
+        comments: support.comments,
+        level: support.supportLevel
+      });
+    }
   });
 
   const toggleCategory = (categoryId: string) => {
@@ -431,7 +441,7 @@ export function SupportMatrixAdmin() {
                             const supportLevel = supportData?.level || 0;
                             
                             return (
-                              <div key={vendor.id} className="flex justify-center items-center group">
+                              <div key={vendor.id} className="flex justify-center items-center group relative">
                                 <button
                                   onClick={() => handleSupportEdit(vendor.id, feature.id, vendor.name, feature.name)}
                                   className="hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 relative"
@@ -441,6 +451,12 @@ export function SupportMatrixAdmin() {
                                   <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Edit className="h-3 w-3 text-blue-500" />
                                   </div>
+                                  {/* Show comment indicator if comments exist */}
+                                  {supportData?.comments && supportData.comments.trim() !== '' && (
+                                    <div className="absolute -bottom-1 -left-1" title={`Has comments: ${supportData.comments}`}>
+                                      <MessageSquare className="h-3 w-3 text-green-600 bg-white rounded" />
+                                    </div>
+                                  )}
                                 </button>
                               </div>
                             );
