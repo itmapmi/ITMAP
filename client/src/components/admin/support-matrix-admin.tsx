@@ -111,7 +111,7 @@ export function SupportMatrixAdmin() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/markets', selectedMarket, 'feature-support'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
       toast({
         title: "Support Updated",
         description: "Vendor feature support has been updated successfully.",
