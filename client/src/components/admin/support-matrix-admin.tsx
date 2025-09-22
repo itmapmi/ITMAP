@@ -79,16 +79,6 @@ export function SupportMatrixAdmin() {
   supportMatrix.forEach(support => {
     const key = `${support.vendorId}-${support.featureId}`;
     supportLookup.set(key, { level: support.supportLevel, comments: support.comments || '' });
-    // Debug logging for comments
-    if (support.comments && support.comments.trim() !== '') {
-      console.log('Support with comments:', {
-        key,
-        vendorId: support.vendorId,
-        featureId: support.featureId,
-        comments: support.comments,
-        level: support.supportLevel
-      });
-    }
   });
 
   const toggleCategory = (categoryId: string) => {
@@ -445,7 +435,7 @@ export function SupportMatrixAdmin() {
                                 <button
                                   onClick={() => handleSupportEdit(vendor.id, feature.id, vendor.name, feature.name)}
                                   className="hover:bg-gray-200 p-2 rounded-full transition-colors duration-200 relative"
-                                  title={`Edit support for ${vendor.name} - ${feature.name}${supportData?.comments ? '\nComments: ' + supportData.comments : ''}`}
+                                  title={supportData?.comments && supportData.comments.trim() !== '' ? `Edit support for ${vendor.name} - ${feature.name}\n\nComments: ${supportData.comments}` : `Edit support for ${vendor.name} - ${feature.name}`}
                                 >
                                   <HarveyBall level={supportLevel} />
                                   <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
