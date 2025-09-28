@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { useMobile } from "@/hooks/use-mobile";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 
 interface VendorComparisonProps {
@@ -15,6 +16,7 @@ interface VendorComparisonProps {
 export default function VendorComparison({ marketId }: VendorComparisonProps) {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const isMobile = useMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
@@ -67,17 +69,19 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
         <CardTitle>Compare Vendors</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        <div className={`grid gap-4 mb-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
           {vendors?.map(vendor => (
-            <div key={vendor.id} className="flex items-center space-x-3">
+            <div key={vendor.id} className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
               <Checkbox
                 id={vendor.id}
                 checked={selectedVendors.includes(vendor.id)}
                 onCheckedChange={(checked) => handleVendorToggle(vendor.id, !!checked)}
+                className={isMobile ? 'w-5 h-5' : ''}
+                data-testid={`checkbox-vendor-${vendor.id}`}
               />
               <label 
                 htmlFor={vendor.id}
-                className="text-sm font-medium text-gray-700 cursor-pointer"
+                className={`font-medium text-gray-700 cursor-pointer ${isMobile ? 'text-base' : 'text-sm'}`}
               >
                 {vendor.name}
               </label>
@@ -87,84 +91,167 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
 
         {selectedVendorData.length >= 2 ? (
           <div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Criteria</TableHead>
-                    {selectedVendorData.map(vendor => (
-                      <TableHead key={vendor.id}>{vendor.name}</TableHead>
-                    ))}
-                    <TableHead className="text-center">Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {criteria?.map(criterion => {
-                    const isExpanded = expandedNotes[criterion.id];
-                    const hasNotes = hasNotesForCriteria(criterion.id);
-                    
-                    return (
-                      <>
-                        <TableRow key={criterion.id}>
-                          <TableCell className="font-medium">{criterion.name}</TableCell>
+            {/* Desktop Table */}
+            {!isMobile && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Criteria</TableHead>
+                      {selectedVendorData.map(vendor => (
+                        <TableHead key={vendor.id}>{vendor.name}</TableHead>
+                      ))}
+                      <TableHead className="text-center">Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {criteria?.map(criterion => {
+                      const isExpanded = expandedNotes[criterion.id];
+                      const hasNotes = hasNotesForCriteria(criterion.id);
+                      
+                      return (
+                        <>
+                          <TableRow key={criterion.id}>
+                            <TableCell className="font-medium">{criterion.name}</TableCell>
+                            {selectedVendorData.map(vendor => (
+                              <TableCell key={vendor.id} className="text-center">
+                                <span className="font-semibold">
+                                  {getVendorScore(vendor.id, criterion.id)}
+                                </span>
+                              </TableCell>
+                            ))}
+                            <TableCell className="text-center">
+                              {hasNotes && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleNotes(criterion.id)}
+                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  <FileText className="mr-1 h-3 w-3" />
+                                  View Notes
+                                  {isExpanded ? (
+                                    <ChevronDown className="ml-1 h-3 w-3" />
+                                  ) : (
+                                    <ChevronRight className="ml-1 h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                          
+                          {hasNotes && isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={selectedVendorData.length + 2} className="p-4 bg-gray-50 dark:bg-gray-800">
+                                <div className="space-y-3">
+                                  {selectedVendorData.map(vendor => {
+                                    const notes = getVendorNotes(vendor.id, criterion.id);
+                                    if (!notes.trim()) return null;
+                                    
+                                    return (
+                                      <div key={vendor.id} className="border-l-3 border-blue-500 pl-3">
+                                        <div className="font-medium text-sm text-blue-700 dark:text-blue-300 mb-1">
+                                          {vendor.name}
+                                        </div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                                          {notes}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            
+            {/* Mobile Card Layout */}
+            {isMobile && (
+              <div className="space-y-4">
+                {criteria?.map(criterion => {
+                  const isExpanded = expandedNotes[criterion.id];
+                  const hasNotes = hasNotesForCriteria(criterion.id);
+                  
+                  return (
+                    <div key={criterion.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                      <div className="mb-4">
+                        <div className="font-medium text-base text-gray-900 mb-3">
+                          {criterion.name}
+                        </div>
+                        
+                        <div className="space-y-3">
                           {selectedVendorData.map(vendor => (
-                            <TableCell key={vendor.id} className="text-center">
-                              <span className="font-semibold">
+                            <div key={vendor.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <span className="font-medium text-sm text-gray-800">
+                                {vendor.name}
+                              </span>
+                              <span className="font-bold text-lg text-blue-600">
                                 {getVendorScore(vendor.id, criterion.id)}
                               </span>
-                            </TableCell>
+                            </div>
                           ))}
-                          <TableCell className="text-center">
-                            {hasNotes && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleNotes(criterion.id)}
-                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                              >
-                                <FileText className="mr-1 h-3 w-3" />
-                                View Notes
-                                {isExpanded ? (
-                                  <ChevronDown className="ml-1 h-3 w-3" />
-                                ) : (
-                                  <ChevronRight className="ml-1 h-3 w-3" />
-                                )}
-                              </Button>
+                        </div>
+                      </div>
+                      
+                      {hasNotes && (
+                        <div className="border-t border-gray-200 pt-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleNotes(criterion.id)}
+                            className="w-full justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            data-testid={`button-notes-${criterion.id}`}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            {isExpanded ? 'Hide Notes' : 'View Notes'}
+                            {isExpanded ? (
+                              <ChevronDown className="ml-2 h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="ml-2 h-4 w-4" />
                             )}
-                          </TableCell>
-                        </TableRow>
-                        
-                        {hasNotes && isExpanded && (
-                          <TableRow>
-                            <TableCell colSpan={selectedVendorData.length + 2} className="p-4 bg-gray-50 dark:bg-gray-800">
+                          </Button>
+                          
+                          {isExpanded && (
+                            <div className="mt-3 pt-3 bg-gray-50 rounded-lg p-3">
                               <div className="space-y-3">
                                 {selectedVendorData.map(vendor => {
                                   const notes = getVendorNotes(vendor.id, criterion.id);
                                   if (!notes.trim()) return null;
                                   
                                   return (
-                                    <div key={vendor.id} className="border-l-3 border-blue-500 pl-3">
-                                      <div className="font-medium text-sm text-blue-700 dark:text-blue-300 mb-1">
+                                    <div key={vendor.id} className="border-l-4 border-blue-500 pl-3">
+                                      <div className="font-medium text-sm text-blue-700 mb-1">
                                         {vendor.name}
                                       </div>
-                                      <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                                      <div className="text-sm text-gray-600 whitespace-pre-wrap">
                                         {notes}
                                       </div>
                                     </div>
                                   );
                                 })}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
             <div className="mt-4">
-              <Button className="bg-primary-600 hover:bg-primary-700">
+              <Button 
+                className={`bg-primary-600 hover:bg-primary-700 ${isMobile ? 'w-full' : ''}`}
+                size={isMobile ? "default" : "default"}
+                data-testid="button-detailed-report"
+              >
                 <Download className="mr-2 h-4 w-4" />
                 View Detailed Report
               </Button>
