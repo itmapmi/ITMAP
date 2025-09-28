@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -70,13 +71,15 @@ const HarveyBall = ({
   notes, 
   vendorName, 
   featureName, 
-  onClick 
+  onClick,
+  isMobile = false
 }: { 
   level: number; 
   notes?: string; 
   vendorName: string; 
   featureName: string; 
   onClick: () => void; 
+  isMobile?: boolean;
 }) => {
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
@@ -115,12 +118,12 @@ const HarveyBall = ({
     <div className="flex items-center justify-center">
       <button
         onClick={onClick}
-        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full p-1`}
+        className={`${isMobile ? 'text-3xl p-2' : 'text-2xl p-1'} ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full ${isMobile ? 'min-w-[44px] min-h-[44px]' : ''}`}
         title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
       >
         {getHarveyBallIcon(level)}
         {notes && (
-          <FileText className="absolute -top-1 -right-1 h-3 w-3 text-blue-600 opacity-75" />
+          <FileText className={`absolute -top-1 -right-1 text-blue-600 opacity-75 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
         )}
       </button>
     </div>
@@ -142,6 +145,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     notes: string;
     supportLevel: number;
   } | null>(null);
+
+  // Mobile detection
+  const isMobile = useIsMobile();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -298,11 +304,11 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 <p className="text-gray-600 mb-4">Select one or more vendors to compare their product capabilities in detail</p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
                 {allVendors.map(vendor => (
                   <div 
                     key={vendor.id} 
-                    className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                    className={`border rounded-lg ${isMobile ? 'p-4' : 'p-4'} cursor-pointer transition-all duration-200 ${
                       selectedVendors.has(vendor.id) 
                         ? 'border-blue-500 bg-blue-50 shadow-md' 
                         : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
@@ -312,18 +318,20 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{vendor.name}</h4>
+                        <h4 className={`font-semibold text-gray-900 ${isMobile ? 'text-base' : ''}`}>{vendor.name}</h4>
                         {vendor.product && (
-                          <p className="text-sm text-gray-600 mt-1">{vendor.product}</p>
+                          <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : 'text-sm'}`}>{vendor.product}</p>
                         )}
                       </div>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      <div className={`rounded border-2 flex items-center justify-center ${
+                        isMobile ? 'w-6 h-6' : 'w-5 h-5'
+                      } ${
                         selectedVendors.has(vendor.id)
                           ? 'border-blue-500 bg-blue-500'
                           : 'border-gray-300'
                       }`}>
                         {selectedVendors.has(vendor.id) && (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className={`text-white ${isMobile ? 'w-4 h-4' : 'w-3 h-3'}`} fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         )}
@@ -508,44 +516,47 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
               </div>
             </CardDescription>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowVendorSelection(true)}
-              className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
-              data-testid="back-to-vendor-selection-button"
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-              Change Selection
-            </Button>
-            <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-3 ${isMobile ? 'flex-col gap-2 w-full' : ''}`}>
+            <div className={`flex items-center gap-2 ${isMobile ? 'w-full flex-wrap' : ''}`}>
               <Button
                 variant="outline"
-                size="sm"
+                size={isMobile ? "default" : "sm"}
+                onClick={() => setShowVendorSelection(true)}
+                className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
+                data-testid="back-to-vendor-selection-button"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+                {isMobile ? "Change" : "Change Selection"}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size={isMobile ? "default" : "sm"}
                 onClick={expandAllCategories}
-                className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
               >
                 <ChevronDown className="h-4 w-4" />
                 Expand All
               </Button>
+              
               <Button
                 variant="outline"
-                size="sm"
+                size={isMobile ? "default" : "sm"}
                 onClick={collapseAllCategories}
-                className="flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
               >
                 <ChevronRight className="h-4 w-4" />
                 Collapse All
               </Button>
             </div>
+            
             <Button
               variant={showVendorSelection ? "default" : "outline"}
-              size="sm"
+              size={isMobile ? "default" : "sm"}
               onClick={() => setShowVendorSelection(!showVendorSelection)}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-md transition-all duration-200"
+              className={`flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-md transition-all duration-200 ${isMobile ? 'w-full' : ''}`}
             >
               <Filter className="h-4 w-4" />
               {showVendorSelection ? "Hide Filters" : "Filter Vendors"}
@@ -570,18 +581,18 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                 </Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}`}>
               {allVendors.map(vendor => (
-                <div key={vendor.id} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/50 transition-colors">
+                <div key={vendor.id} className={`flex items-center space-x-2 ${isMobile ? 'p-3' : 'p-2'} rounded-lg hover:bg-white/50 transition-colors ${isMobile ? 'min-h-[48px]' : ''}`}>
                   <Checkbox
                     id={vendor.id}
                     checked={selectedVendors.has(vendor.id)}
                     onCheckedChange={() => toggleVendor(vendor.id)}
-                    className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                    className={`data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 ${isMobile ? 'w-5 h-5' : ''}`}
                   />
                   <label
                     htmlFor={vendor.id}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    className={`font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer ${isMobile ? 'text-base' : 'text-sm'}`}
                   >
                     {vendor.name}
                   </label>
@@ -622,7 +633,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             {/* Sticky header that moves with horizontal scroll */}
             <div 
               ref={stickyHeaderRef}
-              className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden">
+              className={`sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden ${isMobile ? 'hidden' : ''}`}>
               <div 
                 className="grid gap-4 py-4 px-6" 
                 style={{ 
@@ -652,8 +663,8 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
             </div>
 
             {/* Content with horizontal scrolling */}
-            <div className="overflow-x-auto" ref={containerRef}>
-              <div className="px-6 pt-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+            <div className={`${isMobile ? '' : 'overflow-x-auto'}`} ref={containerRef}>
+              <div className={`${isMobile ? 'px-4 py-6' : 'px-6 pt-6'} space-y-8`} style={{ minWidth: isMobile ? 'auto' : `${500 + (vendors.length * 140)}px` }}>
               {productCapabilityFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = productCapabilityFeatures.reduce((acc, feature) => {
@@ -681,17 +692,11 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                     <div key={category.id} className="space-y-4">
                       {/* Category header */}
                       <div className="py-4 bg-gradient-to-r from-gray-50 to-blue-50/50 rounded-lg border border-gray-200 shadow-sm">
-                        <div 
-                          className="grid gap-4 px-4" 
-                          style={{ 
-                            gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                            minWidth: `${500 + (vendors.length * 140)}px`
-                          }}
-                        >
-                          <div className="flex items-center gap-3 col-span-2">
+                        {isMobile ? (
+                          <div className="px-4">
                             <button
                               onClick={() => toggleCategory(category.id)}
-                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50"
+                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50 w-full justify-start"
                             >
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                               {category.name}
@@ -700,38 +705,92 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                               </Badge>
                             </button>
                           </div>
-                          
-                          {/* Show totals when collapsed */}
-                          {isCollapsed && vendors.map(vendor => {
-                            const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
-                            return (
-                              <div key={vendor.id} className="flex justify-center items-center">
-                                <div className="text-center p-2 bg-white/70 rounded-lg border border-blue-200">
-                                  <div className="font-bold text-lg text-blue-700">
-                                    {vendorTotal}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Total Score
+                        ) : (
+                          <div 
+                            className="grid gap-4 px-4" 
+                            style={{ 
+                              gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                              minWidth: `${500 + (vendors.length * 140)}px`
+                            }}
+                          >
+                            <div className="flex items-center gap-3 col-span-2">
+                              <button
+                                onClick={() => toggleCategory(category.id)}
+                                className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-white/50"
+                              >
+                                {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                {category.name}
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {categoryFeatures.length} features
+                                </Badge>
+                              </button>
+                            </div>
+                            
+                            {/* Show totals when collapsed */}
+                            {isCollapsed && vendors.map(vendor => {
+                              const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                              return (
+                                <div key={vendor.id} className="flex justify-center items-center">
+                                  <div className="text-center p-2 bg-white/70 rounded-lg border border-blue-200">
+                                    <div className="font-bold text-lg text-blue-700">
+                                      {vendorTotal}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Total Score
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Features in category */}
                       {!isCollapsed && (
-                        <div className="space-y-2 ml-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className={`space-y-2 ${isMobile ? '' : 'ml-4'} animate-in slide-in-from-top-2 duration-200`}>
                           {categoryFeatures.map(feature => (
-                            <div 
-                              key={feature.id}
-                              className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-blue-50/20 rounded-lg transition-colors px-2"
-                              style={{ 
-                                gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                                minWidth: `${500 + (vendors.length * 140)}px`
-                              }}
-                            >
+                            isMobile ? (
+                              <div key={feature.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                <div className="mb-3">
+                                  <h4 className="font-medium text-gray-900 mb-1">{feature.name}</h4>
+                                  <p className="text-sm text-gray-600">{feature.description || 'No evaluation criteria specified'}</p>
+                                </div>
+                                <div className="space-y-3">
+                                  {vendors.map(vendor => {
+                                    const supportKey = `${vendor.id}-${feature.id}`;
+                                    const supportData = supportLookup.get(supportKey);
+                                    const supportLevel = supportData?.level || 0;
+                                    const notes = supportData?.notes;
+                                    
+                                    return (
+                                      <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div>
+                                          <div className="font-medium text-sm text-gray-900">{vendor.name}</div>
+                                          <div className="text-xs text-gray-500">{getSupportText(supportLevel)}</div>
+                                        </div>
+                                        <HarveyBall
+                                          level={supportLevel}
+                                          notes={notes}
+                                          vendorName={vendor.name}
+                                          featureName={feature.name}
+                                          onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes)}
+                                          isMobile={true}
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div 
+                                key={feature.id}
+                                className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-blue-50/20 rounded-lg transition-colors px-2"
+                                style={{ 
+                                  gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                                  minWidth: `${500 + (vendors.length * 140)}px`
+                                }}
+                              >
                               <div className="flex flex-col justify-center">
                                 <div className="font-medium text-sm text-gray-900">
                                   {feature.name}
@@ -761,6 +820,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
                                 );
                               })}
                             </div>
+                            )
                           ))}
                         </div>
                       )}
