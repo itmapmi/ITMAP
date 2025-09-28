@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useMobile } from "@/hooks/use-mobile";
 import { ChevronDown, ChevronRight, Edit, MessageSquare } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport, Market } from "@shared/schema";
 
@@ -50,6 +51,7 @@ export function SupportMatrixAdmin() {
   const [supportEditData, setSupportEditData] = useState<{ supportLevel: number; comments: string }>({ supportLevel: 0, comments: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useMobile();
 
   // Fetch markets
   const { data: markets = [] } = useQuery<Market[]>({
@@ -309,22 +311,36 @@ export function SupportMatrixAdmin() {
           <p className="text-gray-500">No features defined for this market yet.</p>
         ) : (
           <div className="space-y-6">
-            {/* Header with vendor names */}
-            <div className="grid gap-4 border-b pb-4" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
-              <div className="font-semibold text-sm text-gray-600">
-                Features
-              </div>
-              {vendors.map(vendor => (
-                <div key={vendor.id} className="text-center">
-                  <div className="font-medium text-sm text-gray-900">
-                    {vendor.name}
-                  </div>
-                  <Badge variant="outline" className="text-xs mt-1">
-                    Vendor
-                  </Badge>
+            {/* Desktop Header with vendor names */}
+            {!isMobile && (
+              <div className="grid gap-4 border-b pb-4" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
+                <div className="font-semibold text-sm text-gray-600">
+                  Features
                 </div>
-              ))}
-            </div>
+                {vendors.map(vendor => (
+                  <div key={vendor.id} className="text-center">
+                    <div className="font-medium text-sm text-gray-900">
+                      {vendor.name}
+                    </div>
+                    <Badge variant="outline" className="text-xs mt-1">
+                      Vendor
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Mobile Header */}
+            {isMobile && (
+              <div className="border-b pb-4">
+                <div className="font-semibold text-base text-gray-600 mb-3">
+                  Feature Support Matrix - Admin
+                </div>
+                <div className="text-sm text-gray-500">
+                  {vendors.length} vendors • {features.length} features
+                </div>
+              </div>
+            )}
 
             {/* Feature rows grouped by categories */}
             {sortedCategories.map(({ category, features: categoryFeatures }) => {
@@ -381,8 +397,8 @@ export function SupportMatrixAdmin() {
                     </div>
                   </button>
 
-                  {/* Collapsed view - Show vendor totals */}
-                  {isCollapsed && (
+                  {/* Desktop Collapsed view - Show vendor totals */}
+                  {isCollapsed && !isMobile && (
                     <div className="ml-8 bg-gray-50 rounded-lg p-4">
                       <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
                         <div className="font-medium text-sm text-gray-700">
@@ -405,8 +421,35 @@ export function SupportMatrixAdmin() {
                     </div>
                   )}
                   
-                  {/* Features in this category - Collapsible */}
-                  {!isCollapsed && (
+                  {/* Mobile Collapsed view - Show vendor totals */}
+                  {isCollapsed && isMobile && (
+                    <div className="ml-4 bg-gray-50 rounded-lg p-4">
+                      <div className="font-medium text-sm text-gray-700 mb-3">
+                        Category Totals ({categoryFeatures.length} features)
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {vendors.map(vendor => {
+                          const { totalScore, percentage } = getVendorCategoryScore(vendor.id);
+                          return (
+                            <div key={vendor.id} className="bg-white rounded p-3 border">
+                              <div className="font-medium text-sm text-gray-800">
+                                {vendor.name}
+                              </div>
+                              <div className="font-bold text-lg text-blue-700">
+                                {totalScore}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {percentage}%
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Desktop Features in this category - Collapsible */}
+                  {!isCollapsed && !isMobile && (
                     <div className="space-y-2 ml-4">
                       {categoryFeatures.map(feature => (
                         <div 
@@ -455,6 +498,63 @@ export function SupportMatrixAdmin() {
                       ))}
                     </div>
                   )}
+                  
+                  {/* Mobile Features in this category - Collapsible */}
+                  {!isCollapsed && isMobile && (
+                    <div className="space-y-4 ml-2">
+                      {categoryFeatures.map(feature => (
+                        <div 
+                          key={feature.id} 
+                          className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm"
+                        >
+                          <div className="mb-4">
+                            <div className="font-medium text-base text-gray-900 mb-2">
+                              {feature.name}
+                            </div>
+                            {feature.description && (
+                              <div className="text-sm text-gray-600">
+                                {feature.description}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {vendors.map(vendor => {
+                              const supportKey = `${vendor.id}-${feature.id}`;
+                              const supportData = supportLookup.get(supportKey);
+                              const supportLevel = supportData?.level || 0;
+                              
+                              return (
+                                <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm text-gray-800">
+                                      {vendor.name}
+                                    </div>
+                                    {supportData?.comments && supportData.comments.trim() !== '' && (
+                                      <div className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3 text-green-600" />
+                                        Has comments
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <button
+                                    onClick={() => handleSupportEdit(vendor.id, feature.id, vendor.name, feature.name)}
+                                    className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3 hover:bg-gray-100 transition-colors duration-200 min-h-[56px]"
+                                  >
+                                    <div className="text-3xl">
+                                      <HarveyBall level={supportLevel} />
+                                    </div>
+                                    <Edit className="h-4 w-4 text-blue-500" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -462,8 +562,8 @@ export function SupportMatrixAdmin() {
             {/* Ecosystem Support Summary */}
             {ecosystemFeatures.length > 0 && (
               <div className="mt-8 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border-2 border-purple-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-purple-900 flex items-center gap-2">
+                <div className={`${isMobile ? 'space-y-4' : 'flex items-center justify-between'} mb-4`}>
+                  <h3 className={`font-bold text-purple-900 flex items-center gap-2 ${isMobile ? 'text-lg' : 'text-xl'}`}>
                     🌐 Ecosystem Support Summary
                     <Badge variant="outline" className="bg-purple-100 text-purple-700">
                       {ecosystemFeatures.length} features
@@ -473,33 +573,67 @@ export function SupportMatrixAdmin() {
                   <Button
                     onClick={() => updateEcosystemScoresMutation.mutate()}
                     disabled={updateEcosystemScoresMutation.isPending}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className={`bg-purple-600 hover:bg-purple-700 text-white ${isMobile ? 'w-full' : ''}`}
+                    size={isMobile ? "default" : "default"}
                   >
                     {updateEcosystemScoresMutation.isPending ? "Updating..." : "Update ISV Ecosystem"}
                   </Button>
                 </div>
                 
-                <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
-                  <div className="font-semibold text-purple-800">
-                    Total Scores
+                {/* Desktop grid */}
+                {!isMobile && (
+                  <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
+                    <div className="font-semibold text-purple-800">
+                      Total Scores
+                    </div>
+                    {vendors.map(vendor => {
+                      const totals = ecosystemTotals[vendor.id];
+                      return (
+                        <div key={vendor.id} className="text-center bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
+                          <div className="font-bold text-2xl text-purple-700 mb-1">
+                            {totals.totalScore}
+                          </div>
+                          <div className="text-xs text-gray-500 mb-2">
+                            out of {totals.maxScore}
+                          </div>
+                          <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
+                            {totals.normalizedScore}/10
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {vendors.map(vendor => {
-                    const totals = ecosystemTotals[vendor.id];
-                    return (
-                      <div key={vendor.id} className="text-center bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
-                        <div className="font-bold text-2xl text-purple-700 mb-1">
-                          {totals.totalScore}
-                        </div>
-                        <div className="text-xs text-gray-500 mb-2">
-                          out of {totals.maxScore}
-                        </div>
-                        <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
-                          {totals.normalizedScore}/10
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                )}
+                
+                {/* Mobile grid */}
+                {isMobile && (
+                  <div className="space-y-3">
+                    <div className="font-semibold text-purple-800 mb-3">
+                      Total Scores
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {vendors.map(vendor => {
+                        const totals = ecosystemTotals[vendor.id];
+                        return (
+                          <div key={vendor.id} className="bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
+                            <div className="font-medium text-sm text-gray-800 mb-2">
+                              {vendor.name}
+                            </div>
+                            <div className="font-bold text-xl text-purple-700 mb-1">
+                              {totals.totalScore}
+                            </div>
+                            <div className="text-xs text-gray-500 mb-2">
+                              out of {totals.maxScore}
+                            </div>
+                            <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
+                              {totals.normalizedScore}/10
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="mt-4 text-sm text-purple-700 bg-purple-100 rounded-lg p-3">
                   <strong>Note:</strong> Click "Update ISV Ecosystem" to sync these normalized scores (/10) with the ISV Ecosystem criteria in the Vendor Evaluation chart.
@@ -509,25 +643,25 @@ export function SupportMatrixAdmin() {
 
             {/* Legend */}
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <h4 className="font-medium text-sm text-gray-900 mb-3">Harvey Ball Legend</h4>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
+              <h4 className={`font-medium text-gray-900 mb-3 ${isMobile ? 'text-base' : 'text-sm'}`}>Harvey Ball Legend</h4>
+              <div className={`${isMobile ? 'grid grid-cols-1 gap-3' : 'flex flex-wrap gap-4'} text-sm`}>
+                <div className={`flex items-center gap-2 ${isMobile ? 'p-2 bg-gray-50 rounded-lg' : ''}`}>
                   <HarveyBall level={4} />
                   <span className="text-gray-600">Full Support</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isMobile ? 'p-2 bg-gray-50 rounded-lg' : ''}`}>
                   <HarveyBall level={3} />
                   <span className="text-gray-600">Good Support</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isMobile ? 'p-2 bg-gray-50 rounded-lg' : ''}`}>
                   <HarveyBall level={2} />
                   <span className="text-gray-600">Partial Support</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isMobile ? 'p-2 bg-gray-50 rounded-lg' : ''}`}>
                   <HarveyBall level={1} />
                   <span className="text-gray-600">Limited Support</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isMobile ? 'p-2 bg-gray-50 rounded-lg' : ''}`}>
                   <HarveyBall level={0} />
                   <span className="text-gray-600">No Support</span>
                 </div>
