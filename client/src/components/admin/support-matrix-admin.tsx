@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ChevronDown, ChevronRight, Edit, MessageSquare } from "lucide-react";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport, Market } from "@shared/schema";
 
@@ -51,7 +51,7 @@ export function SupportMatrixAdmin() {
   const [supportEditData, setSupportEditData] = useState<{ supportLevel: number; comments: string }>({ supportLevel: 0, comments: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   // Fetch markets
   const { data: markets = [] } = useQuery<Market[]>({

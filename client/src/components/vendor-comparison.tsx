@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 
 interface VendorComparisonProps {
@@ -16,7 +16,7 @@ interface VendorComparisonProps {
 export default function VendorComparison({ marketId }: VendorComparisonProps) {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],

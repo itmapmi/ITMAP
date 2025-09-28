@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Download, Settings, Zap, BarChart3, Users, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Vendor } from "@shared/schema";
 
 interface GenerateReportsProps {
@@ -40,6 +41,7 @@ const REPORT_TYPES = [
 
 export default function GenerateReports({ marketId }: GenerateReportsProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [reportConfig, setReportConfig] = useState<ReportConfig>({
     title: '',
     description: '',
@@ -137,9 +139,9 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`${isMobile ? 'space-y-6' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}`}>
         {/* Configuration Panel */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`${isMobile ? '' : 'lg:col-span-2'} space-y-6`}>
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -211,23 +213,25 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
                 </div>
               ) : vendors && vendors.length > 0 ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
+                  <div className={`${isMobile ? 'space-y-3' : 'flex items-center justify-between'}`}>
+                    <span className={`font-medium ${isMobile ? 'text-base' : 'text-sm'}`}>
                       {reportConfig.includedVendors.length} of {vendors.length} vendors selected
                     </span>
-                    <div className="flex gap-2">
+                    <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size={isMobile ? "default" : "sm"}
                         onClick={() => setReportConfig(prev => ({ ...prev, includedVendors: vendors.map(v => v.id) }))}
+                        className={isMobile ? 'flex-1' : ''}
                         data-testid="button-select-all-vendors"
                       >
                         Select All
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size={isMobile ? "default" : "sm"}
                         onClick={() => setReportConfig(prev => ({ ...prev, includedVendors: [] }))}
+                        className={isMobile ? 'flex-1' : ''}
                         data-testid="button-clear-vendors"
                       >
                         Clear
@@ -235,19 +239,20 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
                     {vendors.map((vendor) => (
                       <div
                         key={vendor.id}
-                        className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+                        className={`flex items-center space-x-3 ${isMobile ? 'p-4' : 'p-3'} border rounded-lg hover:bg-gray-50 ${isMobile ? 'min-h-[56px]' : ''}`}
                       >
                         <Checkbox
                           id={`vendor-${vendor.id}`}
                           checked={reportConfig.includedVendors.includes(vendor.id)}
                           onCheckedChange={() => handleVendorToggle(vendor.id)}
+                          className={isMobile ? 'w-5 h-5' : ''}
                           data-testid={`checkbox-vendor-${vendor.id}`}
                         />
-                        <Label htmlFor={`vendor-${vendor.id}`} className="flex-1 cursor-pointer">
+                        <Label htmlFor={`vendor-${vendor.id}`} className={`flex-1 cursor-pointer ${isMobile ? 'text-base' : ''}`}>
                           {vendor.name}
                         </Label>
                       </div>
@@ -271,87 +276,92 @@ export default function GenerateReports({ marketId }: GenerateReportsProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center space-x-3">
+                <div className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
                   <Checkbox
                     id="include-vendor-evaluation"
                     checked={reportConfig.includeVendorEvaluation}
                     onCheckedChange={(checked) => 
                       setReportConfig(prev => ({ ...prev, includeVendorEvaluation: checked as boolean }))
                     }
+                    className={isMobile ? 'w-5 h-5' : ''}
                     data-testid="checkbox-vendor-evaluation"
                   />
                   <Label htmlFor="include-vendor-evaluation" className="flex-1 cursor-pointer">
                     <div>
-                      <div className="font-medium">Vendor Evaluation</div>
-                      <div className="text-sm text-gray-600">Magic quadrant positioning and competitive analysis</div>
+                      <div className={`font-medium ${isMobile ? 'text-base' : ''}`}>Vendor Evaluation</div>
+                      <div className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-sm'}`}>Magic quadrant positioning and competitive analysis</div>
                     </div>
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
                   <Checkbox
                     id="include-product-capabilities"
                     checked={reportConfig.includeProductCapabilities}
                     onCheckedChange={(checked) => 
                       setReportConfig(prev => ({ ...prev, includeProductCapabilities: checked as boolean }))
                     }
+                    className={isMobile ? 'w-5 h-5' : ''}
                     data-testid="checkbox-product-capabilities"
                   />
                   <Label htmlFor="include-product-capabilities" className="flex-1 cursor-pointer">
                     <div>
-                      <div className="font-medium">Product Capabilities</div>
-                      <div className="text-sm text-gray-600">Feature comparison and support matrix</div>
+                      <div className={`font-medium ${isMobile ? 'text-base' : ''}`}>Product Capabilities</div>
+                      <div className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-sm'}`}>Feature comparison and support matrix</div>
                     </div>
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
                   <Checkbox
                     id="include-ecosystem-support"
                     checked={reportConfig.includeEcosystemSupport}
                     onCheckedChange={(checked) => 
                       setReportConfig(prev => ({ ...prev, includeEcosystemSupport: checked as boolean }))
                     }
+                    className={isMobile ? 'w-5 h-5' : ''}
                     data-testid="checkbox-ecosystem-support"
                   />
                   <Label htmlFor="include-ecosystem-support" className="flex-1 cursor-pointer">
                     <div>
-                      <div className="font-medium">Ecosystem Support</div>
-                      <div className="text-sm text-gray-600">Third-party integrations and partnerships</div>
+                      <div className={`font-medium ${isMobile ? 'text-base' : ''}`}>Ecosystem Support</div>
+                      <div className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-sm'}`}>Third-party integrations and partnerships</div>
                     </div>
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
                   <Checkbox
                     id="include-vendor-news"
                     checked={reportConfig.includeVendorNews}
                     onCheckedChange={(checked) => 
                       setReportConfig(prev => ({ ...prev, includeVendorNews: checked as boolean }))
                     }
+                    className={isMobile ? 'w-5 h-5' : ''}
                     data-testid="checkbox-vendor-news"
                   />
                   <Label htmlFor="include-vendor-news" className="flex-1 cursor-pointer">
                     <div>
-                      <div className="font-medium">Recent Vendor News</div>
-                      <div className="text-sm text-gray-600">Latest announcements and market developments</div>
+                      <div className={`font-medium ${isMobile ? 'text-base' : ''}`}>Recent Vendor News</div>
+                      <div className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-sm'}`}>Latest announcements and market developments</div>
                     </div>
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className={`flex items-center space-x-3 ${isMobile ? 'p-3 bg-gray-50 rounded-lg' : ''}`}>
                   <Checkbox
                     id="include-methodology"
                     checked={reportConfig.includeMethodology}
                     onCheckedChange={(checked) => 
                       setReportConfig(prev => ({ ...prev, includeMethodology: checked as boolean }))
                     }
+                    className={isMobile ? 'w-5 h-5' : ''}
                     data-testid="checkbox-methodology"
                   />
                   <Label htmlFor="include-methodology" className="flex-1 cursor-pointer">
                     <div>
-                      <div className="font-medium">Research Methodology</div>
-                      <div className="text-sm text-gray-600">Evaluation criteria and scoring methodology</div>
+                      <div className={`font-medium ${isMobile ? 'text-base' : ''}`}>Research Methodology</div>
+                      <div className={`text-gray-600 ${isMobile ? 'text-sm' : 'text-sm'}`}>Evaluation criteria and scoring methodology</div>
                     </div>
                   </Label>
                 </div>
