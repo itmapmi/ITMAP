@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +20,7 @@ import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/load
 export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
+  const isMobile = useIsMobile();
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
@@ -63,13 +65,25 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
-              <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
-              <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
-              <TabsTrigger value="generate-reports">Generate Reports</TabsTrigger>
-              <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
-              <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
+            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-6'}`}>
+              <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+              </TabsTrigger>
+              <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'Product Eval' : 'Product Evaluation'}
+              </TabsTrigger>
+              <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
+              </TabsTrigger>
+              <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'Reports' : 'Generate Reports'}
+              </TabsTrigger>
+              <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'News' : 'Vendor News'}
+              </TabsTrigger>
+              <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+                {isMobile ? 'Method' : 'Methodology'}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="vendor-evaluation" className="mt-6">
@@ -131,22 +145,23 @@ export default function MarketDetails() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <FadeInSection className="flex items-center justify-between mb-6">
+        <FadeInSection className={`${isMobile ? 'space-y-4' : 'flex items-center justify-between'} mb-6`}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h2 className="text-2xl font-bold text-gray-900">{market.name}</h2>
-            <p className="text-gray-600">{market.description}</p>
+            <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
+            <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
+            className={isMobile ? 'flex justify-center' : ''}
           >
             <Link href="/markets">
-              <Button variant="outline">
+              <Button variant="outline" size={isMobile ? "default" : "default"}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Markets
               </Button>
@@ -155,13 +170,25 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="vendor-evaluation">Vendor Evaluation</TabsTrigger>
-            <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
-            <TabsTrigger value="ecosystem-support">Ecosystem Support</TabsTrigger>
-            <TabsTrigger value="generate-reports">Generate Reports</TabsTrigger>
-            <TabsTrigger value="vendor-news">Vendor News</TabsTrigger>
-            <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
+          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-6'}`}>
+            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+            </TabsTrigger>
+            <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'Product Eval' : 'Product Evaluation'}
+            </TabsTrigger>
+            <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
+            </TabsTrigger>
+            <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'Reports' : 'Generate Reports'}
+            </TabsTrigger>
+            <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'News' : 'Vendor News'}
+            </TabsTrigger>
+            <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {isMobile ? 'Method' : 'Methodology'}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
