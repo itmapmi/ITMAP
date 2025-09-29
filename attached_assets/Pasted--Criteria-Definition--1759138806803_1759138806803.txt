@@ -1,0 +1,23 @@
+| **Criteria**                            | **Definition**                                                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Fibre Channel performance benchmark** | Measures throughput, IOPS, and latency of storage over Fibre Channel SANs, validating efficiency under enterprise workloads. |
+| **NVMe-oF performance benchmark**       | Evaluates low-latency and high-throughput performance of NVMe over Fabrics in real-world workload conditions.                |
+| **iSCSI performance benchmark**         | Tests block storage efficiency over TCP/IP-based iSCSI connections, focusing on IOPS, latency, and throughput.               |
+| **NFS performance benchmark**           | Assesses file storage performance using the NFS protocol, including throughput and concurrent client scaling.                |
+| **SMB performance benchmark**           | Evaluates Windows and cross-platform file-sharing performance under SMB protocol workloads.                                  |
+| **S3 performance benchmark**            | Tests object storage performance (GET/PUT latency, throughput, scalability) via the S3 protocol.                             |
+| **Read latency**                        | Time taken to retrieve data from storage; critical for application responsiveness.                                           |
+| **Write latency**                       | Time required to commit data to storage; affects transaction-heavy workloads.                                                |
+| **Mixed I/O latency**                   | Latency observed under combined read/write operations, simulating real-world workloads.                                      |
+| **Sequential IOPS**                     | Input/output operations per second for large, ordered data blocks—important for streaming.                                   |
+| **Random IOPS**                         | IOPS for small, non-sequential data access—key for OLTP and database workloads.                                              |
+| **Sequential throughput**               | Sustained data transfer rate for sequential workloads, measured in MB/s or GB/s.                                             |
+| **Random throughput**                   | Data transfer performance under random I/O patterns, measuring consistency and efficiency.                                   |
+| **Read caching**                        | Uses DRAM/flash cache to accelerate frequently accessed reads, lowering latency.                                             |
+| **Write caching**                       | Buffers incoming writes in cache to speed acknowledgment and optimize backend writes.                                        |
+| **Tiering between NVMe and SSD**        | Moves hot data to NVMe for ultra-low latency and cold data to SSD.                                                           |
+| **Tiering between SSD and HDD**         | Places frequently accessed data on SSD while offloading colder data to HDD.                                                  |
+| **End-to-end NVMe support**             | Delivers NVMe performance from host to backend drives without protocol translation.                                          |
+| **QoS with performance guarantees**     | Provides predictable performance by assigning IOPS/throughput limits or minimums per workload.                               |
+| **GPU Direct Storage support**          | Enables GPUs to directly access storage, reducing CPU overhead and accelerating AI/ML workloads.                             |
+| **Multi-stream parallelism**            | Supports simultaneous parallel I/O streams to maximize throughput and reduce bottlenecks.                                    |
