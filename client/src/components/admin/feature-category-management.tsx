@@ -197,6 +197,38 @@ export function FeatureCategoryManagement() {
     },
   });
 
+  const updateFeatureMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: z.infer<typeof featureFormSchema> }) => {
+      const response = await apiRequest(`/api/features/${id}`, "PUT", data);
+      if (!response.ok) throw new Error("Failed to update feature");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-categories"] });
+      setEditingFeature(null);
+      featureForm.reset();
+      toast({ title: "Feature updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update feature", variant: "destructive" });
+    },
+  });
+
+  const deleteFeatureMutation = useMutation({
+    mutationFn: async (featureId: string) => {
+      const response = await apiRequest(`/api/features/${featureId}`, "DELETE");
+      if (!response.ok) throw new Error("Failed to delete feature");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-categories"] });
+      toast({ title: "Feature deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete feature", variant: "destructive" });
+    },
+  });
+
   const updateSupportMutation = useMutation({
     mutationFn: async ({ vendorId, featureId, supportLevel }: { vendorId: string; featureId: string; supportLevel: number }) => {
       const response = await fetch("/api/vendor-feature-support", {
@@ -225,7 +257,11 @@ export function FeatureCategoryManagement() {
   };
 
   const onFeatureSubmit = (data: z.infer<typeof featureFormSchema>) => {
-    createFeatureMutation.mutate(data);
+    if (editingFeature) {
+      updateFeatureMutation.mutate({ id: editingFeature.id, data });
+    } else {
+      createFeatureMutation.mutate(data);
+    }
   };
 
   const handleDeleteCategory = (categoryId: string) => {
@@ -241,6 +277,21 @@ export function FeatureCategoryManagement() {
       description: category.description || "",
       marketId: category.marketId,
     });
+  };
+
+  const handleEditFeature = (feature: Feature) => {
+    setEditingFeature(feature);
+    featureForm.reset({
+      name: feature.name,
+      description: feature.description || "",
+      categoryId: feature.categoryId,
+    });
+  };
+
+  const handleDeleteFeature = (featureId: string) => {
+    if (window.confirm("Are you sure you want to delete this feature?")) {
+      deleteFeatureMutation.mutate(featureId);
+    }
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -377,8 +428,8 @@ export function FeatureCategoryManagement() {
             {/* Feature Form */}
             <Card>
               <CardHeader>
-                <CardTitle>Create Feature</CardTitle>
-                <CardDescription>Add a new feature to an existing category</CardDescription>
+                <CardTitle>{editingFeature ? "Edit Feature" : "Create Feature"}</CardTitle>
+                <CardDescription>{editingFeature ? "Update an existing feature" : "Add a new feature to an existing category"}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...featureForm}>
@@ -437,10 +488,27 @@ export function FeatureCategoryManagement() {
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" disabled={createFeatureMutation.isPending || !(categories as FeatureCategory[] || []).length}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {createFeatureMutation.isPending ? "Creating..." : "Create Feature"}
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button type="submit" disabled={(createFeatureMutation.isPending || updateFeatureMutation.isPending) || !(categories as FeatureCategory[] || []).length}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        {editingFeature 
+                          ? (updateFeatureMutation.isPending ? "Updating..." : "Update Feature")
+                          : (createFeatureMutation.isPending ? "Creating..." : "Create Feature")
+                        }
+                      </Button>
+                      {editingFeature && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setEditingFeature(null);
+                            featureForm.reset();
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </form>
                 </Form>
               </CardContent>
@@ -531,10 +599,20 @@ export function FeatureCategoryManagement() {
                                     )}
                                   </div>
                                   <div className="flex space-x-2">
-                                    <Button variant="outline" size="sm">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleEditFeature(feature)}
+                                    >
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => handleDeleteFeature(feature.id)}
+                                      disabled={deleteFeatureMutation.isPending}
+                                    >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
