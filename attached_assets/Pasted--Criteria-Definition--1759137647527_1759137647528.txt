@@ -1,0 +1,43 @@
+| **Criteria**                                   | **Definition**                                                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Space-efficient snapshots**                  | Snapshots consume minimal capacity by storing only incremental changes, reducing storage overhead. |
+| **Instant restore snapshots**                  | Enables near-instant recovery by making snapshots immediately usable without data copy.            |
+| **Cloning support**                            | Creates writable, independent copies of data or volumes for testing, development, or analytics.    |
+| **Thin provisioning**                          | Allocates capacity on-demand, presenting more storage to applications than physically provisioned. |
+| **Inline deduplication**                       | Removes duplicate data blocks in real time before being written to disk.                           |
+| **Post-process deduplication**                 | Identifies and removes redundant data after it has been written.                                   |
+| **Inline compression**                         | Compresses data as it is ingested, reducing storage footprint immediately.                         |
+| **Post-process compression**                   | Compresses data after it has been written to optimize space.                                       |
+| **Erasure coding support**                     | Distributes data and parity across drives/nodes, offering space-efficient protection over RAID.    |
+| **RAID level configuration options**           | Supports multiple RAID levels (e.g., 5, 6, 10) for flexible performance and resilience.            |
+| **Automated data classification**              | AI/ML-driven categorization of data by type, sensitivity, or usage.                                |
+| **Automated data tagging**                     | Automatically applies metadata tags to files/objects for easier management and retrieval.          |
+| **Policy-based data retention**                | Enforces automated policies defining how long data is stored before deletion/archival.             |
+| **Policy-based data lifecycle management**     | Automates data movement across tiers (hot, warm, cold, archive) based on policies.                 |
+| **Native cloud tiering to AWS**                | Seamlessly moves cold/infrequent data to Amazon S3 or Glacier tiers.                               |
+| **Native cloud tiering to Azure**              | Automatically offloads inactive data to Azure Blob or Archive tiers.                               |
+| **Native cloud tiering to GCP**                | Integrates with Google Cloud Storage for cost-efficient tiering of inactive data.                  |
+| **Native cloud tiering to OCI**                | Tiers data directly to Oracle Cloud Infrastructure storage services.                               |
+| **Native cloud tiering to IBM Cloud**          | Extends storage arrays by natively tiering data into IBM Cloud Object Storage.                     |
+| **Native cloud tiering to Wasabi**             | Provides low-cost, high-performance cloud tiering into Wasabi’s object storage.                    |
+| **Native cloud tiering to Backblaze**          | Supports direct tiering of data to Backblaze B2 for archival and backup.                           |
+| **File data management**                       | Provides control and optimization features for file-based (NAS) data.                              |
+| **Block data management**                      | Manages block-level (SAN) storage resources, performance, and protection.                          |
+| **Object data management**                     | Enables policy, tiering, and lifecycle management for object storage.                              |
+| **Metadata search**                            | Allows fast data discovery by searching metadata attributes across datasets.                       |
+| **Metadata indexing**                          | Catalogs metadata for efficient query, classification, and analytics.                              |
+| **Fibre Channel protocol support**             | Provides SAN connectivity and management via Fibre Channel.                                        |
+| **iSCSI protocol support**                     | Delivers block storage access over TCP/IP networks using iSCSI.                                    |
+| **NVMe-oF protocol support**                   | Supports NVMe over Fabrics for low-latency, high-performance storage networking.                   |
+| **NFS protocol support**                       | Enables NAS access and management using the NFS protocol.                                          |
+| **SMB protocol support**                       | Provides shared file access and management through SMB/CIFS.                                       |
+| **S3 protocol support**                        | Offers object storage access via the S3 API for cloud-native workloads.                            |
+| **HDFS protocol support**                      | Integrates with Hadoop Distributed File System for analytics and big data.                         |
+| **Backup platform integration with Commvault** | Native hooks for backup, restore, and archiving using Commvault software.                          |
+| **Backup platform integration with Veeam**     | Ensures optimized backup and recovery workflows with Veeam.                                        |
+| **Backup platform integration with Rubrik**    | Provides seamless snapshot, protection, and recovery integration with Rubrik.                      |
+| **Backup platform integration with Cohesity**  | Connects with Cohesity for data protection, archival, and management.                              |
+| **Backup platform integration with Veritas**   | Works with Veritas backup solutions for enterprise-grade protection.                               |
+| **Backup platform integration with NetBackup** | Deep integration for backup/recovery orchestration with Veritas NetBackup.                         |
+| **Backup platform integration with Dell PPDM** | Supports Dell PowerProtect Data Manager for policy-driven protection.                              |
+| **Backup platform integration with HYCU**      | Enables automated backup and recovery integration with HYCU.                                       |
