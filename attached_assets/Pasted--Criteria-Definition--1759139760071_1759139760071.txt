@@ -1,0 +1,18 @@
+| **Criteria**                         | **Definition**                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| **Inline deduplication**             | Eliminates duplicate data blocks in real time before being written, reducing storage footprint instantly.    |
+| **Post-process deduplication**       | Identifies and removes redundant data after it has been stored, reclaiming capacity in the background.       |
+| **Inline compression**               | Compresses data as it is ingested, lowering storage use immediately without waiting for post-processing.     |
+| **Inline decompression**             | Decompresses data on-the-fly during reads, ensuring applications can access original data quickly.           |
+| **Thin provisioning**                | Allocates storage dynamically on demand, presenting more logical capacity than is physically provisioned.    |
+| **Reclaim capabilities**             | Automatically recovers unused storage space when applications delete or overwrite data.                      |
+| **Auto-tiering support**             | Moves data between storage tiers (NVMe, SSD, HDD, cloud) based on activity, optimizing cost and performance. |
+| **Energy Star certification**        | Compliance with Energy Star standards, validating energy-efficient operation of the storage system.          |
+| **Climate Neutral certification**    | Indicates vendor has offset or eliminated carbon emissions associated with storage system operation.         |
+| **UNMAP support**                    | Allows hosts to inform storage of unused blocks, enabling space reclamation and efficiency.                  |
+| **TRIM support**                     | SSD-level command that clears deleted data blocks, improving performance and reclaiming space.               |
+| **Space-efficient snapshots**        | Snapshots consume minimal capacity by storing only incremental data changes, conserving resources.           |
+| **Space-efficient clones**           | Creates writable copies that share underlying blocks, minimizing additional storage consumption.             |
+| **Multi-tenancy support**            | Enables secure partitioning of resources for different tenants or departments, maximizing utilization.       |
+| **Efficiency monitoring dashboards** | Provides visibility into deduplication, compression, tiering, and capacity savings with intuitive reporting. |
+| **Granular QoS control**             | Allows fine-tuned performance allocation per workload, preventing resource hogging and improving efficiency. |
