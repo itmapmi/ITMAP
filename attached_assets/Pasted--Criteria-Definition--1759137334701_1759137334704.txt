@@ -1,0 +1,28 @@
+| **Criteria**                                       | **Definition**                                                                                                                                |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Active-active high-availability configuration**  | Both controllers or nodes are simultaneously active, sharing workloads in real time. Provides continuous availability even if one node fails. |
+| **Active-passive high-availability configuration** | One controller/node is active while the other remains on standby. The passive node takes over during a failure.                               |
+| **Redundant controllers**                          | Multiple controllers ensure failover capability, preventing single points of failure in I/O processing.                                       |
+| **Redundant components**                           | Critical hardware (e.g., fans, power supplies, paths) is duplicated to eliminate single points of failure.                                    |
+| **Non-disruptive firmware upgrades**               | Firmware updates can be applied without stopping operations, ensuring continuous availability.                                                |
+| **Non-disruptive microcode upgrades**              | Microcode (low-level control code) can be upgraded without halting workloads or downtime.                                                     |
+| **Non-disruptive software upgrades**               | Core storage software can be updated without interrupting data access or service.                                                             |
+| **Hot-swappable drives**                           | Drives can be replaced or added without shutting down the system.                                                                             |
+| **Hot-swappable controllers**                      | Controllers can be replaced or upgraded while the system remains online.                                                                      |
+| **Hot-swappable fans**                             | Fans can be replaced without interrupting system operations or risking overheating.                                                           |
+| **Hot-swappable power supplies**                   | Power supplies can be replaced without downtime, ensuring uninterrupted power.                                                                |
+| **Synchronous replication**                        | Real-time replication of data between sites ensures zero data loss (RPO=0).                                                                   |
+| **Asynchronous replication**                       | Data replication occurs with a time lag, trading minor data loss for performance and distance flexibility.                                    |
+| **Geo-redundancy support**                         | Storage system supports geographically distributed replication for disaster resilience.                                                       |
+| **Disaster recovery capabilities**                 | Built-in tools and workflows for restoring service and data after a site or system failure.                                                   |
+| **Continuous data protection (CDP)**               | Captures every data change in near real-time, enabling recovery to almost any point in time.                                                  |
+| **Snapshot frequency configuration**               | Allows administrators to define how often snapshots are taken to meet recovery objectives.                                                    |
+| **Snapshot granularity configuration**             | Defines the detail level of snapshots (e.g., per volume, LUN, or file) for flexible recovery.                                                 |
+| **NVMe-oF protocol support for HA**                | High-availability features extend to NVMe over Fabrics for low-latency, resilient storage networking.                                         |
+| **Fibre Channel protocol support for HA**          | Ensures failover and multipathing with Fibre Channel SAN environments.                                                                        |
+| **iSCSI protocol support for HA**                  | Provides high-availability features for IP-based iSCSI storage networks.                                                                      |
+| **NFS protocol support for HA**                    | Delivers redundancy and failover for NFS-based file services.                                                                                 |
+| **SMB protocol support for HA**                    | Supports HA and failover for SMB/CIFS file sharing workloads.                                                                                 |
+| **S3 protocol support for HA**                     | Provides redundancy and continuous availability for object storage using the S3 protocol.                                                     |
+| **SLA uptime guarantee**                           | Vendor commitment to system availability (e.g., 99.999%) defined in service-level agreements.                                                 |
+| **SLA recovery objectives**                        | Defines recovery time objective (RTO) and recovery point objective (RPO) commitments in the SLA.                                              |
