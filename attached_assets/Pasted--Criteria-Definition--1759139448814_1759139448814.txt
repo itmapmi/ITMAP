@@ -1,0 +1,16 @@
+| **Criteria**                                | **Definition**                                                                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Maximum raw capacity**                    | The total physical storage capacity supported by the system, before applying efficiency features such as deduplication or compression. |
+| **Maximum usable capacity**                 | The effective storage available to applications after formatting, RAID protection, and efficiency features are applied.                |
+| **Scale-up expansion support**              | Ability to add capacity within a node or system (e.g., adding drives or shelves) to increase performance or capacity.                  |
+| **Scale-out expansion support**             | Ability to add more nodes or clusters to expand performance and capacity linearly.                                                     |
+| **Maximum drives per node**                 | The largest number of supported drives in a single node, impacting density and capacity.                                               |
+| **Maximum nodes per cluster**               | The maximum number of nodes supported in a single cluster, determining scalability.                                                    |
+| **Maximum controllers per cluster**         | Maximum number of active controllers supported, influencing performance and redundancy.                                                |
+| **Maximum namespace size**                  | The largest supported logical namespace (e.g., LUN or volume), affecting application scalability.                                      |
+| **Maximum file system size**                | The largest supported file system size, enabling management of large unstructured data workloads.                                      |
+| **Maximum object count per bucket**         | The maximum number of objects supported within a single object storage bucket.                                                         |
+| **Maximum concurrent protocol connections** | Maximum number of simultaneous connections supported across protocols (FC, iSCSI, NFS, SMB, S3).                                       |
+| **Mixed workload scaling**                  | The system’s ability to maintain consistent performance when running diverse workload types concurrently.                              |
+| **Multi-site stretch clustering support**   | Enables clusters to span sites, providing continuous availability and workload mobility across locations.                              |
+| **Cloud-bursting capability**               | Ability to dynamically extend workloads from on-premises storage to cloud resources during demand spikes.                              |
