@@ -1,0 +1,29 @@
+| **Criteria**                          | **Definition**                                                                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Data-at-rest encryption**           | Protects stored data by encrypting it on drives, preventing unauthorized access if media is lost or stolen.                 |
+| **AES-256 encryption support**        | Uses the Advanced Encryption Standard with 256-bit keys, a widely accepted strong encryption method for enterprise storage. |
+| **FIPS 140-2 certification**          | Validates that encryption modules comply with U.S. federal security standards for cryptographic implementations.            |
+| **Data-in-flight encryption**         | Encrypts data while moving across networks to protect against interception or tampering.                                    |
+| **TLS 1.2 support**                   | Provides secure encrypted communications over networks using Transport Layer Security version 1.2.                          |
+| **TLS 1.3 support**                   | Supports the latest TLS version with stronger encryption and faster, more secure handshakes.                                |
+| **IPsec support**                     | Enables secure, encrypted IP-level communication across networks for data protection.                                       |
+| **Role-based access control (RBAC)**  | Grants system access based on user roles, ensuring least-privilege and operational separation of duties.                    |
+| **Multi-factor authentication (MFA)** | Requires additional verification (e.g., token, biometric) beyond passwords to access systems.                               |
+| **Secure erase**                      | Permanently deletes data from media to prevent recovery, often meeting compliance requirements.                             |
+| **Crypto-shredding**                  | Destroys encryption keys, rendering all encrypted data permanently unreadable.                                              |
+| **Ransomware detection**              | Uses AI/heuristics to identify unusual access or encryption patterns indicative of ransomware.                              |
+| **Ransomware protection**             | Includes safeguards like immutable copies, air-gapping, or automated recovery workflows to counter ransomware attacks.      |
+| **Immutable snapshots**               | Snapshots that cannot be altered or deleted, preserving clean recovery points.                                              |
+| **WORM compliance**                   | Write Once, Read Many enforcement ensures data cannot be altered once written, meeting regulatory requirements.             |
+| **HIPAA compliance**                  | Aligns with U.S. healthcare regulations for securing patient health information (PHI).                                      |
+| **GDPR compliance**                   | Supports European data protection and privacy requirements for personal data handling.                                      |
+| **FedRAMP compliance**                | Meets U.S. federal standards for cloud services security and risk management.                                               |
+| **ISO 27001 compliance**              | Adheres to international standards for information security management systems.                                             |
+| **Internal key management**           | Provides built-in tools for generating, storing, and rotating encryption keys.                                              |
+| **External key management**           | Integrates with third-party key managers for enterprise-wide key lifecycle control.                                         |
+| **KMIP server support**               | Supports the Key Management Interoperability Protocol for standardized key management.                                      |
+| **Kerberos for NFS**                  | Uses Kerberos authentication to secure NFS sessions, preventing credential spoofing.                                        |
+| **SMB signing**                       | Ensures SMB packets are digitally signed to prevent tampering and replay attacks.                                           |
+| **S3 object lock**                    | Prevents modification or deletion of objects in S3, supporting WORM compliance.                                             |
+| **Audit logging**                     | Records all access and administrative actions for monitoring and compliance.                                                |
+| **Tamper-proof event records**        | Ensures logs and events are immutable, preventing unauthorized modifications.                                               |
