@@ -285,6 +285,7 @@ export function FeatureCategoryManagement() {
       name: feature.name,
       description: feature.description || "",
       categoryId: feature.categoryId,
+      displayOrder: feature.displayOrder,
     });
   };
 
