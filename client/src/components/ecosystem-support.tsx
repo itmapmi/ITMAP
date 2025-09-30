@@ -599,15 +599,12 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
               <div 
                 className="grid gap-4 py-4 px-6" 
                 style={{ 
-                  gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                  minWidth: `${500 + (vendors.length * 140)}px`
+                  gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                  minWidth: `${200 + (vendors.length * 140)}px`
                 }}
               >
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
                   Features
-                </div>
-                <div className="font-semibold text-sm text-gray-700 flex items-center">
-                  Evaluation Criteria
                 </div>
                 {vendors.map(vendor => (
                   <div key={vendor.id} className="text-center min-w-0">
@@ -626,7 +623,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
             {/* Content with horizontal scrolling */}
             <div className="overflow-x-auto" ref={containerRef}>
-              <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+              <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
@@ -656,11 +653,11 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                         <div 
                           className="grid gap-4 px-4" 
                           style={{ 
-                            gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                            minWidth: `${500 + (vendors.length * 140)}px`
+                            gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                            minWidth: `${200 + (vendors.length * 140)}px`
                           }}
                         >
-                          <div className="flex items-center gap-3 col-span-2">
+                          <div className="flex items-center gap-3">
                             <button
                               onClick={() => toggleCategory(category.id)}
                               className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
@@ -683,19 +680,13 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                               key={feature.id}
                               className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-green-50/20 rounded-lg transition-colors px-2"
                               style={{ 
-                                gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                                minWidth: `${500 + (vendors.length * 140)}px`
+                                gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                                minWidth: `${200 + (vendors.length * 140)}px`
                               }}
                             >
                               <div className="flex flex-col justify-center">
                                 <div className="font-medium text-sm text-gray-900">
                                   {feature.name}
-                                </div>
-                              </div>
-                              
-                              <div className="flex flex-col justify-center">
-                                <div className="text-sm text-gray-700 leading-relaxed">
-                                  {feature.description || 'No evaluation criteria specified'}
                                 </div>
                               </div>
                               
@@ -729,15 +720,15 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                 const maxScore = ecosystemFeatures.length;
 
                 return (
-                  <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+                  <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
                     <div 
                       className="grid gap-4 px-4 py-4" 
                       style={{ 
-                        gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                        minWidth: `${500 + (vendors.length * 140)}px`
+                        gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                        minWidth: `${200 + (vendors.length * 140)}px`
                       }}
                     >
-                      <div className="flex flex-col justify-center col-span-2">
+                      <div className="flex flex-col justify-center">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                           <TrendingUp className="h-5 w-5 text-green-500" />
                           Total Score
@@ -775,15 +766,15 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
               {/* Final Ecosystem Support Scores */}
               {ecosystemFeatures && ecosystemFeatures.length > 0 && (
-                <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
+                <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
                   <div 
                     className="grid gap-4 px-4 py-4" 
                     style={{ 
-                      gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                      minWidth: `${500 + (vendors.length * 140)}px`
+                      gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                      minWidth: `${200 + (vendors.length * 140)}px`
                     }}
                   >
-                    <div className="flex flex-col justify-center col-span-2">
+                    <div className="flex flex-col justify-center">
                       <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-green-500" />
                         Final Ecosystem Support Score
