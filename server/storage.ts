@@ -1,6 +1,8 @@
 import {
   type User,
   type InsertUser,
+  type UserActivityLog,
+  type InsertUserActivityLog,
   type Market,
   type InsertMarket,
   type Vendor,
@@ -27,6 +29,7 @@ import {
   type MarketCriteriaWeight,
   type HistoricalPosition,
   users,
+  userActivityLogs,
   markets,
   vendors,
   criteria,
@@ -42,7 +45,7 @@ import {
   historicalPositions,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -126,6 +129,13 @@ export interface IStorage {
   // Historical Positions
   getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
   saveHistoricalPosition(position: Omit<HistoricalPosition, 'id' | 'createdAt'>): Promise<HistoricalPosition>;
+  
+  // User Activity Logs
+  recordUserLogin(log: InsertUserActivityLog): Promise<UserActivityLog>;
+  recordUserLogout(sessionId: string): Promise<void>;
+  updateLastSeen(sessionId: string): Promise<void>;
+  getUserActivityLogs(options?: { limit?: number; offset?: number; startDate?: Date; endDate?: Date }): Promise<(UserActivityLog & { user: User })[]>;
+  pruneUserLogsBefore(date: Date): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -784,6 +794,74 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSupport;
     }
+  }
+
+  // User Activity Logs
+  async recordUserLogin(log: InsertUserActivityLog): Promise<UserActivityLog> {
+    const [newLog] = await db
+      .insert(userActivityLogs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+
+  async recordUserLogout(sessionId: string): Promise<void> {
+    await db
+      .update(userActivityLogs)
+      .set({ logoutAt: new Date() })
+      .where(eq(userActivityLogs.sessionId, sessionId));
+  }
+
+  async updateLastSeen(sessionId: string): Promise<void> {
+    await db
+      .update(userActivityLogs)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(userActivityLogs.sessionId, sessionId));
+  }
+
+  async getUserActivityLogs(options?: { limit?: number; offset?: number; startDate?: Date; endDate?: Date }): Promise<(UserActivityLog & { user: User })[]> {
+    const { limit = 100, offset = 0, startDate, endDate } = options || {};
+
+    let query = db
+      .select({
+        id: userActivityLogs.id,
+        userId: userActivityLogs.userId,
+        sessionId: userActivityLogs.sessionId,
+        loginAt: userActivityLogs.loginAt,
+        logoutAt: userActivityLogs.logoutAt,
+        lastSeenAt: userActivityLogs.lastSeenAt,
+        ipAddress: userActivityLogs.ipAddress,
+        userAgent: userActivityLogs.userAgent,
+        createdAt: userActivityLogs.createdAt,
+        user: users,
+      })
+      .from(userActivityLogs)
+      .innerJoin(users, eq(userActivityLogs.userId, users.id))
+      .$dynamic();
+
+    const conditions = [];
+    if (startDate) {
+      conditions.push(sql`${userActivityLogs.loginAt} >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(sql`${userActivityLogs.loginAt} <= ${endDate}`);
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query
+      .orderBy(desc(userActivityLogs.loginAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async pruneUserLogsBefore(date: Date): Promise<number> {
+    const result = await db
+      .delete(userActivityLogs)
+      .where(sql`${userActivityLogs.loginAt} < ${date}`);
+    return result.rowCount || 0;
   }
 
 
