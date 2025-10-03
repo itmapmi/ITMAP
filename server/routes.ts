@@ -35,10 +35,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Log in the user
-      req.logIn(user, (err) => {
+      req.logIn(user, async (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed after registration" });
         }
+        
+        try {
+          // Record user login
+          await storage.recordUserLogin({
+            userId: user.id,
+            sessionId: req.sessionID,
+            ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+            userAgent: req.get('user-agent') || 'unknown',
+            loginAt: new Date(),
+          });
+        } catch (error) {
+          console.error("Error recording registration login:", error);
+        }
+        
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
       });
@@ -48,13 +62,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/auth/login", passport.authenticate('local'), (req, res) => {
-    const { password, ...userWithoutPassword } = req.user as any;
-    res.json(userWithoutPassword);
+  app.post("/auth/login", passport.authenticate('local'), async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { password, ...userWithoutPassword } = user;
+      
+      // Record user login
+      await storage.recordUserLogin({
+        userId: user.id,
+        sessionId: req.sessionID,
+        ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+        userAgent: req.get('user-agent') || 'unknown',
+        loginAt: new Date(),
+      });
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error recording login:", error);
+      const { password, ...userWithoutPassword } = req.user as any;
+      res.json(userWithoutPassword);
+    }
   });
 
-  app.post("/auth/logout", (req, res) => {
-    req.logout(() => {
+  app.post("/auth/logout", async (req, res) => {
+    const sessionId = req.sessionID;
+    req.logout(async () => {
+      try {
+        // Record logout time
+        if (sessionId) {
+          await storage.recordUserLogout(sessionId);
+        }
+      } catch (error) {
+        console.error("Error recording logout:", error);
+      }
       res.json({ message: "Logged out successfully" });
     });
   });
@@ -63,12 +103,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/auth/google", passport.authenticate('google', { scope: ['profile', 'email'] }));
   app.get("/auth/google/callback", 
     passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-      const user = req.user as any;
-      if (user?.role === 'admin') {
-        res.redirect('/admin');
-      } else {
-        res.redirect('/');
+    async (req, res) => {
+      try {
+        const user = req.user as any;
+        
+        // Record user login
+        await storage.recordUserLogin({
+          userId: user.id,
+          sessionId: req.sessionID,
+          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          loginAt: new Date(),
+        });
+        
+        if (user?.role === 'admin') {
+          res.redirect('/admin');
+        } else {
+          res.redirect('/');
+        }
+      } catch (error) {
+        console.error("Error recording OAuth login:", error);
+        const user = req.user as any;
+        if (user?.role === 'admin') {
+          res.redirect('/admin');
+        } else {
+          res.redirect('/');
+        }
       }
     }
   );
@@ -76,12 +136,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/auth/linkedin", passport.authenticate('linkedin'));
   app.get("/auth/linkedin/callback", 
     passport.authenticate('linkedin', { failureRedirect: '/login' }),
-    (req, res) => {
-      const user = req.user as any;
-      if (user?.role === 'admin') {
-        res.redirect('/admin');
-      } else {
-        res.redirect('/');
+    async (req, res) => {
+      try {
+        const user = req.user as any;
+        
+        // Record user login
+        await storage.recordUserLogin({
+          userId: user.id,
+          sessionId: req.sessionID,
+          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          loginAt: new Date(),
+        });
+        
+        if (user?.role === 'admin') {
+          res.redirect('/admin');
+        } else {
+          res.redirect('/');
+        }
+      } catch (error) {
+        console.error("Error recording OAuth login:", error);
+        const user = req.user as any;
+        if (user?.role === 'admin') {
+          res.redirect('/admin');
+        } else {
+          res.redirect('/');
+        }
       }
     }
   );
