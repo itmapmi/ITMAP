@@ -1440,6 +1440,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Activity Logs (Operations Management)
+  app.get("/api/admin/operations/user-logs", requireAdmin, async (req, res) => {
+    try {
+      const { limit, offset, startDate, endDate } = req.query;
+      
+      const options: any = {};
+      if (limit) options.limit = parseInt(limit as string);
+      if (offset) options.offset = parseInt(offset as string);
+      if (startDate) options.startDate = new Date(startDate as string);
+      if (endDate) options.endDate = new Date(endDate as string);
+      
+      const logs = await storage.getUserActivityLogs(options);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching user activity logs:", error);
+      res.status(500).json({ error: "Failed to fetch user activity logs" });
+    }
+  });
+
+  app.delete("/api/admin/operations/user-logs/prune", requireAdmin, async (req, res) => {
+    try {
+      // Delete logs older than 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      const deletedCount = await storage.pruneUserLogsBefore(sixMonthsAgo);
+      res.json({ 
+        success: true, 
+        deletedCount,
+        message: `Deleted ${deletedCount} logs older than 6 months`
+      });
+    } catch (error) {
+      console.error("Error pruning user activity logs:", error);
+      res.status(500).json({ error: "Failed to prune user activity logs" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
