@@ -50,6 +50,21 @@ export class CronJobManager {
 
     this.jobs.set('healthCheck', healthCheckJob);
 
+    // Daily user activity logs cleanup at 3:00 AM UTC (remove logs older than 6 months)
+    const userLogsCleanupJob = cron.schedule('0 3 * * *', async () => {
+      console.log('Starting user activity logs cleanup...');
+      try {
+        await this.cleanupOldUserLogs();
+        console.log('User activity logs cleanup completed');
+      } catch (error) {
+        console.error('Error in user activity logs cleanup:', error);
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('userLogsCleanup', userLogsCleanupJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 
@@ -138,6 +153,11 @@ export class CronJobManager {
       running: this.jobs.has('healthCheck'),
       nextRun: 'Every hour'
     };
+    
+    status['userLogsCleanup'] = {
+      running: this.jobs.has('userLogsCleanup'),
+      nextRun: 'Daily at 3:00 AM UTC'
+    };
 
     return status;
   }
@@ -192,15 +212,17 @@ export class CronJobManager {
           let viabilityWeight = 0;
           
           for (const score of vendorScores) {
-            const weight = weightMap.get(score.criteriaId) || 50; // Default 50% if no weight set
+            const weightValue = weightMap.get(score.criteriaId) || '50'; // Default 50% if no weight set
+            const weight = Number(weightValue);
+            const scoreValue = Number(score.score);
             const category = score.criteria.category.toLowerCase();
             
             if (category.includes('execution')) {
-              executionTotal += score.score * Number(weight);
-              executionWeight += Number(weight);
+              executionTotal += scoreValue * weight;
+              executionWeight += weight;
             } else if (category.includes('viability') || category.includes('vision')) {
-              viabilityTotal += score.score * Number(weight);
-              viabilityWeight += Number(weight);
+              viabilityTotal += scoreValue * weight;
+              viabilityWeight += weight;
             }
           }
           
@@ -241,6 +263,31 @@ export class CronJobManager {
       console.log('News cleanup completed (currently a no-op - would need database cleanup method)');
     } catch (error) {
       console.error('Error cleaning up old news:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cleanup user activity logs older than 6 months
+   */
+  public async cleanupOldUserLogs(): Promise<void> {
+    try {
+      console.log('Starting cleanup of user activity logs older than 6 months...');
+      
+      const { storage } = await import('./storage');
+      
+      // Calculate cutoff date (6 months ago)
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+      
+      console.log(`Cleaning up user activity logs older than ${cutoffDate.toISOString()}`);
+      
+      // Delete logs older than cutoff date
+      await storage.pruneUserLogsBefore(cutoffDate);
+      
+      console.log('User activity logs cleanup completed successfully');
+    } catch (error) {
+      console.error('Error cleaning up user activity logs:', error);
       throw error;
     }
   }
