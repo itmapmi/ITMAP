@@ -27,6 +27,18 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const userActivityLogs = pgTable("user_activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionId: text("session_id"),
+  loginAt: timestamp("login_at").notNull().default(sql`now()`),
+  logoutAt: timestamp("logout_at"),
+  lastSeenAt: timestamp("last_seen_at").default(sql`now()`),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const markets = pgTable("markets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -362,9 +374,17 @@ export const insertResearchMethodologySchema = createInsertSchema(researchMethod
   updatedAt: true,
 });
 
+export const insertUserActivityLogSchema = createInsertSchema(userActivityLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type InsertUserActivityLog = z.infer<typeof insertUserActivityLogSchema>;
+export type UserActivityLog = typeof userActivityLogs.$inferSelect;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 
