@@ -11,6 +11,7 @@ import NewsManagement from "@/components/admin/news-management";
 import NewsSourcesManagement from "@/components/admin/news-sources-management";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
+import OperationsManagement from "@/components/admin/operations-management";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
@@ -45,7 +46,7 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-11">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
@@ -57,6 +58,7 @@ export default function Admin() {
             <TabsTrigger value="news-sources">News Sources</TabsTrigger>
             <TabsTrigger value="news-analysis">News</TabsTrigger>
             <TabsTrigger value="news-management">Automation</TabsTrigger>
+            <TabsTrigger value="operations">Operations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -101,6 +103,10 @@ export default function Admin() {
 
           <TabsContent value="news-management" className="mt-6">
             <NewsManagement />
+          </TabsContent>
+
+          <TabsContent value="operations" className="mt-6">
+            <OperationsManagement />
           </TabsContent>
         </Tabs>
       </motion.div>
