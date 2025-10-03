@@ -16,13 +16,23 @@ export default function OperationsManagement() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // Build query string
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return params.toString();
+  };
+
   const { data, isLoading, refetch } = useQuery<{
     logs: UserActivityLog[];
     total: number;
     page: number;
     limit: number;
   }>({
-    queryKey: ['/api/admin/operations/user-logs', { page, limit, startDate, endDate }],
+    queryKey: [`/api/admin/operations/user-logs?${buildQueryString()}`],
   });
 
   const handleFilter = () => {

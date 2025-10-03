@@ -8,10 +8,50 @@ import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
 
+  // Cache to track which sessions we've already logged
+  const loggedSessions = new Set<string>();
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupSession(app);
   setupPassport(app);
+
+  // Middleware to track user activity for existing sessions
+  app.use(async (req, res, next) => {
+    if (req.isAuthenticated() && req.sessionID && req.user) {
+      // Skip if we've already checked this session in memory
+      if (!loggedSessions.has(req.sessionID)) {
+        try {
+          const user = req.user as any;
+          // Check if we have a log entry for this session in the database
+          const sessionLogs = await storage.getUserActivityLogs({
+            limit: 1000,
+            offset: 0
+          });
+          
+          const hasSessionLog = sessionLogs.some((log: any) => log.sessionId === req.sessionID);
+          
+          if (!hasSessionLog) {
+            // Create a login record for this restored session
+            await storage.recordUserLogin({
+              userId: user.id,
+              sessionId: req.sessionID,
+              ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+              userAgent: req.get('user-agent') || 'unknown',
+              loginAt: new Date(),
+            });
+            console.log(`Logged restored session for user ${user.id} (session: ${req.sessionID.substring(0, 8)})`);
+          }
+          
+          // Mark this session as checked
+          loggedSessions.add(req.sessionID);
+        } catch (error) {
+          console.error("Error tracking session activity:", error);
+        }
+      }
+    }
+    next();
+  });
 
   // Authentication routes
   app.post("/auth/register", async (req, res) => {
