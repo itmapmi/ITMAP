@@ -212,11 +212,16 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       return sum + score;
     }, 0);
 
+    // Round total to 2 decimals (exactly like Product Evaluation section does)
+    const roundedTotal = Number(totalScore.toFixed(2));
+
     // Calculate maximum possible score
     const maxScore = productCapabilityFeatures.length * 1.0;
     
     // Return normalized score out of 10 (match Product Evaluation section exactly)
-    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(1)) : 0;
+    // Product Evaluation: rounds total to 2 decimals, then normalizes, then displays with 1 decimal
+    const normalizedScore = maxScore > 0 ? (roundedTotal / maxScore) * 10 : 0;
+    return Number(normalizedScore.toFixed(1));
   };
 
   // Calculate ecosystem support scores
