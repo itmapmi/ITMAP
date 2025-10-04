@@ -26,13 +26,14 @@ export default function OperationsManagement() {
     return params.toString();
   };
 
-  const { data, isLoading, refetch } = useQuery<{
+  const { data, isLoading, error, refetch } = useQuery<{
     logs: UserActivityLog[];
     total: number;
     page: number;
     limit: number;
   }>({
     queryKey: [`/api/admin/operations/user-logs?${buildQueryString()}`],
+    retry: false,
   });
 
   const handleFilter = () => {
@@ -71,6 +72,29 @@ export default function OperationsManagement() {
   };
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Operations Management</h3>
+          <p className="text-gray-600">Monitor user activity and system operations</p>
+        </div>
+
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center">
+              <p className="text-red-600 font-semibold mb-2">Access Denied</p>
+              <p className="text-gray-600">
+                You don't have permission to view this page. Admin access is required.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
