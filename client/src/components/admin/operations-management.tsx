@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
-import type { UserActivityLog } from "@shared/schema";
+import type { UserActivityLog, User } from "@shared/schema";
+
+type UserActivityLogWithUser = UserActivityLog & { user: User };
 
 export default function OperationsManagement() {
   const [page, setPage] = useState(1);
@@ -27,7 +29,7 @@ export default function OperationsManagement() {
   };
 
   const { data, isLoading, error, refetch } = useQuery<{
-    logs: UserActivityLog[];
+    logs: UserActivityLogWithUser[];
     total: number;
     page: number;
     limit: number;
@@ -172,7 +174,7 @@ export default function OperationsManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User ID</TableHead>
+                    <TableHead>User Email</TableHead>
                     <TableHead>Session ID</TableHead>
                     <TableHead>Login Time</TableHead>
                     <TableHead>Logout Time</TableHead>
@@ -198,8 +200,8 @@ export default function OperationsManagement() {
                   ) : (
                     data.logs.map((log) => (
                       <TableRow key={log.id} data-testid={`row-log-${log.id}`}>
-                        <TableCell className="font-mono text-xs">
-                          {log.userId.substring(0, 8)}...
+                        <TableCell>
+                          {log.user?.email || 'Unknown'}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           {log.sessionId ? log.sessionId.substring(0, 12) + '...' : 'N/A'}
