@@ -1563,16 +1563,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Activity Logs (Operations Management)
   app.get("/api/admin/operations/user-logs", requireAdmin, async (req, res) => {
     try {
-      const { limit, offset, startDate, endDate } = req.query;
+      const { page, limit, startDate, endDate } = req.query;
       
-      const options: any = {};
-      if (limit) options.limit = parseInt(limit as string);
-      if (offset) options.offset = parseInt(offset as string);
+      const pageNum = page ? parseInt(page as string) : 1;
+      const limitNum = limit ? parseInt(limit as string) : 50;
+      const offset = (pageNum - 1) * limitNum;
+      
+      const options: any = { limit: limitNum, offset };
       if (startDate) options.startDate = new Date(startDate as string);
       if (endDate) options.endDate = new Date(endDate as string);
       
       const logs = await storage.getUserActivityLogs(options);
-      res.json(logs);
+      
+      // Get total count (for now, just return the logs length as total)
+      // In a real scenario, you'd want a separate count query
+      const total = logs.length;
+      
+      res.json({
+        logs,
+        total,
+        page: pageNum,
+        limit: limitNum
+      });
     } catch (error) {
       console.error("Error fetching user activity logs:", error);
       res.status(500).json({ error: "Failed to fetch user activity logs" });
