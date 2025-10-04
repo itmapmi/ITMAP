@@ -215,8 +215,8 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     // Calculate maximum possible score
     const maxScore = productCapabilityFeatures.length * 1.0;
     
-    // Return normalized score out of 10
-    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+    // Return normalized score out of 10 (match Product Evaluation section exactly)
+    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(1)) : 0;
   };
 
   // Calculate ecosystem support scores
