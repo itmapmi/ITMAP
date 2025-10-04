@@ -241,6 +241,38 @@ export default function VendorManagement() {
     },
   });
 
+  const updateISVEcosystemMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/update-isv-ecosystem-scores", "POST", {
+        marketId: selectedMarket
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Invalidate all related queries to ensure UI updates everywhere
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      
+      // Force refetch to update Magic Quadrant
+      queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
+      queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket] });
+      
+      toast({
+        title: "Success",
+        description: `Updated ISV Ecosystem scores for ${data.updatedScores} vendors`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update ISV Ecosystem scores",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmitVendor = (data: InsertVendor) => {
     const vendorData = { ...data, marketId: selectedMarket };
     if (editingVendor) {
@@ -539,9 +571,9 @@ export default function VendorManagement() {
 
           {/* Vendor Scoring - Split into X-axis and Y-axis */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Update Product Capabilities Button */}
+            {/* Update Scores Buttons */}
             {selectedMarket && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
                 <Button
                   onClick={() => updateProductCapabilitiesMutation.mutate()}
                   disabled={updateProductCapabilitiesMutation.isPending || !selectedMarket}
@@ -549,6 +581,14 @@ export default function VendorManagement() {
                   data-testid="button-update-product-capabilities"
                 >
                   {updateProductCapabilitiesMutation.isPending ? "Updating..." : "Update Product Capabilities"}
+                </Button>
+                <Button
+                  onClick={() => updateISVEcosystemMutation.mutate()}
+                  disabled={updateISVEcosystemMutation.isPending || !selectedMarket}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                  data-testid="button-update-isv-ecosystem"
+                >
+                  {updateISVEcosystemMutation.isPending ? "Updating..." : "Update ISV Ecosystem Score"}
                 </Button>
               </div>
             )}

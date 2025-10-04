@@ -1534,11 +1534,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + score;
         }, 0);
 
+        // Round total to 2 decimals (exactly like Ecosystem Support section does)
+        const roundedTotal = Number(totalScore.toFixed(2));
+
         // Calculate maximum possible score
         const maxScore = ecosystemFeatures.length * 1.0;
         
         // Calculate normalized score out of 10 (exactly as shown in ecosystem support)
-        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
+        // Ecosystem Support: rounds total to 2 decimals, then normalizes, stores with 2 decimals
+        const normalizedScore = maxScore > 0 ? Number(((roundedTotal / maxScore) * 10).toFixed(2)) : 0;
 
         // Update or create the vendor score
         await storage.createOrUpdateVendorScore({
