@@ -330,16 +330,27 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
 
     // Add Product Capabilities score from support matrix to execution category
     const supportMatrixScore = calculateSupportMatrixScore(vendor.id);
-    if (supportMatrixScore > 0) {
-      // Find Product Capabilities criteria to get its weight
-      const productCapabilitiesCriteria = criteria?.find(c => 
-        c.name.toLowerCase().includes('product') && c.name.toLowerCase().includes('capabilities')
-      );
-      const weight = productCapabilitiesCriteria ? criteriaWeights[productCapabilitiesCriteria.id] || 100 : 100;
+    const productCapabilitiesCriteria = criteria?.find(c => 
+      c.name.toLowerCase().includes('product') && c.name.toLowerCase().includes('capabilities')
+    );
+    
+    if (productCapabilitiesCriteria) {
+      // Always use the dynamically calculated score from support matrix
+      const weight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
       const multiplier = weightToMultiplier(weight);
       
+      // Remove the database score if it exists and replace with calculated score
+      if (vendorScores[productCapabilitiesCriteria.id]) {
+        // Subtract the old database score from execution
+        const oldScore = vendorScores[productCapabilitiesCriteria.id];
+        const oldWeight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
+        const oldMultiplier = weightToMultiplier(oldWeight);
+        executionRawScore -= oldScore * oldMultiplier;
+      }
+      
+      // Add the new calculated score
       executionRawScore += supportMatrixScore * multiplier;
-      vendorScores['product-capabilities'] = supportMatrixScore;
+      vendorScores[productCapabilitiesCriteria.id] = supportMatrixScore;
     }
 
     // Add ISV Ecosystem score from support matrix to execution category
@@ -1261,10 +1272,16 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                 <h4 className="font-medium text-gray-900 mb-4">Individual Criteria Scores</h4>
                 <div className="space-y-3">
                   {Object.entries(selectedVendor.vendor.scores).map(([criteriaId, score]) => {
-                    if (criteriaId === 'product-capabilities') {
+                    const criterion = criteria?.find(c => c.id === criteriaId);
+                    
+                    // Check if this is Product Capabilities criteria (from support matrix calculation)
+                    const isProductCapabilities = criterion?.name.toLowerCase().includes('product') && 
+                                                 criterion?.name.toLowerCase().includes('capabilities');
+                    
+                    if (isProductCapabilities) {
                       return (
                         <div key={criteriaId} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                          <span className="text-gray-900 font-medium">Product Capabilities</span>
+                          <span className="text-gray-900 font-medium">Product Capabilities (Auto-calculated)</span>
                           <span className="font-bold text-green-600 text-lg">
                             {score.toFixed(1)}/10
                           </span>
@@ -1272,7 +1289,6 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                       );
                     }
                     
-                    const criterion = criteria?.find(c => c.id === criteriaId);
                     if (!criterion) return null;
                     
                     return (
@@ -1295,11 +1311,15 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                     const noteKey = `${selectedVendor.vendor.id}-${criteriaId}`;
                     const currentNote = notes[noteKey] || '';
                     
-                    if (criteriaId === 'product-capabilities') {
+                    // Check if this is Product Capabilities criteria (from support matrix calculation)
+                    const isProductCapabilities = criterion?.name.toLowerCase().includes('product') && 
+                                                 criterion?.name.toLowerCase().includes('capabilities');
+                    
+                    if (isProductCapabilities) {
                       return (
                         <div key={criteriaId} className="border rounded-lg p-4">
                           <Label className="font-medium text-gray-900 mb-2 block">
-                            Product Capabilities (Score: {score.toFixed(1)}/10)
+                            Product Capabilities - Auto-calculated (Score: {score.toFixed(1)}/10)
                           </Label>
                           <Textarea
                             placeholder="Add your notes about this vendor's product capabilities..."
