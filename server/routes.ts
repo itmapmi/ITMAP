@@ -1434,11 +1434,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + score;
         }, 0);
 
+        // Round total to 2 decimals (exactly like Product Evaluation section does)
+        const roundedTotal = Number(totalScore.toFixed(2));
+
         // Calculate maximum possible score
         const maxScore = features.length * 1.0;
         
         // Calculate normalized score out of 10 to match Product Evaluation "Product Capabilities Score" section
-        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(1)) : 0;
+        // Product Evaluation: rounds total to 2 decimals, then normalizes, then displays with 1 decimal
+        const normalizedScore = maxScore > 0 ? Number(((roundedTotal / maxScore) * 10).toFixed(1)) : 0;
 
         // Update or create the vendor score using normalized score out of 10
         await storage.createOrUpdateVendorScore({
