@@ -248,11 +248,24 @@ export default function NewsManagement() {
                       variant="outline"
                       onClick={() => controlCronJob.mutate({ 
                         jobName, 
-                        action: status.running ? 'stop' : 'start' 
+                        action: 'start' 
                       })}
-                      disabled={controlCronJob.isPending}
+                      disabled={controlCronJob.isPending || status.running}
+                      data-testid={`button-start-${jobName}`}
                     >
-                      {status.running ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => controlCronJob.mutate({ 
+                        jobName, 
+                        action: 'stop' 
+                      })}
+                      disabled={controlCronJob.isPending || !status.running}
+                      data-testid={`button-stop-${jobName}`}
+                    >
+                      <Square className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
