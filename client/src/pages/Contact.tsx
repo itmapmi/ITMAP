@@ -80,7 +80,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Email</h3>
-                    <p className="text-gray-600">contact@itmap.com</p>
+                    <p className="text-gray-600">priyanka@itmap.com</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -89,7 +89,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
+                    <p className="text-gray-600">+971-529074858</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -98,7 +98,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Office</h3>
-                    <p className="text-gray-600">San Francisco, CA</p>
+                    <p className="text-gray-600">ITMAP, Jewelry and Gemplex 3, DMCC, Dubai</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
