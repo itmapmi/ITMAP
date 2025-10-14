@@ -104,6 +104,112 @@ export class NewsProcessor {
   }
 
   /**
+   * Process news for a single vendor using their configured news source URL
+   */
+  async processSingleVendorNews(vendorId: string): Promise<{ newsCount: number; vendor: Vendor }> {
+    console.log(`Starting news processing for vendor ID: ${vendorId}`);
+    
+    try {
+      // Get vendor details
+      const vendor = await storage.getVendorById(vendorId);
+      if (!vendor) {
+        throw new Error(`Vendor not found: ${vendorId}`);
+      }
+
+      // Check if vendor has a news source URL
+      if (!vendor.newsSourceUrl) {
+        throw new Error(`Vendor ${vendor.name} has no news source URL configured`);
+      }
+
+      // Get the market for context
+      const market = await storage.getMarketById(vendor.marketId);
+      if (!market) {
+        throw new Error(`Market not found for vendor: ${vendor.name}`);
+      }
+
+      // Get criteria for analysis
+      const criteria = await storage.getAllCriteria();
+
+      console.log(`Processing news for vendor: ${vendor.name} from ${vendor.newsSourceUrl}`);
+      
+      // Fetch news using the configured news source URL
+      const newsItems = await this.fetchNewsFromUrl(vendor.newsSourceUrl, vendor);
+      
+      let processedCount = 0;
+      
+      // Process each news item
+      for (const newsItem of newsItems) {
+        // Check if we already have this news item
+        const existingNews = await this.checkExistingNews(newsItem.url);
+        if (existingNews) {
+          console.log(`News item already exists: ${newsItem.title}`);
+          continue;
+        }
+        
+        console.log(`Processing news: ${newsItem.title}`);
+        
+        // Analyze the news with AI
+        const analysis = await this.analyzeNews(newsItem, vendor, market, criteria);
+        
+        // Store the news and analysis
+        await this.storeNewsAnalysis(newsItem, vendor, analysis);
+        
+        // Update vendor scores if there's an impact
+        if (analysis.scoreChange && analysis.affectedCriteriaId) {
+          await this.updateVendorScore(vendor.id, analysis.affectedCriteriaId, analysis.scoreChange);
+        }
+
+        processedCount++;
+      }
+      
+      console.log(`Processed ${processedCount} news items for vendor: ${vendor.name}`);
+      return { newsCount: processedCount, vendor };
+    } catch (error) {
+      console.error(`Error processing news for vendor ${vendorId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch news from a specific URL (RSS feed)
+   */
+  private async fetchNewsFromUrl(url: string, vendor: Vendor): Promise<NewsItem[]> {
+    try {
+      console.log(`Fetching RSS feed from: ${url}`);
+      
+      const feed = await this.rssParser.parseURL(url);
+      
+      if (feed.items && feed.items.length > 0) {
+        console.log(`Found RSS feed with ${feed.items.length} items`);
+        
+        // Filter recent items (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const recentItems = feed.items
+          .filter(item => {
+            const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+            return pubDate >= thirtyDaysAgo;
+          })
+          .slice(0, 10); // Limit to 10 most recent
+        
+        return recentItems.map(item => ({
+          title: item.title || 'Untitled',
+          content: item.contentSnippet || item.content || item.summary || '',
+          url: item.link || url,
+          source: `${vendor.name} RSS Feed`,
+          publishedAt: item.pubDate ? new Date(item.pubDate) : new Date()
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error fetching RSS feed from ${url}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch news items for a specific vendor focusing ONLY on press releases from official vendor websites
    * NO third-party sources allowed
    */

@@ -159,6 +159,32 @@ export default function NewsManagement() {
     },
   });
 
+  // Fetch news for a specific vendor
+  const fetchVendorNews = useMutation({
+    mutationFn: async (vendorId: string) => {
+      const response = await fetch(`/api/admin/vendors/${vendorId}/fetch-news`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to fetch vendor news");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "News Fetched",
+        description: `Successfully fetched ${data.newsCount || 0} news items`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendor-news"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to fetch news: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const getJobStatusIcon = (status: CronJobStatus) => {
     if (status.running) {
       return <Activity className="h-4 w-4 text-green-600" />;
@@ -369,6 +395,74 @@ export default function NewsManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Vendor News Sources */}
+      {selectedMarketId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5" />
+              Fetch Vendor News
+            </CardTitle>
+            <CardDescription>
+              Manually fetch latest news for vendors with configured news sources
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {vendorsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-8 w-28" />
+                  </div>
+                ))}
+              </div>
+            ) : Array.isArray(vendors) && vendors.length > 0 ? (
+              <div className="space-y-3">
+                {vendors
+                  .filter((vendor: Vendor) => vendor.newsSourceUrl)
+                  .map((vendor: Vendor) => (
+                    <div key={vendor.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <h4 className="font-medium">{vendor.name}</h4>
+                          <p className="text-sm text-gray-500 truncate max-w-md">
+                            {vendor.newsSourceUrl}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fetchVendorNews.mutate(vendor.id)}
+                        disabled={fetchVendorNews.isPending}
+                        className="flex items-center gap-2"
+                        data-testid={`button-fetch-news-${vendor.id}`}
+                      >
+                        {fetchVendorNews.isPending ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Fetch News
+                      </Button>
+                    </div>
+                  ))}
+                {vendors.filter((vendor: Vendor) => vendor.newsSourceUrl).length === 0 && (
+                  <p className="text-gray-500 text-center py-8">
+                    No vendors with configured news sources. Add a news source URL in Vendor Management.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">
+                No vendors found for this market
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* News Items */}
       <Card>

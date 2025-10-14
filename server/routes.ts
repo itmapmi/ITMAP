@@ -354,6 +354,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fetch news for a specific vendor
+  app.post("/api/admin/vendors/:id/fetch-news", requireAdmin, async (req, res) => {
+    try {
+      const { newsProcessor } = await import('./newsProcessor');
+      const result = await newsProcessor.processSingleVendorNews(req.params.id);
+      res.json({
+        success: true,
+        newsCount: result.newsCount,
+        vendor: result.vendor.name,
+      });
+    } catch (error) {
+      console.error("Error fetching vendor news:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to fetch vendor news" 
+      });
+    }
+  });
+
   // Criteria
   app.get("/api/criteria", async (req, res) => {
     try {
