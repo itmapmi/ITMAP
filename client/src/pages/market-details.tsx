@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
-import VendorComparison from "@/components/vendor-comparison";
 import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
 import VendorNews from "@/components/vendor-news";
@@ -195,10 +194,7 @@ export default function MarketDetails() {
           </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
-            <div className="space-y-8">
-              <MagicQuadrant marketId={marketId!} marketName={market.name} />
-              <VendorComparison marketId={marketId!} />
-            </div>
+            <MagicQuadrant marketId={marketId!} marketName={market.name} />
           </TabsContent>
 
           <TabsContent value="support-matrix" className="mt-6">

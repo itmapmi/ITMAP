@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
+import VendorComparison from "./vendor-comparison";
 
 interface MagicQuadrantProps {
   marketId: string;
@@ -1208,6 +1209,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="mt-8">
+        <VendorComparison marketId={marketId} />
       </div>
 
       <Dialog open={!!selectedVendor} onOpenChange={() => setSelectedVendor(null)}>
