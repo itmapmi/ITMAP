@@ -98,7 +98,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Office</h3>
-                    <p className="text-gray-600">ITMAP, Jewelry and Gemplex 3, DMCC, Dubai</p>
+                    <p className="text-gray-600">ITMAP, Jewellery and Gemplex 3, DMCC, Dubai, UAE</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
