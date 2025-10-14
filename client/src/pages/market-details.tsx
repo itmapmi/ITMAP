@@ -65,7 +65,7 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-6'}`}>
+            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-5'}`}>
               <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
               </TabsTrigger>
@@ -75,9 +75,10 @@ export default function MarketDetails() {
               <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
               </TabsTrigger>
-              <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {/* Hidden for now - will be enabled later */}
+              {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Reports' : 'Generate Reports'}
-              </TabsTrigger>
+              </TabsTrigger> */}
               <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'News' : 'Vendor News'}
               </TabsTrigger>
@@ -103,13 +104,14 @@ export default function MarketDetails() {
               <SkeletonCard lines={6} className="h-80" />
             </TabsContent>
 
-            <TabsContent value="generate-reports" className="mt-6">
+            {/* Hidden for now - will be enabled later */}
+            {/* <TabsContent value="generate-reports" className="mt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <SkeletonCard lines={2} />
                 <SkeletonCard lines={2} />
                 <SkeletonCard lines={2} />
               </div>
-            </TabsContent>
+            </TabsContent> */}
 
             <TabsContent value="research-methodology" className="mt-6">
               <SkeletonCard lines={8} className="h-96" />
@@ -170,7 +172,7 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-6'}`}>
+          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-5'}`}>
             <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
@@ -180,9 +182,10 @@ export default function MarketDetails() {
             <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
             </TabsTrigger>
-            <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            {/* Hidden for now - will be enabled later */}
+            {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Reports' : 'Generate Reports'}
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'News' : 'Vendor News'}
             </TabsTrigger>
@@ -206,9 +209,10 @@ export default function MarketDetails() {
             <EcosystemSupport marketId={marketId!} />
           </TabsContent>
 
-          <TabsContent value="generate-reports" className="mt-6">
+          {/* Hidden for now - will be enabled later */}
+          {/* <TabsContent value="generate-reports" className="mt-6">
             <GenerateReports marketId={marketId!} />
-          </TabsContent>
+          </TabsContent> */}
 
           <TabsContent value="research-methodology" className="mt-6">
             <ResearchMethodology marketId={marketId!} />
