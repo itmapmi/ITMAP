@@ -75,11 +75,15 @@ export function setupPassport(app: Express) {
 
   // Google OAuth strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const baseURL = process.env.REPLIT_DOMAINS 
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+      : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    
     passport.use(new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN}/auth/google/callback`,
+        callbackURL: `${baseURL}/auth/google/callback`,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -122,11 +126,15 @@ export function setupPassport(app: Express) {
 
   // LinkedIn OAuth strategy
   if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
+    const baseURL = process.env.REPLIT_DOMAINS 
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
+      : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    
     passport.use(new LinkedInStrategy(
       {
         clientID: process.env.LINKEDIN_CLIENT_ID,
         clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-        callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN}/auth/linkedin/callback`,
+        callbackURL: `${baseURL}/auth/linkedin/callback`,
         scope: ['r_emailaddress', 'r_liteprofile'],
       },
       async (accessToken, refreshToken, profile, done) => {
