@@ -112,30 +112,6 @@ export default function Contact() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Links</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Sales Inquiries</h3>
-                  <p className="text-gray-600">Learn about our platform and pricing</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Research Requests</h3>
-                  <p className="text-gray-600">Custom research and analysis services</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Partnership Opportunities</h3>
-                  <p className="text-gray-600">Collaborate with ITMAP</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Media & Press</h3>
-                  <p className="text-gray-600">Press releases and media kits</p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
