@@ -81,7 +81,6 @@ export const vendors = pgTable("vendors", {
   website: text("website"),
   revenue: decimal("revenue", { precision: 15, scale: 2 }),
   product: text("product"), // Product being evaluated for this vendor
-  newsSourceUrl: text("news_source_url"), // RSS feed or news source URL for this vendor
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
