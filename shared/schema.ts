@@ -103,34 +103,6 @@ export const vendorScores = pgTable("vendor_scores", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
-export const vendorNews = pgTable("vendor_news", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  content: text("content"),
-  url: text("url"),
-  source: text("source"),
-  publishedAt: timestamp("published_at"),
-  impactScore: integer("impact_score"), // 0-5
-  affectedCriteriaId: varchar("affected_criteria_id").references(() => criteria.id),
-  scoreChange: integer("score_change"), // negative or positive
-  approved: boolean("approved").default(false),
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
-export const vendorNewsSources = pgTable("vendor_news_sources", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
-  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
-  sourceName: text("source_name").notNull(),
-  sourceUrl: text("source_url").notNull(),
-  sourceType: text("source_type").notNull().default('rss'), // 'rss', 'api', 'html'
-  isActive: boolean("is_active").default(true),
-  lastFetched: timestamp("last_fetched"),
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
-
 export const featureCategories = pgTable("feature_categories", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
