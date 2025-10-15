@@ -163,7 +163,6 @@ export const marketsRelations = relations(markets, ({ many, one }) => ({
   researchReports: many(researchReports),
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
-  newsSources: many(vendorNewsSources),
   researchMethodology: one(researchMethodology),
 }));
 
@@ -180,8 +179,6 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     references: [markets.id],
   }),
   scores: many(vendorScores),
-  news: many(vendorNews),
-  newsSources: many(vendorNewsSources),
   featureSupport: many(vendorFeatureSupport),
   historicalPositions: many(historicalPositions),
 }));
@@ -189,7 +186,6 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
 export const criteriaRelations = relations(criteria, ({ many }) => ({
   weights: many(marketCriteriaWeights),
   scores: many(vendorScores),
-  news: many(vendorNews),
 }));
 
 export const vendorScoresRelations = relations(vendorScores, ({ one }) => ({
@@ -240,17 +236,6 @@ export const researchReportsRelations = relations(researchReports, ({ one }) => 
 export const researchMethodologyRelations = relations(researchMethodology, ({ one }) => ({
   market: one(markets, {
     fields: [researchMethodology.marketId],
-    references: [markets.id],
-  }),
-}));
-
-export const vendorNewsSourcesRelations = relations(vendorNewsSources, ({ one }) => ({
-  vendor: one(vendors, {
-    fields: [vendorNewsSources.vendorId],
-    references: [vendors.id],
-  }),
-  market: one(markets, {
-    fields: [vendorNewsSources.marketId],
     references: [markets.id],
   }),
 }));

@@ -11,10 +11,6 @@ import {
   type InsertCriteria,
   type VendorScore,
   type InsertVendorScore,
-  type VendorNews,
-  type InsertVendorNews,
-  type VendorNewsSource,
-  type InsertVendorNewsSource,
   type FeatureCategory,
   type InsertFeatureCategory,
   type Feature,
@@ -34,8 +30,6 @@ import {
   vendors,
   criteria,
   vendorScores,
-  vendorNews,
-  vendorNewsSources,
   featureCategories,
   features,
   vendorFeatureSupport,
@@ -83,19 +77,6 @@ export interface IStorage {
   // Market Criteria Weights
   getMarketCriteriaWeights(marketId: string): Promise<(MarketCriteriaWeight & { criteria: Criteria })[]>;
   updateMarketCriteriaWeight(marketId: string, criteriaId: string, weight: number): Promise<MarketCriteriaWeight>;
-  
-  // Vendor News
-  getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria | null })[]>;
-  createVendorNews(news: InsertVendorNews): Promise<VendorNews>;
-  updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews>;
-  deleteVendorNews(id: string): Promise<void>;
-  
-  // Vendor News Sources
-  getVendorNewsSources(marketId?: string, vendorId?: string): Promise<(VendorNewsSource & { vendor?: Vendor; market?: Market })[]>;
-  getVendorNewsSourceById(id: string): Promise<VendorNewsSource | undefined>;
-  createVendorNewsSource(newsSource: InsertVendorNewsSource): Promise<VendorNewsSource>;
-  updateVendorNewsSource(id: string, newsSource: Partial<InsertVendorNewsSource>): Promise<VendorNewsSource>;
-  deleteVendorNewsSource(id: string): Promise<void>;
   
   // Feature Categories
   getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]>;
@@ -368,134 +349,6 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newWeight;
     }
-  }
-
-  // Vendor News
-  async getVendorNews(marketId?: string, vendorId?: string): Promise<(VendorNews & { vendor: Vendor; criteria?: Criteria | null })[]> {
-    const baseQuery = db
-      .select({
-        id: vendorNews.id,
-        vendorId: vendorNews.vendorId,
-        title: vendorNews.title,
-        content: vendorNews.content,
-        url: vendorNews.url,
-        source: vendorNews.source,
-        publishedAt: vendorNews.publishedAt,
-        impactScore: vendorNews.impactScore,
-        affectedCriteriaId: vendorNews.affectedCriteriaId,
-        scoreChange: vendorNews.scoreChange,
-        approved: vendorNews.approved,
-        createdAt: vendorNews.createdAt,
-        vendor: vendors,
-        criteria: criteria,
-      })
-      .from(vendorNews)
-      .innerJoin(vendors, eq(vendorNews.vendorId, vendors.id))
-      .leftJoin(criteria, eq(vendorNews.affectedCriteriaId, criteria.id));
-
-    let conditions = [];
-    if (marketId) {
-      conditions.push(eq(vendors.marketId, marketId));
-    }
-    if (vendorId) {
-      conditions.push(eq(vendorNews.vendorId, vendorId));
-    }
-
-    const query = conditions.length > 0 
-      ? baseQuery.where(and(...conditions))
-      : baseQuery;
-
-    return await query.orderBy(desc(vendorNews.createdAt));
-  }
-
-  async createVendorNews(news: InsertVendorNews): Promise<VendorNews> {
-    const [newNews] = await db
-      .insert(vendorNews)
-      .values(news)
-      .returning();
-    return newNews;
-  }
-
-  async updateVendorNews(id: string, news: Partial<InsertVendorNews>): Promise<VendorNews> {
-    const [updatedNews] = await db
-      .update(vendorNews)
-      .set(news)
-      .where(eq(vendorNews.id, id))
-      .returning();
-    return updatedNews;
-  }
-
-  async deleteVendorNews(id: string): Promise<void> {
-    await db.delete(vendorNews).where(eq(vendorNews.id, id));
-  }
-
-  // Vendor News Sources
-  async getVendorNewsSources(marketId?: string, vendorId?: string): Promise<(VendorNewsSource & { vendor?: Vendor; market?: Market })[]> {
-    const baseQuery = db
-      .select({
-        id: vendorNewsSources.id,
-        vendorId: vendorNewsSources.vendorId,
-        marketId: vendorNewsSources.marketId,
-        sourceName: vendorNewsSources.sourceName,
-        sourceUrl: vendorNewsSources.sourceUrl,
-        sourceType: vendorNewsSources.sourceType,
-        isActive: vendorNewsSources.isActive,
-        lastFetched: vendorNewsSources.lastFetched,
-        createdAt: vendorNewsSources.createdAt,
-        updatedAt: vendorNewsSources.updatedAt,
-        vendor: vendors,
-        market: markets
-      })
-      .from(vendorNewsSources)
-      .leftJoin(vendors, eq(vendorNewsSources.vendorId, vendors.id))
-      .leftJoin(markets, eq(vendorNewsSources.marketId, markets.id));
-
-    const conditions = [];
-    if (marketId) {
-      conditions.push(eq(vendorNewsSources.marketId, marketId));
-    }
-    if (vendorId) {
-      conditions.push(eq(vendorNewsSources.vendorId, vendorId));
-    }
-
-    const query = conditions.length > 0 
-      ? baseQuery.where(and(...conditions))
-      : baseQuery;
-
-    const results = await query.orderBy(vendorNewsSources.createdAt);
-    
-    // Transform results to handle nullable vendor
-    return results.map(result => ({
-      ...result,
-      vendor: result.vendor || undefined,
-      market: result.market || undefined,
-    }));
-  }
-
-  async getVendorNewsSourceById(id: string): Promise<VendorNewsSource | undefined> {
-    const [newsSource] = await db.select().from(vendorNewsSources).where(eq(vendorNewsSources.id, id));
-    return newsSource || undefined;
-  }
-
-  async createVendorNewsSource(newsSource: InsertVendorNewsSource): Promise<VendorNewsSource> {
-    const [newNewsSource] = await db
-      .insert(vendorNewsSources)
-      .values(newsSource)
-      .returning();
-    return newNewsSource;
-  }
-
-  async updateVendorNewsSource(id: string, newsSource: Partial<InsertVendorNewsSource>): Promise<VendorNewsSource> {
-    const [updatedNewsSource] = await db
-      .update(vendorNewsSources)
-      .set({ ...newsSource, updatedAt: new Date() })
-      .where(eq(vendorNewsSources.id, id))
-      .returning();
-    return updatedNewsSource;
-  }
-
-  async deleteVendorNewsSource(id: string): Promise<void> {
-    await db.delete(vendorNewsSources).where(eq(vendorNewsSources.id, id));
   }
 
   // Feature Categories
