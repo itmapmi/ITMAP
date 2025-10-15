@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
 import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
-import VendorNews from "@/components/vendor-news";
 import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
 import type { Market } from "@shared/schema";
@@ -64,7 +63,7 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-5'}`}>
+            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-4'}`}>
               <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
               </TabsTrigger>
@@ -78,9 +77,6 @@ export default function MarketDetails() {
               {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Reports' : 'Generate Reports'}
               </TabsTrigger> */}
-              <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
-                {isMobile ? 'News' : 'Vendor News'}
-              </TabsTrigger>
               <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
                 {isMobile ? 'Method' : 'Methodology'}
               </TabsTrigger>
@@ -88,15 +84,6 @@ export default function MarketDetails() {
 
             <TabsContent value="vendor-evaluation" className="mt-6">
               <ChartLoading />
-            </TabsContent>
-
-            <TabsContent value="vendor-news" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-                <SkeletonCard showAvatar={true} lines={3} />
-              </div>
             </TabsContent>
 
             <TabsContent value="support-matrix" className="mt-6">
@@ -171,7 +158,7 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-5'}`}>
+          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-4'}`}>
             <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
@@ -185,9 +172,6 @@ export default function MarketDetails() {
             {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Reports' : 'Generate Reports'}
             </TabsTrigger> */}
-            <TabsTrigger value="vendor-news" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
-              {isMobile ? 'News' : 'Vendor News'}
-            </TabsTrigger>
             <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
               {isMobile ? 'Method' : 'Methodology'}
             </TabsTrigger>
@@ -212,10 +196,6 @@ export default function MarketDetails() {
 
           <TabsContent value="research-methodology" className="mt-6">
             <ResearchMethodology marketId={marketId!} />
-          </TabsContent>
-
-          <TabsContent value="vendor-news" className="mt-6">
-            <VendorNews marketId={marketId!} />
           </TabsContent>
         </Tabs>
       </motion.div>

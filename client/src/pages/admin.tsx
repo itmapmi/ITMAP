@@ -6,9 +6,6 @@ import CriteriaManagement from "@/components/admin/criteria-management";
 import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import { SupportMatrixAdmin } from "../components/admin/support-matrix-admin";
 import { BulkUploadAdmin } from "@/components/admin/bulk-upload-admin";
-import NewsAnalysis from "@/components/admin/news-analysis";
-import NewsManagement from "@/components/admin/news-management";
-import NewsSourcesManagement from "@/components/admin/news-sources-management";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
 import OperationsManagement from "@/components/admin/operations-management";
@@ -46,7 +43,7 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-12">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
@@ -55,9 +52,6 @@ export default function Admin() {
             <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
-            <TabsTrigger value="news-sources">News Sources</TabsTrigger>
-            <TabsTrigger value="news-analysis">News</TabsTrigger>
-            <TabsTrigger value="news-management">Automation</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
           </TabsList>
 
@@ -91,18 +85,6 @@ export default function Admin() {
 
           <TabsContent value="research-methodology" className="mt-6">
             <ResearchMethodologyManagement />
-          </TabsContent>
-
-          <TabsContent value="news-sources" className="mt-6">
-            <NewsSourcesManagement />
-          </TabsContent>
-
-          <TabsContent value="news-analysis" className="mt-6">
-            <NewsAnalysis />
-          </TabsContent>
-
-          <TabsContent value="news-management" className="mt-6">
-            <NewsManagement />
           </TabsContent>
 
           <TabsContent value="operations" className="mt-6">

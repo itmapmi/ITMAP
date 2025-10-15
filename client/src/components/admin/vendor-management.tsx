@@ -50,7 +50,6 @@ export default function VendorManagement() {
       website: "",
       revenue: undefined,
       product: "",
-      newsSourceUrl: "",
       marketId: "",
     },
   });
@@ -291,7 +290,6 @@ export default function VendorManagement() {
       website: vendor.website || "",
       revenue: vendor.revenue || "",
       product: vendor.product || "",
-      newsSourceUrl: vendor.newsSourceUrl || "",
       marketId: vendor.marketId,
     });
   };
@@ -304,7 +302,6 @@ export default function VendorManagement() {
       website: "",
       revenue: "",
       product: "",
-      newsSourceUrl: "",
       marketId: "",
     });
   };
@@ -542,25 +539,6 @@ export default function VendorManagement() {
                           <FormLabel>Product</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., PowerMax 8500, Alletra 9000" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={vendorForm.control}
-                      name="newsSourceUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>News Source URL</FormLabel>
-                          <FormControl>
-                            <Input 
-                              data-testid="input-news-source-url"
-                              placeholder="e.g., https://aws.amazon.com/about-aws/whats-new/recent/feed/" 
-                              {...field} 
-                              value={field.value || ""} 
-                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
