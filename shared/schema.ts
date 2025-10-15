@@ -307,17 +307,6 @@ export const insertVendorScoreSchema = createInsertSchema(vendorScores).omit({
   notes: z.string().optional(),
 });
 
-export const insertVendorNewsSchema = createInsertSchema(vendorNews).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertVendorNewsSourceSchema = createInsertSchema(vendorNewsSources).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertFeatureCategorySchema = createInsertSchema(featureCategories).omit({
   id: true,
   createdAt: true,
@@ -371,12 +360,6 @@ export type Criteria = typeof criteria.$inferSelect;
 
 export type InsertVendorScore = z.infer<typeof insertVendorScoreSchema>;
 export type VendorScore = typeof vendorScores.$inferSelect;
-
-export type InsertVendorNews = z.infer<typeof insertVendorNewsSchema>;
-export type VendorNews = typeof vendorNews.$inferSelect;
-
-export type InsertVendorNewsSource = z.infer<typeof insertVendorNewsSourceSchema>;
-export type VendorNewsSource = typeof vendorNewsSources.$inferSelect;
 
 export type InsertFeatureCategory = z.infer<typeof insertFeatureCategorySchema>;
 export type FeatureCategory = typeof featureCategories.$inferSelect;
