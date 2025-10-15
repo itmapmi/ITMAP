@@ -1,5 +1,4 @@
 import * as cron from 'node-cron';
-import { newsProcessor } from './newsProcessor';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -9,21 +8,6 @@ export class CronJobManager {
    */
   public initializeCronJobs(): void {
     console.log('Initializing cron jobs...');
-
-    // Daily news processing at 6:00 AM UTC
-    const dailyNewsJob = cron.schedule('0 6 * * *', async () => {
-      console.log('Starting scheduled daily news processing...');
-      try {
-        await newsProcessor.processAllMarkets();
-        console.log('Scheduled daily news processing completed successfully');
-      } catch (error) {
-        console.error('Error in scheduled daily news processing:', error);
-      }
-    }, {
-      timezone: 'UTC'
-    });
-
-    this.jobs.set('dailyNews', dailyNewsJob);
 
     // Weekly vendor position backup at Sunday 2:00 AM UTC
     const weeklyBackupJob = cron.schedule('0 2 * * 0', async () => {
