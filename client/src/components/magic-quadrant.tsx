@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MagicQuadrantProps {
   marketId: string;
@@ -35,6 +36,7 @@ interface VendorModalData {
 
 export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; vendor?: VendorWithScores } | null>(null);
@@ -42,6 +44,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   // Calculate date range for 36 months (156 weeks)
   const today = new Date();
@@ -427,16 +430,20 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   });
 
   useEffect(() => {
-    if (!svgRef.current || vendorsLoading || scoresLoading || weightsLoading) return;
+    if (!svgRef.current || !containerRef.current || vendorsLoading || scoresLoading || weightsLoading) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 600;
-    const height = 400;
-    const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+    // Responsive dimensions based on container and device
+    const containerWidth = containerRef.current.offsetWidth;
+    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
+    const height = isMobile ? 350 : 400;
+    const margin = isMobile 
+      ? { top: 15, right: 15, bottom: 50, left: 50 }
+      : { top: 20, right: 20, bottom: 60, left: 60 };
 
-    svg.attr("width", width).attr("height", height);
+    svg.attr("width", width).attr("height", height).attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
 
     const xScale = d3.scaleLinear()
       .domain([0, 100])
@@ -628,38 +635,42 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     // Style axis text
     svg.selectAll(".x-axis text, .y-axis text")
       .attr("fill", "#64748b")
-      .attr("font-size", "12px")
+      .attr("font-size", isMobile ? "10px" : "12px")
       .attr("font-weight", "600");
 
     // Add professional axis labels
+    const axisLabelSize = isMobile ? "11px" : "14px";
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", height - 10)
       .attr("text-anchor", "middle")
-      .attr("class", "text-base font-semibold")
+      .attr("font-size", axisLabelSize)
+      .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text("Product Strategy and Execution");
+      .text(isMobile ? "Execution" : "Product Strategy and Execution");
 
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
       .attr("y", 15)
       .attr("text-anchor", "middle")
-      .attr("class", "text-base font-semibold")
+      .attr("font-size", axisLabelSize)
+      .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text("Vendor Viability");
+      .text(isMobile ? "Viability" : "Vendor Viability");
 
     // Add quadrant labels positioned in corners
-    const quadrantLabelStyle = "text-sm font-bold";
+    const quadrantLabelSize = isMobile ? "10px" : "13px";
     const textShadow = "0 0 3px white, 0 0 3px white, 0 0 3px white";
-    const labelOffset = 15; // Distance from corner
+    const labelOffset = isMobile ? 10 : 15; // Distance from corner
     
     // Challengers label (top-left quadrant - top right corner)
     svg.append("text")
       .attr("x", midX - labelOffset)
       .attr("y", margin.top + labelOffset)
       .attr("text-anchor", "end")
-      .attr("class", quadrantLabelStyle)
+      .attr("font-size", quadrantLabelSize)
+      .attr("font-weight", "700")
       .attr("fill", "#1d4ed8")
       .style("text-shadow", textShadow)
       .text("Challengers");
@@ -669,7 +680,8 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("x", width - margin.right - labelOffset)
       .attr("y", margin.top + labelOffset)
       .attr("text-anchor", "end")
-      .attr("class", quadrantLabelStyle)
+      .attr("font-size", quadrantLabelSize)
+      .attr("font-weight", "700")
       .attr("fill", "#16a34a")
       .style("text-shadow", textShadow)
       .text("Leaders");
@@ -679,17 +691,19 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       .attr("x", midX - labelOffset)
       .attr("y", height - margin.bottom - labelOffset)
       .attr("text-anchor", "end")
-      .attr("class", quadrantLabelStyle)
+      .attr("font-size", quadrantLabelSize)
+      .attr("font-weight", "700")
       .attr("fill", "#f59e0b")
       .style("text-shadow", textShadow)
-      .text("Emerging Players");
+      .text(isMobile ? "Emerging" : "Emerging Players");
 
     // Innovators label (bottom-right quadrant - bottom right corner)
     svg.append("text")
       .attr("x", width - margin.right - labelOffset)
       .attr("y", height - margin.bottom - labelOffset)
       .attr("text-anchor", "end")
-      .attr("class", quadrantLabelStyle)
+      .attr("font-size", quadrantLabelSize)
+      .attr("font-weight", "700")
       .attr("fill", "#7c3aed")
       .style("text-shadow", textShadow)
       .text("Innovators");
@@ -825,9 +839,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           
         // Highlight the label
         const parentGroup = d3.select(this.parentNode as Element);
+        const hoverFontSize = isMobile ? 10 : 12;
         parentGroup.select(".vendor-label")
           .attr("font-weight", "700")
-          .attr("font-size", "12px");
+          .attr("font-size", `${hoverFontSize}px`);
         parentGroup.select(".label-background")
           .attr("fill", "rgba(255, 255, 255, 1.0)")
           .attr("stroke", "rgba(99, 102, 241, 0.6)");
@@ -862,9 +877,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
           
         // Reset the label
         const parentGroup = d3.select(this.parentNode as Element);
+        const normalFontSize = isMobile ? 9 : 11;
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
-          .attr("font-size", "11px");
+          .attr("font-size", `${normalFontSize}px`);
         parentGroup.select(".label-background")
           .attr("fill", "rgba(255, 255, 255, 0.9)")
           .attr("stroke", "rgba(148, 163, 184, 0.4)");
@@ -1004,20 +1020,23 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       const labelGroup = vendorGroups.filter((d, i) => i === index);
       
       // Add semi-transparent background for label readability
-      const textWidth = vendor.name.length * 7.5;
+      const fontSize = isMobile ? 9 : 11;
+      const charWidth = isMobile ? 6 : 7.5;
+      const textWidth = vendor.name.length * charWidth;
+      const labelHeight = isMobile ? 14 : 16;
       let backgroundX, backgroundY;
       
       // Calculate background position based on label side
       if (labelPos.side === "right") {
         backgroundX = labelPos.labelX - 3;
-        backgroundY = labelPos.labelY - 12;
+        backgroundY = labelPos.labelY - (labelHeight - 4);
       } else if (labelPos.side === "left") {
         backgroundX = labelPos.labelX - textWidth - 3;
-        backgroundY = labelPos.labelY - 12;
+        backgroundY = labelPos.labelY - (labelHeight - 4);
       } else {
         // top or bottom
         backgroundX = labelPos.labelX - textWidth / 2 - 3;
-        backgroundY = labelPos.labelY - 12;
+        backgroundY = labelPos.labelY - (labelHeight - 4);
       }
       
       labelGroup.append("rect")
@@ -1025,7 +1044,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .attr("x", backgroundX)
         .attr("y", backgroundY)
         .attr("width", textWidth + 6)
-        .attr("height", 16)
+        .attr("height", labelHeight)
         .attr("fill", "rgba(255, 255, 255, 0.9)")
         .attr("stroke", "rgba(148, 163, 184, 0.4)")
         .attr("stroke-width", 1)
@@ -1040,13 +1059,13 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .attr("y", labelPos.labelY)
         .attr("text-anchor", labelPos.anchor)
         .attr("fill", "#1f2937")
-        .attr("font-size", "11px")
+        .attr("font-size", `${fontSize}px`)
         .attr("font-weight", "600")
         .style("pointer-events", "none")
         .text(vendor.name);
     });
 
-  }, [vendorsWithScores, criteriaWeights]);
+  }, [vendorsWithScores, criteriaWeights, isMobile]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1073,15 +1092,15 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader>
-              <CardTitle>{marketName}</CardTitle>
+            <CardHeader className={isMobile ? "pb-3" : ""}>
+              <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative">
-                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm" />
+              <div ref={containerRef} className="relative w-full overflow-x-auto">
+                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
                 
                 {/* Tooltip for vendor details */}
                 {tooltip && tooltip.visible && tooltip.vendor && (
@@ -1120,10 +1139,9 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                   </div>
                 )}
                 
-                <div className="mt-4 px-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Historical View - {formatDate(selectedDate)} 
-                    {weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}
+                <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
+                  <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
                   </label>
                   <Slider
                     value={timelineValue}
@@ -1131,10 +1149,11 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
                     max={156}
                     step={1}
                     className="w-full"
+                    data-testid="timeline-slider"
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{formatDate(startDate)}</span>
-                    <span>{formatDate(today)}</span>
+                  <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+                    <span>{isMobile ? formatDate(startDate).replace(', 2022', '') : formatDate(startDate)}</span>
+                    <span>{isMobile ? formatDate(today).replace(', 2025', '') : formatDate(today)}</span>
                   </div>
                 </div>
               </div>
@@ -1144,10 +1163,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
 
         <div className="lg:col-span-1">
           <Card>
-            <CardHeader>
-              <CardTitle>Criteria Weights</CardTitle>
+            <CardHeader className={isMobile ? "pb-3" : ""}>
+              <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className={isMobile ? "space-y-3" : "space-y-4"}>
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Execution Criteria</h4>
                 {executionCriteria.map(criterion => (

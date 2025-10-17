@@ -46,7 +46,7 @@ export default function MarketDetails() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div 
-          className="bg-white rounded-xl shadow-sm p-6"
+          className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
@@ -63,21 +63,21 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-4'}`}>
-              <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'grid w-full grid-cols-4'}`}>
+              <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
                 {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
               </TabsTrigger>
-              <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
                 {isMobile ? 'Product Eval' : 'Product Evaluation'}
               </TabsTrigger>
-              <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
                 {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
               </TabsTrigger>
               {/* Hidden for now - will be enabled later */}
-              {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
                 {isMobile ? 'Reports' : 'Generate Reports'}
               </TabsTrigger> */}
-              <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+              <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
                 {isMobile ? 'Method' : 'Methodology'}
               </TabsTrigger>
             </TabsList>
@@ -128,7 +128,7 @@ export default function MarketDetails() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <motion.div 
-        className="bg-white rounded-xl shadow-sm p-6"
+        className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -158,21 +158,21 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'flex overflow-x-auto scrollbar-hide w-full' : 'grid w-full grid-cols-4'}`}>
-            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'grid w-full grid-cols-4'}`}>
+            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-vendor-evaluation">
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
-            <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-support-matrix">
               {isMobile ? 'Product Eval' : 'Product Evaluation'}
             </TabsTrigger>
-            <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-ecosystem-support">
               {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
             </TabsTrigger>
             {/* Hidden for now - will be enabled later */}
-            {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
               {isMobile ? 'Reports' : 'Generate Reports'}
             </TabsTrigger> */}
-            <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-4' : ''}>
+            <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-methodology">
               {isMobile ? 'Method' : 'Methodology'}
             </TabsTrigger>
           </TabsList>

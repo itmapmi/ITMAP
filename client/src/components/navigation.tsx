@@ -5,12 +5,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
 
 export default function Navigation() {
   const [location] = useLocation();
   const { user, isAdmin, logout, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleLogout = async () => {
     try {
@@ -40,10 +42,10 @@ export default function Navigation() {
           <div className="flex items-center">
             <Link href="/">
               <div className="flex items-center space-x-3">
-                <img src={itmapLogo} alt="ITMAP" className="h-24 w-auto" />
+                <img src={itmapLogo} alt="ITMAP" className={isMobile ? "h-16 w-auto" : "h-24 w-auto"} />
               </div>
             </Link>
-            <div className="ml-10 flex space-x-8">
+            <div className="ml-10 hidden md:flex space-x-8">
               <Link href="/">
                 <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/" 
@@ -141,12 +143,12 @@ export default function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className={`flex items-center ${isMobile ? 'space-x-2' : 'space-x-3'}`}>
                 <Link href="/login">
-                  <Button variant="outline">Sign In</Button>
+                  <Button variant="outline" size={isMobile ? "sm" : "default"}>Sign In</Button>
                 </Link>
                 <Link href="/register">
-                  <Button>Get Started</Button>
+                  <Button size={isMobile ? "sm" : "default"}>Get Started</Button>
                 </Link>
               </div>
             )}
