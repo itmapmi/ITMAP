@@ -44,7 +44,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Historical Timeline**: Implements a functional historical timeline for Vendor Evaluation, allowing navigation through 3 years of weekly data.
 - **Automated News Processing**: Features daily cron jobs for vendor news analysis using OpenAI for impact scoring (0-5 scale), with admin approval for score updates. News sources are strictly vendor-authentic, with no third-party content. Includes automated vendor score updates, position backups, and health checks.
 - **Mobile Responsiveness**: UI adapts to different screen sizes, optimizing charts, typography, navigation, and spacing for mobile devices.
-- **Domain Management**: Enforces a custom primary domain (itmap.ai) with 301 redirects from the Replit domain and smart OAuth callback handling.
+- **Domain Management**: Enforces a custom primary domain (itmap.ai) via BASE_URL environment variable with 301 redirects from the Replit domain, smart OAuth callback handling, and automatic fallback to REPLIT_DOMAINS detection.
 - **Ecosystem Support**: Dedicated section for third-party integrations, separating ecosystem-related features from core product capabilities in the support matrix.
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables for improved organization.
 
