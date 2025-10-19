@@ -10,6 +10,20 @@ const app = express();
 // Trust proxy for HTTPS detection in Replit environment
 app.set('trust proxy', true);
 
+// Redirect .replit.app domain to custom domain
+app.use((req, res, next) => {
+  const host = req.get('host');
+  const protocol = req.protocol;
+  
+  // If accessing via .replit.app domain, redirect to itmap.ai
+  if (host && host.includes('.replit.app')) {
+    const newUrl = `https://itmap.ai${req.originalUrl}`;
+    return res.redirect(301, newUrl);
+  }
+  
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
