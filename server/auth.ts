@@ -75,12 +75,15 @@ export function setupPassport(app: Express) {
 
   // Google OAuth strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    // Prefer custom domain (itmap.ai) over .replit.app domain
-    const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-    const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
-    const baseURL = customDomain 
-      ? `https://${customDomain}` 
-      : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
+    let baseURL = process.env.BASE_URL;
+    if (!baseURL) {
+      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+      const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
+      baseURL = customDomain 
+        ? `https://${customDomain}` 
+        : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    }
     
     passport.use(new GoogleStrategy(
       {
@@ -129,12 +132,15 @@ export function setupPassport(app: Express) {
 
   // LinkedIn OAuth strategy
   if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
-    // Prefer custom domain (itmap.ai) over .replit.app domain
-    const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-    const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
-    const baseURL = customDomain 
-      ? `https://${customDomain}` 
-      : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
+    let baseURL = process.env.BASE_URL;
+    if (!baseURL) {
+      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+      const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
+      baseURL = customDomain 
+        ? `https://${customDomain}` 
+        : `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    }
     
     passport.use(new LinkedInStrategy(
       {

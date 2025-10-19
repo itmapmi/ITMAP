@@ -13,12 +13,24 @@ app.set('trust proxy', true);
 // Redirect .replit.app domain to custom domain
 app.use((req, res, next) => {
   const host = req.get('host');
-  const protocol = req.protocol;
   
-  // If accessing via .replit.app domain, redirect to itmap.ai
+  // If accessing via .replit.app domain, redirect to custom domain
   if (host && host.includes('.replit.app')) {
-    const newUrl = `https://itmap.ai${req.originalUrl}`;
-    return res.redirect(301, newUrl);
+    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
+    let baseUrl = process.env.BASE_URL;
+    if (!baseUrl) {
+      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+      const customDomain = domains.find(d => !d.includes('.replit.app'));
+      if (customDomain) {
+        baseUrl = `https://${customDomain}`;
+      }
+    }
+    
+    // Only redirect if we have a valid custom domain
+    if (baseUrl) {
+      const newUrl = `${baseUrl}${req.originalUrl}`;
+      return res.redirect(301, newUrl);
+    }
   }
   
   next();
