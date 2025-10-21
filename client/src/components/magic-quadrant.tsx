@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface MagicQuadrantProps {
   marketId: string;
   marketName: string;
+  enableDrag?: boolean; // Enable drag for admin panel
 }
 
 interface VendorWithScores extends Vendor {
@@ -34,7 +35,7 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
-export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, enableDrag = false }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
@@ -109,6 +110,11 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
     enabled: !!marketId && weeksAgo > 0, // Only fetch historical data when not on current week
   });
 
+  // Query saved label positions
+  const { data: savedLabelPositions } = useQuery<any[]>({
+    queryKey: ["/api/markets", marketId, "label-positions"],
+  });
+
   // Mutation for saving notes
   const saveNotesMutation = useMutation({
     mutationFn: async (data: { vendorId: string; criteriaId: string; notes: string }) => {
@@ -133,6 +139,26 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       toast({
         title: "Error",
         description: "Failed to save notes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Mutation for saving label positions
+  const saveLabelPositionMutation = useMutation({
+    mutationFn: async (data: { vendorId: string; marketId: string; labelX: number; labelY: number }) => {
+      return apiRequest(`/api/label-positions`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "label-positions"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save label position. Please try again.",
         variant: "destructive",
       });
     }
@@ -180,6 +206,20 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       setCriteriaWeights(initialWeights);
     }
   }, [weights, criteria]);
+
+  // Load saved label positions
+  useEffect(() => {
+    if (savedLabelPositions) {
+      const positions: { [vendorId: string]: { x: number; y: number } } = {};
+      savedLabelPositions.forEach((pos: any) => {
+        positions[pos.vendorId] = { 
+          x: parseFloat(pos.labelX), 
+          y: parseFloat(pos.labelY) 
+        };
+      });
+      setLabelPositions(positions);
+    }
+  }, [savedLabelPositions]);
 
   // Calculate support matrix scores for product capabilities (excluding ecosystem features)
   const calculateSupportMatrixScore = (vendorId: string): number => {
@@ -1069,49 +1109,63 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .style("cursor", "move")
         .text(vendor.name);
 
-      // Add drag behavior to the label
-      const drag = d3.drag()
-        .on("start", function(event) {
-          d3.select(this.parentNode as Element).raise();
-          labelBackground.attr("stroke", "rgba(99, 102, 241, 0.8)").attr("stroke-width", 2);
-        })
-        .on("drag", function(event) {
-          const newX = event.x;
-          const newY = event.y;
-          
-          // Update text position
-          labelText.attr("x", newX).attr("y", newY);
-          
-          // Update background position
-          let bgX, bgY;
-          if (labelPos.side === "right" || labelPos.side === "custom") {
-            bgX = newX - 3;
-            bgY = newY - (labelHeight - 4);
-          } else if (labelPos.side === "left") {
-            bgX = newX - textWidth - 3;
-            bgY = newY - (labelHeight - 4);
-          } else {
-            bgX = newX - textWidth / 2 - 3;
-            bgY = newY - (labelHeight - 4);
-          }
-          labelBackground.attr("x", bgX).attr("y", bgY);
-        })
-        .on("end", function(event) {
-          labelBackground.attr("stroke", "rgba(148, 163, 184, 0.4)").attr("stroke-width", 1);
-          
-          // Save the new position
-          setLabelPositions(prev => ({
-            ...prev,
-            [vendor.id]: { x: event.x, y: event.y }
-          }));
-        });
+      // Add drag behavior to the label (only if enableDrag is true)
+      if (enableDrag) {
+        const drag = d3.drag()
+          .on("start", function(event) {
+            d3.select(this.parentNode as Element).raise();
+            labelBackground.attr("stroke", "rgba(99, 102, 241, 0.8)").attr("stroke-width", 2);
+          })
+          .on("drag", function(event) {
+            const newX = event.x;
+            const newY = event.y;
+            
+            // Update text position
+            labelText.attr("x", newX).attr("y", newY);
+            
+            // Update background position
+            let bgX, bgY;
+            if (labelPos.side === "right" || labelPos.side === "custom") {
+              bgX = newX - 3;
+              bgY = newY - (labelHeight - 4);
+            } else if (labelPos.side === "left") {
+              bgX = newX - textWidth - 3;
+              bgY = newY - (labelHeight - 4);
+            } else {
+              bgX = newX - textWidth / 2 - 3;
+              bgY = newY - (labelHeight - 4);
+            }
+            labelBackground.attr("x", bgX).attr("y", bgY);
+          })
+          .on("end", function(event) {
+            labelBackground.attr("stroke", "rgba(148, 163, 184, 0.4)").attr("stroke-width", 1);
+            
+            // Save the new position locally
+            setLabelPositions(prev => ({
+              ...prev,
+              [vendor.id]: { x: event.x, y: event.y }
+            }));
 
-      // Apply drag to both background and text
-      labelBackground.call(drag as any);
-      labelText.call(drag as any);
+            // Save to backend
+            saveLabelPositionMutation.mutate({
+              vendorId: vendor.id,
+              marketId: marketId,
+              labelX: event.x,
+              labelY: event.y
+            });
+          });
+
+        // Apply drag to both background and text
+        labelBackground.call(drag as any);
+        labelText.call(drag as any);
+      } else {
+        // Remove cursor:move style when not draggable
+        labelBackground.style("cursor", "default");
+        labelText.style("cursor", "default");
+      }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, saveLabelPositionMutation, marketId]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({

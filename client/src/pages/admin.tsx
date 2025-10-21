@@ -9,6 +9,7 @@ import { BulkUploadAdmin } from "@/components/admin/bulk-upload-admin";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
 import OperationsManagement from "@/components/admin/operations-management";
+import GraphicManagement from "@/components/admin/graphic-management";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
@@ -43,12 +44,13 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
+            <TabsTrigger value="graphic">Graphic</TabsTrigger>
             <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
@@ -73,6 +75,10 @@ export default function Admin() {
 
           <TabsContent value="support-matrix" className="mt-6">
             <SupportMatrixAdmin />
+          </TabsContent>
+
+          <TabsContent value="graphic" className="mt-6">
+            <GraphicManagement />
           </TabsContent>
 
           <TabsContent value="bulk-upload" className="mt-6">

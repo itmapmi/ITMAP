@@ -155,6 +155,16 @@ export const historicalPositions = pgTable("historical_positions", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const vendorLabelPositions = pgTable("vendor_label_positions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  labelX: decimal("label_x", { precision: 8, scale: 2 }).notNull(), // SVG x coordinate
+  labelY: decimal("label_y", { precision: 8, scale: 2 }).notNull(), // SVG y coordinate
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 // Relations
 export const marketsRelations = relations(markets, ({ many, one }) => ({
   subMarkets: many(subMarkets),
@@ -163,6 +173,7 @@ export const marketsRelations = relations(markets, ({ many, one }) => ({
   researchReports: many(researchReports),
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
+  vendorLabelPositions: many(vendorLabelPositions),
   researchMethodology: one(researchMethodology),
 }));
 
@@ -181,6 +192,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   scores: many(vendorScores),
   featureSupport: many(vendorFeatureSupport),
   historicalPositions: many(historicalPositions),
+  labelPositions: many(vendorLabelPositions),
 }));
 
 export const criteriaRelations = relations(criteria, ({ many }) => ({
@@ -236,6 +248,17 @@ export const researchReportsRelations = relations(researchReports, ({ one }) => 
 export const researchMethodologyRelations = relations(researchMethodology, ({ one }) => ({
   market: one(markets, {
     fields: [researchMethodology.marketId],
+    references: [markets.id],
+  }),
+}));
+
+export const vendorLabelPositionsRelations = relations(vendorLabelPositions, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [vendorLabelPositions.vendorId],
+    references: [vendors.id],
+  }),
+  market: one(markets, {
+    fields: [vendorLabelPositions.marketId],
     references: [markets.id],
   }),
 }));
@@ -325,6 +348,15 @@ export const insertUserActivityLogSchema = createInsertSchema(userActivityLogs).
   createdAt: true,
 });
 
+export const insertVendorLabelPositionSchema = createInsertSchema(vendorLabelPositions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  labelX: z.coerce.number().min(0, "Label X must be at least 0").max(1000, "Label X must not exceed 1000"),
+  labelY: z.coerce.number().min(0, "Label Y must be at least 0").max(1000, "Label Y must not exceed 1000"),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -372,3 +404,6 @@ export type ResearchMethodology = typeof researchMethodology.$inferSelect;
 
 export type MarketCriteriaWeight = typeof marketCriteriaWeights.$inferSelect;
 export type HistoricalPosition = typeof historicalPositions.$inferSelect;
+
+export type InsertVendorLabelPosition = z.infer<typeof insertVendorLabelPositionSchema>;
+export type VendorLabelPosition = typeof vendorLabelPositions.$inferSelect;

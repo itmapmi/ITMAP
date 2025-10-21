@@ -24,6 +24,8 @@ import {
   type InsertResearchMethodology,
   type MarketCriteriaWeight,
   type HistoricalPosition,
+  type VendorLabelPosition,
+  type InsertVendorLabelPosition,
   users,
   userActivityLogs,
   markets,
@@ -37,6 +39,7 @@ import {
   researchMethodology,
   marketCriteriaWeights,
   historicalPositions,
+  vendorLabelPositions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -110,6 +113,10 @@ export interface IStorage {
   // Historical Positions
   getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
   saveHistoricalPosition(position: Omit<HistoricalPosition, 'id' | 'createdAt'>): Promise<HistoricalPosition>;
+  
+  // Vendor Label Positions
+  getVendorLabelPositions(marketId: string): Promise<VendorLabelPosition[]>;
+  saveVendorLabelPosition(position: InsertVendorLabelPosition): Promise<VendorLabelPosition>;
   
   // User Activity Logs
   recordUserLogin(log: InsertUserActivityLog): Promise<UserActivityLog>;
@@ -600,6 +607,58 @@ export class DatabaseStorage implements IStorage {
       .values(position)
       .returning();
     return newPosition;
+  }
+
+  // Vendor Label Positions
+  async getVendorLabelPositions(marketId: string): Promise<VendorLabelPosition[]> {
+    return await db
+      .select()
+      .from(vendorLabelPositions)
+      .where(eq(vendorLabelPositions.marketId, marketId));
+  }
+
+  async saveVendorLabelPosition(position: InsertVendorLabelPosition): Promise<VendorLabelPosition> {
+    // Convert numeric values to strings for decimal columns with proper precision
+    const positionData = {
+      vendorId: position.vendorId,
+      marketId: position.marketId,
+      labelX: position.labelX.toFixed(2),
+      labelY: position.labelY.toFixed(2),
+    };
+
+    // Check if position exists
+    const existing = await db
+      .select()
+      .from(vendorLabelPositions)
+      .where(and(
+        eq(vendorLabelPositions.vendorId, position.vendorId),
+        eq(vendorLabelPositions.marketId, position.marketId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing position
+      const [updated] = await db
+        .update(vendorLabelPositions)
+        .set({
+          labelX: positionData.labelX,
+          labelY: positionData.labelY,
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(vendorLabelPositions.vendorId, position.vendorId),
+          eq(vendorLabelPositions.marketId, position.marketId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new position
+      const [newPosition] = await db
+        .insert(vendorLabelPositions)
+        .values(positionData)
+        .returning();
+      return newPosition;
+    }
   }
 
   // Feature Support Methods

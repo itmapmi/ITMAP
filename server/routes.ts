@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertVendorNewsSchema, insertVendorNewsSourceSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
@@ -351,6 +351,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting vendor:", error);
       res.status(500).json({ error: "Failed to delete vendor" });
+    }
+  });
+
+  // Vendor Label Positions
+  app.get("/api/markets/:marketId/label-positions", async (req, res) => {
+    try {
+      const positions = await storage.getVendorLabelPositions(req.params.marketId);
+      res.json(positions);
+    } catch (error) {
+      console.error("Error fetching label positions:", error);
+      res.status(500).json({ error: "Failed to fetch label positions" });
+    }
+  });
+
+  app.post("/api/label-positions", requireAdmin, async (req, res) => {
+    try {
+      const positionData = insertVendorLabelPositionSchema.parse(req.body);
+      const position = await storage.saveVendorLabelPosition(positionData);
+      res.json(position);
+    } catch (error) {
+      console.error("Error saving label position:", error);
+      res.status(400).json({ error: "Failed to save label position" });
     }
   });
 
