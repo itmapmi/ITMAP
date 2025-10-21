@@ -107,7 +107,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Business Hours</h3>
-                    <p className="text-gray-600">Mon - Fri: 9:00 AM - 6:00 PM PST</p>
+                    <p className="text-gray-600">Mon - Fri: 9:00 AM - 6:00 PM GST</p>
                   </div>
                 </div>
               </CardContent>
