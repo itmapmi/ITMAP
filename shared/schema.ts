@@ -353,8 +353,8 @@ export const insertVendorLabelPositionSchema = createInsertSchema(vendorLabelPos
   createdAt: true,
   updatedAt: true,
 }).extend({
-  labelX: z.coerce.number().min(0, "Label X must be at least 0").max(1000, "Label X must not exceed 1000"),
-  labelY: z.coerce.number().min(0, "Label Y must be at least 0").max(1000, "Label Y must not exceed 1000"),
+  labelX: z.coerce.number(),
+  labelY: z.coerce.number(),
 });
 
 // Types
