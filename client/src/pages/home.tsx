@@ -157,7 +157,7 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.9 }}
             >
               <h2 className="text-3xl font-bold text-gray-900 mb-8 sm:text-4xl">
-                Why ITmap is Different
+                Why ITMAP is different
               </h2>
               <div className="bg-gradient-to-br from-cyan-50 to-purple-50 p-8 rounded-2xl border border-gray-100">
                 <p className="text-xl text-gray-700 leading-relaxed mb-8">
