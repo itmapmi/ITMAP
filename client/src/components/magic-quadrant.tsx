@@ -42,6 +42,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; vendor?: VendorWithScores } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -1015,7 +1016,11 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
 
     // Add vendor labels positioned in all four directions around dots
     adjustedVendors.forEach((vendor, index) => {
-      const labelPos = calculateLabelPosition(vendor, index, adjustedVendors);
+      // Check if we have a custom position for this vendor
+      const customPos = labelPositions[vendor.id];
+      const labelPos = customPos 
+        ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX: xScale(vendor.adjustedX), dotY: yScale(vendor.adjustedY) }
+        : calculateLabelPosition(vendor, index, adjustedVendors);
       
       const labelGroup = vendorGroups.filter((d, i) => i === index);
       
@@ -1027,7 +1032,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
       let backgroundX, backgroundY;
       
       // Calculate background position based on label side
-      if (labelPos.side === "right") {
+      if (labelPos.side === "right" || labelPos.side === "custom") {
         backgroundX = labelPos.labelX - 3;
         backgroundY = labelPos.labelY - (labelHeight - 4);
       } else if (labelPos.side === "left") {
@@ -1039,7 +1044,7 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         backgroundY = labelPos.labelY - (labelHeight - 4);
       }
       
-      labelGroup.append("rect")
+      const labelBackground = labelGroup.append("rect")
         .attr("class", "label-background")
         .attr("x", backgroundX)
         .attr("y", backgroundY)
@@ -1050,10 +1055,10 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .attr("stroke-width", 1)
         .attr("rx", 3)
         .attr("ry", 3)
-        .style("pointer-events", "none");
+        .style("cursor", "move");
       
       // Add the text label positioned around the dot
-      labelGroup.append("text")
+      const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
         .attr("y", labelPos.labelY)
@@ -1061,11 +1066,52 @@ export default function MagicQuadrant({ marketId, marketName }: MagicQuadrantPro
         .attr("fill", "#1f2937")
         .attr("font-size", `${fontSize}px`)
         .attr("font-weight", "600")
-        .style("pointer-events", "none")
+        .style("cursor", "move")
         .text(vendor.name);
+
+      // Add drag behavior to the label
+      const drag = d3.drag()
+        .on("start", function(event) {
+          d3.select(this.parentNode as Element).raise();
+          labelBackground.attr("stroke", "rgba(99, 102, 241, 0.8)").attr("stroke-width", 2);
+        })
+        .on("drag", function(event) {
+          const newX = event.x;
+          const newY = event.y;
+          
+          // Update text position
+          labelText.attr("x", newX).attr("y", newY);
+          
+          // Update background position
+          let bgX, bgY;
+          if (labelPos.side === "right" || labelPos.side === "custom") {
+            bgX = newX - 3;
+            bgY = newY - (labelHeight - 4);
+          } else if (labelPos.side === "left") {
+            bgX = newX - textWidth - 3;
+            bgY = newY - (labelHeight - 4);
+          } else {
+            bgX = newX - textWidth / 2 - 3;
+            bgY = newY - (labelHeight - 4);
+          }
+          labelBackground.attr("x", bgX).attr("y", bgY);
+        })
+        .on("end", function(event) {
+          labelBackground.attr("stroke", "rgba(148, 163, 184, 0.4)").attr("stroke-width", 1);
+          
+          // Save the new position
+          setLabelPositions(prev => ({
+            ...prev,
+            [vendor.id]: { x: event.x, y: event.y }
+          }));
+        });
+
+      // Apply drag to both background and text
+      labelBackground.call(drag as any);
+      labelText.call(drag as any);
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
