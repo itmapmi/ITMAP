@@ -36,7 +36,7 @@ export default function Home() {
               IT Vendor Selection, Simplified.
             </h1>
             <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
-              ITmap.com uses AI to analyze publicly available data, delivering vendor rankings, feature matrices, 
+              Itmap.ai uses AI to analyze publicly available data, deliver vendor rankings, feature support evaluation 
               and competitive insights — without hidden agendas.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
