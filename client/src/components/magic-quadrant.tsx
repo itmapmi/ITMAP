@@ -20,6 +20,7 @@ interface MagicQuadrantProps {
   marketId: string;
   marketName: string;
   enableDrag?: boolean; // Enable drag for admin panel
+  onLabelPositionChange?: (vendorId: string, x: number, y: number) => void; // Callback for position changes
 }
 
 interface VendorWithScores extends Vendor {
@@ -35,7 +36,7 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
-export default function MagicQuadrant({ marketId, marketName, enableDrag = false }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, enableDrag = false, onLabelPositionChange }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
@@ -118,14 +119,11 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   // Mutation for saving notes
   const saveNotesMutation = useMutation({
     mutationFn: async (data: { vendorId: string; criteriaId: string; notes: string }) => {
-      return apiRequest(`/api/vendor-scores`, {
-        method: 'POST',
-        body: JSON.stringify({
-          vendorId: data.vendorId,
-          criteriaId: data.criteriaId,
-          score: scores?.find(s => s.vendorId === data.vendorId && s.criteriaId === data.criteriaId)?.score || 0,
-          notes: data.notes
-        }),
+      return apiRequest(`/api/vendor-scores`, 'POST', {
+        vendorId: data.vendorId,
+        criteriaId: data.criteriaId,
+        score: scores?.find(s => s.vendorId === data.vendorId && s.criteriaId === data.criteriaId)?.score || 0,
+        notes: data.notes
       });
     },
     onSuccess: () => {
@@ -139,26 +137,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       toast({
         title: "Error",
         description: "Failed to save notes. Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Mutation for saving label positions
-  const saveLabelPositionMutation = useMutation({
-    mutationFn: async (data: { vendorId: string; marketId: string; labelX: number; labelY: number }) => {
-      return apiRequest(`/api/label-positions`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "label-positions"] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to save label position. Please try again.",
         variant: "destructive",
       });
     }
@@ -1146,13 +1124,10 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
               [vendor.id]: { x: event.x, y: event.y }
             }));
 
-            // Save to backend
-            saveLabelPositionMutation.mutate({
-              vendorId: vendor.id,
-              marketId: marketId,
-              labelX: event.x,
-              labelY: event.y
-            });
+            // Notify parent component if callback provided
+            if (onLabelPositionChange) {
+              onLabelPositionChange(vendor.id, event.x, event.y);
+            }
           });
 
         // Apply drag to both background and text
@@ -1165,7 +1140,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, saveLabelPositionMutation, marketId]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({

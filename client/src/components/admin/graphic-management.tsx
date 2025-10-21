@@ -3,18 +3,74 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Info, Save } from "lucide-react";
 import MagicQuadrant from "@/components/magic-quadrant";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Market } from "@shared/schema";
 
 export default function GraphicManagement() {
   const [selectedMarketId, setSelectedMarketId] = useState<string>("");
+  const [pendingPositions, setPendingPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({
     queryKey: ["/api/markets"],
   });
 
   const selectedMarket = markets?.find(m => m.id === selectedMarketId);
+
+  const handleLabelPositionChange = (vendorId: string, x: number, y: number) => {
+    setPendingPositions(prev => ({
+      ...prev,
+      [vendorId]: { x, y }
+    }));
+  };
+
+  const handleSavePositions = async () => {
+    if (!selectedMarketId || Object.keys(pendingPositions).length === 0) {
+      toast({
+        title: "No changes to save",
+        description: "Please move some vendor labels before saving.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Save all positions
+      const savePromises = Object.entries(pendingPositions).map(([vendorId, pos]) =>
+        apiRequest(`/api/label-positions`, 'POST', {
+          vendorId,
+          marketId: selectedMarketId,
+          labelX: pos.x,
+          labelY: pos.y,
+        })
+      );
+
+      await Promise.all(savePromises);
+
+      // Invalidate cache and clear pending positions
+      await queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "label-positions"] });
+      setPendingPositions({});
+
+      toast({
+        title: "Positions Saved",
+        description: `Successfully saved ${Object.keys(pendingPositions).length} label position(s).`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save label positions. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,15 +123,34 @@ export default function GraphicManagement() {
           <CardHeader>
             <CardTitle>{selectedMarket.name} - Label Positioning</CardTitle>
             <CardDescription>
-              Drag vendor labels to your preferred positions. The chart shows the actual vendor positions 
-              based on their scores, just like end users see it.
+              Drag vendor labels to your preferred positions, then click "Save Positions" to persist changes.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {Object.keys(pendingPositions).length > 0 ? (
+                  <span className="font-medium text-blue-600">
+                    {Object.keys(pendingPositions).length} unsaved change(s)
+                  </span>
+                ) : (
+                  <span>No pending changes</span>
+                )}
+              </div>
+              <Button
+                onClick={handleSavePositions}
+                disabled={isSaving || Object.keys(pendingPositions).length === 0}
+                data-testid="button-save-positions"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Saving..." : "Save Positions"}
+              </Button>
+            </div>
             <MagicQuadrant 
               marketId={selectedMarket.id} 
               marketName={selectedMarket.name}
               enableDrag={true}
+              onLabelPositionChange={handleLabelPositionChange}
             />
           </CardContent>
         </Card>
