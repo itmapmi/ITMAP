@@ -161,7 +161,7 @@ export default function Home() {
               </h2>
               <div className="bg-gradient-to-br from-cyan-50 to-purple-50 p-8 rounded-2xl border border-gray-100">
                 <p className="text-xl text-gray-700 leading-relaxed mb-8">
-                  Unlike traditional analyst firms, ITmap's evaluations aren't influenced by paid vendor relationships. 
+                  Unlike traditional analyst firms, ITMAP's evaluations aren't influenced by paid vendor relationships. 
                   Every insight is based on public, verifiable data — processed and analyzed by AI.
                 </p>
                 <Link href="/markets">
