@@ -7,6 +7,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
+import path from 'path';
 
   // Cache to track which sessions we've already logged
   const loggedSessions = new Set<string>();
@@ -15,6 +16,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupSession(app);
   setupPassport(app);
+
+  // Serve sitemap.xml and robots.txt from public folder
+  app.get('/sitemap.xml', (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'sitemap.xml'));
+  });
+
+  app.get('/robots.txt', (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'public', 'robots.txt'));
+  });
 
   // Middleware to track user activity for existing sessions
   app.use(async (req, res, next) => {
