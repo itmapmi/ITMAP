@@ -5,6 +5,7 @@ import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
 import { FeatureCategoryManagement } from "@/components/admin/feature-category-management";
 import { SupportMatrixAdmin } from "../components/admin/support-matrix-admin";
+import ImportExportAdmin from "@/components/admin/import-export-admin";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
 import OperationsManagement from "@/components/admin/operations-management";
@@ -43,13 +44,14 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
             <TabsTrigger value="graphic">Graphic</TabsTrigger>
+            <TabsTrigger value="import-export">Import/Export</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
@@ -77,6 +79,10 @@ export default function Admin() {
 
           <TabsContent value="graphic" className="mt-6">
             <GraphicManagement />
+          </TabsContent>
+
+          <TabsContent value="import-export" className="mt-6">
+            <ImportExportAdmin />
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">
