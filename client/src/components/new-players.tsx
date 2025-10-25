@@ -69,7 +69,9 @@ export function NewPlayers({ marketId }: NewPlayersProps) {
                 <TableCell data-testid={`link-website-${player.id}`}>
                   {player.websiteUrl ? (
                     <a
-                      href={player.websiteUrl}
+                      href={player.websiteUrl.startsWith('http://') || player.websiteUrl.startsWith('https://') 
+                        ? player.websiteUrl 
+                        : `https://${player.websiteUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-primary hover:underline"

@@ -291,7 +291,9 @@ export function NewPlayersAdmin() {
                     <TableCell data-testid={`text-website-${player.id}`}>
                       {player.websiteUrl ? (
                         <a
-                          href={player.websiteUrl}
+                          href={player.websiteUrl.startsWith('http://') || player.websiteUrl.startsWith('https://') 
+                            ? player.websiteUrl 
+                            : `https://${player.websiteUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
