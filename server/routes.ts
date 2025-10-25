@@ -364,6 +364,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New Players
+  app.get("/api/markets/:marketId/new-players", async (req, res) => {
+    try {
+      const players = await storage.getNewPlayersByMarket(req.params.marketId);
+      res.json(players);
+    } catch (error) {
+      console.error("Error fetching new players:", error);
+      res.status(500).json({ error: "Failed to fetch new players" });
+    }
+  });
+
+  app.post("/api/new-players", requireAdmin, async (req, res) => {
+    try {
+      const { insertNewPlayerSchema } = await import("@shared/schema");
+      const playerData = insertNewPlayerSchema.parse(req.body);
+      const player = await storage.createNewPlayer(playerData);
+      res.status(201).json(player);
+    } catch (error) {
+      console.error("Error creating new player:", error);
+      res.status(400).json({ error: "Failed to create new player" });
+    }
+  });
+
+  app.put("/api/new-players/:id", requireAdmin, async (req, res) => {
+    try {
+      const { insertNewPlayerSchema } = await import("@shared/schema");
+      const playerData = insertNewPlayerSchema.partial().parse(req.body);
+      const player = await storage.updateNewPlayer(req.params.id, playerData);
+      res.json(player);
+    } catch (error) {
+      console.error("Error updating new player:", error);
+      res.status(400).json({ error: "Failed to update new player" });
+    }
+  });
+
+  app.delete("/api/new-players/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteNewPlayer(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting new player:", error);
+      res.status(500).json({ error: "Failed to delete new player" });
+    }
+  });
+
   // Vendor Label Positions
   app.get("/api/markets/:marketId/label-positions", async (req, res) => {
     try {
