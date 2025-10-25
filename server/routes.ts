@@ -860,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const xlsx = await import('xlsx');
       
       // Get market data
-      const market = await storage.getMarket(marketId);
+      const market = await storage.getMarketById(marketId);
       if (!market) {
         return res.status(404).json({ error: "Market not found" });
       }
@@ -869,31 +869,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vendors = await storage.getVendorsByMarket(marketId);
       
       // Get all criteria
-      const criteria = await storage.getCriteria();
-      const executionCriteria = criteria.filter(c => c.category === 'execution');
-      const viabilityCriteria = criteria.filter(c => c.category === 'viability');
+      const criteria = await storage.getAllCriteria();
+      const executionCriteria = criteria.filter((c: any) => c.category === 'execution');
+      const viabilityCriteria = criteria.filter((c: any) => c.category === 'viability');
       
       // Get all vendor scores
-      const scores = await storage.getScoresByMarket(marketId);
+      const scores = await storage.getMarketVendorScores(marketId);
       
       // Get all feature categories and features
-      const categories = await storage.getFeatureCategoriesByMarket(marketId);
-      const features = await storage.getFeaturesByMarket(marketId);
+      const categories = await storage.getMarketFeatureCategories(marketId);
+      const features = await storage.getMarketFeatures(marketId);
       
       // Get all vendor feature support
       const supportMatrix = await storage.getVendorFeatureSupport(marketId);
       
       // Separate ecosystem and product features
-      const ecosystemFeatures = features.filter(f => {
-        const category = categories.find(c => c.id === f.categoryId);
+      const ecosystemFeatures = features.filter((f: any) => {
+        const category = categories.find((c: any) => c.id === f.categoryId);
         return category?.name.toLowerCase().includes('ecosystem') ||
                category?.name.toLowerCase().includes('integration') ||
                category?.name.toLowerCase().includes('partnership') ||
                category?.name.toLowerCase().includes('third-party');
       });
       
-      const productFeatures = features.filter(f => {
-        const category = categories.find(c => c.id === f.categoryId);
+      const productFeatures = features.filter((f: any) => {
+        const category = categories.find((c: any) => c.id === f.categoryId);
         return !(category?.name.toLowerCase().includes('ecosystem') ||
                  category?.name.toLowerCase().includes('integration') ||
                  category?.name.toLowerCase().includes('partnership') ||
@@ -901,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // SHEET 1: Vendor Evaluation
-      const vendorEvalHeaders = ['Vendor Name', 'Product', ...executionCriteria.map(c => c.name), ...viabilityCriteria.map(c => c.name)];
+      const vendorEvalHeaders = ['Vendor Name', 'Product', ...executionCriteria.map((c: any) => c.name), ...viabilityCriteria.map((c: any) => c.name)];
       const vendorEvalData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
@@ -909,14 +909,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         // Add execution scores
-        executionCriteria.forEach(criteria => {
-          const score = scores.find(s => s.vendorId === vendor.id && s.criteriaId === criteria.id);
+        executionCriteria.forEach((criteria: any) => {
+          const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === criteria.id);
           row[criteria.name] = score ? Number(score.score) : '';
         });
         
         // Add viability scores
-        viabilityCriteria.forEach(criteria => {
-          const score = scores.find(s => s.vendorId === vendor.id && s.criteriaId === criteria.id);
+        viabilityCriteria.forEach((criteria: any) => {
+          const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === criteria.id);
           row[criteria.name] = score ? Number(score.score) : '';
         });
         
@@ -924,14 +924,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // SHEET 2: Product Evaluation
-      const productEvalHeaders = ['Vendor Name', ...productFeatures.map(f => f.name)];
+      const productEvalHeaders = ['Vendor Name', ...productFeatures.map((f: any) => f.name)];
       const productEvalData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
         };
         
-        productFeatures.forEach(feature => {
-          const support = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
+        productFeatures.forEach((feature: any) => {
+          const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
           row[feature.name] = support ? support.supportLevel : 0;
         });
         
@@ -939,14 +939,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // SHEET 3: ISV Ecosystem
-      const ecosystemHeaders = ['Vendor Name', ...ecosystemFeatures.map(f => f.name)];
+      const ecosystemHeaders = ['Vendor Name', ...ecosystemFeatures.map((f: any) => f.name)];
       const ecosystemData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
         };
         
-        ecosystemFeatures.forEach(feature => {
-          const support = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
+        ecosystemFeatures.forEach((feature: any) => {
+          const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
           row[feature.name] = support ? support.supportLevel : 0;
         });
         
@@ -1001,15 +1001,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const market = await storage.getMarket(marketId);
+      const market = await storage.getMarketById(marketId);
       if (!market) {
         return res.status(404).json({ error: "Market not found" });
       }
       
       // Get existing data
       const vendors = await storage.getVendorsByMarket(marketId);
-      const criteria = await storage.getCriteria();
-      const features = await storage.getFeaturesByMarket(marketId);
+      const criteria = await storage.getAllCriteria();
+      const features = await storage.getMarketFeatures(marketId);
       const supportMatrix = await storage.getVendorFeatureSupport(marketId);
       
       let importedVendors = 0;
@@ -1031,6 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: vendorName,
             product: row['Product'] || '',
             marketId: marketId,
+            revenue: null,
           });
           vendors.push(vendor);
           importedVendors++;
@@ -1043,23 +1044,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const criterion of criteria) {
           const scoreValue = row[criterion.name];
           if (scoreValue !== undefined && scoreValue !== null && scoreValue !== '') {
-            // Check if score already exists
-            const existingScore = await storage.getVendorScore(vendor.id, criterion.id);
-            if (existingScore) {
-              await storage.updateVendorScore(existingScore.id, {
-                score: String(scoreValue),
-                notes: existingScore.notes,
+            const numericScore = typeof scoreValue === 'number' ? scoreValue : parseFloat(scoreValue);
+            if (!isNaN(numericScore)) {
+              await storage.createOrUpdateVendorScore({
                 vendorId: vendor.id,
                 criteriaId: criterion.id,
+                score: numericScore,
               });
-            } else {
-              await storage.createVendorScore({
-                vendorId: vendor.id,
-                criteriaId: criterion.id,
-                score: String(scoreValue),
-              });
+              importedScores++;
             }
-            importedScores++;
           }
         }
       }
@@ -1083,22 +1076,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const supportLevel = typeof supportValue === 'number' ? supportValue : parseInt(supportValue, 10);
               
               if (!isNaN(supportLevel)) {
-                // Check if support already exists
-                const existingSupport = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
-                if (existingSupport) {
-                  await storage.updateVendorFeatureSupport(existingSupport.id, {
-                    supportLevel: supportLevel,
-                    comments: existingSupport.comments,
-                    vendorId: vendor.id,
-                    featureId: feature.id,
-                  });
-                } else {
-                  await storage.createVendorFeatureSupport({
-                    vendorId: vendor.id,
-                    featureId: feature.id,
-                    supportLevel: supportLevel,
-                  });
-                }
+                await storage.createOrUpdateVendorFeatureSupport({
+                  vendorId: vendor.id,
+                  featureId: feature.id,
+                  supportLevel: supportLevel,
+                });
                 importedSupport++;
               }
             }
