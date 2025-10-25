@@ -47,6 +47,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Domain Management**: Enforces a custom primary domain (itmap.ai) via BASE_URL environment variable with 301 redirects from the Replit domain, smart OAuth callback handling, and automatic fallback to REPLIT_DOMAINS detection.
 - **Ecosystem Support**: Dedicated section for third-party integrations, separating ecosystem-related features from core product capabilities in the support matrix.
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables for improved organization.
+- **Import/Export**: Admin-only feature for exporting market data to Excel with three sheets (Vendor Evaluation, Product Evaluation, ISV Ecosystem) and importing pre-filled Excel templates to bulk-populate market data. Uses xlsx library for Excel generation/parsing.
 
 ## External Dependencies
 
@@ -81,3 +82,6 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 
 ### AI/ML Integration
 - **OpenAI API**: Used for intelligent news impact analysis in automated news processing.
+
+### Data Management
+- **xlsx Library**: Used for Excel file generation and parsing in the Import/Export feature.

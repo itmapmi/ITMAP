@@ -149,7 +149,10 @@ export default function ImportExportAdmin() {
       </div>
 
       {message && (
-        <Alert className={message.type === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
+        <Alert 
+          className={message.type === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}
+          data-testid={`alert-${message.type}`}
+        >
           {message.type === 'success' ? (
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           ) : (
@@ -173,7 +176,11 @@ export default function ImportExportAdmin() {
             </SelectTrigger>
             <SelectContent>
               {markets?.map((market) => (
-                <SelectItem key={market.id} value={market.id}>
+                <SelectItem 
+                  key={market.id} 
+                  value={market.id}
+                  data-testid={`select-market-option-${market.id}`}
+                >
                   {market.name}
                 </SelectItem>
               ))}
@@ -273,7 +280,7 @@ export default function ImportExportAdmin() {
       </div>
 
       {selectedMarket && (
-        <Alert>
+        <Alert data-testid="alert-selected-market">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <strong>Selected Market:</strong> {selectedMarket.name}
