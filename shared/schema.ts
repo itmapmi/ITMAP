@@ -165,6 +165,18 @@ export const vendorLabelPositions = pgTable("vendor_label_positions", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const newPlayers = pgTable("new_players", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  websiteUrl: text("website_url"),
+  description: text("description"),
+  estimatedRevenue: text("estimated_revenue"),
+  location: text("location"),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Relations
 export const marketsRelations = relations(markets, ({ many, one }) => ({
   subMarkets: many(subMarkets),
@@ -174,6 +186,7 @@ export const marketsRelations = relations(markets, ({ many, one }) => ({
   criteriaWeights: many(marketCriteriaWeights),
   historicalPositions: many(historicalPositions),
   vendorLabelPositions: many(vendorLabelPositions),
+  newPlayers: many(newPlayers),
   researchMethodology: one(researchMethodology),
 }));
 
@@ -259,6 +272,13 @@ export const vendorLabelPositionsRelations = relations(vendorLabelPositions, ({ 
   }),
   market: one(markets, {
     fields: [vendorLabelPositions.marketId],
+    references: [markets.id],
+  }),
+}));
+
+export const newPlayersRelations = relations(newPlayers, ({ one }) => ({
+  market: one(markets, {
+    fields: [newPlayers.marketId],
     references: [markets.id],
   }),
 }));
@@ -357,6 +377,12 @@ export const insertVendorLabelPositionSchema = createInsertSchema(vendorLabelPos
   labelY: z.coerce.number(),
 });
 
+export const insertNewPlayerSchema = createInsertSchema(newPlayers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -407,3 +433,6 @@ export type HistoricalPosition = typeof historicalPositions.$inferSelect;
 
 export type InsertVendorLabelPosition = z.infer<typeof insertVendorLabelPositionSchema>;
 export type VendorLabelPosition = typeof vendorLabelPositions.$inferSelect;
+
+export type InsertNewPlayer = z.infer<typeof insertNewPlayerSchema>;
+export type NewPlayer = typeof newPlayers.$inferSelect;
