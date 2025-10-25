@@ -73,10 +73,7 @@ export function NewPlayersAdmin() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertNewPlayer) => {
-      return await apiRequest("/api/new-players", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("/api/new-players", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -91,10 +88,7 @@ export function NewPlayersAdmin() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertNewPlayer> }) => {
-      return await apiRequest(`/api/new-players/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest(`/api/new-players/${id}`, "PUT", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -108,9 +102,7 @@ export function NewPlayersAdmin() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/new-players/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest(`/api/new-players/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
