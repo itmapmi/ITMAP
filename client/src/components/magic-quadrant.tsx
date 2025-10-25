@@ -1046,27 +1046,27 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const fontSize = isMobile ? 9 : 11;
       const charWidth = isMobile ? 6 : 7.5;
       const textWidth = vendor.name.length * charWidth;
-      const labelHeight = isMobile ? 14 : 16;
+      const labelHeight = isMobile ? 11 : 13;
       let backgroundX, backgroundY;
       
       // Calculate background position based on label side
       if (labelPos.side === "right" || labelPos.side === "custom") {
-        backgroundX = labelPos.labelX - 3;
-        backgroundY = labelPos.labelY - (labelHeight - 4);
+        backgroundX = labelPos.labelX;
+        backgroundY = labelPos.labelY - labelHeight + 3;
       } else if (labelPos.side === "left") {
-        backgroundX = labelPos.labelX - textWidth - 3;
-        backgroundY = labelPos.labelY - (labelHeight - 4);
+        backgroundX = labelPos.labelX - textWidth;
+        backgroundY = labelPos.labelY - labelHeight + 3;
       } else {
         // top or bottom
-        backgroundX = labelPos.labelX - textWidth / 2 - 3;
-        backgroundY = labelPos.labelY - (labelHeight - 4);
+        backgroundX = labelPos.labelX - textWidth / 2;
+        backgroundY = labelPos.labelY - labelHeight + 3;
       }
       
       const labelBackground = labelGroup.append("rect")
         .attr("class", "label-background")
         .attr("x", backgroundX)
         .attr("y", backgroundY)
-        .attr("width", textWidth + 6)
+        .attr("width", textWidth)
         .attr("height", labelHeight)
         .attr("fill", "rgba(255, 255, 255, 0.9)")
         .attr("stroke", "rgba(148, 163, 184, 0.4)")
@@ -1104,14 +1104,14 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             // Update background position
             let bgX, bgY;
             if (labelPos.side === "right" || labelPos.side === "custom") {
-              bgX = newX - 3;
-              bgY = newY - (labelHeight - 4);
+              bgX = newX;
+              bgY = newY - labelHeight + 3;
             } else if (labelPos.side === "left") {
-              bgX = newX - textWidth - 3;
-              bgY = newY - (labelHeight - 4);
+              bgX = newX - textWidth;
+              bgY = newY - labelHeight + 3;
             } else {
-              bgX = newX - textWidth / 2 - 3;
-              bgY = newY - (labelHeight - 4);
+              bgX = newX - textWidth / 2;
+              bgY = newY - labelHeight + 3;
             }
             labelBackground.attr("x", bgX).attr("y", bgY);
           })
