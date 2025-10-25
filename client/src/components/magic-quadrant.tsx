@@ -1042,40 +1042,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       
       const labelGroup = vendorGroups.filter((d, i) => i === index);
       
-      // Add semi-transparent background for label readability
-      const fontSize = isMobile ? 9 : 11;
-      const charWidth = isMobile ? 6 : 7.5;
-      const textWidth = vendor.name.length * charWidth;
-      const labelHeight = isMobile ? 11 : 13;
-      let backgroundX, backgroundY;
-      
-      // Calculate background position based on label side
-      if (labelPos.side === "right" || labelPos.side === "custom") {
-        backgroundX = labelPos.labelX;
-        backgroundY = labelPos.labelY - labelHeight + 3;
-      } else if (labelPos.side === "left") {
-        backgroundX = labelPos.labelX - textWidth;
-        backgroundY = labelPos.labelY - labelHeight + 3;
-      } else {
-        // top or bottom
-        backgroundX = labelPos.labelX - textWidth / 2;
-        backgroundY = labelPos.labelY - labelHeight + 3;
-      }
-      
-      const labelBackground = labelGroup.append("rect")
-        .attr("class", "label-background")
-        .attr("x", backgroundX)
-        .attr("y", backgroundY)
-        .attr("width", textWidth)
-        .attr("height", labelHeight)
-        .attr("fill", "rgba(255, 255, 255, 0.9)")
-        .attr("stroke", "rgba(148, 163, 184, 0.4)")
-        .attr("stroke-width", 1)
-        .attr("rx", 3)
-        .attr("ry", 3)
-        .style("cursor", "move");
-      
       // Add the text label positioned around the dot
+      const fontSize = isMobile ? 9 : 11;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
@@ -1092,7 +1060,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         const drag = d3.drag()
           .on("start", function(event) {
             d3.select(this.parentNode as Element).raise();
-            labelBackground.attr("stroke", "rgba(99, 102, 241, 0.8)").attr("stroke-width", 2);
           })
           .on("drag", function(event) {
             const newX = event.x;
@@ -1100,24 +1067,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             
             // Update text position
             labelText.attr("x", newX).attr("y", newY);
-            
-            // Update background position
-            let bgX, bgY;
-            if (labelPos.side === "right" || labelPos.side === "custom") {
-              bgX = newX;
-              bgY = newY - labelHeight + 3;
-            } else if (labelPos.side === "left") {
-              bgX = newX - textWidth;
-              bgY = newY - labelHeight + 3;
-            } else {
-              bgX = newX - textWidth / 2;
-              bgY = newY - labelHeight + 3;
-            }
-            labelBackground.attr("x", bgX).attr("y", bgY);
           })
           .on("end", function(event) {
-            labelBackground.attr("stroke", "rgba(148, 163, 184, 0.4)").attr("stroke-width", 1);
-            
             // Save the new position locally
             setLabelPositions(prev => ({
               ...prev,
@@ -1130,12 +1081,10 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             }
           });
 
-        // Apply drag to both background and text
-        labelBackground.call(drag as any);
+        // Apply drag to text
         labelText.call(drag as any);
       } else {
         // Remove cursor:move style when not draggable
-        labelBackground.style("cursor", "default");
         labelText.style("cursor", "default");
       }
     });
