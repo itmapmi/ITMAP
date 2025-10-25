@@ -10,6 +10,7 @@ import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
 import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
+import { NewPlayers } from "@/components/new-players";
 import type { Market } from "@shared/schema";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
@@ -158,7 +159,7 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'grid w-full grid-cols-4'}`}>
+          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'grid w-full grid-cols-5'}`}>
             <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-vendor-evaluation">
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
@@ -174,6 +175,9 @@ export default function MarketDetails() {
             </TabsTrigger> */}
             <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-methodology">
               {isMobile ? 'Method' : 'Methodology'}
+            </TabsTrigger>
+            <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''} data-testid="tab-new-players">
+              {isMobile ? 'New Players' : 'New Players'}
             </TabsTrigger>
           </TabsList>
 
@@ -196,6 +200,10 @@ export default function MarketDetails() {
 
           <TabsContent value="research-methodology" className="mt-6">
             <ResearchMethodology marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="new-players" className="mt-6">
+            <NewPlayers marketId={marketId!} />
           </TabsContent>
         </Tabs>
       </motion.div>

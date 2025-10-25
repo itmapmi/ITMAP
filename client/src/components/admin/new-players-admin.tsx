@@ -73,11 +73,14 @@ export function NewPlayersAdmin() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertNewPlayer) => {
-      return await apiRequest("/api/new-players", {
+      const response = await fetch("/api/new-players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
+      if (!response.ok) throw new Error("Failed to create new player");
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -92,11 +95,14 @@ export function NewPlayersAdmin() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertNewPlayer> }) => {
-      return await apiRequest(`/api/new-players/${id}`, {
+      const response = await fetch(`/api/new-players/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
+      if (!response.ok) throw new Error("Failed to update new player");
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -110,9 +116,12 @@ export function NewPlayersAdmin() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/new-players/${id}`, {
+      const response = await fetch(`/api/new-players/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
+      if (!response.ok) throw new Error("Failed to delete new player");
+      return;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -137,10 +146,10 @@ export function NewPlayersAdmin() {
     setEditingPlayer(player);
     editForm.reset({
       name: player.name,
-      websiteUrl: player.websiteUrl || "",
-      description: player.description || "",
-      estimatedRevenue: player.estimatedRevenue || "",
-      location: player.location || "",
+      websiteUrl: player.websiteUrl ?? "",
+      description: player.description ?? "",
+      estimatedRevenue: player.estimatedRevenue ?? "",
+      location: player.location ?? "",
       marketId: player.marketId,
     });
   };
