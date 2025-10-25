@@ -26,6 +26,8 @@ import {
   type HistoricalPosition,
   type VendorLabelPosition,
   type InsertVendorLabelPosition,
+  type NewPlayer,
+  type InsertNewPlayer,
   users,
   userActivityLogs,
   markets,
@@ -40,6 +42,7 @@ import {
   marketCriteriaWeights,
   historicalPositions,
   vendorLabelPositions,
+  newPlayers,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -124,6 +127,12 @@ export interface IStorage {
   updateLastSeen(sessionId: string): Promise<void>;
   getUserActivityLogs(options?: { limit?: number; offset?: number; startDate?: Date; endDate?: Date }): Promise<(UserActivityLog & { user: User })[]>;
   pruneUserLogsBefore(date: Date): Promise<number>;
+  
+  // New Players
+  getNewPlayersByMarket(marketId: string): Promise<NewPlayer[]>;
+  createNewPlayer(player: InsertNewPlayer): Promise<NewPlayer>;
+  updateNewPlayer(id: string, player: Partial<InsertNewPlayer>): Promise<NewPlayer>;
+  deleteNewPlayer(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -776,7 +785,31 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount || 0;
   }
 
+  async getNewPlayersByMarket(marketId: string): Promise<NewPlayer[]> {
+    return await db
+      .select()
+      .from(newPlayers)
+      .where(eq(newPlayers.marketId, marketId))
+      .orderBy(newPlayers.createdAt);
+  }
 
+  async createNewPlayer(player: InsertNewPlayer): Promise<NewPlayer> {
+    const [newPlayer] = await db.insert(newPlayers).values(player).returning();
+    return newPlayer!;
+  }
+
+  async updateNewPlayer(id: string, player: Partial<InsertNewPlayer>): Promise<NewPlayer> {
+    const [updated] = await db
+      .update(newPlayers)
+      .set({ ...player, updatedAt: new Date() })
+      .where(eq(newPlayers.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async deleteNewPlayer(id: string): Promise<void> {
+    await db.delete(newPlayers).where(eq(newPlayers.id, id));
+  }
 }
 
 export const storage = new DatabaseStorage();
