@@ -862,9 +862,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         parentGroup.select(".vendor-label")
           .attr("font-weight", "700")
           .attr("font-size", `${hoverFontSize}px`);
-        parentGroup.select(".label-background")
-          .attr("fill", "rgba(255, 255, 255, 1.0)")
-          .attr("stroke", "rgba(99, 102, 241, 0.6)");
           
         // Show tooltip with raw and normalized scores
         const svgRect = svgRef.current?.getBoundingClientRect();
@@ -900,9 +897,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
           .attr("font-size", `${normalFontSize}px`);
-        parentGroup.select(".label-background")
-          .attr("fill", "rgba(255, 255, 255, 0.9)")
-          .attr("stroke", "rgba(148, 163, 184, 0.4)");
           
         // Hide tooltip
         setTooltip(null);
