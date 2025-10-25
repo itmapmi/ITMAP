@@ -852,6 +852,275 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export/Import routes
+  // GET export market data to Excel
+  app.get("/api/markets/:marketId/export", requireAdmin, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const xlsx = await import('xlsx');
+      
+      // Get market data
+      const market = await storage.getMarket(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+      
+      // Get all vendors for this market
+      const vendors = await storage.getVendorsByMarket(marketId);
+      
+      // Get all criteria
+      const criteria = await storage.getCriteria();
+      const executionCriteria = criteria.filter(c => c.category === 'execution');
+      const viabilityCriteria = criteria.filter(c => c.category === 'viability');
+      
+      // Get all vendor scores
+      const scores = await storage.getScoresByMarket(marketId);
+      
+      // Get all feature categories and features
+      const categories = await storage.getFeatureCategoriesByMarket(marketId);
+      const features = await storage.getFeaturesByMarket(marketId);
+      
+      // Get all vendor feature support
+      const supportMatrix = await storage.getVendorFeatureSupport(marketId);
+      
+      // Separate ecosystem and product features
+      const ecosystemFeatures = features.filter(f => {
+        const category = categories.find(c => c.id === f.categoryId);
+        return category?.name.toLowerCase().includes('ecosystem') ||
+               category?.name.toLowerCase().includes('integration') ||
+               category?.name.toLowerCase().includes('partnership') ||
+               category?.name.toLowerCase().includes('third-party');
+      });
+      
+      const productFeatures = features.filter(f => {
+        const category = categories.find(c => c.id === f.categoryId);
+        return !(category?.name.toLowerCase().includes('ecosystem') ||
+                 category?.name.toLowerCase().includes('integration') ||
+                 category?.name.toLowerCase().includes('partnership') ||
+                 category?.name.toLowerCase().includes('third-party'));
+      });
+      
+      // SHEET 1: Vendor Evaluation
+      const vendorEvalHeaders = ['Vendor Name', 'Product', ...executionCriteria.map(c => c.name), ...viabilityCriteria.map(c => c.name)];
+      const vendorEvalData = vendors.map(vendor => {
+        const row: any = {
+          'Vendor Name': vendor.name,
+          'Product': vendor.product || '',
+        };
+        
+        // Add execution scores
+        executionCriteria.forEach(criteria => {
+          const score = scores.find(s => s.vendorId === vendor.id && s.criteriaId === criteria.id);
+          row[criteria.name] = score ? Number(score.score) : '';
+        });
+        
+        // Add viability scores
+        viabilityCriteria.forEach(criteria => {
+          const score = scores.find(s => s.vendorId === vendor.id && s.criteriaId === criteria.id);
+          row[criteria.name] = score ? Number(score.score) : '';
+        });
+        
+        return row;
+      });
+      
+      // SHEET 2: Product Evaluation
+      const productEvalHeaders = ['Vendor Name', ...productFeatures.map(f => f.name)];
+      const productEvalData = vendors.map(vendor => {
+        const row: any = {
+          'Vendor Name': vendor.name,
+        };
+        
+        productFeatures.forEach(feature => {
+          const support = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
+          row[feature.name] = support ? support.supportLevel : 0;
+        });
+        
+        return row;
+      });
+      
+      // SHEET 3: ISV Ecosystem
+      const ecosystemHeaders = ['Vendor Name', ...ecosystemFeatures.map(f => f.name)];
+      const ecosystemData = vendors.map(vendor => {
+        const row: any = {
+          'Vendor Name': vendor.name,
+        };
+        
+        ecosystemFeatures.forEach(feature => {
+          const support = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
+          row[feature.name] = support ? support.supportLevel : 0;
+        });
+        
+        return row;
+      });
+      
+      // Create workbook
+      const workbook = xlsx.utils.book_new();
+      
+      // Add sheets
+      const vendorEvalSheet = xlsx.utils.json_to_sheet(vendorEvalData, { header: vendorEvalHeaders });
+      const productEvalSheet = xlsx.utils.json_to_sheet(productEvalData, { header: productEvalHeaders });
+      const ecosystemSheet = xlsx.utils.json_to_sheet(ecosystemData, { header: ecosystemHeaders });
+      
+      xlsx.utils.book_append_sheet(workbook, vendorEvalSheet, 'Vendor Evaluation');
+      xlsx.utils.book_append_sheet(workbook, productEvalSheet, 'Product Evaluation');
+      xlsx.utils.book_append_sheet(workbook, ecosystemSheet, 'ISV Ecosystem');
+      
+      // Generate Excel file buffer
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      // Send file
+      res.setHeader('Content-Disposition', `attachment; filename="${market.name.replace(/[^a-z0-9]/gi, '_')}_export.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error exporting market data:", error);
+      res.status(500).json({ error: "Failed to export market data" });
+    }
+  });
+  
+  // POST import market data from Excel
+  app.post("/api/markets/:marketId/import", requireAdmin, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const xlsx = await import('xlsx');
+      
+      if (!req.body.file) {
+        return res.status(400).json({ error: "No file provided" });
+      }
+      
+      // Parse base64 file data
+      const fileBuffer = Buffer.from(req.body.file, 'base64');
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      
+      // Verify required sheets exist
+      const requiredSheets = ['Vendor Evaluation', 'Product Evaluation', 'ISV Ecosystem'];
+      const missingSheets = requiredSheets.filter(sheet => !workbook.SheetNames.includes(sheet));
+      if (missingSheets.length > 0) {
+        return res.status(400).json({ 
+          error: `Missing required sheets: ${missingSheets.join(', ')}` 
+        });
+      }
+      
+      const market = await storage.getMarket(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+      
+      // Get existing data
+      const vendors = await storage.getVendorsByMarket(marketId);
+      const criteria = await storage.getCriteria();
+      const features = await storage.getFeaturesByMarket(marketId);
+      const supportMatrix = await storage.getVendorFeatureSupport(marketId);
+      
+      let importedVendors = 0;
+      let importedScores = 0;
+      let importedSupport = 0;
+      
+      // SHEET 1: Vendor Evaluation
+      const vendorEvalSheet = workbook.Sheets['Vendor Evaluation'];
+      const vendorEvalData = xlsx.utils.sheet_to_json(vendorEvalSheet);
+      
+      for (const row of vendorEvalData as any[]) {
+        const vendorName = row['Vendor Name'];
+        if (!vendorName) continue;
+        
+        // Find or create vendor
+        let vendor = vendors.find(v => v.name === vendorName);
+        if (!vendor) {
+          vendor = await storage.createVendor({
+            name: vendorName,
+            product: row['Product'] || '',
+            marketId: marketId,
+          });
+          vendors.push(vendor);
+          importedVendors++;
+        } else if (row['Product']) {
+          // Update product name if provided
+          await storage.updateVendor(vendor.id, { ...vendor, product: row['Product'] });
+        }
+        
+        // Import scores for each criteria
+        for (const criterion of criteria) {
+          const scoreValue = row[criterion.name];
+          if (scoreValue !== undefined && scoreValue !== null && scoreValue !== '') {
+            // Check if score already exists
+            const existingScore = await storage.getVendorScore(vendor.id, criterion.id);
+            if (existingScore) {
+              await storage.updateVendorScore(existingScore.id, {
+                score: String(scoreValue),
+                notes: existingScore.notes,
+                vendorId: vendor.id,
+                criteriaId: criterion.id,
+              });
+            } else {
+              await storage.createVendorScore({
+                vendorId: vendor.id,
+                criteriaId: criterion.id,
+                score: String(scoreValue),
+              });
+            }
+            importedScores++;
+          }
+        }
+      }
+      
+      // SHEET 2 & 3: Product Evaluation and ISV Ecosystem
+      for (const sheetName of ['Product Evaluation', 'ISV Ecosystem']) {
+        const sheet = workbook.Sheets[sheetName];
+        const sheetData = xlsx.utils.sheet_to_json(sheet);
+        
+        for (const row of sheetData as any[]) {
+          const vendorName = row['Vendor Name'];
+          if (!vendorName) continue;
+          
+          const vendor = vendors.find(v => v.name === vendorName);
+          if (!vendor) continue;
+          
+          // Import feature support for each feature
+          for (const feature of features) {
+            const supportValue = row[feature.name];
+            if (supportValue !== undefined && supportValue !== null && supportValue !== '') {
+              const supportLevel = typeof supportValue === 'number' ? supportValue : parseInt(supportValue, 10);
+              
+              if (!isNaN(supportLevel)) {
+                // Check if support already exists
+                const existingSupport = supportMatrix.find(s => s.vendorId === vendor.id && s.featureId === feature.id);
+                if (existingSupport) {
+                  await storage.updateVendorFeatureSupport(existingSupport.id, {
+                    supportLevel: supportLevel,
+                    comments: existingSupport.comments,
+                    vendorId: vendor.id,
+                    featureId: feature.id,
+                  });
+                } else {
+                  await storage.createVendorFeatureSupport({
+                    vendorId: vendor.id,
+                    featureId: feature.id,
+                    supportLevel: supportLevel,
+                  });
+                }
+                importedSupport++;
+              }
+            }
+          }
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: 'Data imported successfully',
+        stats: {
+          vendors: importedVendors,
+          scores: importedScores,
+          supportLevels: importedSupport,
+        }
+      });
+    } catch (error) {
+      console.error("Error importing market data:", error);
+      res.status(500).json({ error: "Failed to import market data" });
+    }
+  });
+
   // Research Reports routes
   // GET research reports for a market
   app.get("/api/markets/:marketId/research-reports", async (req, res) => {
