@@ -41,7 +41,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
-  const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; vendor?: VendorWithScores } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
@@ -862,28 +861,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         parentGroup.select(".vendor-label")
           .attr("font-weight", "700")
           .attr("font-size", `${hoverFontSize}px`);
-          
-        // Show tooltip with raw and normalized scores
-        const svgRect = svgRef.current?.getBoundingClientRect();
-        if (svgRect) {
-          setTooltip({
-            visible: true,
-            x: event.clientX - svgRect.left + 10,
-            y: event.clientY - svgRect.top - 10,
-            vendor: d
-          });
-        }
-      })
-      .on("mousemove", function(event, d) {
-        // Update tooltip position
-        const svgRect = svgRef.current?.getBoundingClientRect();
-        if (svgRect && tooltip?.visible) {
-          setTooltip(prev => prev ? {
-            ...prev,
-            x: event.clientX - svgRect.left + 10,
-            y: event.clientY - svgRect.top - 10
-          } : null);
-        }
       })
       .on("mouseout", function(event, d) {
         d3.select(this)
@@ -897,9 +874,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
           .attr("font-size", `${normalFontSize}px`);
-          
-        // Hide tooltip
-        setTooltip(null);
       })
       .on("click", function(event, d) {
         setSelectedVendor({
@@ -1119,43 +1093,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
                 <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
-                
-                {/* Tooltip for vendor details */}
-                {tooltip && tooltip.visible && tooltip.vendor && (
-                  <div 
-                    className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-none"
-                    style={{
-                      left: tooltip.x,
-                      top: tooltip.y,
-                      transform: 'translate(-50%, -100%)',
-                      minWidth: '200px'
-                    }}
-                  >
-                    <div className="font-semibold text-gray-900 mb-2">{tooltip.vendor.name}</div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Product Strategy & Execution:</span>
-                        <span className="font-medium">{tooltip.vendor.executionScore.toFixed(1)}</span>
-                      </div>
-                      {tooltip.vendor.rawExecutionScore !== undefined && (
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Raw Score:</span>
-                          <span>{tooltip.vendor.rawExecutionScore.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Vendor Viability:</span>
-                        <span className="font-medium">{tooltip.vendor.viabilityScore.toFixed(1)}</span>
-                      </div>
-                      {tooltip.vendor.rawViabilityScore !== undefined && (
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Raw Score:</span>
-                          <span>{tooltip.vendor.rawViabilityScore.toFixed(2)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
                 
                 <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
                   <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
