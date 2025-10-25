@@ -73,14 +73,10 @@ export function NewPlayersAdmin() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertNewPlayer) => {
-      const response = await fetch("/api/new-players", {
+      return await apiRequest("/api/new-players", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create new player");
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -95,14 +91,10 @@ export function NewPlayersAdmin() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertNewPlayer> }) => {
-      const response = await fetch(`/api/new-players/${id}`, {
+      return await apiRequest(`/api/new-players/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to update new player");
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
@@ -116,12 +108,9 @@ export function NewPlayersAdmin() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/new-players/${id}`, {
+      return await apiRequest(`/api/new-players/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to delete new player");
-      return;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
