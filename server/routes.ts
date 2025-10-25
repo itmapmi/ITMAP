@@ -901,30 +901,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // SHEET 1: Vendor Evaluation
-      const vendorEvalHeaders = ['Vendor Name', 'Product', ...executionCriteria.map((c: any) => c.name), ...viabilityCriteria.map((c: any) => c.name)];
+      // Create headers with both score and notes columns for each criteria
+      const vendorEvalHeaders = ['Vendor Name', 'Product'];
+      executionCriteria.forEach((c: any) => {
+        vendorEvalHeaders.push(c.name, `${c.name} - Notes`);
+      });
+      viabilityCriteria.forEach((c: any) => {
+        vendorEvalHeaders.push(c.name, `${c.name} - Notes`);
+      });
+      
       const vendorEvalData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
           'Product': vendor.product || '',
         };
         
-        // Add execution scores
+        // Add execution scores and notes
         executionCriteria.forEach((criteria: any) => {
           const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === criteria.id);
           row[criteria.name] = score ? Number(score.score) : '';
+          row[`${criteria.name} - Notes`] = score?.notes || '';
         });
         
-        // Add viability scores
+        // Add viability scores and notes
         viabilityCriteria.forEach((criteria: any) => {
           const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === criteria.id);
           row[criteria.name] = score ? Number(score.score) : '';
+          row[`${criteria.name} - Notes`] = score?.notes || '';
         });
         
         return row;
       });
       
       // SHEET 2: Product Evaluation
-      const productEvalHeaders = ['Vendor Name', ...productFeatures.map((f: any) => f.name)];
+      const productEvalHeaders = ['Vendor Name'];
+      productFeatures.forEach((f: any) => {
+        productEvalHeaders.push(f.name, `${f.name} - Comments`);
+      });
+      
       const productEvalData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
@@ -932,14 +946,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         productFeatures.forEach((feature: any) => {
           const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
-          row[feature.name] = support ? support.supportLevel : 0;
+          row[feature.name] = support ? support.supportLevel : '';
+          row[`${feature.name} - Comments`] = support?.comments || '';
         });
         
         return row;
       });
       
       // SHEET 3: ISV Ecosystem
-      const ecosystemHeaders = ['Vendor Name', ...ecosystemFeatures.map((f: any) => f.name)];
+      const ecosystemHeaders = ['Vendor Name'];
+      ecosystemFeatures.forEach((f: any) => {
+        ecosystemHeaders.push(f.name, `${f.name} - Comments`);
+      });
+      
       const ecosystemData = vendors.map(vendor => {
         const row: any = {
           'Vendor Name': vendor.name,
@@ -947,7 +966,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         ecosystemFeatures.forEach((feature: any) => {
           const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
-          row[feature.name] = support ? support.supportLevel : 0;
+          row[feature.name] = support ? support.supportLevel : '';
+          row[`${feature.name} - Comments`] = support?.comments || '';
         });
         
         return row;
@@ -1043,6 +1063,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Import scores for each criteria
         for (const criterion of criteria) {
           const scoreValue = row[criterion.name];
+          const notesValue = row[`${criterion.name} - Notes`];
+          
           if (scoreValue !== undefined && scoreValue !== null && scoreValue !== '') {
             const numericScore = typeof scoreValue === 'number' ? scoreValue : parseFloat(scoreValue);
             if (!isNaN(numericScore)) {
@@ -1050,6 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 vendorId: vendor.id,
                 criteriaId: criterion.id,
                 score: numericScore,
+                notes: notesValue || null,
               });
               importedScores++;
             }
@@ -1072,6 +1095,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Import feature support for each feature
           for (const feature of features) {
             const supportValue = row[feature.name];
+            const commentsValue = row[`${feature.name} - Comments`];
+            
             if (supportValue !== undefined && supportValue !== null && supportValue !== '') {
               const supportLevel = typeof supportValue === 'number' ? supportValue : parseInt(supportValue, 10);
               
@@ -1080,6 +1105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   vendorId: vendor.id,
                   featureId: feature.id,
                   supportLevel: supportLevel,
+                  comments: commentsValue || null,
                 });
                 importedSupport++;
               }
