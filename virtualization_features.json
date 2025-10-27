@@ -1,0 +1,401 @@
+[
+  {
+    "category": "Performance & Efficiency",
+    "features": [
+      {
+        "name": "CPU Virtualization Overhead",
+        "description": "Minimizes the performance penalty of the hypervisor on CPU-intensive workloads, ensuring near-native execution speed for virtual CPUs."
+      },
+      {
+        "name": "Memory Overcommit & Optimization",
+        "description": "Ability to allocate more virtual memory to VMs than physically available via techniques like transparent page sharing or ballooning, maximizing memory usage while maintaining stable performance"
+      },
+      {
+        "name": "I/O Throughput and Offloads",
+        "description": "Efficient virtual I/O performance for disk and network, with support for hardware offloads (e.g., SR-IOV, VMQ) to reduce virtualization overhead and improve throughput."
+      },
+      {
+        "name": "GPU/Accelerator Virtualization",
+        "description": "Supports virtual GPUs or direct pass-through of accelerators (GPUs, FPGA) to VMs, enabling high-performance computing and graphics workloads in virtualized environments."
+      },
+      {
+        "name": "NUMA Awareness",
+        "description": "Optimizes VM performance on multi-socket hosts by aligning virtual CPUs and memory with NUMA nodes, avoiding cross-node memory latency penalties."
+      }
+    ]
+  },
+  {
+    "category": "Scalability & Capacity",
+    "features": [
+      {
+        "name": "Maximum Hosts per Cluster",
+        "description": "The maximum number of physical hosts supported in a single cluster, defining how large the resource pool can scale (e.g., up to 96 hosts per cluster on some platforms"
+      },
+      {
+        "name": "Maximum VMs per Host/Cluster",
+        "description": "Limits on the number of VMs that can run on one host and within one cluster, indicating the platform's capacity for consolidation in large deployments."
+      },
+      {
+        "name": "Maximum VM Size (vCPU/RAM)",
+        "description": "Upper limits on virtual machine specifications (max vCPUs, RAM per VM) to accommodate demanding workloads (e.g., so-called \"monster\" VMs with up to 768 vCPUs and 24 TB RAM as supported on some platforms"
+      },
+      {
+        "name": "Host Hardware Scalability",
+        "description": "Support for high-end server hardware (many cores, large memory) and advanced CPU features, ensuring the hypervisor can fully utilize modern multi-socket servers in big-scale environments."
+      },
+      {
+        "name": "Multi-Cluster Management",
+        "description": "Ability to manage multiple clusters or data centers under one management domain, enabling scaling out to thousands of VMs and hosts with centralized control."
+      }
+    ]
+  },
+  {
+    "category": "Resource Allocation & Management",
+    "features": [
+      {
+        "name": "Dynamic Resource Scheduling (DRS)",
+        "description": "Automated load balancing of VMs across hosts by monitoring resource use and migrating VMs or adjusting placement to prevent hotspots[4]."
+      },
+      {
+        "name": "Live VM Migration",
+        "description": "Capability to move running VMs between hosts with no downtime, facilitating maintenance and workload balancing without service interruption"
+      },
+      {
+        "name": "Resource Overcommit & Throttling",
+        "description": "Controls for safely over-allocating CPU/memory beyond physical limits and throttling usage, allowing higher utilization while preventing any VM from starving others."
+      },
+      {
+        "name": "Reservations and QoS",
+        "description": "Ability to set resource reservations, limits, and shares for VMs (guaranteeing minimum resources or capping maximum usage) to enforce Quality of Service for critical applications."
+      },
+      {
+        "name": "Hot-Add/Hot-Plug Resources",
+        "description": "Support for adding CPU, memory, or virtual devices to a running VM without reboot, enabling on-the-fly scaling of resources as workload demands grow."
+      }
+    ]
+  },
+  {
+    "category": "Storage Capabilities",
+    "features": [
+      {
+        "name": "Multi-Storage Support",
+        "description": "Compatibility with various storage backends and protocols (SAN, NAS, DAS, NVMe) so VMs can reside on FC, iSCSI, NFS, or local disks as needed"
+      },
+      {
+        "name": "Software-Defined Storage (SDS)",
+        "description": "Built-in distributed storage or integration with software-defined storage solutions that pools local or network drives into a unified datastore for the virtualization cluster."
+      },
+      {
+        "name": "Virtual Disk Features (Thin Provisioning, Dedup)",
+        "description": "Advanced virtual disk options like thin provisioning (allocate storage on demand), deduplication, and compression to optimize storage utilization and efficiency."
+      },
+      {
+        "name": "Snapshots and Clones",
+        "description": "Ability to take point-in-time snapshots of VM disks and create clones (full or linked) of VMs quickly, aiding backups, patch testing, and rapid provisioning with minimal performance impact."
+      },
+      {
+        "name": "Storage Live Migration",
+        "description": "Ability to migrate a VM's virtual disks from one storage array or datastore to another while the VM is running, enabling storage maintenance or load balancing with no downtime"
+      },
+      {
+        "name": "Multipathing & Storage Failover",
+        "description": "Support for multiple I/O paths to storage and automatic failover if a path or storage controller fails, ensuring continuous VM access to storage resources."
+      },
+      {
+        "name": "Storage Quality of Service",
+        "description": "Controls to limit or prioritize storage I/O (IOPS, throughput) per VM or per volume, preventing noisy-neighbor issues and guaranteeing performance for high-priority workloads."
+      },
+      {
+        "name": "Container Storage Integration",
+        "description": "Integration with container orchestrator storage interfaces (CSI), allowing containerized applications to provision and use persistent volumes from the virtualization platform's storage."
+      }
+    ]
+  },
+  {
+    "category": "Networking Capabilities",
+    "features": [
+      {
+        "name": "Virtual Network Switching",
+        "description": "Built-in virtual switches on each host to connect VMs, supporting VLAN tagging and basic network segmentation for traffic isolation within the virtual environment."
+      },
+      {
+        "name": "Distributed Network Management",
+        "description": "Centralized virtual networking configuration (e.g., distributed switches) that spans multiple hosts, ensuring consistent network policies (port groups, VLANs, NIC teaming) across the cluster."
+      },
+      {
+        "name": "Network Overlays & SDN",
+        "description": "Support for overlay networks (VXLAN/GENEVE) and software-defined networking integration to enable multi-tenant network segmentation and advanced network virtualization (e.g., via SDN controllers)."
+      },
+      {
+        "name": "Network Isolation & Firewall",
+        "description": "Built-in virtual firewalls or microsegmentation to enforce isolation between VMs/networks, providing granular security controls at the hypervisor layer (integration with platforms like NSX for advanced network security)"
+      },
+      {
+        "name": "High Performance Networking",
+        "description": "Support for technologies like SR-IOV for direct device access, jumbo frames, and network offload engines (checksum offload, TSO, etc.), enabling low-latency and high throughput networking for VM workloads."
+      },
+      {
+        "name": "Network Quality of Service",
+        "description": "Traffic shaping and bandwidth allocation features to control network throughput per VM or per virtual network, ensuring critical applications have guaranteed bandwidth and limiting noisy neighbors."
+      },
+      {
+        "name": "Container Networking Integration",
+        "description": "Compatibility with container networking (CNI) plugins and ability to bridge container networks with the virtual network, allowing containers to communicate over the same software-defined networks as VMs."
+      }
+    ]
+  },
+  {
+    "category": "Security & Isolation",
+    "features": [
+      {
+        "name": "Hypervisor Hardening & Integrity",
+        "description": "A secure hypervisor design with minimal attack surface (often a hardened, bare-metal architecture) and features like secure boot for the hypervisor to ensure the virtualization layer itself is protected"
+      },
+      {
+        "name": "VM Isolation Enforcement",
+        "description": "Strong isolation between VMs so that escape or interference is prevented; may include use of mandatory access controls (e.g., SELinux/sVirt in Linux hypervisors) to sandbox VMs for enhanced security"
+      },
+      {
+        "name": "Secure Boot & UEFI for VMs",
+        "description": "Support for UEFI Secure Boot in virtual machines, ensuring that only signed, trusted OS bootloaders and drivers run in VMs to prevent malware at startup."
+      },
+      {
+        "name": "VM Disk & Memory Encryption",
+        "description": "Ability to encrypt virtual machine disks (and even VM memory) so that data is protected both at-rest and in-use, using encryption keys that are securely managed (e.g., via an external KMS)."
+      },
+      {
+        "name": "Virtual TPM Support",
+        "description": "Provision of a virtual Trusted Platform Module to VMs, allowing guest OS to use TPM-dependent security features (like BitLocker, Measured Boot) in a virtualized environment."
+      },
+      {
+        "name": "Audit Logging & Compliance",
+        "description": "Comprehensive logging of administrative actions and security events, plus compliance certifications (e.g., Common Criteria) and integration with enterprise identity management (AD/LDAP) for authenticated, auditable access control."
+      }
+    ]
+  },
+  {
+    "category": "High Availability & Fault Tolerance",
+    "features": [
+      {
+        "name": "Host Failover (VM HA)",
+        "description": "Automatic detection of host failures and restart of affected VMs on surviving hosts in a cluster, providing high availability by minimizing VM downtime in the event of hardware/server outages."
+      },
+      {
+        "name": "Fault Tolerance (Zero-Downtime)",
+        "description": "Capability to run a shadow instance of a VM on a different host in lockstep with the primary VM, so if the primary host fails the secondary takes over immediately with no service interruption[10]."
+      },
+      {
+        "name": "Guest Clustering Support",
+        "description": "Support for configurations that enhance VM-level availability, such as shared virtual disks and anti-affinity rules to separate clustered VM nodes across hosts, facilitating application-level HA (e.g., SQL Server failover clusters)."
+      },
+      {
+        "name": "HA Configuration Controls",
+        "description": "Granular settings for HA behavior, like specifying VM restart priorities, dependencies, and guaranteed reserve resources to ensure critical VMs recover first and with sufficient capacity after a failure."
+      },
+      {
+        "name": "Stretched Cluster Capability",
+        "description": "Ability to span a virtualization cluster across two sites or availability zones with synchronous replication, enabling automatic failover of VMs to a secondary site for continuous availability in site-level disasters."
+      }
+    ]
+  },
+  {
+    "category": "Backup & Disaster Recovery",
+    "features": [
+      {
+        "name": "Native Backup APIs",
+        "description": "Provides APIs (or tooling) for integrated VM backup, such as snapshotting with change block tracking and quiescence, to allow third-party or built-in solutions to back up VMs efficiently[11]."
+      },
+      {
+        "name": "VM Replication",
+        "description": "Built-in support for replicating VMs to another host or site (asynchronously or synchronously) for disaster recovery, maintaining an up-to-date copy that can be rapidly activated if the primary VM fails or site goes down."
+      },
+      {
+        "name": "DR Orchestration",
+        "description": "Support for automating disaster recovery processes, including orchestrated failover and failback of multiple VMs, testing of DR plans in isolation, and sequencing of recovery steps to bring applications back online coherently."
+      },
+      {
+        "name": "Application-Consistent Snapshots",
+        "description": "Ability to quiesce VMs and integrated applications (e.g., via VSS for Windows) during snapshots or backups, ensuring that restores result in consistent, usable application state (no data corruption in databases, etc.)."
+      },
+      {
+        "name": "Multi-Site & Cloud DR",
+        "description": "Flexibility to use multiple sites or public cloud as disaster recovery targets, enabling hybrid DR solutions (for example, replicating VMs to cloud storage or spinning up replicas in a cloud environment if the primary datacenter fails)."
+      }
+    ]
+  },
+  {
+    "category": "Management & Orchestration",
+    "features": [
+      {
+        "name": "Centralized Management Console",
+        "description": "A unified management platform or console to administer all hosts, VMs, storage, and networking in the environment, providing a \"single pane of glass\" for the entire virtual infrastructure."
+      },
+      {
+        "name": "Role-Based Access Control",
+        "description": "Granular administrative roles and permissions, allowing separation of duties (e.g., network admin vs VM admin) and safe delegation of management tasks while maintaining security."
+      },
+      {
+        "name": "Multi-Tenant & Quotas",
+        "description": "Support for logically dividing resources or clusters for different departments or tenants, with the ability to set quotas and isolate administrative domains within the same physical infrastructure."
+      },
+      {
+        "name": "UI, CLI & API Access",
+        "description": "Multiple management interfaces: a user-friendly GUI for console operations, command-line tools for automation (CLI/PowerShell), and a full RESTful API/SDK for integration with external tools."
+      },
+      {
+        "name": "Orchestration & Workflows",
+        "description": "Built-in or integrable workflow engines to automate complex IT tasks (e.g., multi-step provisioning, automated scaling or scheduling) and integration with ITSM/DevOps pipelines for streamlined operations."
+      }
+    ]
+  },
+  {
+    "category": "Automation & APIs",
+    "features": [
+      {
+        "name": "Programmable Infrastructure (IaC)",
+        "description": "Support for Infrastructure-as-Code through comprehensive APIs or declarative configuration, enabling integration with tools like Terraform or CloudFormation to define and manage virtual infrastructure in code."
+      },
+      {
+        "name": "Scripting & SDKs",
+        "description": "Availability of scripting languages and software development kits (SDKs) (e.g., PowerCLI for PowerShell, Python SDKs) to script tasks, enabling automation of routine management actions and custom integrations."
+      },
+      {
+        "name": "Event-Driven Automation",
+        "description": "Ability to trigger actions or scripts in response to system events or alerts (for example, run a script when a VM exceeds a CPU threshold) to enable automated remediation and dynamic resource management."
+      },
+      {
+        "name": "Auto-Scaling Capabilities",
+        "description": "Integration with auto-scaling mechanisms, either natively or via orchestrators, to automatically adjust VM or container resources (or instantiate new VMs) based on load or predefined policies for elasticity."
+      },
+      {
+        "name": "Integration with DevOps Tools",
+        "description": "Compatibility with CI/CD and configuration management tools (such as Ansible, Puppet, or Chef), including modules or providers that allow those tools to provision and manage VMs/containers on the platform."
+      }
+    ]
+  },
+  {
+    "category": "Monitoring & Analytics",
+    "features": [
+      {
+        "name": "Real-Time Performance Monitoring",
+        "description": "Continuous monitoring of host and VM performance metrics (CPU, memory, I/O, network) with live dashboards, enabling administrators to observe system health and identify performance bottlenecks in real time."
+      },
+      {
+        "name": "Historical Metrics & Trending",
+        "description": "Retention of performance and resource usage data over time, with tools to analyze trends, generate reports, and predict future capacity needs based on historical consumption patterns."
+      },
+      {
+        "name": "Alerts and Notifications",
+        "description": "Configurable alerting system that generates alarms for specified conditions (e.g., high usage, failures) and can send notifications or trigger scripts, ensuring issues are flagged for prompt attention."
+      },
+      {
+        "name": "Log Aggregation & Analysis",
+        "description": "Centralized collection of logs and events from hosts and VMs, with search and analysis capabilities or integration to external log analytics/SIEM systems for debugging, security audits, and compliance."
+      },
+      {
+        "name": "Capacity & Anomaly Analytics",
+        "description": "Advanced analytics that may leverage machine learning to detect anomalies in usage patterns or to recommend optimizations (e.g., rightsizing VMs, balancing workloads), and capacity planning tools to model growth scenarios."
+      }
+    ]
+  },
+  {
+    "category": "Lifecycle Management",
+    "features": [
+      {
+        "name": "Non-Disruptive Patching",
+        "description": "Mechanisms to update hypervisor hosts and management software with little to no VM downtime, such as rolling cluster upgrades or live patching of hypervisor kernels."
+      },
+      {
+        "name": "Automated Cluster Upgrades",
+        "description": "Central tools to orchestrate upgrades across hosts (and even firmware) in a cluster from a single interface, simplifying maintenance (e.g., one-click cluster patching that updates all hosts in sequence)"
+      },
+      {
+        "name": "Host Provisioning Automation",
+        "description": "Capabilities for rapid provisioning of new virtualization hosts (PXE-boot or auto-deploy) and auto-configuration to join existing clusters with predefined settings, reducing manual effort for scaling infrastructure."
+      },
+      {
+        "name": "Template & Image Library",
+        "description": "Built-in library for VM templates or base images that allows IT to standardize and quickly deploy new VMs (or container images) from pre-approved, pre-configured golden images."
+      },
+      {
+        "name": "Configuration Drift Control",
+        "description": "Ability to enforce consistent host and VM configurations (through policies or profiles) and detect or remediate drift (config changes) over time to maintain a compliant and stable environment."
+      }
+    ]
+  },
+  {
+    "category": "Container & Orchestration Support",
+    "features": [
+      {
+        "name": "Kubernetes Integration",
+        "description": "Native support for running Kubernetes clusters or pods on the virtualization platform (e.g., embedding Kubernetes into the control plane) so containerized workloads can be managed alongside VMs"
+      },
+      {
+        "name": "Container Runtime on Hypervisor",
+        "description": "Capability to run containers directly on the hypervisor or in lightweight VM constructs, reducing overhead and providing VM-level isolation for container workloads while leveraging the same infrastructure."
+      },
+      {
+        "name": "Unified Management of VMs & Containers",
+        "description": "Single-pane management for both virtual machines and container clusters, allowing administrators to apply consistent policies, security, and monitoring across VMs and containers in a unified way"
+      },
+      {
+        "name": "Container Networking & Storage",
+        "description": "Integration that allows containers to use the virtualization platform's networking (via CNI plugins) and storage (via CSI drivers), ensuring container workloads have access to enterprise-grade networking and persistent storage."
+      },
+      {
+        "name": "Developer Self-Service Portals",
+        "description": "Features enabling developers to provision and manage container resources (like namespaces or clusters) on-demand via self-service interfaces, while IT maintains governance over resource quotas and security"
+      }
+    ]
+  },
+  {
+    "category": "Hybrid Cloud Integration",
+    "features": [
+      {
+        "name": "Unified Hybrid Management",
+        "description": "Ability to manage on-premises and public cloud resources under a single management framework, offering unified visibility and operations across a hybrid cloud deployment"
+      },
+      {
+        "name": "Workload Portability",
+        "description": "Tools for migrating or extending workloads between private datacenter and public cloud environments (e.g., VM format compatibility and migration services), enabling applications to run in the optimal environment and move as needed."
+      },
+      {
+        "name": "Consistent Operations",
+        "description": "Ensures a consistent set of capabilities and similar configurations on both on-prem and cloud instances (when using the platform's hybrid offering) so that applications experience the same performance, security, and management policies in either environment."
+      },
+      {
+        "name": "Cloud Bursting",
+        "description": "Supports augmenting on-prem capacity with on-demand cloud resources (cloud bursting) during peak loads, by seamlessly deploying additional workloads to cloud hosts while managing them as part of the same environment."
+      },
+      {
+        "name": "Cloud Service Integration",
+        "description": "Integrations with public cloud services such as using cloud-based storage, backup targets, or monitoring services directly from the virtualization platform, and support for container services across hybrid environments, increasing the overall flexibility of deployments."
+      }
+    ]
+  },
+  {
+    "category": "Licensing Model",
+    "features": [
+      {
+        "name": "License Metric (CPU/VM/etc.)",
+        "description": "How the platform's licensing is measured from a technical standpoint (per CPU socket, per core, per VM, per memory, etc.), which affects how scaling up hardware or deploying many VMs might be constrained by license counts"
+      },
+      {
+        "name": "License Editions & Features",
+        "description": "Whether different license editions unlock specific technical features or capacities (for example, advanced networking or replication might require higher-tier licenses), determining what functionality is available in a given deployment."
+      },
+      {
+        "name": "Hybrid Use Licensing",
+        "description": "Support for license portability or conversion between on-prem and cloud usage (e.g., bring-your-own-license to cloud or subscription models that cover both), allowing hybrid cloud deployments without separate licensing silos."
+      },
+      {
+        "name": "Open Source vs Proprietary",
+        "description": "The nature of the platform's software license – fully open source (code available, community-driven) or proprietary – which can influence extensibility, community support, and the need for vendor support (aside from cost implications)."
+      },
+      {
+        "name": "Scalability of Licensing",
+        "description": "How well the licensing scheme accommodates large scale (enterprise-wide) deployments – for instance, does it impose hard limits or require complex license management, or is it straightforward for thousands of VMs across many hosts."
+      }
+    ]
+  }
+]
