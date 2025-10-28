@@ -241,7 +241,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/markets", async (req, res) => {
     try {
       const markets = await storage.getAllMarkets();
-      res.json(markets);
+      // Filter out hidden markets for non-admin users
+      const isAdmin = req.isAuthenticated() && (req.user as any)?.role === 'admin';
+      const filteredMarkets = isAdmin ? markets : markets.filter(m => m.isVisible !== false);
+      res.json(filteredMarkets);
     } catch (error) {
       console.error("Error fetching markets:", error);
       res.status(500).json({ error: "Failed to fetch markets" });

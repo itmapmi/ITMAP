@@ -46,6 +46,7 @@ export const markets = pgTable("markets", {
   shortDescription: text("short_description"),
   category: text("category"),
   imageUrl: text("image_url"),
+  isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

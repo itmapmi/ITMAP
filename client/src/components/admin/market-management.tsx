@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -33,6 +34,7 @@ export default function MarketManagement() {
       shortDescription: "",
       category: "",
       imageUrl: "",
+      isVisible: true,
     },
   });
 
@@ -154,6 +156,7 @@ export default function MarketManagement() {
       shortDescription: market.shortDescription || "",
       category: market.category || "",
       imageUrl: market.imageUrl || "",
+      isVisible: market.isVisible !== false,
     });
   };
 
@@ -166,6 +169,7 @@ export default function MarketManagement() {
       shortDescription: "",
       category: "",
       imageUrl: "",
+      isVisible: true,
     });
   };
 
@@ -177,6 +181,7 @@ export default function MarketManagement() {
       shortDescription: "",
       category: "",
       imageUrl: "",
+      isVisible: true,
     });
   };
 
@@ -274,6 +279,30 @@ export default function MarketManagement() {
                 />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="isVisible"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">
+                  Visible in Frontend
+                </FormLabel>
+                <div className="text-sm text-muted-foreground">
+                  Toggle to show or hide this market from public view
+                </div>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value !== false}
+                  onCheckedChange={field.onChange}
+                  data-testid="toggle-market-visibility"
+                />
+              </FormControl>
             </FormItem>
           )}
         />
