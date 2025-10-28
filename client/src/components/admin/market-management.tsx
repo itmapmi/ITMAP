@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, TrendingUp, Upload, Plus } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Upload, Plus, Eye, EyeOff } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
 import { SimpleImageUploader } from "@/components/SimpleImageUploader";
 
@@ -385,7 +385,26 @@ export default function MarketManagement() {
                       />
                     )}
                     <div className="flex-1">
-                      <h5 className="font-medium text-gray-900">{market.name}</h5>
+                      <div className="flex items-center gap-2">
+                        <h5 className="font-medium text-gray-900">{market.name}</h5>
+                        {market.isVisible === false ? (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+                            data-testid={`badge-hidden-${market.id}`}
+                          >
+                            <EyeOff className="h-3 w-3" />
+                            Hidden
+                          </span>
+                        ) : (
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                            data-testid={`badge-visible-${market.id}`}
+                          >
+                            <Eye className="h-3 w-3" />
+                            Visible
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
                         {market.category} • Updated {market.updatedAt ? 
                           new Date(market.updatedAt).toLocaleDateString() : 
@@ -399,6 +418,7 @@ export default function MarketManagement() {
                       variant="ghost" 
                       size="sm"
                       onClick={() => handleEdit(market)}
+                      data-testid={`button-edit-${market.id}`}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -407,6 +427,7 @@ export default function MarketManagement() {
                       size="sm"
                       onClick={() => deleteMarketMutation.mutate(market.id)}
                       disabled={deleteMarketMutation.isPending}
+                      data-testid={`button-delete-${market.id}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
