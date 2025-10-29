@@ -49,6 +49,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables for improved organization.
 - **Import/Export**: Admin-only feature for exporting market data to Excel with three sheets (Vendor Evaluation, Product Evaluation, ISV Ecosystem) and importing pre-filled Excel templates to bulk-populate market data. Uses xlsx library for Excel generation/parsing.
 - **PDF Report Generation**: Professional PDF reports with vendor filtering, featuring detailed commentary/analysis embedded within feature support tables. Reports include support level badges (Full/Good/Partial/Limited/Not Supported) with inline commentary boxes showing detailed explanations and source references. Uses Puppeteer with system Chromium for PDF rendering.
+- **SEO-Friendly URLs**: Markets use clean, readable slugs in URLs (e.g., itmap.ai/markets/itmap-for-backup-recovery-of-saas-applications) instead of UUIDs. Automatic slug generation with collision handling (appends -2, -3, etc. for duplicates). API maintains backward compatibility with UUID-based URLs. Slugs are automatically generated from market names and stored in the database as unique values.
 
 ## External Dependencies
 
