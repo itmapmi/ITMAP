@@ -47,6 +47,16 @@ import {
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
+// Helper function to generate URL-friendly slug from name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim();
+}
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -57,6 +67,7 @@ export interface IStorage {
   // Markets
   getAllMarkets(): Promise<Market[]>;
   getMarketById(id: string): Promise<Market | undefined>;
+  getMarketBySlug(slug: string): Promise<Market | undefined>;
   createMarket(market: InsertMarket): Promise<Market>;
   updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market>;
   deleteMarket(id: string): Promise<void>;
@@ -174,18 +185,32 @@ export class DatabaseStorage implements IStorage {
     return market || undefined;
   }
 
+  async getMarketBySlug(slug: string): Promise<Market | undefined> {
+    const [market] = await db.select().from(markets).where(eq(markets.slug, slug));
+    return market || undefined;
+  }
+
   async createMarket(market: InsertMarket): Promise<Market> {
+    const marketData = {
+      ...market,
+      slug: market.slug || generateSlug(market.name),
+    };
     const [newMarket] = await db
       .insert(markets)
-      .values(market)
+      .values(marketData)
       .returning();
     return newMarket;
   }
 
   async updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market> {
+    const updateData = { ...market, updatedAt: new Date() };
+    // Auto-generate slug if name is being updated but slug is not provided
+    if (market.name && !market.slug) {
+      updateData.slug = generateSlug(market.name);
+    }
     const [updatedMarket] = await db
       .update(markets)
-      .set({ ...market, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(markets.id, id))
       .returning();
     return updatedMarket;
