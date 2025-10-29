@@ -1344,33 +1344,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allScores = await storage.getMarketVendorScores(marketId);
       const scores = allScores.map(s => ({
         ...s,
-        category: s.criteriaCategory
+        category: s.criteria.category
       }));
 
-      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
-      const ecosystemCategory = allCategories.find(c => 
+      const allCategories = await storage.getMarketFeatureCategories(marketId);
+      const ecosystemCategory = allCategories.find((c: any) => 
         c.name.toLowerCase().includes('ecosystem') || 
         c.name.toLowerCase().includes('isv')
       );
 
-      const productCategories = allCategories.filter(c => c.id !== ecosystemCategory?.id);
-      const allFeatures = await storage.getFeaturesByCategoryIds(allCategories.map(c => c.id));
+      const productCategories = allCategories.filter((c: any) => c.id !== ecosystemCategory?.id);
+      const allFeatures = await storage.getMarketFeatures(marketId);
       
       const productFeatures = ecosystemCategory 
-        ? allFeatures.filter(f => f.categoryId !== ecosystemCategory.id)
+        ? allFeatures.filter((f: any) => f.categoryId !== ecosystemCategory.id)
         : allFeatures;
       
       const ecosystemFeatures = ecosystemCategory 
-        ? allFeatures.filter(f => f.categoryId === ecosystemCategory.id)
+        ? allFeatures.filter((f: any) => f.categoryId === ecosystemCategory.id)
         : [];
 
-      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
+      const allSupport = await storage.getVendorFeatureSupport(marketId);
       const productSupport = ecosystemCategory
-        ? allSupport.filter(s => !ecosystemFeatures.find(f => f.id === s.featureId))
+        ? allSupport.filter((s: any) => !ecosystemFeatures.find((f: any) => f.id === s.featureId))
         : allSupport;
       
       const ecosystemSupport = ecosystemCategory
-        ? allSupport.filter(s => ecosystemFeatures.find(f => f.id === s.featureId))
+        ? allSupport.filter((s: any) => ecosystemFeatures.find((f: any) => f.id === s.featureId))
         : [];
 
       // Generate report content
@@ -1427,7 +1427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allScores = await storage.getMarketVendorScores(marketId);
       const scores = allScores.map(s => ({
         ...s,
-        category: s.criteriaCategory
+        category: s.criteria.category
       }));
 
       const content = pdfService.generateVendorEvaluationContent(market, vendors, scores);
@@ -1470,21 +1470,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendors = vendors.filter(v => vendorIds.includes(v.id));
       }
 
-      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
-      const ecosystemCategory = allCategories.find(c => 
+      const allCategories = await storage.getMarketFeatureCategories(marketId);
+      const ecosystemCategory = allCategories.find((c: any) => 
         c.name.toLowerCase().includes('ecosystem') || 
         c.name.toLowerCase().includes('isv')
       );
 
-      const productCategories = allCategories.filter(c => c.id !== ecosystemCategory?.id);
-      const allFeatures = await storage.getFeaturesByCategoryIds(allCategories.map(c => c.id));
+      const productCategories = allCategories.filter((c: any) => c.id !== ecosystemCategory?.id);
+      const allFeatures = await storage.getMarketFeatures(marketId);
       const productFeatures = ecosystemCategory 
-        ? allFeatures.filter(f => f.categoryId !== ecosystemCategory.id)
+        ? allFeatures.filter((f: any) => f.categoryId !== ecosystemCategory.id)
         : allFeatures;
 
-      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
+      const allSupport = await storage.getVendorFeatureSupport(marketId);
       const productSupport = ecosystemCategory
-        ? allSupport.filter(s => !allFeatures.find(f => f.id === s.featureId && f.categoryId === ecosystemCategory.id))
+        ? allSupport.filter((s: any) => !allFeatures.find((f: any) => f.id === s.featureId && f.categoryId === ecosystemCategory.id))
         : allSupport;
 
       const content = pdfService.generateProductEvaluationContent(
@@ -1533,8 +1533,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendors = vendors.filter(v => vendorIds.includes(v.id));
       }
 
-      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
-      const ecosystemCategory = allCategories.find(c => 
+      const allCategories = await storage.getMarketFeatureCategories(marketId);
+      const ecosystemCategory = allCategories.find((c: any) => 
         c.name.toLowerCase().includes('ecosystem') || 
         c.name.toLowerCase().includes('isv')
       );
@@ -1543,16 +1543,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No ecosystem category found for this market" });
       }
 
-      const allFeatures = await storage.getFeaturesByCategoryIds([ecosystemCategory.id]);
-      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
-      const ecosystemSupport = allSupport.filter(s => 
-        allFeatures.find(f => f.id === s.featureId)
+      const allFeatures = await storage.getMarketFeatures(marketId);
+      const ecosystemFeatures = allFeatures.filter((f: any) => f.categoryId === ecosystemCategory.id);
+      const allSupport = await storage.getVendorFeatureSupport(marketId);
+      const ecosystemSupport = allSupport.filter((s: any) => 
+        ecosystemFeatures.find((f: any) => f.id === s.featureId)
       );
 
       const content = pdfService.generateEcosystemContent(
         market,
         vendors,
-        allFeatures,
+        ecosystemFeatures,
         ecosystemSupport
       );
 

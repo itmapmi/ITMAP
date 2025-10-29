@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +12,10 @@ import EcosystemSupport from "@/components/ecosystem-support";
 import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
-import type { Market } from "@shared/schema";
+import { VendorSelectionModal } from "@/components/vendor-selection-modal";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import type { Market, Vendor } from "@shared/schema";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
@@ -20,11 +24,61 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
     enabled: !!marketId,
   });
+
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ["/api/markets", marketId, "vendors"],
+    enabled: !!marketId,
+  });
+
+  const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
+    setIsGenerating(true);
+    try {
+      const response = await apiRequest(
+        `/api/markets/${marketId}/generate-full-pdf-report`,
+        "POST",
+        { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${market?.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Full_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Full market report generated successfully",
+      });
+
+      setShowVendorModal(false);
+    } catch (error) {
+      console.error("Error generating full report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate full report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (error) {
     return (
@@ -147,12 +201,21 @@ export default function MarketDetails() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className={isMobile ? 'flex justify-center' : ''}
+            className={isMobile ? 'flex gap-2 justify-center' : 'flex gap-2'}
           >
+            <Button
+              onClick={() => setShowVendorModal(true)}
+              variant="default"
+              size={isMobile ? "sm" : "default"}
+              data-testid="button-generate-full-report"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {isMobile ? 'Report' : 'Generate Full Report'}
+            </Button>
             <Link href="/markets">
-              <Button variant="outline" size={isMobile ? "default" : "default"}>
+              <Button variant="outline" size={isMobile ? "sm" : "default"}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Markets
+                {isMobile ? 'Back' : 'Back to Markets'}
               </Button>
             </Link>
           </motion.div>
@@ -207,6 +270,16 @@ export default function MarketDetails() {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      <VendorSelectionModal
+        open={showVendorModal}
+        onOpenChange={setShowVendorModal}
+        vendors={vendors}
+        onGenerate={handleGenerateFullReport}
+        title="Generate Full Market Report"
+        description="Select vendors to include in the full market report (all sections combined)"
+        isGenerating={isGenerating}
+      />
     </div>
   );
 }
