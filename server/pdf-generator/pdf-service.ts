@@ -175,10 +175,16 @@ export class PDFService {
           );
           
           let badge = '<span class="support-no">Not Supported</span>';
-          if (support?.supported === 'yes') {
-            badge = '<span class="support-yes">Supported</span>';
-          } else if (support?.supported === 'partial') {
-            badge = '<span class="support-partial">Partial</span>';
+          const level = support?.supportLevel ?? 0;
+          
+          if (level === 4) {
+            badge = '<span class="support-yes">Full Support</span>';
+          } else if (level === 3) {
+            badge = '<span class="support-yes">Good Support</span>';
+          } else if (level === 2) {
+            badge = '<span class="support-partial">Partial Support</span>';
+          } else if (level === 1) {
+            badge = '<span class="support-partial">Limited Support</span>';
           }
           
           content += `<td style="text-align: center;">${badge}</td>`;
@@ -237,10 +243,16 @@ export class PDFService {
         );
         
         let badge = '<span class="support-no">Not Supported</span>';
-        if (support?.supported === 'yes') {
-          badge = '<span class="support-yes">Supported</span>';
-        } else if (support?.supported === 'partial') {
-          badge = '<span class="support-partial">Partial</span>';
+        const level = support?.supportLevel ?? 0;
+        
+        if (level === 4) {
+          badge = '<span class="support-yes">Full Support</span>';
+        } else if (level === 3) {
+          badge = '<span class="support-yes">Good Support</span>';
+        } else if (level === 2) {
+          badge = '<span class="support-partial">Partial Support</span>';
+        } else if (level === 1) {
+          badge = '<span class="support-partial">Limited Support</span>';
         }
         
         content += `<td style="text-align: center;">${badge}</td>`;

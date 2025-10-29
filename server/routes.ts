@@ -1399,6 +1399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString(),
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache',
       });
 
       res.send(pdfBuffer);
@@ -1445,6 +1448,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString(),
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache',
       });
 
       res.send(pdfBuffer);
@@ -1508,6 +1514,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString(),
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache',
       });
 
       res.send(pdfBuffer);
@@ -1570,6 +1579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString(),
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store, must-revalidate',
+        'Pragma': 'no-cache',
       });
 
       res.send(pdfBuffer);
