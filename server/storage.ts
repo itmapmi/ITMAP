@@ -57,6 +57,31 @@ function generateSlug(name: string): string {
     .trim();
 }
 
+// Helper function to generate a unique slug for a market
+async function generateUniqueSlug(name: string, excludeId?: string): Promise<string> {
+  let baseSlug = generateSlug(name);
+  let slug = baseSlug;
+  let counter = 2;
+
+  while (true) {
+    // Check if slug exists in database
+    const existing = await db
+      .select()
+      .from(markets)
+      .where(eq(markets.slug, slug))
+      .limit(1);
+
+    // If slug doesn't exist, or it belongs to the market being updated, use it
+    if (existing.length === 0 || (excludeId && existing[0].id === excludeId)) {
+      return slug;
+    }
+
+    // Slug exists, try with counter
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+}
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -191,9 +216,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMarket(market: InsertMarket): Promise<Market> {
+    const slug = market.slug || await generateUniqueSlug(market.name);
     const marketData = {
       ...market,
-      slug: market.slug || generateSlug(market.name),
+      slug,
     };
     const [newMarket] = await db
       .insert(markets)
@@ -204,9 +230,9 @@ export class DatabaseStorage implements IStorage {
 
   async updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market> {
     const updateData = { ...market, updatedAt: new Date() };
-    // Auto-generate slug if name is being updated but slug is not provided
+    // Auto-generate unique slug if name is being updated but slug is not provided
     if (market.name && !market.slug) {
-      updateData.slug = generateSlug(market.name);
+      updateData.slug = await generateUniqueSlug(market.name, id);
     }
     const [updatedMarket] = await db
       .update(markets)
