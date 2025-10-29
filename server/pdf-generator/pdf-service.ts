@@ -19,6 +19,17 @@ export class PDFService {
     this.logoPath = path.join(process.cwd(), 'attached_assets/ITMAP_logo_transparent_1755237362280.png');
   }
 
+  private escapeHtml(text: string): string {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
+  }
+
   async generatePDF(options: ReportOptions): Promise<Buffer> {
     const template = await readFile(this.templatePath, 'utf-8');
     
@@ -187,7 +198,16 @@ export class PDFService {
             badge = '<span class="support-partial">Limited Support</span>';
           }
           
-          content += `<td style="text-align: center;">${badge}</td>`;
+          const hasComments = support?.comments && support.comments.trim();
+          
+          content += `<td style="text-align: center; padding: 8px;">
+            <div>${badge}</div>
+            ${hasComments ? `
+              <div style="margin-top: 8px; padding: 8px; background: #f7fafc; border-left: 3px solid #4299e1; text-align: left; font-size: 11px; line-height: 1.4; color: #2d3748;">
+                ${this.escapeHtml(support.comments)}
+              </div>
+            ` : ''}
+          </td>`;
         });
         
         content += '</tr>';
@@ -255,7 +275,16 @@ export class PDFService {
           badge = '<span class="support-partial">Limited Support</span>';
         }
         
-        content += `<td style="text-align: center;">${badge}</td>`;
+        const hasComments = support?.comments && support.comments.trim();
+        
+        content += `<td style="text-align: center; padding: 8px;">
+          <div>${badge}</div>
+          ${hasComments ? `
+            <div style="margin-top: 8px; padding: 8px; background: #f7fafc; border-left: 3px solid #4299e1; text-align: left; font-size: 11px; line-height: 1.4; color: #2d3748;">
+              ${this.escapeHtml(support.comments)}
+            </div>
+          ` : ''}
+        </td>`;
       });
       
       content += '</tr>';

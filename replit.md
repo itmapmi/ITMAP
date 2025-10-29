@@ -48,6 +48,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Ecosystem Support**: Dedicated section for third-party integrations, separating ecosystem-related features from core product capabilities in the support matrix.
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables for improved organization.
 - **Import/Export**: Admin-only feature for exporting market data to Excel with three sheets (Vendor Evaluation, Product Evaluation, ISV Ecosystem) and importing pre-filled Excel templates to bulk-populate market data. Uses xlsx library for Excel generation/parsing.
+- **PDF Report Generation**: Professional PDF reports with vendor filtering, featuring detailed commentary/analysis embedded within feature support tables. Reports include support level badges (Full/Good/Partial/Limited/Not Supported) with inline commentary boxes showing detailed explanations and source references. Uses Puppeteer with system Chromium for PDF rendering.
 
 ## External Dependencies
 
@@ -85,3 +86,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 
 ### Data Management
 - **xlsx Library**: Used for Excel file generation and parsing in the Import/Export feature.
+
+### PDF Generation
+- **Puppeteer**: Headless browser automation for rendering HTML to PDF.
+- **Chromium**: System browser used by Puppeteer for PDF generation.
