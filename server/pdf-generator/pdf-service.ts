@@ -327,10 +327,24 @@ export class PDFService {
   ): string {
     let content = '';
 
-    content += this.generateVendorEvaluationContent(market, vendors, scores);
-    content += this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
-    content += this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
+    console.log('[PDF] Generating vendor evaluation content...');
+    console.log('[PDF] Vendors count:', vendors.length);
+    console.log('[PDF] Scores count:', scores.length);
+    const vendorEvalContent = this.generateVendorEvaluationContent(market, vendors, scores);
+    console.log('[PDF] Vendor evaluation content length:', vendorEvalContent.length);
+    content += vendorEvalContent;
+    
+    console.log('[PDF] Generating product evaluation content...');
+    const productEvalContent = this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
+    console.log('[PDF] Product evaluation content length:', productEvalContent.length);
+    content += productEvalContent;
+    
+    console.log('[PDF] Generating ecosystem content...');
+    const ecosystemContent = this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
+    console.log('[PDF] Ecosystem content length:', ecosystemContent.length);
+    content += ecosystemContent;
 
+    console.log('[PDF] Total content length:', content.length);
     return content;
   }
 }
