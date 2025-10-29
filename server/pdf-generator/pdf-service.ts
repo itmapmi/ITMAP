@@ -107,17 +107,17 @@ export class PDFService {
         <h2 class="section-title">Vendor Evaluation</h2>
         <p class="section-description">
           This section presents a comprehensive analysis of vendors in the ${market.name} market, 
-          evaluating their execution capabilities and strategic viability. The evaluation is based 
-          on multiple criteria including product features, market presence, and customer satisfaction.
+          evaluating their execution capabilities and strategic viability. Each vendor is assessed 
+          across multiple criteria with detailed scores and commentary.
         </p>
       </div>
 
       <div class="executive-summary">
         <h3 class="summary-title">Executive Summary</h3>
         <p class="summary-text">
-          Our analysis identifies ${vendors.length} key vendors in the ${market.name} market. 
-          Each vendor has been evaluated across execution and viability dimensions to provide 
-          a clear picture of their market position and strategic direction.
+          Our analysis evaluates ${vendors.length} key vendors in the ${market.name} market across 
+          execution and viability dimensions. Each criterion provides insight into the vendor's 
+          capabilities, market position, and strategic direction.
         </p>
       </div>
     `;
@@ -127,34 +127,57 @@ export class PDFService {
       const executionScores = vendorScores.filter(s => s.category === 'execution');
       const viabilityScores = vendorScores.filter(s => s.category === 'viability');
 
-      const avgExecution = executionScores.length > 0
-        ? (executionScores.reduce((sum, s) => sum + parseFloat(s.score || '0'), 0) / executionScores.length).toFixed(2)
-        : '0.00';
-      
-      const avgViability = viabilityScores.length > 0
-        ? (viabilityScores.reduce((sum, s) => sum + parseFloat(s.score || '0'), 0) / viabilityScores.length).toFixed(2)
-        : '0.00';
-
       content += `
-        <div class="vendor-card">
-          <h3 class="vendor-name">${vendor.name}</h3>
-          ${vendor.description ? `<p class="vendor-position">${vendor.description}</p>` : ''}
+        <div class="content-section" style="margin-top: 35px;">
+          <h3 class="section-subtitle">${vendor.name}</h3>
+          ${vendor.description ? `<p class="section-description">${this.escapeHtml(vendor.description)}</p>` : ''}
           
-          <div class="vendor-scores">
-            <div class="score-item">
-              <div class="score-label">Execution Score</div>
-              <div class="score-value">${avgExecution}/10</div>
-            </div>
-            <div class="score-item">
-              <div class="score-label">Viability Score</div>
-              <div class="score-value">${avgViability}/10</div>
-            </div>
-          </div>
+          ${executionScores.length > 0 ? `
+            <h4 style="font-size: 15px; font-weight: 600; color: #2d3748; margin: 20px 0 12px;">Execution Criteria</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 35%;">Criterion</th>
+                  <th style="width: 15%; text-align: center;">Score</th>
+                  <th style="width: 50%;">Commentary</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${executionScores.map(score => `
+                  <tr>
+                    <td><strong>${this.escapeHtml(score.criteria.name)}</strong></td>
+                    <td style="text-align: center;">
+                      <span style="font-size: 16px; font-weight: 600; color: #1890ff;">${score.score}/10</span>
+                    </td>
+                    <td>${score.notes ? this.escapeHtml(score.notes) : '<em style="color: #a0aec0;">No commentary available</em>'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
 
-          ${vendor.website ? `
-            <p style="margin-top: 15px; font-size: 13px; color: #4a5568;">
-              Website: <a href="${vendor.website}" style="color: #1890ff;">${vendor.website}</a>
-            </p>
+          ${viabilityScores.length > 0 ? `
+            <h4 style="font-size: 15px; font-weight: 600; color: #2d3748; margin: 20px 0 12px;">Viability Criteria</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 35%;">Criterion</th>
+                  <th style="width: 15%; text-align: center;">Score</th>
+                  <th style="width: 50%;">Commentary</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${viabilityScores.map(score => `
+                  <tr>
+                    <td><strong>${this.escapeHtml(score.criteria.name)}</strong></td>
+                    <td style="text-align: center;">
+                      <span style="font-size: 16px; font-weight: 600; color: #1890ff;">${score.score}/10</span>
+                    </td>
+                    <td>${score.notes ? this.escapeHtml(score.notes) : '<em style="color: #a0aec0;">No commentary available</em>'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
           ` : ''}
         </div>
       `;
