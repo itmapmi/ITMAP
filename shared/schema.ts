@@ -42,6 +42,7 @@ export const userActivityLogs = pgTable("user_activity_logs", {
 export const markets = pgTable("markets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  slug: text("slug").notNull().unique(), // URL-friendly identifier derived from name
   description: text("description"),
   shortDescription: text("short_description"),
   category: text("category"),
@@ -308,6 +309,8 @@ export const insertMarketSchema = createInsertSchema(markets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  slug: z.string().optional(), // Auto-generated from name if not provided
 });
 
 export const insertVendorSchema = createInsertSchema(vendors).omit({
