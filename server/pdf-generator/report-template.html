@@ -12,16 +12,11 @@
     }
 
     body {
-      font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #1a202c;
       line-height: 1.6;
       background: white;
-    }
-
-    .page {
-      padding: 60px 50px 80px;
-      position: relative;
-      min-height: 100vh;
+      font-size: 12px;
     }
 
     /* Cover Page */
@@ -35,128 +30,78 @@
       background: linear-gradient(135deg, #2c5aa0 0%, #1890ff 100%);
       color: white;
       page-break-after: always;
+      padding: 50px;
     }
 
     .cover-logo {
-      width: 200px;
+      width: 180px;
       height: auto;
-      margin-bottom: 60px;
+      margin-bottom: 50px;
       filter: brightness(0) invert(1);
     }
 
     .cover-title {
-      font-size: 48px;
+      font-size: 42px;
       font-weight: 700;
       margin-bottom: 20px;
       letter-spacing: -0.5px;
     }
 
     .cover-subtitle {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 400;
-      margin-bottom: 40px;
+      margin-bottom: 30px;
       opacity: 0.95;
     }
 
     .cover-meta {
-      font-size: 16px;
+      font-size: 15px;
       opacity: 0.9;
-      margin-top: 60px;
+      margin-top: 50px;
     }
 
     .cover-divider {
-      width: 100px;
+      width: 80px;
       height: 3px;
       background: white;
-      margin: 30px auto;
+      margin: 25px auto;
       opacity: 0.7;
-    }
-
-    /* Header */
-    .report-header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 60px;
-      background: white;
-      border-bottom: 3px solid #1890ff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 50px;
-      z-index: 1000;
-    }
-
-    .header-logo {
-      height: 35px;
-      width: auto;
-    }
-
-    .header-title {
-      font-size: 14px;
-      color: #4a5568;
-      font-weight: 600;
-    }
-
-    /* Footer */
-    .report-footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 50px;
-      background: #f7fafc;
-      border-top: 1px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 50px;
-      font-size: 12px;
-      color: #718096;
-      z-index: 1000;
-    }
-
-    .page-number::before {
-      content: "Page ";
     }
 
     /* Content Sections */
     .content-section {
-      margin-bottom: 40px;
-      page-break-inside: avoid;
+      margin-bottom: 35px;
     }
 
     .section-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
       color: #1a202c;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
+      margin: 30px 0 20px;
+      padding-bottom: 8px;
       border-bottom: 2px solid #1890ff;
     }
 
     .section-subtitle {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       color: #2d3748;
-      margin: 25px 0 15px;
+      margin: 20px 0 12px;
     }
 
     .section-description {
-      font-size: 14px;
+      font-size: 13px;
       color: #4a5568;
-      margin-bottom: 20px;
-      line-height: 1.8;
+      margin-bottom: 15px;
+      line-height: 1.7;
     }
 
     /* Table Styles */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
-      font-size: 13px;
-      page-break-inside: avoid;
+      margin: 15px 0 25px;
+      font-size: 11px;
     }
 
     thead {
@@ -165,96 +110,68 @@
     }
 
     th {
-      padding: 12px 10px;
+      padding: 10px 8px;
       text-align: left;
       font-weight: 600;
       border: 1px solid #1890ff;
+      font-size: 11px;
     }
 
     td {
-      padding: 10px;
-      border: 1px solid #e2e8f0;
+      padding: 8px;
+      border: 1px solid #cbd5e0;
+      vertical-align: top;
     }
 
     tbody tr:nth-child(even) {
       background: #f7fafc;
     }
 
-    tbody tr:hover {
-      background: #edf2f7;
-    }
-
-    /* Chart Container */
-    .chart-container {
-      margin: 30px 0;
-      padding: 20px;
-      background: #f7fafc;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      page-break-inside: avoid;
-    }
-
-    .chart-container img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-
-    .chart-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #2d3748;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-
     /* Vendor Card */
     .vendor-card {
       background: white;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      page-break-inside: avoid;
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 18px;
     }
 
     .vendor-name {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: #1a202c;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .vendor-position {
-      font-size: 14px;
+      font-size: 13px;
       color: #4a5568;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     .vendor-scores {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      margin-top: 15px;
+      gap: 12px;
+      margin-top: 12px;
     }
 
     .score-item {
       background: #f7fafc;
-      padding: 12px;
-      border-radius: 6px;
+      padding: 10px;
+      border-radius: 5px;
     }
 
     .score-label {
-      font-size: 12px;
+      font-size: 11px;
       color: #718096;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
 
     .score-value {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 700;
       color: #1890ff;
     }
@@ -263,94 +180,86 @@
     .support-yes {
       background: #48bb78;
       color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
       font-weight: 600;
       display: inline-block;
+      white-space: nowrap;
     }
 
     .support-no {
       background: #e53e3e;
       color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
       font-weight: 600;
       display: inline-block;
+      white-space: nowrap;
     }
 
     .support-partial {
       background: #ed8936;
       color: white;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
       font-weight: 600;
       display: inline-block;
-    }
-
-    /* Page breaks */
-    .page-break {
-      page-break-after: always;
+      white-space: nowrap;
     }
 
     /* Executive Summary */
     .executive-summary {
       background: #edf2f7;
-      padding: 25px;
+      padding: 20px;
       border-left: 4px solid #1890ff;
-      margin: 30px 0;
-      border-radius: 4px;
+      margin: 25px 0;
+      border-radius: 3px;
     }
 
     .summary-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: #1a202c;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     .summary-text {
-      font-size: 14px;
-      color: #2d3748;
-      line-height: 1.8;
-    }
-
-    /* Info Box */
-    .info-box {
-      background: #bee3f8;
-      border-left: 4px solid #3182ce;
-      padding: 15px 20px;
-      margin: 20px 0;
-      border-radius: 4px;
-    }
-
-    .info-box-title {
-      font-weight: 600;
-      color: #2c5282;
-      margin-bottom: 8px;
-    }
-
-    .info-box-text {
       font-size: 13px;
       color: #2d3748;
+      line-height: 1.7;
     }
 
-    /* Print Optimization */
-    @media print {
-      .page {
-        margin: 0;
-        padding: 60px 50px 80px;
-      }
-      
-      .page-break {
-        page-break-after: always;
-      }
+    /* Header and Footer */
+    .page-header {
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #1890ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-      .content-section {
-        page-break-inside: avoid;
-      }
+    .header-logo {
+      height: 30px;
+      width: auto;
+    }
+
+    .header-title {
+      font-size: 13px;
+      color: #4a5568;
+      font-weight: 600;
+    }
+
+    .page-footer {
+      margin-top: 40px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #718096;
+      text-align: center;
     }
   </style>
 </head>
@@ -367,22 +276,21 @@
     </div>
   </div>
 
-  <!-- Main Content Pages -->
-  <div class="page">
-    <!-- Header (will appear on all pages except cover) -->
-    <div class="report-header">
+  <!-- Main Content -->
+  <div style="padding: 40px 50px;">
+    <!-- Header -->
+    <div class="page-header">
       <img src="{{logoPath}}" alt="ITMAP Logo" class="header-logo">
       <span class="header-title">{{marketName}} - {{reportType}}</span>
     </div>
 
-    <!-- Footer (will appear on all pages) -->
-    <div class="report-footer">
-      <span>© {{year}} ITMAP Research — All Rights Reserved</span>
-      <span class="page-number"></span>
-    </div>
-
     <!-- Dynamic Content -->
     {{{content}}}
+
+    <!-- Footer -->
+    <div class="page-footer">
+      <p>© {{year}} ITMAP Research — All Rights Reserved</p>
+    </div>
   </div>
 </body>
 </html>

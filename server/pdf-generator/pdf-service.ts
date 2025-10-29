@@ -13,10 +13,26 @@ interface ReportOptions {
 export class PDFService {
   private templatePath: string;
   private logoPath: string;
+  private logoBase64: string | null = null;
 
   constructor() {
     this.templatePath = path.join(process.cwd(), 'server/pdf-generator/report-template.html');
     this.logoPath = path.join(process.cwd(), 'attached_assets/ITMAP_logo_transparent_1755237362280.png');
+  }
+
+  private async getLogoBase64(): Promise<string> {
+    if (this.logoBase64) {
+      return this.logoBase64;
+    }
+    
+    try {
+      const logoBuffer = await readFile(this.logoPath);
+      this.logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      return this.logoBase64;
+    } catch (error) {
+      console.error('Error loading logo:', error);
+      return '';
+    }
   }
 
   private escapeHtml(text: string): string {
@@ -32,6 +48,7 @@ export class PDFService {
 
   async generatePDF(options: ReportOptions): Promise<Buffer> {
     const template = await readFile(this.templatePath, 'utf-8');
+    const logoData = await this.getLogoBase64();
     
     const now = new Date();
     const generatedDate = now.toLocaleDateString('en-US', { 
@@ -46,7 +63,7 @@ export class PDFService {
       .replace(/{{reportType}}/g, options.reportType)
       .replace(/{{generatedDate}}/g, generatedDate)
       .replace(/{{year}}/g, now.getFullYear().toString())
-      .replace(/{{logoPath}}/g, `file://${this.logoPath}`)
+      .replace(/{{logoPath}}/g, logoData)
       .replace('{{{content}}}', options.content);
 
     const browser = await puppeteer.launch({
@@ -311,11 +328,7 @@ export class PDFService {
     let content = '';
 
     content += this.generateVendorEvaluationContent(market, vendors, scores);
-    content += '<div class="page-break"></div>';
-    
     content += this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
-    content += '<div class="page-break"></div>';
-    
     content += this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
 
     return content;
