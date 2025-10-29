@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #1a202c;
+      line-height: 1.6;
+      background: white;
+    }
+
+    .page {
+      padding: 60px 50px 80px;
+      position: relative;
+      min-height: 100vh;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      background: linear-gradient(135deg, #2c5aa0 0%, #1890ff 100%);
+      color: white;
+      page-break-after: always;
+    }
+
+    .cover-logo {
+      width: 200px;
+      height: auto;
+      margin-bottom: 60px;
+      filter: brightness(0) invert(1);
+    }
+
+    .cover-title {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
+    }
+
+    .cover-subtitle {
+      font-size: 24px;
+      font-weight: 400;
+      margin-bottom: 40px;
+      opacity: 0.95;
+    }
+
+    .cover-meta {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-top: 60px;
+    }
+
+    .cover-divider {
+      width: 100px;
+      height: 3px;
+      background: white;
+      margin: 30px auto;
+      opacity: 0.7;
+    }
+
+    /* Header */
+    .report-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: white;
+      border-bottom: 3px solid #1890ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 50px;
+      z-index: 1000;
+    }
+
+    .header-logo {
+      height: 35px;
+      width: auto;
+    }
+
+    .header-title {
+      font-size: 14px;
+      color: #4a5568;
+      font-weight: 600;
+    }
+
+    /* Footer */
+    .report-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: #f7fafc;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 50px;
+      font-size: 12px;
+      color: #718096;
+      z-index: 1000;
+    }
+
+    .page-number::before {
+      content: "Page ";
+    }
+
+    /* Content Sections */
+    .content-section {
+      margin-bottom: 40px;
+      page-break-inside: avoid;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #1890ff;
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 25px 0 15px;
+    }
+
+    .section-description {
+      font-size: 14px;
+      color: #4a5568;
+      margin-bottom: 20px;
+      line-height: 1.8;
+    }
+
+    /* Table Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13px;
+      page-break-inside: avoid;
+    }
+
+    thead {
+      background: #1890ff;
+      color: white;
+    }
+
+    th {
+      padding: 12px 10px;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid #1890ff;
+    }
+
+    td {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7fafc;
+    }
+
+    tbody tr:hover {
+      background: #edf2f7;
+    }
+
+    /* Chart Container */
+    .chart-container {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      page-break-inside: avoid;
+    }
+
+    .chart-container img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    /* Vendor Card */
+    .vendor-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+
+    .vendor-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 10px;
+    }
+
+    .vendor-position {
+      font-size: 14px;
+      color: #4a5568;
+      margin-bottom: 15px;
+    }
+
+    .vendor-scores {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .score-item {
+      background: #f7fafc;
+      padding: 12px;
+      border-radius: 6px;
+    }
+
+    .score-label {
+      font-size: 12px;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .score-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1890ff;
+    }
+
+    /* Support Badge */
+    .support-yes {
+      background: #48bb78;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .support-no {
+      background: #e53e3e;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .support-partial {
+      background: #ed8936;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    /* Page breaks */
+    .page-break {
+      page-break-after: always;
+    }
+
+    /* Executive Summary */
+    .executive-summary {
+      background: #edf2f7;
+      padding: 25px;
+      border-left: 4px solid #1890ff;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+
+    .summary-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 15px;
+    }
+
+    .summary-text {
+      font-size: 14px;
+      color: #2d3748;
+      line-height: 1.8;
+    }
+
+    /* Info Box */
+    .info-box {
+      background: #bee3f8;
+      border-left: 4px solid #3182ce;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .info-box-title {
+      font-weight: 600;
+      color: #2c5282;
+      margin-bottom: 8px;
+    }
+
+    .info-box-text {
+      font-size: 13px;
+      color: #2d3748;
+    }
+
+    /* Print Optimization */
+    @media print {
+      .page {
+        margin: 0;
+        padding: 60px 50px 80px;
+      }
+      
+      .page-break {
+        page-break-after: always;
+      }
+
+      .content-section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Cover Page -->
+  <div class="cover-page">
+    <img src="{{logoPath}}" alt="ITMAP Logo" class="cover-logo">
+    <h1 class="cover-title">{{reportTitle}}</h1>
+    <p class="cover-subtitle">{{marketName}}</p>
+    <div class="cover-divider"></div>
+    <div class="cover-meta">
+      <p>Generated on {{generatedDate}}</p>
+      <p style="margin-top: 10px;">{{reportType}}</p>
+    </div>
+  </div>
+
+  <!-- Main Content Pages -->
+  <div class="page">
+    <!-- Header (will appear on all pages except cover) -->
+    <div class="report-header">
+      <img src="{{logoPath}}" alt="ITMAP Logo" class="header-logo">
+      <span class="header-title">{{marketName}} - {{reportType}}</span>
+    </div>
+
+    <!-- Footer (will appear on all pages) -->
+    <div class="report-footer">
+      <span>© {{year}} ITMAP Research — All Rights Reserved</span>
+      <span class="page-number"></span>
+    </div>
+
+    <!-- Dynamic Content -->
+    {{{content}}}
+  </div>
+</body>
+</html>

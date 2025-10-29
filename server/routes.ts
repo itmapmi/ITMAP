@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pdfService } from "./pdf-generator/pdf-service";
 import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -1317,6 +1318,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating report:", error);
       res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
+  // NEW PDF Report Generation Endpoints using Puppeteer
+  
+  // POST generate full market report (all sections)
+  app.post("/api/markets/:marketId/generate-full-pdf-report", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const { vendorIds } = req.body;
+
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Fetch all vendors or specific vendors
+      let vendors = await storage.getVendorsByMarket(marketId);
+      if (vendorIds && vendorIds.length > 0) {
+        vendors = vendors.filter(v => vendorIds.includes(v.id));
+      }
+
+      // Fetch all necessary data
+      const allScores = await storage.getMarketVendorScores(marketId);
+      const scores = allScores.map(s => ({
+        ...s,
+        category: s.criteriaCategory
+      }));
+
+      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
+      const ecosystemCategory = allCategories.find(c => 
+        c.name.toLowerCase().includes('ecosystem') || 
+        c.name.toLowerCase().includes('isv')
+      );
+
+      const productCategories = allCategories.filter(c => c.id !== ecosystemCategory?.id);
+      const allFeatures = await storage.getFeaturesByCategoryIds(allCategories.map(c => c.id));
+      
+      const productFeatures = ecosystemCategory 
+        ? allFeatures.filter(f => f.categoryId !== ecosystemCategory.id)
+        : allFeatures;
+      
+      const ecosystemFeatures = ecosystemCategory 
+        ? allFeatures.filter(f => f.categoryId === ecosystemCategory.id)
+        : [];
+
+      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
+      const productSupport = ecosystemCategory
+        ? allSupport.filter(s => !ecosystemFeatures.find(f => f.id === s.featureId))
+        : allSupport;
+      
+      const ecosystemSupport = ecosystemCategory
+        ? allSupport.filter(s => ecosystemFeatures.find(f => f.id === s.featureId))
+        : [];
+
+      // Generate report content
+      const content = pdfService.generateFullReportContent(
+        market,
+        vendors,
+        scores,
+        productFeatures,
+        productCategories,
+        productSupport,
+        ecosystemFeatures,
+        ecosystemSupport
+      );
+
+      // Generate PDF
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: market.name,
+        reportTitle: 'Complete Market Analysis',
+        reportType: 'Full Market Report',
+        content
+      });
+
+      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Full_Report.pdf`;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating full PDF report:", error);
+      res.status(500).json({ error: "Failed to generate full PDF report" });
+    }
+  });
+
+  // POST generate vendor evaluation report
+  app.post("/api/markets/:marketId/generate-vendor-evaluation-pdf", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const { vendorIds } = req.body;
+
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      let vendors = await storage.getVendorsByMarket(marketId);
+      if (vendorIds && vendorIds.length > 0) {
+        vendors = vendors.filter(v => vendorIds.includes(v.id));
+      }
+
+      const allScores = await storage.getMarketVendorScores(marketId);
+      const scores = allScores.map(s => ({
+        ...s,
+        category: s.criteriaCategory
+      }));
+
+      const content = pdfService.generateVendorEvaluationContent(market, vendors, scores);
+
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: market.name,
+        reportTitle: 'Vendor Evaluation Report',
+        reportType: 'Vendor Evaluation',
+        content
+      });
+
+      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Vendor_Evaluation.pdf`;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating vendor evaluation PDF:", error);
+      res.status(500).json({ error: "Failed to generate vendor evaluation PDF" });
+    }
+  });
+
+  // POST generate product evaluation report
+  app.post("/api/markets/:marketId/generate-product-evaluation-pdf", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const { vendorIds } = req.body;
+
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      let vendors = await storage.getVendorsByMarket(marketId);
+      if (vendorIds && vendorIds.length > 0) {
+        vendors = vendors.filter(v => vendorIds.includes(v.id));
+      }
+
+      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
+      const ecosystemCategory = allCategories.find(c => 
+        c.name.toLowerCase().includes('ecosystem') || 
+        c.name.toLowerCase().includes('isv')
+      );
+
+      const productCategories = allCategories.filter(c => c.id !== ecosystemCategory?.id);
+      const allFeatures = await storage.getFeaturesByCategoryIds(allCategories.map(c => c.id));
+      const productFeatures = ecosystemCategory 
+        ? allFeatures.filter(f => f.categoryId !== ecosystemCategory.id)
+        : allFeatures;
+
+      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
+      const productSupport = ecosystemCategory
+        ? allSupport.filter(s => !allFeatures.find(f => f.id === s.featureId && f.categoryId === ecosystemCategory.id))
+        : allSupport;
+
+      const content = pdfService.generateProductEvaluationContent(
+        market,
+        vendors,
+        productFeatures,
+        productCategories,
+        productSupport
+      );
+
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: market.name,
+        reportTitle: 'Product Evaluation Report',
+        reportType: 'Product Evaluation',
+        content
+      });
+
+      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Product_Evaluation.pdf`;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating product evaluation PDF:", error);
+      res.status(500).json({ error: "Failed to generate product evaluation PDF" });
+    }
+  });
+
+  // POST generate ecosystem report
+  app.post("/api/markets/:marketId/generate-ecosystem-pdf", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const { vendorIds } = req.body;
+
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      let vendors = await storage.getVendorsByMarket(marketId);
+      if (vendorIds && vendorIds.length > 0) {
+        vendors = vendors.filter(v => vendorIds.includes(v.id));
+      }
+
+      const allCategories = await storage.getFeatureCategoriesByMarket(marketId);
+      const ecosystemCategory = allCategories.find(c => 
+        c.name.toLowerCase().includes('ecosystem') || 
+        c.name.toLowerCase().includes('isv')
+      );
+
+      if (!ecosystemCategory) {
+        return res.status(404).json({ error: "No ecosystem category found for this market" });
+      }
+
+      const allFeatures = await storage.getFeaturesByCategoryIds([ecosystemCategory.id]);
+      const allSupport = await storage.getVendorFeatureSupportByMarket(marketId);
+      const ecosystemSupport = allSupport.filter(s => 
+        allFeatures.find(f => f.id === s.featureId)
+      );
+
+      const content = pdfService.generateEcosystemContent(
+        market,
+        vendors,
+        allFeatures,
+        ecosystemSupport
+      );
+
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: market.name,
+        reportTitle: 'ISV Ecosystem Report',
+        reportType: 'ISV Ecosystem',
+        content
+      });
+
+      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Ecosystem.pdf`;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating ecosystem PDF:", error);
+      res.status(500).json({ error: "Failed to generate ecosystem PDF" });
     }
   });
 
