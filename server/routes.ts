@@ -254,7 +254,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/markets/:id", async (req, res) => {
     try {
-      const market = await storage.getMarketById(req.params.id);
+      const param = req.params.id;
+      // Check if param is a UUID (contains only hex chars and hyphens in UUID pattern)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
+      
+      const market = isUUID 
+        ? await storage.getMarketById(param)
+        : await storage.getMarketBySlug(param);
+      
       if (!market) {
         return res.status(404).json({ error: "Market not found" });
       }
