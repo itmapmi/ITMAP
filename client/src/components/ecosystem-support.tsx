@@ -6,7 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, Award, TrendingUp, Sparkles, Info } from "lucide-react";
+import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, Award, TrendingUp, Sparkles, Info, FileDown } from "lucide-react";
+import { VendorSelectionModal } from "./vendor-selection-modal";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface EcosystemSupportProps {
@@ -90,6 +94,11 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     notes: string;
     supportLevel: number;
   } | null>(null);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -106,6 +115,48 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
   });
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
+
+  // Handler for generating ecosystem report
+  const handleGenerateReport = async (selectedVendorIds: string[]) => {
+    setIsGenerating(true);
+    try {
+      const response = await apiRequest(
+        `/api/markets/${marketId}/generate-ecosystem-pdf-report`,
+        "POST",
+        { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ISV_Ecosystem_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "ISV Ecosystem report generated successfully",
+      });
+
+      setShowVendorModal(false);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Filter features to only include ecosystem-related categories
   const ecosystemFeatures = features?.filter(feature => 
@@ -483,6 +534,16 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           </div>
           <div className="flex items-center gap-3">
             <Button
+              onClick={() => setShowVendorModal(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+              data-testid="button-generate-ecosystem-report"
+            >
+              <FileDown className="h-4 w-4" />
+              PDF Report
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setShowVendorSelection(true)}
@@ -858,6 +919,16 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      <VendorSelectionModal
+        open={showVendorModal}
+        onOpenChange={setShowVendorModal}
+        vendors={allVendors || []}
+        onGenerate={handleGenerateReport}
+        title="Generate ISV Ecosystem Report"
+        description="Select vendors to include in the ISV Ecosystem PDF report"
+        isGenerating={isGenerating}
+      />
     </Card>
   );
 }

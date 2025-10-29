@@ -6,10 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles } from "lucide-react";
+import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, RefreshCw, CheckCircle, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { VendorSelectionModal } from "./vendor-selection-modal";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -145,9 +146,12 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     notes: string;
     supportLevel: number;
   } | null>(null);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Mobile detection
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   const { data: features, isLoading: featuresLoading } = useQuery<FeatureWithCategory[]>({
     queryKey: ["/api/markets", marketId, "features"],
@@ -164,6 +168,48 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   });
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
+
+  // Handler for generating product evaluation report
+  const handleGenerateReport = async (selectedVendorIds: string[]) => {
+    setIsGenerating(true);
+    try {
+      const response = await apiRequest(
+        `/api/markets/${marketId}/generate-product-evaluation-pdf-report`,
+        "POST",
+        { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Product_Evaluation_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Product Evaluation report generated successfully",
+      });
+
+      setShowVendorModal(false);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Do not auto-select vendors - require user selection
 
@@ -518,6 +564,16 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           </div>
           <div className={`flex items-center gap-3 ${isMobile ? 'flex-col gap-2 w-full' : ''}`}>
             <div className={`flex items-center gap-2 ${isMobile ? 'w-full flex-wrap' : ''}`}>
+              <Button
+                onClick={() => setShowVendorModal(true)}
+                variant="outline"
+                size={isMobile ? "default" : "sm"}
+                className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
+                data-testid="button-generate-product-evaluation-report"
+              >
+                <FileDown className="h-4 w-4" />
+                {isMobile ? 'PDF' : 'PDF Report'}
+              </Button>
               <Button
                 variant="outline"
                 size={isMobile ? "default" : "sm"}
@@ -977,6 +1033,16 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      <VendorSelectionModal
+        open={showVendorModal}
+        onOpenChange={setShowVendorModal}
+        vendors={allVendors || []}
+        onGenerate={handleGenerateReport}
+        title="Generate Product Evaluation Report"
+        description="Select vendors to include in the Product Evaluation PDF report"
+        isGenerating={isGenerating}
+      />
     </Card>
   );
 }

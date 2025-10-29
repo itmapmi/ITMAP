@@ -15,6 +15,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { VendorSelectionModal } from "./vendor-selection-modal";
+import { FileDown } from "lucide-react";
 
 interface MagicQuadrantProps {
   marketId: string;
@@ -44,6 +46,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -140,6 +144,48 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       });
     }
   });
+
+  // Handler for generating vendor evaluation report
+  const handleGenerateReport = async (selectedVendorIds: string[]) => {
+    setIsGenerating(true);
+    try {
+      const response = await apiRequest(
+        `/api/markets/${marketId}/generate-vendor-evaluation-pdf-report`,
+        "POST",
+        { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${marketName.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Vendor_Evaluation.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Vendor Evaluation report generated successfully",
+      });
+
+      setShowVendorModal(false);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Initialize notes when scores load
   useEffect(() => {
@@ -1087,8 +1133,17 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader className={isMobile ? "pb-3" : ""}>
+            <CardHeader className={isMobile ? "pb-3 flex flex-row items-center justify-between space-y-0" : "flex flex-row items-center justify-between space-y-0"}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
+              <Button
+                onClick={() => setShowVendorModal(true)}
+                variant="outline"
+                size="sm"
+                data-testid="button-generate-vendor-evaluation-report"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {isMobile ? 'PDF' : 'Generate PDF'}
+              </Button>
             </CardHeader>
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
@@ -1365,6 +1420,16 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
           )}
         </DialogContent>
       </Dialog>
+
+      <VendorSelectionModal
+        open={showVendorModal}
+        onOpenChange={setShowVendorModal}
+        vendors={vendors || []}
+        onGenerate={handleGenerateReport}
+        title="Generate Vendor Evaluation Report"
+        description="Select vendors to include in the Vendor Evaluation PDF report"
+        isGenerating={isGenerating}
+      />
     </>
   );
 }
