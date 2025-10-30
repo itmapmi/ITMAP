@@ -176,7 +176,7 @@ export function NewsSourcesAdmin() {
     createSourceMutation.mutate({
       ...formData,
       marketIds: [selectedMarket],
-      vendorId: selectedVendor || null
+      vendorId: selectedVendor === "none" || !selectedVendor ? null : selectedVendor
     });
   };
 
@@ -230,7 +230,7 @@ export function NewsSourcesAdmin() {
                           <SelectValue placeholder="Select vendor (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {vendorsByMarket?.map((vendor) => (
                             <SelectItem key={vendor.id} value={vendor.id}>
                               {vendor.name}

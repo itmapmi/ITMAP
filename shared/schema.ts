@@ -187,6 +187,7 @@ export const newsSources = pgTable("news_sources", {
   listSelector: text("list_selector"), // CSS selector for HTML list scraping
   enabled: boolean("enabled").notNull().default(true),
   priority: integer("priority").default(0), // Higher = checked first
+  pollingFrequency: text("polling_frequency").notNull().default("daily"), // hourly, daily, weekly
   vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }), // Optional: link to specific vendor
   marketIds: text("market_ids").array(), // Array of market IDs this source relates to
   lastFetchedAt: timestamp("last_fetched_at"),
