@@ -1178,7 +1178,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             </CardHeader>
             <CardContent className="flex-1 bg-gray-100 flex flex-col justify-between">
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-900 mb-3">Product Strategy and Execution</h4>
+                <h4 className="font-bold text-gray-900 mb-3">Product Strategy and Execution</h4>
                 {executionCriteria.map(criterion => (
                   <div key={criterion.id} className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1216,7 +1216,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
               <hr className="my-6 border-gray-300" />
 
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-900 mb-3">Vendor Viability</h4>
+                <h4 className="font-bold text-gray-900 mb-3">Vendor Viability</h4>
                 {viabilityCriteria.map(criterion => (
                   <div key={criterion.id} className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
