@@ -56,9 +56,13 @@ export function NewsArticlesAdmin() {
   if (selectedImpact !== "all") filterParams.append("impact", selectedImpact);
   filterParams.append("limit", "100");
 
+  // Build full URL with query string
+  const queryString = filterParams.toString();
+  const newsUrl = `/api/news${queryString ? `?${queryString}` : ''}`;
+
   // Fetch articles with filters
   const { data: articles, isLoading: articlesLoading, refetch } = useQuery<NewsArticle[]>({
-    queryKey: ['/api/news', filterParams.toString()]
+    queryKey: [newsUrl]
   });
 
   // Delete article mutation
