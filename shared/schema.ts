@@ -178,6 +178,66 @@ export const newPlayers = pgTable("new_players", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// News Sources - RSS/HTML sources for news ingestion
+export const newsSources = pgTable("news_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // e.g., "Salesforce Blog"
+  sourceUrl: text("source_url").notNull(), // Main page URL
+  rssUrl: text("rss_url"), // RSS feed URL if available
+  listSelector: text("list_selector"), // CSS selector for HTML list scraping
+  enabled: boolean("enabled").notNull().default(true),
+  priority: integer("priority").default(0), // Higher = checked first
+  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }), // Optional: link to specific vendor
+  marketIds: text("market_ids").array(), // Array of market IDs this source relates to
+  lastFetchedAt: timestamp("last_fetched_at"),
+  lastETag: text("last_etag"), // For RSS caching
+  lastModified: text("last_modified"), // For RSS caching
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// News Articles - Stored articles with impact scoring
+export const newsArticles = pgTable("news_articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: varchar("source_id").notNull().references(() => newsSources.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  marketIds: text("market_ids").array(), // Array of market IDs
+  
+  // Article content
+  title: text("title").notNull(),
+  url: text("url").notNull(), // Original URL
+  canonicalUrl: text("canonical_url"), // Normalized URL for deduplication
+  contentHash: text("content_hash"), // SHA-256 hash for dedup
+  summary: text("summary"), // Short excerpt
+  content: text("content"), // Full article text
+  
+  // Metadata
+  publishedAt: timestamp("published_at"),
+  language: text("language").default("en"),
+  
+  // Impact scoring
+  impactLabel: text("impact_label"), // 'high', 'medium', 'low'
+  impactScore: integer("impact_score"), // 0-100
+  impactConfidence: decimal("impact_confidence", { precision: 3, scale: 2 }), // 0-1
+  impactReasons: text("impact_reasons").array(), // Matched phrases/rules
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// News Fetch Logs - Track ingestion history
+export const newsFetchLogs = pgTable("news_fetch_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: varchar("source_id").references(() => newsSources.id, { onDelete: "set null" }),
+  status: text("status").notNull(), // 'success', 'partial', 'failed'
+  articlesFound: integer("articles_found").default(0),
+  articlesNew: integer("articles_new").default(0),
+  articlesSkipped: integer("articles_skipped").default(0),
+  errorMessage: text("error_message"),
+  duration: integer("duration"), // milliseconds
+  fetchedAt: timestamp("fetched_at").default(sql`now()`),
+});
+
 // Relations
 export const marketsRelations = relations(markets, ({ many, one }) => ({
   subMarkets: many(subMarkets),
@@ -284,6 +344,33 @@ export const newPlayersRelations = relations(newPlayers, ({ one }) => ({
   }),
 }));
 
+export const newsSourcesRelations = relations(newsSources, ({ one, many }) => ({
+  vendor: one(vendors, {
+    fields: [newsSources.vendorId],
+    references: [vendors.id],
+  }),
+  articles: many(newsArticles),
+  fetchLogs: many(newsFetchLogs),
+}));
+
+export const newsArticlesRelations = relations(newsArticles, ({ one }) => ({
+  source: one(newsSources, {
+    fields: [newsArticles.sourceId],
+    references: [newsSources.id],
+  }),
+  vendor: one(vendors, {
+    fields: [newsArticles.vendorId],
+    references: [vendors.id],
+  }),
+}));
+
+export const newsFetchLogsRelations = relations(newsFetchLogs, ({ one }) => ({
+  source: one(newsSources, {
+    fields: [newsFetchLogs.sourceId],
+    references: [newsSources.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -384,6 +471,24 @@ export const insertNewPlayerSchema = createInsertSchema(newPlayers).omit({
   updatedAt: true,
 });
 
+export const insertNewsSourceSchema = createInsertSchema(newsSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastFetchedAt: true,
+});
+
+export const insertNewsArticleSchema = createInsertSchema(newsArticles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNewsFetchLogSchema = createInsertSchema(newsFetchLogs).omit({
+  id: true,
+  fetchedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -437,3 +542,12 @@ export type VendorLabelPosition = typeof vendorLabelPositions.$inferSelect;
 
 export type InsertNewPlayer = z.infer<typeof insertNewPlayerSchema>;
 export type NewPlayer = typeof newPlayers.$inferSelect;
+
+export type InsertNewsSource = z.infer<typeof insertNewsSourceSchema>;
+export type NewsSource = typeof newsSources.$inferSelect;
+
+export type InsertNewsArticle = z.infer<typeof insertNewsArticleSchema>;
+export type NewsArticle = typeof newsArticles.$inferSelect;
+
+export type InsertNewsFetchLog = z.infer<typeof insertNewsFetchLogSchema>;
+export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;

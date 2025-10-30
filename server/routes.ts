@@ -2,10 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pdfService } from "./pdf-generator/pdf-service";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, insertNewsSourceSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
+import { newsStorage } from "./news/storage";
+import { runIngestion } from "./news/ingestion/runner";
+import { getRulesAsJSON } from "./news/impact/rules";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
 import path from 'path';
@@ -2046,6 +2049,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error pruning user activity logs:", error);
       res.status(500).json({ error: "Failed to prune user activity logs" });
+    }
+  });
+
+  // ==================== NEWS SOURCES API ====================
+  
+  // GET all news sources
+  app.get("/api/news/sources", requireAuth, async (_req, res) => {
+    try {
+      const sources = await newsStorage.getAllSources();
+      res.json(sources);
+    } catch (error) {
+      console.error("Error fetching news sources:", error);
+      res.status(500).json({ error: "Failed to fetch news sources" });
+    }
+  });
+  
+  // GET single news source
+  app.get("/api/news/sources/:id", requireAuth, async (req, res) => {
+    try {
+      const source = await newsStorage.getSourceById(req.params.id);
+      if (!source) {
+        return res.status(404).json({ error: "Source not found" });
+      }
+      res.json(source);
+    } catch (error) {
+      console.error("Error fetching news source:", error);
+      res.status(500).json({ error: "Failed to fetch news source" });
+    }
+  });
+  
+  // POST create news source
+  app.post("/api/news/sources", requireAdmin, async (req, res) => {
+    try {
+      const validatedData = insertNewsSourceSchema.parse(req.body);
+      const source = await newsStorage.createSource(validatedData);
+      res.status(201).json(source);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      console.error("Error creating news source:", error);
+      res.status(500).json({ error: "Failed to create news source" });
+    }
+  });
+  
+  // PUT update news source
+  app.put("/api/news/sources/:id", requireAdmin, async (req, res) => {
+    try {
+      const validatedData = insertNewsSourceSchema.partial().parse(req.body);
+      const source = await newsStorage.updateSource(req.params.id, validatedData);
+      res.json(source);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      console.error("Error updating news source:", error);
+      res.status(500).json({ error: "Failed to update news source" });
+    }
+  });
+  
+  // DELETE news source
+  app.delete("/api/news/sources/:id", requireAdmin, async (req, res) => {
+    try {
+      await newsStorage.deleteSource(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting news source:", error);
+      res.status(500).json({ error: "Failed to delete news source" });
+    }
+  });
+  
+  // ==================== NEWS ARTICLES API ====================
+  
+  // GET news articles with filters and search
+  app.get("/api/news", requireAuth, async (req, res) => {
+    try {
+      const {
+        q,
+        market,
+        source_id,
+        vendor_id,
+        since,
+        until,
+        impact,
+        min_score,
+        limit = '20',
+        offset = '0'
+      } = req.query;
+      
+      // Handle search query separately
+      if (q && typeof q === 'string') {
+        const articles = await newsStorage.searchArticles(q, parseInt(limit as string));
+        return res.json(articles);
+      }
+      
+      // Build filters
+      const filters: any = {
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string)
+      };
+      
+      if (source_id) filters.sourceId = source_id as string;
+      if (vendor_id) filters.vendorId = vendor_id as string;
+      if (market) filters.marketIds = [market as string];
+      if (impact) filters.impactLabel = (impact as string).toLowerCase();
+      if (min_score) filters.minScore = parseInt(min_score as string);
+      if (since) filters.since = new Date(since as string);
+      if (until) filters.until = new Date(until as string);
+      
+      const articles = await newsStorage.getArticles(filters);
+      res.json(articles);
+    } catch (error) {
+      console.error("Error fetching news articles:", error);
+      res.status(500).json({ error: "Failed to fetch news articles" });
+    }
+  });
+  
+  // GET single news article
+  app.get("/api/news/:id", requireAuth, async (req, res) => {
+    try {
+      const article = await newsStorage.getArticleById(req.params.id);
+      if (!article) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+      res.json(article);
+    } catch (error) {
+      console.error("Error fetching news article:", error);
+      res.status(500).json({ error: "Failed to fetch news article" });
+    }
+  });
+  
+  // ==================== NEWS INGESTION API ====================
+  
+  // POST trigger manual ingestion
+  app.post("/api/news/ingest/run", requireAdmin, async (req, res) => {
+    try {
+      const { source_id, market, limit } = req.query;
+      
+      const options: any = {};
+      if (source_id) options.sourceId = source_id as string;
+      if (market) options.marketId = market as string;
+      if (limit) options.limit = parseInt(limit as string);
+      
+      // Run ingestion asynchronously
+      const results = await runIngestion(options);
+      
+      res.json({
+        success: true,
+        results
+      });
+    } catch (error) {
+      console.error("Error running news ingestion:", error);
+      res.status(500).json({ error: "Failed to run news ingestion" });
+    }
+  });
+  
+  // GET ingestion impact rules
+  app.get("/api/news/impact/rules", requireAuth, (_req, res) => {
+    res.json(getRulesAsJSON());
+  });
+  
+  // ==================== NEWS METRICS API ====================
+  
+  // GET news metrics
+  app.get("/api/news/metrics", requireAuth, async (_req, res) => {
+    try {
+      const metrics = await newsStorage.getMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching news metrics:", error);
+      res.status(500).json({ error: "Failed to fetch news metrics" });
+    }
+  });
+  
+  // GET fetch logs
+  app.get("/api/news/fetch-logs", requireAuth, async (req, res) => {
+    try {
+      const { source_id, limit = '50' } = req.query;
+      const logs = await newsStorage.getRecentFetchLogs(
+        source_id as string | undefined,
+        parseInt(limit as string)
+      );
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching fetch logs:", error);
+      res.status(500).json({ error: "Failed to fetch fetch logs" });
     }
   });
 

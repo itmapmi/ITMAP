@@ -1,4 +1,5 @@
 import * as cron from 'node-cron';
+import { runIngestion } from './news/ingestion/runner';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -48,6 +49,22 @@ export class CronJobManager {
     });
 
     this.jobs.set('userLogsCleanup', userLogsCleanupJob);
+
+    // Daily news ingestion at 7:00 AM UTC
+    const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
+      console.log('Starting daily news ingestion...');
+      try {
+        const results = await runIngestion();
+        const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
+        console.log(`Daily news ingestion completed: ${totalNew} new articles from ${results.length} sources`);
+      } catch (error) {
+        console.error('Error in daily news ingestion:', error);
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('newsIngestion', newsIngestionJob);
 
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
@@ -123,9 +140,9 @@ export class CronJobManager {
     const status: { [jobName: string]: { running: boolean, nextRun?: string } } = {};
 
     // Return static status for the jobs we know exist
-    status['dailyNews'] = {
-      running: this.jobs.has('dailyNews'),
-      nextRun: 'Daily at 6:00 AM UTC'
+    status['newsIngestion'] = {
+      running: this.jobs.has('newsIngestion'),
+      nextRun: 'Daily at 7:00 AM UTC'
     };
     
     status['weeklyBackup'] = {
@@ -155,15 +172,16 @@ export class CronJobManager {
   }
 
   /**
-   * Manually trigger daily news processing
+   * Manually trigger news ingestion
    */
-  public async triggerDailyNewsProcessing(): Promise<void> {
-    console.log('Manually triggering daily news processing...');
+  public async triggerNewsIngestion(): Promise<void> {
+    console.log('Manually triggering news ingestion...');
     try {
-      await newsProcessor.processAllMarkets();
-      console.log('Manual daily news processing completed successfully');
+      const results = await runIngestion();
+      const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
+      console.log(`Manual news ingestion completed: ${totalNew} new articles`);
     } catch (error) {
-      console.error('Error in manual daily news processing:', error);
+      console.error('Error in manual news ingestion:', error);
       throw error;
     }
   }
