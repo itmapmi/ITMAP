@@ -94,8 +94,8 @@ export class PDFService {
         },
         displayHeaderFooter: true,
         headerTemplate: `
-          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0;">
-            <img src="${logoData}" style="height: 25px; width: auto; margin-top: 5px;" />
+          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0; display: flex; justify-content: flex-end; align-items: center;">
+            <img src="${logoData}" style="height: 45px; width: auto; margin-top: 5px;" />
           </div>
         `,
         footerTemplate: `
