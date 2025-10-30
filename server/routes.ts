@@ -2180,6 +2180,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // DELETE news article
+  app.delete("/api/news/:id", requireAdmin, async (req, res) => {
+    try {
+      await newsStorage.deleteArticle(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting news article:", error);
+      res.status(500).json({ error: "Failed to delete news article" });
+    }
+  });
+  
   // ==================== NEWS INGESTION API ====================
   
   // POST trigger manual ingestion

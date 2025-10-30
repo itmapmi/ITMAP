@@ -154,6 +154,10 @@ export class NewsStorage {
     return results[0];
   }
   
+  async deleteArticle(id: string): Promise<void> {
+    await db.delete(newsArticles).where(eq(newsArticles.id, id));
+  }
+  
   async searchArticles(query: string, limit: number = 20): Promise<NewsArticle[]> {
     // Full-text search using PostgreSQL's built-in capabilities
     return await db
