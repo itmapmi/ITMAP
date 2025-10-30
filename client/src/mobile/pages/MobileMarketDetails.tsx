@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
 import { Building2, TrendingUp, TrendingDown, ArrowLeft, Home } from "lucide-react";
-import type { Market, Vendor, VendorScore, Criteria, VendorNewsArticle } from "@shared/schema";
+import type { Market, Vendor, VendorScore, Criteria, NewsArticle } from "@shared/schema";
 
 interface VendorWithScores extends Vendor {
   executionScore: number;
@@ -50,11 +50,11 @@ export default function MobileMarketDetails() {
     
     const executionScore = vendorScores
       .filter(s => executionCriteria.some(c => c.id === s.criteriaId))
-      .reduce((sum, s) => sum + s.score, 0) / Math.max(executionCriteria.length, 1);
+      .reduce((sum, s) => sum + Number(s.score), 0) / Math.max(executionCriteria.length, 1);
     
     const viabilityScore = vendorScores
       .filter(s => viabilityCriteria.some(c => c.id === s.criteriaId))
-      .reduce((sum, s) => sum + s.score, 0) / Math.max(viabilityCriteria.length, 1);
+      .reduce((sum, s) => sum + Number(s.score), 0) / Math.max(viabilityCriteria.length, 1);
 
     return {
       ...vendor,
@@ -160,7 +160,7 @@ export default function MobileMarketDetails() {
   );
 
   const MarketNewsTab = () => {
-    const { data: news, isLoading } = useQuery<VendorNewsArticle[]>({
+    const { data: news, isLoading } = useQuery<NewsArticle[]>({
       queryKey: ["/api/markets", marketId, "news"],
       enabled: !!marketId,
     });

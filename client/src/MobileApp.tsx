@@ -6,12 +6,8 @@ import { useAuth } from "@/shared/hooks";
 import MobileLogin from "@/mobile/pages/MobileLogin";
 import MobileRegister from "@/mobile/pages/MobileRegister";
 import MobileDashboard from "@/mobile/pages/MobileDashboard";
-import MobileMarkets from "@/mobile/pages/MobileMarkets";
 import MobileMarketDetails from "@/mobile/pages/MobileMarketDetails";
-import MobileVendors from "@/mobile/pages/MobileVendors";
 import MobileVendorDetails from "@/mobile/pages/MobileVendorDetails";
-import MobileNews from "@/mobile/pages/MobileNews";
-import MobileProfile from "@/mobile/pages/MobileProfile";
 import MobileLayout from "@/mobile/components/MobileLayout";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -60,12 +56,8 @@ function MobileRouter() {
         <Route path="/mobile/register" component={MobileRegister} />
         <Route path="/mobile" component={() => <ProtectedRoute component={MobileDashboard} />} />
         <Route path="/mobile/dashboard" component={() => <ProtectedRoute component={MobileDashboard} />} />
-        <Route path="/mobile/markets" component={() => <ProtectedRoute component={MobileMarkets} />} />
         <Route path="/mobile/markets/:marketId" component={() => <ProtectedRoute component={MobileMarketDetails} />} />
-        <Route path="/mobile/vendors" component={() => <ProtectedRoute component={MobileVendors} />} />
         <Route path="/mobile/vendors/:vendorId" component={() => <ProtectedRoute component={MobileVendorDetails} />} />
-        <Route path="/mobile/news" component={() => <ProtectedRoute component={MobileNews} />} />
-        <Route path="/mobile/profile" component={() => <ProtectedRoute component={MobileProfile} />} />
         <Route component={() => <ProtectedRoute component={MobileDashboard} />} />
       </Switch>
     </div>
