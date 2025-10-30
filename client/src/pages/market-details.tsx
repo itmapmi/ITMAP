@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, FileDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, FileDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,9 +29,6 @@ export default function MarketDetails() {
 
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
@@ -42,56 +39,6 @@ export default function MarketDetails() {
     queryKey: ["/api/markets", marketId, "vendors"],
     enabled: !!marketId,
   });
-
-  const checkScrollButtons = () => {
-    if (tabsRef.current && !isMobile) {
-      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
-    }
-  };
-
-  const scrollTabs = (direction: 'left' | 'right') => {
-    if (tabsRef.current) {
-      const scrollAmount = 200;
-      const newScrollLeft = direction === 'left' 
-        ? tabsRef.current.scrollLeft - scrollAmount
-        : tabsRef.current.scrollLeft + scrollAmount;
-      
-      tabsRef.current.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth'
-      });
-      
-      setTimeout(checkScrollButtons, 300);
-    }
-  };
-
-  useEffect(() => {
-    // Delay check to ensure DOM is fully rendered
-    const timer = setTimeout(() => {
-      checkScrollButtons();
-    }, 100);
-
-    const handleResize = () => {
-      setTimeout(checkScrollButtons, 100);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    const tabsElement = tabsRef.current;
-    if (tabsElement) {
-      tabsElement.addEventListener('scroll', checkScrollButtons);
-    }
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', handleResize);
-      if (tabsElement) {
-        tabsElement.removeEventListener('scroll', checkScrollButtons);
-      }
-    };
-  }, [isMobile, market]);
 
   const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
     setIsGenerating(true);
@@ -276,56 +223,26 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <div className="relative">
-            {!isMobile && canScrollLeft && (
-              <button
-                onClick={() => scrollTabs('left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors border border-gray-200"
-                data-testid="button-scroll-left"
-                aria-label="Scroll tabs left"
-              >
-                <ChevronLeft className="h-5 w-5 text-gray-700" />
-              </button>
-            )}
-            
-            {!isMobile && canScrollRight && (
-              <button
-                onClick={() => scrollTabs('right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors border border-gray-200"
-                data-testid="button-scroll-right"
-                aria-label="Scroll tabs right"
-              >
-                <ChevronRight className="h-5 w-5 text-gray-700" />
-              </button>
-            )}
-
-            <div
-              ref={tabsRef}
-              className={`${isMobile ? '' : 'overflow-x-auto scrollbar-hide px-10'}`}
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'inline-flex justify-start min-w-max'}`}>
-                <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-vendor-evaluation">
-                  {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
-                </TabsTrigger>
-                <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-support-matrix">
-                  {isMobile ? 'Product Eval' : 'Product Evaluation'}
-                </TabsTrigger>
-                <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-ecosystem-support">
-                  {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
-                </TabsTrigger>
-                <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-methodology">
-                  {isMobile ? 'Method' : 'Methodology'}
-                </TabsTrigger>
-                <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-new-players">
-                  {isMobile ? 'New Players' : 'New Players'}
-                </TabsTrigger>
-                <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-news">
-                  News
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </div>
+          <TabsList className={`${isMobile ? 'grid grid-cols-3 w-full' : 'grid grid-cols-6 w-full'}`}>
+            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-vendor-evaluation">
+              {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+            </TabsTrigger>
+            <TabsTrigger value="support-matrix" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-support-matrix">
+              {isMobile ? 'Product Eval' : 'Product Evaluation'}
+            </TabsTrigger>
+            <TabsTrigger value="ecosystem-support" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-ecosystem-support">
+              {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
+            </TabsTrigger>
+            <TabsTrigger value="research-methodology" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-methodology">
+              {isMobile ? 'Method' : 'Methodology'}
+            </TabsTrigger>
+            <TabsTrigger value="new-players" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-new-players">
+              {isMobile ? 'New Players' : 'New Players'}
+            </TabsTrigger>
+            <TabsTrigger value="news" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-news">
+              News
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
             <MagicQuadrant marketId={marketId!} marketName={market.name} />
