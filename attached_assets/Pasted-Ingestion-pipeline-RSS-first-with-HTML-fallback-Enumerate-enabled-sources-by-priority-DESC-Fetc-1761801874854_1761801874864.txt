@@ -1,0 +1,115 @@
+Ingestion pipeline (RSS‑first with HTML fallback)
+
+Enumerate enabled sources by priority DESC.
+
+Fetch feed:
+
+If rss_url exists → parse with feedparser (respect ETag/Last‑Modified; store on Source).
+
+If not, discover RSS from <link rel="alternate" type="application/rss+xml">.
+
+If still none, HTML list scrape using list_selector; extract candidate links (limit per run to avoid bans; default 30).
+
+For each candidate item:
+
+Normalize URL (strip UTM, resolve redirects), compute canonical_url if possible.
+
+Skip if URL already known or content_hash matches.
+
+Fetch article page (httpx with timeout/backoff); extract title, summary, content via readability; parse published_at from page or feed.
+
+Language detect (optional langdetect) to filter non‑English if desired.
+
+Assign markets from Source; allow overrides via keyword map later.
+
+Impact scoring (see rules below) → set impact_label, impact_score, confidence, and impact_reasons (matched phrases).
+
+Insert Article + ArticleSearch (FTS5). Maintain FetchLog.
+
+Dedup across sources by canonical_url or content_hash.
+
+Respect robots.txt and site ToS. Use only allowed paths; throttle requests; set a custom UA string.
+
+Scheduler
+
+Use APScheduler to run a job daily at 07:00 (configurable via env INGEST_CRON).
+
+Provide manual trigger: POST /ingest/run to run now (optionally ?source_id= or ?market=).
+
+If persistent always‑on scheduling cannot be guaranteed by the hosting plan, still keep the APScheduler job but ensure the manual endpoint exists so an external cron (uptime pinger or any scheduler) can hit it daily.
+
+Impact policy (must match exactly)
+
+High impact (score 80–100):
+
+New product announcement
+
+Feature announcement (major)
+
+Acquisition / merger
+
+Revenue announcement (earnings, revenue/ARR guidance, results)
+
+Medium impact (score 40–79):
+
+Minor feature enhancements
+
+New partnerships
+
+Low impact (score 10–39):
+
+Executive changes
+
+Entering new markets
+
+Implementation details for the scorer
+
+Create impact/rules.py exporting dictionaries of regex with weights:
+
+HIGH: ["\\b(announces?|unveils|introduces|launch(es|ed)|general availability|GA)\\b", "\\b(acquires?|acquisition|merger|merges with)\\b", "\\b(revenue|earnings|ARR|quarter(ly)? results|guidance)\\b", "\\b(major (update|release)|platform|suite)\\b"]
+
+MEDIUM: ["\\b(minor|incremental|patch|maintenance) (update|release|enhancement)s?\\b", "\\b(partners? with|partnership|integration with)\\b"]
+
+LOW: ["\\b(appoints?|names?) (CEO|CFO|CTO|COO|executive|board)\\b", "\\b(enters?|expands? to|launches in) (the )?(market|region|country)\\b"]
+
+Feature announcement disambiguation: If text has feature|adds support for|capability + major|platform|overhaul|suite|v2\.0|GA|generally available → treat as High. Otherwise (e.g., “improvement”, “beta”, “preview”, “minor updates”) → Medium.
+
+Scoring logic (deterministic):
+
+Count matches per class; choose the class with the highest weighted total.
+
+Map to base scores: High=90, Medium=60, Low=25.
+
+Add small bonuses: +5 if multiple distinct rules in same class matched; −5 if conflicting classes with similar weight (to lower confidence).
+
+Clamp to [10,100]. Set confidence = matched_weight / total_possible_weight (0–1).
+
+Return impact_label, impact_score, and an explanation listing the exact matched phrases/regex names.
+
+Expose a read‑only GET /impact/rules endpoint to surface current rules, and read from a JSON file so I can tweak patterns later without code changes.
+
+REST API
+
+GET /health → {status:"ok"}
+
+GET /sources (list); POST /sources (create/update from body or accept array); PUT /sources/{id}, DELETE /sources/{id}
+
+POST /ingest/run (optional query: source_id, market, limit)
+
+GET /news
+
+Query params: q (FTS5 search), market, source_id, since (ISO8601), until, impact (high|medium|low), min_score, limit, offset
+
+Returns: id, title, source, markets, published_at, impact_label, impact_score, explanation (short), url, canonical_url, summary
+
+GET /news/{id} → full record
+
+GET /metrics → counts by day/market/impact
+
+Minimal UI (server‑rendered, keep it simple)
+
+Route: /feed showing a filter bar (market, impact, date range, search box) and a paginated list.
+
+Each card shows: title → link, source, published date, Impact: High/Medium/Low with score badge, and a tooltip for explanation.
+
+Add basic responsive CSS; no heavy framework required.
