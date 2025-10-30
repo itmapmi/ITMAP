@@ -68,8 +68,15 @@ export default function MarketDetails() {
   };
 
   useEffect(() => {
-    checkScrollButtons();
-    const handleResize = () => checkScrollButtons();
+    // Delay check to ensure DOM is fully rendered
+    const timer = setTimeout(() => {
+      checkScrollButtons();
+    }, 100);
+
+    const handleResize = () => {
+      setTimeout(checkScrollButtons, 100);
+    };
+    
     window.addEventListener('resize', handleResize);
     
     const tabsElement = tabsRef.current;
@@ -78,12 +85,13 @@ export default function MarketDetails() {
     }
     
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
       if (tabsElement) {
         tabsElement.removeEventListener('scroll', checkScrollButtons);
       }
     };
-  }, [isMobile]);
+  }, [isMobile, market]);
 
   const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
     setIsGenerating(true);
@@ -272,46 +280,47 @@ export default function MarketDetails() {
             {!isMobile && canScrollLeft && (
               <button
                 onClick={() => scrollTabs('left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md rounded-full p-1 hover:bg-gray-100 transition-colors"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors border border-gray-200"
                 data-testid="button-scroll-left"
                 aria-label="Scroll tabs left"
               >
-                <ChevronLeft className="h-5 w-5 text-gray-600" />
+                <ChevronLeft className="h-5 w-5 text-gray-700" />
               </button>
             )}
             
             {!isMobile && canScrollRight && (
               <button
                 onClick={() => scrollTabs('right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md rounded-full p-1 hover:bg-gray-100 transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors border border-gray-200"
                 data-testid="button-scroll-right"
                 aria-label="Scroll tabs right"
               >
-                <ChevronRight className="h-5 w-5 text-gray-600" />
+                <ChevronRight className="h-5 w-5 text-gray-700" />
               </button>
             )}
 
             <div
               ref={tabsRef}
-              className={`${isMobile ? '' : 'overflow-x-hidden'}`}
+              className={`${isMobile ? '' : 'overflow-x-auto scrollbar-hide px-10'}`}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'inline-flex w-full justify-start'}`}>
-                <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-vendor-evaluation">
+              <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'inline-flex justify-start min-w-max'}`}>
+                <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-vendor-evaluation">
                   {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
                 </TabsTrigger>
-                <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-support-matrix">
+                <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-support-matrix">
                   {isMobile ? 'Product Eval' : 'Product Evaluation'}
                 </TabsTrigger>
-                <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-ecosystem-support">
+                <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-ecosystem-support">
                   {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
                 </TabsTrigger>
-                <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-methodology">
+                <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-methodology">
                   {isMobile ? 'Method' : 'Methodology'}
                 </TabsTrigger>
-                <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-new-players">
+                <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-new-players">
                   {isMobile ? 'New Players' : 'New Players'}
                 </TabsTrigger>
-                <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0'} data-testid="tab-news">
+                <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'flex-shrink-0 whitespace-nowrap min-w-fit'} data-testid="tab-news">
                   News
                 </TabsTrigger>
               </TabsList>
