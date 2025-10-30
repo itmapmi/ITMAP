@@ -87,12 +87,23 @@ export class PDFService {
         format: 'A4',
         printBackground: true,
         margin: {
-          top: '0',
-          right: '0',
-          bottom: '0',
-          left: '0',
+          top: '1cm',
+          right: '20mm',
+          bottom: '2cm',
+          left: '20mm',
         },
-        displayHeaderFooter: false,
+        displayHeaderFooter: true,
+        headerTemplate: `
+          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0;">
+            <img src="${logoData}" style="height: 25px; width: auto; margin-top: 5px;" />
+          </div>
+        `,
+        footerTemplate: `
+          <div style="width: 100%; padding: 0 20mm; font-size: 9px; color: #718096; text-align: center; margin-bottom: 10px;">
+            <span>© ${now.getFullYear()} ITMAP Research — All Rights Reserved</span>
+            <span style="margin-left: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+          </div>
+        `,
       });
 
       return Buffer.from(pdfUint8Array);

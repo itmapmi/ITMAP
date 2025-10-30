@@ -70,6 +70,7 @@
     /* Content Sections */
     .content-section {
       margin-bottom: 35px;
+      page-break-inside: avoid; /* Keep sections together when possible */
     }
 
     .section-title {
@@ -106,6 +107,7 @@
     thead {
       background: #1890ff;
       color: white;
+      display: table-header-group; /* Ensures headers repeat on each page */
     }
 
     th {
@@ -122,8 +124,16 @@
       vertical-align: top;
     }
 
+    tbody {
+      display: table-row-group; /* Works with repeating headers */
+    }
+
     tbody tr:nth-child(even) {
       background: #f7fafc;
+    }
+
+    tr {
+      page-break-inside: avoid; /* Avoid breaking table rows across pages */
     }
 
     /* Vendor Card */
@@ -276,20 +286,9 @@
   </div>
 
   <!-- Main Content -->
-  <div style="padding: 40px 50px;">
-    <!-- Header -->
-    <div class="page-header">
-      <img src="{{logoPath}}" alt="ITMAP Logo" class="header-logo">
-      <span class="header-title">{{marketName}} - {{reportType}}</span>
-    </div>
-
+  <div style="padding: 20px 0;">
     <!-- Dynamic Content -->
     {{{content}}}
-
-    <!-- Footer -->
-    <div class="page-footer">
-      <p>© {{year}} ITMAP Research — All Rights Reserved</p>
-    </div>
   </div>
 </body>
 </html>
