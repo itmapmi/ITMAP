@@ -17,60 +17,85 @@ export interface ImpactRuleSet {
 export const IMPACT_RULES: ImpactRuleSet = {
   HIGH: [
     {
-      pattern: /\b(announces?|unveils|introduces|launch(es|ed)|general availability|GA)\b/i,
-      weight: 30,
-      description: "Product/Feature Launch Announcement"
-    },
-    {
-      pattern: /\b(acquires?|acquisition|merger|merges with)\b/i,
-      weight: 35,
+      pattern: /\b(acquires?|acquisition|merger|merges with|intent to acquire)\b/i,
+      weight: 40,
       description: "Acquisition or Merger"
     },
     {
-      pattern: /\b(revenue|earnings|ARR|quarter(ly)? results|guidance)\b/i,
-      weight: 35,
+      pattern: /\b(revenue|earnings|ARR|quarter(ly)? results|financial results|fiscal)\b/i,
+      weight: 40,
       description: "Financial Results/Revenue Announcement"
     },
     {
-      pattern: /\b(major (update|release)|platform|suite)\b/i,
-      weight: 30,
-      description: "Major Platform/Suite Update"
+      pattern: /\b(announces?|unveils|introduces|launch(es|ed))\b.*\b(product|platform|solution|suite|service)\b/i,
+      weight: 35,
+      description: "Product Launch Announcement"
     },
     {
-      pattern: /\b(feature|adds support for|capability)\b.*\b(major|platform|overhaul|suite|v2\.0|GA|generally available)\b/i,
+      pattern: /\b(general availability|GA|now available)\b.*\b(product|platform|solution|feature)\b/i,
+      weight: 35,
+      description: "Product General Availability"
+    },
+    {
+      pattern: /\b(positioned as|named|recognized as)\b.*\b(leader|challenger)\b.*\b(gartner|forrester|idc|marketscape|quadrant)\b/i,
       weight: 30,
-      description: "Major Feature Announcement"
+      description: "Analyst Recognition (Leader/Challenger)"
     }
   ],
   
   MEDIUM: [
     {
-      pattern: /\b(minor|incremental|patch|maintenance) (update|release|enhancement)s?\b/i,
-      weight: 20,
-      description: "Minor Update/Enhancement"
-    },
-    {
-      pattern: /\b(partners? with|partnership|integration with)\b/i,
-      weight: 20,
+      pattern: /\b(partners? with|partnership|strategic alliance|collaboration with)\b/i,
+      weight: 22,
       description: "Partnership Announcement"
     },
     {
-      pattern: /\b(feature|adds support for|capability)\b.*\b(improvement|beta|preview|minor updates?)\b/i,
+      pattern: /\b(appoints?|names?|promotes|hires)\b.*\b(CEO|CFO|CTO|COO|president|VP|executive|director|board)\b/i,
+      weight: 20,
+      description: "Executive Appointment"
+    },
+    {
+      pattern: /\b(funding|investment|raises|series [A-Z]|venture capital)\b/i,
+      weight: 22,
+      description: "Funding/Investment Round"
+    },
+    {
+      pattern: /\b(expands?|expansion|enters?|launches in)\b.*\b(market|region|country|geographic)\b/i,
+      weight: 18,
+      description: "Market/Geographic Expansion"
+    },
+    {
+      pattern: /\b(award|wins?|recognition|achieves?|certification|compliant)\b/i,
       weight: 15,
-      description: "Minor Feature Enhancement"
+      description: "Award or Certification"
     }
   ],
   
   LOW: [
     {
-      pattern: /\b(appoints?|names?) (CEO|CFO|CTO|COO|executive|board)\b/i,
-      weight: 15,
-      description: "Executive Appointment"
+      pattern: /\b(join us|register|attend|save the date|invitation|invite|upcoming)\b.*\b(event|webinar|conference|summit|session)\b/i,
+      weight: 25,
+      description: "Event/Webinar Invitation"
     },
     {
-      pattern: /\b(enters?|expands? to|launches in) (the )?(market|region|country)\b/i,
+      pattern: /\b(event|conference|summit|webinar|workshop|session|training)\b.*\b(registration|attendees|join|participate)\b/i,
+      weight: 25,
+      description: "Event Announcement"
+    },
+    {
+      pattern: /\b(blog post|article|guide|whitepaper|case study|ebook|report)\b/i,
+      weight: 20,
+      description: "Content Publication"
+    },
+    {
+      pattern: /\b(update|patch|maintenance|bug fix|improvement)s?\b/i,
       weight: 15,
-      description: "Market Expansion"
+      description: "Minor Update or Bug Fix"
+    },
+    {
+      pattern: /\b(podcast|interview|speaking|presenting at)\b/i,
+      weight: 15,
+      description: "Media Appearance"
     }
   ]
 };
