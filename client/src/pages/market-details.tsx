@@ -212,7 +212,7 @@ export default function MarketDetails() {
               data-testid="button-generate-full-report"
             >
               <FileDown className="mr-2 h-4 w-4" />
-              {isMobile ? 'Report' : 'Generate Full Report'}
+              {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>
