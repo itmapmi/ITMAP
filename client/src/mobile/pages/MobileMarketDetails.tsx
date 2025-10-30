@@ -4,6 +4,7 @@ import { MobileHeader } from "@/mobile/components/MobileHeader";
 import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardContent } from "@/mobile/components/MobileCard";
 import { MobileLoadingScreen } from "@/mobile/components/MobileLoadingSpinner";
 import { CollapsibleSection } from "@/mobile/components/CollapsibleSection";
+import { MobileVendorQuadrant } from "@/mobile/components/MobileVendorQuadrant";
 import { Link } from "wouter";
 import { Building2, TrendingUp, TrendingDown } from "lucide-react";
 import type { Market, Vendor, VendorScore, Criteria } from "@shared/schema";
@@ -83,6 +84,17 @@ export default function MobileMarketDetails() {
             <strong>{vendorsWithScores.length}</strong> vendors evaluated in this market
           </p>
         </div>
+
+        {vendorsWithScores.length > 0 && (
+          <MobileCard>
+            <MobileCardHeader>
+              <MobileCardTitle>Vendor Evaluation Chart</MobileCardTitle>
+            </MobileCardHeader>
+            <MobileCardContent>
+              <MobileVendorQuadrant vendors={vendorsWithScores} />
+            </MobileCardContent>
+          </MobileCard>
+        )}
 
         {vendorsWithScores.length > 0 ? (
           <div className="space-y-3">
