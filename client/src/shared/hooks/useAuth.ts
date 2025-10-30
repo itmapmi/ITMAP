@@ -18,7 +18,7 @@ export function useAuth() {
     refetchIntervalInBackground: false,
     throwOnError: false,
     retryOnMount: false,
-    refetchOnMount: false,
+    refetchOnMount: 'always', // Always refetch on mount to pick up OAuth authentication changes
   });
 
   const loginMutation = useMutation({
