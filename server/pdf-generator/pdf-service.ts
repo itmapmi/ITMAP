@@ -64,6 +64,7 @@ export class PDFService {
       .replace(/{{generatedDate}}/g, generatedDate)
       .replace(/{{year}}/g, now.getFullYear().toString())
       .replace(/{{logoPath}}/g, logoData)
+      .replace(/{{title}}/g, `${options.marketName} - ${options.reportType}`)
       .replace('{{{content}}}', options.content);
 
     const browser = await puppeteer.launch({

@@ -163,7 +163,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${marketName.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Vendor_Evaluation.pdf`;
+      const cleanMarketName = marketName.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      a.download = `ITMAP for ${cleanMarketName} - Vendor Evaluation.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

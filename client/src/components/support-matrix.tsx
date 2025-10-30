@@ -187,7 +187,6 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Product_Evaluation_Report.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

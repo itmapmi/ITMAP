@@ -1396,11 +1396,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content
       });
 
-      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Full_Report.pdf`;
+      const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      const filename = `ITMAP for ${cleanMarketName}.pdf`;
 
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'Content-Length': pdfBuffer.length.toString(),
         'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'no-store, must-revalidate',
@@ -1445,11 +1446,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content
       });
 
-      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Vendor_Evaluation.pdf`;
+      const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      const filename = `ITMAP for ${cleanMarketName} - Vendor Evaluation.pdf`;
 
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'Content-Length': pdfBuffer.length.toString(),
         'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'no-store, must-revalidate',
@@ -1511,11 +1513,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content
       });
 
-      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Product_Evaluation.pdf`;
+      const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      const filename = `ITMAP for ${cleanMarketName} - Product Evaluation.pdf`;
 
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'Content-Length': pdfBuffer.length.toString(),
         'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'no-store, must-revalidate',
@@ -1576,11 +1579,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content
       });
 
-      const filename = `${market.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Ecosystem.pdf`;
+      const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      const filename = `ITMAP for ${cleanMarketName} - ISV Ecosystem.pdf`;
 
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
         'Content-Length': pdfBuffer.length.toString(),
         'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'no-store, must-revalidate',

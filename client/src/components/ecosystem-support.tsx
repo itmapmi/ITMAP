@@ -134,7 +134,6 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ISV_Ecosystem_Report.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

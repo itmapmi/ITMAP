@@ -57,7 +57,8 @@ export default function MarketDetails() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${market?.name.replace(/[^a-zA-Z0-9\s\-]/g, '')}_Full_Report.pdf`;
+      const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      a.download = `ITMAP for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
