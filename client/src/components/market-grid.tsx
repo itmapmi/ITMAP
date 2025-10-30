@@ -50,7 +50,7 @@ export default function MarketGrid({ markets, isAuthenticated = false }: MarketG
             }}
           >
             {isAuthenticated ? (
-              <Link href={`/markets/${market.slug}`}>
+              <Link href={`/markets/${market.id}`}>
                 <AnimatedCard 
                   className="cursor-pointer group overflow-hidden" 
                   hover={true}

@@ -47,41 +47,6 @@ import {
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
-// Helper function to generate URL-friendly slug from name
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .trim();
-}
-
-// Helper function to generate a unique slug for a market
-async function generateUniqueSlug(name: string, excludeId?: string): Promise<string> {
-  let baseSlug = generateSlug(name);
-  let slug = baseSlug;
-  let counter = 2;
-
-  while (true) {
-    // Check if slug exists in database
-    const existing = await db
-      .select()
-      .from(markets)
-      .where(eq(markets.slug, slug))
-      .limit(1);
-
-    // If slug doesn't exist, or it belongs to the market being updated, use it
-    if (existing.length === 0 || (excludeId && existing[0].id === excludeId)) {
-      return slug;
-    }
-
-    // Slug exists, try with counter
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-}
-
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -92,7 +57,6 @@ export interface IStorage {
   // Markets
   getAllMarkets(): Promise<Market[]>;
   getMarketById(id: string): Promise<Market | undefined>;
-  getMarketBySlug(slug: string): Promise<Market | undefined>;
   createMarket(market: InsertMarket): Promise<Market>;
   updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market>;
   deleteMarket(id: string): Promise<void>;
@@ -210,33 +174,18 @@ export class DatabaseStorage implements IStorage {
     return market || undefined;
   }
 
-  async getMarketBySlug(slug: string): Promise<Market | undefined> {
-    const [market] = await db.select().from(markets).where(eq(markets.slug, slug));
-    return market || undefined;
-  }
-
   async createMarket(market: InsertMarket): Promise<Market> {
-    const slug = market.slug || await generateUniqueSlug(market.name);
-    const marketData = {
-      ...market,
-      slug,
-    };
     const [newMarket] = await db
       .insert(markets)
-      .values(marketData)
+      .values(market)
       .returning();
     return newMarket;
   }
 
   async updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market> {
-    const updateData = { ...market, updatedAt: new Date() };
-    // Auto-generate unique slug if name is being updated but slug is not provided
-    if (market.name && !market.slug) {
-      updateData.slug = await generateUniqueSlug(market.name, id);
-    }
     const [updatedMarket] = await db
       .update(markets)
-      .set(updateData)
+      .set({ ...market, updatedAt: new Date() })
       .where(eq(markets.id, id))
       .returning();
     return updatedMarket;
