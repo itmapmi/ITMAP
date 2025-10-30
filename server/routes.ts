@@ -2220,6 +2220,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // POST re-score articles with AI
+  app.post("/api/news/rescore", requireAdmin, async (req, res) => {
+    try {
+      const { article_ids } = req.body;
+      
+      if (!article_ids || !Array.isArray(article_ids)) {
+        return res.status(400).json({ error: "article_ids array required" });
+      }
+
+      const { scoreImpactWithAI } = await import('./news/impact/ai-scorer');
+      const rescored: any[] = [];
+
+      for (const articleId of article_ids) {
+        try {
+          const article = await newsStorage.getArticleById(articleId);
+          if (!article) continue;
+
+          // Re-score with AI
+          const impact = await scoreImpactWithAI(
+            article.title,
+            article.content || article.summary || ''
+          );
+
+          // Update article
+          await newsStorage.updateArticle(articleId, {
+            impactLabel: impact.label,
+            impactScore: impact.score,
+            impactConfidence: impact.confidence.toString(),
+            impactReasons: impact.reasons
+          });
+
+          rescored.push({
+            id: articleId,
+            title: article.title,
+            oldLabel: article.impactLabel,
+            newLabel: impact.label,
+            oldScore: article.impactScore,
+            newScore: impact.score
+          });
+
+          // Rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error) {
+          console.error(`Error rescoring article ${articleId}:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        rescored: rescored.length,
+        details: rescored
+      });
+    } catch (error) {
+      console.error("Error rescoring articles:", error);
+      res.status(500).json({ error: "Failed to rescore articles" });
+    }
+  });
+
   // GET ingestion impact rules
   app.get("/api/news/impact/rules", requireAuth, (_req, res) => {
     res.json(getRulesAsJSON());

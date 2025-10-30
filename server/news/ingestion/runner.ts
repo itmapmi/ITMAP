@@ -3,6 +3,7 @@ import { fetchRSSFeed, discoverRSSFeed } from './rss';
 import { discoverArticleLinks, extractArticle, sleep } from './scrape';
 import { canonicalizeURL, generateContentHash, parseDate } from './normalize';
 import { scoreImpact } from '../impact/scorer';
+import { scoreImpactWithAI } from '../impact/ai-scorer';
 import type { NewsSource } from '@shared/schema';
 
 export interface IngestionResult {
@@ -174,8 +175,8 @@ async function ingestFromSource(
           continue;
         }
         
-        // Score impact
-        const impact = scoreImpact(
+        // Score impact using AI
+        const impact = await scoreImpactWithAI(
           candidate.title,
           candidate.content || candidate.summary || ''
         );

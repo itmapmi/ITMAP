@@ -42,7 +42,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 ### Core Features and Design Decisions
 - **Vendor Evaluation**: Replaced "Magic Quadrant" terminology, offers interactive visualizations, and integrates support matrix scores.
 - **Historical Timeline**: Implements a functional historical timeline for Vendor Evaluation, allowing navigation through 3 years of weekly data.
-- **Automated News Processing**: Features daily cron jobs for vendor news analysis using OpenAI for impact scoring (0-5 scale), with admin approval for score updates. News sources are strictly vendor-authentic, with no third-party content. Includes automated vendor score updates, position backups, and health checks.
+- **Automated News Processing**: Features daily cron jobs for vendor news analysis with AI-powered impact scoring using ChatGPT (GPT-4o-mini). News sources are strictly vendor-authentic, with no third-party content. Includes automated vendor score updates, position backups, and health checks. AI classifier analyzes article content and assigns impact levels (HIGH/MEDIUM/LOW) with confidence scores and detailed reasoning.
 - **Mobile Responsiveness**: UI adapts to different screen sizes, optimizing charts, typography, navigation, and spacing for mobile devices.
 - **Domain Management**: Enforces a custom primary domain (itmap.ai) via BASE_URL environment variable with 301 redirects from the Replit domain, smart OAuth callback handling, and automatic fallback to REPLIT_DOMAINS detection.
 - **Ecosystem Support**: Dedicated section for third-party integrations, separating ecosystem-related features from core product capabilities in the support matrix.
@@ -82,7 +82,7 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Drizzle Zod**: Integration for database schema validation.
 
 ### AI/ML Integration
-- **OpenAI API**: Used for intelligent news impact analysis in automated news processing.
+- **OpenAI API via Replit AI Integrations**: Powers intelligent news impact analysis using ChatGPT (GPT-4o-mini). Analyzes article titles and content to classify business impact (HIGH: 80-100, MEDIUM: 50-79, LOW: 10-49) with confidence scores and detailed reasoning. Includes fallback to rule-based scoring on errors. Charges are billed to Replit credits, no external API key required.
 
 ### Data Management
 - **xlsx Library**: Used for Excel file generation and parsing in the Import/Export feature.

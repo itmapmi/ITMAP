@@ -154,6 +154,14 @@ export class NewsStorage {
     return results[0];
   }
   
+  async updateArticle(id: string, updates: Partial<InsertNewsArticle>): Promise<NewsArticle | undefined> {
+    const results = await db.update(newsArticles)
+      .set(updates)
+      .where(eq(newsArticles.id, id))
+      .returning();
+    return results[0];
+  }
+
   async deleteArticle(id: string): Promise<void> {
     await db.delete(newsArticles).where(eq(newsArticles.id, id));
   }
