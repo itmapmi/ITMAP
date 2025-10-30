@@ -23,15 +23,13 @@ const HarveyBall = ({
   notes, 
   vendorName, 
   featureName, 
-  onClick,
-  isMobile = false
+  onClick 
 }: { 
   level: number; 
   notes?: string; 
   vendorName: string; 
   featureName: string; 
   onClick: () => void; 
-  isMobile?: boolean;
 }) => {
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
@@ -70,7 +68,7 @@ const HarveyBall = ({
     <div className="flex items-center justify-center">
       <button
         onClick={onClick}
-        className={`${isMobile ? 'text-3xl p-2' : 'text-2xl p-1'} ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full ${isMobile ? 'min-w-[44px] min-h-[44px]' : ''}`}
+        className={`text-2xl ${getHarveyBallColor(level)} hover:scale-125 transition-all duration-200 cursor-pointer relative group shadow-sm hover:shadow-md rounded-full p-1`}
         title={`${getSupportText(level)}${notes ? ' - Click for notes' : ''}`}
       >
         {getHarveyBallIcon(level)}
@@ -654,10 +652,10 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           </div>
         ) : (
           <div className="relative">
-            {/* Sticky header that moves with horizontal scroll - Hidden on mobile */}
+            {/* Sticky header that moves with horizontal scroll */}
             <div 
               ref={stickyHeaderRef}
-              className={`sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden ${isMobile ? 'hidden' : ''}`}>
+              className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-lg overflow-hidden">
               <div 
                 className="grid gap-4 py-4 px-6" 
                 style={{ 
@@ -684,8 +682,8 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
             </div>
 
             {/* Content with horizontal scrolling */}
-            <div className={`${isMobile ? '' : 'overflow-x-auto'}`} ref={containerRef}>
-              <div className={`${isMobile ? 'px-4 py-6' : 'px-6 pt-6 pb-6'} space-y-8`} style={{ minWidth: isMobile ? 'auto' : `${200 + (vendors.length * 140)}px` }}>
+            <div className="overflow-x-auto" ref={containerRef}>
+              <div className="px-6 pt-6 pb-6 space-y-8" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
@@ -712,11 +710,17 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                     <div key={category.id} className="space-y-4">
                       {/* Category header */}
                       <div className="py-4 bg-gradient-to-r from-gray-50 to-green-50/50 rounded-lg border border-gray-200 shadow-sm">
-                        {isMobile ? (
-                          <div className="px-4">
+                        <div 
+                          className="grid gap-4 px-4" 
+                          style={{ 
+                            gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                            minWidth: `${200 + (vendors.length * 140)}px`
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
                             <button
                               onClick={() => toggleCategory(category.id)}
-                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50 w-full justify-start"
+                              className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
                             >
                               {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                               {category.name}
@@ -725,109 +729,44 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                               </Badge>
                             </button>
                           </div>
-                        ) : (
-                          <div 
-                            className="grid gap-4 px-4" 
-                            style={{ 
-                              gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                              minWidth: `${200 + (vendors.length * 140)}px`
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => toggleCategory(category.id)}
-                                className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
-                              >
-                                {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                {category.name}
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  {categoryFeatures.length} features
-                                </Badge>
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </div>
 
                       {/* Features in category */}
                       {!isCollapsed && (
-                        <div className={`space-y-2 ${isMobile ? '' : 'ml-4'} animate-in slide-in-from-top-2 duration-200`}>
+                        <div className="space-y-2 ml-4 animate-in slide-in-from-top-2 duration-200">
                           {categoryFeatures.map(feature => (
-                            isMobile ? (
-                              <div key={feature.id} className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                <div className="mb-3">
-                                  <h4 className="font-medium text-gray-900 mb-1">{feature.name}</h4>
-                                </div>
-                                <div className="space-y-3">
-                                  {vendors.map(vendor => {
-                                    const supportKey = `${vendor.id}-${feature.id}`;
-                                    const supportData = supportLookup.get(supportKey);
-                                    const supportLevel = supportData?.level || 0;
-                                    const notes = supportData?.notes;
-                                    
-                                    const getSupportText = (level: number) => {
-                                      switch (level) {
-                                        case 0: return "No Support";
-                                        case 1: return "Limited";
-                                        case 2: return "Partial";
-                                        case 3: return "Good";
-                                        case 4: return "Full Support";
-                                        default: return "Unknown";
-                                      }
-                                    };
-                                    
-                                    return (
-                                      <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                        <div>
-                                          <div className="font-medium text-sm text-gray-900">{vendor.name}</div>
-                                          <div className="text-xs text-gray-500">{getSupportText(supportLevel)}</div>
-                                        </div>
-                                        <HarveyBall
-                                          level={supportLevel}
-                                          notes={notes}
-                                          vendorName={vendor.name}
-                                          featureName={feature.name}
-                                          onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes)}
-                                          isMobile={true}
-                                        />
-                                      </div>
-                                    );
-                                  })}
+                            <div 
+                              key={feature.id}
+                              className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-green-50/20 rounded-lg transition-colors px-2"
+                              style={{ 
+                                gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                                minWidth: `${200 + (vendors.length * 140)}px`
+                              }}
+                            >
+                              <div className="flex flex-col justify-center">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {feature.name}
                                 </div>
                               </div>
-                            ) : (
-                              <div 
-                                key={feature.id}
-                                className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-green-50/20 rounded-lg transition-colors px-2"
-                                style={{ 
-                                  gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                                  minWidth: `${200 + (vendors.length * 140)}px`
-                                }}
-                              >
-                                <div className="flex flex-col justify-center">
-                                  <div className="font-medium text-sm text-gray-900">
-                                    {feature.name}
-                                  </div>
-                                </div>
+                              
+                              {vendors.map(vendor => {
+                                const supportKey = `${vendor.id}-${feature.id}`;
+                                const supportData = supportLookup.get(supportKey) || { level: 0 };
                                 
-                                {vendors.map(vendor => {
-                                  const supportKey = `${vendor.id}-${feature.id}`;
-                                  const supportData = supportLookup.get(supportKey) || { level: 0 };
-                                  
-                                  return (
-                                    <div key={vendor.id} className="flex justify-center items-center">
-                                      <HarveyBall 
-                                        level={supportData.level}
-                                        notes={supportData.notes}
-                                        vendorName={vendor.name}
-                                        featureName={feature.name}
-                                        onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )
+                                return (
+                                  <div key={vendor.id} className="flex justify-center items-center">
+                                    <HarveyBall 
+                                      level={supportData.level}
+                                      notes={supportData.notes}
+                                      vendorName={vendor.name}
+                                      featureName={feature.name}
+                                      onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -836,8 +775,8 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                 });
               })()}
 
-              {/* Total Score Row - Hidden on mobile */}
-              {!isMobile && ecosystemFeatures && ecosystemFeatures.length > 0 && (() => {
+              {/* Total Score Row */}
+              {ecosystemFeatures && ecosystemFeatures.length > 0 && (() => {
                 const maxScore = ecosystemFeatures.length;
 
                 return (
@@ -885,8 +824,8 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
                 );
               })()}
 
-              {/* Final Ecosystem Support Scores - Hidden on mobile */}
-              {!isMobile && ecosystemFeatures && ecosystemFeatures.length > 0 && (
+              {/* Final Ecosystem Support Scores */}
+              {ecosystemFeatures && ecosystemFeatures.length > 0 && (
                 <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
                   <div 
                     className="grid gap-4 px-4 py-4" 

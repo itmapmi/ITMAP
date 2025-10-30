@@ -47,7 +47,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -244,28 +243,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       setLabelPositions(positions);
     }
   }, [savedLabelPositions]);
-
-  // Handle window resize and orientation changes
-  useEffect(() => {
-    const updateContainerWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth);
-      }
-    };
-
-    // Initial measurement
-    updateContainerWidth();
-
-    // Listen for resize and orientation change events
-    window.addEventListener('resize', updateContainerWidth);
-    window.addEventListener('orientationchange', updateContainerWidth);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', updateContainerWidth);
-      window.removeEventListener('orientationchange', updateContainerWidth);
-    };
-  }, []);
 
   // Calculate support matrix scores for product capabilities (excluding ecosystem features)
   const calculateSupportMatrixScore = (vendorId: string): number => {
@@ -1126,7 +1103,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
