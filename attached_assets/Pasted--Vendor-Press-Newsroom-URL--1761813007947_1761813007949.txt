@@ -1,0 +1,39 @@
+| Vendor               | Press / Newsroom URL                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Veeam                | [https://www.veeam.com/company/press-release.html](https://www.veeam.com/company/press-release.html)                                 |
+| Commvault            | [https://www.commvault.com/newsroom](https://www.commvault.com/newsroom)                                                             |
+| AvePoint             | [https://www.avepoint.com/news](https://www.avepoint.com/news)                                                                       |
+| Druva                | [https://www.druva.com/about/press-releases](https://www.druva.com/about/press-releases)                                             |
+| Keepit               | [https://www.keepit.com/newsroom/](https://www.keepit.com/newsroom/)                                                                 |
+| HYCU                 | [https://www.hycu.com/company/newsroom/press-release](https://www.hycu.com/company/newsroom/press-release)                           |
+| OwnBackup            | [https://www.owndata.com/newsroom](https://www.owndata.com/newsroom)                                                                 |
+| Backupify            | [https://www.backupify.com/blog/category/announcements-news/](https://www.backupify.com/blog/category/announcements-news/)           |
+| Spanning             | [https://www.spanning.com/blog/categories/company-news/](https://www.spanning.com/blog/categories/company-news/)                     |
+| CloudAlly            | [https://www.cloudally.com/about-us/newsroom/](https://www.cloudally.com/about-us/newsroom/)                                         |
+| Odaseva              | [https://www.odaseva.com/news/](https://www.odaseva.com/news/)                                                                       |
+| SpinOne (Spin.AI)    | [https://spin.ai/company/news/](https://spin.ai/company/news/)                                                                       |
+| Arcserve             | [https://www.arcserve.com/press-releases](https://www.arcserve.com/press-releases)                                                   |
+| Cloud Software Group | [https://www.cloud.com/news](https://www.cloud.com/news)                                                                             |
+| Unitrends            | [https://www.unitrends.com/blog/categories/announcements-/-news/](https://www.unitrends.com/blog/categories/announcements-/-news/)   |
+| Storware             | [https://storware.eu/news/](https://storware.eu/news/)                                                                               |
+| NAKIVO               | [https://www.nakivo.com/company/press-releases/](https://www.nakivo.com/company/press-releases/)                                     |
+| Cohesity             | [https://www.cohesity.com/newsroom/](https://www.cohesity.com/newsroom/)                                                             |
+| IBM                  | [https://newsroom.ibm.com/](https://newsroom.ibm.com/)                                                                               |
+| Rubrik               | [https://www.rubrik.com/company/newsroom](https://www.rubrik.com/company/newsroom)                                                   |
+| Huawei               | [https://www.huawei.com/en/media-center/](https://www.huawei.com/en/media-center/)                                                   |
+| HPE                  | [https://www.hpe.com/us/en/newsroom.html](https://www.hpe.com/us/en/newsroom.html)                                                   |
+| Pure Storage         | [https://www.purestorage.com/company/newsroom/press-releases.html](https://www.purestorage.com/company/newsroom/press-releases.html) |
+| NetApp               | [https://www.netapp.com/newsroom/press-releases/](https://www.netapp.com/newsroom/press-releases/)                                   |
+| Hitachi Vantara      | [https://www.hitachivantara.com/en-us/news](https://www.hitachivantara.com/en-us/news)                                               |
+| Lenovo               | [https://news.lenovo.com/pressroom/press-releases/](https://news.lenovo.com/pressroom/press-releases/)                               |
+| Microsoft            | [https://news.microsoft.com/source/tag/press-releases/](https://news.microsoft.com/source/tag/press-releases/)                       |
+| Broadcom             | [https://www.broadcom.com/company/news](https://www.broadcom.com/company/news)                                                       |
+| Nutanix              | [https://www.nutanix.com/press-releases](https://www.nutanix.com/press-releases)                                                     |
+| SUSE                 | [https://www.suse.com/news/](https://www.suse.com/news/)                                                                             |
+| H3C                  | [https://www.h3c.com/en/About_Us/News___Events/News/](https://www.h3c.com/en/About_Us/News___Events/News/)                           |
+| Oracle               | [https://www.oracle.com/news/](https://www.oracle.com/news/)                                                                         |
+| Mirantis             | [https://www.mirantis.com/company/press-center/](https://www.mirantis.com/company/press-center/)                                     |
+| Virtuozzo            | [https://www.virtuozzo.com/company/blog/category/news/](https://www.virtuozzo.com/company/blog/category/news/)                       |
+| Scale Computing      | [https://www.scalecomputing.com/press-releases/](https://www.scalecomputing.com/press-releases/)                                     |
+| Verge.io             | [https://www.verge.io/resources/press-releases/](https://www.verge.io/resources/press-releases/)                                     |
+| Proxmox              | [https://www.proxmox.com/en/about/company-details/press-releases](https://www.proxmox.com/en/about/company-details/press-releases)   |
