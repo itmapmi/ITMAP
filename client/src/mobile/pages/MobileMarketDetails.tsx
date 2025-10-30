@@ -187,15 +187,17 @@ export default function MobileMarketDetails() {
               <h4 className="font-semibold text-gray-900 mb-2">{article.title}</h4>
               <div className="flex items-center gap-2 mb-2">
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  article.impactLevel === 'HIGH' ? 'bg-red-100 text-red-700' :
-                  article.impactLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                  article.impactLabel === 'HIGH' ? 'bg-red-100 text-red-700' :
+                  article.impactLabel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-green-100 text-green-700'
                 }`}>
-                  {article.impactLevel} IMPACT
+                  {article.impactLabel} IMPACT
                 </span>
-                <span className="text-xs text-gray-500">
-                  {new Date(article.publishedAt).toLocaleDateString()}
-                </span>
+                {article.publishedAt && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(article.publishedAt).toLocaleDateString()}
+                  </span>
+                )}
               </div>
               {article.url && (
                 <a 

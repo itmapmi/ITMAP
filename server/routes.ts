@@ -13,6 +13,13 @@ import passport from 'passport';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 
+// Extend express-session types
+declare module 'express-session' {
+  interface SessionData {
+    returnToMobile?: boolean;
+  }
+}
+
   // Cache to track which sessions we've already logged
   const loggedSessions = new Set<string>();
 
@@ -154,12 +161,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // OAuth routes
-  app.get("/auth/google", passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get("/auth/google", (req, res, next) => {
+    // Store returnTo parameter in session for later redirect
+    const returnTo = req.query.returnTo as string;
+    if (returnTo === 'mobile') {
+      req.session.returnToMobile = true;
+    } else {
+      // Explicitly clear the flag for desktop logins
+      delete req.session.returnToMobile;
+    }
+    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  });
+  
   app.get("/auth/google/callback", 
     passport.authenticate('google', { failureRedirect: '/login' }),
     async (req, res) => {
       try {
         const user = req.user as any;
+        const returnToMobile = req.session.returnToMobile;
+        delete req.session.returnToMobile; // Clean up session
         
         // Record user login
         await storage.recordUserLogin({
@@ -172,14 +192,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (user?.role === 'admin') {
           res.redirect('/admin');
+        } else if (returnToMobile) {
+          res.redirect('/mobile/dashboard');
         } else {
           res.redirect('/');
         }
       } catch (error) {
         console.error("Error recording OAuth login:", error);
         const user = req.user as any;
+        const returnToMobile = req.session.returnToMobile;
+        delete req.session.returnToMobile;
+        
         if (user?.role === 'admin') {
           res.redirect('/admin');
+        } else if (returnToMobile) {
+          res.redirect('/mobile/dashboard');
         } else {
           res.redirect('/');
         }
@@ -187,12 +214,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.get("/auth/linkedin", passport.authenticate('linkedin'));
+  app.get("/auth/linkedin", (req, res, next) => {
+    // Store returnTo parameter in session for later redirect
+    const returnTo = req.query.returnTo as string;
+    if (returnTo === 'mobile') {
+      req.session.returnToMobile = true;
+    } else {
+      // Explicitly clear the flag for desktop logins
+      delete req.session.returnToMobile;
+    }
+    passport.authenticate('linkedin')(req, res, next);
+  });
+  
   app.get("/auth/linkedin/callback", 
     passport.authenticate('linkedin', { failureRedirect: '/login' }),
     async (req, res) => {
       try {
         const user = req.user as any;
+        const returnToMobile = req.session.returnToMobile;
+        delete req.session.returnToMobile; // Clean up session
         
         // Record user login
         await storage.recordUserLogin({
@@ -205,14 +245,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (user?.role === 'admin') {
           res.redirect('/admin');
+        } else if (returnToMobile) {
+          res.redirect('/mobile/dashboard');
         } else {
           res.redirect('/');
         }
       } catch (error) {
         console.error("Error recording OAuth login:", error);
         const user = req.user as any;
+        const returnToMobile = req.session.returnToMobile;
+        delete req.session.returnToMobile;
+        
         if (user?.role === 'admin') {
           res.redirect('/admin');
+        } else if (returnToMobile) {
+          res.redirect('/mobile/dashboard');
         } else {
           res.redirect('/');
         }

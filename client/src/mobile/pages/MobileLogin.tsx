@@ -36,7 +36,7 @@ export default function MobileLogin() {
   };
 
   const handleOAuthLogin = (provider: 'google' | 'linkedin') => {
-    window.location.href = `/auth/${provider}`;
+    window.location.href = `/auth/${provider}?returnTo=mobile`;
   };
 
   return (
