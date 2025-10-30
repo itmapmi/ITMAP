@@ -16,7 +16,6 @@ import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@share
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
-import { FileDown } from "lucide-react";
 
 interface MagicQuadrantProps {
   marketId: string;
@@ -1134,17 +1133,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader className={isMobile ? "pb-3 flex flex-row items-center justify-between space-y-0" : "flex flex-row items-center justify-between space-y-0"}>
+            <CardHeader className={isMobile ? "pb-3" : ""}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
-              <Button
-                onClick={() => setShowVendorModal(true)}
-                variant="outline"
-                size="sm"
-                data-testid="button-generate-vendor-evaluation-report"
-              >
-                <FileDown className="h-4 w-4 mr-2" />
-                {isMobile ? 'PDF' : 'Generate PDF'}
-              </Button>
             </CardHeader>
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
