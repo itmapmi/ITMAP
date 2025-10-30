@@ -27,13 +27,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Play, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Trash2, Play, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { NewsSource, Market, Vendor } from "@shared/schema";
 
 export function NewsSourcesAdmin() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSource, setEditingSource] = useState<NewsSource | null>(null);
   const [selectedMarket, setSelectedMarket] = useState("");
   const [selectedVendor, setSelectedVendor] = useState("");
   
@@ -85,6 +86,29 @@ export function NewsSourcesAdmin() {
       toast({
         title: "Error",
         description: error.message || "Failed to create news source",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update source mutation
+  const updateSourceMutation = useMutation({
+    mutationFn: async (data: typeof formData & { id: string; marketIds: string[]; vendorId: string | null }) => {
+      return await apiRequest(`/api/news/sources/${data.id}`, 'PUT', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news/sources'] });
+      toast({
+        title: "Success",
+        description: "News source updated successfully"
+      });
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update news source",
         variant: "destructive"
       });
     }
@@ -159,6 +183,23 @@ export function NewsSourcesAdmin() {
     });
     setSelectedMarket("");
     setSelectedVendor("");
+    setEditingSource(null);
+  };
+
+  const handleEdit = (source: NewsSource) => {
+    setEditingSource(source);
+    setFormData({
+      name: source.name,
+      sourceUrl: source.sourceUrl,
+      rssUrl: source.rssUrl || "",
+      listSelector: source.listSelector || "",
+      enabled: source.enabled,
+      priority: source.priority || 0,
+      pollingFrequency: source.pollingFrequency || "daily"
+    });
+    setSelectedMarket(source.marketIds?.[0] || "");
+    setSelectedVendor(source.vendorId || "none");
+    setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -173,11 +214,20 @@ export function NewsSourcesAdmin() {
       return;
     }
 
-    createSourceMutation.mutate({
+    const payload = {
       ...formData,
       marketIds: [selectedMarket],
       vendorId: selectedVendor === "none" || !selectedVendor ? null : selectedVendor
-    });
+    };
+
+    if (editingSource) {
+      updateSourceMutation.mutate({
+        ...payload,
+        id: editingSource.id
+      });
+    } else {
+      createSourceMutation.mutate(payload);
+    }
   };
 
   return (
@@ -194,16 +244,19 @@ export function NewsSourcesAdmin() {
             <div className="text-sm text-gray-600">
               {sources?.length || 0} sources configured
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}>
               <DialogTrigger asChild>
-                <Button data-testid="button-add-source">
+                <Button data-testid="button-add-source" onClick={() => resetForm()}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add News Source
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Add News Source</DialogTitle>
+                  <DialogTitle>{editingSource ? "Edit News Source" : "Add News Source"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -344,10 +397,13 @@ export function NewsSourcesAdmin() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createSourceMutation.isPending}
+                      disabled={createSourceMutation.isPending || updateSourceMutation.isPending}
                       data-testid="button-submit-source"
                     >
-                      {createSourceMutation.isPending ? "Creating..." : "Create Source"}
+                      {editingSource
+                        ? (updateSourceMutation.isPending ? "Updating..." : "Update Source")
+                        : (createSourceMutation.isPending ? "Creating..." : "Create Source")
+                      }
                     </Button>
                   </div>
                 </form>
@@ -428,6 +484,14 @@ export function NewsSourcesAdmin() {
                         <TableCell>{source.priority}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(source)}
+                              data-testid={`button-edit-${source.id}`}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
