@@ -224,23 +224,23 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'grid grid-cols-3 w-full' : 'grid grid-cols-6 w-full'}`}>
-            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-vendor-evaluation">
+          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto w-full justify-start' : 'grid grid-cols-6 w-full'}`}>
+            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-vendor-evaluation">
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
-            <TabsTrigger value="support-matrix" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-support-matrix">
+            <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-support-matrix">
               {isMobile ? 'Product Eval' : 'Product Evaluation'}
             </TabsTrigger>
-            <TabsTrigger value="ecosystem-support" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-ecosystem-support">
+            <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-ecosystem-support">
               {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
             </TabsTrigger>
-            <TabsTrigger value="research-methodology" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-methodology">
+            <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-methodology">
               {isMobile ? 'Method' : 'Methodology'}
             </TabsTrigger>
-            <TabsTrigger value="new-players" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-new-players">
+            <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-new-players">
               {isMobile ? 'New Players' : 'New Players'}
             </TabsTrigger>
-            <TabsTrigger value="news" className={isMobile ? 'px-2 text-xs' : 'whitespace-nowrap'} data-testid="tab-news">
+            <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : 'whitespace-nowrap'} data-testid="tab-news">
               News
             </TabsTrigger>
           </TabsList>
