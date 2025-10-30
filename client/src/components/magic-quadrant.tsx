@@ -1172,12 +1172,12 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         </div>
 
         <div className="lg:col-span-1">
-          <Card>
+          <Card className="h-full flex flex-col">
             <CardHeader className={isMobile ? "pb-3" : ""}>
               <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
             </CardHeader>
-            <CardContent className={isMobile ? "space-y-3" : "space-y-4"}>
-              <div>
+            <CardContent className="flex-1 bg-gray-100 flex flex-col justify-between">
+              <div className="space-y-4">
                 <h4 className="font-medium text-gray-900 mb-3">Execution Criteria</h4>
                 {executionCriteria.map(criterion => (
                   <div key={criterion.id} className="mb-4">
@@ -1213,9 +1213,9 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
                 </div>
               </div>
 
-              <hr className="my-4" />
+              <hr className="my-6 border-gray-300" />
 
-              <div>
+              <div className="space-y-4">
                 <h4 className="font-medium text-gray-900 mb-3">Viability Criteria</h4>
                 {viabilityCriteria.map(criterion => (
                   <div key={criterion.id} className="mb-4">
