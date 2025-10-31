@@ -46,6 +46,8 @@ export const markets = pgTable("markets", {
   shortDescription: text("short_description"),
   category: text("category"),
   imageUrl: text("image_url"),
+  quadrantImageUrl: text("quadrant_image_url"), // Generated static quadrant image URL
+  quadrantImageUpdatedAt: timestamp("quadrant_image_updated_at"), // Last time quadrant image was generated
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
