@@ -120,10 +120,8 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       vendorEvalMap.set(vs.vendorId, []);
     }
     
-    // Extract best commentary sentences
-    const commentary = vs.notes 
-      ? topEvidenceSentences(vs.notes, 2).join('. ') || vs.notes
-      : "— (no commentary provided)";
+    // Provide full commentary for comprehensive AI responses
+    const commentary = vs.notes || "— (no commentary provided)";
     
     // Generate source_id if not present
     const sourceId = vs.sourceId || `VE-${vs.vendor.name.replace(/\s+/g, '-')}-${vs.criteria.name.replace(/\s+/g, '-')}`;
@@ -149,10 +147,8 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       productEvalMap.set(fs.vendorId, []);
     }
     
-    // Extract best commentary sentences
-    const commentary = fs.comments 
-      ? topEvidenceSentences(fs.comments, 2).join('. ') || fs.comments
-      : "— (no commentary provided)";
+    // Provide full commentary for comprehensive AI responses
+    const commentary = fs.comments || "— (no commentary provided)";
     
     // Generate source_id if not present
     const sourceId = fs.sourceId || `PF-${fs.vendor.name.replace(/\s+/g, '-')}-${fs.feature.name.replace(/\s+/g, '-')}`;
@@ -189,10 +185,8 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       ecosystemMap.set(fs.vendorId, []);
     }
     
-    // Extract best commentary sentences
-    const commentary = fs.comments 
-      ? topEvidenceSentences(fs.comments, 2).join('. ') || fs.comments
-      : "— (no commentary provided)";
+    // Provide full commentary for comprehensive AI responses
+    const commentary = fs.comments || "— (no commentary provided)";
     
     // Generate source_id if not present
     const sourceId = fs.sourceId || `EC-${fs.vendor.name.replace(/\s+/g, '-')}-${fs.feature.name.replace(/\s+/g, '-')}`;
