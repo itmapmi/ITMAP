@@ -1,8 +1,11 @@
 import OpenAI from "openai";
 import { buildDataContext, type DataContext } from "./context-builder";
 
+// This is using Replit's AI Integrations service, which provides OpenAI-compatible API access 
+// without requiring your own OpenAI API key. Charges are billed to Replit credits.
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
 
 // System prompt for the Tech Buyer Market Analyst (v2, Commentary-First)
