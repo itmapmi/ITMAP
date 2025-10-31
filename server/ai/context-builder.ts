@@ -120,16 +120,16 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       vendorEvalMap.set(vs.vendorId, []);
     }
     
-    // Provide comprehensive but token-efficient commentary (up to 5 sentences or 500 chars)
+    // Provide balanced commentary (up to 3 sentences or 300 chars)
     let commentary = vs.notes || "— (no commentary provided)";
     if (commentary !== "— (no commentary provided)") {
-      const sentences = topEvidenceSentences(vs.notes, 5);
+      const sentences = topEvidenceSentences(vs.notes, 3);
       if (sentences.length > 0) {
         commentary = sentences.join('. ') + '.';
       }
-      // If still too long, truncate to 500 characters
-      if (commentary.length > 500) {
-        commentary = commentary.substring(0, 497) + '...';
+      // If still too long, truncate to 300 characters
+      if (commentary.length > 300) {
+        commentary = commentary.substring(0, 297) + '...';
       }
     }
     
@@ -157,16 +157,16 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       productEvalMap.set(fs.vendorId, []);
     }
     
-    // Provide comprehensive but token-efficient commentary (up to 5 sentences or 500 chars)
+    // Provide balanced commentary (up to 3 sentences or 300 chars)
     let commentary = fs.comments || "— (no commentary provided)";
     if (commentary !== "— (no commentary provided)") {
-      const sentences = topEvidenceSentences(fs.comments, 5);
+      const sentences = topEvidenceSentences(fs.comments, 3);
       if (sentences.length > 0) {
         commentary = sentences.join('. ') + '.';
       }
-      // If still too long, truncate to 500 characters
-      if (commentary.length > 500) {
-        commentary = commentary.substring(0, 497) + '...';
+      // If still too long, truncate to 300 characters
+      if (commentary.length > 300) {
+        commentary = commentary.substring(0, 297) + '...';
       }
     }
     
@@ -205,16 +205,16 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
       ecosystemMap.set(fs.vendorId, []);
     }
     
-    // Provide comprehensive but token-efficient commentary (up to 5 sentences or 500 chars)
+    // Provide balanced commentary (up to 3 sentences or 300 chars)
     let commentary = fs.comments || "— (no commentary provided)";
     if (commentary !== "— (no commentary provided)") {
-      const sentences = topEvidenceSentences(fs.comments, 5);
+      const sentences = topEvidenceSentences(fs.comments, 3);
       if (sentences.length > 0) {
         commentary = sentences.join('. ') + '.';
       }
-      // If still too long, truncate to 500 characters
-      if (commentary.length > 500) {
-        commentary = commentary.substring(0, 497) + '...';
+      // If still too long, truncate to 300 characters
+      if (commentary.length > 300) {
+        commentary = commentary.substring(0, 297) + '...';
       }
     }
     
