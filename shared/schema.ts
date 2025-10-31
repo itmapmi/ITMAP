@@ -100,6 +100,7 @@ export const vendorScores = pgTable("vendor_scores", {
   criteriaId: varchar("criteria_id").notNull().references(() => criteria.id, { onDelete: "cascade" }),
   score: decimal("score", { precision: 4, scale: 2 }).notNull(), // 0-10, allows decimal values like 8.64
   notes: text("notes"), // Notes for the score
+  sourceId: text("source_id"), // Unique identifier for citations (e.g., VE-vendor1-001)
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -128,6 +129,7 @@ export const vendorFeatureSupport = pgTable("vendor_feature_support", {
   featureId: varchar("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
   supportLevel: integer("support_level").notNull(), // 0-100 (Harvey ball percentage)
   comments: text("comments"),
+  sourceId: text("source_id"), // Unique identifier for citations (e.g., PF-vendor1-feature1)
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
@@ -211,6 +213,7 @@ export const newsArticles = pgTable("news_articles", {
   contentHash: text("content_hash"), // SHA-256 hash for dedup
   summary: text("summary"), // Short excerpt
   content: text("content"), // Full article text
+  citationId: text("citation_id"), // Unique identifier for citations (e.g., NEWS-vendor1-123)
   
   // Metadata
   publishedAt: timestamp("published_at"),

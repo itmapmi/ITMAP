@@ -1,56 +1,92 @@
 import { storage } from "../storage";
 import { newsStorage } from "../news/storage";
+import { topEvidenceSentences } from "./commentary-extractor";
 
 /**
  * Builds the DATA_CONTEXT object for RAG-based chat
- * This context is passed to the AI model to answer questions
+ * Following v2 Commentary-First Evidence Protocol specification
  */
+
+// Support level mapping for features and ecosystem integrations
+type SupportLevel = "Full" | "Good" | "Partial" | "Limited" | "None" | "Unknown";
+
+function mapSupportLevel(score: number): SupportLevel {
+  if (score >= 90) return "Full";
+  if (score >= 70) return "Good";
+  if (score >= 40) return "Partial";
+  if (score >= 10) return "Limited";
+  if (score === 0) return "None";
+  return "Unknown";
+}
 
 export interface DataContext {
   market: {
     id: string;
     name: string;
     description?: string | null;
+    axes?: {
+      x_label: string;
+      y_label: string;
+    };
+    quadrant_points?: Array<{
+      vendor_id: string;
+      x: number;
+      y: number;
+    }>;
   };
   vendors: Array<{
     id: string;
     name: string;
-    description?: string | null;
+    summary?: string | null;
   }>;
-  vendor_scores: Array<{
+  vendor_eval: Array<{
     vendor_id: string;
-    vendor_name: string;
-    criteria_name: string;
-    category: string;
-    score: string;
-    notes?: string | null;
+    criteria: Array<{
+      name: string;
+      score_number?: number;
+      score_text?: string;
+      commentary: string;
+      source_id?: string | null;
+    }>;
   }>;
-  features: Array<{
+  product_eval: Array<{
     vendor_id: string;
-    vendor_name: string;
-    feature_name: string;
-    support_level: number;
-    comments?: string | null;
+    features: Array<{
+      feature_id: string;
+      feature_name: string;
+      support_level: SupportLevel;
+      commentary: string;
+      source_id?: string | null;
+    }>;
+  }>;
+  ecosystem: Array<{
+    vendor_id: string;
+    integrations: Array<{
+      isv_id: string;
+      isv_name: string;
+      integration_level: SupportLevel;
+      commentary: string;
+      source_id?: string | null;
+    }>;
   }>;
   news: Array<{
     vendor_id: string | null;
-    vendor_name: string;
     title: string;
     date: string;
     summary?: string | null;
-    impact_label?: string | null;
-    impact_score?: number | null;
+    url?: string | null;
+    source_id?: string | null;
   }>;
   metadata: {
+    scoring_notes?: string;
     last_updated: string;
-    vendor_count: number;
-    feature_count: number;
-    news_count: number;
+    coverage_notes?: string;
   };
 }
 
 /**
  * Build DATA_CONTEXT for a specific market
+ * Following v2 Commentary-First Evidence Protocol
  */
 export async function buildDataContext(marketId: string): Promise<DataContext> {
   // Fetch market data
@@ -68,7 +104,7 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
   // Fetch features
   const featureSupportData = await storage.getVendorFeatureSupport(marketId);
 
-  // Fetch recent news
+  // Fetch recent news (last 3 months)
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const news = await newsStorage.getArticles({
@@ -77,55 +113,116 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
     limit: 50,
   });
 
-  // Build vendor scores array
-  const vendorScores = vendorScoresData.map(vs => ({
-    vendor_id: vs.vendorId,
-    vendor_name: vs.vendor.name,
-    criteria_name: vs.criteria.name,
-    category: vs.criteria.category,
-    score: vs.score,
-    notes: vs.notes,
+  // Build vendor_eval: group criteria by vendor
+  const vendorEvalMap = new Map<string, Array<any>>();
+  for (const vs of vendorScoresData) {
+    if (!vendorEvalMap.has(vs.vendorId)) {
+      vendorEvalMap.set(vs.vendorId, []);
+    }
+    
+    // Extract best commentary sentences
+    const commentary = vs.notes 
+      ? topEvidenceSentences(vs.notes, 2).join('. ') || vs.notes
+      : "— (no commentary provided)";
+    
+    // Generate source_id if not present
+    const sourceId = vs.sourceId || `VE-${vs.vendor.name.replace(/\s+/g, '-')}-${vs.criteria.name.replace(/\s+/g, '-')}`;
+    
+    vendorEvalMap.get(vs.vendorId)!.push({
+      name: vs.criteria.name,
+      score_number: parseFloat(vs.score) * 10, // Convert 0-10 scale to 0-100
+      score_text: vs.score,
+      commentary,
+      source_id: sourceId,
+    });
+  }
+
+  const vendor_eval = Array.from(vendorEvalMap.entries()).map(([vendorId, criteria]) => ({
+    vendor_id: vendorId,
+    criteria,
   }));
 
-  // Build features array
-  const features = featureSupportData.map(fs => ({
-    vendor_id: fs.vendorId,
-    vendor_name: fs.vendor.name,
-    feature_name: fs.feature.name,
-    support_level: fs.supportLevel,
-    comments: fs.comments,
+  // Build product_eval: group features by vendor
+  const productEvalMap = new Map<string, Array<any>>();
+  for (const fs of featureSupportData) {
+    if (!productEvalMap.has(fs.vendorId)) {
+      productEvalMap.set(fs.vendorId, []);
+    }
+    
+    // Extract best commentary sentences
+    const commentary = fs.comments 
+      ? topEvidenceSentences(fs.comments, 2).join('. ') || fs.comments
+      : "— (no commentary provided)";
+    
+    // Generate source_id if not present
+    const sourceId = fs.sourceId || `PF-${fs.vendor.name.replace(/\s+/g, '-')}-${fs.feature.name.replace(/\s+/g, '-')}`;
+    
+    productEvalMap.get(fs.vendorId)!.push({
+      feature_id: fs.featureId,
+      feature_name: fs.feature.name,
+      support_level: mapSupportLevel(fs.supportLevel),
+      commentary,
+      source_id: sourceId,
+    });
+  }
+
+  const product_eval = Array.from(productEvalMap.entries()).map(([vendorId, features]) => ({
+    vendor_id: vendorId,
+    features,
+  }));
+
+  // Build ecosystem: Currently not implemented in database
+  // TODO: Add ecosystem_integrations table in future
+  const ecosystem = vendors.map(v => ({
+    vendor_id: v.id,
+    integrations: [], // Empty for now
   }));
 
   // Build news array
-  const newsData = news.map(article => ({
-    vendor_id: article.vendorId,
-    vendor_name: vendors.find(v => v.id === article.vendorId)?.name || "Unknown",
-    title: article.title,
-    date: article.publishedAt ? new Date(article.publishedAt).toISOString().split('T')[0] : "",
-    summary: article.summary,
-    impact_label: article.impactLabel,
-    impact_score: article.impactScore,
-  }));
+  const newsData = news.map(article => {
+    // Generate citation_id if not present
+    const citationId = article.citationId || `NEWS-${article.id}`;
+    
+    return {
+      vendor_id: article.vendorId,
+      title: article.title,
+      date: article.publishedAt ? new Date(article.publishedAt).toISOString().split('T')[0] : "",
+      summary: article.summary,
+      url: article.url,
+      source_id: citationId,
+    };
+  });
+
+  // Calculate coverage statistics
+  const totalFeatures = featureSupportData.length;
+  const totalCriteria = vendorScoresData.length;
+  const coverageNotes = `${vendors.length} vendors evaluated across ${totalCriteria} criteria and ${totalFeatures} features.`;
 
   return {
     market: {
       id: market.id,
       name: market.name,
       description: market.description,
+      axes: {
+        x_label: "Execution",
+        y_label: "Viability",
+      },
+      // Note: quadrant_points would be calculated from vendor scores
+      // This requires computation of execution/viability from criteria scores
     },
     vendors: vendors.map(v => ({
       id: v.id,
       name: v.name,
-      description: v.description,
+      summary: v.description,
     })),
-    vendor_scores: vendorScores,
-    features,
+    vendor_eval,
+    product_eval,
+    ecosystem,
     news: newsData,
     metadata: {
+      scoring_notes: "Vendor Evaluation uses 0-100 scale. Product features use Full/Good/Partial/Limited/None levels.",
       last_updated: new Date().toISOString().split('T')[0],
-      vendor_count: vendors.length,
-      feature_count: features.length,
-      news_count: newsData.length,
+      coverage_notes: coverageNotes,
     },
   };
 }
