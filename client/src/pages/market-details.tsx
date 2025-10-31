@@ -14,6 +14,7 @@ import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
 import { MarketNews } from "@/components/market-news";
 import { VendorSelectionModal } from "@/components/vendor-selection-modal";
+import { Chat } from "@/components/Chat";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Market, Vendor } from "@shared/schema";
@@ -224,7 +225,7 @@ export default function MarketDetails() {
         </FadeInSection>
 
         <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto w-full justify-start sm:grid sm:grid-cols-6' : 'grid grid-cols-6 w-full'}`}>
+          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto w-full justify-start sm:grid sm:grid-cols-7' : 'grid grid-cols-7 w-full'}`}>
             <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-2 text-[10px] sm:flex-shrink sm:px-3 sm:text-xs' : 'whitespace-nowrap'} data-testid="tab-vendor-evaluation">
               {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
             </TabsTrigger>
@@ -242,6 +243,9 @@ export default function MarketDetails() {
             </TabsTrigger>
             <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-2 text-[10px] sm:flex-shrink sm:px-3 sm:text-xs' : 'whitespace-nowrap'} data-testid="tab-news">
               News
+            </TabsTrigger>
+            <TabsTrigger value="ai-chat" className={isMobile ? 'flex-shrink-0 px-2 text-[10px] sm:flex-shrink sm:px-3 sm:text-xs' : 'whitespace-nowrap'} data-testid="tab-ai-chat">
+              {isMobile ? 'AI Chat' : 'AI Chat'}
             </TabsTrigger>
           </TabsList>
 
@@ -272,6 +276,12 @@ export default function MarketDetails() {
 
           <TabsContent value="news" className="mt-6">
             <MarketNews marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="ai-chat" className="mt-6">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border h-[600px]">
+              <Chat marketId={marketId!} />
+            </div>
           </TabsContent>
         </Tabs>
       </motion.div>
