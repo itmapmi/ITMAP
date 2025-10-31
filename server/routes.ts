@@ -2329,7 +2329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       
       // Import AI service
-      const { askQuestion } = await import('./chat/ai-service');
+      const { generateChatResponse } = await import('./chat/ai-service');
       
       // Get or create conversation
       let conversation;
@@ -2354,25 +2354,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: question,
       });
       
+      // Get conversation history
+      const messages = await storage.getConversationMessages(conversation.id);
+      const conversationHistory = messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+      
+      // Build context for AI
+      const { buildMarketContext } = await import('./chat/context-builder');
+      const context = await buildMarketContext(marketId);
+      
       // Get AI response
-      const response = await askQuestion(question, marketId, conversation.id);
+      const response = await generateChatResponse(question, context, conversationHistory);
       
       // Save assistant message
       await storage.createMessage({
         conversationId: conversation.id,
         role: 'assistant',
-        content: response.answer,
+        content: response.content,
         sources: response.sources,
       });
       
       // Update conversation timestamp
-      await storage.updateConversation(conversation.id, {
-        updatedAt: new Date(),
-      });
+      await storage.updateConversation(conversation.id, {});
       
       res.json({
         conversationId: conversation.id,
-        answer: response.answer,
+        answer: response.content,
         sources: response.sources,
       });
     } catch (error) {

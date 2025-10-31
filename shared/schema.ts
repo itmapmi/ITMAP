@@ -569,7 +569,7 @@ export const chatMessages = pgTable("chat_messages", {
   conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
   role: text("role").notNull(), // 'user' or 'assistant'
   content: text("content").notNull(),
-  sources: jsonb("sources"), // Array of data sources used in response
+  sources: jsonb("data_context"), // Array of data sources used in response (column name: data_context)
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
