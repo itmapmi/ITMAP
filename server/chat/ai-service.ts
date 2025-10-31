@@ -1,8 +1,10 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client using Replit AI integration
+// Initialize OpenAI client using Replit AI Integrations
+// This uses Replit credits instead of requiring your own OpenAI API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
 
 export interface ChatContext {
