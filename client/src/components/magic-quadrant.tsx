@@ -47,6 +47,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -244,6 +245,27 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     }
   }, [savedLabelPositions]);
 
+  // Handle window resize and orientation changes
+  useEffect(() => {
+    const updateContainerWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+
+    // Initial measurement
+    updateContainerWidth();
+
+    // Listen for resize and orientation change events
+    window.addEventListener('resize', updateContainerWidth);
+    window.addEventListener('orientationchange', updateContainerWidth);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateContainerWidth);
+      window.removeEventListener('orientationchange', updateContainerWidth);
+    };
+  }, []);
 
   // Calculate support matrix scores for product capabilities (excluding ecosystem features)
   const calculateSupportMatrixScore = (vendorId: string): number => {
@@ -500,10 +522,13 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    // Fixed dimensions for consistent rendering across all devices
-    const width = 800;
-    const height = 600;
-    const margin = { top: 30, right: 30, bottom: 80, left: 80 };
+    // Responsive dimensions based on container and device
+    const containerWidth = containerRef.current.offsetWidth;
+    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
+    const height = isMobile ? 350 : 400;
+    const margin = isMobile 
+      ? { top: 15, right: 15, bottom: 50, left: 50 }
+      : { top: 20, right: 20, bottom: 60, left: 60 };
 
     svg.attr("width", width).attr("height", height).attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
 
@@ -697,33 +722,34 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     // Style axis text
     svg.selectAll(".x-axis text, .y-axis text")
       .attr("fill", "#64748b")
-      .attr("font-size", "14px")
+      .attr("font-size", isMobile ? "10px" : "12px")
       .attr("font-weight", "600");
 
     // Add professional axis labels
+    const axisLabelSize = isMobile ? "11px" : "14px";
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - 15)
+      .attr("y", height - 10)
       .attr("text-anchor", "middle")
-      .attr("font-size", "16px")
+      .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text("Product Strategy and Execution");
+      .text(isMobile ? "Execution" : "Product Strategy and Execution");
 
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", 20)
+      .attr("y", 15)
       .attr("text-anchor", "middle")
-      .attr("font-size", "16px")
+      .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text("Vendor Viability");
+      .text(isMobile ? "Viability" : "Vendor Viability");
 
     // Add quadrant labels positioned in corners
-    const quadrantLabelSize = "15px";
+    const quadrantLabelSize = isMobile ? "10px" : "13px";
     const textShadow = "0 0 3px white, 0 0 3px white, 0 0 3px white";
-    const labelOffset = 20; // Distance from corner
+    const labelOffset = isMobile ? 10 : 15; // Distance from corner
     
     // Challengers label (top-left quadrant - top right corner)
     svg.append("text")
@@ -756,7 +782,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-weight", "700")
       .attr("fill", "#f59e0b")
       .style("text-shadow", textShadow)
-      .text("Emerging Players");
+      .text(isMobile ? "Emerging" : "Emerging Players");
 
     // Innovators label (bottom-right quadrant - bottom right corner)
     svg.append("text")
@@ -881,16 +907,49 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .append("g")
       .attr("class", "vendor-group");
 
-    // Add smaller vendor dots for better label visibility (non-interactive)
+    // Add smaller vendor dots for better label visibility
     vendorGroups.append("circle")
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.adjustedX))
       .attr("cy", d => yScale(d.adjustedY))
-      .attr("r", 8)
+      .attr("r", 6) // Smaller size to avoid label conflicts
       .attr("fill", "#6366f1")
       .attr("stroke", "#ffffff")
       .attr("stroke-width", 2)
-      .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4))");
+      .style("cursor", "pointer")
+      .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4))")
+      .on("mouseover", function(event, d) {
+        d3.select(this)
+          .attr("r", 9)
+          .attr("stroke-width", 3)
+          .style("filter", "drop-shadow(0 3px 6px rgba(99, 102, 241, 0.6))");
+          
+        // Highlight the label
+        const parentGroup = d3.select(this.parentNode as Element);
+        const hoverFontSize = isMobile ? 10 : 12;
+        parentGroup.select(".vendor-label")
+          .attr("font-weight", "700")
+          .attr("font-size", `${hoverFontSize}px`);
+      })
+      .on("mouseout", function(event, d) {
+        d3.select(this)
+          .attr("r", 6)
+          .attr("stroke-width", 2)
+          .style("filter", "drop-shadow(0 2px 4px rgba(99, 102, 241, 0.4))");
+          
+        // Reset the label
+        const parentGroup = d3.select(this.parentNode as Element);
+        const normalFontSize = isMobile ? 9 : 11;
+        parentGroup.select(".vendor-label")
+          .attr("font-weight", "600")
+          .attr("font-size", `${normalFontSize}px`);
+      })
+      .on("click", function(event, d) {
+        setSelectedVendor({
+          vendor: d,
+          position: { x: d.adjustedX, y: d.adjustedY }
+        });
+      });
 
     // Enhanced four-direction label positioning with collision detection
     const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { 
@@ -1021,15 +1080,16 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const labelGroup = vendorGroups.filter((d, i) => i === index);
       
       // Add the text label positioned around the dot
+      const fontSize = isMobile ? 9 : 11;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
         .attr("y", labelPos.labelY)
         .attr("text-anchor", labelPos.anchor)
         .attr("fill", "#1f2937")
-        .attr("font-size", "13px")
+        .attr("font-size", `${fontSize}px`)
         .attr("font-weight", "600")
-        .style("cursor", "default")
+        .style("cursor", "move")
         .text(vendor.name);
 
       // Add drag behavior to the label (only if enableDrag is true)
@@ -1066,7 +1126,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, labelPositions, enableDrag, onLabelPositionChange, marketId]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1100,8 +1160,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div ref={containerRef} className="relative w-full flex justify-center">
-                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm max-w-full h-auto" style={{ pointerEvents: 'none' }} />
+              <div ref={containerRef} className="relative w-full overflow-x-auto">
+                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
                 
                 <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
                   <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
