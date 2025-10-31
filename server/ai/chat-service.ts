@@ -166,10 +166,25 @@ export async function generateChatResponse(
   // Build DATA_CONTEXT from database
   const dataContext = await buildDataContext(marketId);
 
-  // DEBUG: Log product_eval section to see what data is being sent
-  console.log("=== DATA_CONTEXT product_eval ===");
-  console.log(JSON.stringify(dataContext.product_eval, null, 2));
-  console.log("=== END product_eval ===");
+  // Preprocess user message to disambiguate product vs vendor evaluation
+  let processedMessage = userMessage;
+  const technicalKeywords = [
+    'performance', 'scalability', 'security', 'authentication', 'authorization',
+    'apis', 'api', 'integration', 'storage', 'backup', 'monitoring', 'analytics',
+    'compliance', 'networking', 'availability', 'reliability', 'durability',
+    'throughput', 'latency', 'iops', 'encryption', 'caching', 'nvme', 'ssd',
+    'protocol', 'fibre channel', 'iscsi', 'nfs', 'smb', 'replication', 'snapshot',
+    'raid', 'compression', 'deduplication', 'tiering', 'qos'
+  ];
+  
+  const lowerMessage = userMessage.toLowerCase();
+  const hasTechnicalKeyword = technicalKeywords.some(keyword => lowerMessage.includes(keyword));
+  const mentionsProductEval = lowerMessage.includes('product evaluation') || lowerMessage.includes('product features');
+  
+  // If user mentions technical keywords, clarify we want product_eval data
+  if (hasTechnicalKeyword || mentionsProductEval) {
+    processedMessage = `${userMessage}\n\nIMPORTANT: Use product_eval data section (product features), NOT vendor_eval (vendor selection criteria). Look for feature names in product_eval.features array.`;
+  }
 
   // Build messages array for OpenAI
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -183,7 +198,7 @@ export async function generateChatResponse(
     })),
     {
       role: "user",
-      content: userMessage,
+      content: processedMessage,
     },
     {
       role: "user",
