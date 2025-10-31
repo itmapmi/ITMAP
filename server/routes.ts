@@ -2,13 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pdfService } from "./pdf-generator/pdf-service";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, insertNewsSourceSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, insertNewsSourceSchema, insertAiConversationSchema, insertAiMessageSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
 import { newsStorage } from "./news/storage";
 import { runIngestion } from "./news/ingestion/runner";
 import { getRulesAsJSON } from "./news/impact/rules";
+import { chatService } from "./ai/chat-service";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
 import path from 'path';
@@ -2308,6 +2309,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching fetch logs:", error);
       res.status(500).json({ error: "Failed to fetch fetch logs" });
+    }
+  });
+
+  // ==================== AI CHAT ASSISTANT API ====================
+  
+  // POST create new conversation
+  app.post("/api/ai/conversations", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversation = await storage.createAiConversation({
+        userId: user.id,
+        title: null
+      });
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  // GET user's conversations
+  app.get("/api/ai/conversations", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversations = await storage.getAiConversationsByUser(user.id);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET conversation by ID with messages
+  app.get("/api/ai/conversations/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversation = await storage.getAiConversationById(req.params.id);
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      // Verify ownership
+      if (conversation.userId !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const messages = await storage.getAiMessagesByConversation(req.params.id);
+      
+      res.json({
+        ...conversation,
+        messages
+      });
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  // POST send message and get AI response
+  app.post("/api/ai/conversations/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const conversationId = req.params.id;
+      const { content } = req.body;
+
+      if (!content || typeof content !== 'string') {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+
+      // Verify conversation exists and user owns it
+      const conversation = await storage.getAiConversationById(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      if (conversation.userId !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Save user message
+      const userMessage = await storage.createAiMessage({
+        conversationId,
+        role: 'user',
+        content,
+        context: null
+      });
+
+      // Get conversation history for context
+      const previousMessages = await storage.getAiMessagesByConversation(conversationId);
+      const conversationHistory = previousMessages.slice(-6).map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content
+      }));
+
+      // Generate AI response
+      const aiResponse = await chatService.generateResponse(content, conversationHistory);
+
+      // Save AI message
+      const aiMessage = await storage.createAiMessage({
+        conversationId,
+        role: 'assistant',
+        content: aiResponse.message,
+        context: aiResponse.context as any
+      });
+
+      // Update conversation title if this is the first exchange
+      if (!conversation.title && previousMessages.length === 0) {
+        const title = content.length > 50 
+          ? content.substring(0, 50) + '...' 
+          : content;
+        await storage.updateAiConversation(conversationId, { title });
+      }
+
+      // Update conversation timestamp
+      await storage.updateAiConversation(conversationId, {});
+
+      res.json({
+        userMessage,
+        aiMessage,
+        context: aiResponse.context
+      });
+
+    } catch (error) {
+      console.error("Error processing message:", error);
+      res.status(500).json({ error: "Failed to process message" });
     }
   });
 
