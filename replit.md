@@ -49,6 +49,14 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables for improved organization.
 - **Import/Export**: Admin-only feature for exporting market data to Excel with three sheets (Vendor Evaluation, Product Evaluation, ISV Ecosystem) and importing pre-filled Excel templates to bulk-populate market data. Uses xlsx library for Excel generation/parsing.
 - **PDF Report Generation**: Professional PDF reports with vendor filtering, featuring detailed commentary/analysis embedded within feature support tables. Reports include support level badges (Full/Good/Partial/Limited/Not Supported) with inline commentary boxes showing detailed explanations and source references. Uses Puppeteer with system Chromium for PDF rendering.
+- **RAG-Based AI Chatbot**: Integrated into market details page as "AI Chat" tab. Implements Commentary-First Evidence Protocol v2 with strict source citation requirements. Features include:
+  - Database context builder that extracts vendor scores, features, news, and commentary
+  - Server-side commentary extraction (topEvidenceSentences) for optimal 6-18 word evidence quotes
+  - Support level mapping (Full/Good/Partial/Limited/None) for product features
+  - Auto-generated source_ids for citation tracking (format: VE-Vendor-Criteria, PF-Vendor-Feature, NEWS-articleId)
+  - Conversation history persistence with automatic title generation
+  - Markdown rendering for AI responses with tables and formatted content
+  - Comprehensive system prompt (106 lines) covering 12 question families (comparisons, rankings, features, news, gaps analysis, etc.)
 
 ## External Dependencies
 
@@ -82,7 +90,9 @@ Supports document uploads for research reports using Google Cloud Storage as pri
 - **Drizzle Zod**: Integration for database schema validation.
 
 ### AI/ML Integration
-- **OpenAI API via Replit AI Integrations**: Powers intelligent news impact analysis using ChatGPT (GPT-4o-mini). Analyzes article titles and content to classify business impact (HIGH: 80-100, MEDIUM: 50-79, LOW: 10-49) with confidence scores and detailed reasoning. Includes fallback to rule-based scoring on errors. Charges are billed to Replit credits, no external API key required.
+- **OpenAI API via Replit AI Integrations**: Powers two AI features:
+  1. **News Impact Analysis**: Uses ChatGPT (GPT-4o-mini) to analyze article titles and content, classifying business impact (HIGH: 80-100, MEDIUM: 50-79, LOW: 10-49) with confidence scores and detailed reasoning. Includes fallback to rule-based scoring on errors.
+  2. **RAG Chatbot (Commentary-First Evidence Protocol v2)**: Conversational AI assistant that answers questions about vendor evaluations, product features, and market intelligence using database context. Implements strict evidence-based protocol requiring source citations for all scores and statements. Uses temperature 0.2 for factual consistency and extracts 6-18 word evidence quotes from commentary fields. Charges are billed to Replit credits, no external API key required.
 
 ### Data Management
 - **xlsx Library**: Used for Excel file generation and parsing in the Import/Export feature.
