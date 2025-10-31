@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, queryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,16 +60,13 @@ export function MarketChat({ marketId }: MarketChatProps) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest(`/api/markets/${marketId}/chat`, {
-        method: "POST",
-        body: JSON.stringify({
-          message,
-          conversationId,
-        }),
+      const response = await apiRequest(`/api/markets/${marketId}/chat`, "POST", {
+        message,
+        conversationId,
       });
-      return response;
+      return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       // Update conversation ID if new
       if (data.isNewConversation) {
         setConversationId(data.conversationId);
