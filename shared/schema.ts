@@ -239,26 +239,6 @@ export const newsFetchLogs = pgTable("news_fetch_logs", {
   fetchedAt: timestamp("fetched_at").default(sql`now()`),
 });
 
-// AI Conversations - Chat sessions with AI assistant
-export const aiConversations = pgTable("ai_conversations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  title: text("title"), // Auto-generated from first message
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
-
-// AI Messages - Individual messages in conversations
-export const aiMessages = pgTable("ai_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: varchar("conversation_id").notNull().references(() => aiConversations.id, { onDelete: "cascade" }),
-  role: text("role").notNull(), // 'user' or 'assistant'
-  content: text("content").notNull(),
-  // Optional: store retrieved context for debugging
-  context: jsonb("context"), // Database data used to generate response
-  createdAt: timestamp("created_at").default(sql`now()`),
-});
-
 // Relations
 export const marketsRelations = relations(markets, ({ many, one }) => ({
   subMarkets: many(subMarkets),
@@ -392,21 +372,6 @@ export const newsFetchLogsRelations = relations(newsFetchLogs, ({ one }) => ({
   }),
 }));
 
-export const aiConversationsRelations = relations(aiConversations, ({ one, many }) => ({
-  user: one(users, {
-    fields: [aiConversations.userId],
-    references: [users.id],
-  }),
-  messages: many(aiMessages),
-}));
-
-export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
-  conversation: one(aiConversations, {
-    fields: [aiMessages.conversationId],
-    references: [aiConversations.id],
-  }),
-}));
-
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -525,17 +490,6 @@ export const insertNewsFetchLogSchema = createInsertSchema(newsFetchLogs).omit({
   fetchedAt: true,
 });
 
-export const insertAiConversationSchema = createInsertSchema(aiConversations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertAiMessageSchema = createInsertSchema(aiMessages).omit({
-  id: true,
-  createdAt: true,
-});
-
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -598,9 +552,3 @@ export type NewsArticle = typeof newsArticles.$inferSelect;
 
 export type InsertNewsFetchLog = z.infer<typeof insertNewsFetchLogSchema>;
 export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;
-
-export type InsertAiConversation = z.infer<typeof insertAiConversationSchema>;
-export type AiConversation = typeof aiConversations.$inferSelect;
-
-export type InsertAiMessage = z.infer<typeof insertAiMessageSchema>;
-export type AiMessage = typeof aiMessages.$inferSelect;

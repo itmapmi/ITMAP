@@ -14,7 +14,6 @@ import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
 import { MarketNews } from "@/components/market-news";
 import { VendorSelectionModal } from "@/components/vendor-selection-modal";
-import { AiChatButton } from "@/components/ai-chat/ai-chat-button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Market, Vendor } from "@shared/schema";
@@ -286,9 +285,6 @@ export default function MarketDetails() {
         description="Select vendors to include in the full market report (all sections combined)"
         isGenerating={isGenerating}
       />
-
-      {/* AI Chat Assistant - Only shown on market pages */}
-      <AiChatButton />
     </div>
   );
 }

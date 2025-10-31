@@ -28,10 +28,6 @@ import {
   type InsertVendorLabelPosition,
   type NewPlayer,
   type InsertNewPlayer,
-  type AiConversation,
-  type InsertAiConversation,
-  type AiMessage,
-  type InsertAiMessage,
   users,
   userActivityLogs,
   markets,
@@ -47,8 +43,6 @@ import {
   historicalPositions,
   vendorLabelPositions,
   newPlayers,
-  aiConversations,
-  aiMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -139,16 +133,6 @@ export interface IStorage {
   createNewPlayer(player: InsertNewPlayer): Promise<NewPlayer>;
   updateNewPlayer(id: string, player: Partial<InsertNewPlayer>): Promise<NewPlayer>;
   deleteNewPlayer(id: string): Promise<void>;
-  
-  // AI Conversations
-  createAiConversation(conversation: InsertAiConversation): Promise<AiConversation>;
-  getAiConversationsByUser(userId: string): Promise<AiConversation[]>;
-  getAiConversationById(id: string): Promise<AiConversation | undefined>;
-  updateAiConversation(id: string, updates: Partial<InsertAiConversation>): Promise<AiConversation>;
-  
-  // AI Messages
-  createAiMessage(message: InsertAiMessage): Promise<AiMessage>;
-  getAiMessagesByConversation(conversationId: string): Promise<AiMessage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -825,51 +809,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNewPlayer(id: string): Promise<void> {
     await db.delete(newPlayers).where(eq(newPlayers.id, id));
-  }
-
-  // AI Conversations
-  async createAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
-    const [created] = await db.insert(aiConversations).values(conversation).returning();
-    return created!;
-  }
-
-  async getAiConversationsByUser(userId: string): Promise<AiConversation[]> {
-    return await db
-      .select()
-      .from(aiConversations)
-      .where(eq(aiConversations.userId, userId))
-      .orderBy(desc(aiConversations.updatedAt));
-  }
-
-  async getAiConversationById(id: string): Promise<AiConversation | undefined> {
-    const [conversation] = await db
-      .select()
-      .from(aiConversations)
-      .where(eq(aiConversations.id, id));
-    return conversation || undefined;
-  }
-
-  async updateAiConversation(id: string, updates: Partial<InsertAiConversation>): Promise<AiConversation> {
-    const [updated] = await db
-      .update(aiConversations)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(aiConversations.id, id))
-      .returning();
-    return updated!;
-  }
-
-  // AI Messages
-  async createAiMessage(message: InsertAiMessage): Promise<AiMessage> {
-    const [created] = await db.insert(aiMessages).values(message).returning();
-    return created!;
-  }
-
-  async getAiMessagesByConversation(conversationId: string): Promise<AiMessage[]> {
-    return await db
-      .select()
-      .from(aiMessages)
-      .where(eq(aiMessages.conversationId, conversationId))
-      .orderBy(aiMessages.createdAt);
   }
 }
 
