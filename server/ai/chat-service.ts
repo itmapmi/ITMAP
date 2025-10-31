@@ -166,6 +166,11 @@ export async function generateChatResponse(
   // Build DATA_CONTEXT from database
   const dataContext = await buildDataContext(marketId);
 
+  // DEBUG: Log product_eval section to see what data is being sent
+  console.log("=== DATA_CONTEXT product_eval ===");
+  console.log(JSON.stringify(dataContext.product_eval, null, 2));
+  console.log("=== END product_eval ===");
+
   // Build messages array for OpenAI
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     {
