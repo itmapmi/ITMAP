@@ -171,11 +171,44 @@ export async function buildDataContext(marketId: string): Promise<DataContext> {
     features,
   }));
 
-  // Build ecosystem: Currently not implemented in database
-  // TODO: Add ecosystem_integrations table in future
+  // Build ecosystem: Extract from feature_support where category is ecosystem-related
+  const ecosystemMap = new Map<string, Array<any>>();
+  
+  for (const fs of featureSupportData) {
+    // Check if this feature is ecosystem-related (based on category name)
+    const categoryName = (fs as any).category?.name?.toLowerCase() || '';
+    const isEcosystem = 
+      categoryName.includes('ecosystem') ||
+      categoryName.includes('integration') ||
+      categoryName.includes('partnership') ||
+      categoryName.includes('third-party');
+    
+    if (!isEcosystem) continue;
+    
+    if (!ecosystemMap.has(fs.vendorId)) {
+      ecosystemMap.set(fs.vendorId, []);
+    }
+    
+    // Extract best commentary sentences
+    const commentary = fs.comments 
+      ? topEvidenceSentences(fs.comments, 2).join('. ') || fs.comments
+      : "— (no commentary provided)";
+    
+    // Generate source_id if not present
+    const sourceId = fs.sourceId || `EC-${fs.vendor.name.replace(/\s+/g, '-')}-${fs.feature.name.replace(/\s+/g, '-')}`;
+    
+    ecosystemMap.get(fs.vendorId)!.push({
+      isv_id: fs.featureId, // Using feature ID as ISV identifier
+      isv_name: fs.feature.name,
+      integration_level: mapSupportLevel(fs.supportLevel),
+      commentary,
+      source_id: sourceId,
+    });
+  }
+
   const ecosystem = vendors.map(v => ({
     vendor_id: v.id,
-    integrations: [], // Empty for now
+    integrations: ecosystemMap.get(v.id) || [],
   }));
 
   // Build news array

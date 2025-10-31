@@ -268,7 +268,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vendorScores.vendorId, vendorId));
   }
 
-  async getMarketVendorScores(marketId: string): Promise<(VendorScore & { vendor: Vendor; criteria: Criteria })[]> {
+  async getMarketVendorScores(marketId: string): Promise<any[]> {
     return await db
       .select({
         id: vendorScores.id,
@@ -276,6 +276,7 @@ export class DatabaseStorage implements IStorage {
         criteriaId: vendorScores.criteriaId,
         score: vendorScores.score,
         notes: vendorScores.notes,
+        sourceId: vendorScores.sourceId,
         createdAt: vendorScores.createdAt,
         updatedAt: vendorScores.updatedAt,
         vendor: vendors,
@@ -466,7 +467,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vendor Feature Support
-  async getVendorFeatureSupport(marketId: string): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]> {
+  async getVendorFeatureSupport(marketId: string): Promise<any[]> {
     return await db
       .select({
         id: vendorFeatureSupport.id,
@@ -474,13 +475,16 @@ export class DatabaseStorage implements IStorage {
         featureId: vendorFeatureSupport.featureId,
         supportLevel: vendorFeatureSupport.supportLevel,
         comments: vendorFeatureSupport.comments,
+        sourceId: vendorFeatureSupport.sourceId,
         updatedAt: vendorFeatureSupport.updatedAt,
         vendor: vendors,
         feature: features,
+        category: featureCategories,
       })
       .from(vendorFeatureSupport)
       .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
       .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
+      .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
       .where(eq(vendors.marketId, marketId));
   }
 
