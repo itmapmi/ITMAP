@@ -2311,6 +2311,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== CHAT API ====================
+  
+  // POST ask a question
+  app.post("/api/chat/ask", requireAuth, async (req, res) => {
+    try {
+      const { question, marketId, conversationId } = req.body;
+      
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ error: "Question is required" });
+      }
+      
+      if (!marketId) {
+        return res.status(400).json({ error: "Market ID is required" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Import AI service
+      const { askQuestion } = await import('./chat/ai-service');
+      
+      // Get or create conversation
+      let conversation;
+      if (conversationId) {
+        conversation = await storage.getConversationById(conversationId);
+        if (!conversation || conversation.userId !== userId) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+      } else {
+        // Create new conversation
+        conversation = await storage.createConversation({
+          userId,
+          marketId,
+          title: question.substring(0, 100), // Use first 100 chars as title
+        });
+      }
+      
+      // Save user message
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: 'user',
+        content: question,
+      });
+      
+      // Get AI response
+      const response = await askQuestion(question, marketId, conversation.id);
+      
+      // Save assistant message
+      await storage.createMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: response.answer,
+        sources: response.sources,
+      });
+      
+      // Update conversation timestamp
+      await storage.updateConversation(conversation.id, {
+        updatedAt: new Date(),
+      });
+      
+      res.json({
+        conversationId: conversation.id,
+        answer: response.answer,
+        sources: response.sources,
+      });
+    } catch (error) {
+      console.error("Error processing chat question:", error);
+      res.status(500).json({ error: "Failed to process question" });
+    }
+  });
+  
+  // GET user conversations
+  app.get("/api/chat/conversations", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const conversations = await storage.getUserConversations(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+  
+  // GET conversation messages
+  app.get("/api/chat/conversations/:id/messages", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      // Verify user owns conversation
+      const conversation = await storage.getConversationById(id);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      const messages = await storage.getConversationMessages(id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+  
+  // DELETE conversation
+  app.delete("/api/chat/conversations/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      // Verify user owns conversation
+      const conversation = await storage.getConversationById(id);
+      if (!conversation || conversation.userId !== userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      await storage.deleteConversation(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
