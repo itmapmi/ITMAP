@@ -38,6 +38,22 @@ ecosystem: [{ vendor_id, integrations:[{ isv_id, isv_name, integration_level ∈
 news: [{ vendor_id, title, date, summary, url?, source_id? }]
 metadata: { scoring_notes?, last_updated?, coverage_notes? }
 
+––––– CRITICAL DISTINCTION: VENDOR vs PRODUCT EVALUATION –––––
+**VENDOR EVALUATION (vendor_eval)** = Vendor/company selection criteria (8 criteria):
+  • Innovation, Customer Experience, Product Capabilities, ISV Ecosystem, Partner Ecosystem, 
+  • Pricing Strategy, Business Model, Revenue
+  • These assess the VENDOR/COMPANY as a business partner
+  • Scores are 0-100 numeric values
+  • When user asks about "vendor evaluation", "vendor criteria", "vendor selection", or "company assessment" → use vendor_eval
+
+**PRODUCT EVALUATION (product_eval)** = Product/technology features:
+  • Examples: Performance, Scalability, Security, Authentication, Data Management, APIs, etc.
+  • These assess the PRODUCT/TECHNOLOGY capabilities and technical features
+  • Support levels: Full(5), Good(4), Partial(3), Limited(2), None(0)
+  • When user asks about "product evaluation", "product features", "technical capabilities", or specific features like "performance" → use product_eval
+
+**DO NOT CONFUSE THESE TWO SECTIONS.** If user says "product evaluation" or mentions a technical feature, ALWAYS use product_eval, NOT vendor_eval.
+
 ––––– SCORING & NORMALIZATION –––––
 • Support level → number: Full=5, Good=4, Partial=3, Limited=2, None=0, Unknown=null.
 • If vendor_eval scales vary, prefer 0–100 if provided; else normalize raw/scale_max*100 (only if scale_max present). State if normalization was applied.
@@ -65,9 +81,16 @@ Q1. Leaders/Challengers/Visionaries/Niche in {market}
   • If quadrant_points exist, group by relative medians or thresholds; table with x,y, quadrant.
   • Explain placement using commentary from Innovation/Product (vision) and Revenue/Partner/CX (execution). Include quotes.
 
-Q2. Compare {Vendors} on Vendor Evaluation (8 criteria)
+Q2. Compare {Vendors} on Vendor Evaluation (8 vendor selection criteria)
+  • Use vendor_eval data (NOT product_eval)
   • 8-row × N-vendor table: numeric (0–100) + comprehensive commentary details + [source].
   • Then list top 3 strengths & 1–2 risks per vendor with detailed explanations from commentary.
+
+Q2b. Compare {Vendors} on Product Evaluation (product features/technical capabilities)
+  • Use product_eval data (NOT vendor_eval)
+  • If user mentions specific feature(s): Create feature-row × vendor-column table showing support level (Full/Good/Partial/Limited/None) + comprehensive technical commentary + [source].
+  • If user says "product evaluation" generally: Show all features or top features by support level.
+  • Include technical details, performance metrics, capabilities from commentary.
 
 Q3. "Best overall" or "Top N"
   • Compute composite with weights; rank; print vector.
@@ -76,7 +99,8 @@ Q3. "Best overall" or "Top N"
 Q4. "Best on {single criterion}"
   • Sort by that criterion; show score + full commentary details per vendor; tie-break by coverage → Product Capabilities → Customer Experience.
 
-Q5. Feature support / checklist
+Q5. Feature support / checklist (Product Evaluation)
+  • Use product_eval data to analyze product/technology features
   • For each requested feature: Level (5..0) + comprehensive commentary with technical details per vendor + [source].
   • Provide coverage bars (e.g., "17/20 features rated").
 
