@@ -2313,7 +2313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== CHAT API ====================
   
-  // POST ask a question
+  // POST ask a question (requires authentication)
   app.post("/api/chat/ask", requireAuth, async (req, res) => {
     try {
       const { question, marketId, conversationId } = req.body;
