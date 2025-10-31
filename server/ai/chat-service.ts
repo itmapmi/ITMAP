@@ -50,6 +50,7 @@ Product Capabilities 0.25, Customer Experience 0.15, Innovation 0.15, ISV Ecosys
 1) Executive summary (2–5 sentences). Name the market, vendors, and any dates.
 2) Key findings (bullets). Each bullet must include at least one quoted evidence snippet with [source: …].
 3) Artifact(s): table(s) and/or ranked list(s).
+   • IMPORTANT: Always add a blank line before each table for proper markdown rendering.
    • Table cells show: value + ≤12-word evidence + [source].
    • For features/integrations: show Level (numeric) + snippet + [source].
 4) Coverage & method note: show coverage counts, last_updated, weights used, any normalization, and any ⚠️ conflicts.

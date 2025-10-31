@@ -140,3 +140,39 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* Markdown table styling for chat messages */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.875rem;
+}
+
+.prose thead {
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.prose th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.prose td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.prose tbody tr:hover {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+.dark .prose th {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+.dark .prose tbody tr:hover {
+  background-color: hsl(var(--muted) / 0.2);
+}
