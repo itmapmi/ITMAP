@@ -28,6 +28,10 @@ import {
   type InsertVendorLabelPosition,
   type NewPlayer,
   type InsertNewPlayer,
+  type ChatConversation,
+  type InsertChatConversation,
+  type ChatMessage,
+  type InsertChatMessage,
   users,
   userActivityLogs,
   markets,
@@ -43,6 +47,8 @@ import {
   historicalPositions,
   vendorLabelPositions,
   newPlayers,
+  chatConversations,
+  chatMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -133,6 +139,17 @@ export interface IStorage {
   createNewPlayer(player: InsertNewPlayer): Promise<NewPlayer>;
   updateNewPlayer(id: string, player: Partial<InsertNewPlayer>): Promise<NewPlayer>;
   deleteNewPlayer(id: string): Promise<void>;
+  
+  // Chat Conversations
+  getUserConversations(userId: string): Promise<any[]>;
+  getConversationById(id: string): Promise<any | undefined>;
+  createConversation(conversation: any): Promise<any>;
+  updateConversation(id: string, updates: any): Promise<any>;
+  deleteConversation(id: string): Promise<void>;
+  
+  // Chat Messages
+  getConversationMessages(conversationId: string): Promise<any[]>;
+  createMessage(message: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -809,6 +826,61 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNewPlayer(id: string): Promise<void> {
     await db.delete(newPlayers).where(eq(newPlayers.id, id));
+  }
+
+  // Chat Conversations
+  async getUserConversations(userId: string): Promise<ChatConversation[]> {
+    return await db
+      .select()
+      .from(chatConversations)
+      .where(eq(chatConversations.userId, userId))
+      .orderBy(desc(chatConversations.updatedAt));
+  }
+
+  async getConversationById(id: string): Promise<ChatConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(chatConversations)
+      .where(eq(chatConversations.id, id));
+    return conversation || undefined;
+  }
+
+  async createConversation(conversation: InsertChatConversation): Promise<ChatConversation> {
+    const [newConversation] = await db
+      .insert(chatConversations)
+      .values(conversation)
+      .returning();
+    return newConversation!;
+  }
+
+  async updateConversation(id: string, updates: Partial<InsertChatConversation>): Promise<ChatConversation> {
+    const [updated] = await db
+      .update(chatConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(chatConversations.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    await db.delete(chatConversations).where(eq(chatConversations.id, id));
+  }
+
+  // Chat Messages
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+  }
+
+  async createMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [newMessage] = await db
+      .insert(chatMessages)
+      .values(message)
+      .returning();
+    return newMessage!;
   }
 }
 

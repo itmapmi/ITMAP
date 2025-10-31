@@ -552,3 +552,62 @@ export type NewsArticle = typeof newsArticles.$inferSelect;
 
 export type InsertNewsFetchLog = z.infer<typeof insertNewsFetchLogSchema>;
 export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;
+
+// Chat Conversations - Store chat sessions per market
+export const chatConversations = pgTable("chat_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  title: text("title"), // Auto-generated from first message
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Chat Messages - Individual messages within conversations
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => chatConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  sources: jsonb("sources"), // Array of data sources used in response
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Relations for chat
+export const chatConversationsRelations = relations(chatConversations, ({ one, many }) => ({
+  user: one(users, {
+    fields: [chatConversations.userId],
+    references: [users.id],
+  }),
+  market: one(markets, {
+    fields: [chatConversations.marketId],
+    references: [markets.id],
+  }),
+  messages: many(chatMessages),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  conversation: one(chatConversations, {
+    fields: [chatMessages.conversationId],
+    references: [chatConversations.id],
+  }),
+}));
+
+// Insert schemas
+export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertChatConversation = z.infer<typeof insertChatConversationSchema>;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
