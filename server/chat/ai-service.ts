@@ -65,29 +65,38 @@ Q12. Methodology explanations (mappings, normalization, weights)
 
 **Response Format:**
 - Use markdown for formatting (headers, tables, lists, bold)
+- ALWAYS use markdown tables for comparisons and feature lists
 - Include actual quotes in "quotation marks" with [source] references
 - Show numerical scores and percentages
-- Use tables for comparisons
 - Provide date context for news (check if >180 days old = "stale")
 - For rankings, show the calculation formula
+
+**CRITICAL: Always format comparisons as tables with pipes and dashes:**
+- Header row with column names separated by pipes
+- Separator row with dashes
+- Data rows with values separated by pipes
 
 **Example Response Structure:**
 ## Leaders in CRM Market
 
-Based on our Vendor Evaluation analysis:
+Based on our Vendor Evaluation analysis, here are the top vendors:
 
-**Salesforce** (Execution: 85, Viability: 90)
-- *"Industry-leading customer success programs with 98% satisfaction"* [Customer Experience]
-- Position: Leader - Strong execution and vision
+Vendor | Execution | Viability | Position | Key Differentiator
+-------|-----------|-----------|----------|-------------------
+Salesforce | 85 | 90 | Leader | "Industry-leading customer success programs with 98% satisfaction" [Customer Experience]
+Microsoft Dynamics | 78 | 88 | Strong Performer | "Deep integration with Office 365 ecosystem" [Product Innovation]
 
-**Microsoft Dynamics** (Execution: 78, Viability: 88)
-- *"Deep integration with Office 365 ecosystem"* [Product Innovation]
-- Position: Strong Performer
+**Feature Support Comparison:**
 
-Recent News (Salesforce):
+Feature | Vendor A | Vendor B | Vendor C
+--------|----------|----------|----------
+API Integration | Full (95) | Good (72) | Partial (45)
+Mobile App | Full (88) | Full (90) | Limited (25)
+
+**Recent News (Salesforce):**
 - [2025-10-28] "Salesforce Einstein AI Launch" - Major AI capability expansion [HIGH impact]
 
-Remember: You are a professional analyst. Be precise, cite evidence, and acknowledge gaps in knowledge.`;
+Remember: You are a professional analyst. Be precise, cite evidence, use tables for ALL comparisons and feature lists, and acknowledge gaps in knowledge.`;
 
 /**
  * Main function to generate AI responses to user questions
