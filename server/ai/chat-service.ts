@@ -166,25 +166,31 @@ export async function generateChatResponse(
   // Build DATA_CONTEXT from database
   const dataContext = await buildDataContext(marketId);
 
-  // Preprocess user message to disambiguate product vs vendor evaluation
-  let processedMessage = userMessage;
+  // Detect intent: Is this a technical/product question or vendor selection question?
   const technicalKeywords = [
     'performance', 'scalability', 'security', 'authentication', 'authorization',
     'apis', 'api', 'integration', 'storage', 'backup', 'monitoring', 'analytics',
     'compliance', 'networking', 'availability', 'reliability', 'durability',
     'throughput', 'latency', 'iops', 'encryption', 'caching', 'nvme', 'ssd',
     'protocol', 'fibre channel', 'iscsi', 'nfs', 'smb', 'replication', 'snapshot',
-    'raid', 'compression', 'deduplication', 'tiering', 'qos'
+    'raid', 'compression', 'deduplication', 'tiering', 'qos', 'feature', 'features',
+    'capability', 'capabilities', 'support', 'technical'
   ];
   
   const lowerMessage = userMessage.toLowerCase();
   const hasTechnicalKeyword = technicalKeywords.some(keyword => lowerMessage.includes(keyword));
   const mentionsProductEval = lowerMessage.includes('product evaluation') || lowerMessage.includes('product features');
+  const isTechnicalQuery = hasTechnicalKeyword || mentionsProductEval;
   
-  // If user mentions technical keywords, clarify we want product_eval data
-  if (hasTechnicalKeyword || mentionsProductEval) {
-    processedMessage = `${userMessage}\n\nIMPORTANT: Use product_eval data section (product features), NOT vendor_eval (vendor selection criteria). Look for feature names in product_eval.features array.`;
-  }
+  // Filter DATA_CONTEXT based on query intent
+  // If technical query, remove vendor_eval to prevent confusion
+  const filteredContext = isTechnicalQuery ? {
+    market: dataContext.market,
+    vendors: dataContext.vendors,
+    product_eval: dataContext.product_eval,
+    ecosystem: dataContext.ecosystem,
+    news: dataContext.news
+  } : dataContext;
 
   // Build messages array for OpenAI
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -198,11 +204,11 @@ export async function generateChatResponse(
     })),
     {
       role: "user",
-      content: processedMessage,
+      content: userMessage,
     },
     {
       role: "user",
-      content: `DATA_CONTEXT:\n${JSON.stringify(dataContext, null, 2)}`,
+      content: `DATA_CONTEXT:\n${JSON.stringify(filteredContext, null, 2)}`,
     },
   ];
 
