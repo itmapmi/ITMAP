@@ -8,6 +8,8 @@ import MobileRegister from "@/mobile/pages/MobileRegister";
 import MobileDashboard from "@/mobile/pages/MobileDashboard";
 import MobileMarketDetails from "@/mobile/pages/MobileMarketDetails";
 import MobileVendorDetails from "@/mobile/pages/MobileVendorDetails";
+import MobilePlatform from "@/mobile/pages/MobilePlatform";
+import MobileContactUs from "@/mobile/pages/MobileContactUs";
 import MobileLayout from "@/mobile/components/MobileLayout";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -56,6 +58,8 @@ function MobileRouter() {
         <Route path="/mobile/register" component={MobileRegister} />
         <Route path="/mobile" component={() => <ProtectedRoute component={MobileDashboard} />} />
         <Route path="/mobile/dashboard" component={() => <ProtectedRoute component={MobileDashboard} />} />
+        <Route path="/mobile/platform" component={() => <ProtectedRoute component={MobilePlatform} />} />
+        <Route path="/mobile/contact" component={() => <ProtectedRoute component={MobileContactUs} />} />
         <Route path="/mobile/markets/:marketId" component={() => <ProtectedRoute component={MobileMarketDetails} />} />
         <Route path="/mobile/vendors/:vendorId" component={() => <ProtectedRoute component={MobileVendorDetails} />} />
         <Route component={() => <ProtectedRoute component={MobileDashboard} />} />

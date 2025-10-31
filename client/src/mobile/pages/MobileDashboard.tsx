@@ -4,7 +4,7 @@ import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardDescription } 
 import { MobileLoadingSpinner } from "@/mobile/components/MobileLoadingSpinner";
 import { MobileEmptyState } from "@/mobile/components/MobileEmptyState";
 import { Link } from "wouter";
-import { BarChart3, ChevronRight, LogOut } from "lucide-react";
+import { BarChart3, ChevronRight, LogOut, Info, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Market } from "@shared/schema";
 
@@ -50,6 +50,40 @@ export default function MobileDashboard() {
           <p className="text-blue-100 text-sm">
             Unbiased. Comprehensive. Your trusted source for technology market intelligence.
           </p>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="px-4 pb-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/mobile/platform">
+            <a data-testid="link-platform">
+              <MobileCard className="hover:shadow-md transition-shadow h-full">
+                <MobileCardHeader className="text-center">
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <div className="bg-blue-100 p-3 rounded-full">
+                      <Info className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <MobileCardTitle className="text-base">Platform</MobileCardTitle>
+                  </div>
+                </MobileCardHeader>
+              </MobileCard>
+            </a>
+          </Link>
+          <Link href="/mobile/contact">
+            <a data-testid="link-contact">
+              <MobileCard className="hover:shadow-md transition-shadow h-full">
+                <MobileCardHeader className="text-center">
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <div className="bg-green-100 p-3 rounded-full">
+                      <Mail className="h-6 w-6 text-green-600" />
+                    </div>
+                    <MobileCardTitle className="text-base">Contact Us</MobileCardTitle>
+                  </div>
+                </MobileCardHeader>
+              </MobileCard>
+            </a>
+          </Link>
         </div>
       </div>
 
