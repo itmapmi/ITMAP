@@ -12,24 +12,25 @@ const openai = new OpenAI({
 const SYSTEM_PROMPT = `You are ITMAP AI Assistant, an expert market research analyst specializing in enterprise technology vendor analysis. Your role is to help users understand technology markets, compare vendors, and make informed decisions based on ITMAP's comprehensive research database.
 
 **YOUR CAPABILITIES:**
-- Vendor Evaluation: Provide execution and viability scores, positioning insights
-- Product Comparison: Compare vendor features, capabilities, and ecosystem support
-- Market Intelligence: Share market trends, vendor news, and competitive landscape
-- Recommendation Support: Help users identify suitable vendors based on requirements
+- **Vendor Evaluation**: Provide execution and viability scores, positioning insights
+- **Product Comparison**: Compare vendor features, capabilities, and ecosystem support. When comparing products, highlight top strengths by analyzing feature support scores (0-100 scale) and detailed comments.
+- **Market Intelligence**: Share market trends, vendor news, and competitive landscape
+- **Recommendation Support**: Help users identify suitable vendors based on requirements
 
 **CRITICAL RULES:**
 1. **DATABASE-ONLY RESPONSES**: You MUST answer ONLY using the provided database context. NEVER make up data, scores, or vendor information.
 2. **NO EXTERNAL KNOWLEDGE**: Do not reference information outside the provided context, even if you know it.
 3. **HONESTY**: If information isn't in the context, say: "I don't have that information in our database yet."
-4. **SOURCE CITATIONS**: When providing scores or specific data, reference the source (e.g., "Based on our Vendor Evaluation...")
+4. **SOURCE CITATIONS**: When providing scores or specific data, reference the source (e.g., "Based on our Product Evaluation data...")
 5. **PROFESSIONAL TONE**: Be helpful, concise, and professional. Avoid being overly casual.
 6. **STRUCTURED RESPONSES**: Use bullet points, tables, or clear sections for comparisons.
 
 **RESPONSE FORMAT GUIDELINES:**
-- For vendor comparisons: Use structured comparison format
-- For scores: Present numerical data clearly with context
-- For news: Summarize key points with impact levels
-- For features: Organize by category when applicable
+- **For vendor comparisons**: Create structured side-by-side comparison with key differentiators
+- **For identifying strengths**: Look for features with high support scores (75-100) and analyze the detailed comments
+- **For scores**: Present numerical data clearly with context (e.g., "85/100 indicates strong support")
+- **For news**: Summarize key points with impact levels
+- **For features**: Organize by category and support level (✓✓✓ for 75+, ✓✓ for 50-74, ✓ for 25-49)
 
 **WHAT YOU CANNOT DO:**
 - Make predictions about future market trends
@@ -37,7 +38,7 @@ const SYSTEM_PROMPT = `You are ITMAP AI Assistant, an expert market research ana
 - Share information not in the database
 - Make subjective vendor recommendations without data backing
 
-Remember: You are a research assistant providing factual, data-driven insights based on ITMAP's database.`;
+Remember: You are a research assistant providing factual, data-driven insights based on ITMAP's database. When comparing products, focus on objective feature support scores and detailed evaluation comments.`;
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -172,24 +173,42 @@ export class ChatService {
       parts.push('');
     }
 
-    // Feature Support
+    // Feature Support - Enhanced for comparisons
     if (context.featureSupport && context.featureSupport.length > 0) {
-      parts.push('=== PRODUCT CAPABILITIES ===');
-      context.featureSupport.forEach((vendorFeatures: any) => {
-        const vendor = context.vendors?.find(v => v.id === vendorFeatures.vendorId);
-        if (vendor && vendorFeatures.features && vendorFeatures.features.length > 0) {
-          parts.push(`${vendor.name}: ${vendorFeatures.features.length} features evaluated`);
+      parts.push('=== PRODUCT FEATURE SUPPORT (0-100 scale) ===');
+      
+      // Group features by vendor for better comparison
+      const featuresByVendor = new Map<string, any[]>();
+      context.featureSupport.forEach((fs: any) => {
+        if (!featuresByVendor.has(fs.vendor.id)) {
+          featuresByVendor.set(fs.vendor.id, []);
+        }
+        featuresByVendor.get(fs.vendor.id)!.push(fs);
+      });
+      
+      featuresByVendor.forEach((features, vendorId) => {
+        const vendor = context.vendors?.find(v => v.id === vendorId);
+        if (vendor) {
+          parts.push(`\n${vendor.name} - ${features.length} features evaluated:`);
           
-          // Sample some key features
-          const supportedFeatures = vendorFeatures.features
-            .filter((f: any) => ['full', 'good'].includes(f.supportLevel?.toLowerCase()))
-            .slice(0, 5);
+          // Sort by support level (highest first) and show top features
+          const topFeatures = features
+            .sort((a: any, b: any) => (b.supportLevel || 0) - (a.supportLevel || 0))
+            .slice(0, 15); // Show more features for better comparison
           
-          if (supportedFeatures.length > 0) {
-            supportedFeatures.forEach((f: any) => {
-              parts.push(`  ✓ ${f.feature.name} (${f.supportLevel})`);
-            });
-          }
+          topFeatures.forEach((f: any) => {
+            const supportLevel = f.supportLevel || 0;
+            const supportLabel = supportLevel >= 75 ? '✓✓✓' : supportLevel >= 50 ? '✓✓' : supportLevel >= 25 ? '✓' : '○';
+            parts.push(`  ${supportLabel} ${f.feature.name}: ${supportLevel}/100`);
+            
+            // Include detailed comments for context
+            if (f.comments && f.comments.length > 0) {
+              const shortComment = f.comments.length > 150 
+                ? f.comments.substring(0, 150) + '...' 
+                : f.comments;
+              parts.push(`     → ${shortComment}`);
+            }
+          });
         }
       });
       parts.push('');
