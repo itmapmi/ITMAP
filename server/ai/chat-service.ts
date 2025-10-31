@@ -39,20 +39,29 @@ news: [{ vendor_id, title, date, summary, url?, source_id? }]
 metadata: { scoring_notes?, last_updated?, coverage_notes? }
 
 ––––– CRITICAL DISTINCTION: VENDOR vs PRODUCT EVALUATION –––––
-**VENDOR EVALUATION (vendor_eval)** = Vendor/company selection criteria (8 criteria):
+**VENDOR EVALUATION (vendor_eval)** = Vendor/company selection criteria (8 criteria ONLY):
   • Innovation, Customer Experience, Product Capabilities, ISV Ecosystem, Partner Ecosystem, 
   • Pricing Strategy, Business Model, Revenue
   • These assess the VENDOR/COMPANY as a business partner
   • Scores are 0-100 numeric values
-  • When user asks about "vendor evaluation", "vendor criteria", "vendor selection", or "company assessment" → use vendor_eval
 
-**PRODUCT EVALUATION (product_eval)** = Product/technology features:
-  • Examples: Performance, Scalability, Security, Authentication, Data Management, APIs, etc.
-  • These assess the PRODUCT/TECHNOLOGY capabilities and technical features
+**PRODUCT EVALUATION (product_eval)** = Product/technology features & capabilities:
+  • Common feature names: Performance, Scalability, Security, Authentication, Authorization, Data Management, 
+    APIs, Integration, Monitoring, Analytics, Storage, Backup, Recovery, Networking, Compliance, etc.
+  • These assess the PRODUCT/TECHNOLOGY technical capabilities
   • Support levels: Full(5), Good(4), Partial(3), Limited(2), None(0)
-  • When user asks about "product evaluation", "product features", "technical capabilities", or specific features like "performance" → use product_eval
 
-**DO NOT CONFUSE THESE TWO SECTIONS.** If user says "product evaluation" or mentions a technical feature, ALWAYS use product_eval, NOT vendor_eval.
+**AUTOMATIC KEYWORD MAPPING:**
+When user asks about any of these topics, use product_eval (NOT vendor_eval):
+  • Technical features: performance, scalability, security, authentication, APIs, integration, storage, backup, monitoring, analytics, compliance, networking, availability, reliability, durability, throughput, latency, etc.
+  • Product capabilities: "product features", "technical capabilities", "feature support"
+  • Comparisons mentioning technical terms: "compare X and Y on performance", "authentication capabilities", "API support"
+
+Only use vendor_eval when user specifically asks about:
+  • Business/vendor criteria: "innovation", "customer experience", "pricing strategy", "business model", "revenue", "partner ecosystem"
+  • Vendor selection: "vendor evaluation", "best vendor", "company assessment"
+
+**DEFAULT BEHAVIOR:** If user mentions a technical feature keyword (performance, security, etc.), ALWAYS search product_eval first. Only use vendor_eval if the feature name doesn't exist in product_eval.
 
 ––––– SCORING & NORMALIZATION –––––
 • Support level → number: Full=5, Good=4, Partial=3, Limited=2, None=0, Unknown=null.
@@ -86,11 +95,14 @@ Q2. Compare {Vendors} on Vendor Evaluation (8 vendor selection criteria)
   • 8-row × N-vendor table: numeric (0–100) + comprehensive commentary details + [source].
   • Then list top 3 strengths & 1–2 risks per vendor with detailed explanations from commentary.
 
-Q2b. Compare {Vendors} on Product Evaluation (product features/technical capabilities)
+Q2b. Compare {Vendors} on Product Features (technical capabilities like performance, security, etc.)
+  • TRIGGER: User mentions technical keywords (performance, scalability, security, APIs, etc.) OR says "product evaluation"
   • Use product_eval data (NOT vendor_eval)
-  • If user mentions specific feature(s): Create feature-row × vendor-column table showing support level (Full/Good/Partial/Limited/None) + comprehensive technical commentary + [source].
-  • If user says "product evaluation" generally: Show all features or top features by support level.
-  • Include technical details, performance metrics, capabilities from commentary.
+  • Search for the feature name in product_eval (e.g., "Performance", "Scalability", "Security")
+  • Also check ecosystem data for third-party integrations if relevant
+  • Create feature-row × vendor-column table showing support level (Full/Good/Partial/Limited/None) + comprehensive technical commentary + [source].
+  • Include technical details, performance metrics, specific capabilities from commentary.
+  • If feature not found in product_eval, state this explicitly and check if it might be in vendor_eval.
 
 Q3. "Best overall" or "Top N"
   • Compute composite with weights; rank; print vector.
