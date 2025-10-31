@@ -2311,6 +2311,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MARKET CHAT API ====================
+  
+  // POST send chat message
+  app.post("/api/markets/:marketId/chat", requireAuth, async (req, res) => {
+    try {
+      const { marketId } = req.params;
+      const { message, conversationId } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const { generateChatResponse, generateConversationTitle } = await import('./ai/chat-service');
+      const { db } = await import('./db');
+      const { chatConversations, chatMessages } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      
+      let convId = conversationId;
+      let isNewConversation = false;
+
+      // If no conversation ID, create a new conversation
+      if (!convId) {
+        isNewConversation = true;
+        const title = await generateConversationTitle(message);
+        
+        const [newConv] = await db.insert(chatConversations).values({
+          marketId,
+          userId: (req.user as any)?.id || null,
+          title,
+        }).returning();
+        
+        convId = newConv.id;
+      }
+
+      // Get conversation history
+      const history = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.conversationId, convId))
+        .orderBy(chatMessages.createdAt)
+        .limit(20);
+
+      // Generate response
+      const response = await generateChatResponse(
+        marketId,
+        message,
+        history.map(msg => ({ role: msg.role as "user" | "assistant", content: msg.content }))
+      );
+
+      // Save user message
+      await db.insert(chatMessages).values({
+        conversationId: convId,
+        role: "user",
+        content: message,
+      });
+
+      // Save assistant response
+      const [assistantMsg] = await db.insert(chatMessages).values({
+        conversationId: convId,
+        role: "assistant",
+        content: response.message,
+        dataContext: response.dataContext as any,
+      }).returning();
+
+      // Update conversation timestamp
+      await db
+        .update(chatConversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(chatConversations.id, convId));
+
+      res.json({
+        conversationId: convId,
+        message: response.message,
+        messageId: assistantMsg.id,
+        isNewConversation,
+      });
+    } catch (error) {
+      console.error("Error processing chat message:", error);
+      res.status(500).json({ error: "Failed to process chat message" });
+    }
+  });
+
+  // GET conversation history
+  app.get("/api/markets/:marketId/chat/conversations", requireAuth, async (req, res) => {
+    try {
+      const { marketId } = req.params;
+      const { db } = await import('./db');
+      const { chatConversations, chatMessages } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+
+      const conversations = await db
+        .select()
+        .from(chatConversations)
+        .where(eq(chatConversations.marketId, marketId))
+        .orderBy(desc(chatConversations.updatedAt))
+        .limit(50);
+
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET conversation messages
+  app.get("/api/markets/:marketId/chat/:conversationId", requireAuth, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const { db } = await import('./db');
+      const { chatMessages } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const messages = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.conversationId, conversationId))
+        .orderBy(chatMessages.createdAt);
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching conversation messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // DELETE conversation
+  app.delete("/api/markets/:marketId/chat/:conversationId", requireAuth, async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const { db } = await import('./db');
+      const { chatConversations } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      await db
+        .delete(chatConversations)
+        .where(eq(chatConversations.id, conversationId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
