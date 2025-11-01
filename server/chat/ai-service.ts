@@ -109,6 +109,12 @@ export async function generateChatResponse(
   try {
     // Build context summary from provided data
     const contextSummary = buildContextSummary(context);
+    
+    // Log the context size for verification
+    const contextLines = contextSummary.split('\n').length;
+    const contextChars = contextSummary.length;
+    console.log(`  - Context Size: ${contextLines} lines, ${contextChars} characters`);
+    console.log(`  - Estimated tokens: ~${Math.round(contextChars / 4)}`);
 
     // Prepare messages for OpenAI
     const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -152,6 +158,23 @@ function buildContextSummary(context: ChatContext): string {
 
   parts.push(`**Market:** ${context.marketName} (ID: ${context.marketId})`);
   parts.push(`**Total Vendors:** ${context.vendors.length}`);
+  
+  // Count total scores with commentary for verification
+  const totalScores = context.vendors.reduce((sum, v: any) => sum + (v.scores?.length || 0), 0);
+  const scoresWithNotes = context.vendors.reduce((sum, v: any) => {
+    return sum + (v.scores?.filter((s: any) => s.notes && s.notes.trim()).length || 0);
+  }, 0);
+  
+  // Count features with commentary
+  const totalFeatures = context.features.length;
+  const featuresWithCommentary = context.features.filter((f: any) => 
+    f.vendorSupport?.some((s: any) => s.comments && s.comments.trim())
+  ).length;
+  
+  console.log(`[AI Context Verification] Market: ${context.marketName}`);
+  console.log(`  - Vendors: ${context.vendors.length}`);
+  console.log(`  - Criteria Scores: ${totalScores} total, ${scoresWithNotes} with commentary`);
+  console.log(`  - Features: ${totalFeatures} total, ${featuresWithCommentary} with vendor commentary`);
 
   // Vendors with detailed scores and commentary
   if (context.vendors.length > 0) {
