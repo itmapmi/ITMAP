@@ -126,7 +126,7 @@ export async function generateChatResponse(
       model: "gpt-4o-mini",
       messages,
       temperature: 0.3, // Low temperature for factual responses
-      max_tokens: 2000,
+      max_tokens: 4000, // Increased to handle detailed commentary and tables
     });
 
     const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response.";
@@ -153,21 +153,41 @@ function buildContextSummary(context: ChatContext): string {
   parts.push(`**Market:** ${context.marketName} (ID: ${context.marketId})`);
   parts.push(`**Total Vendors:** ${context.vendors.length}`);
 
-  // Vendors with scores
+  // Vendors with detailed scores and commentary
   if (context.vendors.length > 0) {
     parts.push("\n**Vendors in this market:**");
     context.vendors.forEach((vendor: any) => {
       const execScore = vendor.executionScore || "N/A";
       const viabScore = vendor.viabilityScore || "N/A";
-      parts.push(`- ${vendor.name} (Execution: ${execScore}, Viability: ${viabScore})`);
+      parts.push(`\n**${vendor.name}** (Execution: ${execScore}, Viability: ${viabScore})`);
       
-      // Add vendor scores with commentary if available
+      // Add ALL vendor scores with detailed commentary
       if (vendor.scores && vendor.scores.length > 0) {
-        vendor.scores.forEach((score: any) => {
-          if (score.notes) {
-            parts.push(`  • ${score.criteriaName}: ${score.score}/10 - "${score.notes}"`);
-          }
-        });
+        // Group by category for better organization
+        const executionScores = vendor.scores.filter((s: any) => s.criteriaCategory === "execution");
+        const viabilityScores = vendor.scores.filter((s: any) => s.criteriaCategory === "viability");
+        
+        if (executionScores.length > 0) {
+          parts.push("  Execution Criteria:");
+          executionScores.forEach((score: any) => {
+            if (score.notes && score.notes.trim()) {
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${score.notes}"`);
+            } else {
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10`);
+            }
+          });
+        }
+        
+        if (viabilityScores.length > 0) {
+          parts.push("  Viability Criteria:");
+          viabilityScores.forEach((score: any) => {
+            if (score.notes && score.notes.trim()) {
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${score.notes}"`);
+            } else {
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10`);
+            }
+          });
+        }
       }
     });
   }
@@ -186,20 +206,27 @@ function buildContextSummary(context: ChatContext): string {
     }
   }
 
-  // Features
+  // Features with detailed commentary
   if (context.features.length > 0) {
     parts.push(`\n**Product Features:** ${context.features.length} features evaluated`);
-    parts.push("Features include: " + context.features.slice(0, 10).map((f: any) => f.name).join(", "));
     
-    // Add feature support details with commentary
-    context.features.slice(0, 5).forEach((feature: any) => {
+    // Include ALL features with commentary (not just first 5)
+    // This is critical for the AI to see all vendor capabilities and detailed commentary
+    context.features.forEach((feature: any) => {
       if (feature.vendorSupport && feature.vendorSupport.length > 0) {
-        parts.push(`\n*${feature.name}:*`);
-        feature.vendorSupport.forEach((support: any) => {
-          const level = support.supportLevel >= 80 ? "Full" : support.supportLevel >= 60 ? "Good" : support.supportLevel >= 40 ? "Partial" : support.supportLevel >= 20 ? "Limited" : "Not Supported";
-          const comment = support.comments ? ` - "${support.comments}"` : "";
-          parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100)${comment}`);
-        });
+        // Only include if there's actual commentary to avoid bloat
+        const hasCommentary = feature.vendorSupport.some((s: any) => s.comments && s.comments.trim().length > 0);
+        if (hasCommentary) {
+          parts.push(`\n*${feature.name} (${feature.categoryName}):*`);
+          feature.vendorSupport.forEach((support: any) => {
+            const level = support.supportLevel >= 80 ? "Full" : support.supportLevel >= 60 ? "Good" : support.supportLevel >= 40 ? "Partial" : support.supportLevel >= 20 ? "Limited" : "Not Supported";
+            if (support.comments && support.comments.trim()) {
+              parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100) - "${support.comments}"`);
+            } else {
+              parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100)`);
+            }
+          });
+        }
       }
     });
   }
