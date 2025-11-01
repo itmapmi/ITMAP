@@ -166,6 +166,13 @@ export class NewsStorage {
     await db.delete(newsArticles).where(eq(newsArticles.id, id));
   }
   
+  async deleteArticlesOlderThan(cutoffDate: Date): Promise<number> {
+    const result = await db
+      .delete(newsArticles)
+      .where(lte(newsArticles.publishedAt, cutoffDate));
+    return result.rowCount || 0;
+  }
+  
   async searchArticles(query: string, limit: number = 20): Promise<NewsArticle[]> {
     // Full-text search using PostgreSQL's built-in capabilities
     return await db
