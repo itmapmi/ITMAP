@@ -3,6 +3,7 @@ import { runIngestion } from './news/ingestion/runner';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
+  private lastRun: Map<string, { timestamp: Date; status: 'success' | 'failed'; error?: string }> = new Map();
 
   /**
    * Initialize all cron jobs
@@ -16,8 +17,10 @@ export class CronJobManager {
       try {
         await this.backupVendorPositions();
         console.log('Weekly vendor position backup completed');
+        this.lastRun.set('weeklyBackup', { timestamp: new Date(), status: 'success' });
       } catch (error) {
         console.error('Error in weekly vendor position backup:', error);
+        this.lastRun.set('weeklyBackup', { timestamp: new Date(), status: 'failed', error: String(error) });
       }
     }, {
       timezone: 'UTC'
@@ -56,8 +59,10 @@ export class CronJobManager {
       try {
         await this.cleanupOldNews();
         console.log('Weekly news cleanup completed');
+        this.lastRun.set('newsCleanup', { timestamp: new Date(), status: 'success' });
       } catch (error) {
         console.error('Error in weekly news cleanup:', error);
+        this.lastRun.set('newsCleanup', { timestamp: new Date(), status: 'failed', error: String(error) });
       }
     }, {
       timezone: 'UTC'
@@ -72,8 +77,10 @@ export class CronJobManager {
         const results = await runIngestion();
         const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
         console.log(`Daily news ingestion completed: ${totalNew} new articles from ${results.length} sources`);
+        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
       } catch (error) {
         console.error('Error in daily news ingestion:', error);
+        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
       }
     }, {
       timezone: 'UTC'
@@ -151,18 +158,20 @@ export class CronJobManager {
   /**
    * Get status of all jobs
    */
-  public getJobStatus(): { [jobName: string]: { running: boolean, nextRun?: string } } {
-    const status: { [jobName: string]: { running: boolean, nextRun?: string } } = {};
+  public getJobStatus(): { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string } } } {
+    const status: { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string } } } = {};
 
     // Return static status for the jobs we know exist
     status['newsIngestion'] = {
       running: this.jobs.has('newsIngestion'),
-      nextRun: 'Daily at 7:00 AM UTC'
+      nextRun: 'Daily at 7:00 AM UTC',
+      lastRun: this.lastRun.get('newsIngestion')
     };
     
     status['weeklyBackup'] = {
       running: this.jobs.has('weeklyBackup'),
-      nextRun: 'Weekly on Sunday at 2:00 AM UTC'  
+      nextRun: 'Weekly on Sunday at 2:00 AM UTC',
+      lastRun: this.lastRun.get('weeklyBackup')
     };
     
     status['healthCheck'] = {
@@ -177,7 +186,8 @@ export class CronJobManager {
     
     status['newsCleanup'] = {
       running: this.jobs.has('newsCleanup'),
-      nextRun: 'Weekly on Sunday at 4:00 AM UTC'
+      nextRun: 'Weekly on Sunday at 4:00 AM UTC',
+      lastRun: this.lastRun.get('newsCleanup')
     };
 
     return status;
@@ -200,8 +210,10 @@ export class CronJobManager {
       const results = await runIngestion();
       const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
       console.log(`Manual news ingestion completed: ${totalNew} new articles`);
+      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
     } catch (error) {
       console.error('Error in manual news ingestion:', error);
+      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
       throw error;
     }
   }
