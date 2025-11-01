@@ -50,6 +50,21 @@ export class CronJobManager {
 
     this.jobs.set('userLogsCleanup', userLogsCleanupJob);
 
+    // Weekly news cleanup at Sunday 4:00 AM UTC (remove articles older than 90 days)
+    const newsCleanupJob = cron.schedule('0 4 * * 0', async () => {
+      console.log('Starting weekly news cleanup...');
+      try {
+        await this.cleanupOldNews();
+        console.log('Weekly news cleanup completed');
+      } catch (error) {
+        console.error('Error in weekly news cleanup:', error);
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('newsCleanup', newsCleanupJob);
+
     // Daily news ingestion at 7:00 AM UTC
     const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
       console.log('Starting daily news ingestion...');
@@ -158,6 +173,11 @@ export class CronJobManager {
     status['userLogsCleanup'] = {
       running: this.jobs.has('userLogsCleanup'),
       nextRun: 'Daily at 3:00 AM UTC'
+    };
+    
+    status['newsCleanup'] = {
+      running: this.jobs.has('newsCleanup'),
+      nextRun: 'Weekly on Sunday at 4:00 AM UTC'
     };
 
     return status;
