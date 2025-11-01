@@ -256,13 +256,18 @@ export class CronJobManager {
     try {
       console.log('Starting cleanup of old news items...');
       
-      // This would require a new storage method to delete old news
-      // For now, just log the action
+      const { newsStorage } = await import('./news/storage');
+      
+      // Calculate cutoff date (90 days ago)
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - 90);
       
-      console.log(`Would cleanup news items older than ${cutoffDate.toISOString()}`);
-      console.log('News cleanup completed (currently a no-op - would need database cleanup method)');
+      console.log(`Cleaning up news articles older than ${cutoffDate.toISOString()}`);
+      
+      // Delete old articles
+      const deletedCount = await newsStorage.deleteArticlesOlderThan(cutoffDate);
+      
+      console.log(`News cleanup completed successfully - deleted ${deletedCount} articles older than 90 days`);
     } catch (error) {
       console.error('Error cleaning up old news:', error);
       throw error;
