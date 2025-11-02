@@ -2384,23 +2384,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         answer: response.content,
         sources: response.sources,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error processing chat question:", error);
-      
-      // Provide more specific error messages
-      let errorMessage = "Failed to process question";
-      if (error.message?.includes("Market not found")) {
-        errorMessage = "Market not found";
-      } else if (error.message?.includes("token")) {
-        errorMessage = "Context too large for this market. Please contact support.";
-      } else if (error.code === 'ETIMEDOUT') {
-        errorMessage = "Request timed out. This market may have too much data.";
-      }
-      
-      res.status(500).json({ 
-        error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(500).json({ error: "Failed to process question" });
     }
   });
   
