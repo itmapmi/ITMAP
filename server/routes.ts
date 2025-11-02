@@ -2480,6 +2480,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =====================
+  // RESEARCH AGENT ROUTES
+  // =====================
+
+  // Get all prompt templates
+  app.get("/api/research/prompt-templates", requireAdmin, async (req, res) => {
+    try {
+      const templates = await storage.getResearchPromptTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching prompt templates:", error);
+      res.status(500).json({ error: "Failed to fetch prompt templates" });
+    }
+  });
+
+  // Create prompt template
+  app.post("/api/research/prompt-templates", requireAdmin, async (req, res) => {
+    try {
+      const template = await storage.createResearchPromptTemplate(req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Error creating prompt template:", error);
+      res.status(400).json({ error: "Failed to create prompt template" });
+    }
+  });
+
+  // Update prompt template
+  app.put("/api/research/prompt-templates/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.updateResearchPromptTemplate(id, req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating prompt template:", error);
+      res.status(400).json({ error: "Failed to update prompt template" });
+    }
+  });
+
+  // Delete prompt template
+  app.delete("/api/research/prompt-templates/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteResearchPromptTemplate(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting prompt template:", error);
+      res.status(500).json({ error: "Failed to delete prompt template" });
+    }
+  });
+
+  // Get research jobs
+  app.get("/api/research/jobs", requireAdmin, async (req, res) => {
+    try {
+      const { marketId, limit } = req.query;
+      const jobs = await storage.getResearchJobs({
+        marketId: marketId as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      });
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching research jobs:", error);
+      res.status(500).json({ error: "Failed to fetch research jobs" });
+    }
+  });
+
+  // Get specific research job
+  app.get("/api/research/jobs/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await storage.getResearchJob(id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching research job:", error);
+      res.status(500).json({ error: "Failed to fetch research job" });
+    }
+  });
+
+  // Get job logs
+  app.get("/api/research/jobs/:id/logs", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const logs = await storage.getResearchJobLogs(id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching job logs:", error);
+      res.status(500).json({ error: "Failed to fetch job logs" });
+    }
+  });
+
+  // Trigger research agent
+  app.post("/api/research/jobs/trigger", requireAdmin, async (req, res) => {
+    try {
+      const {
+        marketId,
+        vendorIds,
+        jobType,
+        featurePromptId,
+        commentaryPromptId,
+        scoringPromptId,
+      } = req.body;
+
+      // Validate input
+      if (!marketId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
+        return res.status(400).json({
+          error: "marketId and vendorIds (non-empty array) are required",
+        });
+      }
+
+      if (!jobType || !["full_automation", "features_only", "commentary_only", "scoring_only"].includes(jobType)) {
+        return res.status(400).json({
+          error: "jobType must be one of: full_automation, features_only, commentary_only, scoring_only",
+        });
+      }
+
+      // Create job record
+      const job = await storage.createResearchJob({
+        marketId,
+        vendorIds,
+        jobType,
+        featurePromptId,
+        commentaryPromptId,
+        scoringPromptId,
+        status: "pending",
+        createdBy: req.user!.id,
+      });
+
+      // Start research agent asynchronously
+      const { ResearchAgent } = await import("./research/research-agent");
+      const agent = new ResearchAgent(
+        job.id,
+        marketId,
+        vendorIds,
+        featurePromptId,
+        commentaryPromptId,
+        scoringPromptId
+      );
+
+      // Execute in background
+      agent.execute(jobType).catch((error) => {
+        console.error(`[Research Agent] Background execution failed for job ${job.id}:`, error);
+      });
+
+      res.json({
+        success: true,
+        jobId: job.id,
+        message: "Research job started successfully. Check job status for progress.",
+      });
+    } catch (error) {
+      console.error("Error triggering research agent:", error);
+      res.status(500).json({ error: "Failed to trigger research agent" });
+    }
+  });
+
+  // Cancel research job
+  app.post("/api/research/jobs/:id/cancel", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await storage.getResearchJob(id);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.status === "completed" || job.status === "failed" || job.status === "cancelled") {
+        return res.status(400).json({ error: "Job is already in a terminal state" });
+      }
+
+      await storage.updateResearchJob(id, {
+        status: "cancelled",
+        currentStep: "Cancelled by user",
+        completedAt: new Date(),
+      });
+
+      res.json({ success: true, message: "Job cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling research job:", error);
+      res.status(500).json({ error: "Failed to cancel research job" });
+    }
+  });
+
+  // Initialize default prompt templates on first run
+  app.post("/api/research/init-defaults", requireAdmin, async (req, res) => {
+    try {
+      const existingTemplates = await storage.getResearchPromptTemplates();
+      
+      if (existingTemplates.length > 0) {
+        return res.json({ message: "Default templates already exist", count: existingTemplates.length });
+      }
+
+      const { DEFAULT_PROMPTS } = await import("./research/prompt-templates");
+      
+      const created = [];
+      for (const [key, template] of Object.entries(DEFAULT_PROMPTS)) {
+        const newTemplate = await storage.createResearchPromptTemplate({
+          ...template,
+          isDefault: true,
+        });
+        created.push(newTemplate);
+      }
+
+      res.json({
+        success: true,
+        message: "Default prompt templates created",
+        templates: created,
+      });
+    } catch (error) {
+      console.error("Error initializing default templates:", error);
+      res.status(500).json({ error: "Failed to initialize default templates" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

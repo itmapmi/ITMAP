@@ -611,3 +611,152 @@ export type ChatConversation = typeof chatConversations.$inferSelect;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Research Agent - Prompt Templates for automated research
+export const researchPromptTemplates = pgTable("research_prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // "Default Vendor Evaluation", "Cloud Infrastructure Scoring", etc.
+  description: text("description"),
+  category: text("category").notNull(), // "feature_generation", "commentary_generation", "scoring"
+  aiProvider: text("ai_provider").notNull(), // "openai", "perplexity"
+  model: text("model").notNull(), // "gpt-4o", "sonar-pro", etc.
+  promptTemplate: text("prompt_template").notNull(), // Template with {{variables}}
+  variables: text("variables").array(), // ["market_name", "vendor_name", "criteria_name"]
+  isDefault: boolean("is_default").default(false), // Mark as default for the category
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Research Agent - Jobs to track automated research tasks
+export const researchJobs = pgTable("research_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  jobType: text("job_type").notNull(), // "full_automation", "features_only", "commentary_only", "scoring_only"
+  status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed", "cancelled"
+  
+  // Configuration
+  vendorIds: text("vendor_ids").array().notNull(), // Vendors to research
+  featurePromptId: varchar("feature_prompt_id").references(() => researchPromptTemplates.id),
+  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
+  scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  
+  // Progress tracking
+  totalSteps: integer("total_steps").default(0),
+  completedSteps: integer("completed_steps").default(0),
+  currentStep: text("current_step"), // Human-readable description of current operation
+  
+  // Results & Metadata
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  errorMessage: text("error_message"),
+  
+  // Cost tracking
+  totalTokensUsed: integer("total_tokens_used").default(0),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }).default("0"), // in USD
+  
+  // Created by
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Research Agent - Detailed logs for each step
+export const researchJobLogs = pgTable("research_job_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => researchJobs.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull(),
+  stepType: text("step_type").notNull(), // "feature_generation", "commentary", "scoring"
+  status: text("status").notNull(), // "pending", "running", "completed", "failed", "skipped"
+  
+  // Request details
+  aiProvider: text("ai_provider"), // "openai", "perplexity"
+  model: text("model"),
+  promptUsed: text("prompt_used"),
+  
+  // Response details
+  responseContent: text("response_content"),
+  tokensUsed: integer("tokens_used"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Timing
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Relations
+export const researchPromptTemplatesRelations = relations(researchPromptTemplates, ({ many }) => ({
+  featureJobs: many(researchJobs, { relationName: "featurePrompt" }),
+  commentaryJobs: many(researchJobs, { relationName: "commentaryPrompt" }),
+  scoringJobs: many(researchJobs, { relationName: "scoringPrompt" }),
+}));
+
+export const researchJobsRelations = relations(researchJobs, ({ one, many }) => ({
+  market: one(markets, {
+    fields: [researchJobs.marketId],
+    references: [markets.id],
+  }),
+  featurePrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.featurePromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "featurePrompt",
+  }),
+  commentaryPrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.commentaryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "commentaryPrompt",
+  }),
+  scoringPrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.scoringPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "scoringPrompt",
+  }),
+  creator: one(users, {
+    fields: [researchJobs.createdBy],
+    references: [users.id],
+  }),
+  logs: many(researchJobLogs),
+}));
+
+export const researchJobLogsRelations = relations(researchJobLogs, ({ one }) => ({
+  job: one(researchJobs, {
+    fields: [researchJobLogs.jobId],
+    references: [researchJobs.id],
+  }),
+}));
+
+// Insert schemas
+export const insertResearchPromptTemplateSchema = createInsertSchema(researchPromptTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertResearchJobSchema = createInsertSchema(researchJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertResearchJobLogSchema = createInsertSchema(researchJobLogs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+// Types
+export type InsertResearchPromptTemplate = z.infer<typeof insertResearchPromptTemplateSchema>;
+export type ResearchPromptTemplate = typeof researchPromptTemplates.$inferSelect;
+
+export type InsertResearchJob = z.infer<typeof insertResearchJobSchema>;
+export type ResearchJob = typeof researchJobs.$inferSelect;
+
+export type InsertResearchJobLog = z.infer<typeof insertResearchJobLogSchema>;
+export type ResearchJobLog = typeof researchJobLogs.$inferSelect;

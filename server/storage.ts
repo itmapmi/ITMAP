@@ -150,6 +150,29 @@ export interface IStorage {
   // Chat Messages
   getConversationMessages(conversationId: string): Promise<any[]>;
   createMessage(message: any): Promise<any>;
+  
+  // Research Agent - Prompt Templates
+  getResearchPromptTemplates(): Promise<any[]>;
+  getResearchPromptTemplate(id: string): Promise<any | undefined>;
+  createResearchPromptTemplate(template: any): Promise<any>;
+  updateResearchPromptTemplate(id: string, template: any): Promise<any>;
+  deleteResearchPromptTemplate(id: string): Promise<void>;
+  
+  // Research Agent - Jobs
+  getResearchJobs(options?: { marketId?: string; limit?: number }): Promise<any[]>;
+  getResearchJob(id: string): Promise<any | undefined>;
+  createResearchJob(job: any): Promise<any>;
+  updateResearchJob(id: string, updates: any): Promise<any>;
+  deleteResearchJob(id: string): Promise<void>;
+  
+  // Research Agent - Job Logs
+  getResearchJobLogs(jobId: string): Promise<any[]>;
+  createResearchJobLog(log: any): Promise<any>;
+  
+  // Helper methods for research agent
+  getVendorScoreByCriteria(vendorId: string, criteriaId: string): Promise<VendorScore | undefined>;
+  createVendorScore(score: InsertVendorScore): Promise<VendorScore>;
+  updateVendorScore(id: string, updates: Partial<InsertVendorScore>): Promise<VendorScore>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -881,6 +904,154 @@ export class DatabaseStorage implements IStorage {
       .values(message)
       .returning();
     return newMessage!;
+  }
+
+  // Research Agent - Prompt Templates
+  async getResearchPromptTemplates(): Promise<any[]> {
+    const { researchPromptTemplates } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(researchPromptTemplates)
+      .orderBy(researchPromptTemplates.category, researchPromptTemplates.name);
+  }
+
+  async getResearchPromptTemplate(id: string): Promise<any | undefined> {
+    const { researchPromptTemplates } = await import("@shared/schema");
+    const [template] = await db
+      .select()
+      .from(researchPromptTemplates)
+      .where(eq(researchPromptTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createResearchPromptTemplate(template: any): Promise<any> {
+    const { researchPromptTemplates } = await import("@shared/schema");
+    const [newTemplate] = await db
+      .insert(researchPromptTemplates)
+      .values(template)
+      .returning();
+    return newTemplate!;
+  }
+
+  async updateResearchPromptTemplate(id: string, template: any): Promise<any> {
+    const { researchPromptTemplates } = await import("@shared/schema");
+    const [updated] = await db
+      .update(researchPromptTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(researchPromptTemplates.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async deleteResearchPromptTemplate(id: string): Promise<void> {
+    const { researchPromptTemplates } = await import("@shared/schema");
+    await db.delete(researchPromptTemplates).where(eq(researchPromptTemplates.id, id));
+  }
+
+  // Research Agent - Jobs
+  async getResearchJobs(options?: { marketId?: string; limit?: number }): Promise<any[]> {
+    const { researchJobs } = await import("@shared/schema");
+    let query = db.select().from(researchJobs).orderBy(desc(researchJobs.createdAt));
+    
+    if (options?.marketId) {
+      query = query.where(eq(researchJobs.marketId, options.marketId)) as any;
+    }
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
+  }
+
+  async getResearchJob(id: string): Promise<any | undefined> {
+    const { researchJobs } = await import("@shared/schema");
+    const [job] = await db
+      .select()
+      .from(researchJobs)
+      .where(eq(researchJobs.id, id));
+    return job || undefined;
+  }
+
+  async createResearchJob(job: any): Promise<any> {
+    const { researchJobs } = await import("@shared/schema");
+    const [newJob] = await db
+      .insert(researchJobs)
+      .values(job)
+      .returning();
+    return newJob!;
+  }
+
+  async updateResearchJob(id: string, updates: any): Promise<any> {
+    const { researchJobs } = await import("@shared/schema");
+    const [updated] = await db
+      .update(researchJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(researchJobs.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async deleteResearchJob(id: string): Promise<void> {
+    const { researchJobs } = await import("@shared/schema");
+    await db.delete(researchJobs).where(eq(researchJobs.id, id));
+  }
+
+  // Research Agent - Job Logs
+  async getResearchJobLogs(jobId: string): Promise<any[]> {
+    const { researchJobLogs } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(researchJobLogs)
+      .where(eq(researchJobLogs.jobId, jobId))
+      .orderBy(researchJobLogs.stepNumber);
+  }
+
+  async createResearchJobLog(log: any): Promise<any> {
+    const { researchJobLogs } = await import("@shared/schema");
+    const [newLog] = await db
+      .insert(researchJobLogs)
+      .values(log)
+      .returning();
+    return newLog!;
+  }
+
+  // Helper methods for research agent
+  async getVendorScoreByCriteria(vendorId: string, criteriaId: string): Promise<VendorScore | undefined> {
+    const [score] = await db
+      .select()
+      .from(vendorScores)
+      .where(
+        and(
+          eq(vendorScores.vendorId, vendorId),
+          eq(vendorScores.criteriaId, criteriaId)
+        )
+      );
+    return score || undefined;
+  }
+
+  async createVendorScore(score: InsertVendorScore): Promise<VendorScore> {
+    const [newScore] = await db
+      .insert(vendorScores)
+      .values({
+        ...score,
+        score: typeof score.score === 'number' ? score.score.toString() : score.score,
+      })
+      .returning();
+    return newScore!;
+  }
+
+  async updateVendorScore(id: string, updates: Partial<InsertVendorScore>): Promise<VendorScore> {
+    const [updated] = await db
+      .update(vendorScores)
+      .set({ 
+        ...updates, 
+        score: updates.score !== undefined ? (typeof updates.score === 'number' ? updates.score.toString() : updates.score) : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(vendorScores.id, id))
+      .returning();
+    return updated!;
   }
 }
 

@@ -13,6 +13,7 @@ import Licensing from "@/pages/Licensing";
 import Markets from "@/pages/markets";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
+import AdminResearchAgent from "@/pages/AdminResearchAgent";
 import ReportViewer from "@/pages/report-viewer";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -63,6 +64,7 @@ function Router() {
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
+        <Route path="/admin/research-agent" component={() => <ProtectedRoute component={AdminResearchAgent} requireAdmin={true} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route component={NotFound} />
       </Switch>
