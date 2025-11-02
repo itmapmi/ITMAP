@@ -7,7 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, RefreshCw, DollarSign, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, Play, RefreshCw, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminResearchAgent() {
   const { toast } = useToast();
@@ -15,6 +18,19 @@ export default function AdminResearchAgent() {
   const [selectedJobType, setSelectedJobType] = useState("full_automation");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [criteriaPrompts, setCriteriaPrompts] = useState<Record<string, string>>({});
+  
+  // Prompt template management
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [templateForm, setTemplateForm] = useState({
+    name: "",
+    description: "",
+    category: "commentary_generation",
+    aiProvider: "perplexity",
+    model: "sonar-pro",
+    promptTemplate: "",
+    criteriaId: "",
+  });
 
   // Fetch markets
   const { data: markets } = useQuery<any[]>({
@@ -54,11 +70,63 @@ export default function AdminResearchAgent() {
         title: "Success",
         description: data.message || "Default templates initialized",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/research/prompt-templates"] });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to initialize templates",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create/Update template mutation
+  const saveTemplateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (editingTemplate) {
+        const response = await apiRequest(`/api/research/prompt-templates/${editingTemplate.id}`, "PUT", data);
+        return await response.json();
+      } else {
+        const response = await apiRequest("/api/research/prompt-templates", "POST", data);
+        return await response.json();
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: editingTemplate ? "Template updated successfully" : "Template created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/research/prompt-templates"] });
+      setIsTemplateDialogOpen(false);
+      resetTemplateForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save template",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete template mutation
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest(`/api/research/prompt-templates/${id}`, "DELETE");
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Template deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/research/prompt-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete template",
         variant: "destructive",
       });
     },
@@ -110,6 +178,54 @@ export default function AdminResearchAgent() {
       ...prev,
       [criterionId]: promptId,
     }));
+  };
+
+  const resetTemplateForm = () => {
+    setTemplateForm({
+      name: "",
+      description: "",
+      category: "commentary_generation",
+      aiProvider: "perplexity",
+      model: "sonar-pro",
+      promptTemplate: "",
+      criteriaId: "",
+    });
+    setEditingTemplate(null);
+  };
+
+  const openCreateTemplateDialog = () => {
+    resetTemplateForm();
+    setIsTemplateDialogOpen(true);
+  };
+
+  const openEditTemplateDialog = (template: any) => {
+    setEditingTemplate(template);
+    setTemplateForm({
+      name: template.name,
+      description: template.description || "",
+      category: template.category,
+      aiProvider: template.aiProvider,
+      model: template.model,
+      promptTemplate: template.promptTemplate,
+      criteriaId: template.criteriaId || "",
+    });
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleSaveTemplate = () => {
+    if (!templateForm.name || !templateForm.promptTemplate) {
+      toast({
+        title: "Validation Error",
+        description: "Name and prompt template are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    saveTemplateMutation.mutate({
+      ...templateForm,
+      criteriaId: templateForm.criteriaId || null,
+    });
   };
 
   const toggleVendorSelection = (vendorId: string) => {
@@ -169,6 +285,192 @@ export default function AdminResearchAgent() {
           Initialize Defaults
         </Button>
       </div>
+
+      {/* Prompt Template Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle data-testid="text-templates-title">Commentary Prompt Templates</CardTitle>
+              <CardDescription data-testid="text-templates-description">
+                Create and manage custom prompts for automated research
+              </CardDescription>
+            </div>
+            <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateTemplateDialog} data-testid="button-create-template">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Template
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingTemplate ? "Edit" : "Create"} Prompt Template</DialogTitle>
+                  <DialogDescription>
+                    {editingTemplate ? "Update" : "Create a new"} custom prompt template for automated research
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="template-name">Name *</Label>
+                    <Input
+                      id="template-name"
+                      placeholder="e.g., Innovation Deep Research"
+                      value={templateForm.name}
+                      onChange={(e) => setTemplateForm({...templateForm, name: e.target.value})}
+                      data-testid="input-template-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="template-description">Description</Label>
+                    <Input
+                      id="template-description"
+                      placeholder="Brief description of this prompt"
+                      value={templateForm.description}
+                      onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
+                      data-testid="input-template-description"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="template-provider">AI Provider</Label>
+                      <Select
+                        value={templateForm.aiProvider}
+                        onValueChange={(value) => setTemplateForm({...templateForm, aiProvider: value})}
+                      >
+                        <SelectTrigger id="template-provider" data-testid="select-template-provider">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="perplexity">Perplexity</SelectItem>
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-model">Model</Label>
+                      <Input
+                        id="template-model"
+                        placeholder="e.g., sonar-pro"
+                        value={templateForm.model}
+                        onChange={(e) => setTemplateForm({...templateForm, model: e.target.value})}
+                        data-testid="input-template-model"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="template-criteria">Link to Specific Criterion (Optional)</Label>
+                    <Select
+                      value={templateForm.criteriaId}
+                      onValueChange={(value) => setTemplateForm({...templateForm, criteriaId: value})}
+                    >
+                      <SelectTrigger id="template-criteria" data-testid="select-template-criteria">
+                        <SelectValue placeholder="Not linked to any criterion" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {criteria?.map((criterion: any) => (
+                          <SelectItem key={criterion.id} value={criterion.id}>
+                            {criterion.name} ({criterion.category})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="template-prompt">Prompt Template *</Label>
+                    <Textarea
+                      id="template-prompt"
+                      placeholder="Enter your prompt template. Use {{variable_name}} for dynamic values like {{vendor_name}}, {{criteria_name}}, etc."
+                      value={templateForm.promptTemplate}
+                      onChange={(e) => setTemplateForm({...templateForm, promptTemplate: e.target.value})}
+                      rows={10}
+                      className="font-mono text-sm"
+                      data-testid="textarea-template-prompt"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Available variables: market_name, vendor_name, criteria_name, criteria_description (use with double curly braces)
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsTemplateDialogOpen(false)}
+                    data-testid="button-cancel-template"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveTemplate}
+                    disabled={saveTemplateMutation.isPending}
+                    data-testid="button-save-template"
+                  >
+                    {saveTemplateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {editingTemplate ? "Update" : "Create"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {promptTemplates && promptTemplates.length > 0 ? (
+              <div className="space-y-2">
+                {promptTemplates
+                  .filter((t: any) => t.category === "commentary_generation")
+                  .map((template: any) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                      data-testid={`template-item-${template.id}`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{template.name}</h4>
+                          {template.criteriaId && criteria && (
+                            <Badge variant="secondary" className="text-xs">
+                              {criteria.find((c: any) => c.id === template.criteriaId)?.name}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {template.aiProvider} - {template.model}
+                          </Badge>
+                        </div>
+                        {template.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditTemplateDialog(template)}
+                          data-testid={`button-edit-template-${template.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteTemplateMutation.mutate(template.id)}
+                          disabled={deleteTemplateMutation.isPending}
+                          data-testid={`button-delete-template-${template.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No templates yet. Click "Create Template" to get started.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Trigger New Job */}
       <Card>
