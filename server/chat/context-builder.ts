@@ -15,6 +15,9 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
     // Fetch all vendors in this market with their scores
     const vendors = await storage.getVendorsByMarket(marketId);
     
+    // Fetch ALL feature support for this market (includes product features AND ecosystem)
+    const allFeatureSupport = await storage.getVendorFeatureSupport(marketId);
+    
     // Enrich vendors with detailed score information and commentary
     const enrichedVendors = await Promise.all(
       vendors.map(async (vendor) => {
@@ -51,11 +54,8 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
           };
         });
         
-        // Get feature support
-        const featureSupport = await storage.getVendorFeatureSupport(vendor.id);
-        
-        // Ecosystem support will be fetched separately if needed
-        const ecosystemSupport: any[] = [];
+        // Filter feature support for this specific vendor
+        const featureSupport = allFeatureSupport.filter((s) => s.vendorId === vendor.id);
         
         return {
           ...vendor,
@@ -63,7 +63,6 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
           viabilityScore,
           scores: enrichedScores,
           featureSupport,
-          ecosystemSupport,
         };
       })
     );

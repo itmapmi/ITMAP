@@ -171,10 +171,16 @@ function buildContextSummary(context: ChatContext): string {
     f.vendorSupport?.some((s: any) => s.comments && s.comments.trim())
   ).length;
   
+  // Count ecosystem vs product features
+  const ecosystemFeatures = context.features.filter((f: any) => 
+    f.categoryName?.toLowerCase().includes('ecosystem')
+  ).length;
+  const productFeatures = totalFeatures - ecosystemFeatures;
+  
   console.log(`[AI Context Verification] Market: ${context.marketName}`);
   console.log(`  - Vendors: ${context.vendors.length}`);
   console.log(`  - Criteria Scores: ${totalScores} total, ${scoresWithNotes} with commentary`);
-  console.log(`  - Features: ${totalFeatures} total, ${featuresWithCommentary} with vendor commentary`);
+  console.log(`  - Features: ${totalFeatures} total (${productFeatures} product, ${ecosystemFeatures} ecosystem), ${featuresWithCommentary} with vendor commentary`);
 
   // Vendors with detailed scores and commentary
   if (context.vendors.length > 0) {
