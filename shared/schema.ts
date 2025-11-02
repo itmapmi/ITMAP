@@ -403,7 +403,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  revenue: z.string().optional().transform((val) => {
+  revenue: z.string().nullable().optional().transform((val) => {
     if (!val || val.trim() === '') return null;
     const parsed = parseFloat(val);
     return isNaN(parsed) ? null : parsed.toString();
