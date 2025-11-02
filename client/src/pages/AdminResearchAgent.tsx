@@ -387,9 +387,26 @@ export default function AdminResearchAgent() {
                       className="font-mono text-sm"
                       data-testid="textarea-template-prompt"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Available variables: market_name, vendor_name, criteria_name, criteria_description (use with double curly braces)
-                    </p>
+                    
+                    {/* Variable substitution help */}
+                    <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-4 space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        Automatic Variable Substitution
+                      </h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        When you run a research job, the system <strong>automatically replaces</strong> these variables based on your market/vendor/criteria selections:
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-white dark:bg-gray-900 p-3 rounded border">
+                        <div><code className="text-blue-600 dark:text-blue-400">{`{{market_name}}`}</code> → Market you select</div>
+                        <div><code className="text-blue-600 dark:text-blue-400">{`{{vendor_name}}`}</code> → Each vendor being researched</div>
+                        <div><code className="text-blue-600 dark:text-blue-400">{`{{criteria_name}}`}</code> → Each criterion (e.g., "Innovation")</div>
+                        <div><code className="text-blue-600 dark:text-blue-400">{`{{criteria_description}}`}</code> → Full criterion description</div>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        ✅ You don't need to manually fill these in - just use the variable names in your prompt and they'll be replaced automatically during research execution.
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>
@@ -526,7 +543,7 @@ export default function AdminResearchAgent() {
               <div className="space-y-1">
                 <Label className="text-base font-semibold">Commentary Prompts by Criterion</Label>
                 <p className="text-sm text-muted-foreground">
-                  Select custom prompts for each criterion. Uses default if not specified.
+                  Select custom prompts for each criterion. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, and {`{{criteria_name}}`} based on your selections above.
                 </p>
               </div>
               
