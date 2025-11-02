@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import About from "@/pages/About";
 import Platform from "@/pages/Platform";
 import Contact from "@/pages/Contact";
+import Licensing from "@/pages/Licensing";
 import Markets from "@/pages/markets";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
@@ -55,6 +56,7 @@ function Router() {
         <Route path="/about" component={About} />
         <Route path="/platform" component={Platform} />
         <Route path="/contact" component={Contact} />
+        <Route path="/licensing" component={Licensing} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/markets" component={Markets} />

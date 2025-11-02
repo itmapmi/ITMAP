@@ -64,6 +64,15 @@ export default function Navigation() {
                   About Us
                 </div>
               </Link>
+              <Link href="/licensing">
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                  location === "/licensing" 
+                    ? "text-gray-900 hover:text-primary-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`} data-testid="link-licensing">
+                  Licensing
+                </div>
+              </Link>
               <Link href="/platform">
                 <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/platform" 
