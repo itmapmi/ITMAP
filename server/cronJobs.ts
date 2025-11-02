@@ -88,6 +88,18 @@ export class CronJobManager {
 
     this.jobs.set('newsIngestion', newsIngestionJob);
 
+    // TEST JOB: Runs every 2 minutes to verify cron is working
+    // Remove this after confirming cron works in production
+    const testJob = cron.schedule('*/2 * * * *', () => {
+      const now = new Date();
+      console.log(`🔔 TEST CRON FIRED at ${now.toISOString()} - Cron system is working!`);
+      this.lastRun.set('testJob', { timestamp: now, status: 'success' });
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('testJob', testJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 
@@ -188,6 +200,12 @@ export class CronJobManager {
       running: this.jobs.has('newsCleanup'),
       nextRun: 'Weekly on Sunday at 4:00 AM UTC',
       lastRun: this.lastRun.get('newsCleanup')
+    };
+    
+    status['testJob'] = {
+      running: this.jobs.has('testJob'),
+      nextRun: 'Every 2 minutes (TEST)',
+      lastRun: this.lastRun.get('testJob')
     };
 
     return status;
