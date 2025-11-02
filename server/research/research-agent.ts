@@ -40,6 +40,7 @@ export class ResearchAgent {
   private featurePromptId?: string;
   private commentaryPromptId?: string;
   private scoringPromptId?: string;
+  private criteriaPrompts?: Record<string, string>; // Map of criterionId -> promptId
   
   private totalSteps: number = 0;
   private completedSteps: number = 0;
@@ -52,7 +53,8 @@ export class ResearchAgent {
     vendorIds: string[],
     featurePromptId?: string,
     commentaryPromptId?: string,
-    scoringPromptId?: string
+    scoringPromptId?: string,
+    criteriaPrompts?: Record<string, string>
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
@@ -60,6 +62,7 @@ export class ResearchAgent {
     this.featurePromptId = featurePromptId;
     this.commentaryPromptId = commentaryPromptId;
     this.scoringPromptId = scoringPromptId;
+    this.criteriaPrompts = criteriaPrompts;
   }
 
   /**
@@ -199,7 +202,7 @@ export class ResearchAgent {
   }
 
   /**
-   * Generate commentary for a vendor's performance on a criterion using Perplexity
+   * Generate commentary for a vendor's performance on a criterion using Perplexity Deep Research
    */
   private async generateCommentary(market: any, vendor: any, criterion: any): Promise<void> {
     const stepNumber = ++this.completedSteps;
@@ -209,7 +212,22 @@ export class ResearchAgent {
     );
     
     try {
-      const template = await this.getPromptTemplate("commentary_generation");
+      // Load criterion-specific prompt or fall back to default
+      let template: ResearchPromptTemplate;
+      
+      if (this.criteriaPrompts && this.criteriaPrompts[criterion.id]) {
+        const criterionPromptId = this.criteriaPrompts[criterion.id];
+        console.log(`[Research Agent] Using criterion-specific prompt ${criterionPromptId} for ${criterion.name}`);
+        const customTemplate = await storage.getResearchPromptTemplate(criterionPromptId);
+        if (customTemplate) {
+          template = customTemplate;
+        } else {
+          console.warn(`[Research Agent] Criterion prompt ${criterionPromptId} not found, using default`);
+          template = await this.getPromptTemplate("commentary_generation");
+        }
+      } else {
+        template = await this.getPromptTemplate("commentary_generation");
+      }
       
       const prompt = fillPromptTemplate(template.promptTemplate, {
         market_name: market.name,
@@ -220,7 +238,7 @@ export class ResearchAgent {
 
       await this.logStep(stepNumber, "commentary", "running", template);
 
-      // Call Perplexity for research-backed commentary
+      // Call Perplexity Deep Research
       const response = await callPerplexity(prompt, template.model);
       
       // Save or update the commentary in vendor_scores

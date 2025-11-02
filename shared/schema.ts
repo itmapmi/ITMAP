@@ -622,7 +622,9 @@ export const researchPromptTemplates = pgTable("research_prompt_templates", {
   model: text("model").notNull(), // "gpt-4o", "sonar-pro", etc.
   promptTemplate: text("prompt_template").notNull(), // Template with {{variables}}
   variables: text("variables").array(), // ["market_name", "vendor_name", "criteria_name"]
+  criteriaId: varchar("criteria_id").references(() => criteria.id), // Optional: link to specific criterion
   isDefault: boolean("is_default").default(false), // Mark as default for the category
+  isActive: boolean("is_active").default(true), // Active templates shown in UI
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -637,8 +639,9 @@ export const researchJobs = pgTable("research_jobs", {
   // Configuration
   vendorIds: text("vendor_ids").array().notNull(), // Vendors to research
   featurePromptId: varchar("feature_prompt_id").references(() => researchPromptTemplates.id),
-  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
+  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id), // Deprecated: use criteriaPrompts instead
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  criteriaPrompts: jsonb("criteria_prompts"), // Maps criterionId to promptId: { "criterion-uuid": "prompt-uuid" }
   
   // Progress tracking
   totalSteps: integer("total_steps").default(0),

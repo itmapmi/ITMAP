@@ -49,15 +49,15 @@ Return ONLY a valid JSON object with this exact structure:
 Return ONLY the JSON object, no additional text.`,
   },
 
-  // Perplexity Sonar for generating detailed commentary
+  // Perplexity Deep Research for generating detailed commentary
   COMMENTARY_GENERATION: {
-    name: "Default Commentary Generation (Perplexity Sonar)",
-    description: "Generates detailed, research-backed commentary for vendor criteria scores",
+    name: "Default Commentary Generation (Perplexity Deep Research)",
+    description: "Generates detailed, research-backed commentary for vendor criteria scores using deep research",
     category: "commentary_generation",
     aiProvider: "perplexity",
-    model: "sonar",
+    model: "sonar-pro", // Perplexity Deep Research model
     variables: ["market_name", "vendor_name", "criteria_name", "criteria_description"],
-    promptTemplate: `Research and provide detailed commentary about {{vendor_name}}'s performance in {{criteria_name}} for the {{market_name}} market.
+    promptTemplate: `Conduct deep research and provide detailed commentary about {{vendor_name}}'s performance in {{criteria_name}} for the {{market_name}} market.
 
 **Criteria Context:**
 {{criteria_description}}
@@ -70,12 +70,13 @@ Provide a comprehensive 2-3 paragraph analysis covering:
 4. Recent developments or improvements (if any)
 
 **Requirements:**
-- Base your analysis on recent, factual information
-- Include specific examples, numbers, or case studies where possible
-- Cite sources for claims (you have web access)
-- Be objective and balanced
-- Focus on facts, not marketing claims
-- Keep it concise but informative (150-250 words)
+- Use deep research to gather recent, factual information from multiple sources
+- Include specific examples, numbers, case studies, and customer feedback where possible
+- Cite authoritative sources for claims (use your web access extensively)
+- Be objective and balanced - cover both strengths and weaknesses
+- Focus on verifiable facts, not marketing claims
+- Keep it concise but informative (200-300 words)
+- Include relevant metrics and comparisons to competitors where available
 
 Provide the commentary directly without preamble.`,
   },
