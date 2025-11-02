@@ -641,7 +641,8 @@ export const researchJobs = pgTable("research_jobs", {
   featurePromptId: varchar("feature_prompt_id").references(() => researchPromptTemplates.id),
   commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id), // Deprecated: use criteriaPrompts instead
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
-  criteriaPrompts: jsonb("criteria_prompts"), // Maps criterionId to promptId: { "criterion-uuid": "prompt-uuid" }
+  criteriaPrompts: jsonb("criteria_prompts"), // Maps criterionId to promptId for commentary: { "criterion-uuid": "prompt-uuid" }
+  criteriaScores: jsonb("criteria_scores"), // Maps criterionId to promptId for scoring: { "criterion-uuid": "prompt-uuid" }
   
   // Progress tracking
   totalSteps: integer("total_steps").default(0),

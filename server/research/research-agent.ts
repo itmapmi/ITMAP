@@ -40,7 +40,8 @@ export class ResearchAgent {
   private featurePromptId?: string;
   private commentaryPromptId?: string;
   private scoringPromptId?: string;
-  private criteriaPrompts?: Record<string, string>; // Map of criterionId -> promptId
+  private criteriaPrompts?: Record<string, string>; // Map of criterionId -> promptId for commentary
+  private criteriaScores?: Record<string, string>; // Map of criterionId -> promptId for scoring
   
   private totalSteps: number = 0;
   private completedSteps: number = 0;
@@ -54,7 +55,8 @@ export class ResearchAgent {
     featurePromptId?: string,
     commentaryPromptId?: string,
     scoringPromptId?: string,
-    criteriaPrompts?: Record<string, string>
+    criteriaPrompts?: Record<string, string>,
+    criteriaScores?: Record<string, string>
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
@@ -63,6 +65,7 @@ export class ResearchAgent {
     this.commentaryPromptId = commentaryPromptId;
     this.scoringPromptId = scoringPromptId;
     this.criteriaPrompts = criteriaPrompts;
+    this.criteriaScores = criteriaScores;
   }
 
   /**
@@ -312,7 +315,22 @@ export class ResearchAgent {
     );
     
     try {
-      const template = await this.getPromptTemplate("scoring");
+      // Load criterion-specific scoring prompt or fall back to default
+      let template: ResearchPromptTemplate;
+      
+      if (this.criteriaScores && this.criteriaScores[criterion.id]) {
+        const criterionScoreId = this.criteriaScores[criterion.id];
+        console.log(`[Research Agent] Using criterion-specific scoring prompt ${criterionScoreId} for ${criterion.name}`);
+        const customTemplate = await storage.getResearchPromptTemplate(criterionScoreId);
+        if (customTemplate) {
+          template = customTemplate;
+        } else {
+          console.log(`[Research Agent] Criterion scoring prompt not found, falling back to default`);
+          template = await this.getPromptTemplate("scoring");
+        }
+      } else {
+        template = await this.getPromptTemplate("scoring");
+      }
       
       // Get existing commentary
       const existingScore = await storage.getVendorScoreByCriteria(vendor.id, criterion.id);

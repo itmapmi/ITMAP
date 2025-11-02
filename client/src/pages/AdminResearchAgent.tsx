@@ -18,6 +18,7 @@ export default function AdminResearchAgent() {
   const [selectedJobType, setSelectedJobType] = useState("commentary_only");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [criteriaPrompts, setCriteriaPrompts] = useState<Record<string, string>>({});
+  const [criteriaScores, setCriteriaScores] = useState<Record<string, string>>({});
   
   // Prompt template management
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
@@ -192,11 +193,19 @@ export default function AdminResearchAgent() {
       vendorIds: selectedVendors,
       jobType: selectedJobType,
       criteriaPrompts: criteriaPrompts,
+      criteriaScores: criteriaScores,
     });
   };
 
   const updateCriterionPrompt = (criterionId: string, promptId: string) => {
     setCriteriaPrompts(prev => ({
+      ...prev,
+      [criterionId]: promptId,
+    }));
+  };
+
+  const updateCriterionScore = (criterionId: string, promptId: string) => {
+    setCriteriaScores(prev => ({
       ...prev,
       [criterionId]: promptId,
     }));
@@ -553,8 +562,8 @@ export default function AdminResearchAgent() {
             </Select>
           </div>
 
-          {/* Criterion-Specific Prompt Selection */}
-          {criteria && criteria.length > 0 && promptTemplates && (
+          {/* Commentary Prompts by Criterion */}
+          {criteria && criteria.length > 0 && promptTemplates && selectedJobType === "commentary_only" && (
             <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
               <div className="space-y-1">
                 <Label className="text-base font-semibold">Commentary Prompts by Criterion</Label>
@@ -576,7 +585,7 @@ export default function AdminResearchAgent() {
                     
                     return (
                       <div key={criterion.id} className="space-y-1.5">
-                        <Label htmlFor={`criterion-${criterion.id}`} className="text-sm">
+                        <Label htmlFor={`criterion-commentary-${criterion.id}`} className="text-sm">
                           {criterion.name}
                           <Badge variant="outline" className="ml-2 text-xs">
                             {criterion.category}
@@ -587,8 +596,8 @@ export default function AdminResearchAgent() {
                           onValueChange={(value) => updateCriterionPrompt(criterion.id, value)}
                         >
                           <SelectTrigger
-                            id={`criterion-${criterion.id}`}
-                            data-testid={`select-criterion-${criterion.id}`}
+                            id={`criterion-commentary-${criterion.id}`}
+                            data-testid={`select-criterion-commentary-${criterion.id}`}
                             className="h-9"
                           >
                             <SelectValue placeholder="Default (Perplexity Deep Research)" />
@@ -599,6 +608,65 @@ export default function AdminResearchAgent() {
                                 key={template.id}
                                 value={template.id}
                                 data-testid={`option-template-${template.id}`}
+                              >
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Scoring Prompts by Criterion */}
+          {criteria && criteria.length > 0 && promptTemplates && selectedJobType === "scoring_only" && (
+            <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+              <div className="space-y-1">
+                <Label className="text-base font-semibold">Scoring Prompts by Criterion</Label>
+                <p className="text-sm text-muted-foreground">
+                  Select custom scoring prompts for each criterion. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, {`{{criteria_name}}`}, and {`{{commentary}}`} based on your selections and existing data.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {criteria
+                  .sort((a, b) => {
+                    if (a.category === b.category) return a.name.localeCompare(b.name);
+                    return a.category === "execution" ? -1 : 1;
+                  })
+                  .map((criterion: any) => {
+                    const scoringTemplates = promptTemplates.filter(
+                      (t: any) => t.category === "scoring" && t.isActive !== false
+                    );
+                    
+                    return (
+                      <div key={criterion.id} className="space-y-1.5">
+                        <Label htmlFor={`criterion-scoring-${criterion.id}`} className="text-sm">
+                          {criterion.name}
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {criterion.category}
+                          </Badge>
+                        </Label>
+                        <Select
+                          value={criteriaScores[criterion.id]}
+                          onValueChange={(value) => updateCriterionScore(criterion.id, value)}
+                        >
+                          <SelectTrigger
+                            id={`criterion-scoring-${criterion.id}`}
+                            data-testid={`select-criterion-scoring-${criterion.id}`}
+                            className="h-9"
+                          >
+                            <SelectValue placeholder="Default (GPT-4o)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {scoringTemplates.map((template: any) => (
+                              <SelectItem
+                                key={template.id}
+                                value={template.id}
+                                data-testid={`option-scoring-template-${template.id}`}
                               >
                                 {template.name}
                               </SelectItem>
