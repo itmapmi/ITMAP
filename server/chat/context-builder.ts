@@ -123,12 +123,18 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
     const news: any[] = [];
     const { newsStorage } = await import("../news/storage");
     
+    // Determine news limit based on market size
+    const totalFeatures = allFeatures.length;
+    const newsLimitPerVendor = totalFeatures > 100 ? 2 : totalFeatures > 50 ? 3 : 5;
+    
+    console.log(`[AI Context] Using ${newsLimitPerVendor} news articles per vendor (${totalFeatures} total features)`);
+    
     for (const vendor of enrichedVendors) {
       try {
-        // Get news articles for this vendor
+        // Get news articles for this vendor (limited based on market size)
         const vendorNews = await newsStorage.getArticles({ 
           vendorId: vendor.id,
-          limit: 5 
+          limit: newsLimitPerVendor 
         });
         news.push(...vendorNews.map((article: any) => ({
           ...article,
