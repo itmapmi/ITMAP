@@ -1,0 +1,116 @@
+2025-11-02 17:24:59.53
+2650070e
+User
+at async file:///home/runner/workspace/dist/index.js:5356:24 {
+2025-11-02 17:24:59.53
+2650070e
+User
+status: 400,
+2025-11-02 17:24:59.53
+2650070e
+User
+headers: Headers {
+2025-11-02 17:24:59.53
+2650070e
+User
+'content-length': '284',
+2025-11-02 17:24:59.53
+2650070e
+User
+'content-type': 'application/json',
+2025-11-02 17:24:59.53
+2650070e
+User
+date: 'Sun, 02 Nov 2025 13:24:59 GMT',
+2025-11-02 17:24:59.53
+2650070e
+User
+via: '1.1 google',
+2025-11-02 17:24:59.53
+2650070e
+User
+'x-request-id': 'd5f18850-5d97-4475-85ff-884f801477ee'
+2025-11-02 17:24:59.53
+2650070e
+User
+},
+2025-11-02 17:24:59.53
+2650070e
+User
+requestID: 'd5f18850-5d97-4475-85ff-884f801477ee',
+2025-11-02 17:24:59.53
+2650070e
+User
+error: {
+2025-11-02 17:24:59.53
+2650070e
+User
+message: "This model's maximum context length is 128000 tokens. However, your messages resulted in 327751 tokens. Please reduce the length of the messages.",
+2025-11-02 17:24:59.53
+2650070e
+User
+type: 'invalid_request_error',
+2025-11-02 17:24:59.53
+2650070e
+User
+param: 'messages',
+2025-11-02 17:24:59.53
+2650070e
+User
+code: 'context_length_exceeded'
+2025-11-02 17:24:59.53
+2650070e
+User
+},
+2025-11-02 17:24:59.53
+2650070e
+User
+code: 'context_length_exceeded',
+2025-11-02 17:24:59.53
+2650070e
+User
+param: 'messages',
+2025-11-02 17:24:59.53
+2650070e
+User
+type: 'invalid_request_error'
+2025-11-02 17:24:59.53
+2650070e
+User
+}
+2025-11-02 17:24:59.53
+2650070e
+User
+[Chat API] Error after 7147ms for market 37cce470-37c2-4476-a114-a6e30141d09e: Error: Failed to generate response. Please try again.
+2025-11-02 17:24:59.53
+2650070e
+User
+at generateChatResponse (file:///home/runner/workspace/dist/index.js:2313:11)
+2025-11-02 17:24:59.53
+2650070e
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-02 17:24:59.53
+2650070e
+User
+at async file:///home/runner/workspace/dist/index.js:5356:24
+2025-11-02 17:24:59.53
+2650070e
+User
+[Chat API] Error stack: Error: Failed to generate response. Please try again.
+2025-11-02 17:24:59.53
+2650070e
+User
+at generateChatResponse (file:///home/runner/workspace/dist/index.js:2313:11)
+2025-11-02 17:24:59.53
+2650070e
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-02 17:24:59.53
+2650070e
+User
+at async file:///home/runner/workspace/dist/index.js:5356:24
+2025-11-02 17:24:59.53
+2650070e
+User
+[Chat API] Error message: Failed to generate response. Please try again.
