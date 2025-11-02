@@ -66,8 +66,8 @@ export async function scoreImpactWithAI(
   content: string
 ): Promise<ImpactScore> {
   try {
-    // Truncate content if too long (ChatGPT token limits)
-    const maxContentLength = 4000;
+    // Truncate content if too long (GPT-4.1 mini has 1M token context, but keep reasonable for news)
+    const maxContentLength = 10000;
     const truncatedContent = content.length > maxContentLength 
       ? content.substring(0, maxContentLength) + '...' 
       : content;
@@ -84,13 +84,13 @@ Respond with JSON only.`;
     console.log(`[AI Scorer] Analyzing article: "${title.substring(0, 60)}..."`);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.3, // Lower temperature for more consistent results
-      max_tokens: 500,
+      max_tokens: 800,
       response_format: { type: 'json_object' }
     });
 

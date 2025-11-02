@@ -168,12 +168,12 @@ export async function generateChatResponse(
       { role: "user", content: question },
     ];
 
-    // Call OpenAI
+    // Call OpenAI with GPT-4.1 mini (1M token context window)
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages,
       temperature: 0.3, // Low temperature for factual responses
-      max_tokens: 4000, // Increased to handle detailed commentary and tables
+      max_tokens: 8000, // Increased for more detailed responses with 1M context
     });
 
     const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response.";
