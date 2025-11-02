@@ -55,6 +55,26 @@ export default function Navigation() {
                   Home
                 </div>
               </Link>
+              {isAuthenticated && (
+                <Link href="/markets">
+                  <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                    location === "/markets" 
+                      ? "text-gray-900 hover:text-primary-600" 
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                    Markets
+                  </div>
+                </Link>
+              )}
+              <Link href="/platform">
+                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                  location === "/platform" 
+                    ? "text-gray-900 hover:text-primary-600" 
+                    : "text-gray-500 hover:text-gray-700"
+                }`}>
+                  Platform
+                </div>
+              </Link>
               <Link href="/about">
                 <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/about" 
@@ -73,15 +93,6 @@ export default function Navigation() {
                   Licensing
                 </div>
               </Link>
-              <Link href="/platform">
-                <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
-                  location === "/platform" 
-                    ? "text-gray-900 hover:text-primary-600" 
-                    : "text-gray-500 hover:text-gray-700"
-                }`}>
-                  Platform
-                </div>
-              </Link>
               <Link href="/contact">
                 <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
                   location === "/contact" 
@@ -91,29 +102,16 @@ export default function Navigation() {
                   Contact Us
                 </div>
               </Link>
-              {isAuthenticated && (
-                <>
-                  <Link href="/markets">
-                    <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
-                      location === "/markets" 
-                        ? "text-gray-900 hover:text-primary-600" 
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}>
-                      Markets
-                    </div>
-                  </Link>
-                  {isAdmin && (
-                    <Link href="/admin">
-                      <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
-                        location.startsWith("/admin") 
-                          ? "text-gray-900 hover:text-primary-600" 
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}>
-                        Admin
-                      </div>
-                    </Link>
-                  )}
-                </>
+              {isAuthenticated && isAdmin && (
+                <Link href="/admin">
+                  <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                    location.startsWith("/admin") 
+                      ? "text-gray-900 hover:text-primary-600" 
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                    Admin
+                  </div>
+                </Link>
               )}
             </div>
           </div>
