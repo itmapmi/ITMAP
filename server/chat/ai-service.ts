@@ -148,70 +148,16 @@ export async function generateChatResponse(
   conversationHistory: Array<{ role: string; content: string }> = []
 ): Promise<ChatResponse> {
   try {
-    // Build context summary from provided data with smart compression
+    // Build context summary from provided data
     const contextSummary = buildContextSummary(context);
     
     // Log the context size for verification
     const contextLines = contextSummary.split('\n').length;
     const contextChars = contextSummary.length;
-    const estimatedTokens = Math.round(contextChars / 4);
     console.log(`  - Context Size: ${contextLines} lines, ${contextChars} characters`);
-    console.log(`  - Estimated tokens: ~${estimatedTokens}`);
+    console.log(`  - Estimated tokens: ~${Math.round(contextChars / 4)}`);
 
-    // Calculate total message tokens (system prompt + context + history + question)
-    const systemPromptTokens = Math.round(SYSTEM_PROMPT.length / 4);
-    const historyTokens = conversationHistory.slice(-6).reduce((sum, msg) => sum + Math.round(msg.content.length / 4), 0);
-    const questionTokens = Math.round(question.length / 4);
-    const totalEstimatedTokens = systemPromptTokens + estimatedTokens + historyTokens + questionTokens;
-    
-    console.log(`  - Total estimated input tokens: ~${totalEstimatedTokens}`);
-    console.log(`  - Token breakdown: System=${systemPromptTokens}, Context=${estimatedTokens}, History=${historyTokens}, Question=${questionTokens}`);
-    
-    // Check if we're approaching the limit (128K tokens total, leaving room for response)
-    const MAX_INPUT_TOKENS = 120000; // Leave 8K for response
-    if (totalEstimatedTokens > MAX_INPUT_TOKENS) {
-      console.warn(`  ⚠️ Context too large (${totalEstimatedTokens} tokens). Compressing...`);
-      
-      // Compress context and retry
-      const compressedSummary = buildContextSummary(context, true);
-      const compressedTokens = Math.round(compressedSummary.length / 4);
-      const newTotal = systemPromptTokens + compressedTokens + historyTokens + questionTokens;
-      
-      console.log(`  - Compressed to ${compressedTokens} tokens (total: ${newTotal})`);
-      
-      // If still too large, throw specific error
-      if (newTotal > MAX_INPUT_TOKENS) {
-        throw new Error("This market has too much data to process in a single request. Please try asking a more specific question about particular vendors or features.");
-      }
-      
-      // Use compressed context
-      const messages: OpenAI.ChatCompletionMessageParam[] = [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "system", content: `Market Context:\n${compressedSummary}` },
-        ...conversationHistory.slice(-6).map((msg) => ({
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-        })),
-        { role: "user", content: question },
-      ];
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        temperature: 0.3,
-        max_tokens: 4000,
-      });
-
-      const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response.";
-      const sources = extractRelevantSources(question, context);
-
-      return {
-        content: responseContent,
-        sources,
-      };
-    }
-
-    // Normal path - context is within limits
+    // Prepare messages for OpenAI
     const messages: OpenAI.ChatCompletionMessageParam[] = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "system", content: `Market Context:\n${contextSummary}` },
@@ -222,38 +168,33 @@ export async function generateChatResponse(
       { role: "user", content: question },
     ];
 
+    // Call OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages,
-      temperature: 0.3,
-      max_tokens: 4000,
+      temperature: 0.3, // Low temperature for factual responses
+      max_tokens: 4000, // Increased to handle detailed commentary and tables
     });
 
     const responseContent = completion.choices[0]?.message?.content || "I couldn't generate a response.";
+
+    // Extract sources from the context that were likely used
     const sources = extractRelevantSources(question, context);
 
     return {
       content: responseContent,
       sources,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating chat response:", error);
-    
-    // Check for context length error
-    if (error.code === 'context_length_exceeded' || error.message?.includes('context length')) {
-      throw new Error("This market has too much data to process. Please try asking a more specific question about particular vendors or features.");
-    }
-    
     throw new Error("Failed to generate response. Please try again.");
   }
 }
 
 /**
  * Build a comprehensive context summary from all available data
- * @param context - The market context data
- * @param compress - If true, aggressively compress the context to fit within token limits
  */
-function buildContextSummary(context: ChatContext, compress = false): string {
+function buildContextSummary(context: ChatContext): string {
   const parts: string[] = [];
 
   parts.push(`**Market:** ${context.marketName} (ID: ${context.marketId})`);
@@ -277,14 +218,10 @@ function buildContextSummary(context: ChatContext, compress = false): string {
   ).length;
   const productFeatures = totalFeatures - ecosystemFeatures;
   
-  if (!compress) {
-    console.log(`[AI Context Verification] Market: ${context.marketName}`);
-    console.log(`  - Vendors: ${context.vendors.length}`);
-    console.log(`  - Criteria Scores: ${totalScores} total, ${scoresWithNotes} with commentary`);
-    console.log(`  - Features: ${totalFeatures} total (${productFeatures} product, ${ecosystemFeatures} ecosystem), ${featuresWithCommentary} with vendor commentary`);
-  } else {
-    console.log(`[AI Context Compression] Compressing context for market: ${context.marketName}`);
-  }
+  console.log(`[AI Context Verification] Market: ${context.marketName}`);
+  console.log(`  - Vendors: ${context.vendors.length}`);
+  console.log(`  - Criteria Scores: ${totalScores} total, ${scoresWithNotes} with commentary`);
+  console.log(`  - Features: ${totalFeatures} total (${productFeatures} product, ${ecosystemFeatures} ecosystem), ${featuresWithCommentary} with vendor commentary`);
 
   // Vendors with detailed scores and commentary
   if (context.vendors.length > 0) {
@@ -304,10 +241,7 @@ function buildContextSummary(context: ChatContext, compress = false): string {
           parts.push("  Execution Criteria:");
           executionScores.forEach((score: any) => {
             if (score.notes && score.notes.trim()) {
-              const notes = compress && score.notes.length > 150 
-                ? score.notes.substring(0, 150) + "..." 
-                : score.notes;
-              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${notes}"`);
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${score.notes}"`);
             } else {
               parts.push(`    • ${score.criteriaName}: ${score.score}/10`);
             }
@@ -318,10 +252,7 @@ function buildContextSummary(context: ChatContext, compress = false): string {
           parts.push("  Viability Criteria:");
           viabilityScores.forEach((score: any) => {
             if (score.notes && score.notes.trim()) {
-              const notes = compress && score.notes.length > 150 
-                ? score.notes.substring(0, 150) + "..." 
-                : score.notes;
-              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${notes}"`);
+              parts.push(`    • ${score.criteriaName}: ${score.score}/10 - "${score.notes}"`);
             } else {
               parts.push(`    • ${score.criteriaName}: ${score.score}/10`);
             }
@@ -349,18 +280,9 @@ function buildContextSummary(context: ChatContext, compress = false): string {
   if (context.features.length > 0) {
     parts.push(`\n**Product Features:** ${context.features.length} features evaluated`);
     
-    // Filter features based on compression mode
-    let featuresToInclude = context.features;
-    if (compress) {
-      // In compression mode, skip ecosystem features and limit product features
-      featuresToInclude = context.features
-        .filter((f: any) => !f.categoryName?.toLowerCase().includes('ecosystem'))
-        .slice(0, 40); // Limit to 40 product features
-      console.log(`  - Compressed features: ${featuresToInclude.length} product features (skipped ecosystem)`);
-    }
-    
-    // Include ALL features with commentary (or compressed subset)
-    featuresToInclude.forEach((feature: any) => {
+    // Include ALL features with commentary (not just first 5)
+    // This is critical for the AI to see all vendor capabilities and detailed commentary
+    context.features.forEach((feature: any) => {
       if (feature.vendorSupport && feature.vendorSupport.length > 0) {
         // Only include if there's actual commentary to avoid bloat
         const hasCommentary = feature.vendorSupport.some((s: any) => s.comments && s.comments.trim().length > 0);
@@ -369,11 +291,7 @@ function buildContextSummary(context: ChatContext, compress = false): string {
           feature.vendorSupport.forEach((support: any) => {
             const level = support.supportLevel >= 80 ? "Full" : support.supportLevel >= 60 ? "Good" : support.supportLevel >= 40 ? "Partial" : support.supportLevel >= 20 ? "Limited" : "Not Supported";
             if (support.comments && support.comments.trim()) {
-              // Truncate long comments in compress mode
-              const comments = compress && support.comments.length > 100 
-                ? support.comments.substring(0, 100) + "..." 
-                : support.comments;
-              parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100) - "${comments}"`);
+              parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100) - "${support.comments}"`);
             } else {
               parts.push(`  • ${support.vendorName}: ${level} (${support.supportLevel}/100)`);
             }
@@ -385,16 +303,14 @@ function buildContextSummary(context: ChatContext, compress = false): string {
 
   // Recent news
   if (context.news.length > 0) {
-    const newsLimit = compress ? 5 : 10;
-    parts.push(`\n**Recent News:** ${context.news.length} articles (showing top ${newsLimit})`);
-    context.news.slice(0, newsLimit).forEach((article: any) => {
+    parts.push(`\n**Recent News:** ${context.news.length} articles`);
+    context.news.slice(0, 10).forEach((article: any) => {
       const date = article.publishedAt ? new Date(article.publishedAt).toISOString().split("T")[0] : "Unknown date";
       const impact = article.impactLabel?.toUpperCase() || "UNKNOWN";
       const daysSince = article.publishedAt ? Math.floor((Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60 * 24)) : 999;
       const stale = daysSince > 180 ? " [STALE]" : "";
       parts.push(`  • [${date}] ${article.title} - ${impact} impact${stale}`);
-      if (article.summary && !compress) {
-        // Skip summaries in compress mode
+      if (article.summary) {
         parts.push(`    "${article.summary}"`);
       }
     });
