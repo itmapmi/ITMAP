@@ -2315,8 +2315,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // POST ask a question (requires authentication)
   app.post("/api/chat/ask", requireAuth, async (req, res) => {
+    const startTime = Date.now();
+    let marketId: string | undefined;
+    
     try {
-      const { question, marketId, conversationId } = req.body;
+      const { question, marketId: reqMarketId, conversationId } = req.body;
+      marketId = reqMarketId;
+      
+      console.log(`[Chat API] Starting chat request for market: ${marketId}`);
       
       if (!question || typeof question !== 'string') {
         return res.status(400).json({ error: "Question is required" });
@@ -2334,17 +2340,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get or create conversation
       let conversation;
       if (conversationId) {
+        console.log(`[Chat API] Using existing conversation: ${conversationId}`);
         conversation = await storage.getConversationById(conversationId);
         if (!conversation || conversation.userId !== userId) {
           return res.status(404).json({ error: "Conversation not found" });
         }
       } else {
+        console.log(`[Chat API] Creating new conversation`);
         // Create new conversation
         conversation = await storage.createConversation({
           userId,
           marketId,
           title: question.substring(0, 100), // Use first 100 chars as title
         });
+        console.log(`[Chat API] Created conversation: ${conversation.id}`);
       }
       
       // Save user message
@@ -2353,6 +2362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: 'user',
         content: question,
       });
+      console.log(`[Chat API] Saved user message`);
       
       // Get conversation history
       const messages = await storage.getConversationMessages(conversation.id);
@@ -2360,13 +2370,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: m.role,
         content: m.content
       }));
+      console.log(`[Chat API] Loaded ${messages.length} previous messages`);
       
       // Build context for AI
+      console.log(`[Chat API] Building market context...`);
       const { buildMarketContext } = await import('./chat/context-builder');
       const context = await buildMarketContext(marketId);
+      console.log(`[Chat API] Context built - ${context.vendors.length} vendors, ${context.features.length} features`);
       
       // Get AI response
+      console.log(`[Chat API] Calling OpenAI...`);
       const response = await generateChatResponse(question, context, conversationHistory);
+      console.log(`[Chat API] Got AI response (${response.content.length} chars)`);
       
       // Save assistant message
       await storage.createMessage({
@@ -2375,18 +2390,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: response.content,
         sources: response.sources,
       });
+      console.log(`[Chat API] Saved assistant message`);
       
       // Update conversation timestamp
       await storage.updateConversation(conversation.id, {});
+      
+      const duration = Date.now() - startTime;
+      console.log(`[Chat API] Request completed in ${duration}ms`);
       
       res.json({
         conversationId: conversation.id,
         answer: response.content,
         sources: response.sources,
       });
-    } catch (error) {
-      console.error("Error processing chat question:", error);
-      res.status(500).json({ error: "Failed to process question" });
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`[Chat API] Error after ${duration}ms for market ${marketId}:`, error);
+      console.error(`[Chat API] Error stack:`, error.stack);
+      console.error(`[Chat API] Error message:`, error.message);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to process question";
+      if (error.message?.includes("timeout") || error.message?.includes("ETIMEDOUT")) {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.message?.includes("rate_limit") || error.message?.includes("quota")) {
+        errorMessage = "API rate limit exceeded. Please try again in a moment.";
+      } else if (error.message?.includes("context") || error.message?.includes("token")) {
+        errorMessage = "Unable to process this market data. Please contact support.";
+      } else if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
+        errorMessage = "Network error. Please check your connection and try again.";
+      }
+      
+      res.status(500).json({ 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
   

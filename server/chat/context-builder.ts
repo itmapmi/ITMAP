@@ -6,17 +6,22 @@ import type { ChatContext } from "./ai-service";
  */
 export async function buildMarketContext(marketId: string): Promise<ChatContext> {
   try {
+    console.log(`[Context Builder] Starting context build for market: ${marketId}`);
+    
     // Fetch market info
     const market = await storage.getMarketById(marketId);
     if (!market) {
       throw new Error(`Market not found: ${marketId}`);
     }
+    console.log(`[Context Builder] Market found: ${market.name}`);
 
     // Fetch all vendors in this market with their scores
     const vendors = await storage.getVendorsByMarket(marketId);
+    console.log(`[Context Builder] Found ${vendors.length} vendors`);
     
     // Fetch ALL feature support for this market (includes product features AND ecosystem)
     const allFeatureSupport = await storage.getVendorFeatureSupport(marketId);
+    console.log(`[Context Builder] Found ${allFeatureSupport.length} feature support records`);
     
     // Enrich vendors with detailed score information and commentary
     const enrichedVendors = await Promise.all(
@@ -81,10 +86,14 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
 
     // Get all features with categories and vendor support
     const categories = await storage.getMarketFeatureCategories(marketId);
+    console.log(`[Context Builder] Found ${categories.length} feature categories`);
+    
     const allFeatures: any[] = [];
     
     for (const category of categories) {
       const features = await storage.getCategoryFeatures(category.id);
+      console.log(`[Context Builder] Category "${category.name}": ${features.length} features`);
+      
       for (const feature of features) {
         // Get support for this feature across all vendors
         const vendorSupport: any[] = [];
@@ -111,6 +120,8 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
         });
       }
     }
+    
+    console.log(`[Context Builder] Total features collected: ${allFeatures.length}`);
 
     // Get recent news for vendors in this market
     const news: any[] = [];
@@ -130,7 +141,7 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
         })));
       } catch (e) {
         // News might not be available for all vendors
-        console.warn(`No news found for vendor ${vendor.name}`);
+        console.warn(`[Context Builder] No news found for vendor ${vendor.name}`);
       }
     }
     
@@ -140,6 +151,8 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
       return dateB - dateA;
     });
+    
+    console.log(`[Context Builder] Collected ${news.length} news articles`);
 
     // Build quadrant data (positions)
     const quadrantData = {
@@ -154,7 +167,7 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       yAxisLabel: "Viability",
     };
 
-    return {
+    const contextData = {
       marketId,
       marketName: market.name,
       vendors: enrichedVendors,
@@ -163,9 +176,21 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       news,
       quadrantData,
     };
-  } catch (error) {
-    console.error("Error building market context:", error);
-    throw new Error("Failed to build market context");
+    
+    console.log(`[Context Builder] Context build complete:`, {
+      marketName: market.name,
+      vendorsCount: enrichedVendors.length,
+      criteriaCount: enrichedCriteria.length,
+      featuresCount: allFeatures.length,
+      newsCount: news.length
+    });
+    
+    return contextData;
+  } catch (error: any) {
+    console.error(`[Context Builder] Error building market context:`, error);
+    console.error(`[Context Builder] Error stack:`, error.stack);
+    console.error(`[Context Builder] Error message:`, error.message);
+    throw new Error(`Failed to build market context: ${error.message}`);
   }
 }
 
