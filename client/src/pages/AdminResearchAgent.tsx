@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, RefreshCw, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2 } from "lucide-react";
+import { Loader2, Play, RefreshCw, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, StopCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -150,6 +150,28 @@ export default function AdminResearchAgent() {
       toast({
         title: "Error",
         description: error.message || "Failed to start research job",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cancel research job mutation
+  const cancelJobMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const response = await apiRequest(`/api/research/jobs/${jobId}/cancel`, "POST");
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Job Cancelled",
+        description: "Research job has been cancelled successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/research/jobs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel job",
         variant: "destructive",
       });
     },
@@ -692,8 +714,22 @@ export default function AdminResearchAgent() {
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground" data-testid={`text-job-date-${job.id}`}>
-                    {new Date(job.createdAt).toLocaleString()}
+                  <div className="flex items-center gap-3">
+                    {job.status === "running" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => cancelJobMutation.mutate(job.id)}
+                        disabled={cancelJobMutation.isPending}
+                        data-testid={`button-cancel-job-${job.id}`}
+                      >
+                        <StopCircle className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                    )}
+                    <div className="text-xs text-muted-foreground" data-testid={`text-job-date-${job.id}`}>
+                      {new Date(job.createdAt).toLocaleString()}
+                    </div>
                   </div>
                 </div>
               ))}

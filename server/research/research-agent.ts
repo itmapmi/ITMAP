@@ -66,6 +66,16 @@ export class ResearchAgent {
   }
 
   /**
+   * Check if the job has been cancelled
+   */
+  private async checkCancellation(): Promise<void> {
+    const job = await storage.getResearchJob(this.jobId);
+    if (job?.status === "cancelled") {
+      throw new Error("Job cancelled by user");
+    }
+  }
+
+  /**
    * Execute the full research automation workflow
    */
   async execute(jobType: string): Promise<void> {
@@ -95,11 +105,13 @@ export class ResearchAgent {
       // Execute based on job type
       if (jobType === "full_automation") {
         // Step 1: Generate features
+        await this.checkCancellation();
         await this.generateFeatures(market);
         
         // Step 2: Generate commentary for each vendor x criteria
         for (const vendor of validVendors) {
           for (const criterion of allCriteria) {
+            await this.checkCancellation();
             await this.generateCommentary(market, vendor, criterion);
           }
         }
@@ -107,20 +119,24 @@ export class ResearchAgent {
         // Step 3: Generate scores for each vendor x criteria
         for (const vendor of validVendors) {
           for (const criterion of allCriteria) {
+            await this.checkCancellation();
             await this.generateScore(market, vendor, criterion);
           }
         }
       } else if (jobType === "features_only") {
+        await this.checkCancellation();
         await this.generateFeatures(market);
       } else if (jobType === "commentary_only") {
         for (const vendor of validVendors) {
           for (const criterion of allCriteria) {
+            await this.checkCancellation();
             await this.generateCommentary(market, vendor, criterion);
           }
         }
       } else if (jobType === "scoring_only") {
         for (const vendor of validVendors) {
           for (const criterion of allCriteria) {
+            await this.checkCancellation();
             await this.generateScore(market, vendor, criterion);
           }
         }
@@ -128,6 +144,13 @@ export class ResearchAgent {
 
       await this.updateJobStatus("completed", "Research automation completed successfully");
     } catch (error: any) {
+      // Check if it was a cancellation
+      if (error.message === "Job cancelled by user") {
+        console.log(`[Research Agent] Job ${this.jobId} was cancelled by user`);
+        await this.updateJobStatus("cancelled", "Job cancelled by user");
+        return; // Exit gracefully without throwing
+      }
+      
       console.error(`[Research Agent] Job ${this.jobId} failed:`, error);
       await this.updateJobStatus("failed", `Job failed: ${error.message}`, error.message);
       throw error;
