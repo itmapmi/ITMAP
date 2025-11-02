@@ -30,6 +30,15 @@ Preferred communication style: Simple, everyday language.
 ### Data Model
 The platform utilizes a relational data model encompassing Markets, Sub-Markets, Vendors, Criteria (Execution vs. Viability), Vendor Scores, Market Criteria Weights, Vendor News, Features, Research Reports, and Historical Positions.
 
+**Feature Support Scoring**: Uses Harvey Ball scale (0-4) for vendor feature support:
+- 0 = Not Supported (0%)
+- 1 = Limited (25%)
+- 2 = Partial (50%)
+- 3 = Good (75%)
+- 4 = Full Support (100%)
+
+Data is stored as integers 0-4 in the database. The AI chat context builder converts these to 0-100 percentages (multiplying by 25) for natural language responses, while the frontend Support Matrix and PDF generation handle 0-4 natively.
+
 ### Authentication and Authorization
 Designed for internal enterprise use, featuring basic user management and role-based access control for administrators and end-users.
 
