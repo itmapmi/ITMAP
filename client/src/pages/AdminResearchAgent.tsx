@@ -248,7 +248,7 @@ export default function AdminResearchAgent() {
                           </Badge>
                         </Label>
                         <Select
-                          value={criteriaPrompts[criterion.id] || ""}
+                          value={criteriaPrompts[criterion.id]}
                           onValueChange={(value) => updateCriterionPrompt(criterion.id, value)}
                         >
                           <SelectTrigger
@@ -256,12 +256,9 @@ export default function AdminResearchAgent() {
                             data-testid={`select-criterion-${criterion.id}`}
                             className="h-9"
                           >
-                            <SelectValue placeholder="Use default prompt" />
+                            <SelectValue placeholder="Default (Perplexity Deep Research)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="" data-testid={`option-default-${criterion.id}`}>
-                              Default (Perplexity Deep Research)
-                            </SelectItem>
                             {commentaryTemplates.map((template: any) => (
                               <SelectItem
                                 key={template.id}
