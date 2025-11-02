@@ -14,6 +14,7 @@ export default function AdminResearchAgent() {
   const [selectedMarket, setSelectedMarket] = useState("");
   const [selectedJobType, setSelectedJobType] = useState("full_automation");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [criteriaPrompts, setCriteriaPrompts] = useState<Record<string, string>>({});
 
   // Fetch markets
   const { data: markets } = useQuery<any[]>({
@@ -24,6 +25,16 @@ export default function AdminResearchAgent() {
   const { data: vendors } = useQuery<any[]>({
     queryKey: ["/api/markets", selectedMarket, "vendors"],
     enabled: !!selectedMarket,
+  });
+
+  // Fetch all criteria
+  const { data: criteria } = useQuery<any[]>({
+    queryKey: ["/api/criteria"],
+  });
+
+  // Fetch prompt templates
+  const { data: promptTemplates } = useQuery<any[]>({
+    queryKey: ["/api/research/prompt-templates"],
   });
 
   // Fetch research jobs
@@ -90,7 +101,15 @@ export default function AdminResearchAgent() {
       marketId: selectedMarket,
       vendorIds: selectedVendors,
       jobType: selectedJobType,
+      criteriaPrompts: criteriaPrompts,
     });
+  };
+
+  const updateCriterionPrompt = (criterionId: string, promptId: string) => {
+    setCriteriaPrompts(prev => ({
+      ...prev,
+      [criterionId]: promptId,
+    }));
   };
 
   const toggleVendorSelection = (vendorId: string) => {
@@ -198,6 +217,68 @@ export default function AdminResearchAgent() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Criterion-Specific Prompt Selection */}
+          {criteria && criteria.length > 0 && promptTemplates && (
+            <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+              <div className="space-y-1">
+                <Label className="text-base font-semibold">Commentary Prompts by Criterion</Label>
+                <p className="text-sm text-muted-foreground">
+                  Select custom prompts for each criterion. Uses default if not specified.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {criteria
+                  .sort((a, b) => {
+                    if (a.category === b.category) return a.name.localeCompare(b.name);
+                    return a.category === "execution" ? -1 : 1;
+                  })
+                  .map((criterion: any) => {
+                    const commentaryTemplates = promptTemplates.filter(
+                      (t: any) => t.category === "commentary_generation" && t.isActive !== false
+                    );
+                    
+                    return (
+                      <div key={criterion.id} className="space-y-1.5">
+                        <Label htmlFor={`criterion-${criterion.id}`} className="text-sm">
+                          {criterion.name}
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {criterion.category}
+                          </Badge>
+                        </Label>
+                        <Select
+                          value={criteriaPrompts[criterion.id] || ""}
+                          onValueChange={(value) => updateCriterionPrompt(criterion.id, value)}
+                        >
+                          <SelectTrigger
+                            id={`criterion-${criterion.id}`}
+                            data-testid={`select-criterion-${criterion.id}`}
+                            className="h-9"
+                          >
+                            <SelectValue placeholder="Use default prompt" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="" data-testid={`option-default-${criterion.id}`}>
+                              Default (Perplexity Deep Research)
+                            </SelectItem>
+                            {commentaryTemplates.map((template: any) => (
+                              <SelectItem
+                                key={template.id}
+                                value={template.id}
+                                data-testid={`option-template-${template.id}`}
+                              >
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           {selectedMarket && vendors && vendors.length > 0 && (
             <div className="space-y-2">

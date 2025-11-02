@@ -2582,6 +2582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         featurePromptId,
         commentaryPromptId,
         scoringPromptId,
+        criteriaPrompts,
       } = req.body;
 
       // Validate input
@@ -2628,6 +2629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         featurePromptId: finalFeaturePromptId,
         commentaryPromptId: finalCommentaryPromptId,
         scoringPromptId: finalScoringPromptId,
+        criteriaPrompts: criteriaPrompts || {},
         status: "pending",
         createdBy: req.user!.id,
       });
@@ -2640,7 +2642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorIds,
         finalFeaturePromptId,
         finalCommentaryPromptId,
-        finalScoringPromptId
+        finalScoringPromptId,
+        criteriaPrompts
       );
 
       // Execute in background
