@@ -2597,14 +2597,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // If prompt IDs not provided, try to use default templates
+      let finalFeaturePromptId = featurePromptId;
+      let finalCommentaryPromptId = commentaryPromptId;
+      let finalScoringPromptId = scoringPromptId;
+      
+      if (!finalFeaturePromptId || !finalCommentaryPromptId || !finalScoringPromptId) {
+        const templates = await storage.getResearchPromptTemplates();
+        const activeTemplates = templates.filter(t => t.isActive);
+        
+        if (!finalFeaturePromptId) {
+          const defaultTemplate = activeTemplates.find(t => t.category === "feature_generation");
+          finalFeaturePromptId = defaultTemplate?.id;
+        }
+        if (!finalCommentaryPromptId) {
+          const defaultTemplate = activeTemplates.find(t => t.category === "commentary_generation");
+          finalCommentaryPromptId = defaultTemplate?.id;
+        }
+        if (!finalScoringPromptId) {
+          const defaultTemplate = activeTemplates.find(t => t.category === "scoring");
+          finalScoringPromptId = defaultTemplate?.id;
+        }
+      }
+
       // Create job record
       const job = await storage.createResearchJob({
         marketId,
         vendorIds,
         jobType,
-        featurePromptId,
-        commentaryPromptId,
-        scoringPromptId,
+        featurePromptId: finalFeaturePromptId,
+        commentaryPromptId: finalCommentaryPromptId,
+        scoringPromptId: finalScoringPromptId,
         status: "pending",
         createdBy: req.user!.id,
       });
@@ -2615,9 +2638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.id,
         marketId,
         vendorIds,
-        featurePromptId,
-        commentaryPromptId,
-        scoringPromptId
+        finalFeaturePromptId,
+        finalCommentaryPromptId,
+        finalScoringPromptId
       );
 
       // Execute in background

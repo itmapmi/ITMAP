@@ -22,9 +22,8 @@ export default function AdminResearchAgent() {
 
   // Fetch vendors for selected market
   const { data: vendors } = useQuery<any[]>({
-    queryKey: ["/api/vendors"],
+    queryKey: ["/api/markets", selectedMarket, "vendors"],
     enabled: !!selectedMarket,
-    select: (data) => data.filter((v: any) => v.marketId === selectedMarket),
   });
 
   // Fetch research jobs

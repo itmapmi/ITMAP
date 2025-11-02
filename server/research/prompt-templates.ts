@@ -55,7 +55,7 @@ Return ONLY the JSON object, no additional text.`,
     description: "Generates detailed, research-backed commentary for vendor criteria scores",
     category: "commentary_generation",
     aiProvider: "perplexity",
-    model: "llama-3.1-sonar-large-128k-online",
+    model: "sonar",
     variables: ["market_name", "vendor_name", "criteria_name", "criteria_description"],
     promptTemplate: `Research and provide detailed commentary about {{vendor_name}}'s performance in {{criteria_name}} for the {{market_name}} market.
 

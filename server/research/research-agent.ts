@@ -3,6 +3,22 @@ import { callOpenAI, callPerplexity, type AIResponse } from "./ai-providers";
 import { fillPromptTemplate } from "./prompt-templates";
 import type { ResearchJob, ResearchPromptTemplate } from "@shared/schema";
 
+/**
+ * Extract JSON from markdown code blocks
+ * Handles cases where AI returns ```json ... ``` wrapped responses
+ */
+function extractJSON(text: string): string {
+  const trimmed = text.trim();
+  
+  // Check if wrapped in markdown code blocks
+  const jsonBlockMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  if (jsonBlockMatch) {
+    return jsonBlockMatch[1].trim();
+  }
+  
+  return trimmed;
+}
+
 export interface ResearchJobProgress {
   jobId: string;
   status: string;
@@ -136,8 +152,9 @@ export class ResearchAgent {
       // Call OpenAI with the prompt
       const response = await callOpenAI(prompt, template.model);
       
-      // Parse JSON response
-      const data = JSON.parse(response.content);
+      // Parse JSON response (handle markdown code blocks)
+      const jsonText = extractJSON(response.content);
+      const data = JSON.parse(jsonText);
       
       // Create feature categories and features in database
       for (const category of data.categories) {
@@ -273,8 +290,9 @@ export class ResearchAgent {
       // Call OpenAI for scoring
       const response = await callOpenAI(prompt, template.model);
       
-      // Parse JSON response
-      const data = JSON.parse(response.content);
+      // Parse JSON response (handle markdown code blocks)
+      const jsonText = extractJSON(response.content);
+      const data = JSON.parse(jsonText);
       const score = Math.max(0, Math.min(10, data.score)); // Clamp to 0-10
       
       // Update the score
