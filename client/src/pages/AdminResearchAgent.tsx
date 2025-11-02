@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 export default function AdminResearchAgent() {
   const { toast } = useToast();
   const [selectedMarket, setSelectedMarket] = useState("");
-  const [selectedJobType, setSelectedJobType] = useState("full_automation");
+  const [selectedJobType, setSelectedJobType] = useState("commentary_only");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [criteriaPrompts, setCriteriaPrompts] = useState<Record<string, string>>({});
   
@@ -543,12 +543,6 @@ export default function AdminResearchAgent() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="full_automation" data-testid="option-full-automation">
-                  Full Automation (Features + Commentary + Scoring)
-                </SelectItem>
-                <SelectItem value="features_only" data-testid="option-features-only">
-                  Features Only
-                </SelectItem>
                 <SelectItem value="commentary_only" data-testid="option-commentary-only">
                   Commentary Only
                 </SelectItem>
