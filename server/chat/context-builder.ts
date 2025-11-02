@@ -6,17 +6,23 @@ import type { ChatContext } from "./ai-service";
  */
 export async function buildMarketContext(marketId: string): Promise<ChatContext> {
   try {
+    console.log(`[AI Context] Building context for market: ${marketId}`);
+    
     // Fetch market info
     const market = await storage.getMarketById(marketId);
     if (!market) {
       throw new Error(`Market not found: ${marketId}`);
     }
+    
+    console.log(`[AI Context] Market: ${market.name}`);
 
     // Fetch all vendors in this market with their scores
     const vendors = await storage.getVendorsByMarket(marketId);
+    console.log(`[AI Context] Found ${vendors.length} vendors`);
     
     // Fetch ALL feature support for this market (includes product features AND ecosystem)
     const allFeatureSupport = await storage.getVendorFeatureSupport(marketId);
+    console.log(`[AI Context] Found ${allFeatureSupport.length} feature support entries`);
     
     // Enrich vendors with detailed score information and commentary
     const enrichedVendors = await Promise.all(
@@ -81,6 +87,7 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
 
     // Get all features with categories and vendor support
     const categories = await storage.getMarketFeatureCategories(marketId);
+    console.log(`[AI Context] Found ${categories.length} feature categories`);
     const allFeatures: any[] = [];
     
     for (const category of categories) {
@@ -154,6 +161,31 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       yAxisLabel: "Viability",
     };
 
+    // Calculate context size
+    const contextString = JSON.stringify({
+      marketId,
+      marketName: market.name,
+      vendors: enrichedVendors,
+      criteria: enrichedCriteria,
+      features: allFeatures,
+      news,
+      quadrantData,
+    });
+    const contextSize = contextString.length;
+    const estimatedTokens = Math.ceil(contextSize / 4); // Rough estimate
+    
+    console.log(`[AI Context] Context built successfully`);
+    console.log(`  - Vendors: ${enrichedVendors.length}`);
+    console.log(`  - Features: ${allFeatures.length}`);
+    console.log(`  - News: ${news.length}`);
+    console.log(`  - Context Size: ${contextSize} characters`);
+    console.log(`  - Estimated Tokens: ~${estimatedTokens}`);
+    
+    // Warn if context is very large
+    if (estimatedTokens > 100000) {
+      console.warn(`[AI Context] ⚠️  Large context detected (${estimatedTokens} tokens). This may cause issues with OpenAI API.`);
+    }
+    
     return {
       marketId,
       marketName: market.name,
@@ -164,8 +196,8 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       quadrantData,
     };
   } catch (error) {
-    console.error("Error building market context:", error);
-    throw new Error("Failed to build market context");
+    console.error(`[AI Context] ❌ Error building context for market ${marketId}:`, error);
+    throw error;
   }
 }
 
