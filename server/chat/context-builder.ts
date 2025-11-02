@@ -91,10 +91,14 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
         for (const vendor of enrichedVendors) {
           const support = vendor.featureSupport.find((s: any) => s.featureId === feature.id);
           if (support) {
+            // Convert from 0-4 Harvey Ball scale to 0-100 percentage
+            // 0=Not Supported, 1=Limited(25%), 2=Partial(50%), 3=Good(75%), 4=Full(100%)
+            const supportLevelPercentage = support.supportLevel * 25;
+            
             vendorSupport.push({
               vendorId: vendor.id,
               vendorName: vendor.name,
-              supportLevel: support.supportLevel,
+              supportLevel: supportLevelPercentage,
               comments: support.comments,
             });
           }
