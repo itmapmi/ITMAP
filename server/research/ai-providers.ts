@@ -73,6 +73,11 @@ export async function callOpenAIDeepResearch(
   model: string = "o4-mini-deep-research-2025-06-26",
   systemPrompt?: string
 ): Promise<AIResponse> {
+  // Verify API key is configured
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required for Deep Research models");
+  }
+
   const input: any[] = [];
   
   if (systemPrompt) {
@@ -90,17 +95,31 @@ export async function callOpenAIDeepResearch(
   // Call the Responses API with web search tool using direct OpenAI API key
   // Only use web_search_preview tool - code_interpreter requires container configuration
   console.log("[Deep Research] Creating response with model:", model);
-  const initialResponse = await openaiDirect.responses.create({
-    model,
-    input,
-    reasoning: { summary: "auto" },
-    tools: [
-      { type: "web_search_preview" }
-    ]
-  } as any); // Type assertion needed for Responses API
+  
+  let initialResponse: any;
+  try {
+    // Add timeout wrapper for the API call itself (30 seconds)
+    const apiCallPromise = openaiDirect.responses.create({
+      model,
+      input,
+      reasoning: { summary: "auto" },
+      tools: [
+        { type: "web_search_preview" }
+      ]
+    } as any); // Type assertion needed for Responses API
+
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("API call timeout after 30 seconds")), 30000)
+    );
+
+    initialResponse = await Promise.race([apiCallPromise, timeoutPromise]);
+    console.log("[Deep Research] Response created with ID:", initialResponse.id, "Status:", initialResponse.status);
+  } catch (error: any) {
+    console.error("[Deep Research] Error creating response:", error.message);
+    throw new Error(`Failed to create Deep Research response: ${error.message}`);
+  }
 
   const responseId = initialResponse.id;
-  console.log("[Deep Research] Response created with ID:", responseId, "Status:", initialResponse.status);
 
   // Poll for completion with timeout (15 minutes max)
   const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
