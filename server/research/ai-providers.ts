@@ -92,21 +92,33 @@ export async function callOpenAIDeepResearch(
     content: [{ type: "input_text", text: prompt }]
   });
 
-  // Call the Responses API with web search tool using direct OpenAI API key
-  // Only use web_search_preview tool - code_interpreter requires container configuration
+  // Call the Responses API with web search tool using direct HTTP calls
+  // The OpenAI SDK doesn't fully support Responses API yet, so we use fetch
   console.log("[Deep Research] Creating response with model:", model);
   
   let initialResponse: any;
   try {
-    // Add timeout wrapper for the API call itself (30 seconds)
-    const apiCallPromise = openaiDirect.responses.create({
-      model,
-      input,
-      reasoning: { summary: "auto" },
-      tools: [
-        { type: "web_search_preview" }
-      ]
-    } as any); // Type assertion needed for Responses API
+    const apiCallPromise = fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "deep-research-preview" // Required beta header
+      },
+      body: JSON.stringify({
+        model,
+        input,
+        reasoning: { summary: "auto" },
+        tools: [{ type: "web_search_preview" }]
+      })
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("[Deep Research] API error response:", res.status, errorText);
+        throw new Error(`OpenAI API error ${res.status}: ${errorText}`);
+      }
+      return res.json();
+    });
 
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error("API call timeout after 30 seconds")), 30000)
@@ -138,8 +150,22 @@ export async function callOpenAIDeepResearch(
     console.log("[Deep Research] Response still in progress, polling in 10s...");
     await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
 
-    // Retrieve updated status
-    response = await openaiDirect.responses.retrieve(responseId) as any;
+    // Retrieve updated status using direct HTTP
+    const pollResponse = await fetch(`https://api.openai.com/v1/responses/${responseId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "OpenAI-Beta": "deep-research-preview"
+      }
+    });
+
+    if (!pollResponse.ok) {
+      const errorText = await pollResponse.text();
+      console.error("[Deep Research] Poll error:", pollResponse.status, errorText);
+      throw new Error(`Failed to poll response status: ${pollResponse.status}`);
+    }
+
+    response = await pollResponse.json();
     console.log("[Deep Research] Poll status:", response.status);
   }
 
