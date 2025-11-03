@@ -82,6 +82,7 @@ export async function callOpenAIDeepResearch(
   });
 
   // Call the Responses API with web search tool
+  // Note: background mode is not supported through Replit AI integrations
   const response = await openai.responses.create({
     model,
     input,
@@ -89,8 +90,7 @@ export async function callOpenAIDeepResearch(
     tools: [
       { type: "web_search_preview" },
       { type: "code_interpreter" }
-    ],
-    background: true
+    ]
   } as any); // Type assertion needed for Responses API
 
   // Extract final text content from response
