@@ -66,6 +66,7 @@ export async function callOpenAI(
 /**
  * Call OpenAI Deep Research API with web search capabilities
  * Uses o3-deep-research or o4-mini-deep-research models
+ * Implements polling with timeout since Responses API returns immediately
  */
 export async function callOpenAIDeepResearch(
   prompt: string,
@@ -88,7 +89,8 @@ export async function callOpenAIDeepResearch(
 
   // Call the Responses API with web search tool using direct OpenAI API key
   // Only use web_search_preview tool - code_interpreter requires container configuration
-  const response = await openaiDirect.responses.create({
+  console.log("[Deep Research] Creating response with model:", model);
+  const initialResponse = await openaiDirect.responses.create({
     model,
     input,
     reasoning: { summary: "auto" },
@@ -97,6 +99,45 @@ export async function callOpenAIDeepResearch(
     ]
   } as any); // Type assertion needed for Responses API
 
+  const responseId = initialResponse.id;
+  console.log("[Deep Research] Response created with ID:", responseId, "Status:", initialResponse.status);
+
+  // Poll for completion with timeout (15 minutes max)
+  const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+  const POLL_INTERVAL_MS = 10000; // 10 seconds
+  const startTime = Date.now();
+  let response = initialResponse;
+
+  while (response.status === "in_progress") {
+    // Check timeout
+    if (Date.now() - startTime > TIMEOUT_MS) {
+      console.error("[Deep Research] Timeout after 15 minutes for response:", responseId);
+      throw new Error("Deep Research request timed out after 15 minutes");
+    }
+
+    // Wait before polling
+    console.log("[Deep Research] Response still in progress, polling in 10s...");
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+
+    // Retrieve updated status
+    response = await openaiDirect.responses.retrieve(responseId) as any;
+    console.log("[Deep Research] Poll status:", response.status);
+  }
+
+  // Check final status
+  if (response.status === "failed") {
+    const errorMsg = (response as any).error?.message || "Unknown error";
+    console.error("[Deep Research] Response failed:", errorMsg);
+    throw new Error(`Deep Research failed: ${errorMsg}`);
+  }
+
+  if (response.status !== "completed") {
+    console.error("[Deep Research] Unexpected final status:", response.status);
+    throw new Error(`Deep Research ended with unexpected status: ${response.status}`);
+  }
+
+  console.log("[Deep Research] Response completed successfully");
+
   // Extract final text content from response
   let content = "";
   let searchCount = 0;
@@ -104,6 +145,7 @@ export async function callOpenAIDeepResearch(
   if (response.output && Array.isArray(response.output)) {
     // Count web searches performed
     searchCount = response.output.filter((item: any) => item.type === "web_search_preview").length;
+    console.log("[Deep Research] Performed", searchCount, "web searches");
     
     // Get the final text output
     const textItems = response.output.filter((item: any) => 
@@ -122,6 +164,7 @@ export async function callOpenAIDeepResearch(
   }
 
   const tokensUsed = response.usage?.total_tokens || 0;
+  console.log("[Deep Research] Used", tokensUsed, "tokens");
 
   // Calculate cost: tokens + web searches
   const tokenCostPer1M = model.includes("o3-deep-research") ? 5.0 : 5.0; // Average of $2 input + $8 output
