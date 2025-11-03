@@ -638,6 +638,7 @@ export const researchJobs = pgTable("research_jobs", {
   
   // Configuration
   vendorIds: text("vendor_ids").array().notNull(), // Vendors to research
+  selectedCriteria: text("selected_criteria").array(), // Specific criteria to process (if empty/null, process all)
   featurePromptId: varchar("feature_prompt_id").references(() => researchPromptTemplates.id),
   commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id), // Deprecated: use criteriaPrompts instead
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),

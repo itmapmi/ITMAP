@@ -37,6 +37,7 @@ export class ResearchAgent {
   private jobId: string;
   private marketId: string;
   private vendorIds: string[];
+  private selectedCriteria?: string[]; // Specific criteria to process (if empty/undefined, process all)
   private featurePromptId?: string;
   private commentaryPromptId?: string;
   private scoringPromptId?: string;
@@ -56,7 +57,8 @@ export class ResearchAgent {
     commentaryPromptId?: string,
     scoringPromptId?: string,
     criteriaPrompts?: Record<string, string>,
-    criteriaScores?: Record<string, string>
+    criteriaScores?: Record<string, string>,
+    selectedCriteria?: string[]
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
@@ -66,6 +68,7 @@ export class ResearchAgent {
     this.scoringPromptId = scoringPromptId;
     this.criteriaPrompts = criteriaPrompts;
     this.criteriaScores = criteriaScores;
+    this.selectedCriteria = selectedCriteria;
   }
 
   /**
@@ -101,8 +104,15 @@ export class ResearchAgent {
       // Get all criteria for this market
       const allCriteria = await storage.getAllCriteria();
       
+      // Filter criteria based on selectedCriteria
+      const criteriaToProcess = this.selectedCriteria && this.selectedCriteria.length > 0
+        ? allCriteria.filter(c => this.selectedCriteria!.includes(c.id))
+        : allCriteria;
+      
+      console.log(`[Research Agent] Processing ${criteriaToProcess.length} criteria out of ${allCriteria.length} total`);
+      
       // Calculate total steps based on job type
-      this.totalSteps = this.calculateTotalSteps(jobType, validVendors.length, allCriteria.length);
+      this.totalSteps = this.calculateTotalSteps(jobType, validVendors.length, criteriaToProcess.length);
       await this.updateJobProgress();
 
       // Execute based on job type
@@ -113,7 +123,7 @@ export class ResearchAgent {
         
         // Step 2: Generate commentary for each vendor x criteria
         for (const vendor of validVendors) {
-          for (const criterion of allCriteria) {
+          for (const criterion of criteriaToProcess) {
             await this.checkCancellation();
             await this.generateCommentary(market, vendor, criterion);
           }
@@ -121,7 +131,7 @@ export class ResearchAgent {
         
         // Step 3: Generate scores for each vendor x criteria
         for (const vendor of validVendors) {
-          for (const criterion of allCriteria) {
+          for (const criterion of criteriaToProcess) {
             await this.checkCancellation();
             await this.generateScore(market, vendor, criterion);
           }
@@ -131,14 +141,14 @@ export class ResearchAgent {
         await this.generateFeatures(market);
       } else if (jobType === "commentary_only") {
         for (const vendor of validVendors) {
-          for (const criterion of allCriteria) {
+          for (const criterion of criteriaToProcess) {
             await this.checkCancellation();
             await this.generateCommentary(market, vendor, criterion);
           }
         }
       } else if (jobType === "scoring_only") {
         for (const vendor of validVendors) {
-          for (const criterion of allCriteria) {
+          for (const criterion of criteriaToProcess) {
             await this.checkCancellation();
             await this.generateScore(market, vendor, criterion);
           }

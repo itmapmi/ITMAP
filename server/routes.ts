@@ -2584,6 +2584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scoringPromptId,
         criteriaPrompts,
         criteriaScores,
+        selectedCriteria,
       } = req.body;
 
       // Validate input
@@ -2597,6 +2598,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           error: "jobType must be one of: full_automation, features_only, commentary_only, scoring_only",
         });
+      }
+
+      // Only validate selectedCriteria for job types that use criteria
+      const jobTypesRequiringCriteria = ["commentary_only", "scoring_only", "full_automation"];
+      if (jobTypesRequiringCriteria.includes(jobType)) {
+        if (!selectedCriteria || !Array.isArray(selectedCriteria) || selectedCriteria.length === 0) {
+          return res.status(400).json({
+            error: "selectedCriteria (non-empty array) is required for this job type",
+          });
+        }
       }
 
       // If prompt IDs not provided, try to use default templates
@@ -2632,6 +2643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scoringPromptId: finalScoringPromptId,
         criteriaPrompts: criteriaPrompts || {},
         criteriaScores: criteriaScores || {},
+        selectedCriteria: selectedCriteria || [],
         status: "pending",
         createdBy: req.user!.id,
       });
@@ -2646,7 +2658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         finalCommentaryPromptId,
         finalScoringPromptId,
         criteriaPrompts,
-        criteriaScores
+        criteriaScores,
+        selectedCriteria
       );
 
       // Execute in background

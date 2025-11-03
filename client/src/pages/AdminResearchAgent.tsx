@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,14 @@ import { Loader2, Play, RefreshCw, DollarSign, Clock, CheckCircle, XCircle, Aler
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AdminResearchAgent() {
   const { toast } = useToast();
   const [selectedMarket, setSelectedMarket] = useState("");
   const [selectedJobType, setSelectedJobType] = useState("commentary_only");
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [selectedCriteria, setSelectedCriteria] = useState<string[]>([]);
   const [criteriaPrompts, setCriteriaPrompts] = useState<Record<string, string>>({});
   const [criteriaScores, setCriteriaScores] = useState<Record<string, string>>({});
   
@@ -59,6 +61,13 @@ export default function AdminResearchAgent() {
     queryKey: ["/api/research/jobs"],
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
+
+  // Reset selectedCriteria when market changes to avoid stale IDs
+  useEffect(() => {
+    setSelectedCriteria([]);
+    setCriteriaPrompts({});
+    setCriteriaScores({});
+  }, [selectedMarket]);
 
   // Initialize default templates mutation
   const initDefaultsMutation = useMutation({
@@ -188,10 +197,22 @@ export default function AdminResearchAgent() {
       return;
     }
 
+    // Only validate selectedCriteria for job types that use criteria
+    const jobTypesRequiringCriteria = ["commentary_only", "scoring_only", "full_automation"];
+    if (jobTypesRequiringCriteria.includes(selectedJobType) && selectedCriteria.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one criterion",
+        variant: "destructive",
+      });
+      return;
+    }
+
     triggerJobMutation.mutate({
       marketId: selectedMarket,
       vendorIds: selectedVendors,
       jobType: selectedJobType,
+      selectedCriteria: selectedCriteria,
       criteriaPrompts: criteriaPrompts,
       criteriaScores: criteriaScores,
     });
@@ -209,6 +230,26 @@ export default function AdminResearchAgent() {
       ...prev,
       [criterionId]: promptId,
     }));
+  };
+
+  const toggleCriterion = (criterionId: string) => {
+    setSelectedCriteria(prev => {
+      if (prev.includes(criterionId)) {
+        return prev.filter(id => id !== criterionId);
+      } else {
+        return [...prev, criterionId];
+      }
+    });
+  };
+
+  const selectAllCriteria = () => {
+    if (criteria) {
+      setSelectedCriteria(criteria.map((c: any) => c.id));
+    }
+  };
+
+  const deselectAllCriteria = () => {
+    setSelectedCriteria([]);
   };
 
   const resetTemplateForm = () => {
@@ -565,11 +606,33 @@ export default function AdminResearchAgent() {
           {/* Commentary Prompts by Criterion */}
           {criteria && criteria.length > 0 && promptTemplates && selectedJobType === "commentary_only" && (
             <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
-              <div className="space-y-1">
-                <Label className="text-base font-semibold">Commentary Prompts by Criterion</Label>
-                <p className="text-sm text-muted-foreground">
-                  Select custom prompts for each criterion. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, and {`{{criteria_name}}`} based on your selections above.
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 flex-1">
+                  <Label className="text-base font-semibold">Commentary Prompts by Criterion ({selectedCriteria.length} selected)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select criteria to process and optionally choose custom prompts. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, and {`{{criteria_name}}`} based on your selections above.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllCriteria}
+                    data-testid="button-select-all-criteria"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllCriteria}
+                    data-testid="button-deselect-all-criteria"
+                  >
+                    Deselect All
+                  </Button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -582,38 +645,49 @@ export default function AdminResearchAgent() {
                     const commentaryTemplates = promptTemplates.filter(
                       (t: any) => t.category === "commentary_generation" && t.isActive !== false
                     );
+                    const isSelected = selectedCriteria.includes(criterion.id);
                     
                     return (
-                      <div key={criterion.id} className="space-y-1.5">
-                        <Label htmlFor={`criterion-commentary-${criterion.id}`} className="text-sm">
-                          {criterion.name}
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {criterion.category}
-                          </Badge>
-                        </Label>
-                        <Select
-                          value={criteriaPrompts[criterion.id]}
-                          onValueChange={(value) => updateCriterionPrompt(criterion.id, value)}
-                        >
-                          <SelectTrigger
-                            id={`criterion-commentary-${criterion.id}`}
-                            data-testid={`select-criterion-commentary-${criterion.id}`}
-                            className="h-9"
+                      <div key={criterion.id} className="space-y-1.5 border rounded-lg p-3 bg-background">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`checkbox-criterion-${criterion.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() => toggleCriterion(criterion.id)}
+                            data-testid={`checkbox-criterion-${criterion.id}`}
+                          />
+                          <Label htmlFor={`checkbox-criterion-${criterion.id}`} className="text-sm font-medium cursor-pointer flex-1">
+                            {criterion.name}
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {criterion.category}
+                            </Badge>
+                          </Label>
+                        </div>
+                        {isSelected && (
+                          <Select
+                            value={criteriaPrompts[criterion.id]}
+                            onValueChange={(value) => updateCriterionPrompt(criterion.id, value)}
                           >
-                            <SelectValue placeholder="Default (Perplexity Deep Research)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {commentaryTemplates.map((template: any) => (
-                              <SelectItem
-                                key={template.id}
-                                value={template.id}
-                                data-testid={`option-template-${template.id}`}
-                              >
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              id={`criterion-commentary-${criterion.id}`}
+                              data-testid={`select-criterion-commentary-${criterion.id}`}
+                              className="h-9"
+                            >
+                              <SelectValue placeholder="Default (Perplexity Deep Research)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {commentaryTemplates.map((template: any) => (
+                                <SelectItem
+                                  key={template.id}
+                                  value={template.id}
+                                  data-testid={`option-template-${template.id}`}
+                                >
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     );
                   })}
@@ -624,11 +698,33 @@ export default function AdminResearchAgent() {
           {/* Scoring Prompts by Criterion */}
           {criteria && criteria.length > 0 && promptTemplates && selectedJobType === "scoring_only" && (
             <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
-              <div className="space-y-1">
-                <Label className="text-base font-semibold">Scoring Prompts by Criterion</Label>
-                <p className="text-sm text-muted-foreground">
-                  Select custom scoring prompts for each criterion. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, {`{{criteria_name}}`}, and {`{{commentary}}`} based on your selections and existing data.
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 flex-1">
+                  <Label className="text-base font-semibold">Scoring Prompts by Criterion ({selectedCriteria.length} selected)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select criteria to process and optionally choose custom scoring prompts. The system will automatically fill in variables like {`{{market_name}}`}, {`{{vendor_name}}`}, {`{{criteria_name}}`}, and {`{{commentary}}`} based on your selections and existing data.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllCriteria}
+                    data-testid="button-select-all-scoring-criteria"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllCriteria}
+                    data-testid="button-deselect-all-scoring-criteria"
+                  >
+                    Deselect All
+                  </Button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -641,38 +737,49 @@ export default function AdminResearchAgent() {
                     const scoringTemplates = promptTemplates.filter(
                       (t: any) => t.category === "scoring" && t.isActive !== false
                     );
+                    const isSelected = selectedCriteria.includes(criterion.id);
                     
                     return (
-                      <div key={criterion.id} className="space-y-1.5">
-                        <Label htmlFor={`criterion-scoring-${criterion.id}`} className="text-sm">
-                          {criterion.name}
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {criterion.category}
-                          </Badge>
-                        </Label>
-                        <Select
-                          value={criteriaScores[criterion.id]}
-                          onValueChange={(value) => updateCriterionScore(criterion.id, value)}
-                        >
-                          <SelectTrigger
-                            id={`criterion-scoring-${criterion.id}`}
-                            data-testid={`select-criterion-scoring-${criterion.id}`}
-                            className="h-9"
+                      <div key={criterion.id} className="space-y-1.5 border rounded-lg p-3 bg-background">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`checkbox-scoring-criterion-${criterion.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() => toggleCriterion(criterion.id)}
+                            data-testid={`checkbox-scoring-criterion-${criterion.id}`}
+                          />
+                          <Label htmlFor={`checkbox-scoring-criterion-${criterion.id}`} className="text-sm font-medium cursor-pointer flex-1">
+                            {criterion.name}
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {criterion.category}
+                            </Badge>
+                          </Label>
+                        </div>
+                        {isSelected && (
+                          <Select
+                            value={criteriaScores[criterion.id]}
+                            onValueChange={(value) => updateCriterionScore(criterion.id, value)}
                           >
-                            <SelectValue placeholder="Default (GPT-4o)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {scoringTemplates.map((template: any) => (
-                              <SelectItem
-                                key={template.id}
-                                value={template.id}
-                                data-testid={`option-scoring-template-${template.id}`}
-                              >
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              id={`criterion-scoring-${criterion.id}`}
+                              data-testid={`select-criterion-scoring-${criterion.id}`}
+                              className="h-9"
+                            >
+                              <SelectValue placeholder="Default (GPT-4o)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {scoringTemplates.map((template: any) => (
+                                <SelectItem
+                                  key={template.id}
+                                  value={template.id}
+                                  data-testid={`option-scoring-template-${template.id}`}
+                                >
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     );
                   })}
