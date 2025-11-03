@@ -98,7 +98,13 @@ export async function callOpenAIDeepResearch(
   
   let initialResponse: any;
   try {
-    const apiCallPromise = fetch("https://api.openai.com/v1/responses", {
+    // Use AbortController for proper timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    console.log("[Deep Research] Sending request to OpenAI...");
+    
+    const res = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -109,23 +115,26 @@ export async function callOpenAIDeepResearch(
         input,
         reasoning: { summary: "auto" },
         tools: [{ type: "web_search_preview" }]
-      })
-    }).then(async (res) => {
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("[Deep Research] API error response:", res.status, errorText);
-        throw new Error(`OpenAI API error ${res.status}: ${errorText}`);
-      }
-      return res.json();
+      }),
+      signal: controller.signal
     });
 
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("API call timeout after 30 seconds")), 30000)
-    );
+    clearTimeout(timeoutId);
+    console.log("[Deep Research] Received response with status:", res.status);
 
-    initialResponse = await Promise.race([apiCallPromise, timeoutPromise]);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("[Deep Research] API error response:", res.status, errorText);
+      throw new Error(`OpenAI API error ${res.status}: ${errorText}`);
+    }
+
+    initialResponse = await res.json();
     console.log("[Deep Research] Response created with ID:", initialResponse.id, "Status:", initialResponse.status);
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error("[Deep Research] Request aborted after 30 seconds timeout");
+      throw new Error("API request timed out after 30 seconds");
+    }
     console.error("[Deep Research] Error creating response:", error.message);
     throw new Error(`Failed to create Deep Research response: ${error.message}`);
   }
