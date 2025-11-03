@@ -274,8 +274,20 @@ export class ResearchAgent {
 
       await this.logStep(stepNumber, "commentary", "running", template);
 
-      // Call OpenAI Deep Research with web search
-      const response = await callOpenAIDeepResearch(prompt, template.model);
+      // Call appropriate AI provider based on template configuration
+      let response: AIResponse;
+      
+      if (template.aiProvider === "perplexity") {
+        console.log(`[Research Agent] Using Perplexity ${template.model} for commentary`);
+        response = await callPerplexity(prompt, template.model);
+      } else if (template.aiProvider === "openai-deep-research") {
+        console.log(`[Research Agent] Using OpenAI Deep Research ${template.model} for commentary`);
+        response = await callOpenAIDeepResearch(prompt, template.model);
+      } else {
+        // Default to OpenAI standard models (gpt-4o, etc.)
+        console.log(`[Research Agent] Using OpenAI ${template.model} for commentary`);
+        response = await callOpenAI(prompt, template.model);
+      }
       
       // Save or update the commentary in vendor_scores
       const existingScore = await storage.getVendorScoreByCriteria(vendor.id, criterion.id);
@@ -356,8 +368,20 @@ export class ResearchAgent {
 
       await this.logStep(stepNumber, "scoring", "running", template);
 
-      // Call OpenAI for scoring
-      const response = await callOpenAI(prompt, template.model);
+      // Call appropriate AI provider based on template configuration
+      let response: AIResponse;
+      
+      if (template.aiProvider === "perplexity") {
+        console.log(`[Research Agent] Using Perplexity ${template.model} for scoring`);
+        response = await callPerplexity(prompt, template.model);
+      } else if (template.aiProvider === "openai-deep-research") {
+        console.log(`[Research Agent] Using OpenAI Deep Research ${template.model} for scoring`);
+        response = await callOpenAIDeepResearch(prompt, template.model);
+      } else {
+        // Default to OpenAI standard models (gpt-4o, etc.)
+        console.log(`[Research Agent] Using OpenAI ${template.model} for scoring`);
+        response = await callOpenAI(prompt, template.model);
+      }
       
       // Parse JSON response (handle markdown code blocks)
       const jsonText = extractJSON(response.content);

@@ -408,26 +408,56 @@ export default function AdminResearchAgent() {
                       <Label htmlFor="template-provider">AI Provider</Label>
                       <Select
                         value={templateForm.aiProvider}
-                        onValueChange={(value) => setTemplateForm({...templateForm, aiProvider: value})}
+                        onValueChange={(value) => {
+                          // Reset model when provider changes
+                          let defaultModel = "gpt-4o";
+                          if (value === "perplexity") defaultModel = "sonar-pro";
+                          if (value === "openai-deep-research") defaultModel = "o4-mini-deep-research-2025-06-26";
+                          setTemplateForm({...templateForm, aiProvider: value, model: defaultModel});
+                        }}
                       >
                         <SelectTrigger id="template-provider" data-testid="select-template-provider">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="perplexity">Perplexity</SelectItem>
-                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="perplexity">Perplexity Deep Research</SelectItem>
+                          <SelectItem value="openai">OpenAI (GPT Models)</SelectItem>
+                          <SelectItem value="openai-deep-research">OpenAI Deep Research</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="template-model">Model</Label>
-                      <Input
-                        id="template-model"
-                        placeholder="e.g., sonar-pro"
+                      <Select
                         value={templateForm.model}
-                        onChange={(e) => setTemplateForm({...templateForm, model: e.target.value})}
-                        data-testid="input-template-model"
-                      />
+                        onValueChange={(value) => setTemplateForm({...templateForm, model: value})}
+                      >
+                        <SelectTrigger id="template-model" data-testid="select-template-model">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templateForm.aiProvider === "perplexity" && (
+                            <>
+                              <SelectItem value="sonar-pro">sonar-pro (Deep Research)</SelectItem>
+                              <SelectItem value="sonar">sonar (Standard)</SelectItem>
+                              <SelectItem value="sonar-reasoning">sonar-reasoning</SelectItem>
+                            </>
+                          )}
+                          {templateForm.aiProvider === "openai" && (
+                            <>
+                              <SelectItem value="gpt-4o">gpt-4o</SelectItem>
+                              <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
+                              <SelectItem value="gpt-4.1-mini">gpt-4.1-mini</SelectItem>
+                            </>
+                          )}
+                          {templateForm.aiProvider === "openai-deep-research" && (
+                            <>
+                              <SelectItem value="o4-mini-deep-research-2025-06-26">o4-mini-deep-research (Faster)</SelectItem>
+                              <SelectItem value="o3-deep-research-2025-06-26">o3-deep-research (Premium)</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="space-y-2">
