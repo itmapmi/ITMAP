@@ -1,9 +1,14 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
+// Initialize OpenAI client for regular models (via Replit AI Integrations - saves costs)
+const openaiReplit = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
+
+// Initialize OpenAI client for Deep Research models (direct API key)
+const openaiDirect = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Perplexity API configuration
@@ -35,7 +40,7 @@ export async function callOpenAI(
   
   messages.push({ role: "user", content: prompt });
 
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiReplit.chat.completions.create({
     model,
     messages,
     temperature: 0.3,
@@ -81,9 +86,8 @@ export async function callOpenAIDeepResearch(
     content: [{ type: "input_text", text: prompt }]
   });
 
-  // Call the Responses API with web search tool
-  // Note: background mode is not supported through Replit AI integrations
-  const response = await openai.responses.create({
+  // Call the Responses API with web search tool using direct OpenAI API key
+  const response = await openaiDirect.responses.create({
     model,
     input,
     reasoning: { summary: "auto" },
