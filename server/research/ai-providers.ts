@@ -87,13 +87,13 @@ export async function callOpenAIDeepResearch(
   });
 
   // Call the Responses API with web search tool using direct OpenAI API key
+  // Only use web_search_preview tool - code_interpreter requires container configuration
   const response = await openaiDirect.responses.create({
     model,
     input,
     reasoning: { summary: "auto" },
     tools: [
-      { type: "web_search_preview" },
-      { type: "code_interpreter" }
+      { type: "web_search_preview" }
     ]
   } as any); // Type assertion needed for Responses API
 
