@@ -1,5 +1,5 @@
 import { storage } from "../storage";
-import { callOpenAI, callPerplexity, type AIResponse } from "./ai-providers";
+import { callOpenAI, callOpenAIDeepResearch, callPerplexity, type AIResponse } from "./ai-providers";
 import { fillPromptTemplate } from "./prompt-templates";
 import type { ResearchJob, ResearchPromptTemplate } from "@shared/schema";
 
@@ -238,7 +238,7 @@ export class ResearchAgent {
   }
 
   /**
-   * Generate commentary for a vendor's performance on a criterion using Perplexity Deep Research
+   * Generate commentary for a vendor's performance on a criterion using OpenAI Deep Research
    */
   private async generateCommentary(market: any, vendor: any, criterion: any): Promise<void> {
     const stepNumber = ++this.completedSteps;
@@ -274,8 +274,8 @@ export class ResearchAgent {
 
       await this.logStep(stepNumber, "commentary", "running", template);
 
-      // Call Perplexity Deep Research
-      const response = await callPerplexity(prompt, template.model);
+      // Call OpenAI Deep Research with web search
+      const response = await callOpenAIDeepResearch(prompt, template.model);
       
       // Save or update the commentary in vendor_scores
       const existingScore = await storage.getVendorScoreByCriteria(vendor.id, criterion.id);

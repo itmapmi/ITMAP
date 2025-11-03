@@ -49,15 +49,15 @@ Return ONLY a valid JSON object with this exact structure:
 Return ONLY the JSON object, no additional text.`,
   },
 
-  // Perplexity Deep Research for generating detailed commentary
+  // OpenAI Deep Research for generating detailed commentary with web search
   COMMENTARY_GENERATION: {
-    name: "Default Commentary Generation (Perplexity Deep Research)",
-    description: "Generates detailed, research-backed commentary for vendor criteria scores using deep research",
+    name: "Default Commentary Generation (OpenAI Deep Research)",
+    description: "Generates detailed, research-backed commentary for vendor criteria scores using OpenAI Deep Research with web search",
     category: "commentary_generation",
-    aiProvider: "perplexity",
-    model: "sonar-pro", // Perplexity Deep Research model
+    aiProvider: "openai-deep-research",
+    model: "o4-mini-deep-research-2025-06-26", // OpenAI Deep Research model
     variables: ["market_name", "vendor_name", "criteria_name", "criteria_description"],
-    promptTemplate: `Conduct deep research and provide detailed commentary about {{vendor_name}}'s performance in {{criteria_name}} for the {{market_name}} market.
+    promptTemplate: `Conduct deep research using web search and provide detailed commentary about {{vendor_name}}'s performance in {{criteria_name}} for the {{market_name}} market.
 
 **Criteria Context:**
 {{criteria_description}}

@@ -16,6 +16,7 @@ export interface AIResponse {
   estimatedCost: number;
   provider: string;
   model: string;
+  searchCount?: number; // Number of web searches performed
 }
 
 /**
@@ -54,6 +55,83 @@ export async function callOpenAI(
     estimatedCost,
     provider: "openai",
     model,
+  };
+}
+
+/**
+ * Call OpenAI Deep Research API with web search capabilities
+ * Uses o3-deep-research or o4-mini-deep-research models
+ */
+export async function callOpenAIDeepResearch(
+  prompt: string,
+  model: string = "o4-mini-deep-research-2025-06-26",
+  systemPrompt?: string
+): Promise<AIResponse> {
+  const input: any[] = [];
+  
+  if (systemPrompt) {
+    input.push({
+      role: "developer",
+      content: [{ type: "input_text", text: systemPrompt }]
+    });
+  }
+  
+  input.push({
+    role: "user",
+    content: [{ type: "input_text", text: prompt }]
+  });
+
+  // Call the Responses API with web search tool
+  const response = await openai.responses.create({
+    model,
+    input,
+    reasoning: { summary: "auto" },
+    tools: [
+      { type: "web_search_preview" },
+      { type: "code_interpreter" }
+    ],
+    background: true
+  } as any); // Type assertion needed for Responses API
+
+  // Extract final text content from response
+  let content = "";
+  let searchCount = 0;
+  
+  if (response.output && Array.isArray(response.output)) {
+    // Count web searches performed
+    searchCount = response.output.filter((item: any) => item.type === "web_search_preview").length;
+    
+    // Get the final text output
+    const textItems = response.output.filter((item: any) => 
+      item.type === "message" && (item as any).role === "assistant"
+    );
+    
+    if (textItems.length > 0) {
+      const lastMessage = textItems[textItems.length - 1] as any;
+      if (lastMessage.content && Array.isArray(lastMessage.content)) {
+        const textContent = lastMessage.content.find((c: any) => c.type === "output_text");
+        if (textContent) {
+          content = textContent.text || "";
+        }
+      }
+    }
+  }
+
+  const tokensUsed = response.usage?.total_tokens || 0;
+
+  // Calculate cost: tokens + web searches
+  const tokenCostPer1M = model.includes("o3-deep-research") ? 5.0 : 5.0; // Average of $2 input + $8 output
+  const tokenCost = (tokensUsed / 1_000_000) * tokenCostPer1M;
+  const searchCost = (searchCount / 1000) * 10.0; // $10 per 1000 searches
+  const estimatedCost = tokenCost + searchCost;
+
+  return {
+    content,
+    tokensUsed,
+    estimatedCost,
+    provider: "openai-deep-research",
+    model,
+    searchCount,
   };
 }
 
