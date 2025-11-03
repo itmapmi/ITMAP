@@ -102,8 +102,7 @@ export async function callOpenAIDeepResearch(
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "deep-research-preview" // Required beta header
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model,
@@ -154,8 +153,7 @@ export async function callOpenAIDeepResearch(
     const pollResponse = await fetch(`https://api.openai.com/v1/responses/${responseId}`, {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "OpenAI-Beta": "deep-research-preview"
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       }
     });
 
