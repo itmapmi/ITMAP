@@ -740,11 +740,20 @@ export const productEvaluationJobs = pgTable("product_evaluation_jobs", {
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed", "cancelled"
   
+  // Job Type - determines which execution path to run
+  jobType: text("job_type").notNull(), // "category_generation", "analysis", "scoring"
+  
+  // AI Model Selection - supports 6 different AI providers/models
+  aiModel: text("ai_model").notNull(), // "perplexity-sonar-pro", "chatgpt-deep-research", "chatgpt-4o-mini", "gpt-4.1-mini", "o4-mini-deep-research", "o3-deep-research"
+  
   // Configuration
   vendorIds: text("vendor_ids").array().notNull(), // Vendors to evaluate
   categoryPromptId: varchar("category_prompt_id").references(() => researchPromptTemplates.id),
   commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  
+  // Optional dependency tracking (for UI warnings, not enforcement)
+  dependencyJobId: varchar("dependency_job_id"),
   
   // Progress tracking
   totalSteps: integer("total_steps").default(0),

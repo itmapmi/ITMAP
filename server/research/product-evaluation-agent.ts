@@ -25,18 +25,39 @@ export interface ProductEvaluationJobProgress {
   estimatedCost: number;
 }
 
+// Supported AI models
+export const AI_MODELS = {
+  PERPLEXITY_SONAR_PRO: "perplexity-sonar-pro",
+  CHATGPT_DEEP_RESEARCH: "chatgpt-deep-research",
+  CHATGPT_4O_MINI: "chatgpt-4o-mini",
+  GPT_4_1_MINI: "gpt-4.1-mini",
+  O4_MINI_DEEP_RESEARCH: "o4-mini-deep-research",
+  O3_DEEP_RESEARCH: "o3-deep-research",
+} as const;
+
+export type AIModel = typeof AI_MODELS[keyof typeof AI_MODELS];
+
+// Job types
+export const JOB_TYPES = {
+  CATEGORY_GENERATION: "category_generation",
+  ANALYSIS: "analysis",
+  SCORING: "scoring",
+} as const;
+
+export type JobType = typeof JOB_TYPES[keyof typeof JOB_TYPES];
+
 /**
  * Product Evaluation Agent
- * Automates feature category generation, commentary, and scoring for vendor products
+ * Supports 3 independent job types: category generation, feature analysis, and feature scoring
+ * Each job type can use any of the 6 supported AI models
  */
 export class ProductEvaluationAgent {
   private jobId: string;
   private marketId: string;
   private vendorIds: string[];
-  private categoryPromptId?: string;
-  private commentaryPromptId?: string;
-  private scoringPromptId?: string;
-  private generateCategories: boolean;
+  private jobType: JobType;
+  private aiModel: AIModel;
+  private promptId?: string;
   
   private totalSteps: number = 0;
   private completedSteps: number = 0;
@@ -47,18 +68,16 @@ export class ProductEvaluationAgent {
     jobId: string,
     marketId: string,
     vendorIds: string[],
-    categoryPromptId?: string,
-    commentaryPromptId?: string,
-    scoringPromptId?: string,
-    generateCategories: boolean = true
+    jobType: JobType,
+    aiModel: AIModel,
+    promptId?: string
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
     this.vendorIds = vendorIds;
-    this.categoryPromptId = categoryPromptId;
-    this.commentaryPromptId = commentaryPromptId;
-    this.scoringPromptId = scoringPromptId;
-    this.generateCategories = generateCategories;
+    this.jobType = jobType;
+    this.aiModel = aiModel;
+    this.promptId = promptId;
   }
 
   /**
@@ -72,81 +91,65 @@ export class ProductEvaluationAgent {
   }
 
   /**
-   * Execute the full product evaluation workflow
+   * Call AI provider based on selected model
+   */
+  private async callAI(prompt: string): Promise<AIResponse> {
+    console.log(`[Product Evaluation] Using AI model: ${this.aiModel}`);
+    
+    switch (this.aiModel) {
+      case AI_MODELS.PERPLEXITY_SONAR_PRO:
+        return await callPerplexity(prompt, "sonar-pro");
+      
+      case AI_MODELS.CHATGPT_DEEP_RESEARCH:
+        // Use o1-preview for deep research
+        return await callOpenAIDeepResearch(prompt, "o1-preview");
+      
+      case AI_MODELS.CHATGPT_4O_MINI:
+        return await callOpenAI(prompt, "gpt-4o-mini");
+      
+      case AI_MODELS.GPT_4_1_MINI:
+        return await callOpenAI(prompt, "gpt-4o-mini"); // Map to actual model
+      
+      case AI_MODELS.O4_MINI_DEEP_RESEARCH:
+        return await callOpenAIDeepResearch(prompt, "o4-mini-deep-research-2025-06-26");
+      
+      case AI_MODELS.O3_DEEP_RESEARCH:
+        return await callOpenAIDeepResearch(prompt, "o3-deep-research-2025-06-26");
+      
+      default:
+        throw new Error(`Unsupported AI model: ${this.aiModel}`);
+    }
+  }
+
+  /**
+   * Execute the job based on job type
    */
   async execute(): Promise<void> {
     try {
-      await this.updateJobStatus("running", "Initializing product evaluation agent...");
+      await this.updateJobStatus("running", `Starting ${this.jobType} job...`);
       
-      // Load market and vendors
-      const market = await storage.getMarketById(this.marketId);
-      if (!market) throw new Error("Market not found");
-      
-      const vendors = await Promise.all(
-        this.vendorIds.map(id => storage.getVendorById(id))
-      );
-      
-      const validVendors = vendors.filter(v => v !== null);
-      if (validVendors.length === 0) {
-        throw new Error("No valid vendors found");
+      switch (this.jobType) {
+        case JOB_TYPES.CATEGORY_GENERATION:
+          await this.runCategoryGeneration();
+          break;
+        case JOB_TYPES.ANALYSIS:
+          await this.runFeatureAnalysis();
+          break;
+        case JOB_TYPES.SCORING:
+          await this.runFeatureScoring();
+          break;
+        default:
+          throw new Error(`Unknown job type: ${this.jobType}`);
       }
 
-      console.log(`[Product Evaluation] Processing ${validVendors.length} vendors for market ${market.name}`);
-      
-      // Step 1: Generate or load feature categories and features
-      await this.checkCancellation();
-      if (this.generateCategories) {
-        console.log(`[Product Evaluation] Generating new feature categories...`);
-        await this.generateFeatureCategories(market);
-      } else {
-        console.log(`[Product Evaluation] Using existing feature categories...`);
-      }
-      
-      // Get all features for this market
-      const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
-      const allFeatures: any[] = [];
-      for (const category of allCategories) {
-        const features = await storage.getFeaturesByCategoryId(category.id);
-        allFeatures.push(...features);
-      }
-      
-      if (allFeatures.length === 0) {
-        throw new Error("No features found for this market. Please enable 'Generate Categories' or create features manually.");
-      }
-      
-      console.log(`[Product Evaluation] Found ${allFeatures.length} features across ${allCategories.length} categories`);
-      
-      // Calculate total steps: category generation (if enabled) + (vendors × features × 2) for commentary and scoring
-      const categoryGenerationSteps = this.generateCategories ? 1 : 0;
-      this.totalSteps = categoryGenerationSteps + (validVendors.length * allFeatures.length * 2);
-      await this.updateJobProgress();
-      
-      // Step 2: Generate commentary for each vendor × feature
-      for (const vendor of validVendors) {
-        for (const feature of allFeatures) {
-          await this.checkCancellation();
-          await this.generateFeatureCommentary(vendor, feature);
-        }
-      }
-      
-      // Step 3: Score each vendor × feature
-      for (const vendor of validVendors) {
-        for (const feature of allFeatures) {
-          await this.checkCancellation();
-          await this.scoreFeatureCommentary(vendor, feature);
-        }
-      }
-
-      await this.updateJobStatus("completed", "Product evaluation completed successfully");
+      await this.updateJobStatus("completed", `${this.jobType} completed successfully`);
     } catch (error: any) {
-      // Check if it was a cancellation
       if (error.message === "Job cancelled by user") {
         console.log(`[Product Evaluation] Job ${this.jobId} was cancelled by user`);
         await this.updateJobStatus("cancelled", "Job cancelled by user");
         return;
       }
       
-      // Handle other errors
       console.error(`[Product Evaluation] Job ${this.jobId} failed:`, error);
       await this.updateJobStatus("failed", error.message);
       throw error;
@@ -154,10 +157,12 @@ export class ProductEvaluationAgent {
   }
 
   /**
-   * Generate feature categories and features using AI
+   * JOB TYPE 1: Generate feature categories and features
    */
-  private async generateFeatureCategories(market: any): Promise<void> {
-    const stepNumber = ++this.completedSteps;
+  async runCategoryGeneration(): Promise<void> {
+    const stepNumber = 1;
+    this.totalSteps = 1;
+    await this.updateJobProgress();
     
     await this.logStep(
       stepNumber,
@@ -170,7 +175,11 @@ export class ProductEvaluationAgent {
     );
     
     try {
-      // Load prompt template
+      // Load market
+      const market = await storage.getMarketById(this.marketId);
+      if (!market) throw new Error("Market not found");
+      
+      // Load prompt template or use default
       const template = await this.getPromptTemplate("category_generation");
       
       const prompt = fillPromptTemplate(template.promptTemplate, {
@@ -178,19 +187,8 @@ export class ProductEvaluationAgent {
         market_description: market.description || ""
       });
       
-      // Call AI based on provider
-      let response: AIResponse;
-      if (template.aiProvider === "perplexity") {
-        console.log(`[Product Evaluation] Using Perplexity ${template.model} for category generation`);
-        response = await callPerplexity(prompt, template.model);
-      } else if (template.aiProvider === "openai-deep-research") {
-        console.log(`[Product Evaluation] Using OpenAI Deep Research ${template.model} for category generation`);
-        response = await callOpenAIDeepResearch(prompt, template.model);
-      } else {
-        // Default to OpenAI standard models
-        console.log(`[Product Evaluation] Using OpenAI ${template.model} for category generation`);
-        response = await callOpenAI(prompt, template.model);
-      }
+      // Call AI
+      const response = await this.callAI(prompt);
       
       // Track costs
       this.totalTokensUsed += response.tokensUsed;
@@ -265,320 +263,457 @@ export class ProductEvaluationAgent {
         stepNumber,
         "category_generation",
         "completed",
-        template.aiProvider,
-        template.model,
-        response.tokensUsed,
-        response.estimatedCost,
         undefined,
-        response.content
+        undefined,
+        this.getAIProvider(),
+        this.getModelName(),
+        prompt,
+        response.content,
+        response.tokensUsed,
+        response.estimatedCost
       );
       
+      this.completedSteps = 1;
       await this.updateJobProgress();
+      
     } catch (error: any) {
-      await this.logStep(stepNumber, "category_generation", "failed", undefined, undefined, 0, 0, error.message);
+      await this.logStep(
+        stepNumber,
+        "category_generation",
+        "failed",
+        undefined,
+        undefined,
+        this.getAIProvider(),
+        this.getModelName(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        error.message
+      );
       throw error;
+    }
+  }
+
+  /**
+   * JOB TYPE 2: Generate analysis/commentary for each vendor-feature combination
+   */
+  async runFeatureAnalysis(): Promise<void> {
+    // Load market and vendors
+    const market = await storage.getMarketById(this.marketId);
+    if (!market) throw new Error("Market not found");
+    
+    const vendors = await Promise.all(
+      this.vendorIds.map(id => storage.getVendorById(id))
+    );
+    
+    const validVendors = vendors.filter(v => v !== null);
+    if (validVendors.length === 0) {
+      throw new Error("No valid vendors found");
+    }
+    
+    // Get all features for this market
+    const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
+    const allFeatures: any[] = [];
+    for (const category of allCategories) {
+      const features = await storage.getFeaturesByCategoryId(category.id);
+      allFeatures.push(...features);
+    }
+    
+    if (allFeatures.length === 0) {
+      throw new Error("No features found for this market. Please run category generation first.");
+    }
+    
+    console.log(`[Product Evaluation] Generating commentary for ${validVendors.length} vendors × ${allFeatures.length} features`);
+    
+    // Calculate total steps
+    this.totalSteps = validVendors.length * allFeatures.length;
+    await this.updateJobProgress();
+    
+    // Load prompt template
+    const template = await this.getPromptTemplate("commentary");
+    
+    // Generate commentary for each vendor × feature
+    for (const vendor of validVendors) {
+      for (const feature of allFeatures) {
+        await this.checkCancellation();
+        await this.generateFeatureCommentary(vendor, feature, market, template);
+      }
     }
   }
 
   /**
    * Generate commentary for a specific vendor-feature combination
    */
-  private async generateFeatureCommentary(vendor: any, feature: any): Promise<void> {
+  private async generateFeatureCommentary(
+    vendor: any,
+    feature: any,
+    market: any,
+    template: any
+  ): Promise<void> {
     const stepNumber = ++this.completedSteps;
     
     await this.logStep(
       stepNumber,
       "commentary",
       "running",
-      undefined,
       vendor.id,
-      feature.id
+      feature.id,
+      undefined,
+      undefined
     );
     
     try {
-      // Load prompt template
-      const template = await this.getPromptTemplate("commentary");
-      
       const prompt = fillPromptTemplate(template.promptTemplate, {
+        market_name: market.name,
         vendor_name: vendor.name,
+        vendor_product: vendor.product || vendor.name,
         feature_name: feature.name,
         feature_description: feature.description || ""
       });
       
-      // Call AI based on provider
-      let response: AIResponse;
-      if (template.aiProvider === "perplexity") {
-        console.log(`[Product Evaluation] Using Perplexity for commentary: ${vendor.name} - ${feature.name}`);
-        response = await callPerplexity(prompt, template.model);
-      } else if (template.aiProvider === "openai-deep-research") {
-        console.log(`[Product Evaluation] Using OpenAI Deep Research for commentary: ${vendor.name} - ${feature.name}`);
-        response = await callOpenAIDeepResearch(prompt, template.model);
-      } else {
-        console.log(`[Product Evaluation] Using OpenAI for commentary: ${vendor.name} - ${feature.name}`);
-        response = await callOpenAI(prompt, template.model);
-      }
+      // Call AI
+      const response = await this.callAI(prompt);
       
       // Track costs
       this.totalTokensUsed += response.tokensUsed;
       this.totalCost += response.estimatedCost;
       
-      // Update vendor feature with commentary
-      const existingFeature = await storage.getVendorFeature(vendor.id, feature.id);
-      if (existingFeature) {
-        await storage.updateVendorFeature({
-          vendorId: vendor.id,
-          featureId: feature.id,
-          commentary: response.content,
-        });
-      } else {
-        await storage.createVendorFeature({
-          vendorId: vendor.id,
-          featureId: feature.id,
-          supportLevel: 0, // Will be scored in next step
-          commentary: response.content,
-        });
-      }
+      // Store or update commentary (idempotent)
+      await storage.createOrUpdateVendorFeatureSupport({
+        vendorId: vendor.id,
+        featureId: feature.id,
+        supportLevel: 0, // Default, will be scored in next job type
+        comments: response.content,
+      });
       
       await this.logStep(
         stepNumber,
         "commentary",
         "completed",
-        template.aiProvider,
-        template.model,
+        vendor.id,
+        feature.id,
+        this.getAIProvider(),
+        this.getModelName(),
+        prompt,
+        response.content,
         response.tokensUsed,
-        response.estimatedCost,
-        undefined,
-        response.content
+        response.estimatedCost
       );
       
       await this.updateJobProgress();
+      
     } catch (error: any) {
-      await this.logStep(stepNumber, "commentary", "failed", undefined, undefined, 0, 0, error.message);
-      console.error(`[Product Evaluation] Commentary generation failed for ${vendor.name} - ${feature.name}:`, error);
+      await this.logStep(
+        stepNumber,
+        "commentary",
+        "failed",
+        vendor.id,
+        feature.id,
+        this.getAIProvider(),
+        this.getModelName(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        error.message
+      );
+      throw error;
     }
   }
 
   /**
-   * Score a vendor-feature combination based on commentary
+   * JOB TYPE 3: Score each vendor-feature combination based on commentary
    */
-  private async scoreFeatureCommentary(vendor: any, feature: any): Promise<void> {
+  async runFeatureScoring(): Promise<void> {
+    // Load market and vendors
+    const market = await storage.getMarketById(this.marketId);
+    if (!market) throw new Error("Market not found");
+    
+    const vendors = await Promise.all(
+      this.vendorIds.map(id => storage.getVendorById(id))
+    );
+    
+    const validVendors = vendors.filter(v => v !== null);
+    if (validVendors.length === 0) {
+      throw new Error("No valid vendors found");
+    }
+    
+    // Get all features for this market
+    const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
+    const allFeatures: any[] = [];
+    for (const category of allCategories) {
+      const features = await storage.getFeaturesByCategoryId(category.id);
+      allFeatures.push(...features);
+    }
+    
+    if (allFeatures.length === 0) {
+      throw new Error("No features found for this market. Please run category generation first.");
+    }
+    
+    console.log(`[Product Evaluation] Scoring ${validVendors.length} vendors × ${allFeatures.length} features`);
+    
+    // Calculate total steps
+    this.totalSteps = validVendors.length * allFeatures.length;
+    await this.updateJobProgress();
+    
+    // Load prompt template
+    const template = await this.getPromptTemplate("scoring");
+    
+    // Score each vendor × feature
+    for (const vendor of validVendors) {
+      for (const feature of allFeatures) {
+        await this.checkCancellation();
+        await this.scoreFeatureCommentary(vendor, feature, market, template);
+      }
+    }
+  }
+
+  /**
+   * Score a specific vendor-feature combination
+   */
+  private async scoreFeatureCommentary(
+    vendor: any,
+    feature: any,
+    market: any,
+    template: any
+  ): Promise<void> {
     const stepNumber = ++this.completedSteps;
     
     await this.logStep(
       stepNumber,
       "scoring",
       "running",
-      undefined,
       vendor.id,
-      feature.id
+      feature.id,
+      undefined,
+      undefined
     );
     
     try {
       // Get existing commentary
-      const vendorFeature = await storage.getVendorFeature(vendor.id, feature.id);
-      if (!vendorFeature || !vendorFeature.commentary) {
-        throw new Error("No commentary found for scoring");
-      }
+      const existing = await storage.getVendorFeature(vendor.id, feature.id);
       
-      // Load prompt template
-      const template = await this.getPromptTemplate("scoring");
+      if (!existing || !existing.comments) {
+        throw new Error(`No commentary found for ${vendor.name} - ${feature.name}. Please run feature analysis first.`);
+      }
       
       const prompt = fillPromptTemplate(template.promptTemplate, {
+        market_name: market.name,
         vendor_name: vendor.name,
+        vendor_product: vendor.product || vendor.name,
         feature_name: feature.name,
-        commentary: vendorFeature.commentary
+        feature_description: feature.description || "",
+        commentary: existing.comments
       });
       
-      // Call AI based on provider
-      let response: AIResponse;
-      if (template.aiProvider === "perplexity") {
-        console.log(`[Product Evaluation] Using Perplexity for scoring: ${vendor.name} - ${feature.name}`);
-        response = await callPerplexity(prompt, template.model);
-      } else if (template.aiProvider === "openai-deep-research") {
-        console.log(`[Product Evaluation] Using OpenAI Deep Research for scoring: ${vendor.name} - ${feature.name}`);
-        response = await callOpenAIDeepResearch(prompt, template.model);
-      } else {
-        console.log(`[Product Evaluation] Using OpenAI for scoring: ${vendor.name} - ${feature.name}`);
-        response = await callOpenAI(prompt, template.model);
-      }
+      // Call AI
+      const response = await this.callAI(prompt);
       
       // Track costs
       this.totalTokensUsed += response.tokensUsed;
       this.totalCost += response.estimatedCost;
       
       // Parse score (0-4)
-      const jsonContent = extractJSON(response.content);
-      const data = JSON.parse(jsonContent);
+      const score = this.parseHarveyBallScore(response.content);
       
-      if (typeof data.score !== "number" || data.score < 0 || data.score > 4) {
-        throw new Error(`Invalid score: ${data.score}. Must be 0-4.`);
-      }
-      
-      // Update vendor feature with score
-      await storage.updateVendorFeature({
+      // Update support level (idempotent)
+      await storage.createOrUpdateVendorFeatureSupport({
         vendorId: vendor.id,
         featureId: feature.id,
-        supportLevel: data.score,
+        supportLevel: score,
+        comments: existing.comments, // Preserve existing commentary
       });
-      
-      console.log(`[Product Evaluation] Scored ${vendor.name} - ${feature.name}: ${data.score}/4`);
       
       await this.logStep(
         stepNumber,
         "scoring",
         "completed",
-        template.aiProvider,
-        template.model,
+        vendor.id,
+        feature.id,
+        this.getAIProvider(),
+        this.getModelName(),
+        prompt,
+        response.content,
         response.tokensUsed,
-        response.estimatedCost,
-        undefined,
-        response.content
+        response.estimatedCost
       );
       
       await this.updateJobProgress();
+      
     } catch (error: any) {
-      await this.logStep(stepNumber, "scoring", "failed", undefined, undefined, 0, 0, error.message);
-      console.error(`[Product Evaluation] Scoring failed for ${vendor.name} - ${feature.name}:`, error);
+      await this.logStep(
+        stepNumber,
+        "scoring",
+        "failed",
+        vendor.id,
+        feature.id,
+        this.getAIProvider(),
+        this.getModelName(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        error.message
+      );
+      throw error;
     }
   }
 
   /**
-   * Get prompt template or use default
+   * Parse Harvey Ball score from AI response (0-4 scale)
    */
-  private async getPromptTemplate(type: "category_generation" | "commentary" | "scoring"): Promise<ResearchPromptTemplate> {
-    // Map type to promptId
-    let promptId: string | undefined;
-    if (type === "category_generation") promptId = this.categoryPromptId;
-    else if (type === "commentary") promptId = this.commentaryPromptId;
-    else if (type === "scoring") promptId = this.scoringPromptId;
+  private parseHarveyBallScore(content: string): number {
+    // Try to extract number from response
+    const match = content.match(/\b([0-4])\b/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
     
-    if (promptId) {
-      const template = await storage.getResearchPromptTemplate(promptId);
+    // Look for keywords
+    const lower = content.toLowerCase();
+    if (lower.includes("full support") || lower.includes("fully supported")) return 4;
+    if (lower.includes("good support") || lower.includes("well supported")) return 3;
+    if (lower.includes("partial") || lower.includes("moderate")) return 2;
+    if (lower.includes("limited") || lower.includes("minimal")) return 1;
+    if (lower.includes("not supported") || lower.includes("no support")) return 0;
+    
+    // Default to 2 if unclear
+    console.warn(`[Product Evaluation] Could not parse Harvey Ball score from: ${content.substring(0, 100)}`);
+    return 2;
+  }
+
+  /**
+   * Get AI provider name based on selected model
+   */
+  private getAIProvider(): string {
+    if (this.aiModel === AI_MODELS.PERPLEXITY_SONAR_PRO) {
+      return "perplexity";
+    } else if (
+      this.aiModel === AI_MODELS.CHATGPT_DEEP_RESEARCH ||
+      this.aiModel === AI_MODELS.O4_MINI_DEEP_RESEARCH ||
+      this.aiModel === AI_MODELS.O3_DEEP_RESEARCH
+    ) {
+      return "openai-deep-research";
+    } else {
+      return "openai";
+    }
+  }
+
+  /**
+   * Get model name for logging
+   */
+  private getModelName(): string {
+    switch (this.aiModel) {
+      case AI_MODELS.PERPLEXITY_SONAR_PRO:
+        return "sonar-pro";
+      case AI_MODELS.CHATGPT_DEEP_RESEARCH:
+        return "o1-preview";
+      case AI_MODELS.CHATGPT_4O_MINI:
+        return "gpt-4o-mini";
+      case AI_MODELS.GPT_4_1_MINI:
+        return "gpt-4o-mini";
+      case AI_MODELS.O4_MINI_DEEP_RESEARCH:
+        return "o4-mini-deep-research-2025-06-26";
+      case AI_MODELS.O3_DEEP_RESEARCH:
+        return "o3-deep-research-2025-06-26";
+      default:
+        return this.aiModel;
+    }
+  }
+
+  /**
+   * Get prompt template based on job type
+   */
+  private async getPromptTemplate(stepType: string): Promise<any> {
+    if (this.promptId) {
+      const template = await storage.getResearchPromptTemplate(this.promptId);
       if (template) return template;
     }
     
-    // Return default templates
-    return this.getDefaultPromptTemplate(type);
+    // Return default template
+    return {
+      promptTemplate: this.getDefaultPrompt(stepType),
+      aiProvider: this.getAIProvider(),
+      model: this.getModelName(),
+    };
   }
 
   /**
-   * Get default prompt templates
+   * Get default prompts for each job type
    */
-  private getDefaultPromptTemplate(type: "category_generation" | "commentary" | "scoring"): ResearchPromptTemplate {
-    const defaults: Record<string, ResearchPromptTemplate> = {
-      category_generation: {
-        id: "default-category",
-        name: "Default Feature Category Generation",
-        description: "Generate feature categories and features for product evaluation",
-        category: "category_generation",
-        aiProvider: "openai",
-        model: "gpt-4o",
-        promptTemplate: `You are a technology market analyst. Generate a comprehensive list of feature categories and features for the {{market_name}} market.
+  private getDefaultPrompt(stepType: string): string {
+    switch (stepType) {
+      case "category_generation":
+        return `You are a product analyst creating a comprehensive feature evaluation framework for the ${"{market_name}"} market.
 
-Market Description: {{market_description}}
+Generate a structured list of feature categories and individual features that should be evaluated when comparing vendors in this market.
 
-Return a JSON object with this structure:
+Market Description: ${"{market_description}"}
+
+Return your response as JSON in this exact format:
 {
   "categories": [
     {
       "name": "Category Name",
       "description": "Category description",
-      "displayOrder": 1,
+      "displayOrder": 0,
       "features": [
         {
           "name": "Feature Name",
           "description": "Feature description",
-          "displayOrder": 1
+          "displayOrder": 0
         }
       ]
     }
   ]
 }
 
-Include 5-8 categories with 3-6 features each. Focus on the most important product capabilities and ecosystem integrations.`,
-        variables: ["market_name", "market_description"],
-        criteriaId: null,
-        isDefault: true,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      
-      commentary: {
-        id: "default-commentary",
-        name: "Default Feature Commentary",
-        description: "Generate detailed commentary for vendor feature support",
-        category: "commentary",
-        aiProvider: "openai",
-        model: "gpt-4o",
-        promptTemplate: `Analyze {{vendor_name}}'s support for the following feature:
+Focus on creating 5-8 meaningful categories with 3-6 features each. Make the features specific and measurable.`;
 
-Feature: {{feature_name}}
-Description: {{feature_description}}
+      case "commentary":
+        return `You are a product analyst evaluating how well ${"{vendor_product}"} (by ${"{vendor_name}"}) supports the feature "${"{feature_name}"}" in the ${"{market_name}"} market.
 
-Provide a detailed analysis of how well this vendor supports this feature. Include:
-1. Current implementation status
-2. Key capabilities
-3. Limitations or gaps
-4. Comparison to industry standards
+Feature Description: ${"{feature_description}"}
 
-Write 2-3 paragraphs of detailed analysis.`,
-        variables: ["vendor_name", "feature_name", "feature_description"],
-        criteriaId: null,
-        isDefault: true,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      
-      scoring: {
-        id: "default-scoring",
-        name: "Default Feature Scoring",
-        description: "Score vendor feature support using Harvey Ball scale (0-4)",
-        category: "scoring",
-        aiProvider: "openai",
-        model: "gpt-4o",
-        promptTemplate: `Based on this analysis of {{vendor_name}}'s {{feature_name}} feature:
+Provide a detailed analysis of:
+1. Whether this vendor supports this feature
+2. How well they implement it
+3. Any limitations or gaps
+4. Specific capabilities related to this feature
 
-{{commentary}}
+Be specific and factual. If you don't have information, clearly state that.`;
 
-Rate the support level on a 0-4 scale:
+      case "scoring":
+        return `Based on the following commentary about ${"{vendor_product}"} (by ${"{vendor_name}"}) and their support for "${"{feature_name}"}":
+
+${"{commentary}"}
+
+Assign a Harvey Ball score (0-4):
 - 0 = Not Supported (0%)
-- 1 = Limited (25%)
-- 2 = Partial (50%)
-- 3 = Good (75%)
+- 1 = Limited Support (25%)
+- 2 = Partial Support (50%)
+- 3 = Good Support (75%)
 - 4 = Full Support (100%)
 
-Return a JSON object:
-{
-  "score": <number 0-4>,
-  "reasoning": "Brief explanation for the score"
-}`,
-        variables: ["vendor_name", "feature_name", "commentary"],
-        criteriaId: null,
-        isDefault: true,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    };
-    
-    return defaults[type];
+Return ONLY a single number (0, 1, 2, 3, or 4) followed by a brief one-line justification.`;
+
+      default:
+        throw new Error(`Unknown step type: ${stepType}`);
+    }
   }
 
   /**
    * Update job status
    */
-  private async updateJobStatus(status: string, currentStep?: string, errorMessage?: string): Promise<void> {
+  private async updateJobStatus(status: string, currentStep: string): Promise<void> {
     await storage.updateProductEvaluationJob(this.jobId, {
       status,
-      currentStep: currentStep || null,
-      errorMessage: errorMessage || null,
-      totalTokensUsed: this.totalTokensUsed,
+      currentStep,
       totalCost: this.totalCost.toString(),
-      ...(status === "running" && { startedAt: new Date() }),
-      ...(status === "completed" && { completedAt: new Date() }),
-      ...(status === "failed" && { completedAt: new Date() }),
+      totalTokensUsed: this.totalTokensUsed,
+      ...(status === "running" ? { startedAt: new Date() } : {}),
+      ...(status === "completed" || status === "failed" || status === "cancelled" ? { completedAt: new Date() } : {}),
     });
   }
 
@@ -587,10 +722,10 @@ Return a JSON object:
    */
   private async updateJobProgress(): Promise<void> {
     await storage.updateProductEvaluationJob(this.jobId, {
-      completedSteps: this.completedSteps,
       totalSteps: this.totalSteps,
-      totalTokensUsed: this.totalTokensUsed,
+      completedSteps: this.completedSteps,
       totalCost: this.totalCost.toString(),
+      totalTokensUsed: this.totalTokensUsed,
     });
   }
 
@@ -601,27 +736,32 @@ Return a JSON object:
     stepNumber: number,
     stepType: string,
     status: string,
+    vendorId?: string,
+    featureId?: string,
     aiProvider?: string,
     model?: string,
+    promptUsed?: string,
+    responseContent?: string,
     tokensUsed?: number,
     estimatedCost?: number,
-    errorMessage?: string,
-    responseContent?: string
+    errorMessage?: string
   ): Promise<void> {
     await storage.createProductEvaluationJobLog({
       jobId: this.jobId,
       stepNumber,
       stepType,
       status,
+      vendorId: vendorId || null,
+      featureId: featureId || null,
       aiProvider: aiProvider || null,
       model: model || null,
-      tokensUsed: tokensUsed || null,
-      estimatedCost: estimatedCost?.toString() || null,
-      errorMessage: errorMessage || null,
+      promptUsed: promptUsed || null,
       responseContent: responseContent || null,
-      ...(status === "running" && { startedAt: new Date() }),
-      ...(status === "completed" && { completedAt: new Date() }),
-      ...(status === "failed" && { completedAt: new Date() }),
+      tokensUsed: tokensUsed || null,
+      estimatedCost: estimatedCost ? estimatedCost.toString() : null,
+      errorMessage: errorMessage || null,
+      ...(status === "running" ? { startedAt: new Date() } : {}),
+      ...(status === "completed" || status === "failed" ? { completedAt: new Date() } : {}),
     });
   }
 }

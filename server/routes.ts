@@ -2782,23 +2782,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Trigger product evaluation agent
-  app.post("/api/product-eval/jobs/trigger", requireAdmin, async (req, res) => {
+  // Allowed AI models for product evaluation
+  const ALLOWED_AI_MODELS = [
+    "perplexity-sonar-pro",
+    "chatgpt-deep-research",
+    "chatgpt-4o-mini",
+    "gpt-4.1-mini",
+    "o4-mini-deep-research",
+    "o3-deep-research",
+  ];
+
+  // JOB TYPE 1: Category Generation
+  app.post("/api/product-eval/jobs/categories", requireAdmin, async (req, res) => {
+    try {
+      const {
+        marketId,
+        aiModel = "chatgpt-4o-mini",
+        promptId,
+      } = req.body;
+
+      // Validate required fields
+      if (!marketId) {
+        return res.status(400).json({ 
+          error: "Missing required field: marketId" 
+        });
+      }
+
+      // Validate AI model
+      if (!ALLOWED_AI_MODELS.includes(aiModel)) {
+        return res.status(400).json({ 
+          error: `Invalid AI model. Must be one of: ${ALLOWED_AI_MODELS.join(", ")}` 
+        });
+      }
+
+      // Validate market exists
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Create job
+      const job = await storage.createProductEvaluationJob({
+        marketId,
+        jobType: "category_generation",
+        aiModel,
+        vendorIds: [], // No vendors needed for category generation
+        categoryPromptId: promptId || null,
+        commentaryPromptId: null,
+        scoringPromptId: null,
+        status: "pending",
+        currentStep: "Initializing category generation",
+        createdBy: (req.user as any).id,
+      });
+
+      // Start agent asynchronously
+      const { ProductEvaluationAgent } = await import("./research/product-evaluation-agent");
+      const agent = new ProductEvaluationAgent(
+        job.id,
+        marketId,
+        [],
+        "category_generation",
+        aiModel,
+        promptId
+      );
+
+      agent.execute().catch(error => {
+        console.error(`[Product Evaluation] Job ${job.id} failed:`, error);
+      });
+
+      res.json({
+        success: true,
+        jobId: job.id,
+        message: "Category generation job started successfully",
+      });
+    } catch (error) {
+      console.error("Error starting category generation:", error);
+      res.status(500).json({ error: "Failed to start category generation" });
+    }
+  });
+
+  // JOB TYPE 2: Feature Analysis
+  app.post("/api/product-eval/jobs/analysis", requireAdmin, async (req, res) => {
     try {
       const {
         marketId,
         vendorIds,
-        aiModel = "gpt-4o",
-        categoryPromptId,
-        commentaryPromptId,
-        scoringPromptId,
-        generateCategories = true,
+        aiModel = "chatgpt-4o-mini",
+        promptId,
       } = req.body;
 
       // Validate required fields
       if (!marketId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
         return res.status(400).json({ 
-          error: "Missing required fields: marketId and vendorIds are required" 
+          error: "Missing required fields: marketId and vendorIds" 
+        });
+      }
+
+      // Validate AI model
+      if (!ALLOWED_AI_MODELS.includes(aiModel)) {
+        return res.status(400).json({ 
+          error: `Invalid AI model. Must be one of: ${ALLOWED_AI_MODELS.join(", ")}` 
         });
       }
 
@@ -2819,49 +2902,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create product evaluation job
+      // Check if features exist
+      const categories = await storage.getFeatureCategoriesByMarketId(marketId);
+      if (categories.length === 0) {
+        return res.status(400).json({ 
+          error: "No feature categories found. Please run category generation first." 
+        });
+      }
+
+      // Create job
       const job = await storage.createProductEvaluationJob({
         marketId,
-        status: "pending",
-        vendorIds,
+        jobType: "analysis",
         aiModel,
-        categoryPromptId: categoryPromptId || null,
-        commentaryPromptId: commentaryPromptId || null,
-        scoringPromptId: scoringPromptId || null,
-        generateCategories,
-        progress: 0,
-        currentStep: "Initializing product evaluation",
-        totalTokensUsed: 0,
-        totalWebSearches: 0,
-        estimatedCostUsd: 0,
-        startedAt: new Date(),
+        vendorIds,
+        categoryPromptId: null,
+        commentaryPromptId: promptId || null,
+        scoringPromptId: null,
+        status: "pending",
+        currentStep: "Initializing feature analysis",
+        createdBy: (req.user as any).id,
       });
 
-      // Start product evaluation agent asynchronously
+      // Start agent asynchronously
       const { ProductEvaluationAgent } = await import("./research/product-evaluation-agent");
       const agent = new ProductEvaluationAgent(
         job.id,
         marketId,
         vendorIds,
-        categoryPromptId,
-        commentaryPromptId,
-        scoringPromptId,
-        generateCategories
+        "analysis",
+        aiModel,
+        promptId
       );
 
-      // Run in background without blocking response
       agent.execute().catch(error => {
-        console.error(`[Product Evaluation Agent] Background execution failed for job ${job.id}:`, error);
+        console.error(`[Product Evaluation] Job ${job.id} failed:`, error);
       });
 
       res.json({
         success: true,
         jobId: job.id,
-        message: "Product evaluation job started successfully. Check job status for progress.",
+        message: "Feature analysis job started successfully",
       });
     } catch (error) {
-      console.error("Error triggering product evaluation agent:", error);
-      res.status(500).json({ error: "Failed to trigger product evaluation agent" });
+      console.error("Error starting feature analysis:", error);
+      res.status(500).json({ error: "Failed to start feature analysis" });
+    }
+  });
+
+  // JOB TYPE 3: Feature Scoring
+  app.post("/api/product-eval/jobs/scoring", requireAdmin, async (req, res) => {
+    try {
+      const {
+        marketId,
+        vendorIds,
+        aiModel = "chatgpt-4o-mini",
+        promptId,
+      } = req.body;
+
+      // Validate required fields
+      if (!marketId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
+        return res.status(400).json({ 
+          error: "Missing required fields: marketId and vendorIds" 
+        });
+      }
+
+      // Validate AI model
+      if (!ALLOWED_AI_MODELS.includes(aiModel)) {
+        return res.status(400).json({ 
+          error: `Invalid AI model. Must be one of: ${ALLOWED_AI_MODELS.join(", ")}` 
+        });
+      }
+
+      // Validate market exists
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Validate vendors exist
+      const vendors = await storage.getVendorsByMarket(marketId);
+      const validVendorIds = new Set(vendors.map((v: Vendor) => v.id));
+      const invalidVendorIds = vendorIds.filter((id: string) => !validVendorIds.has(id));
+      
+      if (invalidVendorIds.length > 0) {
+        return res.status(400).json({ 
+          error: `Invalid vendor IDs: ${invalidVendorIds.join(", ")}` 
+        });
+      }
+
+      // Check if features exist
+      const categories = await storage.getFeatureCategoriesByMarketId(marketId);
+      if (categories.length === 0) {
+        return res.status(400).json({ 
+          error: "No feature categories found. Please run category generation first." 
+        });
+      }
+
+      // Create job
+      const job = await storage.createProductEvaluationJob({
+        marketId,
+        jobType: "scoring",
+        aiModel,
+        vendorIds,
+        categoryPromptId: null,
+        commentaryPromptId: null,
+        scoringPromptId: promptId || null,
+        status: "pending",
+        currentStep: "Initializing feature scoring",
+        createdBy: (req.user as any).id,
+      });
+
+      // Start agent asynchronously
+      const { ProductEvaluationAgent } = await import("./research/product-evaluation-agent");
+      const agent = new ProductEvaluationAgent(
+        job.id,
+        marketId,
+        vendorIds,
+        "scoring",
+        aiModel,
+        promptId
+      );
+
+      agent.execute().catch(error => {
+        console.error(`[Product Evaluation] Job ${job.id} failed:`, error);
+      });
+
+      res.json({
+        success: true,
+        jobId: job.id,
+        message: "Feature scoring job started successfully",
+      });
+    } catch (error) {
+      console.error("Error starting feature scoring:", error);
+      res.status(500).json({ error: "Failed to start feature scoring" });
     }
   });
 

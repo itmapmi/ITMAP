@@ -177,7 +177,7 @@ export interface IStorage {
   createResearchJobLog(log: any): Promise<any>;
   
   // Product Evaluation Agent - Jobs
-  getProductEvaluationJobs(options?: { marketId?: string; limit?: number }): Promise<any[]>;
+  getProductEvaluationJobs(options?: { marketId?: string; jobType?: string; limit?: number }): Promise<any[]>;
   getProductEvaluationJob(id: string): Promise<any | undefined>;
   createProductEvaluationJob(job: any): Promise<any>;
   updateProductEvaluationJob(id: string, updates: any): Promise<any>;
@@ -1088,12 +1088,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product Evaluation Agent - Jobs
-  async getProductEvaluationJobs(options?: { marketId?: string; limit?: number }): Promise<any[]> {
+  async getProductEvaluationJobs(options?: { marketId?: string; jobType?: string; limit?: number }): Promise<any[]> {
     const { productEvaluationJobs } = await import("@shared/schema");
     let query = db.select().from(productEvaluationJobs).orderBy(desc(productEvaluationJobs.createdAt));
     
+    const conditions = [];
     if (options?.marketId) {
-      query = query.where(eq(productEvaluationJobs.marketId, options.marketId)) as any;
+      conditions.push(eq(productEvaluationJobs.marketId, options.marketId));
+    }
+    if (options?.jobType) {
+      conditions.push(eq(productEvaluationJobs.jobType, options.jobType));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
     }
     
     if (options?.limit) {
