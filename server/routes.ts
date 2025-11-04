@@ -2799,6 +2799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         marketId,
         aiModel = "chatgpt-4o-mini",
         promptId,
+        customPrompt,
       } = req.body;
 
       // Validate required fields
@@ -2830,6 +2831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         categoryPromptId: promptId || null,
         commentaryPromptId: null,
         scoringPromptId: null,
+        customPrompt: customPrompt || null,
         status: "pending",
         currentStep: "Initializing category generation",
         createdBy: (req.user as any).id,
@@ -2843,7 +2845,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         [],
         "category_generation",
         aiModel,
-        promptId
+        promptId,
+        undefined, // featureIds
+        customPrompt // customPrompt
       );
 
       agent.execute().catch(error => {

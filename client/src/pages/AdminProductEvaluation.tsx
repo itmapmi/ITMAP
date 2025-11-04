@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2,
@@ -54,6 +55,9 @@ export default function AdminProductEvaluation() {
   const [categoryModel, setCategoryModel] = useState("chatgpt-4o-mini");
   const [analysisModel, setAnalysisModel] = useState("chatgpt-4o-mini");
   const [scoringModel, setScoringModel] = useState("chatgpt-4o-mini");
+  
+  // Custom prompts
+  const [customCategoryPrompt, setCustomCategoryPrompt] = useState("");
   
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false);
@@ -207,6 +211,7 @@ export default function AdminProductEvaluation() {
     categoryJobMutation.mutate({
       marketId: selectedMarket,
       aiModel: categoryModel,
+      customPrompt: customCategoryPrompt || undefined,
     });
   };
 
@@ -382,6 +387,21 @@ export default function AdminProductEvaluation() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="custom-category-prompt">Custom Prompt (Optional)</Label>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Provide a custom prompt to guide AI in generating categories. Leave empty to use default prompt. Use {"{market_name}"} and {"{market_description}"} as variables.
+                      </p>
+                      <Textarea
+                        id="custom-category-prompt"
+                        value={customCategoryPrompt}
+                        onChange={(e) => setCustomCategoryPrompt(e.target.value)}
+                        placeholder="Example: Generate 5-7 feature categories for {market_name} focusing on enterprise capabilities..."
+                        className="min-h-[100px]"
+                        data-testid="textarea-custom-category-prompt"
+                      />
                     </div>
 
                     {hasCategories && (
