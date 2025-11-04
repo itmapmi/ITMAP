@@ -2872,6 +2872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         marketId,
         vendorIds,
         featureIds, // Optional: specific features to analyze
+        featurePrompts, // Optional: custom prompts per feature { featureId: promptText }
         aiModel = "chatgpt-4o-mini",
         promptId,
       } = req.body;
@@ -2940,6 +2941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiModel,
         vendorIds,
         featureIds: featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : null, // Only include if provided
+        featurePrompts: featurePrompts || null,
         categoryPromptId: null,
         commentaryPromptId: promptId || null,
         scoringPromptId: null,
@@ -2957,7 +2959,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "analysis",
         aiModel,
         promptId,
-        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined // Pass to agent
+        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined, // Pass to agent
+        undefined, // customPrompt (not used for analysis)
+        featurePrompts // featurePrompts
       );
 
       agent.execute().catch(error => {
@@ -2982,6 +2986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         marketId,
         vendorIds,
         featureIds, // Optional: specific features to score
+        featurePrompts, // Optional: custom prompts per feature { featureId: promptText }
         aiModel = "chatgpt-4o-mini",
         promptId,
       } = req.body;
@@ -3050,6 +3055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiModel,
         vendorIds,
         featureIds: featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : null, // Only include if provided
+        featurePrompts: featurePrompts || null,
         categoryPromptId: null,
         commentaryPromptId: null,
         scoringPromptId: promptId || null,
@@ -3067,7 +3073,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "scoring",
         aiModel,
         promptId,
-        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined // Pass to agent
+        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined, // Pass to agent
+        undefined, // customPrompt (not used for scoring)
+        featurePrompts // featurePrompts
       );
 
       agent.execute().catch(error => {

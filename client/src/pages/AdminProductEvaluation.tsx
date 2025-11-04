@@ -58,6 +58,8 @@ export default function AdminProductEvaluation() {
   
   // Custom prompts
   const [customCategoryPrompt, setCustomCategoryPrompt] = useState("");
+  const [featurePromptsAnalysis, setFeaturePromptsAnalysis] = useState<Record<string, string>>({});
+  const [featurePromptsScoring, setFeaturePromptsScoring] = useState<Record<string, string>>({});
   
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isLogsDialogOpen, setIsLogsDialogOpen] = useState(false);
@@ -104,6 +106,8 @@ export default function AdminProductEvaluation() {
     setSelectedVendorsScoring([]);
     setSelectedFeaturesAnalysis([]);
     setSelectedFeaturesScoring([]);
+    setFeaturePromptsAnalysis({});
+    setFeaturePromptsScoring({});
   }, [selectedMarket]);
 
   // Mutation: Category Generation
@@ -225,10 +229,14 @@ export default function AdminProductEvaluation() {
       return;
     }
 
+    // Only send feature prompts if at least one is defined
+    const hasFeaturePrompts = Object.keys(featurePromptsAnalysis).some(key => featurePromptsAnalysis[key]?.trim());
+
     analysisJobMutation.mutate({
       marketId: selectedMarket,
       vendorIds: selectedVendorsAnalysis,
       featureIds: selectedFeaturesAnalysis.length > 0 ? selectedFeaturesAnalysis : undefined, // Optional
+      featurePrompts: hasFeaturePrompts ? featurePromptsAnalysis : undefined, // Optional
       aiModel: analysisModel,
     });
   };
@@ -243,10 +251,14 @@ export default function AdminProductEvaluation() {
       return;
     }
 
+    // Only send feature prompts if at least one is defined
+    const hasFeaturePrompts = Object.keys(featurePromptsScoring).some(key => featurePromptsScoring[key]?.trim());
+
     scoringJobMutation.mutate({
       marketId: selectedMarket,
       vendorIds: selectedVendorsScoring,
       featureIds: selectedFeaturesScoring.length > 0 ? selectedFeaturesScoring : undefined, // Optional
+      featurePrompts: hasFeaturePrompts ? featurePromptsScoring : undefined, // Optional
       aiModel: scoringModel,
     });
   };
@@ -527,6 +539,47 @@ export default function AdminProductEvaluation() {
                       </div>
                     )}
 
+                    {allFeatures && allFeatures.length > 0 && (
+                      <div>
+                        <Label>Customize Feature Prompts (Optional)</Label>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Provide custom prompts for specific features. Use {"{vendor_name}"}, {"{feature_name}"}, and {"{market_name}"} as variables.
+                        </p>
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value="feature-prompts">
+                            <AccordionTrigger className="text-sm font-medium">
+                              Configure Custom Prompts ({Object.keys(featurePromptsAnalysis).filter(k => featurePromptsAnalysis[k]?.trim()).length} customized)
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="max-h-96 overflow-y-auto space-y-3">
+                                {(selectedFeaturesAnalysis.length > 0 
+                                  ? allFeatures.filter(f => selectedFeaturesAnalysis.includes(f.id))
+                                  : allFeatures
+                                ).map((feature) => (
+                                  <div key={feature.id} className="border rounded-lg p-3">
+                                    <Label htmlFor={`feature-prompt-analysis-${feature.id}`} className="text-sm font-medium">
+                                      {feature.name}
+                                    </Label>
+                                    <Textarea
+                                      id={`feature-prompt-analysis-${feature.id}`}
+                                      value={featurePromptsAnalysis[feature.id] || ""}
+                                      onChange={(e) => setFeaturePromptsAnalysis(prev => ({
+                                        ...prev,
+                                        [feature.id]: e.target.value
+                                      }))}
+                                      placeholder={`Custom prompt for ${feature.name}... (leave empty to use default prompt)`}
+                                      className="mt-2 min-h-[80px]"
+                                      data-testid={`textarea-feature-prompt-analysis-${feature.id}`}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      </div>
+                    )}
+
                     <div>
                       <Label htmlFor="analysis-model">AI Model</Label>
                       <Select value={analysisModel} onValueChange={setAnalysisModel}>
@@ -651,6 +704,47 @@ export default function AdminProductEvaluation() {
                             ? `${selectedFeaturesScoring.length} feature(s) selected`
                             : "All features will be scored"}
                         </p>
+                      </div>
+                    )}
+
+                    {allFeatures && allFeatures.length > 0 && (
+                      <div>
+                        <Label>Customize Feature Prompts (Optional)</Label>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Provide custom prompts for specific features. Use {"{vendor_name}"}, {"{feature_name}"}, and {"{market_name}"} as variables.
+                        </p>
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value="feature-prompts">
+                            <AccordionTrigger className="text-sm font-medium">
+                              Configure Custom Prompts ({Object.keys(featurePromptsScoring).filter(k => featurePromptsScoring[k]?.trim()).length} customized)
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="max-h-96 overflow-y-auto space-y-3">
+                                {(selectedFeaturesScoring.length > 0 
+                                  ? allFeatures.filter(f => selectedFeaturesScoring.includes(f.id))
+                                  : allFeatures
+                                ).map((feature) => (
+                                  <div key={feature.id} className="border rounded-lg p-3">
+                                    <Label htmlFor={`feature-prompt-scoring-${feature.id}`} className="text-sm font-medium">
+                                      {feature.name}
+                                    </Label>
+                                    <Textarea
+                                      id={`feature-prompt-scoring-${feature.id}`}
+                                      value={featurePromptsScoring[feature.id] || ""}
+                                      onChange={(e) => setFeaturePromptsScoring(prev => ({
+                                        ...prev,
+                                        [feature.id]: e.target.value
+                                      }))}
+                                      placeholder={`Custom prompt for ${feature.name}... (leave empty to use default prompt)`}
+                                      className="mt-2 min-h-[80px]"
+                                      data-testid={`textarea-feature-prompt-scoring-${feature.id}`}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
                       </div>
                     )}
 

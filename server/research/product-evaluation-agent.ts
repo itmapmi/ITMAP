@@ -392,7 +392,18 @@ export class ProductEvaluationAgent {
     );
     
     try {
-      const prompt = fillPromptTemplate(template.promptTemplate, {
+      // Determine which prompt to use
+      let promptTemplate: string;
+      if (this.featurePrompts && this.featurePrompts[feature.id]) {
+        // Use feature-specific custom prompt
+        console.log(`[Product Evaluation] Using custom prompt for feature: ${feature.name}`);
+        promptTemplate = this.featurePrompts[feature.id];
+      } else {
+        // Use template-based prompt
+        promptTemplate = template.promptTemplate;
+      }
+      
+      const prompt = fillPromptTemplate(promptTemplate, {
         market_name: market.name,
         vendor_name: vendor.name,
         vendor_product: vendor.product || vendor.name,
