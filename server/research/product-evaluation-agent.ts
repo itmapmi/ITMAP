@@ -55,6 +55,7 @@ export class ProductEvaluationAgent {
   private jobId: string;
   private marketId: string;
   private vendorIds: string[];
+  private featureIds?: string[];
   private jobType: JobType;
   private aiModel: AIModel;
   private promptId?: string;
@@ -70,11 +71,13 @@ export class ProductEvaluationAgent {
     vendorIds: string[],
     jobType: JobType,
     aiModel: AIModel,
-    promptId?: string
+    promptId?: string,
+    featureIds?: string[]
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
     this.vendorIds = vendorIds;
+    this.featureIds = featureIds;
     this.jobType = jobType;
     this.aiModel = aiModel;
     this.promptId = promptId;
@@ -314,10 +317,19 @@ export class ProductEvaluationAgent {
     
     // Get all features for this market
     const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
-    const allFeatures: any[] = [];
+    let allFeatures: any[] = [];
     for (const category of allCategories) {
       const features = await storage.getFeaturesByCategoryId(category.id);
       allFeatures.push(...features);
+    }
+    
+    // Filter features if specific features are selected
+    if (this.featureIds && this.featureIds.length > 0) {
+      allFeatures = allFeatures.filter(f => this.featureIds!.includes(f.id));
+      if (allFeatures.length === 0) {
+        throw new Error("None of the selected features were found for this market.");
+      }
+      console.log(`[Product Evaluation] Processing ${allFeatures.length} selected features (out of ${this.featureIds.length} requested)`);
     }
     
     if (allFeatures.length === 0) {
@@ -441,10 +453,19 @@ export class ProductEvaluationAgent {
     
     // Get all features for this market
     const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
-    const allFeatures: any[] = [];
+    let allFeatures: any[] = [];
     for (const category of allCategories) {
       const features = await storage.getFeaturesByCategoryId(category.id);
       allFeatures.push(...features);
+    }
+    
+    // Filter features if specific features are selected
+    if (this.featureIds && this.featureIds.length > 0) {
+      allFeatures = allFeatures.filter(f => this.featureIds!.includes(f.id));
+      if (allFeatures.length === 0) {
+        throw new Error("None of the selected features were found for this market.");
+      }
+      console.log(`[Product Evaluation] Processing ${allFeatures.length} selected features (out of ${this.featureIds.length} requested)`);
     }
     
     if (allFeatures.length === 0) {
