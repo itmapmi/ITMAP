@@ -734,6 +734,105 @@ export const researchJobLogsRelations = relations(researchJobLogs, ({ one }) => 
   }),
 }));
 
+// Product Evaluation Agent - Jobs to track automated product/feature evaluation
+export const productEvaluationJobs = pgTable("product_evaluation_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed", "cancelled"
+  
+  // Configuration
+  vendorIds: text("vendor_ids").array().notNull(), // Vendors to evaluate
+  categoryPromptId: varchar("category_prompt_id").references(() => researchPromptTemplates.id),
+  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
+  scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  
+  // Progress tracking
+  totalSteps: integer("total_steps").default(0),
+  completedSteps: integer("completed_steps").default(0),
+  currentStep: text("current_step"), // Human-readable description of current operation
+  
+  // Results & Metadata
+  errorMessage: text("error_message"),
+  totalCost: decimal("total_cost", { precision: 10, scale: 4 }).default("0"),
+  totalTokensUsed: integer("total_tokens_used").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  // Audit
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+});
+
+// Product Evaluation Agent - Detailed logs for each step
+export const productEvaluationJobLogs = pgTable("product_evaluation_job_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => productEvaluationJobs.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull(),
+  stepType: text("step_type").notNull(), // "category_generation", "commentary", "scoring"
+  status: text("status").notNull(), // "pending", "running", "completed", "failed", "skipped"
+  
+  // Context
+  vendorId: varchar("vendor_id"),
+  featureId: varchar("feature_id"),
+  
+  // Request details
+  aiProvider: text("ai_provider"), // "openai", "openai-deep-research", "perplexity"
+  model: text("model"),
+  promptUsed: text("prompt_used"),
+  
+  // Response details
+  responseContent: text("response_content"),
+  tokensUsed: integer("tokens_used"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Timing
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const productEvaluationJobsRelations = relations(productEvaluationJobs, ({ one, many }) => ({
+  market: one(markets, {
+    fields: [productEvaluationJobs.marketId],
+    references: [markets.id],
+  }),
+  categoryPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.categoryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "categoryPrompt",
+  }),
+  commentaryPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.commentaryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "commentaryPrompt",
+  }),
+  scoringPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.scoringPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "scoringPrompt",
+  }),
+  creator: one(users, {
+    fields: [productEvaluationJobs.createdBy],
+    references: [users.id],
+  }),
+  logs: many(productEvaluationJobLogs),
+}));
+
+export const productEvaluationJobLogsRelations = relations(productEvaluationJobLogs, ({ one }) => ({
+  job: one(productEvaluationJobs, {
+    fields: [productEvaluationJobLogs.jobId],
+    references: [productEvaluationJobs.id],
+  }),
+}));
+
 // Insert schemas
 export const insertResearchPromptTemplateSchema = createInsertSchema(researchPromptTemplates).omit({
   id: true,
@@ -756,6 +855,21 @@ export const insertResearchJobLogSchema = createInsertSchema(researchJobLogs).om
   completedAt: true,
 });
 
+export const insertProductEvaluationJobSchema = createInsertSchema(productEvaluationJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertProductEvaluationJobLogSchema = createInsertSchema(productEvaluationJobLogs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
 // Types
 export type InsertResearchPromptTemplate = z.infer<typeof insertResearchPromptTemplateSchema>;
 export type ResearchPromptTemplate = typeof researchPromptTemplates.$inferSelect;
@@ -765,3 +879,9 @@ export type ResearchJob = typeof researchJobs.$inferSelect;
 
 export type InsertResearchJobLog = z.infer<typeof insertResearchJobLogSchema>;
 export type ResearchJobLog = typeof researchJobLogs.$inferSelect;
+
+export type InsertProductEvaluationJob = z.infer<typeof insertProductEvaluationJobSchema>;
+export type ProductEvaluationJob = typeof productEvaluationJobs.$inferSelect;
+
+export type InsertProductEvaluationJobLog = z.infer<typeof insertProductEvaluationJobLogSchema>;
+export type ProductEvaluationJobLog = typeof productEvaluationJobLogs.$inferSelect;
