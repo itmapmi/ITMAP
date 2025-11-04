@@ -748,6 +748,7 @@ export const productEvaluationJobs = pgTable("product_evaluation_jobs", {
   
   // Configuration
   vendorIds: text("vendor_ids").array().notNull(), // Vendors to evaluate
+  featureIds: text("feature_ids").array(), // Optional: specific features to analyze (if not provided, analyzes all features)
   categoryPromptId: varchar("category_prompt_id").references(() => researchPromptTemplates.id),
   commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
