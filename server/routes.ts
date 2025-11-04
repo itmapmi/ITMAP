@@ -2736,6 +2736,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // PRODUCT EVALUATION AGENT ROUTES
+  // ========================================
+
+  // Get all product evaluation jobs
+  app.get("/api/product-eval/jobs", requireAdmin, async (req, res) => {
+    try {
+      const { marketId, status, limit = 50, offset = 0 } = req.query;
+      const jobs = await storage.getProductEvaluationJobs({
+        marketId: marketId as string,
+        status: status as string,
+        limit: Number(limit),
+        offset: Number(offset),
+      });
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching product evaluation jobs:", error);
+      res.status(500).json({ error: "Failed to fetch product evaluation jobs" });
+    }
+  });
+
+  // Get specific product evaluation job
+  app.get("/api/product-eval/jobs/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await storage.getProductEvaluationJob(id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching product evaluation job:", error);
+      res.status(500).json({ error: "Failed to fetch product evaluation job" });
+    }
+  });
+
+  // Get product evaluation job logs
+  app.get("/api/product-eval/jobs/:id/logs", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const logs = await storage.getProductEvaluationJobLogs(id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching job logs:", error);
+      res.status(500).json({ error: "Failed to fetch job logs" });
+    }
+  });
+
+  // Trigger product evaluation agent
+  app.post("/api/product-eval/jobs/trigger", requireAdmin, async (req, res) => {
+    try {
+      const {
+        marketId,
+        vendorIds,
+        aiModel = "gpt-4o",
+        categoryPromptId,
+        commentaryPromptId,
+        scoringPromptId,
+        generateCategories = true,
+      } = req.body;
+
+      // Validate required fields
+      if (!marketId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
+        return res.status(400).json({ 
+          error: "Missing required fields: marketId and vendorIds are required" 
+        });
+      }
+
+      // Validate market exists
+      const market = await storage.getMarketById(marketId);
+      if (!market) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      // Validate vendors exist
+      const vendors = await storage.getMarketVendors(marketId);
+      const validVendorIds = new Set(vendors.map(v => v.id));
+      const invalidVendorIds = vendorIds.filter((id: string) => !validVendorIds.has(id));
+      
+      if (invalidVendorIds.length > 0) {
+        return res.status(400).json({ 
+          error: `Invalid vendor IDs: ${invalidVendorIds.join(", ")}` 
+        });
+      }
+
+      // Create product evaluation job
+      const job = await storage.createProductEvaluationJob({
+        marketId,
+        status: "pending",
+        vendorIds,
+        aiModel,
+        categoryPromptId: categoryPromptId || null,
+        commentaryPromptId: commentaryPromptId || null,
+        scoringPromptId: scoringPromptId || null,
+        generateCategories,
+        progress: 0,
+        currentStep: "Initializing product evaluation",
+        totalTokensUsed: 0,
+        totalWebSearches: 0,
+        estimatedCostUsd: 0,
+        startedAt: new Date(),
+      });
+
+      // Start product evaluation agent asynchronously
+      const { ProductEvaluationAgent } = await import("./research/product-evaluation-agent");
+      const agent = new ProductEvaluationAgent(
+        job.id,
+        marketId,
+        vendorIds,
+        {
+          aiModel,
+          categoryPromptId: categoryPromptId || undefined,
+          commentaryPromptId: commentaryPromptId || undefined,
+          scoringPromptId: scoringPromptId || undefined,
+          generateCategories,
+        },
+        storage
+      );
+
+      // Run in background without blocking response
+      agent.execute().catch(error => {
+        console.error(`[Product Evaluation Agent] Background execution failed for job ${job.id}:`, error);
+      });
+
+      res.json({
+        success: true,
+        jobId: job.id,
+        message: "Product evaluation job started successfully. Check job status for progress.",
+      });
+    } catch (error) {
+      console.error("Error triggering product evaluation agent:", error);
+      res.status(500).json({ error: "Failed to trigger product evaluation agent" });
+    }
+  });
+
+  // Cancel product evaluation job
+  app.post("/api/product-eval/jobs/:id/cancel", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await storage.getProductEvaluationJob(id);
+      
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.status === "completed" || job.status === "failed" || job.status === "cancelled") {
+        return res.status(400).json({ error: "Job is already in a terminal state" });
+      }
+
+      await storage.updateProductEvaluationJob(id, {
+        status: "cancelled",
+        currentStep: "Cancelled by user",
+        completedAt: new Date(),
+      });
+
+      res.json({ success: true, message: "Job cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling product evaluation job:", error);
+      res.status(500).json({ error: "Failed to cancel product evaluation job" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
