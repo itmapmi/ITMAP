@@ -2845,7 +2845,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorIds,
         categoryPromptId,
         commentaryPromptId,
-        scoringPromptId
+        scoringPromptId,
+        generateCategories
       );
 
       // Run in background without blocking response

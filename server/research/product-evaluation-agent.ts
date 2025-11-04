@@ -36,6 +36,7 @@ export class ProductEvaluationAgent {
   private categoryPromptId?: string;
   private commentaryPromptId?: string;
   private scoringPromptId?: string;
+  private generateCategories: boolean;
   
   private totalSteps: number = 0;
   private completedSteps: number = 0;
@@ -48,7 +49,8 @@ export class ProductEvaluationAgent {
     vendorIds: string[],
     categoryPromptId?: string,
     commentaryPromptId?: string,
-    scoringPromptId?: string
+    scoringPromptId?: string,
+    generateCategories: boolean = true
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
@@ -56,6 +58,7 @@ export class ProductEvaluationAgent {
     this.categoryPromptId = categoryPromptId;
     this.commentaryPromptId = commentaryPromptId;
     this.scoringPromptId = scoringPromptId;
+    this.generateCategories = generateCategories;
   }
 
   /**
@@ -90,9 +93,14 @@ export class ProductEvaluationAgent {
 
       console.log(`[Product Evaluation] Processing ${validVendors.length} vendors for market ${market.name}`);
       
-      // Step 1: Generate feature categories and features
+      // Step 1: Generate or load feature categories and features
       await this.checkCancellation();
-      await this.generateFeatureCategories(market);
+      if (this.generateCategories) {
+        console.log(`[Product Evaluation] Generating new feature categories...`);
+        await this.generateFeatureCategories(market);
+      } else {
+        console.log(`[Product Evaluation] Using existing feature categories...`);
+      }
       
       // Get all features for this market
       const allCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
@@ -102,10 +110,15 @@ export class ProductEvaluationAgent {
         allFeatures.push(...features);
       }
       
+      if (allFeatures.length === 0) {
+        throw new Error("No features found for this market. Please enable 'Generate Categories' or create features manually.");
+      }
+      
       console.log(`[Product Evaluation] Found ${allFeatures.length} features across ${allCategories.length} categories`);
       
-      // Calculate total steps: category generation + (vendors × features × 2) for commentary and scoring
-      this.totalSteps = 1 + (validVendors.length * allFeatures.length * 2);
+      // Calculate total steps: category generation (if enabled) + (vendors × features × 2) for commentary and scoring
+      const categoryGenerationSteps = this.generateCategories ? 1 : 0;
+      this.totalSteps = categoryGenerationSteps + (validVendors.length * allFeatures.length * 2);
       await this.updateJobProgress();
       
       // Step 2: Generate commentary for each vendor × feature
@@ -192,24 +205,56 @@ export class ProductEvaluationAgent {
         throw new Error("Invalid response: missing categories array");
       }
       
-      // Create feature categories and features
+      // Create or update feature categories and features (idempotent)
+      const existingCategories = await storage.getFeatureCategoriesByMarketId(this.marketId);
+      
       for (const categoryData of data.categories) {
-        const category = await storage.createFeatureCategory({
-          marketId: this.marketId,
-          name: categoryData.name,
-          description: categoryData.description || null,
-          displayOrder: categoryData.displayOrder || 0,
-        });
+        // Check if category already exists by name
+        let category = existingCategories.find(c => c.name === categoryData.name);
         
-        // Create features for this category
+        if (category) {
+          // Update existing category
+          console.log(`[Product Evaluation] Updating existing category: ${categoryData.name}`);
+          category = await storage.updateFeatureCategory(category.id, {
+            description: categoryData.description || null,
+            displayOrder: categoryData.displayOrder || 0,
+          });
+        } else {
+          // Create new category
+          console.log(`[Product Evaluation] Creating new category: ${categoryData.name}`);
+          category = await storage.createFeatureCategory({
+            marketId: this.marketId,
+            name: categoryData.name,
+            description: categoryData.description || null,
+            displayOrder: categoryData.displayOrder || 0,
+          });
+        }
+        
+        // Create or update features for this category
         if (categoryData.features && Array.isArray(categoryData.features)) {
+          const existingFeatures = await storage.getFeaturesByCategoryId(category.id);
+          
           for (const featureData of categoryData.features) {
-            await storage.createFeature({
-              categoryId: category.id,
-              name: featureData.name,
-              description: featureData.description || null,
-              displayOrder: featureData.displayOrder || 0,
-            });
+            // Check if feature already exists by name
+            const existingFeature = existingFeatures.find(f => f.name === featureData.name);
+            
+            if (existingFeature) {
+              // Update existing feature
+              console.log(`[Product Evaluation] Updating existing feature: ${featureData.name}`);
+              await storage.updateFeature(existingFeature.id, {
+                description: featureData.description || null,
+                displayOrder: featureData.displayOrder || 0,
+              });
+            } else {
+              // Create new feature
+              console.log(`[Product Evaluation] Creating new feature: ${featureData.name}`);
+              await storage.createFeature({
+                categoryId: category.id,
+                name: featureData.name,
+                description: featureData.description || null,
+                displayOrder: featureData.displayOrder || 0,
+              });
+            }
           }
         }
       }
