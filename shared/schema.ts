@@ -753,6 +753,10 @@ export const productEvaluationJobs = pgTable("product_evaluation_jobs", {
   commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
   scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
   
+  // Custom prompts (ad-hoc, not template-based)
+  customPrompt: text("custom_prompt"), // Optional custom prompt for category generation
+  featurePrompts: jsonb("feature_prompts"), // Optional JSONB mapping featureId -> custom prompt text
+  
   // Optional dependency tracking (for UI warnings, not enforcement)
   dependencyJobId: varchar("dependency_job_id"),
   

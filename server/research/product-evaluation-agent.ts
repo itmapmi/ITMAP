@@ -59,6 +59,8 @@ export class ProductEvaluationAgent {
   private jobType: JobType;
   private aiModel: AIModel;
   private promptId?: string;
+  private customPrompt?: string;
+  private featurePrompts?: Record<string, string>;
   
   private totalSteps: number = 0;
   private completedSteps: number = 0;
@@ -72,7 +74,9 @@ export class ProductEvaluationAgent {
     jobType: JobType,
     aiModel: AIModel,
     promptId?: string,
-    featureIds?: string[]
+    featureIds?: string[],
+    customPrompt?: string,
+    featurePrompts?: Record<string, string>
   ) {
     this.jobId = jobId;
     this.marketId = marketId;
@@ -81,6 +85,8 @@ export class ProductEvaluationAgent {
     this.jobType = jobType;
     this.aiModel = aiModel;
     this.promptId = promptId;
+    this.customPrompt = customPrompt;
+    this.featurePrompts = featurePrompts;
   }
 
   /**
@@ -182,13 +188,23 @@ export class ProductEvaluationAgent {
       const market = await storage.getMarketById(this.marketId);
       if (!market) throw new Error("Market not found");
       
-      // Load prompt template or use default
-      const template = await this.getPromptTemplate("category_generation");
-      
-      const prompt = fillPromptTemplate(template.promptTemplate, {
-        market_name: market.name,
-        market_description: market.description || ""
-      });
+      // Determine which prompt to use
+      let prompt: string;
+      if (this.customPrompt) {
+        // Use custom prompt directly (with variable substitution)
+        console.log(`[Product Evaluation] Using custom prompt for category generation`);
+        prompt = fillPromptTemplate(this.customPrompt, {
+          market_name: market.name,
+          market_description: market.description || ""
+        });
+      } else {
+        // Load prompt template or use default
+        const template = await this.getPromptTemplate("category_generation");
+        prompt = fillPromptTemplate(template.promptTemplate, {
+          market_name: market.name,
+          market_description: market.description || ""
+        });
+      }
       
       // Call AI
       const response = await this.callAI(prompt);
