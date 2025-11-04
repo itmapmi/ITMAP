@@ -2867,6 +2867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const {
         marketId,
         vendorIds,
+        featureIds, // Optional: specific features to analyze
         aiModel = "chatgpt-4o-mini",
         promptId,
       } = req.body;
@@ -2910,12 +2911,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate featureIds if provided
+      if (featureIds && Array.isArray(featureIds) && featureIds.length > 0) {
+        // Get all features for this market
+        const allFeatures: any[] = [];
+        for (const category of categories) {
+          const features = await storage.getFeaturesByCategoryId(category.id);
+          allFeatures.push(...features);
+        }
+        const validFeatureIds = new Set(allFeatures.map((f: any) => f.id));
+        const invalidFeatureIds = featureIds.filter((id: string) => !validFeatureIds.has(id));
+        
+        if (invalidFeatureIds.length > 0) {
+          return res.status(400).json({ 
+            error: `Invalid feature IDs: ${invalidFeatureIds.join(", ")}` 
+          });
+        }
+      }
+
       // Create job
       const job = await storage.createProductEvaluationJob({
         marketId,
         jobType: "analysis",
         aiModel,
         vendorIds,
+        featureIds: featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : null, // Only include if provided
         categoryPromptId: null,
         commentaryPromptId: promptId || null,
         scoringPromptId: null,
@@ -2932,7 +2952,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorIds,
         "analysis",
         aiModel,
-        promptId
+        promptId,
+        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined // Pass to agent
       );
 
       agent.execute().catch(error => {
@@ -2956,6 +2977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const {
         marketId,
         vendorIds,
+        featureIds, // Optional: specific features to score
         aiModel = "chatgpt-4o-mini",
         promptId,
       } = req.body;
@@ -2999,12 +3021,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate featureIds if provided
+      if (featureIds && Array.isArray(featureIds) && featureIds.length > 0) {
+        // Get all features for this market
+        const allFeatures: any[] = [];
+        for (const category of categories) {
+          const features = await storage.getFeaturesByCategoryId(category.id);
+          allFeatures.push(...features);
+        }
+        const validFeatureIds = new Set(allFeatures.map((f: any) => f.id));
+        const invalidFeatureIds = featureIds.filter((id: string) => !validFeatureIds.has(id));
+        
+        if (invalidFeatureIds.length > 0) {
+          return res.status(400).json({ 
+            error: `Invalid feature IDs: ${invalidFeatureIds.join(", ")}` 
+          });
+        }
+      }
+
       // Create job
       const job = await storage.createProductEvaluationJob({
         marketId,
         jobType: "scoring",
         aiModel,
         vendorIds,
+        featureIds: featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : null, // Only include if provided
         categoryPromptId: null,
         commentaryPromptId: null,
         scoringPromptId: promptId || null,
@@ -3021,7 +3062,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorIds,
         "scoring",
         aiModel,
-        promptId
+        promptId,
+        featureIds && Array.isArray(featureIds) && featureIds.length > 0 ? featureIds : undefined // Pass to agent
       );
 
       agent.execute().catch(error => {
