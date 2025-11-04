@@ -2902,11 +2902,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if features exist
+      // Check if features exist (can be manually created or AI-generated)
       const categories = await storage.getFeatureCategoriesByMarketId(marketId);
       if (categories.length === 0) {
         return res.status(400).json({ 
-          error: "No feature categories found. Please run category generation first." 
+          error: "No feature categories found. Please create categories first (manually or via Category Generation)." 
         });
       }
 
@@ -2991,11 +2991,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if features exist
+      // Check if features exist (can be manually created or AI-generated)
       const categories = await storage.getFeatureCategoriesByMarketId(marketId);
       if (categories.length === 0) {
         return res.status(400).json({ 
-          error: "No feature categories found. Please run category generation first." 
+          error: "No feature categories found. Please create categories first (manually or via Category Generation)." 
         });
       }
 

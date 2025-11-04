@@ -418,7 +418,7 @@ export default function AdminProductEvaluation() {
                           <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
                           <div className="text-sm text-red-800">
                             <p className="font-medium">No categories found</p>
-                            <p>Please run Category Generation first before running Feature Analysis.</p>
+                            <p>Please create feature categories first (manually or via Category Generation).</p>
                           </div>
                         </div>
                       </div>
@@ -511,7 +511,7 @@ export default function AdminProductEvaluation() {
                           <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
                           <div className="text-sm text-red-800">
                             <p className="font-medium">No categories found</p>
-                            <p>Please run Category Generation first before running Feature Scoring.</p>
+                            <p>Please create feature categories first (manually or via Category Generation).</p>
                           </div>
                         </div>
                       </div>

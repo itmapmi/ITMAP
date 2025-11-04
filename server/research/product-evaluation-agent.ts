@@ -108,7 +108,7 @@ export class ProductEvaluationAgent {
         return await callOpenAI(prompt, "gpt-4o-mini");
       
       case AI_MODELS.GPT_4_1_MINI:
-        return await callOpenAI(prompt, "gpt-4o-mini"); // Map to actual model
+        return await callOpenAI(prompt, "gpt-4o"); // Full GPT-4o model
       
       case AI_MODELS.O4_MINI_DEEP_RESEARCH:
         return await callOpenAIDeepResearch(prompt, "o4-mini-deep-research-2025-06-26");
@@ -321,7 +321,7 @@ export class ProductEvaluationAgent {
     }
     
     if (allFeatures.length === 0) {
-      throw new Error("No features found for this market. Please run category generation first.");
+      throw new Error("No features found for this market. Please create categories/features first (manually or via Category Generation).");
     }
     
     console.log(`[Product Evaluation] Generating commentary for ${validVendors.length} vendors × ${allFeatures.length} features`);
@@ -448,7 +448,7 @@ export class ProductEvaluationAgent {
     }
     
     if (allFeatures.length === 0) {
-      throw new Error("No features found for this market. Please run category generation first.");
+      throw new Error("No features found for this market. Please create categories/features first (manually or via Category Generation).");
     }
     
     console.log(`[Product Evaluation] Scoring ${validVendors.length} vendors × ${allFeatures.length} features`);
@@ -612,7 +612,7 @@ export class ProductEvaluationAgent {
       case AI_MODELS.CHATGPT_4O_MINI:
         return "gpt-4o-mini";
       case AI_MODELS.GPT_4_1_MINI:
-        return "gpt-4o-mini";
+        return "gpt-4o";
       case AI_MODELS.O4_MINI_DEEP_RESEARCH:
         return "o4-mini-deep-research-2025-06-26";
       case AI_MODELS.O3_DEEP_RESEARCH:
