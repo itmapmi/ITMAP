@@ -49,6 +49,7 @@ export default function Admin() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center gap-2"
           >
             <Link href="/admin/research-agent">
               <Button 
@@ -57,6 +58,16 @@ export default function Admin() {
               >
                 <Bot className="w-4 h-4" />
                 Research Agent
+              </Button>
+            </Link>
+            <Link href="/admin/product-evaluation">
+              <Button 
+                className="flex items-center gap-2"
+                data-testid="button-product-evaluation"
+                variant="secondary"
+              >
+                <Bot className="w-4 h-4" />
+                Product Evaluation
               </Button>
             </Link>
           </motion.div>
