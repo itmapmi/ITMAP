@@ -2743,12 +2743,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all product evaluation jobs
   app.get("/api/product-eval/jobs", requireAdmin, async (req, res) => {
     try {
-      const { marketId, status, limit = 50, offset = 0 } = req.query;
+      const { marketId, limit = 50 } = req.query;
       const jobs = await storage.getProductEvaluationJobs({
         marketId: marketId as string,
-        status: status as string,
         limit: Number(limit),
-        offset: Number(offset),
       });
       res.json(jobs);
     } catch (error) {
@@ -2811,8 +2809,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate vendors exist
-      const vendors = await storage.getMarketVendors(marketId);
-      const validVendorIds = new Set(vendors.map(v => v.id));
+      const vendors = await storage.getVendorsByMarket(marketId);
+      const validVendorIds = new Set(vendors.map((v: Vendor) => v.id));
       const invalidVendorIds = vendorIds.filter((id: string) => !validVendorIds.has(id));
       
       if (invalidVendorIds.length > 0) {
@@ -2845,14 +2843,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.id,
         marketId,
         vendorIds,
-        {
-          aiModel,
-          categoryPromptId: categoryPromptId || undefined,
-          commentaryPromptId: commentaryPromptId || undefined,
-          scoringPromptId: scoringPromptId || undefined,
-          generateCategories,
-        },
-        storage
+        categoryPromptId,
+        commentaryPromptId,
+        scoringPromptId
       );
 
       // Run in background without blocking response
