@@ -47,6 +47,8 @@ export default function AdminProductEvaluation() {
   const [selectedMarket, setSelectedMarket] = useState("");
   const [selectedVendorsAnalysis, setSelectedVendorsAnalysis] = useState<string[]>([]);
   const [selectedVendorsScoring, setSelectedVendorsScoring] = useState<string[]>([]);
+  const [selectedFeaturesAnalysis, setSelectedFeaturesAnalysis] = useState<string[]>([]);
+  const [selectedFeaturesScoring, setSelectedFeaturesScoring] = useState<string[]>([]);
   
   // AI model selections for each job type
   const [categoryModel, setCategoryModel] = useState("chatgpt-4o-mini");
@@ -73,6 +75,12 @@ export default function AdminProductEvaluation() {
     enabled: !!selectedMarket,
   });
 
+  // Fetch all features for selected market (for feature selection)
+  const { data: allFeatures } = useQuery<any[]>({
+    queryKey: ["/api/markets", selectedMarket, "features"],
+    enabled: !!selectedMarket && !!categories && categories.length > 0,
+  });
+
   // Fetch product evaluation jobs
   const { data: jobs, isLoading: jobsLoading } = useQuery<any[]>({
     queryKey: ["/api/product-eval/jobs"],
@@ -86,10 +94,12 @@ export default function AdminProductEvaluation() {
     refetchInterval: 2000,
   });
 
-  // Reset selected vendors when market changes
+  // Reset selections when market changes
   useEffect(() => {
     setSelectedVendorsAnalysis([]);
     setSelectedVendorsScoring([]);
+    setSelectedFeaturesAnalysis([]);
+    setSelectedFeaturesScoring([]);
   }, [selectedMarket]);
 
   // Mutation: Category Generation
@@ -213,6 +223,7 @@ export default function AdminProductEvaluation() {
     analysisJobMutation.mutate({
       marketId: selectedMarket,
       vendorIds: selectedVendorsAnalysis,
+      featureIds: selectedFeaturesAnalysis.length > 0 ? selectedFeaturesAnalysis : undefined, // Optional
       aiModel: analysisModel,
     });
   };
@@ -230,6 +241,7 @@ export default function AdminProductEvaluation() {
     scoringJobMutation.mutate({
       marketId: selectedMarket,
       vendorIds: selectedVendorsScoring,
+      featureIds: selectedFeaturesScoring.length > 0 ? selectedFeaturesScoring : undefined, // Optional
       aiModel: scoringModel,
     });
   };
@@ -243,6 +255,18 @@ export default function AdminProductEvaluation() {
   const handleToggleVendorScoring = (vendorId: string) => {
     setSelectedVendorsScoring((prev) =>
       prev.includes(vendorId) ? prev.filter((id) => id !== vendorId) : [...prev, vendorId]
+    );
+  };
+
+  const handleToggleFeatureAnalysis = (featureId: string) => {
+    setSelectedFeaturesAnalysis((prev) =>
+      prev.includes(featureId) ? prev.filter((id) => id !== featureId) : [...prev, featureId]
+    );
+  };
+
+  const handleToggleFeatureScoring = (featureId: string) => {
+    setSelectedFeaturesScoring((prev) =>
+      prev.includes(featureId) ? prev.filter((id) => id !== featureId) : [...prev, featureId]
     );
   };
 
@@ -449,6 +473,40 @@ export default function AdminProductEvaluation() {
                       </p>
                     </div>
 
+                    {allFeatures && allFeatures.length > 0 && (
+                      <div>
+                        <Label>Select Features (Optional)</Label>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Leave empty to analyze all features, or select specific features to analyze
+                        </p>
+                        <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
+                          <div className="grid gap-2">
+                            {allFeatures.map((feature) => (
+                              <div key={feature.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`feature-analysis-${feature.id}`}
+                                  checked={selectedFeaturesAnalysis.includes(feature.id)}
+                                  onCheckedChange={() => handleToggleFeatureAnalysis(feature.id)}
+                                  data-testid={`checkbox-feature-analysis-${feature.id}`}
+                                />
+                                <label
+                                  htmlFor={`feature-analysis-${feature.id}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                                >
+                                  {feature.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {selectedFeaturesAnalysis.length > 0 
+                            ? `${selectedFeaturesAnalysis.length} feature(s) selected`
+                            : "All features will be analyzed"}
+                        </p>
+                      </div>
+                    )}
+
                     <div>
                       <Label htmlFor="analysis-model">AI Model</Label>
                       <Select value={analysisModel} onValueChange={setAnalysisModel}>
@@ -541,6 +599,40 @@ export default function AdminProductEvaluation() {
                         {selectedVendorsScoring.length} vendor(s) selected
                       </p>
                     </div>
+
+                    {allFeatures && allFeatures.length > 0 && (
+                      <div>
+                        <Label>Select Features (Optional)</Label>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Leave empty to score all features, or select specific features to score
+                        </p>
+                        <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
+                          <div className="grid gap-2">
+                            {allFeatures.map((feature) => (
+                              <div key={feature.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`feature-scoring-${feature.id}`}
+                                  checked={selectedFeaturesScoring.includes(feature.id)}
+                                  onCheckedChange={() => handleToggleFeatureScoring(feature.id)}
+                                  data-testid={`checkbox-feature-scoring-${feature.id}`}
+                                />
+                                <label
+                                  htmlFor={`feature-scoring-${feature.id}`}
+                                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                                >
+                                  {feature.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {selectedFeaturesScoring.length > 0 
+                            ? `${selectedFeaturesScoring.length} feature(s) selected`
+                            : "All features will be scored"}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <Label htmlFor="scoring-model">AI Model</Label>
