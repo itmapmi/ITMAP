@@ -105,7 +105,14 @@ export interface IStorage {
   
   // Vendor Feature Support
   getVendorFeatureSupport(marketId: string): Promise<(VendorFeatureSupport & { vendor: Vendor; feature: Feature })[]>;
+  getVendorFeature(vendorId: string, featureId: string): Promise<VendorFeatureSupport | undefined>;
+  createVendorFeature(support: InsertVendorFeatureSupport): Promise<VendorFeatureSupport>;
+  updateVendorFeature(support: Partial<InsertVendorFeatureSupport> & { vendorId: string; featureId: string }): Promise<VendorFeatureSupport>;
   createOrUpdateVendorFeatureSupport(support: InsertVendorFeatureSupport): Promise<VendorFeatureSupport>;
+  
+  // Helper methods for product evaluation
+  getFeatureCategoriesByMarketId(marketId: string): Promise<FeatureCategory[]>;
+  getFeaturesByCategoryId(categoryId: string): Promise<Feature[]>;
   
   // Research Reports
   getMarketResearchReports(marketId: string): Promise<ResearchReport[]>;
@@ -168,6 +175,17 @@ export interface IStorage {
   // Research Agent - Job Logs
   getResearchJobLogs(jobId: string): Promise<any[]>;
   createResearchJobLog(log: any): Promise<any>;
+  
+  // Product Evaluation Agent - Jobs
+  getProductEvaluationJobs(options?: { marketId?: string; limit?: number }): Promise<any[]>;
+  getProductEvaluationJob(id: string): Promise<any | undefined>;
+  createProductEvaluationJob(job: any): Promise<any>;
+  updateProductEvaluationJob(id: string, updates: any): Promise<any>;
+  deleteProductEvaluationJob(id: string): Promise<void>;
+  
+  // Product Evaluation Agent - Job Logs
+  getProductEvaluationJobLogs(jobId: string): Promise<any[]>;
+  createProductEvaluationJobLog(log: any): Promise<any>;
   
   // Helper methods for research agent
   getVendorScoreByCriteria(vendorId: string, criteriaId: string): Promise<VendorScore | undefined>;
@@ -549,6 +567,59 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSupport;
     }
+  }
+
+  async getVendorFeature(vendorId: string, featureId: string): Promise<VendorFeatureSupport | undefined> {
+    const [support] = await db
+      .select()
+      .from(vendorFeatureSupport)
+      .where(
+        and(
+          eq(vendorFeatureSupport.vendorId, vendorId),
+          eq(vendorFeatureSupport.featureId, featureId)
+        )
+      );
+    return support || undefined;
+  }
+
+  async createVendorFeature(support: InsertVendorFeatureSupport): Promise<VendorFeatureSupport> {
+    const [newSupport] = await db
+      .insert(vendorFeatureSupport)
+      .values(support)
+      .returning();
+    return newSupport;
+  }
+
+  async updateVendorFeature(support: Partial<InsertVendorFeatureSupport> & { vendorId: string; featureId: string }): Promise<VendorFeatureSupport> {
+    const [updated] = await db
+      .update(vendorFeatureSupport)
+      .set({ ...support, updatedAt: new Date() })
+      .where(
+        and(
+          eq(vendorFeatureSupport.vendorId, support.vendorId),
+          eq(vendorFeatureSupport.featureId, support.featureId)
+        )
+      )
+      .returning();
+    return updated;
+  }
+
+  // Helper methods for product evaluation
+  async getFeatureCategoriesByMarketId(marketId: string): Promise<FeatureCategory[]> {
+    const categories = await db
+      .select()
+      .from(featureCategories)
+      .where(eq(featureCategories.marketId, marketId))
+      .orderBy(featureCategories.displayOrder, featureCategories.name);
+    return categories;
+  }
+
+  async getFeaturesByCategoryId(categoryId: string): Promise<Feature[]> {
+    return await db
+      .select()
+      .from(features)
+      .where(eq(features.categoryId, categoryId))
+      .orderBy(features.displayOrder, features.name);
   }
 
   // Research Reports
@@ -1011,6 +1082,74 @@ export class DatabaseStorage implements IStorage {
     const { researchJobLogs } = await import("@shared/schema");
     const [newLog] = await db
       .insert(researchJobLogs)
+      .values(log)
+      .returning();
+    return newLog!;
+  }
+
+  // Product Evaluation Agent - Jobs
+  async getProductEvaluationJobs(options?: { marketId?: string; limit?: number }): Promise<any[]> {
+    const { productEvaluationJobs } = await import("@shared/schema");
+    let query = db.select().from(productEvaluationJobs).orderBy(desc(productEvaluationJobs.createdAt));
+    
+    if (options?.marketId) {
+      query = query.where(eq(productEvaluationJobs.marketId, options.marketId)) as any;
+    }
+    
+    if (options?.limit) {
+      query = query.limit(options.limit) as any;
+    }
+    
+    return await query;
+  }
+
+  async getProductEvaluationJob(id: string): Promise<any | undefined> {
+    const { productEvaluationJobs } = await import("@shared/schema");
+    const [job] = await db
+      .select()
+      .from(productEvaluationJobs)
+      .where(eq(productEvaluationJobs.id, id));
+    return job || undefined;
+  }
+
+  async createProductEvaluationJob(job: any): Promise<any> {
+    const { productEvaluationJobs } = await import("@shared/schema");
+    const [newJob] = await db
+      .insert(productEvaluationJobs)
+      .values(job)
+      .returning();
+    return newJob!;
+  }
+
+  async updateProductEvaluationJob(id: string, updates: any): Promise<any> {
+    const { productEvaluationJobs } = await import("@shared/schema");
+    const [updated] = await db
+      .update(productEvaluationJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(productEvaluationJobs.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async deleteProductEvaluationJob(id: string): Promise<void> {
+    const { productEvaluationJobs } = await import("@shared/schema");
+    await db.delete(productEvaluationJobs).where(eq(productEvaluationJobs.id, id));
+  }
+
+  // Product Evaluation Agent - Job Logs
+  async getProductEvaluationJobLogs(jobId: string): Promise<any[]> {
+    const { productEvaluationJobLogs } = await import("@shared/schema");
+    return await db
+      .select()
+      .from(productEvaluationJobLogs)
+      .where(eq(productEvaluationJobLogs.jobId, jobId))
+      .orderBy(productEvaluationJobLogs.stepNumber);
+  }
+
+  async createProductEvaluationJobLog(log: any): Promise<any> {
+    const { productEvaluationJobLogs } = await import("@shared/schema");
+    const [newLog] = await db
+      .insert(productEvaluationJobLogs)
       .values(log)
       .returning();
     return newLog!;
