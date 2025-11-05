@@ -260,6 +260,7 @@ export class ProductEvaluationAgent {
               console.log(`[Product Evaluation] Updating existing feature: ${featureData.name}`);
               await storage.updateFeature(existingFeature.id, {
                 description: featureData.description || null,
+                defaultPrompt: featureData.evaluationPrompt || null,
                 displayOrder: featureData.displayOrder || 0,
               });
             } else {
@@ -269,6 +270,7 @@ export class ProductEvaluationAgent {
                 categoryId: category.id,
                 name: featureData.name,
                 description: featureData.description || null,
+                defaultPrompt: featureData.evaluationPrompt || null,
                 displayOrder: featureData.displayOrder || 0,
               });
             }
@@ -392,14 +394,18 @@ export class ProductEvaluationAgent {
     );
     
     try {
-      // Determine which prompt to use
+      // Determine which prompt to use (priority order)
       let promptTemplate: string;
       if (this.featurePrompts && this.featurePrompts[feature.id]) {
-        // Use feature-specific custom prompt
+        // 1. Use user-provided custom prompt
         console.log(`[Product Evaluation] Using custom prompt for feature: ${feature.name}`);
         promptTemplate = this.featurePrompts[feature.id];
+      } else if (feature.defaultPrompt) {
+        // 2. Use AI-generated default prompt from category generation
+        console.log(`[Product Evaluation] Using AI-generated default prompt for feature: ${feature.name}`);
+        promptTemplate = feature.defaultPrompt;
       } else {
-        // Use template-based prompt
+        // 3. Fallback to template-based prompt
         promptTemplate = template.promptTemplate;
       }
       
@@ -546,14 +552,18 @@ export class ProductEvaluationAgent {
         throw new Error(`No commentary found for ${vendor.name} - ${feature.name}. Please run feature analysis first.`);
       }
       
-      // Determine which prompt to use
+      // Determine which prompt to use (priority order)
       let promptTemplate: string;
       if (this.featurePrompts && this.featurePrompts[feature.id]) {
-        // Use feature-specific custom prompt
+        // 1. Use user-provided custom prompt
         console.log(`[Product Evaluation] Using custom scoring prompt for feature: ${feature.name}`);
         promptTemplate = this.featurePrompts[feature.id];
+      } else if (feature.defaultPrompt) {
+        // 2. Use AI-generated default prompt from category generation
+        console.log(`[Product Evaluation] Using AI-generated default scoring prompt for feature: ${feature.name}`);
+        promptTemplate = feature.defaultPrompt;
       } else {
-        // Use template-based prompt
+        // 3. Fallback to template-based prompt
         promptTemplate = template.promptTemplate;
       }
       
@@ -710,6 +720,8 @@ Generate a structured list of feature categories and individual features that sh
 
 Market Description: ${"{market_description}"}
 
+For each feature, also provide an "evaluationPrompt" - a detailed prompt that explains how to evaluate vendors for that specific feature. This prompt will be used by AI to analyze vendor capabilities and should guide the analysis to look for specific capabilities, implementation approaches, or technical details.
+
 Return your response as JSON in this exact format:
 {
   "categories": [
@@ -721,6 +733,7 @@ Return your response as JSON in this exact format:
         {
           "name": "Feature Name",
           "description": "Feature description",
+          "evaluationPrompt": "Detailed prompt explaining how to evaluate {vendor_name}'s {feature_name} capability. Focus on [specific aspects to evaluate]. Variables available: {vendor_name}, {vendor_product}, {market_name}, {feature_name}, {feature_description}",
           "displayOrder": 0
         }
       ]
@@ -728,7 +741,7 @@ Return your response as JSON in this exact format:
   ]
 }
 
-Focus on creating 5-8 meaningful categories with 3-6 features each. Make the features specific and measurable.`;
+Focus on creating 5-8 meaningful categories with 3-6 features each. Make the features specific and measurable. The evaluationPrompt should be detailed and actionable, guiding the AI to look for specific implementation details, capabilities, or technical aspects.`;
 
       case "commentary":
         return `You are a product analyst evaluating how well ${"{vendor_product}"} (by ${"{vendor_name}"}) supports the feature "${"{feature_name}"}" in the ${"{market_name}"} market.
