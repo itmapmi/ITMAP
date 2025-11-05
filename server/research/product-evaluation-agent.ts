@@ -235,10 +235,43 @@ export class ProductEvaluationAgent {
       if (this.customPrompt) {
         // Use custom prompt directly (with variable substitution)
         console.log(`[Product Evaluation] Using custom prompt for category generation`);
-        prompt = fillPromptTemplate(this.customPrompt, {
+        let customPromptFilled = fillPromptTemplate(this.customPrompt, {
           market_name: market.name,
           market_description: market.description || ""
         });
+        
+        // Check if custom prompt already includes JSON format instructions
+        const hasJSONInstructions = /return.*json|output.*json|format.*json|json.*format/i.test(customPromptFilled);
+        
+        if (!hasJSONInstructions) {
+          // Append JSON format instructions to custom prompt
+          prompt = `${customPromptFilled}
+
+IMPORTANT: Return ONLY the JSON object. Do not include any conversational text, explanations, markdown formatting, or preambles like "Certainly!" or "Here's the JSON:". Just return the raw JSON.
+
+Return your response as JSON in this exact format:
+{
+  "categories": [
+    {
+      "name": "Category Name",
+      "description": "Category description",
+      "displayOrder": 0,
+      "features": [
+        {
+          "name": "Feature Name",
+          "description": "Feature description",
+          "evaluationPrompt": "Detailed prompt explaining how to evaluate {vendor_name}'s {feature_name} capability. Focus on specific aspects to evaluate. Variables available: {vendor_name}, {vendor_product}, {market_name}, {feature_name}, {feature_description}",
+          "displayOrder": 0
+        }
+      ]
+    }
+  ]
+}
+
+Focus on creating 5-8 meaningful categories with 3-6 features each. Make the features specific and measurable.`;
+        } else {
+          prompt = customPromptFilled;
+        }
       } else {
         // Load prompt template or use default
         const template = await this.getPromptTemplate("category_generation");
