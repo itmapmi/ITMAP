@@ -560,6 +560,11 @@ export default function AdminProductEvaluation() {
                                     <Label htmlFor={`feature-prompt-analysis-${feature.id}`} className="text-sm font-medium">
                                       {feature.name}
                                     </Label>
+                                    {feature.defaultPrompt && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        <strong>AI-generated default prompt:</strong> {feature.defaultPrompt.substring(0, 100)}...
+                                      </p>
+                                    )}
                                     <Textarea
                                       id={`feature-prompt-analysis-${feature.id}`}
                                       value={featurePromptsAnalysis[feature.id] || ""}
@@ -567,7 +572,7 @@ export default function AdminProductEvaluation() {
                                         ...prev,
                                         [feature.id]: e.target.value
                                       }))}
-                                      placeholder={`Custom prompt for ${feature.name}... (leave empty to use default prompt)`}
+                                      placeholder={feature.defaultPrompt || `Custom prompt for ${feature.name}... (leave empty to use template)`}
                                       className="mt-2 min-h-[80px]"
                                       data-testid={`textarea-feature-prompt-analysis-${feature.id}`}
                                     />
@@ -728,6 +733,11 @@ export default function AdminProductEvaluation() {
                                     <Label htmlFor={`feature-prompt-scoring-${feature.id}`} className="text-sm font-medium">
                                       {feature.name}
                                     </Label>
+                                    {feature.defaultPrompt && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        <strong>AI-generated default prompt:</strong> {feature.defaultPrompt.substring(0, 100)}...
+                                      </p>
+                                    )}
                                     <Textarea
                                       id={`feature-prompt-scoring-${feature.id}`}
                                       value={featurePromptsScoring[feature.id] || ""}
@@ -735,7 +745,7 @@ export default function AdminProductEvaluation() {
                                         ...prev,
                                         [feature.id]: e.target.value
                                       }))}
-                                      placeholder={`Custom prompt for ${feature.name}... (leave empty to use default prompt)`}
+                                      placeholder={feature.defaultPrompt || `Custom prompt for ${feature.name}... (leave empty to use template)`}
                                       className="mt-2 min-h-[80px]"
                                       data-testid={`textarea-feature-prompt-scoring-${feature.id}`}
                                     />
