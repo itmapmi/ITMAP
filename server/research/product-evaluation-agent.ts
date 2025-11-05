@@ -8,10 +8,19 @@ import type { ProductEvaluationJob, ResearchPromptTemplate } from "@shared/schem
  */
 function extractJSON(text: string): string {
   const trimmed = text.trim();
+  
+  // Check if wrapped in markdown code blocks
   const jsonBlockMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
   if (jsonBlockMatch) {
     return jsonBlockMatch[1].trim();
   }
+  
+  // Try to find JSON object in the text (handles conversational preambles like "Certainly!")
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
   return trimmed;
 }
 
@@ -721,6 +730,8 @@ Generate a structured list of feature categories and individual features that sh
 Market Description: ${"{market_description}"}
 
 For each feature, also provide an "evaluationPrompt" - a detailed prompt that explains how to evaluate vendors for that specific feature. This prompt will be used by AI to analyze vendor capabilities and should guide the analysis to look for specific capabilities, implementation approaches, or technical details.
+
+IMPORTANT: Return ONLY the JSON object. Do not include any conversational text, explanations, or preambles like "Certainly!" or "Here's the JSON:". Just return the raw JSON.
 
 Return your response as JSON in this exact format:
 {
