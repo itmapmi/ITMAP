@@ -117,6 +117,7 @@ export const features = pgTable("features", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  defaultPrompt: text("default_prompt"), // AI-generated evaluation prompt for this feature
   categoryId: varchar("category_id").notNull().references(() => featureCategories.id, { onDelete: "cascade" }),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
