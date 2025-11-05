@@ -599,23 +599,28 @@ export class ProductEvaluationAgent {
       
       // Determine which prompt to use (priority order)
       let promptTemplate: string;
-      let isCustomPromptWithoutPlaceholders = false;
+      let needsScoringContext = false;
       
       if (this.featurePrompts && this.featurePrompts[feature.id]) {
         // 1. Use user-provided custom prompt
         console.log(`[Product Evaluation] Using custom scoring prompt for feature: ${feature.name}`);
         promptTemplate = this.featurePrompts[feature.id];
         
-        // Check if custom prompt has template variables
-        const hasPlaceholders = /{vendor_name}|{vendor_product}|{feature_name}|{market_name}|{feature_description}|{commentary}/.test(promptTemplate);
-        isCustomPromptWithoutPlaceholders = !hasPlaceholders;
+        // For scoring, check if prompt references the commentary to be scored
+        // If not, it's an analysis prompt being used for scoring - needs context
+        const hasCommentaryReference = /{commentary}/.test(promptTemplate);
+        needsScoringContext = !hasCommentaryReference;
       } else if (feature.defaultPrompt) {
         // 2. Use AI-generated default prompt from category generation
         console.log(`[Product Evaluation] Using AI-generated default scoring prompt for feature: ${feature.name}`);
         promptTemplate = feature.defaultPrompt;
+        
+        // Default prompts are analysis prompts, so they need scoring context
+        needsScoringContext = true;
       } else {
-        // 3. Fallback to template-based prompt
+        // 3. Fallback to template-based prompt (already scoring-ready)
         promptTemplate = template.promptTemplate;
+        needsScoringContext = false;
       }
       
       // Fill in template variables
@@ -628,9 +633,25 @@ export class ProductEvaluationAgent {
         commentary: existing.comments
       });
       
-      // If custom prompt has no placeholders, prepend vendor context
-      if (isCustomPromptWithoutPlaceholders) {
-        prompt = `Score ${vendor.name} (product: ${vendor.product || vendor.name}) for the "${feature.name}" feature in the ${market.name} market based on the analysis below.\n\nScoring Instructions:\n${prompt}\n\nAnalysis to Score:\n${existing.comments}`;
+      // If prompt doesn't reference commentary, wrap it for scoring
+      if (needsScoringContext) {
+        prompt = `Based on the following analysis about ${vendor.name} (${vendor.product || vendor.name}) and their "${feature.name}" feature:
+
+---
+${existing.comments}
+---
+
+Assign a Harvey Ball score (0-4):
+- 0 = Not Supported (0%)
+- 1 = Limited Support (25%)
+- 2 = Partial Support (50%)
+- 3 = Good Support (75%)
+- 4 = Full Support (100%)
+
+Additional scoring guidance:
+${prompt}
+
+Return ONLY a single number (0, 1, 2, 3, or 4) followed by a brief one-line justification.`;
       }
       
       // Call AI
