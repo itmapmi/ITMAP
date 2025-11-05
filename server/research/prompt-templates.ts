@@ -122,6 +122,7 @@ Return ONLY the JSON object, no additional text.`,
 
 /**
  * Replace template variables with actual values
+ * Supports both {{variable}} and {variable} formats
  */
 export function fillPromptTemplate(
   template: string,
@@ -130,8 +131,12 @@ export function fillPromptTemplate(
   let filled = template;
   
   for (const [key, value] of Object.entries(variables)) {
-    const placeholder = `{{${key}}}`;
-    filled = filled.replaceAll(placeholder, value || "");
+    // Support both double and single curly braces
+    const doubleBracePlaceholder = `{{${key}}}`;
+    const singleBracePlaceholder = `{${key}}`;
+    
+    filled = filled.replaceAll(doubleBracePlaceholder, value || "");
+    filled = filled.replaceAll(singleBracePlaceholder, value || "");
   }
   
   return filled;
