@@ -429,10 +429,16 @@ export class ProductEvaluationAgent {
     try {
       // Determine which prompt to use (priority order)
       let promptTemplate: string;
+      let isCustomPromptWithoutPlaceholders = false;
+      
       if (this.featurePrompts && this.featurePrompts[feature.id]) {
         // 1. Use user-provided custom prompt
         console.log(`[Product Evaluation] Using custom prompt for feature: ${feature.name}`);
         promptTemplate = this.featurePrompts[feature.id];
+        
+        // Check if custom prompt has template variables
+        const hasPlaceholders = /{vendor_name}|{vendor_product}|{feature_name}|{market_name}|{feature_description}/.test(promptTemplate);
+        isCustomPromptWithoutPlaceholders = !hasPlaceholders;
       } else if (feature.defaultPrompt) {
         // 2. Use AI-generated default prompt from category generation
         console.log(`[Product Evaluation] Using AI-generated default prompt for feature: ${feature.name}`);
@@ -442,13 +448,19 @@ export class ProductEvaluationAgent {
         promptTemplate = template.promptTemplate;
       }
       
-      const prompt = fillPromptTemplate(promptTemplate, {
+      // Fill in template variables
+      let prompt = fillPromptTemplate(promptTemplate, {
         market_name: market.name,
         vendor_name: vendor.name,
         vendor_product: vendor.product || vendor.name,
         feature_name: feature.name,
         feature_description: feature.description || ""
       });
+      
+      // If custom prompt has no placeholders, prepend vendor context
+      if (isCustomPromptWithoutPlaceholders) {
+        prompt = `Analyze ${vendor.name} (product: ${vendor.product || vendor.name}) for the "${feature.name}" feature in the ${market.name} market.\n\nEvaluation Instructions:\n${prompt}`;
+      }
       
       // Call AI
       const response = await this.callAI(prompt);
@@ -587,10 +599,16 @@ export class ProductEvaluationAgent {
       
       // Determine which prompt to use (priority order)
       let promptTemplate: string;
+      let isCustomPromptWithoutPlaceholders = false;
+      
       if (this.featurePrompts && this.featurePrompts[feature.id]) {
         // 1. Use user-provided custom prompt
         console.log(`[Product Evaluation] Using custom scoring prompt for feature: ${feature.name}`);
         promptTemplate = this.featurePrompts[feature.id];
+        
+        // Check if custom prompt has template variables
+        const hasPlaceholders = /{vendor_name}|{vendor_product}|{feature_name}|{market_name}|{feature_description}|{commentary}/.test(promptTemplate);
+        isCustomPromptWithoutPlaceholders = !hasPlaceholders;
       } else if (feature.defaultPrompt) {
         // 2. Use AI-generated default prompt from category generation
         console.log(`[Product Evaluation] Using AI-generated default scoring prompt for feature: ${feature.name}`);
@@ -600,7 +618,8 @@ export class ProductEvaluationAgent {
         promptTemplate = template.promptTemplate;
       }
       
-      const prompt = fillPromptTemplate(promptTemplate, {
+      // Fill in template variables
+      let prompt = fillPromptTemplate(promptTemplate, {
         market_name: market.name,
         vendor_name: vendor.name,
         vendor_product: vendor.product || vendor.name,
@@ -608,6 +627,11 @@ export class ProductEvaluationAgent {
         feature_description: feature.description || "",
         commentary: existing.comments
       });
+      
+      // If custom prompt has no placeholders, prepend vendor context
+      if (isCustomPromptWithoutPlaceholders) {
+        prompt = `Score ${vendor.name} (product: ${vendor.product || vendor.name}) for the "${feature.name}" feature in the ${market.name} market based on the analysis below.\n\nScoring Instructions:\n${prompt}\n\nAnalysis to Score:\n${existing.comments}`;
+      }
       
       // Call AI
       const response = await this.callAI(prompt);
