@@ -4,7 +4,7 @@ import { fillPromptTemplate } from "./prompt-templates";
 import type { ProductEvaluationJob, ResearchPromptTemplate } from "@shared/schema";
 
 /**
- * Extract JSON from markdown code blocks
+ * Extract JSON from markdown code blocks or conversational text
  */
 function extractJSON(text: string): string {
   const trimmed = text.trim();
@@ -15,22 +15,20 @@ function extractJSON(text: string): string {
     return jsonBlockMatch[1].trim();
   }
   
-  // 2. Find JSON object within text (greedy match to get full object)
+  // 2. Try to extract JSON object or array using bracket matching
   // This handles conversational text before/after JSON
-  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    // Find the outermost JSON object
+  const findJSONStructure = (text: string, openChar: string, closeChar: string): string | null => {
     let depth = 0;
     let startIndex = -1;
     let endIndex = -1;
     
-    for (let i = 0; i < trimmed.length; i++) {
-      if (trimmed[i] === '{') {
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === openChar) {
         if (depth === 0) startIndex = i;
         depth++;
-      } else if (trimmed[i] === '}') {
+      } else if (text[i] === closeChar) {
         depth--;
-        if (depth === 0) {
+        if (depth === 0 && startIndex !== -1) {
           endIndex = i;
           break;
         }
@@ -38,10 +36,21 @@ function extractJSON(text: string): string {
     }
     
     if (startIndex !== -1 && endIndex !== -1) {
-      return trimmed.substring(startIndex, endIndex + 1);
+      return text.substring(startIndex, endIndex + 1);
     }
-    
-    return jsonMatch[0];
+    return null;
+  };
+  
+  // Try object extraction first
+  const objExtract = findJSONStructure(trimmed, '{', '}');
+  if (objExtract) {
+    return objExtract;
+  }
+  
+  // Try array extraction
+  const arrExtract = findJSONStructure(trimmed, '[', ']');
+  if (arrExtract) {
+    return arrExtract;
   }
   
   // 3. If all else fails, return as-is
@@ -247,8 +256,15 @@ export class ProductEvaluationAgent {
       this.totalCost += response.estimatedCost;
       
       // Parse response
-      const jsonContent = extractJSON(response.content);
-      const data = JSON.parse(jsonContent);
+      let data;
+      try {
+        const jsonContent = extractJSON(response.content);
+        data = JSON.parse(jsonContent);
+      } catch (parseError: any) {
+        // Log the actual response to help diagnose JSON parsing issues
+        console.error('[Product Evaluation] JSON parsing failed. Raw AI response:', response.content);
+        throw new Error(`Failed to parse JSON response: ${parseError.message}. Raw response (first 500 chars): ${response.content.substring(0, 500)}`);
+      }
       
       // Validate structure
       if (!data.categories || !Array.isArray(data.categories)) {
