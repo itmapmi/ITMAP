@@ -9,18 +9,42 @@ import type { ProductEvaluationJob, ResearchPromptTemplate } from "@shared/schem
 function extractJSON(text: string): string {
   const trimmed = text.trim();
   
-  // Check if wrapped in markdown code blocks
-  const jsonBlockMatch = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  // 1. Check if wrapped in markdown code blocks (```json ... ```)
+  const jsonBlockMatch = trimmed.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
   if (jsonBlockMatch) {
     return jsonBlockMatch[1].trim();
   }
   
-  // Try to find JSON object in the text (handles conversational preambles like "Certainly!")
+  // 2. Find JSON object within text (greedy match to get full object)
+  // This handles conversational text before/after JSON
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
+    // Find the outermost JSON object
+    let depth = 0;
+    let startIndex = -1;
+    let endIndex = -1;
+    
+    for (let i = 0; i < trimmed.length; i++) {
+      if (trimmed[i] === '{') {
+        if (depth === 0) startIndex = i;
+        depth++;
+      } else if (trimmed[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (startIndex !== -1 && endIndex !== -1) {
+      return trimmed.substring(startIndex, endIndex + 1);
+    }
+    
     return jsonMatch[0];
   }
   
+  // 3. If all else fails, return as-is
   return trimmed;
 }
 
