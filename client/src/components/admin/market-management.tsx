@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, TrendingUp, Upload, Plus, Eye, EyeOff } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
+import { SimpleImageUploader } from "@/components/SimpleImageUploader";
 
 export default function MarketManagement() {
   const { toast } = useToast();
@@ -32,6 +33,7 @@ export default function MarketManagement() {
       description: "",
       shortDescription: "",
       category: "",
+      imageUrl: "",
       isVisible: true,
     },
   });
@@ -104,6 +106,39 @@ export default function MarketManagement() {
     },
   });
 
+  const updateMarketImageMutation = useMutation({
+    mutationFn: async ({ marketId, imageURL }: { marketId: string; imageURL: string }) => {
+      const response = await apiRequest(`/api/markets/${marketId}/image`, "PUT", { imageURL });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      toast({
+        title: "Success",
+        description: "Market image updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update market image",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImageChange = (url: string) => {
+    form.setValue("imageUrl", url);
+    
+    // If editing a market, also update in the backend
+    if (editingMarket && url) {
+      updateMarketImageMutation.mutate({ 
+        marketId: editingMarket.id, 
+        imageURL: url 
+      });
+    }
+  };
+
   const onSubmit = (data: InsertMarket) => {
     if (editingMarket) {
       updateMarketMutation.mutate({ id: editingMarket.id, data });
@@ -120,6 +155,7 @@ export default function MarketManagement() {
       description: market.description || "",
       shortDescription: market.shortDescription || "",
       category: market.category || "",
+      imageUrl: market.imageUrl || "",
       isVisible: market.isVisible !== false,
     });
   };
@@ -132,6 +168,7 @@ export default function MarketManagement() {
       description: "",
       shortDescription: "",
       category: "",
+      imageUrl: "",
       isVisible: true,
     });
   };
@@ -143,6 +180,7 @@ export default function MarketManagement() {
       description: "",
       shortDescription: "",
       category: "",
+      imageUrl: "",
       isVisible: true,
     });
   };
@@ -223,6 +261,23 @@ export default function MarketManagement() {
                   <SelectItem value="Development">Development</SelectItem>
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Market Thumbnail Image</FormLabel>
+              <FormControl>
+                <SimpleImageUploader
+                  value={field.value || ""}
+                  onChange={handleImageChange}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
