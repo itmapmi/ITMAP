@@ -57,17 +57,9 @@ export default function MarketGrid({ markets, isAuthenticated = false }: MarketG
                   data-testid={`market-card-${market.id}`}
                 >
                   <div className={`h-48 bg-gradient-to-br ${getGradientClass(index)} relative`}>
-                    {market.imageUrl ? (
-                      <img 
-                        src={market.imageUrl} 
-                        alt={market.name}
-                        className="w-full h-full object-cover opacity-80"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <TrendingUp className="w-16 h-16 text-white opacity-80" />
-                      </div>
-                    )}
+                    <div className="w-full h-full flex items-center justify-center">
+                      <TrendingUp className="w-16 h-16 text-white opacity-80" />
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   </div>
                   <div className="p-6">
@@ -97,17 +89,9 @@ export default function MarketGrid({ markets, isAuthenticated = false }: MarketG
                   data-testid={`market-card-${market.id}`}
                 >
                   <div className={`h-48 bg-gradient-to-br ${getGradientClass(index)} relative`}>
-                    {market.imageUrl ? (
-                      <img 
-                        src={market.imageUrl} 
-                        alt={market.name}
-                        className="w-full h-full object-cover opacity-80"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <TrendingUp className="w-16 h-16 text-white opacity-80" />
-                      </div>
-                    )}
+                    <div className="w-full h-full flex items-center justify-center">
+                      <TrendingUp className="w-16 h-16 text-white opacity-80" />
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   </div>
                   <div className="p-6">
