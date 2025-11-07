@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import MarketGrid from "@/components/market-grid";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { LoadingGrid } from "@/components/ui/loading-animations";
@@ -187,11 +187,33 @@ export default function Markets() {
           </motion.div>
         ) : filteredMarkets && filteredMarkets.length > 0 ? (
           <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <MarketGrid markets={filteredMarkets} isAuthenticated={isAuthenticated} />
+            {filteredMarkets.map((market, index) => (
+              <motion.div
+                key={market.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 * index }}
+              >
+                <Link href={`/markets/${market.id}`}>
+                  <div className="bg-white p-6 rounded-lg border border-gray-200 hover:border-cyan-300 hover:shadow-lg transition-all cursor-pointer group h-full">
+                    <h3 className="font-semibold text-gray-900 mb-3 group-hover:text-cyan-600 transition-colors">
+                      {market.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {market.shortDescription || market.description}
+                    </p>
+                    <div className="mt-4 flex items-center text-cyan-600 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      Explore Market →
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
           </motion.div>
         ) : markets && markets.length > 0 ? (
           <motion.div 
