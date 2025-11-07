@@ -117,6 +117,7 @@ export const features = pgTable("features", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  defaultPrompt: text("default_prompt"), // AI-generated evaluation prompt for this feature
   categoryId: varchar("category_id").notNull().references(() => featureCategories.id, { onDelete: "cascade" }),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
@@ -403,7 +404,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  revenue: z.string().optional().transform((val) => {
+  revenue: z.string().nullable().optional().transform((val) => {
     if (!val || val.trim() === '') return null;
     const parsed = parseFloat(val);
     return isNaN(parsed) ? null : parsed.toString();
@@ -611,3 +612,291 @@ export type ChatConversation = typeof chatConversations.$inferSelect;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Research Agent - Prompt Templates for automated research
+export const researchPromptTemplates = pgTable("research_prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // "Default Vendor Evaluation", "Cloud Infrastructure Scoring", etc.
+  description: text("description"),
+  category: text("category").notNull(), // "feature_generation", "commentary_generation", "scoring"
+  aiProvider: text("ai_provider").notNull(), // "openai", "perplexity"
+  model: text("model").notNull(), // "gpt-4o", "sonar-pro", etc.
+  promptTemplate: text("prompt_template").notNull(), // Template with {{variables}}
+  variables: text("variables").array(), // ["market_name", "vendor_name", "criteria_name"]
+  criteriaId: varchar("criteria_id").references(() => criteria.id), // Optional: link to specific criterion
+  isDefault: boolean("is_default").default(false), // Mark as default for the category
+  isActive: boolean("is_active").default(true), // Active templates shown in UI
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Research Agent - Jobs to track automated research tasks
+export const researchJobs = pgTable("research_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  jobType: text("job_type").notNull(), // "full_automation", "features_only", "commentary_only", "scoring_only"
+  status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed", "cancelled"
+  
+  // Configuration
+  vendorIds: text("vendor_ids").array().notNull(), // Vendors to research
+  selectedCriteria: text("selected_criteria").array(), // Specific criteria to process (if empty/null, process all)
+  featurePromptId: varchar("feature_prompt_id").references(() => researchPromptTemplates.id),
+  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id), // Deprecated: use criteriaPrompts instead
+  scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  criteriaPrompts: jsonb("criteria_prompts"), // Maps criterionId to promptId for commentary: { "criterion-uuid": "prompt-uuid" }
+  criteriaScores: jsonb("criteria_scores"), // Maps criterionId to promptId for scoring: { "criterion-uuid": "prompt-uuid" }
+  
+  // Progress tracking
+  totalSteps: integer("total_steps").default(0),
+  completedSteps: integer("completed_steps").default(0),
+  currentStep: text("current_step"), // Human-readable description of current operation
+  
+  // Results & Metadata
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  errorMessage: text("error_message"),
+  
+  // Cost tracking
+  totalTokensUsed: integer("total_tokens_used").default(0),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }).default("0"), // in USD
+  
+  // Created by
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Research Agent - Detailed logs for each step
+export const researchJobLogs = pgTable("research_job_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => researchJobs.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull(),
+  stepType: text("step_type").notNull(), // "feature_generation", "commentary", "scoring"
+  status: text("status").notNull(), // "pending", "running", "completed", "failed", "skipped"
+  
+  // Request details
+  aiProvider: text("ai_provider"), // "openai", "perplexity"
+  model: text("model"),
+  promptUsed: text("prompt_used"),
+  
+  // Response details
+  responseContent: text("response_content"),
+  tokensUsed: integer("tokens_used"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Timing
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Relations
+export const researchPromptTemplatesRelations = relations(researchPromptTemplates, ({ many }) => ({
+  featureJobs: many(researchJobs, { relationName: "featurePrompt" }),
+  commentaryJobs: many(researchJobs, { relationName: "commentaryPrompt" }),
+  scoringJobs: many(researchJobs, { relationName: "scoringPrompt" }),
+}));
+
+export const researchJobsRelations = relations(researchJobs, ({ one, many }) => ({
+  market: one(markets, {
+    fields: [researchJobs.marketId],
+    references: [markets.id],
+  }),
+  featurePrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.featurePromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "featurePrompt",
+  }),
+  commentaryPrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.commentaryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "commentaryPrompt",
+  }),
+  scoringPrompt: one(researchPromptTemplates, {
+    fields: [researchJobs.scoringPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "scoringPrompt",
+  }),
+  creator: one(users, {
+    fields: [researchJobs.createdBy],
+    references: [users.id],
+  }),
+  logs: many(researchJobLogs),
+}));
+
+export const researchJobLogsRelations = relations(researchJobLogs, ({ one }) => ({
+  job: one(researchJobs, {
+    fields: [researchJobLogs.jobId],
+    references: [researchJobs.id],
+  }),
+}));
+
+// Product Evaluation Agent - Jobs to track automated product/feature evaluation
+export const productEvaluationJobs = pgTable("product_evaluation_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed", "cancelled"
+  
+  // Job Type - determines which execution path to run
+  jobType: text("job_type").notNull(), // "category_generation", "analysis", "scoring"
+  
+  // AI Model Selection - supports 6 different AI providers/models
+  aiModel: text("ai_model").notNull(), // "perplexity-sonar-pro", "chatgpt-deep-research", "chatgpt-4o-mini", "gpt-4.1-mini", "o4-mini-deep-research", "o3-deep-research"
+  
+  // Configuration
+  vendorIds: text("vendor_ids").array().notNull(), // Vendors to evaluate
+  featureIds: text("feature_ids").array(), // Optional: specific features to analyze (if not provided, analyzes all features)
+  categoryPromptId: varchar("category_prompt_id").references(() => researchPromptTemplates.id),
+  commentaryPromptId: varchar("commentary_prompt_id").references(() => researchPromptTemplates.id),
+  scoringPromptId: varchar("scoring_prompt_id").references(() => researchPromptTemplates.id),
+  
+  // Custom prompts (ad-hoc, not template-based)
+  customPrompt: text("custom_prompt"), // Optional custom prompt for category generation
+  featurePrompts: jsonb("feature_prompts"), // Optional JSONB mapping featureId -> custom prompt text
+  
+  // Optional dependency tracking (for UI warnings, not enforcement)
+  dependencyJobId: varchar("dependency_job_id"),
+  
+  // Progress tracking
+  totalSteps: integer("total_steps").default(0),
+  completedSteps: integer("completed_steps").default(0),
+  currentStep: text("current_step"), // Human-readable description of current operation
+  
+  // Results & Metadata
+  errorMessage: text("error_message"),
+  totalCost: decimal("total_cost", { precision: 10, scale: 4 }).default("0"),
+  totalTokensUsed: integer("total_tokens_used").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  // Audit
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+});
+
+// Product Evaluation Agent - Detailed logs for each step
+export const productEvaluationJobLogs = pgTable("product_evaluation_job_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => productEvaluationJobs.id, { onDelete: "cascade" }),
+  stepNumber: integer("step_number").notNull(),
+  stepType: text("step_type").notNull(), // "category_generation", "commentary", "scoring"
+  status: text("status").notNull(), // "pending", "running", "completed", "failed", "skipped"
+  
+  // Context
+  vendorId: varchar("vendor_id"),
+  featureId: varchar("feature_id"),
+  
+  // Request details
+  aiProvider: text("ai_provider"), // "openai", "openai-deep-research", "perplexity"
+  model: text("model"),
+  promptUsed: text("prompt_used"),
+  
+  // Response details
+  responseContent: text("response_content"),
+  tokensUsed: integer("tokens_used"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  
+  // Timing
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
+export const productEvaluationJobsRelations = relations(productEvaluationJobs, ({ one, many }) => ({
+  market: one(markets, {
+    fields: [productEvaluationJobs.marketId],
+    references: [markets.id],
+  }),
+  categoryPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.categoryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "categoryPrompt",
+  }),
+  commentaryPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.commentaryPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "commentaryPrompt",
+  }),
+  scoringPrompt: one(researchPromptTemplates, {
+    fields: [productEvaluationJobs.scoringPromptId],
+    references: [researchPromptTemplates.id],
+    relationName: "scoringPrompt",
+  }),
+  creator: one(users, {
+    fields: [productEvaluationJobs.createdBy],
+    references: [users.id],
+  }),
+  logs: many(productEvaluationJobLogs),
+}));
+
+export const productEvaluationJobLogsRelations = relations(productEvaluationJobLogs, ({ one }) => ({
+  job: one(productEvaluationJobs, {
+    fields: [productEvaluationJobLogs.jobId],
+    references: [productEvaluationJobs.id],
+  }),
+}));
+
+// Insert schemas
+export const insertResearchPromptTemplateSchema = createInsertSchema(researchPromptTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertResearchJobSchema = createInsertSchema(researchJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertResearchJobLogSchema = createInsertSchema(researchJobLogs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertProductEvaluationJobSchema = createInsertSchema(productEvaluationJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertProductEvaluationJobLogSchema = createInsertSchema(productEvaluationJobLogs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+// Types
+export type InsertResearchPromptTemplate = z.infer<typeof insertResearchPromptTemplateSchema>;
+export type ResearchPromptTemplate = typeof researchPromptTemplates.$inferSelect;
+
+export type InsertResearchJob = z.infer<typeof insertResearchJobSchema>;
+export type ResearchJob = typeof researchJobs.$inferSelect;
+
+export type InsertResearchJobLog = z.infer<typeof insertResearchJobLogSchema>;
+export type ResearchJobLog = typeof researchJobLogs.$inferSelect;
+
+export type InsertProductEvaluationJob = z.infer<typeof insertProductEvaluationJobSchema>;
+export type ProductEvaluationJob = typeof productEvaluationJobs.$inferSelect;
+
+export type InsertProductEvaluationJobLog = z.infer<typeof insertProductEvaluationJobLogSchema>;
+export type ProductEvaluationJobLog = typeof productEvaluationJobLogs.$inferSelect;

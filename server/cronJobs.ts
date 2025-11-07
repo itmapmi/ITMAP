@@ -3,7 +3,7 @@ import { runIngestion } from './news/ingestion/runner';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
-  private lastRun: Map<string, { timestamp: Date; status: 'success' | 'failed'; error?: string }> = new Map();
+  private lastRun: Map<string, { timestamp: Date; status: 'success' | 'failed'; error?: string; articlesCount?: number }> = new Map();
 
   /**
    * Initialize all cron jobs
@@ -77,7 +77,7 @@ export class CronJobManager {
         const results = await runIngestion();
         const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
         console.log(`Daily news ingestion completed: ${totalNew} new articles from ${results.length} sources`);
-        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
+        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success', articlesCount: totalNew });
       } catch (error) {
         console.error('Error in daily news ingestion:', error);
         this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
@@ -170,8 +170,8 @@ export class CronJobManager {
   /**
    * Get status of all jobs
    */
-  public getJobStatus(): { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string } } } {
-    const status: { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string } } } = {};
+  public getJobStatus(): { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string; articlesCount?: number } } } {
+    const status: { [jobName: string]: { running: boolean, nextRun?: string, lastRun?: { timestamp: Date; status: string; error?: string; articlesCount?: number } } } = {};
 
     // Return static status for the jobs we know exist
     status['newsIngestion'] = {
@@ -228,7 +228,7 @@ export class CronJobManager {
       const results = await runIngestion();
       const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
       console.log(`Manual news ingestion completed: ${totalNew} new articles`);
-      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
+      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success', articlesCount: totalNew });
     } catch (error) {
       console.error('Error in manual news ingestion:', error);
       this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
