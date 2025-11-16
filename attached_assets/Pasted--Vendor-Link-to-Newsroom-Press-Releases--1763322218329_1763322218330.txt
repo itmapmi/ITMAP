@@ -1,0 +1,25 @@
+| Vendor          | Link to Newsroom / Press Releases                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| AWS             | [AWS News & Press Releases](https://press.aboutamazon.com/aws) ([US Press Center][1])                                      |
+| Microsoft Azure | [Azure Blog – Announcements](https://azure.microsoft.com/en-us/blog/content-type/announcements/) ([Microsoft Azure][2])    |
+| Alibaba Cloud   | [Alibaba Cloud Press Room](https://www.alibabacloud.com/en/press-room) ([Alibaba Cloud][3])                                |
+| Tencent Cloud   | [Tencent Cloud Press Room](https://www.tencentcloud.com/express?lang=en) ([Tencent Cloud][4])                              |
+| IBM Cloud       | [IBM Newsroom – Press Releases](https://newsroom.ibm.com/press-releases-artificial-intelligence?l=100) ([IBM Newsroom][5]) |
+| Wasabi          | [Wasabi Newsroom – Press Releases](https://wasabi.com/company/newsroom/press-releases) ([Wasabi Technologies][6])          |
+| Backblaze       | [Backblaze Newsroom & Press](https://www.backblaze.com/company/news) ([Backblaze][7])                                      |
+| Vultr           | [Vultr News & Updates](https://www.vultr.com/news/) ([Vultr][8])                                                           |
+| DigitalOcean    | [DigitalOcean Press](https://www.digitalocean.com/press) ([DigitalOcean][9])                                               |
+| OVHcloud        | [OVHcloud Corporate Newsroom](https://corporate.ovhcloud.com/en/newsroom/news/) ([OVHcloud][10])                           |
+| Oracle Cloud    | [Oracle News & Press Releases](https://www.oracle.com/europe/news/) ([Oracle][11])                                         |
+
+[1]: https://press.aboutamazon.com/aws?utm_source=chatgpt.com "Press release archive"
+[2]: https://azure.microsoft.com/en-us/blog/content-type/announcements/?utm_source=chatgpt.com "Announcements | Microsoft Azure Blog | Microsoft Azure"
+[3]: https://www.alibabacloud.com/en/press-room?_p_lc=1&utm_source=chatgpt.com "Official Press Releases & Media Reports - Alibaba Cloud"
+[4]: https://www.tencentcloud.com/express?lang=en&utm_source=chatgpt.com "Press Center - Tencent Cloud"
+[5]: https://newsroom.ibm.com/press-releases-artificial-intelligence?l=100&utm_source=chatgpt.com "IBM - Announcements"
+[6]: https://wasabi.com/company/newsroom/press-releases?utm_source=chatgpt.com "Wasabi Press Releases"
+[7]: https://www.backblaze.com/company/news?utm_source=chatgpt.com "Backblaze Cloud Storage News"
+[8]: https://www.vultr.com/news/?utm_source=chatgpt.com "Latest News and Updates | Vultr - Vultr.com"
+[9]: https://www.digitalocean.com/press?utm_source=chatgpt.com "Press - DigitalOcean"
+[10]: https://corporate.ovhcloud.com/en/newsroom/news/?utm_source=chatgpt.com "Corporate News - OVHcloud"
+[11]: https://www.oracle.com/europe/news/?utm_source=chatgpt.com "News and Press Releases | Oracle News | Oracle Europe"
