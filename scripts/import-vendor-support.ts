@@ -2,7 +2,7 @@ import * as xlsx from 'xlsx';
 import * as fs from 'fs';
 import postgres from 'postgres';
 
-const MARKET_ID = 'e1bc70e0-7b65-48c8-abe3-2541eedd0157';
+const MARKET_ID = '7a1f93da-0cdd-4a29-b2fb-9101f15dc4a9';
 const sql = postgres(process.env.DATABASE_URL!);
 
 async function main() {
