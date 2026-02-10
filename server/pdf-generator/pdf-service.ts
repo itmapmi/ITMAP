@@ -67,9 +67,10 @@ export class PDFService {
       .replace(/{{title}}/g, `${options.marketName} - ${options.reportType}`)
       .replace('{{{content}}}', options.content);
 
+    const chromiumPath = process.env.CHROMIUM_PATH || '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium';
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      executablePath: chromiumPath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
