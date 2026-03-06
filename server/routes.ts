@@ -2480,6 +2480,491 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download Functional Specification Document as Word (.docx)
+  app.get("/api/download/functional-spec", requireAdmin, async (_req, res) => {
+    try {
+      const {
+        Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow,
+        TableCell, WidthType, AlignmentType, ShadingType,
+        PageBreak, convertInchesToTwip,
+      } = await import("docx");
+
+      const heading1 = (text: string) =>
+        new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 120 } });
+
+      const heading2 = (text: string) =>
+        new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 80 } });
+
+      const body = (text: string) =>
+        new Paragraph({ children: [new TextRun({ text, size: 22 })], spacing: { after: 120 } });
+
+      const bullet = (text: string, level = 0) =>
+        new Paragraph({
+          children: [new TextRun({ text, size: 22 })],
+          bullet: { level },
+          spacing: { after: 80 },
+        });
+
+      const tableHeaderCell = (text: string) =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 20 })] })],
+          shading: { fill: "1E3A5F", type: ShadingType.CLEAR, color: "FFFFFF" },
+        });
+
+      const tableCell = (text: string) =>
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text, size: 20 })] })],
+        });
+
+      const makeTable = (headers: string[], rows: string[][]) =>
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: headers.map(tableHeaderCell), tableHeader: true }),
+            ...rows.map(row => new TableRow({ children: row.map(tableCell) })),
+          ],
+        });
+
+      const spacer = () => new Paragraph({ text: "", spacing: { after: 120 } });
+
+      const doc = new Document({
+        styles: {
+          default: {
+            heading1: {
+              run: { bold: true, size: 32, color: "1E3A5F" },
+              paragraph: { spacing: { before: 400, after: 120 } },
+            },
+            heading2: {
+              run: { bold: true, size: 26, color: "1E3A5F" },
+              paragraph: { spacing: { before: 300, after: 80 } },
+            },
+            heading3: {
+              run: { bold: true, size: 23, color: "2D6A9F" },
+              paragraph: { spacing: { before: 200, after: 60 } },
+            },
+          },
+        },
+        sections: [{
+          properties: { page: { margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) } } },
+          children: [
+            // Cover
+            new Paragraph({ children: [new TextRun({ text: "ITMAP", bold: true, size: 72, color: "1E3A5F" })], alignment: AlignmentType.CENTER, spacing: { before: 800, after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: "Functional Specification Document", size: 36, color: "2D6A9F" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: "Enterprise Market Research Platform", size: 26, color: "555555" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: "Version 1.0  |  March 2026", size: 22, color: "888888" })], alignment: AlignmentType.CENTER, spacing: { after: 800 } }),
+            new Paragraph({ children: [new PageBreak()] }),
+
+            // 1. Overview
+            heading1("1. Overview"),
+            body("ITMAP is a private, enterprise-grade market research platform designed for technology vendor analysis. It provides structured methodologies for evaluating vendors across complex technology markets, combining interactive visualizations, AI-assisted intelligence, and professional-grade PDF reporting. The platform is positioned as an independent and unbiased source of market intelligence for enterprise buyers."),
+            body("The platform is accessible at itmap.ai and is currently live for one market: ITMAP for Public Cloud Object Storage Providers, covering 12 vendors across 98 features and 8 evaluation criteria."),
+            spacer(),
+
+            // 2. User Roles
+            heading1("2. User Roles"),
+            makeTable(
+              ["Role", "Description"],
+              [
+                ["Guest (unauthenticated)", "Cannot access platform content. Sees login/register pages only."],
+                ["User (authenticated)", "Can browse all market data, read all reports, interact with AI Chat, and view all tabs. Read-only."],
+                ["Admin", "Full access including creating/editing markets, vendors, criteria, scores, features, news sources, reports, and running bulk operations. Admin-only routes are protected server-side."],
+              ]
+            ),
+            spacer(),
+
+            // 3. Authentication
+            heading1("3. Authentication"),
+            heading2("3.1 Supported Methods"),
+            bullet("Email/Password — Standard registration and login with bcrypt-hashed passwords."),
+            bullet("Google OAuth — Login via Google account (OAuth 2.0)."),
+            bullet("LinkedIn OAuth — Login via LinkedIn account (OAuth 2.0)."),
+            spacer(),
+            heading2("3.2 Session Behavior"),
+            bullet("Sessions are persisted in the database (PostgreSQL via express-session)."),
+            bullet("On login, the system records: user ID, session ID, IP address, user agent, and login timestamp."),
+            bullet("On logout, the session's logout time is recorded."),
+            bullet("Restored sessions (browser refresh while cookie is valid) are detected and logged if no existing session record is found."),
+            bullet("Admin users are redirected to /admin on login; regular users are redirected to /."),
+            spacer(),
+            heading2("3.3 Access Control"),
+            bullet("All /api/* content is accessible to authenticated users."),
+            bullet("All admin mutations (create, update, delete) require the requireAdmin middleware server-side."),
+            bullet("Unauthenticated users attempting to access protected routes receive a 401 error."),
+            bullet("Hidden markets (isVisible = false) are visible to admins but filtered from regular users."),
+            spacer(),
+
+            // 4. Navigation & Pages
+            heading1("4. Navigation & Pages"),
+            heading2("4.1 Public Pages"),
+            makeTable(
+              ["Page", "Route", "Description"],
+              [
+                ["Home", "/", "Hero section, platform overview, feature highlights, market preview."],
+                ["Markets", "/markets", "Grid of all available (visible) markets."],
+                ["Login", "/login", "Email/password and OAuth login form."],
+                ["Register", "/register", "New user registration."],
+                ["About", "/about", "Company/platform background."],
+                ["Platform", "/platform", "Feature overview page."],
+                ["Licensing", "/licensing", "Licensing terms."],
+                ["Contact", "/contact", "Contact information form."],
+              ]
+            ),
+            spacer(),
+            heading2("4.2 Authenticated Pages"),
+            makeTable(
+              ["Page", "Route", "Description"],
+              [
+                ["Market Details", "/markets/:marketId", "Full market analysis with 7 tabs."],
+                ["Report Viewer", "/reports/:reportId", "View a published research report in the browser."],
+                ["Admin Portal", "/admin", "Admin-only management portal."],
+              ]
+            ),
+            spacer(),
+
+            // 5. Market Details
+            heading1("5. Market Details Page"),
+            body("The central analytical view of the platform. Accessible at /markets/:marketId. Contains 7 tabs:"),
+            makeTable(
+              ["Tab", "Description"],
+              [
+                ["Vendor Evaluation", "Interactive quadrant chart (D3.js) with timeline scrubber."],
+                ["Product Evaluation", "Harvey Ball feature support matrix across all product feature categories."],
+                ["Ecosystem Support", "Harvey Ball matrix showing third-party ecosystem integrations."],
+                ["Methodology", "Rich-text page describing the research methodology for the market."],
+                ["New Players", "Curated list of emerging vendors not yet included in the main evaluation."],
+                ["News", "Live news feed of recent vendor announcements with AI impact scores."],
+                ["AI Chat", "Conversational AI assistant with full database context for the market."],
+              ]
+            ),
+            body("A Generate Reports button at the top allows users to select which vendors to include and download a comprehensive PDF."),
+            spacer(),
+
+            // 6. Vendor Evaluation
+            heading1("6. Vendor Evaluation (Quadrant Chart)"),
+            heading2("6.1 Visual Layout"),
+            bullet("Rendered using D3.js as a responsive SVG."),
+            bullet("Four quadrants: Leaders (top-right), Challengers (top-left), Innovators (bottom-right), Emerging Players (bottom-left)."),
+            bullet("X-axis = Execution score; Y-axis = Viability score."),
+            bullet("Vendors appear as labeled circles. Clicking a vendor opens a detail modal."),
+            bullet("On desktop, vendor labels can be dragged to avoid overlap (admin mode only)."),
+            bullet("A vendor comparison panel can be opened to compare two vendors side-by-side."),
+            spacer(),
+            heading2("6.2 Historical Timeline"),
+            bullet("A slider beneath the chart allows scrubbing back through 3 years of weekly data (156 weeks)."),
+            bullet("At the current week, positions are calculated live from the database."),
+            bullet("At past weeks, positions are loaded from the historical_positions table (backed up weekly by a cron job)."),
+            bullet("The selected date is displayed above the slider."),
+            spacer(),
+            heading2("6.3 Weight Controls"),
+            bullet("Admins can adjust the importance weight (0-100%) of each evaluation criteria from within the chart view."),
+            bullet("Weights are saved per market and immediately affect all vendor positions on the chart."),
+            bullet("Weight changes are reflected in real time using the multiplier bracket system."),
+            spacer(),
+            heading2("6.4 Vendor Detail Modal"),
+            body("Clicking any vendor dot opens a modal showing:"),
+            bullet("Vendor name, website, and product being evaluated."),
+            bullet("Individual criterion scores with any analyst notes."),
+            bullet("Navigation to vendor comparison view."),
+            spacer(),
+
+            // 7. Product Evaluation
+            heading1("7. Product Evaluation (Support Matrix)"),
+            heading2("7.1 Purpose"),
+            body("A detailed side-by-side comparison of vendor support for specific product features, organized into categories. Only non-ecosystem features appear here."),
+            spacer(),
+            heading2("7.2 Harvey Ball Scale"),
+            makeTable(
+              ["Value", "Label", "Score Weight"],
+              [
+                ["0", "Not Supported", "0"],
+                ["1", "Limited", "0"],
+                ["2", "Partial", "0.5"],
+                ["3", "Good", "0.75"],
+                ["4", "Full Support", "1.0"],
+              ]
+            ),
+            spacer(),
+            heading2("7.3 Layout"),
+            bullet("Rows = Features (grouped by category)."),
+            bullet("Columns = Vendors."),
+            bullet("Each cell shows the Harvey Ball symbol. Hovering reveals any analyst commentary."),
+            bullet("A per-vendor total score is displayed at the bottom of each column, normalized to a 0-10 scale."),
+            bullet("Category subtotals are shown for each feature group."),
+            spacer(),
+            heading2("7.4 Feature Categories (Public Cloud Object Storage Market)"),
+            body("Nine categories covering: Core Storage, Data Management, Security & Compliance, Performance & Scalability, Data Durability & Availability, Multi-Cloud & Interoperability, Developer Experience, Analytics & Monitoring, and Cost Management."),
+            spacer(),
+
+            // 8. Ecosystem Support
+            heading1("8. Ecosystem Support"),
+            body("A separate tab showing support for third-party integrations, ISV partnerships, and platform ecosystems. Uses the same Harvey Ball methodology as Product Evaluation, but limited to features in categories flagged as ecosystem/integration-related."),
+            body("Same matrix format as Product Evaluation. Vendor scores are shown as percentages of maximum possible score."),
+            spacer(),
+
+            // 9. Research Methodology
+            heading1("9. Research Methodology"),
+            bullet("A rich-text page per market explaining the research approach, scoring criteria definitions, and methodology rationale."),
+            bullet("Content is stored as HTML in the database and rendered in the browser."),
+            bullet("Editable by admins through the admin portal using a rich-text editor (TinyMCE integration)."),
+            spacer(),
+
+            // 10. New Players
+            heading1("10. New Players"),
+            bullet("A curated list of emerging vendors that are not yet formally included in the Vendor Evaluation quadrant."),
+            bullet("Each entry shows: name, website, estimated revenue, location, and description."),
+            bullet("Managed by admins through the admin portal (add, edit, delete)."),
+            spacer(),
+
+            // 11. News Feed
+            heading1("11. News Feed"),
+            heading2("11.1 Display"),
+            bullet("Chronological feed of articles related to vendors in the market."),
+            bullet("Each article shows: title, source, publication date, AI-assigned impact label (HIGH / MEDIUM / LOW), impact score (0-100), and a summary excerpt."),
+            bullet("Color-coded badges for impact level."),
+            bullet("Clicking an article opens the original source in a new tab."),
+            spacer(),
+            heading2("11.2 Ingestion Pipeline"),
+            bullet("News sources are configured per vendor (RSS feed URL, CSS selectors for HTML scraping, polling frequency)."),
+            bullet("Daily cron job runs at 7:00 AM UTC, fetches all enabled sources, extracts new articles, and passes them through the AI impact classifier."),
+            bullet("Articles are deduplicated using a content hash and canonical URL normalization."),
+            bullet("Articles older than 90 days are automatically deleted by a weekly cleanup cron job (Sunday 4:00 AM UTC)."),
+            spacer(),
+            heading2("11.3 AI Impact Classification"),
+            bullet("Uses GPT-4.1 mini via the Replit AI integration."),
+            bullet("Classifies each article as HIGH (80-100), MEDIUM (50-79), or LOW (10-49) impact."),
+            bullet("Returns a confidence score (0-1) and reasoning string per article."),
+            bullet("Falls back to rule-based scoring if the AI call fails."),
+            spacer(),
+
+            // 12. Mathematical Model
+            new Paragraph({ children: [new PageBreak()] }),
+            heading1("12. Vendor Evaluation Mathematical Model"),
+            heading2("12.1 Criteria and Axes"),
+            makeTable(
+              ["Axis", "Criteria"],
+              [
+                ["X (Execution)", "Product Capabilities, Customer Experience, Pricing Strategy, ISV Ecosystem"],
+                ["Y (Viability)", "Innovation, Business Model, Partner Ecosystem, Revenue"],
+              ]
+            ),
+            spacer(),
+            body("Criteria scores are entered manually (0-10 scale) except for two that are auto-calculated:"),
+            bullet("Product Capabilities — Calculated from Product Evaluation Harvey Ball scores (non-ecosystem features only), normalized to 0-10."),
+            bullet("ISV Ecosystem — Calculated from Ecosystem Support Harvey Ball scores, normalized to 0-10."),
+            spacer(),
+            heading2("12.2 Auto-Calculated Score Formula"),
+            body("For each feature: Harvey Ball 4 → 1.0 pts, 3 → 0.75 pts, 2 → 0.5 pts, 1 → 0 pts, 0 → 0 pts."),
+            body("Normalized Score (0-10) = (Sum of feature points / Number of features) × 10"),
+            spacer(),
+            heading2("12.3 Weight-to-Multiplier Conversion"),
+            makeTable(
+              ["Weight Range", "Multiplier"],
+              [
+                ["0 – 25%", "0.5×"],
+                ["26 – 45%", "1.5×"],
+                ["46 – 65%", "2.5×"],
+                ["66 – 100%", "3.0×"],
+              ]
+            ),
+            spacer(),
+            heading2("12.4 Raw Score Calculation"),
+            body("Raw Execution Score = Σ (criteria_score × multiplier) for all Execution criteria"),
+            body("Raw Viability Score = Σ (criteria_score × multiplier) for all Viability criteria"),
+            spacer(),
+            heading2("12.5 Min-Max Normalization"),
+            body("All raw scores across all vendors are normalized to a 25–75 range:"),
+            body("Normalized = 25 + 50 × (raw_score − min_raw) / (max_raw − min_raw)"),
+            body("If all vendors have identical raw scores, all are placed at 50 (center of chart)."),
+            spacer(),
+
+            // 13. AI Chat
+            heading1("13. AI Chat Agent"),
+            heading2("13.1 Purpose"),
+            body("A conversational assistant embedded in each market's detail page. Users ask natural language questions and receive detailed, data-grounded answers."),
+            heading2("13.2 Model"),
+            body("GPT-4.1 mini (1M token context window) via Replit AI Integrations. Billed to Replit credits — no separate API key required."),
+            heading2("13.3 Context Injected Per Query"),
+            bullet("All vendor names, descriptions, and websites."),
+            bullet("All criteria scores (0-10) with notes and analyst commentary."),
+            bullet("All 98 feature support levels (converted to 0-100 percentages) with comments."),
+            bullet("Recent news articles with impact scores."),
+            bullet("Quadrant positions (Leaders/Challengers/Innovators/Emerging Players)."),
+            spacer(),
+            heading2("13.4 Supported Question Patterns"),
+            makeTable(
+              ["#", "Pattern"],
+              [
+                ["1", "Vendor-to-vendor comparisons (feature or criteria)"],
+                ["2", "Quadrant position explanations (why is Vendor X a Leader?)"],
+                ["3", "Feature support queries (does Vendor Y support immutable storage?)"],
+                ["4", "Category scoring (what is the Security score for each vendor?)"],
+                ["5", "Ecosystem integration queries"],
+                ["6", "News impact analysis"],
+                ["7", "Methodology explanations"],
+                ["8", "Ranking queries (who has the best pricing strategy?)"],
+                ["9", "Strengths and weaknesses summaries"],
+                ["10", "Multi-criteria comparison tables"],
+                ["11", "Historical trend discussion"],
+                ["12", "General market context questions"],
+              ]
+            ),
+            spacer(),
+            heading2("13.5 Conversation Persistence"),
+            body("Conversations are persisted per user and per market. Users can continue previous conversations across sessions."),
+            spacer(),
+
+            // 14. PDF Reports
+            heading1("14. PDF Report Generation"),
+            heading2("14.1 Technology"),
+            body("Reports are rendered server-side using Puppeteer with system Chromium. HTML templates are rendered to PDF via headless browser."),
+            heading2("14.2 Report Types"),
+            makeTable(
+              ["Type", "Contents"],
+              [
+                ["Full Market Report", "Quadrant chart, Product Evaluation matrix with commentary, Ecosystem Support matrix"],
+                ["Vendor Evaluation Report", "Quadrant chart only, with selected vendors and their criteria scores"],
+              ]
+            ),
+            spacer(),
+            heading2("14.3 Vendor Filtering"),
+            body("Both report types support a vendor selection modal before generation. Users choose which vendors to include. If none are selected, all vendors are included."),
+            heading2("14.4 Report Layout"),
+            bullet("Cover page with market name and ITMAP branding."),
+            bullet("Quadrant chart rendered as SVG in the PDF."),
+            bullet("Feature tables grouped by category, with support level badges and inline commentary boxes."),
+            bullet("Professional formatting with headers, page numbers, and consistent typography."),
+            spacer(),
+
+            // 15. Research Reports
+            heading1("15. Research Reports"),
+            bullet("Published research reports (white papers, market briefs) can be attached to any market."),
+            bullet("Reports are uploaded as files (PDF) or written as HTML content directly."),
+            bullet("Files are stored in Google Cloud Storage (object storage)."),
+            bullet("A report viewer page (/reports/:reportId) allows reading HTML reports in-browser."),
+            spacer(),
+
+            // 16. Import/Export
+            heading1("16. Excel Import / Export (Admin Only)"),
+            heading2("16.1 Export"),
+            body("Generates an .xlsx file with three sheets:"),
+            makeTable(
+              ["Sheet", "Contents"],
+              [
+                ["Vendor Evaluation", "All vendors × all criteria scores + notes columns"],
+                ["Product Evaluation", "All vendors × all product features (Harvey Ball 0-4) + comments"],
+                ["ISV Ecosystem", "All vendors × all ecosystem features (Harvey Ball 0-4) + comments"],
+              ]
+            ),
+            spacer(),
+            heading2("16.2 Import"),
+            body("Accepts a pre-filled Excel template in the same three-sheet format. Bulk-populates vendor scores, feature support levels, and comments into the database in a single operation."),
+            spacer(),
+
+            // 17. Background Jobs
+            heading1("17. Automated Background Jobs"),
+            makeTable(
+              ["Job", "Schedule", "Function"],
+              [
+                ["News Ingestion", "Daily 7:00 AM UTC", "Fetches new articles from all enabled sources, runs AI impact classification"],
+                ["Weekly Position Backup", "Sunday 2:00 AM UTC", "Snapshots all current vendor quadrant positions to the historical_positions table"],
+                ["News Cleanup", "Sunday 4:00 AM UTC", "Deletes news articles older than 90 days"],
+                ["User Logs Cleanup", "Daily 3:00 AM UTC", "Deletes user activity logs older than 6 months"],
+                ["Health Check", "Hourly", "Logs cron system status"],
+                ["Test Job", "Every 2 minutes", "Verifies cron system is functional"],
+              ]
+            ),
+            spacer(),
+
+            // 18. Admin Portal
+            heading1("18. Admin Portal"),
+            body("Accessible at /admin for admin-role users only. Contains the following management panels:"),
+            makeTable(
+              ["Panel", "Functionality"],
+              [
+                ["Market Management", "Create, edit, delete markets. Toggle visibility. Upload market cover image."],
+                ["Vendor Management", "Add, edit, delete vendors per market. Set vendor website and evaluated product."],
+                ["Criteria Management", "Create, edit, delete evaluation criteria. Set axis (execution vs. viability)."],
+                ["Support Matrix Admin", "Edit Harvey Ball scores and comments for any vendor/feature pair inline."],
+                ["Feature Category Management", "Create, reorder, and delete feature categories per market."],
+                ["Feature Management", "Add, edit, delete individual features within categories."],
+                ["Research Methodology", "Rich-text editor for the methodology page per market."],
+                ["Research Reports", "Upload or write research reports. Attach to markets."],
+                ["New Players Admin", "Add, edit, delete emerging player listings."],
+                ["News Sources Admin", "Configure RSS or HTML news sources per vendor. Set polling frequency and CSS selectors."],
+                ["News Articles Admin", "View all ingested articles, see impact scores, manually trigger re-ingestion."],
+                ["Graphic Management", "Manage the quadrant chart label positions (drag-to-reposition vendor labels)."],
+                ["Import / Export", "Download Excel template, upload filled template to bulk-import data."],
+                ["Operations Management", "View and control cron job status. Manually trigger news ingestion or position backup."],
+              ]
+            ),
+            spacer(),
+
+            // 19. Data Model
+            new Paragraph({ children: [new PageBreak()] }),
+            heading1("19. Data Model Summary"),
+            makeTable(
+              ["Table", "Purpose"],
+              [
+                ["users", "User accounts (email/password + OAuth)"],
+                ["user_activity_logs", "Login/logout session tracking"],
+                ["markets", "Technology markets being researched"],
+                ["sub_markets", "Sub-categories within markets"],
+                ["vendors", "Vendors being evaluated within a market"],
+                ["criteria", "Evaluation criteria (execution or viability axis)"],
+                ["vendor_scores", "Per-vendor, per-criteria scores (0-10) with notes"],
+                ["market_criteria_weights", "Admin-set importance weights per criteria per market"],
+                ["feature_categories", "Groupings for the support matrix features"],
+                ["features", "Individual product/ecosystem capabilities"],
+                ["vendor_feature_support", "Harvey Ball scores (0-4) + comments per vendor per feature"],
+                ["historical_positions", "Weekly snapshots of vendor X/Y quadrant positions"],
+                ["vendor_label_positions", "Admin-saved label positions on the quadrant SVG"],
+                ["new_players", "Emerging vendors not in the main evaluation"],
+                ["research_reports", "Published research documents"],
+                ["research_methodology", "Market-level methodology text"],
+                ["news_sources", "Configured RSS/HTML news source feeds"],
+                ["news_articles", "Ingested articles with AI impact scores"],
+                ["news_fetch_logs", "Ingestion run history and statistics"],
+                ["sessions", "Express session storage"],
+              ]
+            ),
+            spacer(),
+
+            // 20. Technical Architecture
+            heading1("20. Technical Architecture"),
+            makeTable(
+              ["Layer", "Technology"],
+              [
+                ["Frontend", "React 18, TypeScript, Vite, Tailwind CSS, Radix UI / shadcn"],
+                ["Routing", "Wouter"],
+                ["State & Data", "TanStack Query v5"],
+                ["Visualization", "D3.js"],
+                ["Backend", "Node.js, Express.js, TypeScript"],
+                ["ORM", "Drizzle ORM"],
+                ["Database", "PostgreSQL (Neon serverless)"],
+                ["AI", "OpenAI GPT-4.1 mini via Replit AI Integrations"],
+                ["File Storage", "Google Cloud Storage (Object Storage)"],
+                ["PDF Generation", "Puppeteer + system Chromium"],
+                ["Excel", "xlsx library"],
+                ["Scheduling", "node-cron"],
+                ["Auth", "Passport.js (local + Google OAuth + LinkedIn OAuth)"],
+                ["Deployment", "Replit, custom domain itmap.ai"],
+              ]
+            ),
+            spacer(),
+          ],
+        }],
+      });
+
+      const buffer = await Packer.toBuffer(doc);
+      res.setHeader("Content-Disposition", 'attachment; filename="ITMAP_Functional_Specification_v1.0.docx"');
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating functional spec document:", error);
+      res.status(500).json({ error: "Failed to generate document" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

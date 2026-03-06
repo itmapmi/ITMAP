@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { FileDown } from "lucide-react";
 import MarketManagement from "@/components/admin/market-management";
 import VendorManagement from "@/components/admin/vendor-management";
 import CriteriaManagement from "@/components/admin/criteria-management";
@@ -21,23 +23,38 @@ export default function Admin() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <FadeInSection className="mb-8">
-        <motion.h2 
-          className="text-3xl font-bold text-gray-900 mb-2"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+      <FadeInSection className="mb-8 flex items-start justify-between">
+        <div>
+          <motion.h2 
+            className="text-3xl font-bold text-gray-900 mb-2"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            Admin Portal
+          </motion.h2>
+          <motion.p 
+            className="text-gray-600"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          >
+            Manage markets, vendors, features, and analysis criteria
+          </motion.p>
+        </div>
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
         >
-          Admin Portal
-        </motion.h2>
-        <motion.p 
-          className="text-gray-600"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-        >
-          Manage markets, vendors, features, and analysis criteria
-        </motion.p>
+          <Button
+            variant="outline"
+            onClick={() => window.open("/api/download/functional-spec", "_blank")}
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Functional Spec (.docx)
+          </Button>
+        </motion.div>
       </FadeInSection>
 
       <motion.div 
