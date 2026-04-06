@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GF4GLUC7CePnoLnuAml1eIjacrQ0sVrwVV1lY0jJmUx4I4wmSa655Bdhk1BahQE
+\restrict KpymKhSTPgiVHlKvMb0WIdx79ei6Nj0vNJwqtgjc0vj1XebBcSia2N59zNVsKbe
 
 -- Dumped from database version 16.10
 -- Dumped by pg_dump version 16.10
@@ -23,7 +23,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: chat_conversations; Type: TABLE; Schema: public; Owner: postgres
+-- Name: chat_conversations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.chat_conversations (
@@ -36,10 +36,8 @@ CREATE TABLE public.chat_conversations (
 );
 
 
-ALTER TABLE public.chat_conversations OWNER TO postgres;
-
 --
--- Name: chat_messages; Type: TABLE; Schema: public; Owner: postgres
+-- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.chat_messages (
@@ -52,10 +50,8 @@ CREATE TABLE public.chat_messages (
 );
 
 
-ALTER TABLE public.chat_messages OWNER TO postgres;
-
 --
--- Name: criteria; Type: TABLE; Schema: public; Owner: postgres
+-- Name: criteria; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.criteria (
@@ -67,10 +63,8 @@ CREATE TABLE public.criteria (
 );
 
 
-ALTER TABLE public.criteria OWNER TO postgres;
-
 --
--- Name: feature_categories; Type: TABLE; Schema: public; Owner: postgres
+-- Name: feature_categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.feature_categories (
@@ -83,10 +77,8 @@ CREATE TABLE public.feature_categories (
 );
 
 
-ALTER TABLE public.feature_categories OWNER TO postgres;
-
 --
--- Name: features; Type: TABLE; Schema: public; Owner: postgres
+-- Name: features; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.features (
@@ -99,10 +91,8 @@ CREATE TABLE public.features (
 );
 
 
-ALTER TABLE public.features OWNER TO postgres;
-
 --
--- Name: historical_positions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: historical_positions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.historical_positions (
@@ -116,10 +106,8 @@ CREATE TABLE public.historical_positions (
 );
 
 
-ALTER TABLE public.historical_positions OWNER TO postgres;
-
 --
--- Name: market_criteria_weights; Type: TABLE; Schema: public; Owner: postgres
+-- Name: market_criteria_weights; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.market_criteria_weights (
@@ -130,10 +118,8 @@ CREATE TABLE public.market_criteria_weights (
 );
 
 
-ALTER TABLE public.market_criteria_weights OWNER TO postgres;
-
 --
--- Name: markets; Type: TABLE; Schema: public; Owner: postgres
+-- Name: markets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.markets (
@@ -149,10 +135,8 @@ CREATE TABLE public.markets (
 );
 
 
-ALTER TABLE public.markets OWNER TO postgres;
-
 --
--- Name: new_players; Type: TABLE; Schema: public; Owner: postgres
+-- Name: new_players; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.new_players (
@@ -168,10 +152,8 @@ CREATE TABLE public.new_players (
 );
 
 
-ALTER TABLE public.new_players OWNER TO postgres;
-
 --
--- Name: news_articles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: news_articles; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.news_articles (
@@ -197,10 +179,8 @@ CREATE TABLE public.news_articles (
 );
 
 
-ALTER TABLE public.news_articles OWNER TO postgres;
-
 --
--- Name: news_fetch_logs; Type: TABLE; Schema: public; Owner: postgres
+-- Name: news_fetch_logs; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.news_fetch_logs (
@@ -216,10 +196,8 @@ CREATE TABLE public.news_fetch_logs (
 );
 
 
-ALTER TABLE public.news_fetch_logs OWNER TO postgres;
-
 --
--- Name: news_sources; Type: TABLE; Schema: public; Owner: postgres
+-- Name: news_sources; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.news_sources (
@@ -241,10 +219,8 @@ CREATE TABLE public.news_sources (
 );
 
 
-ALTER TABLE public.news_sources OWNER TO postgres;
-
 --
--- Name: research_methodology; Type: TABLE; Schema: public; Owner: postgres
+-- Name: research_methodology; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.research_methodology (
@@ -256,10 +232,8 @@ CREATE TABLE public.research_methodology (
 );
 
 
-ALTER TABLE public.research_methodology OWNER TO postgres;
-
 --
--- Name: research_reports; Type: TABLE; Schema: public; Owner: postgres
+-- Name: research_reports; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.research_reports (
@@ -278,10 +252,8 @@ CREATE TABLE public.research_reports (
 );
 
 
-ALTER TABLE public.research_reports OWNER TO postgres;
-
 --
--- Name: session; Type: TABLE; Schema: public; Owner: postgres
+-- Name: session; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.session (
@@ -291,10 +263,8 @@ CREATE TABLE public.session (
 );
 
 
-ALTER TABLE public.session OWNER TO postgres;
-
 --
--- Name: sessions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: sessions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.sessions (
@@ -304,10 +274,8 @@ CREATE TABLE public.sessions (
 );
 
 
-ALTER TABLE public.sessions OWNER TO postgres;
-
 --
--- Name: sub_markets; Type: TABLE; Schema: public; Owner: postgres
+-- Name: sub_markets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.sub_markets (
@@ -319,10 +287,8 @@ CREATE TABLE public.sub_markets (
 );
 
 
-ALTER TABLE public.sub_markets OWNER TO postgres;
-
 --
--- Name: user_activity_logs; Type: TABLE; Schema: public; Owner: postgres
+-- Name: user_activity_logs; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_activity_logs (
@@ -338,10 +304,8 @@ CREATE TABLE public.user_activity_logs (
 );
 
 
-ALTER TABLE public.user_activity_logs OWNER TO postgres;
-
 --
--- Name: users; Type: TABLE; Schema: public; Owner: postgres
+-- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.users (
@@ -359,10 +323,8 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
-
 --
--- Name: vendor_feature_support; Type: TABLE; Schema: public; Owner: postgres
+-- Name: vendor_feature_support; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vendor_feature_support (
@@ -376,10 +338,8 @@ CREATE TABLE public.vendor_feature_support (
 );
 
 
-ALTER TABLE public.vendor_feature_support OWNER TO postgres;
-
 --
--- Name: vendor_label_positions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: vendor_label_positions; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vendor_label_positions (
@@ -393,10 +353,8 @@ CREATE TABLE public.vendor_label_positions (
 );
 
 
-ALTER TABLE public.vendor_label_positions OWNER TO postgres;
-
 --
--- Name: vendor_scores; Type: TABLE; Schema: public; Owner: postgres
+-- Name: vendor_scores; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vendor_scores (
@@ -411,10 +369,8 @@ CREATE TABLE public.vendor_scores (
 );
 
 
-ALTER TABLE public.vendor_scores OWNER TO postgres;
-
 --
--- Name: vendors; Type: TABLE; Schema: public; Owner: postgres
+-- Name: vendors; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.vendors (
@@ -430,10 +386,8 @@ CREATE TABLE public.vendors (
 );
 
 
-ALTER TABLE public.vendors OWNER TO postgres;
-
 --
--- Data for Name: chat_conversations; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: chat_conversations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.chat_conversations (id, market_id, user_id, title, created_at, updated_at) FROM stdin;
@@ -472,7 +426,7 @@ fb1fa454-7ae8-4262-b7d0-8057c830d539	15a29a79-b10f-44ad-9aff-1685adb6f4ea	1ea89f
 
 
 --
--- Data for Name: chat_messages; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: chat_messages; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.chat_messages (id, conversation_id, role, content, data_context, created_at) FROM stdin;
@@ -592,7 +546,7 @@ f8421243-37a3-4715-827b-fde50f4a28b1	2e6fcd37-7743-47d8-b27c-9fc92dabc09d	assist
 
 
 --
--- Data for Name: criteria; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: criteria; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.criteria (id, name, description, category, created_at) FROM stdin;
@@ -608,7 +562,7 @@ d3d295f1-c8d4-49d2-a77b-42bc68889652	ISV Ecosystem		execution	2025-08-10 12:54:0
 
 
 --
--- Data for Name: feature_categories; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: feature_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.feature_categories (id, name, description, market_id, display_order, created_at) FROM stdin;
@@ -656,7 +610,7 @@ ac1ac67e-e781-4fad-8953-62e20ead4b2a	Storage Management Features	Features relate
 
 
 --
--- Data for Name: features; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: features; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.features (id, name, description, created_at, category_id, display_order) FROM stdin;
@@ -1132,7 +1086,7 @@ d265dac6-abc3-4cfe-924b-a814c1190ca8	Archive restore SLA	\N	2025-11-30 08:56:54.
 
 
 --
--- Data for Name: historical_positions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: historical_positions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.historical_positions (id, vendor_id, market_id, execution_score, viability_score, recorded_at, created_at) FROM stdin;
@@ -1561,7 +1515,7 @@ eaf721bd-bb37-420a-97df-d608215e846d	6f13908c-84d2-4133-b84a-0b1c7f7cdd74	e1bc70
 
 
 --
--- Data for Name: market_criteria_weights; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: market_criteria_weights; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.market_criteria_weights (id, market_id, criteria_id, weight) FROM stdin;
@@ -1569,7 +1523,7 @@ COPY public.market_criteria_weights (id, market_id, criteria_id, weight) FROM st
 
 
 --
--- Data for Name: markets; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: markets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.markets (id, name, description, category, image_url, created_at, updated_at, short_description, is_visible) FROM stdin;
@@ -1582,7 +1536,7 @@ b94e06f1-4c03-4367-b5bb-10659c240633	ITMAP for Backup and Recovery Solutions for
 
 
 --
--- Data for Name: new_players; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: new_players; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.new_players (id, market_id, name, website_url, description, estimated_revenue, location, created_at, updated_at) FROM stdin;
@@ -1590,7 +1544,7 @@ COPY public.new_players (id, market_id, name, website_url, description, estimate
 
 
 --
--- Data for Name: news_articles; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: news_articles; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.news_articles (id, source_id, vendor_id, market_ids, title, url, canonical_url, content_hash, summary, content, published_at, language, impact_label, impact_score, impact_confidence, impact_reasons, created_at, updated_at, citation_id) FROM stdin;
@@ -1598,7 +1552,7 @@ COPY public.news_articles (id, source_id, vendor_id, market_ids, title, url, can
 
 
 --
--- Data for Name: news_fetch_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: news_fetch_logs; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.news_fetch_logs (id, source_id, status, articles_found, articles_new, articles_skipped, error_message, duration, fetched_at) FROM stdin;
@@ -1637,7 +1591,7 @@ d4d1ad68-caf8-423c-9c01-53bbb4116885	7383ea33-f6d6-47bb-b860-dd6f75930a92	failed
 
 
 --
--- Data for Name: news_sources; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: news_sources; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.news_sources (id, name, source_url, rss_url, list_selector, enabled, priority, vendor_id, market_ids, last_fetched_at, last_etag, last_modified, created_at, updated_at, polling_frequency) FROM stdin;
@@ -1674,7 +1628,7 @@ a954f762-b12c-4f11-a498-38f3596d6395	Odaseva	https://www.odaseva.com/news/		a[hr
 
 
 --
--- Data for Name: research_methodology; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: research_methodology; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.research_methodology (id, market_id, content, created_at, updated_at) FROM stdin;
@@ -1684,7 +1638,7 @@ ec8d28ed-c6f3-46e1-9700-ba43b0bed202	b9a22e91-6aef-4434-96f7-3222a9dc3d5e	Test	2
 
 
 --
--- Data for Name: research_reports; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: research_reports; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.research_reports (id, title, description, market_id, file_url, report_type, published_at, created_at, file_size, mime_type, uploaded_at, html_content) FROM stdin;
@@ -1695,7 +1649,7 @@ c6d43e4e-f173-4735-8c15-1b6b78470a23	Test Update	Test	15a29a79-b10f-44ad-9aff-16
 
 
 --
--- Data for Name: session; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: session; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.session (sid, sess, expire) FROM stdin;
@@ -1704,7 +1658,7 @@ dl_a5UxrOVndyF6Jop3fTQ0R32CtdXAi	{"cookie":{"originalMaxAge":86400000,"expires":
 
 
 --
--- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.sessions (sid, sess, expire) FROM stdin;
@@ -1712,7 +1666,7 @@ COPY public.sessions (sid, sess, expire) FROM stdin;
 
 
 --
--- Data for Name: sub_markets; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: sub_markets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.sub_markets (id, name, description, market_id, created_at) FROM stdin;
@@ -1720,7 +1674,7 @@ COPY public.sub_markets (id, name, description, market_id, created_at) FROM stdi
 
 
 --
--- Data for Name: user_activity_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: user_activity_logs; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_activity_logs (id, user_id, session_id, login_at, logout_at, last_seen_at, ip_address, user_agent, created_at) FROM stdin;
@@ -1790,7 +1744,7 @@ aa98bfe1-5fc6-40c1-aa1a-7f079068613a	1ea89f67-0369-47f3-ad43-453b48debd29	_0V_Q-
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.users (id, email, first_name, last_name, password, profile_image_url, role, google_id, linkedin_id, created_at, updated_at) FROM stdin;
@@ -1810,7 +1764,7 @@ a4ca987f-5369-4abb-97b1-3b50f9536886	oauth-test-Zr8p9Xvs@itmap.ai	OAuth	TestUser
 
 
 --
--- Data for Name: vendor_feature_support; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: vendor_feature_support; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vendor_feature_support (id, vendor_id, feature_id, support_level, comments, updated_at, source_id) FROM stdin;
@@ -4994,7 +4948,7 @@ c66f663c-8d17-40fd-9be9-2c6ed2190f3f	8e74741b-7b5c-446d-a0d8-0c483f9015bb	e260e8
 
 
 --
--- Data for Name: vendor_label_positions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: vendor_label_positions; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vendor_label_positions (id, vendor_id, market_id, label_x, label_y, updated_at, created_at) FROM stdin;
@@ -5004,7 +4958,7 @@ COPY public.vendor_label_positions (id, vendor_id, market_id, label_x, label_y, 
 
 
 --
--- Data for Name: vendor_scores; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: vendor_scores; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vendor_scores (id, vendor_id, criteria_id, score, created_at, updated_at, notes, source_id) FROM stdin;
@@ -5352,7 +5306,7 @@ ae454acc-fb2d-43d7-a974-90c2c05a6bdc	8e74741b-7b5c-446d-a0d8-0c483f9015bb	7e9a8f
 
 
 --
--- Data for Name: vendors; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: vendors; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.vendors (id, name, description, website, revenue, market_id, created_at, updated_at, product) FROM stdin;
@@ -5404,7 +5358,7 @@ a82101c7-5814-4b6b-af59-86101e006493	Backupify		backupify.com	0.20	130ee3b2-16b1
 
 
 --
--- Name: chat_conversations chat_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chat_conversations chat_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_conversations
@@ -5412,7 +5366,7 @@ ALTER TABLE ONLY public.chat_conversations
 
 
 --
--- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_messages
@@ -5420,7 +5374,7 @@ ALTER TABLE ONLY public.chat_messages
 
 
 --
--- Name: criteria criteria_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: criteria criteria_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.criteria
@@ -5428,7 +5382,7 @@ ALTER TABLE ONLY public.criteria
 
 
 --
--- Name: feature_categories feature_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_categories feature_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.feature_categories
@@ -5436,7 +5390,7 @@ ALTER TABLE ONLY public.feature_categories
 
 
 --
--- Name: features features_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: features features_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.features
@@ -5444,7 +5398,7 @@ ALTER TABLE ONLY public.features
 
 
 --
--- Name: historical_positions historical_positions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: historical_positions historical_positions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.historical_positions
@@ -5452,7 +5406,7 @@ ALTER TABLE ONLY public.historical_positions
 
 
 --
--- Name: market_criteria_weights market_criteria_weights_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: market_criteria_weights market_criteria_weights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.market_criteria_weights
@@ -5460,7 +5414,7 @@ ALTER TABLE ONLY public.market_criteria_weights
 
 
 --
--- Name: markets markets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: markets markets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.markets
@@ -5468,7 +5422,7 @@ ALTER TABLE ONLY public.markets
 
 
 --
--- Name: new_players new_players_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: new_players new_players_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.new_players
@@ -5476,7 +5430,7 @@ ALTER TABLE ONLY public.new_players
 
 
 --
--- Name: news_articles news_articles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_articles news_articles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_articles
@@ -5484,7 +5438,7 @@ ALTER TABLE ONLY public.news_articles
 
 
 --
--- Name: news_fetch_logs news_fetch_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_fetch_logs news_fetch_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_fetch_logs
@@ -5492,7 +5446,7 @@ ALTER TABLE ONLY public.news_fetch_logs
 
 
 --
--- Name: news_sources news_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_sources news_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_sources
@@ -5500,7 +5454,7 @@ ALTER TABLE ONLY public.news_sources
 
 
 --
--- Name: research_methodology research_methodology_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: research_methodology research_methodology_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.research_methodology
@@ -5508,7 +5462,7 @@ ALTER TABLE ONLY public.research_methodology
 
 
 --
--- Name: research_reports research_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: research_reports research_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.research_reports
@@ -5516,7 +5470,7 @@ ALTER TABLE ONLY public.research_reports
 
 
 --
--- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.session
@@ -5524,7 +5478,7 @@ ALTER TABLE ONLY public.session
 
 
 --
--- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions
@@ -5532,7 +5486,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: sub_markets sub_markets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: sub_markets sub_markets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sub_markets
@@ -5540,7 +5494,7 @@ ALTER TABLE ONLY public.sub_markets
 
 
 --
--- Name: user_activity_logs user_activity_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: user_activity_logs user_activity_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_activity_logs
@@ -5548,7 +5502,7 @@ ALTER TABLE ONLY public.user_activity_logs
 
 
 --
--- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -5556,7 +5510,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_google_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_google_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -5564,7 +5518,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_linkedin_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_linkedin_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -5572,7 +5526,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -5580,7 +5534,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: vendor_feature_support vendor_feature_support_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_feature_support vendor_feature_support_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_feature_support
@@ -5588,7 +5542,7 @@ ALTER TABLE ONLY public.vendor_feature_support
 
 
 --
--- Name: vendor_label_positions vendor_label_positions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_label_positions vendor_label_positions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_label_positions
@@ -5596,7 +5550,7 @@ ALTER TABLE ONLY public.vendor_label_positions
 
 
 --
--- Name: vendor_scores vendor_scores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_scores vendor_scores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_scores
@@ -5604,7 +5558,7 @@ ALTER TABLE ONLY public.vendor_scores
 
 
 --
--- Name: vendors vendors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendors vendors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendors
@@ -5612,14 +5566,14 @@ ALTER TABLE ONLY public.vendors
 
 
 --
--- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: postgres
+-- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "IDX_session_expire" ON public.session USING btree (expire);
 
 
 --
--- Name: chat_conversations chat_conversations_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chat_conversations chat_conversations_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_conversations
@@ -5627,7 +5581,7 @@ ALTER TABLE ONLY public.chat_conversations
 
 
 --
--- Name: chat_conversations chat_conversations_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chat_conversations chat_conversations_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_conversations
@@ -5635,7 +5589,7 @@ ALTER TABLE ONLY public.chat_conversations
 
 
 --
--- Name: chat_messages chat_messages_conversation_id_chat_conversations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: chat_messages chat_messages_conversation_id_chat_conversations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_messages
@@ -5643,7 +5597,7 @@ ALTER TABLE ONLY public.chat_messages
 
 
 --
--- Name: feature_categories feature_categories_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_categories feature_categories_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.feature_categories
@@ -5651,7 +5605,7 @@ ALTER TABLE ONLY public.feature_categories
 
 
 --
--- Name: features features_category_id_feature_categories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: features features_category_id_feature_categories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.features
@@ -5659,7 +5613,7 @@ ALTER TABLE ONLY public.features
 
 
 --
--- Name: historical_positions historical_positions_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: historical_positions historical_positions_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.historical_positions
@@ -5667,7 +5621,7 @@ ALTER TABLE ONLY public.historical_positions
 
 
 --
--- Name: historical_positions historical_positions_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: historical_positions historical_positions_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.historical_positions
@@ -5675,7 +5629,7 @@ ALTER TABLE ONLY public.historical_positions
 
 
 --
--- Name: market_criteria_weights market_criteria_weights_criteria_id_criteria_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: market_criteria_weights market_criteria_weights_criteria_id_criteria_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.market_criteria_weights
@@ -5683,7 +5637,7 @@ ALTER TABLE ONLY public.market_criteria_weights
 
 
 --
--- Name: market_criteria_weights market_criteria_weights_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: market_criteria_weights market_criteria_weights_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.market_criteria_weights
@@ -5691,7 +5645,7 @@ ALTER TABLE ONLY public.market_criteria_weights
 
 
 --
--- Name: new_players new_players_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: new_players new_players_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.new_players
@@ -5699,7 +5653,7 @@ ALTER TABLE ONLY public.new_players
 
 
 --
--- Name: news_articles news_articles_source_id_news_sources_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_articles news_articles_source_id_news_sources_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_articles
@@ -5707,7 +5661,7 @@ ALTER TABLE ONLY public.news_articles
 
 
 --
--- Name: news_articles news_articles_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_articles news_articles_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_articles
@@ -5715,7 +5669,7 @@ ALTER TABLE ONLY public.news_articles
 
 
 --
--- Name: news_fetch_logs news_fetch_logs_source_id_news_sources_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_fetch_logs news_fetch_logs_source_id_news_sources_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_fetch_logs
@@ -5723,7 +5677,7 @@ ALTER TABLE ONLY public.news_fetch_logs
 
 
 --
--- Name: news_sources news_sources_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: news_sources news_sources_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.news_sources
@@ -5731,7 +5685,7 @@ ALTER TABLE ONLY public.news_sources
 
 
 --
--- Name: research_methodology research_methodology_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: research_methodology research_methodology_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.research_methodology
@@ -5739,7 +5693,7 @@ ALTER TABLE ONLY public.research_methodology
 
 
 --
--- Name: research_reports research_reports_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: research_reports research_reports_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.research_reports
@@ -5747,7 +5701,7 @@ ALTER TABLE ONLY public.research_reports
 
 
 --
--- Name: sub_markets sub_markets_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: sub_markets sub_markets_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sub_markets
@@ -5755,7 +5709,7 @@ ALTER TABLE ONLY public.sub_markets
 
 
 --
--- Name: user_activity_logs user_activity_logs_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: user_activity_logs user_activity_logs_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_activity_logs
@@ -5763,7 +5717,7 @@ ALTER TABLE ONLY public.user_activity_logs
 
 
 --
--- Name: vendor_feature_support vendor_feature_support_feature_id_features_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_feature_support vendor_feature_support_feature_id_features_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_feature_support
@@ -5771,7 +5725,7 @@ ALTER TABLE ONLY public.vendor_feature_support
 
 
 --
--- Name: vendor_feature_support vendor_feature_support_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_feature_support vendor_feature_support_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_feature_support
@@ -5779,7 +5733,7 @@ ALTER TABLE ONLY public.vendor_feature_support
 
 
 --
--- Name: vendor_label_positions vendor_label_positions_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_label_positions vendor_label_positions_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_label_positions
@@ -5787,7 +5741,7 @@ ALTER TABLE ONLY public.vendor_label_positions
 
 
 --
--- Name: vendor_label_positions vendor_label_positions_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_label_positions vendor_label_positions_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_label_positions
@@ -5795,7 +5749,7 @@ ALTER TABLE ONLY public.vendor_label_positions
 
 
 --
--- Name: vendor_scores vendor_scores_criteria_id_criteria_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_scores vendor_scores_criteria_id_criteria_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_scores
@@ -5803,7 +5757,7 @@ ALTER TABLE ONLY public.vendor_scores
 
 
 --
--- Name: vendor_scores vendor_scores_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendor_scores vendor_scores_vendor_id_vendors_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendor_scores
@@ -5811,7 +5765,7 @@ ALTER TABLE ONLY public.vendor_scores
 
 
 --
--- Name: vendors vendors_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: vendors vendors_market_id_markets_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendors
@@ -5822,5 +5776,5 @@ ALTER TABLE ONLY public.vendors
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GF4GLUC7CePnoLnuAml1eIjacrQ0sVrwVV1lY0jJmUx4I4wmSa655Bdhk1BahQE
+\unrestrict KpymKhSTPgiVHlKvMb0WIdx79ei6Nj0vNJwqtgjc0vj1XebBcSia2N59zNVsKbe
 
