@@ -77,9 +77,10 @@ type NewsArticleExtended = NewsArticle & {
 };
 
 type ScrapeResult = {
-  vendorName: string;
+  vendorId: string;
+  vendor: string;
   newCount: number;
-  error?: string;
+  error?: string | null;
 };
 
 type RunPipelineResponse = {
@@ -98,7 +99,6 @@ interface NewsAdminProps {
 export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
   const { toast } = useToast();
 
-  const [scrapeResults, setScrapeResults] = useState<ScrapeResult[] | null>(null);
   const [analyzeCount, setAnalyzeCount] = useState<number | null>(null);
   const [vendorScrapeResults, setVendorScrapeResults] = useState<Record<string, ScrapeResult>>({});
   const [scrapingVendorIds, setScrapingVendorIds] = useState<Set<string>>(new Set());
@@ -201,8 +201,14 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
       return await apiRequestJson("/api/news/ingest/run", "POST");
     },
     onSuccess: (data) => {
-      setScrapeResults(data.results ?? []);
       setAnalyzeCount(data.analyzed ?? 0);
+      if (data.results?.length) {
+        const newVendorResults: Record<string, ScrapeResult> = {};
+        for (const result of data.results) {
+          newVendorResults[result.vendorId] = result;
+        }
+        setVendorScrapeResults((prev) => ({ ...prev, ...newVendorResults }));
+      }
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0];
@@ -231,7 +237,7 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
     },
     onSuccess: (data, vendorId) => {
       setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
-      const result = data.results?.find((r) => r.vendorName) ?? data.results?.[0];
+      const result = data.results?.[0];
       if (result) {
         setVendorScrapeResults((prev) => ({ ...prev, [vendorId]: result }));
       }
@@ -251,7 +257,7 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
       setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
       setVendorScrapeResults((prev) => ({
         ...prev,
-        [vendorId]: { vendorName: vendorId, newCount: 0, error: error.message || "Failed" },
+        [vendorId]: { vendorId, vendor: vendorId, newCount: 0, error: error.message || "Failed" },
       }));
       toast({
         title: "Scrape failed",
@@ -516,36 +522,8 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
             </Button>
           </div>
 
-          {/* Scrape results */}
-          {scrapeResults !== null && (
-            <div className="rounded-lg border p-3 space-y-2 bg-muted/30" data-testid="scrape-results">
-              <p className="text-sm font-semibold">Scrape results</p>
-              {scrapeResults.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No vendors scraped.</p>
-              ) : (
-                <div className="divide-y">
-                  {scrapeResults.map((r, i) => (
-                    <div key={i} className="flex items-center justify-between py-1 text-sm">
-                      <span>{r.vendorName}</span>
-                      {r.error ? (
-                        <Badge variant="destructive" className="text-xs">{r.error}</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">+{r.newCount} new</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {analyzeCount !== null && (
-                <p className="text-xs text-muted-foreground pt-1">
-                  AI analyzed {analyzeCount} pending article(s).
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Standalone analyze result */}
-          {analyzeCount !== null && scrapeResults === null && (
+          {/* Analyze result */}
+          {analyzeCount !== null && (
             <p className="text-sm text-muted-foreground" data-testid="analyze-result">
               Analyzed {analyzeCount} pending article(s).
             </p>

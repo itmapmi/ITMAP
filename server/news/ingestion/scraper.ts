@@ -27,6 +27,7 @@ interface VendorRecord {
 }
 
 export interface ScrapeResult {
+  vendorId: string;
   vendor: string;
   total: number;
   newCount: number;
@@ -387,7 +388,7 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
         if (saved) newCount++;
       }
 
-      results.push({ vendor: v.name, total: result.articles.length, newCount, error: result.error });
+      results.push({ vendorId: v.id, vendor: v.name, total: result.articles.length, newCount, error: result.error });
       console.log(`[Scraper] ${v.name}: ${result.articles.length} found, ${newCount} new`);
 
       await newsStorage.createFetchLog({
@@ -401,7 +402,7 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
       });
     } catch (err: any) {
       console.error(`[Scraper] ${v.name} failed: ${err.message}`);
-      results.push({ vendor: v.name, total: 0, newCount: 0, error: err.message });
+      results.push({ vendorId: v.id, vendor: v.name, total: 0, newCount: 0, error: err.message });
 
       await newsStorage.createFetchLog({
         sourceId: v.id,
@@ -446,7 +447,7 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
       duration: Date.now() - startTime,
     });
 
-    return { vendor: v.name, total: result.articles.length, newCount, error: result.error };
+    return { vendorId: v.id, vendor: v.name, total: result.articles.length, newCount, error: result.error };
   } catch (err: any) {
     await newsStorage.createFetchLog({
       sourceId: v.id,
