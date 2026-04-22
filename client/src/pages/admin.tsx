@@ -13,12 +13,13 @@ import ResearchMethodologyManagement from "@/components/admin/research-methodolo
 import OperationsManagement from "@/components/admin/operations-management";
 import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
-import { NewsArticlesAdmin } from "@/components/admin/news-articles-admin";
+import { NewsAdmin } from "@/components/admin/news-admin";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
 export default function Admin() {
   const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("market-management");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -62,12 +63,12 @@ export default function Admin() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
-        <Tabs defaultValue="market-management" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
-            <TabsTrigger value="news-articles">News Articles</TabsTrigger>
+            <TabsTrigger value="news">News</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
@@ -90,8 +91,8 @@ export default function Admin() {
             <NewPlayersAdmin />
           </TabsContent>
 
-          <TabsContent value="news-articles" className="mt-6">
-            <NewsArticlesAdmin />
+          <TabsContent value="news" className="mt-6">
+            <NewsAdmin onNavigateToVendors={() => setActiveTab("vendor-management")} />
           </TabsContent>
 
           <TabsContent value="criteria-management" className="mt-6">
