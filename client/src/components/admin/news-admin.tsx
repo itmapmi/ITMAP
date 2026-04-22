@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -36,7 +37,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Play,
   BrainCircuit,
@@ -51,6 +51,8 @@ import {
   BellOff,
   Send,
   History,
+  Newspaper,
+  Settings,
 } from "lucide-react";
 import {
   Dialog,
@@ -307,25 +309,21 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
       toast({ title: "Article deleted" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Delete failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     },
   });
 
   const getImpactBadge = (impact: string | null | undefined) => {
-    if (!impact) return <Badge variant="outline">Pending</Badge>;
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      HIGH: "destructive",
-      MEDIUM: "default",
-      LOW: "secondary",
+    if (!impact) return <Badge variant="outline" className="text-xs">Pending</Badge>;
+    const colors: Record<string, string> = {
+      HIGH: "bg-red-100 text-red-700 border-red-200",
+      MEDIUM: "bg-amber-100 text-amber-700 border-amber-200",
+      LOW: "bg-slate-100 text-slate-600 border-slate-200",
     };
     return (
-      <Badge variant={variants[impact.toUpperCase()] ?? "outline"}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colors[impact.toUpperCase()] ?? "bg-muted text-muted-foreground"}`}>
         {impact.toUpperCase()}
-      </Badge>
+      </span>
     );
   };
 
@@ -335,474 +333,497 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
     return true;
   }) ?? [];
 
+  const totalArticles = articles?.length ?? 0;
+  const pendingArticles = articles?.filter((a) => !a.impactLabel).length ?? 0;
+
   return (
-    <div className="space-y-6">
-      {/* ── Vendor Newsroom Coverage ─────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Vendor Newsroom Coverage</CardTitle>
-          <CardDescription>
-            Vendors must have a newsroom URL configured before they can be scraped.
-            Use the Edit Vendor button below to jump to the Vendors tab and add or update a URL.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Configured */}
-          <div>
-            <h3 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" />
-              Configured ({vendorsWithUrl.length})
-            </h3>
-            {vendorsWithUrl.length === 0 ? (
-              <p className="text-sm text-muted-foreground">None yet.</p>
-            ) : (
-              <div className="border rounded-lg divide-y">
-                {vendorsWithUrl.map((v) => {
-                  const log = vendorFetchLog(v.id);
-                  const statusVariant =
-                    !log ? "outline" :
-                    log.status === "success" ? "secondary" :
-                    log.status === "partial" ? "default" :
-                    "destructive";
-                  const statusLabel =
-                    !log ? "Never scraped" :
-                    log.status === "success" ? "Success" :
-                    log.status === "partial" ? "Partial" :
-                    "Failed";
-                  const isScrapingThis = scrapingVendorIds.has(v.id);
-                  const vendorResult = vendorScrapeResults[v.id];
-                  return (
-                    <div
-                      key={v.id}
-                      className="flex items-center justify-between px-3 py-2 gap-2"
-                      data-testid={`vendor-configured-${v.id}`}
-                    >
-                      <div className="min-w-0">
-                        <span className="font-medium text-sm">{v.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {marketNameById(v.marketId)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant={statusVariant} className="text-xs">
-                            {statusLabel}
-                          </Badge>
-                          <span
-                            className="text-xs text-muted-foreground"
-                            title={log?.fetchedAt ? new Date(log.fetchedAt).toLocaleString() : undefined}
-                          >
-                            {formatRelativeTime(log?.fetchedAt)}
-                          </span>
+    <div className="space-y-4">
+      {/* ── Summary stats bar ─────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">Configured vendors</p>
+          <p className="text-2xl font-semibold mt-0.5">{vendorsWithUrl.length}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">Missing URL</p>
+          <p className={`text-2xl font-semibold mt-0.5 ${vendorsWithoutUrl.length > 0 ? "text-amber-600" : ""}`}>
+            {vendorsWithoutUrl.length}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">Total articles</p>
+          <p className="text-2xl font-semibold mt-0.5">{totalArticles}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">Pending analysis</p>
+          <p className={`text-2xl font-semibold mt-0.5 ${pendingArticles > 0 ? "text-amber-600" : ""}`}>
+            {pendingArticles}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Sub-tabs ─────────────────────────────────────────────── */}
+      <Tabs defaultValue="pipeline">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="pipeline" className="flex items-center gap-1.5">
+            <Play className="h-3.5 w-3.5" />
+            Pipeline
+          </TabsTrigger>
+          <TabsTrigger value="articles" className="flex items-center gap-1.5">
+            <Newspaper className="h-3.5 w-3.5" />
+            Articles
+            {pendingArticles > 0 && (
+              <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{pendingArticles}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
+            Settings
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── Pipeline tab ─────────────────────────────────────── */}
+        <TabsContent value="pipeline" className="space-y-4 mt-4">
+          {/* Pipeline actions */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Run Pipeline</CardTitle>
+              <CardDescription>
+                The scheduled job runs daily at 7 AM UTC. Trigger manually here at any time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => runScrapeMutation.mutate()}
+                  disabled={runScrapeMutation.isPending || analyzeMutation.isPending}
+                  data-testid="button-run-scrape"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  {runScrapeMutation.isPending ? "Scraping…" : "Run Scrape + Analyze"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => analyzeMutation.mutate()}
+                  disabled={runScrapeMutation.isPending || analyzeMutation.isPending}
+                  data-testid="button-analyze-pending"
+                >
+                  <BrainCircuit className="h-4 w-4 mr-2" />
+                  {analyzeMutation.isPending ? "Analyzing…" : "Analyze Pending Only"}
+                </Button>
+              </div>
+              {analyzeCount !== null && (
+                <p className="text-sm text-muted-foreground mt-2" data-testid="analyze-result">
+                  Analyzed {analyzeCount} pending article(s).
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Vendor coverage */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Vendor Coverage</CardTitle>
+                  <CardDescription>
+                    Vendors need a newsroom URL before they can be scraped.
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2 text-sm">
+                  <span className="flex items-center gap-1 text-green-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {vendorsWithUrl.length} configured
+                  </span>
+                  {vendorsWithoutUrl.length > 0 && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <XCircle className="h-3.5 w-3.5" />
+                      {vendorsWithoutUrl.length} missing
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Missing first — needs attention */}
+              {vendorsWithoutUrl.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-amber-700 mb-1.5 flex items-center gap-1">
+                    <XCircle className="h-3.5 w-3.5" />
+                    Missing newsroom URL
+                  </p>
+                  <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                    {vendorsWithoutUrl.map((v) => (
+                      <div
+                        key={v.id}
+                        className="flex items-center justify-between px-3 py-2"
+                        data-testid={`vendor-missing-${v.id}`}
+                      >
+                        <div>
+                          <span className="font-medium text-sm">{v.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{marketNameById(v.marketId)}</span>
                         </div>
-                        {vendorResult && (
-                          vendorResult.error ? (
-                            <Badge
-                              variant="destructive"
-                              className="text-xs"
-                              data-testid={`vendor-scrape-result-${v.id}`}
-                            >
-                              {vendorResult.error}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs"
-                              data-testid={`vendor-scrape-result-${v.id}`}
-                            >
-                              +{vendorResult.newCount} new
-                            </Badge>
-                          )
-                        )}
-                        <a
-                          href={v.newsroomUrl!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          {v.newsroomUrl}
-                        </a>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setHistoryVendorId(v.id)}
-                          data-testid={`button-history-vendor-${v.id}`}
-                          title="View scrape history"
-                        >
-                          <History className="h-3 w-3 mr-1" />
-                          History
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={isScrapingThis || runScrapeMutation.isPending}
-                          onClick={() => runVendorScrapeMutation.mutate(v.id)}
-                          data-testid={`button-scrape-vendor-${v.id}`}
+                          onClick={() => onNavigateToVendor?.(v.id, v.marketId)}
+                          data-testid={`button-edit-vendor-${v.id}`}
                         >
-                          <Zap className="h-3 w-3 mr-1" />
-                          {isScrapingThis ? "Scraping…" : "Scrape"}
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Edit Vendor
                         </Button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Not configured */}
-          <div>
-            <h3 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-1">
-              <XCircle className="h-4 w-4" />
-              Missing newsroom URL ({vendorsWithoutUrl.length})
-            </h3>
-            {vendorsWithoutUrl.length === 0 ? (
-              <p className="text-sm text-muted-foreground">All vendors are configured.</p>
-            ) : (
-              <div className="border rounded-lg divide-y">
-                {vendorsWithoutUrl.map((v) => (
-                  <div
-                    key={v.id}
-                    className="flex items-center justify-between px-3 py-2"
-                    data-testid={`vendor-missing-${v.id}`}
-                  >
-                    <div>
-                      <span className="font-medium text-sm">{v.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {marketNameById(v.marketId)}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onNavigateToVendor?.(v.id, v.marketId)}
-                      data-testid={`button-edit-vendor-${v.id}`}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Edit Vendor
-                    </Button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </div>
+              )}
 
-      {/* ── Pipeline Controls ─────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipeline Controls</CardTitle>
-          <CardDescription>
-            Manually trigger scraping and AI analysis runs. The scheduled job runs daily at 7 AM automatically.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => runScrapeMutation.mutate()}
-              disabled={runScrapeMutation.isPending || analyzeMutation.isPending}
-              data-testid="button-run-scrape"
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {runScrapeMutation.isPending ? "Scraping…" : "Run Scrape Now"}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => analyzeMutation.mutate()}
-              disabled={runScrapeMutation.isPending || analyzeMutation.isPending}
-              data-testid="button-analyze-pending"
-            >
-              <BrainCircuit className="h-4 w-4 mr-2" />
-              {analyzeMutation.isPending ? "Analyzing…" : "Analyze Pending"}
-            </Button>
-          </div>
-
-          {/* Analyze result */}
-          {analyzeCount !== null && (
-            <p className="text-sm text-muted-foreground" data-testid="analyze-result">
-              Analyzed {analyzeCount} pending article(s).
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Article Queue ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Article Queue</CardTitle>
-              <CardDescription>All ingested articles and their analysis status.</CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetchArticles()}
-              data-testid="button-refresh-articles"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Vendor</label>
-              <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
-                <SelectTrigger data-testid="select-vendor-filter">
-                  <SelectValue placeholder="All Vendors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vendors</SelectItem>
-                  {vendors?.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Impact Level</label>
-              <Select value={selectedImpactFilter} onValueChange={setSelectedImpactFilter}>
-                <SelectTrigger data-testid="select-impact-filter">
-                  <SelectValue placeholder="All Impacts" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Impacts</SelectItem>
-                  <SelectItem value="HIGH">High</SelectItem>
-                  <SelectItem value="MEDIUM">Medium</SelectItem>
-                  <SelectItem value="LOW">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Analysis Status</label>
-              <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="analyzed">Analyzed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Table */}
-          {articlesLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading articles…</div>
-          ) : displayedArticles.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No articles found. Add newsroom URLs to vendors and run a scrape.
-            </div>
-          ) : (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Impact</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Published</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedArticles.map((article) => (
-                    <TableRow key={article.id} data-testid={`row-article-${article.id}`}>
-                      <TableCell className="max-w-sm">
-                        <div className="font-medium line-clamp-2 text-sm">{article.title}</div>
-                        {article.summary && (
-                          <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                            {article.summary}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {article.impactLabel ? (
-                          <Badge variant="secondary" className="text-xs">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Analyzed
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">
-                            Pending
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{getImpactBadge(article.impactLabel)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {article.category || "-"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {article.publishedAt
-                          ? new Date(article.publishedAt).toLocaleDateString()
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(article.url, "_blank")}
-                            data-testid={`button-view-${article.id}`}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                data-testid={`button-delete-${article.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Article</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure? This cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteArticleMutation.mutate(article.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {displayedArticles.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              Showing {displayedArticles.length} article{displayedArticles.length !== 1 ? "s" : ""}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Email Alert Settings ─────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Newsroom URL Alert Emails
-          </CardTitle>
-          <CardDescription>
-            When a vendor newsroom URL goes down, an email is sent to admin users.
-            Configure SMTP via the <code className="text-xs">SMTP_HOST</code>, <code className="text-xs">SMTP_USER</code>,
-            and <code className="text-xs">SMTP_PASS</code> environment variables.
-            Optionally set <code className="text-xs">ALERT_FROM_EMAIL</code> for the sender address.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {alertSettingsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <>
-              {/* Global toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-4">
+              {/* Configured vendors */}
+              {vendorsWithUrl.length > 0 && (
                 <div>
-                  <p className="font-medium text-sm">Enable email alerts</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Send email when any newsroom URL changes from reachable to unreachable.
+                  <p className="text-xs font-medium text-green-700 mb-1.5 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Configured
                   </p>
+                  <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                    {vendorsWithUrl.map((v) => {
+                      const log = vendorFetchLog(v.id);
+                      const statusVariant =
+                        !log ? "outline" :
+                        log.status === "success" ? "secondary" :
+                        log.status === "partial" ? "default" :
+                        "destructive";
+                      const statusLabel =
+                        !log ? "Never" :
+                        log.status === "success" ? "OK" :
+                        log.status === "partial" ? "Partial" :
+                        "Failed";
+                      const isScrapingThis = scrapingVendorIds.has(v.id);
+                      const vendorResult = vendorScrapeResults[v.id];
+                      return (
+                        <div
+                          key={v.id}
+                          className="flex items-center justify-between px-3 py-2 gap-2 text-sm"
+                          data-testid={`vendor-configured-${v.id}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium">{v.name}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">{marketNameById(v.marketId)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
+                            <span
+                              className="text-xs text-muted-foreground w-14 text-right"
+                              title={log?.fetchedAt ? new Date(log.fetchedAt).toLocaleString() : undefined}
+                            >
+                              {formatRelativeTime(log?.fetchedAt)}
+                            </span>
+                            {vendorResult && (
+                              vendorResult.error ? (
+                                <Badge variant="destructive" className="text-xs" data-testid={`vendor-scrape-result-${v.id}`}>
+                                  Error
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs" data-testid={`vendor-scrape-result-${v.id}`}>
+                                  +{vendorResult.newCount}
+                                </Badge>
+                              )
+                            )}
+                            <a
+                              href={v.newsroomUrl!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground"
+                              title={v.newsroomUrl!}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setHistoryVendorId(v.id)}
+                              data-testid={`button-history-vendor-${v.id}`}
+                            >
+                              <History className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              disabled={isScrapingThis || runScrapeMutation.isPending}
+                              onClick={() => runVendorScrapeMutation.mutate(v.id)}
+                              data-testid={`button-scrape-vendor-${v.id}`}
+                            >
+                              <Zap className="h-3 w-3 mr-1" />
+                              {isScrapingThis ? "…" : "Scrape"}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <Switch
-                  checked={alertSettings?.emailAlertsEnabled ?? true}
-                  disabled={updateAlertSettingsMutation.isPending}
-                  onCheckedChange={(checked) =>
-                    updateAlertSettingsMutation.mutate({ emailAlertsEnabled: checked })
-                  }
-                />
-              </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-              {/* Recipient emails */}
-              <div className="space-y-2">
-                <Label htmlFor="recipient-emails">
-                  Recipient emails
-                  <span className="ml-1 text-xs text-muted-foreground font-normal">
-                    (comma-separated; leave blank to use all admin account emails)
-                  </span>
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="recipient-emails"
-                    placeholder="alice@example.com, bob@example.com"
-                    value={recipientEmailDraft !== "" ? recipientEmailDraft : (alertSettings?.recipientEmails ?? "")}
-                    onChange={(e) => setRecipientEmailDraft(e.target.value)}
-                  />
-                  <Button
-                    variant="secondary"
-                    disabled={updateAlertSettingsMutation.isPending}
-                    onClick={() => {
-                      updateAlertSettingsMutation.mutate({
-                        recipientEmails: recipientEmailDraft.trim() || null,
-                      });
-                      setRecipientEmailDraft("");
-                    }}
-                  >
-                    Save
-                  </Button>
+        {/* ── Articles tab ─────────────────────────────────────── */}
+        <TabsContent value="articles" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Article Queue</CardTitle>
+                  <CardDescription>All ingested articles and their analysis status.</CardDescription>
                 </div>
-              </div>
-
-              {/* Test email */}
-              <div className="flex items-center gap-3 pt-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={sendTestEmailMutation.isPending}
-                  onClick={() => sendTestEmailMutation.mutate()}
+                  onClick={() => refetchArticles()}
+                  data-testid="button-refresh-articles"
                 >
-                  {sendTestEmailMutation.isPending ? (
-                    <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-1.5" />
-                  )}
-                  Send test email
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Sends a sample alert to verify your SMTP configuration.
-                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Filters row */}
+              <div className="flex flex-wrap gap-2">
+                <Select value={selectedVendorFilter} onValueChange={setSelectedVendorFilter}>
+                  <SelectTrigger className="w-40 h-8 text-xs" data-testid="select-vendor-filter">
+                    <SelectValue placeholder="All Vendors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Vendors</SelectItem>
+                    {vendors?.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedImpactFilter} onValueChange={setSelectedImpactFilter}>
+                  <SelectTrigger className="w-36 h-8 text-xs" data-testid="select-impact-filter">
+                    <SelectValue placeholder="All Impacts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Impacts</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="LOW">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
+                  <SelectTrigger className="w-36 h-8 text-xs" data-testid="select-status-filter">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="analyzed">Analyzed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {displayedArticles.length > 0 && (
+                  <span className="text-xs text-muted-foreground self-center ml-auto">
+                    {displayedArticles.length} article{displayedArticles.length !== 1 ? "s" : ""}
+                  </span>
+                )}
               </div>
 
-              {!(alertSettings?.emailAlertsEnabled ?? true) && (
-                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                  <BellOff className="h-4 w-4 shrink-0" />
-                  Email alerts are currently disabled globally.
+              {/* Scrollable table */}
+              {articlesLoading ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">Loading articles…</div>
+              ) : displayedArticles.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  No articles found. Add newsroom URLs to vendors and run a scrape.
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="overflow-y-auto max-h-[480px]">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead className="w-20">Impact</TableHead>
+                          <TableHead className="w-36">Category</TableHead>
+                          <TableHead className="w-24">Published</TableHead>
+                          <TableHead className="w-16 text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {displayedArticles.map((article) => (
+                          <TableRow key={article.id} data-testid={`row-article-${article.id}`}>
+                            <TableCell>
+                              <div className="font-medium text-sm line-clamp-1" data-testid={`text-title-${article.id}`}>
+                                {article.title}
+                              </div>
+                              {article.keyTakeaway && (
+                                <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                  {article.keyTakeaway}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>{getImpactBadge(article.impactLabel)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground" data-testid={`text-category-${article.id}`}>
+                              {article.category || "—"}
+                            </TableCell>
+                            <TableCell className="text-xs" data-testid={`text-published-${article.id}`}>
+                              {article.publishedAt
+                                ? new Date(article.publishedAt).toLocaleDateString()
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => window.open(article.url, "_blank")}
+                                  data-testid={`button-view-${article.id}`}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      data-testid={`button-delete-${article.id}`}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Article</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure? This cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteArticleMutation.mutate(article.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Settings tab ─────────────────────────────────────── */}
+        <TabsContent value="settings" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Newsroom URL Alert Emails
+              </CardTitle>
+              <CardDescription>
+                When a vendor newsroom URL goes unreachable, an email alert is sent.
+                Configure SMTP via <code className="text-xs">SMTP_HOST</code>, <code className="text-xs">SMTP_USER</code>,
+                and <code className="text-xs">SMTP_PASS</code> environment variables.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {alertSettingsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                      <p className="font-medium text-sm">Enable email alerts</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Send email when any newsroom URL changes from reachable to unreachable.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={alertSettings?.emailAlertsEnabled ?? true}
+                      disabled={updateAlertSettingsMutation.isPending}
+                      onCheckedChange={(checked) =>
+                        updateAlertSettingsMutation.mutate({ emailAlertsEnabled: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient-emails">
+                      Recipient emails
+                      <span className="ml-1 text-xs text-muted-foreground font-normal">
+                        (comma-separated; leave blank to use all admin account emails)
+                      </span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="recipient-emails"
+                        placeholder="alice@example.com, bob@example.com"
+                        value={recipientEmailDraft !== "" ? recipientEmailDraft : (alertSettings?.recipientEmails ?? "")}
+                        onChange={(e) => setRecipientEmailDraft(e.target.value)}
+                      />
+                      <Button
+                        variant="secondary"
+                        disabled={updateAlertSettingsMutation.isPending}
+                        onClick={() => {
+                          updateAlertSettingsMutation.mutate({
+                            recipientEmails: recipientEmailDraft.trim() || null,
+                          });
+                          setRecipientEmailDraft("");
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={sendTestEmailMutation.isPending}
+                      onClick={() => sendTestEmailMutation.mutate()}
+                    >
+                      {sendTestEmailMutation.isPending ? (
+                        <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-1.5" />
+                      )}
+                      Send test email
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Sends a sample alert to verify your SMTP configuration.
+                    </p>
+                  </div>
+
+                  {!(alertSettings?.emailAlertsEnabled ?? true) && (
+                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                      <BellOff className="h-4 w-4 shrink-0" />
+                      Email alerts are currently disabled globally.
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* ── Scrape History Dialog ─────────────────────────────── */}
       <Dialog
@@ -839,9 +860,7 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
                       <div className="flex items-center gap-2">
                         <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
                         <span className="text-sm text-muted-foreground">
-                          {log.fetchedAt
-                            ? new Date(log.fetchedAt).toLocaleString()
-                            : "—"}
+                          {log.fetchedAt ? new Date(log.fetchedAt).toLocaleString() : "—"}
                         </span>
                       </div>
                       {durationSec && (
