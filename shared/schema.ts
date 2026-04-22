@@ -80,6 +80,7 @@ export const vendors = pgTable("vendors", {
   name: text("name").notNull(),
   description: text("description"),
   website: text("website"),
+  newsroomUrl: text("newsroom_url"), // Vendor newsroom page for scraping
   revenue: decimal("revenue", { precision: 15, scale: 2 }),
   product: text("product"), // Product being evaluated for this vendor
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
@@ -200,7 +201,7 @@ export const newsSources = pgTable("news_sources", {
 // News Articles - Stored articles with impact scoring
 export const newsArticles = pgTable("news_articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sourceId: varchar("source_id").notNull().references(() => newsSources.id, { onDelete: "cascade" }),
+  sourceId: varchar("source_id").references(() => newsSources.id, { onDelete: "set null" }),
   vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
   marketIds: text("market_ids").array(), // Array of market IDs
   
@@ -216,11 +217,12 @@ export const newsArticles = pgTable("news_articles", {
   publishedAt: timestamp("published_at"),
   language: text("language").default("en"),
   
-  // Impact scoring
-  impactLabel: text("impact_label"), // 'high', 'medium', 'low'
-  impactScore: integer("impact_score"), // 0-100
-  impactConfidence: decimal("impact_confidence", { precision: 3, scale: 2 }), // 0-1
-  impactReasons: text("impact_reasons").array(), // Matched phrases/rules
+  // Impact & analysis (storagenews.ai approach)
+  impactLabel: text("impact_label"), // 'HIGH', 'MEDIUM', 'LOW'
+  category: text("category"), // 'Product Announcement', 'M&A', 'Financial Results', etc.
+  opinion: text("opinion"), // Full editorial analysis
+  vendorContext: text("vendor_context"), // Competitive context paragraphs
+  keyTakeaway: text("key_takeaway"), // One-sentence actionable insight
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

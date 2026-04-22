@@ -7,8 +7,8 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
 import { newsStorage } from "./news/storage";
-import { runIngestion } from "./news/ingestion/runner";
-import { getRulesAsJSON } from "./news/impact/rules";
+import { scrapeAllVendors, scrapeSingleVendor } from "./news/ingestion/scraper";
+import { analyzeAllPending, analyzeSingleArticle } from "./news/impact/analyzer";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
 import path from 'path';
@@ -2157,8 +2157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (source_id) filters.sourceId = source_id as string;
       if (vendor_id) filters.vendorId = vendor_id as string;
       if (market) filters.marketIds = [market as string];
-      if (impact) filters.impactLabel = (impact as string).toLowerCase();
-      if (min_score) filters.minScore = parseInt(min_score as string);
+      if (impact) filters.impactLabel = (impact as string).toUpperCase();
       if (since) filters.since = new Date(since as string);
       if (until) filters.until = new Date(until as string);
       
@@ -2197,90 +2196,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ==================== NEWS INGESTION API ====================
   
-  // POST trigger manual ingestion
+  // POST trigger manual scrape (all vendors or single vendor)
   app.post("/api/news/ingest/run", requireAdmin, async (req, res) => {
     try {
-      const { source_id, market, limit } = req.query;
-      
-      const options: any = {};
-      if (source_id) options.sourceId = source_id as string;
-      if (market) options.marketId = market as string;
-      if (limit) options.limit = parseInt(limit as string);
-      
-      // Run ingestion asynchronously
-      const results = await runIngestion(options);
-      
-      res.json({
-        success: true,
-        results
-      });
+      const { vendor_id } = req.query;
+
+      if (vendor_id) {
+        const result = await scrapeSingleVendor(vendor_id as string);
+        res.json({ success: true, results: [result] });
+      } else {
+        const results = await scrapeAllVendors();
+        res.json({ success: true, results });
+      }
     } catch (error) {
-      console.error("Error running news ingestion:", error);
-      res.status(500).json({ error: "Failed to run news ingestion" });
+      console.error("Error running news scrape:", error);
+      res.status(500).json({ error: "Failed to run news scrape" });
     }
   });
-  
-  // POST re-score articles with AI
-  app.post("/api/news/rescore", requireAdmin, async (req, res) => {
+
+  // POST analyze pending articles with AI
+  app.post("/api/news/analyze", requireAdmin, async (req, res) => {
     try {
-      const { article_ids } = req.body;
-      
-      if (!article_ids || !Array.isArray(article_ids)) {
-        return res.status(400).json({ error: "article_ids array required" });
-      }
+      const { article_ids, batch_size } = req.body;
 
-      const { scoreImpactWithAI } = await import('./news/impact/ai-scorer');
-      const rescored: any[] = [];
-
-      for (const articleId of article_ids) {
-        try {
-          const article = await newsStorage.getArticleById(articleId);
-          if (!article) continue;
-
-          // Re-score with AI
-          const impact = await scoreImpactWithAI(
-            article.title,
-            article.content || article.summary || ''
-          );
-
-          // Update article
-          await newsStorage.updateArticle(articleId, {
-            impactLabel: impact.label,
-            impactScore: impact.score,
-            impactConfidence: impact.confidence.toString(),
-            impactReasons: impact.reasons
-          });
-
-          rescored.push({
-            id: articleId,
-            title: article.title,
-            oldLabel: article.impactLabel,
-            newLabel: impact.label,
-            oldScore: article.impactScore,
-            newScore: impact.score
-          });
-
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (error) {
-          console.error(`Error rescoring article ${articleId}:`, error);
+      if (article_ids && Array.isArray(article_ids)) {
+        const results = [];
+        for (const articleId of article_ids) {
+          try {
+            const analysis = await analyzeSingleArticle(articleId);
+            results.push({ id: articleId, ...analysis });
+          } catch (err: any) {
+            results.push({ id: articleId, error: err.message });
+          }
         }
+        res.json({ success: true, analyzed: results.length, details: results });
+      } else {
+        const limit = batch_size || 20;
+        const { analyzed, results } = await analyzeAllPending(limit);
+        res.json({ success: true, analyzed, details: results });
       }
-
-      res.json({
-        success: true,
-        rescored: rescored.length,
-        details: rescored
-      });
     } catch (error) {
-      console.error("Error rescoring articles:", error);
-      res.status(500).json({ error: "Failed to rescore articles" });
+      console.error("Error analyzing articles:", error);
+      res.status(500).json({ error: "Failed to analyze articles" });
     }
-  });
-
-  // GET ingestion impact rules
-  app.get("/api/news/impact/rules", requireAuth, (_req, res) => {
-    res.json(getRulesAsJSON());
   });
   
   // ==================== NEWS METRICS API ====================

@@ -48,6 +48,7 @@ export default function VendorManagement() {
       name: "",
       description: "",
       website: "",
+      newsroomUrl: "",
       revenue: undefined,
       product: "",
       marketId: "",
@@ -288,6 +289,7 @@ export default function VendorManagement() {
       name: vendor.name,
       description: vendor.description || "",
       website: vendor.website || "",
+      newsroomUrl: vendor.newsroomUrl || "",
       revenue: vendor.revenue || "",
       product: vendor.product || "",
       marketId: vendor.marketId,
@@ -300,6 +302,7 @@ export default function VendorManagement() {
       name: "",
       description: "",
       website: "",
+      newsroomUrl: "",
       revenue: "",
       product: "",
       marketId: "",
@@ -511,6 +514,20 @@ export default function VendorManagement() {
                           <FormLabel>Website</FormLabel>
                           <FormControl>
                             <Input placeholder="https://example.com" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="newsroomUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Newsroom URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://vendor.com/newsroom" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

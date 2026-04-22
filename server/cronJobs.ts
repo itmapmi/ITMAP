@@ -1,5 +1,6 @@
 import * as cron from 'node-cron';
-import { runIngestion } from './news/ingestion/runner';
+import { scrapeAllVendors } from './news/ingestion/scraper';
+import { analyzeAllPending } from './news/impact/analyzer';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -70,16 +71,16 @@ export class CronJobManager {
 
     this.jobs.set('newsCleanup', newsCleanupJob);
 
-    // Daily news ingestion at 7:00 AM UTC
+    // Daily news scraping at 7:00 AM UTC
     const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
-      console.log('Starting daily news ingestion...');
+      console.log('[Cron] Starting daily vendor newsroom scrape...');
       try {
-        const results = await runIngestion();
-        const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
-        console.log(`Daily news ingestion completed: ${totalNew} new articles from ${results.length} sources`);
+        const results = await scrapeAllVendors();
+        const totalNew = results.reduce((sum, r) => sum + r.newCount, 0);
+        console.log(`[Cron] Scrape done: ${totalNew} new articles across ${results.length} vendors`);
         this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
       } catch (error) {
-        console.error('Error in daily news ingestion:', error);
+        console.error('[Cron] Error in daily scrape:', error);
         this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
       }
     }, {
@@ -87,6 +88,23 @@ export class CronJobManager {
     });
 
     this.jobs.set('newsIngestion', newsIngestionJob);
+
+    // Daily news analysis at 8:00 AM UTC (runs after scraping)
+    const newsAnalysisJob = cron.schedule('0 8 * * *', async () => {
+      console.log('[Cron] Starting daily news analysis...');
+      try {
+        const { analyzed } = await analyzeAllPending(50);
+        console.log(`[Cron] Analysis done: ${analyzed} articles analyzed`);
+        this.lastRun.set('newsAnalysis', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in daily analysis:', error);
+        this.lastRun.set('newsAnalysis', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('newsAnalysis', newsAnalysisJob);
 
     // TEST JOB: Runs every 2 minutes to verify cron is working
     // Remove this after confirming cron works in production
@@ -176,8 +194,14 @@ export class CronJobManager {
     // Return static status for the jobs we know exist
     status['newsIngestion'] = {
       running: this.jobs.has('newsIngestion'),
-      nextRun: 'Daily at 7:00 AM UTC',
+      nextRun: 'Daily at 7:00 AM UTC (scrape)',
       lastRun: this.lastRun.get('newsIngestion')
+    };
+
+    status['newsAnalysis'] = {
+      running: this.jobs.has('newsAnalysis'),
+      nextRun: 'Daily at 8:00 AM UTC (analyze)',
+      lastRun: this.lastRun.get('newsAnalysis')
     };
     
     status['weeklyBackup'] = {
@@ -220,17 +244,24 @@ export class CronJobManager {
   }
 
   /**
-   * Manually trigger news ingestion
+   * Manually trigger news scraping (and then analysis)
    */
-  public async triggerNewsIngestion(): Promise<void> {
-    console.log('Manually triggering news ingestion...');
+  public async triggerNewsIngestion(): Promise<{ scrapeResults: any[]; analyzed: number }> {
+    console.log('[Cron] Manually triggering news scrape...');
     try {
-      const results = await runIngestion();
-      const totalNew = results.reduce((sum, r) => sum + r.articlesNew, 0);
-      console.log(`Manual news ingestion completed: ${totalNew} new articles`);
+      const scrapeResults = await scrapeAllVendors();
+      const totalNew = scrapeResults.reduce((sum, r) => sum + r.newCount, 0);
+      console.log(`[Cron] Manual scrape done: ${totalNew} new articles`);
       this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
+
+      console.log('[Cron] Running analysis on pending articles...');
+      const { analyzed } = await analyzeAllPending(50);
+      console.log(`[Cron] Manual analysis done: ${analyzed} articles analyzed`);
+      this.lastRun.set('newsAnalysis', { timestamp: new Date(), status: 'success' });
+
+      return { scrapeResults, analyzed };
     } catch (error) {
-      console.error('Error in manual news ingestion:', error);
+      console.error('[Cron] Error in manual news ingestion:', error);
       this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
       throw error;
     }
