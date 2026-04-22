@@ -74,10 +74,10 @@ type AnalyzeResponse = {
 };
 
 interface NewsAdminProps {
-  onNavigateToVendors?: () => void;
+  onNavigateToVendor?: (vendorId: string, marketId: string) => void;
 }
 
-export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
+export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
   const { toast } = useToast();
 
   const [scrapeResults, setScrapeResults] = useState<ScrapeResult[] | null>(null);
@@ -394,7 +394,7 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={onNavigateToVendors}
+                      onClick={() => onNavigateToVendor?.(v.id, v.marketId)}
                       data-testid={`button-edit-vendor-${v.id}`}
                     >
                       <Pencil className="h-3 w-3 mr-1" />

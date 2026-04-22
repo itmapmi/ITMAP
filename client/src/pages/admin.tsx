@@ -20,6 +20,7 @@ import { FadeInSection } from "@/components/ui/animated-card";
 export default function Admin() {
   const [selectedMarket, setSelectedMarket] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("market-management");
+  const [pendingEditVendor, setPendingEditVendor] = useState<{ id: string; marketId: string } | null>(null);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -84,7 +85,10 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="vendor-management" className="mt-6">
-            <VendorManagement />
+            <VendorManagement
+              initialEditVendor={pendingEditVendor}
+              onInitialEditConsumed={() => setPendingEditVendor(null)}
+            />
           </TabsContent>
 
           <TabsContent value="new-players" className="mt-6">
@@ -92,7 +96,12 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="news" className="mt-6">
-            <NewsAdmin onNavigateToVendors={() => setActiveTab("vendor-management")} />
+            <NewsAdmin
+              onNavigateToVendor={(vendorId, marketId) => {
+                setPendingEditVendor({ id: vendorId, marketId });
+                setActiveTab("vendor-management");
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="criteria-management" className="mt-6">

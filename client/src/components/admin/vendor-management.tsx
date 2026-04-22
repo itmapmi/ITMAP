@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,10 +30,16 @@ interface HealthCheckResponse {
   lastCheckedAt: string | null;
 }
 
-export default function VendorManagement() {
+interface VendorManagementProps {
+  initialEditVendor?: { id: string; marketId: string } | null;
+  onInitialEditConsumed?: () => void;
+}
+
+export default function VendorManagement({ initialEditVendor, onInitialEditConsumed }: VendorManagementProps = {}) {
   const { toast } = useToast();
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [pendingAutoEdit, setPendingAutoEdit] = useState<{ id: string; marketId: string } | null>(null);
   const [vendorScores, setVendorScores] = useState<{ [key: string]: number }>({});
   const [vendorNotes, setVendorNotes] = useState<{ [key: string]: string }>({});
 
@@ -336,6 +342,43 @@ export default function VendorManagement() {
     }
   };
 
+  useEffect(() => {
+    if (initialEditVendor) {
+      setSelectedMarket(initialEditVendor.marketId);
+      setPendingAutoEdit(initialEditVendor);
+      onInitialEditConsumed?.();
+    }
+  }, [initialEditVendor, onInitialEditConsumed]);
+
+  useEffect(() => {
+    if (pendingAutoEdit && vendors) {
+      const vendor = vendors.find((v) => v.id === pendingAutoEdit.id);
+      if (vendor) {
+        setEditingVendor(vendor);
+        vendorForm.reset({
+          name: vendor.name,
+          description: vendor.description || "",
+          website: vendor.website || "",
+          newsroomUrl: vendor.newsroomUrl || "",
+          revenue: vendor.revenue || "",
+          product: vendor.product || "",
+          marketId: vendor.marketId,
+        });
+        setPendingAutoEdit(null);
+        setTimeout(() => {
+          document.getElementById("vendor-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      } else if (vendors.length > 0) {
+        setPendingAutoEdit(null);
+        toast({
+          title: "Vendor not found",
+          description: "Could not locate the vendor in this market. Please edit it manually.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [vendors, pendingAutoEdit]);
+
   const handleEditVendor = (vendor: Vendor) => {
     setEditingVendor(vendor);
     vendorForm.reset({
@@ -592,7 +635,7 @@ export default function VendorManagement() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add Vendor Form */}
           <div className="lg:col-span-1">
-            <Card>
+            <Card id="vendor-edit-form">
               <CardHeader>
                 <CardTitle>
                   {editingVendor ? "Edit Vendor" : "Add New Vendor"}
