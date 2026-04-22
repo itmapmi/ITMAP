@@ -2232,6 +2232,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET latest fetch log per vendor
+  app.get("/api/news/fetch-logs/latest-per-vendor", requireAuth, async (req, res) => {
+    try {
+      const logs = await newsStorage.getLatestFetchLogPerVendor();
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching latest fetch logs per vendor:", error);
+      res.status(500).json({ error: "Failed to fetch latest fetch logs" });
+    }
+  });
+
   // ==================== CHAT API ====================
   
   // POST ask a question (requires authentication)

@@ -48,7 +48,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { NewsArticle, Vendor, Market } from "@shared/schema";
+import type { NewsArticle, Vendor, Market, NewsFetchLog } from "@shared/schema";
 
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
@@ -88,6 +88,9 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
 
   const { data: vendors } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
   const { data: markets } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const { data: latestFetchLogs } = useQuery<NewsFetchLog[]>({
+    queryKey: ["/api/news/fetch-logs/latest-per-vendor"],
+  });
 
   const filterParams = new URLSearchParams();
   if (selectedVendorFilter !== "all") filterParams.append("vendor_id", selectedVendorFilter);
@@ -105,6 +108,22 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
   const vendorsWithoutUrl = vendors?.filter((v) => !v.newsroomUrl) ?? [];
 
   const marketNameById = (id: string) => markets?.find((m) => m.id === id)?.name ?? id;
+
+  const vendorFetchLog = (vendorId: string): NewsFetchLog | undefined =>
+    latestFetchLogs?.find((l) => l.sourceId === vendorId);
+
+  const formatRelativeTime = (date: string | Date | null | undefined): string => {
+    if (!date) return "Never";
+    const d = new Date(date);
+    const diff = Date.now() - d.getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   const runScrapeMutation = useMutation({
     mutationFn: async (): Promise<RunPipelineResponse> => {
@@ -224,29 +243,55 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
               <p className="text-sm text-muted-foreground">None yet.</p>
             ) : (
               <div className="border rounded-lg divide-y">
-                {vendorsWithUrl.map((v) => (
-                  <div
-                    key={v.id}
-                    className="flex items-center justify-between px-3 py-2"
-                    data-testid={`vendor-configured-${v.id}`}
-                  >
-                    <div>
-                      <span className="font-medium text-sm">{v.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {marketNameById(v.marketId)}
-                      </span>
-                    </div>
-                    <a
-                      href={v.newsroomUrl!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                {vendorsWithUrl.map((v) => {
+                  const log = vendorFetchLog(v.id);
+                  const statusVariant =
+                    !log ? "outline" :
+                    log.status === "success" ? "secondary" :
+                    log.status === "partial" ? "default" :
+                    "destructive";
+                  const statusLabel =
+                    !log ? "Never scraped" :
+                    log.status === "success" ? "Success" :
+                    log.status === "partial" ? "Partial" :
+                    "Failed";
+                  return (
+                    <div
+                      key={v.id}
+                      className="flex items-center justify-between px-3 py-2 gap-2"
+                      data-testid={`vendor-configured-${v.id}`}
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      {v.newsroomUrl}
-                    </a>
-                  </div>
-                ))}
+                      <div className="min-w-0">
+                        <span className="font-medium text-sm">{v.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {marketNameById(v.marketId)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={statusVariant} className="text-xs">
+                            {statusLabel}
+                          </Badge>
+                          <span
+                            className="text-xs text-muted-foreground"
+                            title={log?.fetchedAt ? new Date(log.fetchedAt).toLocaleString() : undefined}
+                          >
+                            {formatRelativeTime(log?.fetchedAt)}
+                          </span>
+                        </div>
+                        <a
+                          href={v.newsroomUrl!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          {v.newsroomUrl}
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

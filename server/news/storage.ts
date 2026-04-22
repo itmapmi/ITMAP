@@ -154,6 +154,30 @@ export class NewsStorage {
       .limit(limit);
   }
 
+  async getLatestFetchLogPerVendor(): Promise<NewsFetchLog[]> {
+    const subquery = db
+      .select({
+        sourceId: newsFetchLogs.sourceId,
+        maxFetchedAt: sql<string>`max(${newsFetchLogs.fetchedAt})`.as("max_fetched_at"),
+      })
+      .from(newsFetchLogs)
+      .where(sql`${newsFetchLogs.sourceId} is not null`)
+      .groupBy(newsFetchLogs.sourceId)
+      .as("latest");
+
+    return db
+      .select({ log: newsFetchLogs })
+      .from(newsFetchLogs)
+      .innerJoin(
+        subquery,
+        and(
+          eq(newsFetchLogs.sourceId, subquery.sourceId),
+          eq(newsFetchLogs.fetchedAt, sql`${subquery.maxFetchedAt}::timestamptz`)
+        )
+      )
+      .then((rows) => rows.map((r) => r.log));
+  }
+
   // ==================== Metrics ====================
 
   async getMetrics(): Promise<{

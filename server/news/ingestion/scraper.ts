@@ -375,6 +375,7 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
     const v: VendorRecord = { id: vendor.id, name: vendor.name, newsroomUrl: vendor.newsroomUrl, marketId: vendor.marketId };
 
     console.log(`[Scraper] Processing ${v.name} (${results.length + 1}/${allVendors.length})`);
+    const startTime = Date.now();
     try {
       const scrapePromise = scrapeVendorNewsroom(v);
       const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Vendor scrape timeout (90s)')), vendorTimeout));
@@ -388,9 +389,29 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
 
       results.push({ vendor: v.name, total: result.articles.length, newCount, error: result.error });
       console.log(`[Scraper] ${v.name}: ${result.articles.length} found, ${newCount} new`);
+
+      await newsStorage.createFetchLog({
+        sourceId: v.id,
+        status: result.error ? 'partial' : 'success',
+        articlesFound: result.articles.length,
+        articlesNew: newCount,
+        articlesSkipped: result.articles.length - newCount,
+        errorMessage: result.error ?? null,
+        duration: Date.now() - startTime,
+      });
     } catch (err: any) {
       console.error(`[Scraper] ${v.name} failed: ${err.message}`);
       results.push({ vendor: v.name, total: 0, newCount: 0, error: err.message });
+
+      await newsStorage.createFetchLog({
+        sourceId: v.id,
+        status: 'failed',
+        articlesFound: 0,
+        articlesNew: 0,
+        articlesSkipped: 0,
+        errorMessage: err.message,
+        duration: Date.now() - startTime,
+      });
     }
   }
 
@@ -404,13 +425,38 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
   if (!vendor.newsroomUrl) throw new Error(`Vendor ${vendor.name} has no newsroom URL configured`);
 
   const v: VendorRecord = { id: vendor.id, name: vendor.name, newsroomUrl: vendor.newsroomUrl, marketId: vendor.marketId };
-  const result = await scrapeVendorNewsroom(v);
+  const startTime = Date.now();
 
-  let newCount = 0;
-  for (const article of result.articles) {
-    const saved = await saveArticle(article, v);
-    if (saved) newCount++;
+  try {
+    const result = await scrapeVendorNewsroom(v);
+
+    let newCount = 0;
+    for (const article of result.articles) {
+      const saved = await saveArticle(article, v);
+      if (saved) newCount++;
+    }
+
+    await newsStorage.createFetchLog({
+      sourceId: v.id,
+      status: result.error ? 'partial' : 'success',
+      articlesFound: result.articles.length,
+      articlesNew: newCount,
+      articlesSkipped: result.articles.length - newCount,
+      errorMessage: result.error ?? null,
+      duration: Date.now() - startTime,
+    });
+
+    return { vendor: v.name, total: result.articles.length, newCount, error: result.error };
+  } catch (err: any) {
+    await newsStorage.createFetchLog({
+      sourceId: v.id,
+      status: 'failed',
+      articlesFound: 0,
+      articlesNew: 0,
+      articlesSkipped: 0,
+      errorMessage: err.message,
+      duration: Date.now() - startTime,
+    });
+    throw err;
   }
-
-  return { vendor: v.name, total: result.articles.length, newCount, error: result.error };
 }
