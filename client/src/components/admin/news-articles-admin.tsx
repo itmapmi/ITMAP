@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -74,14 +74,19 @@ export function NewsArticlesAdmin() {
 
   // Run full news pipeline (scrape + analyze) mutation
   const runPipelineMutation = useMutation({
-    mutationFn: async (vendorId?: string) => {
+    mutationFn: async (vendorId?: string): Promise<{ analyzed: number; results: Array<{ vendorName: string; newCount: number }> }> => {
       const url = vendorId
         ? `/api/news/ingest/run?vendor_id=${vendorId}`
         : '/api/news/ingest/run';
-      return await apiRequest(url, 'POST');
+      return await apiRequestJson(url, 'POST');
     },
-    onSuccess: (data: { analyzed: number; results: Array<{ vendorName: string; newCount: number }> }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/news'] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/news');
+        }
+      });
       const totalNew = data.results?.reduce((s, r) => s + r.newCount, 0) ?? 0;
       toast({
         title: "Pipeline complete",

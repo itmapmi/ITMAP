@@ -2069,7 +2069,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         since,
         until,
         impact,
-        min_score,
         limit = '20',
         offset = '0'
       } = req.query;
