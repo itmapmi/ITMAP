@@ -351,6 +351,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Updated vendor:", vendor);
       
       res.json(vendor);
+
+      // If the newsroom URL was changed, re-check it in the background so the
+      // health badge in the admin panel reflects the new URL immediately.
+      if (vendorData.newsroomUrl !== undefined) {
+        import("./news/ingestion/urlHealthCheck")
+          .then(({ checkSingleNewsroomUrl }) => checkSingleNewsroomUrl(vendor.id))
+          .catch(err => console.error("[URLHealthCheck] Post-update recheck failed:", err));
+      }
     } catch (error) {
       console.error("Error updating vendor:", error);
       if (error instanceof Error) {
@@ -1716,6 +1724,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error stopping cron job:", error);
       res.status(500).json({ error: "Failed to stop cron job" });
+    }
+  });
+
+  // Newsroom URL health check
+  app.get("/api/admin/newsroom-url-health", requireAdmin, async (_req, res) => {
+    try {
+      const { getHealthCheckResults } = await import("./news/ingestion/urlHealthCheck");
+      res.json(getHealthCheckResults());
+    } catch (error) {
+      console.error("Error getting newsroom URL health results:", error);
+      res.status(500).json({ error: "Failed to get health check results" });
+    }
+  });
+
+  app.post("/api/admin/newsroom-url-health/run", requireAdmin, async (_req, res) => {
+    try {
+      const { checkAllNewsroomUrls } = await import("./news/ingestion/urlHealthCheck");
+      const results = await checkAllNewsroomUrls();
+      res.json({ results, lastCheckedAt: new Date() });
+    } catch (error) {
+      console.error("Error running newsroom URL health check:", error);
+      res.status(500).json({ error: "Failed to run health check" });
     }
   });
 

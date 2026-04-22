@@ -1,6 +1,7 @@
 import * as cron from 'node-cron';
 import { scrapeAllVendors, scrapeSingleVendor, type ScrapeResult } from './news/ingestion/scraper';
 import { analyzeAllPending } from './news/impact/analyzer';
+import { checkAllNewsroomUrls } from './news/ingestion/urlHealthCheck';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -70,6 +71,27 @@ export class CronJobManager {
     });
 
     this.jobs.set('newsCleanup', newsCleanupJob);
+
+    // Daily newsroom URL health check at 6:30 AM UTC — runs before the scrape
+    const newsroomHealthCheckJob = cron.schedule('30 6 * * *', async () => {
+      console.log('[Cron] Starting daily newsroom URL health check...');
+      try {
+        const results = await checkAllNewsroomUrls();
+        const broken = results.filter(r => r.status === 'broken');
+        if (broken.length > 0) {
+          console.warn(`[Cron] ${broken.length} newsroom URL(s) are unreachable: ${broken.map(r => r.vendorName).join(', ')}`);
+        }
+        console.log(`[Cron] Newsroom URL health check done: ${results.length} checked, ${broken.length} broken`);
+        this.lastRun.set('newsroomHealthCheck', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in newsroom URL health check:', error);
+        this.lastRun.set('newsroomHealthCheck', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('newsroomHealthCheck', newsroomHealthCheckJob);
 
     // Daily news pipeline at 7:00 AM UTC — scrape then analyze in sequence
     const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
@@ -214,6 +236,12 @@ export class CronJobManager {
       running: this.jobs.has('newsCleanup'),
       nextRun: 'Weekly on Sunday at 4:00 AM UTC',
       lastRun: this.lastRun.get('newsCleanup')
+    };
+
+    status['newsroomHealthCheck'] = {
+      running: this.jobs.has('newsroomHealthCheck'),
+      nextRun: 'Daily at 6:30 AM UTC',
+      lastRun: this.lastRun.get('newsroomHealthCheck')
     };
     
     status['testJob'] = {

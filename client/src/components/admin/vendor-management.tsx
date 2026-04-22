@@ -11,9 +11,24 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, Building2, Save, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
+
+interface UrlHealthResult {
+  vendorId: string;
+  vendorName: string;
+  url: string;
+  status: 'ok' | 'broken';
+  statusCode?: number;
+  lastChecked: string;
+  error?: string;
+}
+
+interface HealthCheckResponse {
+  results: UrlHealthResult[];
+  lastCheckedAt: string | null;
+}
 
 export default function VendorManagement() {
   const { toast } = useToast();
@@ -39,6 +54,39 @@ export default function VendorManagement() {
     queryKey: ["/api/markets", selectedMarket, "scores"],
     enabled: !!selectedMarket,
   });
+
+  const { data: healthData, isLoading: healthLoading } = useQuery<HealthCheckResponse>({
+    queryKey: ["/api/admin/newsroom-url-health"],
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const runHealthCheckMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/newsroom-url-health/run", "POST", {});
+      return response.json() as Promise<HealthCheckResponse>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/admin/newsroom-url-health"], data);
+      const broken = data.results.filter(r => r.status === 'broken');
+      toast({
+        title: broken.length > 0 ? `${broken.length} URL(s) unreachable` : "All URLs reachable",
+        description: broken.length > 0
+          ? `Broken: ${broken.map(r => r.vendorName).join(', ')}`
+          : `Checked ${data.results.length} newsroom URL(s) successfully.`,
+        variant: broken.length > 0 ? "destructive" : "default",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to run URL health check",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getUrlHealth = (vendorId: string): UrlHealthResult | undefined =>
+    healthData?.results.find(r => r.vendorId === vendorId);
 
 
 
@@ -90,6 +138,11 @@ export default function VendorManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/newsroom-url-health"] });
+      // Re-fetch health status after the server background recheck finishes (16 s covers 15 s timeout)
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/newsroom-url-health"] });
+      }, 16000);
       setEditingVendor(null);
       vendorForm.reset();
       toast({
@@ -439,6 +492,81 @@ export default function VendorManagement() {
 
   return (
     <div className="space-y-8">
+      {/* Newsroom URL Health Check */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <WifiOff className="h-5 w-5 text-muted-foreground" />
+              Newsroom URL Health
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => runHealthCheckMutation.mutate()}
+              disabled={runHealthCheckMutation.isPending}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${runHealthCheckMutation.isPending ? 'animate-spin' : ''}`} />
+              {runHealthCheckMutation.isPending ? "Checking…" : "Check All URLs"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {healthLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : !healthData || healthData.results.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No health check data yet. Click "Check All URLs" to verify all newsroom URLs are reachable.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {healthData.lastCheckedAt && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  Last checked: {new Date(healthData.lastCheckedAt).toLocaleString()}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const ok = healthData.results.filter(r => r.status === 'ok').length;
+                  const broken = healthData.results.filter(r => r.status === 'broken').length;
+                  return (
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-1 text-xs font-medium">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {ok} reachable
+                      </span>
+                      {broken > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-1 text-xs font-medium">
+                          <WifiOff className="h-3.5 w-3.5" />
+                          {broken} unreachable
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+              {healthData.results.filter(r => r.status === 'broken').length > 0 && (
+                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-3">
+                  <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Unreachable URLs</p>
+                  <ul className="space-y-1">
+                    {healthData.results.filter(r => r.status === 'broken').map(r => (
+                      <li key={r.vendorId} className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                        <span className="font-medium">{r.vendorName}</span>
+                        <span className="text-red-400 dark:text-red-500 truncate max-w-xs">{r.url}</span>
+                        {r.error && <span className="text-red-400">({r.error})</span>}
+                        {r.statusCode && <span className="text-red-400">({r.statusCode})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Market Selection */}
       <Card>
         <CardHeader>
@@ -652,7 +780,29 @@ export default function VendorManagement() {
                           <TableRow key={vendor.id}>
                             <TableCell className="font-medium">
                               <div>
-                                <div>{vendor.name}</div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{vendor.name}</span>
+                                  {(() => {
+                                    const health = getUrlHealth(vendor.id);
+                                    if (!health) return null;
+                                    if (health.status === 'broken') return (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium"
+                                        title={health.error ?? (health.statusCode ? `HTTP ${health.statusCode}` : undefined)}
+                                      >
+                                        <WifiOff className="h-3 w-3" />
+                                        URL unreachable
+                                      </span>
+                                    );
+                                    if (health.status === 'ok') return (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 text-xs font-medium">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        OK
+                                      </span>
+                                    );
+                                    return null;
+                                  })()}
+                                </div>
                                 <div className="flex space-x-2 mt-1">
                                   <Button 
                                     variant="ghost" 
@@ -792,7 +942,29 @@ export default function VendorManagement() {
                           <TableRow key={vendor.id}>
                             <TableCell className="font-medium">
                               <div>
-                                <div>{vendor.name}</div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{vendor.name}</span>
+                                  {(() => {
+                                    const health = getUrlHealth(vendor.id);
+                                    if (!health) return null;
+                                    if (health.status === 'broken') return (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium"
+                                        title={health.error ?? (health.statusCode ? `HTTP ${health.statusCode}` : undefined)}
+                                      >
+                                        <WifiOff className="h-3 w-3" />
+                                        URL unreachable
+                                      </span>
+                                    );
+                                    if (health.status === 'ok') return (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 text-xs font-medium">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        OK
+                                      </span>
+                                    );
+                                    return null;
+                                  })()}
+                                </div>
                                 <div className="flex space-x-2 mt-1">
                                   <Button 
                                     variant="ghost" 
