@@ -71,85 +71,85 @@ function extractArticleText(html: string): string {
 
 function getCategoryPrompt(category: ArticleCategory): string {
   const prompts: Record<ArticleCategory, string> = {
-    'Product Announcement': `=== PRODUCT LAUNCH / PRODUCT UPDATE ANALYSIS ===
+    'Product Announcement': `Write 4-5 plain paragraphs of editorial analysis for this product announcement. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE SIGNAL: What is actually new here, stripped of marketing? Lead with the single most important technical or business fact. If this is incremental dressed up as transformative, say so plainly.
+First paragraph: State what is actually new, stripped of marketing. Lead with the single most important technical or business fact. If this is incremental dressed up as transformative, say so plainly.
 
-P2 — TECHNICAL ASSESSMENT: Evaluate the technical claims. What is the actual architecture? How does it differ from what this vendor already offered? What claims are unverified? What benchmarks or proof points are missing?
+Second paragraph: Evaluate the technical claims — the actual architecture, how it differs from what this vendor already offered, what claims are unverified, and what benchmarks or proof points are missing.
 
-P3 — COMPETITIVE LANDSCAPE: Compare this announcement against SPECIFIC named competing products on: architecture approach and technical differentiation, performance claims (apples-to-apples where possible), pricing and licensing model, deployment flexibility (on-prem, hybrid, cloud, SaaS), ecosystem breadth and integration maturity, proven scale and production track record. State which competitors are directly threatened, which are unaffected, and which may actually benefit.
+Third paragraph: Compare this announcement against specific named competing products on architecture approach, performance claims, pricing model, deployment flexibility, ecosystem breadth, and production track record. State which competitors are directly threatened, unaffected, or may actually benefit.
 
-P4 — BUYER GUIDANCE: Concrete recommendations: If you're currently evaluating this vendor — what to ask in your next briefing. If you're a customer of a competitor — whether this changes your renewal calculus. If you're mid-procurement — whether to pause, accelerate, or add this to your shortlist. Timeline: when will this be production-ready and enterprise-proven?
+Fourth paragraph: Concrete buyer guidance — what to ask in your next vendor briefing, whether this changes renewal calculus for competitor customers, and whether a buyer mid-procurement should pause, accelerate, or add this to their shortlist.
 
-P5 (if warranted) — RISKS: Execution risk, integration complexity, maturity concerns, dependency risks, or red flags.`,
+Fifth paragraph (only if warranted): Execution risk, integration complexity, maturity concerns, dependency risks, or red flags.`,
 
-    'Partnership': `=== PARTNERSHIP & ECOSYSTEM ANALYSIS ===
+    'Partnership': `Write 4-5 plain paragraphs of editorial analysis for this partnership announcement. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE SIGNAL: What does this partnership actually deliver to customers? Is this a deep technical integration, a go-to-market arrangement, a certification, or just a logo swap? Distinguish between partnerships with real engineering investment vs. press-release-only alliances.
+First paragraph: What this partnership actually delivers to customers — deep technical integration, go-to-market arrangement, certification, or just a logo swap. Distinguish real engineering investment from press-release-only alliances.
 
-P2 — PARTNERSHIP DEPTH ASSESSMENT: Evaluate: What specific technical integration exists or is planned? Is this exclusive or does the partner work with competitors? Who benefits more — the vendor or the partner? What customer problem does this actually solve? What's the commercial model (resell, co-sell, OEM, referral)?
+Second paragraph: Evaluate the partnership depth — what specific technical integration exists or is planned, whether it is exclusive, who benefits more, what customer problem it actually solves, and the commercial model.
 
-P3 — COMPETITIVE ECOSYSTEM MAP: Map out: What equivalent partnerships do competitors have? Does this close a gap or create new differentiation? Are there ecosystem lock-in or switching cost implications? Reference specific competitor partnerships.
+Third paragraph: Map the competitive ecosystem — what equivalent partnerships competitors have, whether this closes a gap or creates differentiation, and any ecosystem lock-in or switching cost implications with specific competitor partnerships named.
 
-P4 — BUYER IMPACT: For customers of this vendor and the partner: What new capabilities or workflows does this enable? What existing integrations might be affected? Is there a migration or upgrade required? How does this affect multi-vendor environments?
+Fourth paragraph: For customers of this vendor and the partner — what new capabilities or workflows this enables, what existing integrations may be affected, and how this affects multi-vendor environments.
 
-P5 (if warranted) — DURABILITY: What is the track record of partnerships in this space? How often do they lead to real product integration vs. quietly fading? Reference historical examples.`,
+Fifth paragraph (only if warranted): Track record of similar partnerships in this space — how often they lead to real product integration versus quietly fading.`,
 
-    'M&A': `=== M&A ANALYSIS ===
+    'M&A': `Write 4-5 plain paragraphs of editorial analysis for this M&A announcement. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE SIGNAL: What is the acquirer buying — technology, talent, customers, or market position? Lead with the strategic logic, not the press release narrative. State the deal terms if known (price, structure, expected close date).
+First paragraph: What the acquirer is buying — technology, talent, customers, or market position. Lead with the strategic logic, not the press release narrative. Include deal terms if known.
 
-P2 — TARGET ASSESSMENT: What is the target company's actual position? Product maturity and differentiation, customer base, revenue trajectory and profitability (if known), technology that the acquirer lacks, talent and IP value, known liabilities or risks.
+Second paragraph: The target company's actual position — product maturity, customer base, revenue trajectory, technology the acquirer lacks, talent and IP value, and known liabilities or risks.
 
-P3 — STRATEGIC FIT & INTEGRATION RISK: How does this fill gaps in the acquirer's portfolio? What is the acquirer's track record integrating acquisitions? What comparable deals have competitors done? At what valuations? How did those turn out?
+Third paragraph: Strategic fit and integration risk — how this fills gaps in the acquirer's portfolio, the acquirer's track record integrating acquisitions, and comparable deals competitors have done at what valuations.
 
-P4 — COMPETITIVE IMPLICATIONS: Name every vendor affected: Who loses a potential acquisition target? Who faces a stronger combined competitor? Who might respond with their own M&A? Who benefits if the integration stumbles? How does this shift market share dynamics?
+Fourth paragraph: Competitive implications — name every vendor affected, who loses a potential acquisition target, who faces a stronger combined competitor, who might respond with their own M&A, and how market share dynamics shift.
 
-P5 — BUYER GUIDANCE: If you're a customer of the target — what to expect during transition. If you're a customer of the acquirer — what changes to your roadmap. If you're evaluating alternatives — how this changes the shortlist.`,
+Fifth paragraph: Buyer guidance — what target customers should expect during transition, what changes for acquirer customers, and how evaluators should adjust their shortlist.`,
 
-    'Financial Results': `=== FINANCIAL RESULTS ANALYSIS ===
+    'Financial Results': `Write 4-5 plain paragraphs of editorial analysis for these financial results. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE HEADLINE NUMBER IN CONTEXT: Lead with the most significant metric and immediately contextualize it. Compare to consensus estimates, prior guidance, and the vendor's own historical trajectory. State whether this is a beat, miss, or in-line, and by how much.
+First paragraph: Lead with the most significant metric and immediately contextualize it against consensus estimates, prior guidance, and the vendor's historical trajectory. State whether this is a beat, miss, or in-line and by how much.
 
-P2 — STORAGE-SPECIFIC DEEP DIVE: Focus on: Storage/data services revenue and growth rate, product mix shifts (all-flash vs. hybrid, subscription vs. perpetual, cloud vs. on-prem), demand signals mentioned on the earnings call, guidance for next quarter, any storage-specific restructuring or investments.
+Second paragraph: Storage-specific deep dive — storage and data services revenue and growth rate, product mix shifts, demand signals from the earnings call, guidance for next quarter, and any storage-specific restructuring or investments.
 
-P3 — COMPETITIVE FINANCIAL BENCHMARKING: Compare side-by-side: Revenue growth rates of direct competitors in this segment, margin trends, subscription/ARR metrics and transition progress, R&D investment levels. Use specific numbers.
+Third paragraph: Competitive financial benchmarking with specific numbers — revenue growth rates of direct competitors in this segment, margin trends, subscription and ARR metrics, and R&D investment levels side-by-side.
 
-P4 — STRATEGIC READ-THROUGH: What do these numbers tell us about: Market demand trends (AI storage, cloud repatriation, ransomware recovery, data growth), this vendor's strategic execution, customer spending patterns, pricing pressure or premium pricing power.
+Fourth paragraph: Strategic read-through — what these numbers reveal about market demand trends, this vendor's strategic execution, customer spending patterns, and pricing pressure or premium pricing power.
 
-P5 — BUYER IMPLICATIONS: Financial health as a vendor selection criterion. Are pricing changes likely based on financial pressure or strength? Is R&D investment increasing or decreasing in your product area?`,
+Fifth paragraph: Buyer implications — financial health as a vendor selection criterion, whether pricing changes are likely based on financial pressure or strength, and whether R&D investment in your product area is increasing or decreasing.`,
 
-    'Customer Success': `=== CUSTOMER WIN ANALYSIS ===
+    'Customer Success': `Write 4-5 plain paragraphs of editorial analysis for this customer win. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE SIGNAL: What makes this customer win noteworthy? Is it the scale, the vertical, the displacement of a competitor, or the use case? If this is a routine win being dressed up as news, say so.
+First paragraph: What makes this customer win noteworthy — scale, vertical, competitor displacement, or use case. If this is a routine win dressed up as news, say so directly.
 
-P2 — DEAL ANALYSIS: Assess what we can infer: What vendor/product was displaced (if known or inferable)? What was the decision criteria? What is the deployment scale? Is this a new workload or a migration? What's NOT mentioned?
+Second paragraph: Assess what can be inferred — what vendor or product was displaced, what the decision criteria were, the deployment scale, whether this is a new workload or migration, and what is notably absent from the announcement.
 
-P3 — PATTERN RECOGNITION: Is this vendor gaining traction in this vertical/segment? What comparable wins have competitors announced? Is there a trend?
+Third paragraph: Pattern recognition — whether this vendor is gaining traction in this vertical or segment, what comparable wins competitors have announced, and whether there is a meaningful trend.
 
-P4 — COMPETITIVE IMPACT: Who is losing and why? Which specific competitor likely lost this deal? What does this say about shifting buyer preferences?
+Fourth paragraph: Competitive impact — who is losing and why, which specific competitor likely lost this deal, and what this signals about shifting buyer preferences.
 
-P5 — BUYER RELEVANCE: If you're in the same industry — what does this tell you about the vendor's capability in your workload? If you're evaluating this vendor — is this reference relevant to your scale and use case?`,
+Fifth paragraph: Buyer relevance — what this tells buyers in the same industry about the vendor's capability for their workload and whether this reference is relevant to their scale and use case.`,
 
-    'Leadership Changes': `=== LEADERSHIP CHANGE ANALYSIS ===
+    'Leadership Changes': `Write 4-5 plain paragraphs of editorial analysis for this leadership change. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — THE SIGNAL: Who is arriving or departing, and why does it matter? Lead with the strategic implication, not the biography. If the departure is unexplained or sudden, note that directly.
+First paragraph: Who is arriving or departing and why it matters. Lead with the strategic implication, not the biography. If the departure is unexplained or sudden, note that directly.
 
-P2 — LEADER ASSESSMENT: For appointments: Track record at previous companies — what did they build, ship, or transform? What does their background signal about strategic direction? For departures: What was the leader's legacy and strategic direction? What initiatives may stall or pivot?
+Second paragraph: For appointments — track record at previous companies, what they built or transformed, and what their background signals about strategic direction. For departures — the leader's legacy, strategic direction, and what initiatives may stall or pivot.
 
-P3 — COMPETITIVE LEADERSHIP LANDSCAPE: What leadership changes have competitors made recently? How does this vendor's executive stability compare? Who are the equivalent leaders at competing vendors and what are they executing?
+Third paragraph: Competitive leadership landscape — what leadership changes competitors have made recently, how this vendor's executive stability compares, and who the equivalent leaders at competing vendors are and what they are executing.
 
-P4 — STRATEGIC IMPLICATIONS: What is likely to change in product roadmap, go-to-market, or culture? What is the typical timeline for a new leader to make an impact? What should customers watch for in the next 6-12 months?
+Fourth paragraph: What is likely to change in product roadmap, go-to-market, or culture, and the typical timeline for a new leader to make an impact.
 
-P5 — BUYER GUIDANCE: If you're a current customer — what to watch for in terms of product direction, support quality, or sales team changes. If you're mid-evaluation — whether to pause pending strategic clarity.`,
+Fifth paragraph: Buyer guidance — what current customers should watch for in product direction, support quality, or sales team changes, and whether buyers mid-evaluation should pause pending strategic clarity.`,
 
-    'General': `=== GENERAL ANALYSIS (keep shorter) ===
+    'General': `Write 2-3 plain paragraphs of editorial analysis. Do not use any labels, headings, or markers — just continuous prose.
 
-P1 — WHAT IT IS: Briefly state what the announcement is and whether it has any substantive value for enterprise storage decision-makers. Be direct — if this is an event sponsorship, an award, or a thought leadership piece with no news, say so.
+First paragraph: Briefly state what the announcement is and whether it has any substantive value for enterprise storage decision-makers. Be direct — if this is an event sponsorship, an award, or a thought leadership piece with no news, say so.
 
-P2 — CONTEXT IF RELEVANT: If there's any useful signal buried in the announcement (e.g., a conference keynote that previews product direction, an analyst report that confirms market share data), extract and present it.
+Second paragraph: If there is any useful signal buried in the announcement — such as a conference keynote previewing product direction or an analyst report confirming market share data — extract and present it. Otherwise state plainly that there is no actionable signal.
 
-P3 — BUYER RELEVANCE: State whether enterprise storage professionals need to pay attention to this. If not, say "This is a routine announcement with no immediate implications for enterprise storage procurement decisions."`,
+Third paragraph (only if warranted): State whether enterprise storage professionals need to pay attention to this. If not, say so plainly.`,
   };
   return prompts[category] || prompts['General'];
 }
@@ -172,93 +172,115 @@ async function analyzeArticle(
     ? `\nFULL ARTICLE TEXT:\n${articleContent}`
     : `\nSUMMARY: ${summary || 'No detailed content available — analyze based on the title and your industry knowledge.'}`;
 
-  const allCategoryPrompts = (Object.keys({
-    'Product Announcement': 1, 'Partnership': 1, 'M&A': 1,
-    'Financial Results': 1, 'Customer Success': 1, 'Leadership Changes': 1, 'General': 1,
-  }) as ArticleCategory[]).map(cat => getCategoryPrompt(cat)).join('\n\n');
+  // Step 1: classify category and impact
+  const classifyPrompt = `You are an enterprise storage analyst. Classify this article.
 
-  const prompt = `ROLE & EDITORIAL STANCE:
+ARTICLE:
+Title: ${title}
+Vendor: ${vendorName}
+Date: ${publishedDate || 'Unknown'}
+${articleSection}
 
-You are an independent enterprise storage and data infrastructure analyst. Your readers are storage architects, infrastructure VPs, IT directors, and CTOs making real procurement, partnership, and strategy decisions.
+Categories:
+- Product Announcement: new products, features, version upgrades, performance improvements
+- M&A: acquisitions, mergers, divestitures
+- Financial Results: earnings, revenue, funding rounds, IPO
+- Partnership: technology alliances, channel partnerships, OEM deals, integrations
+- Customer Success: named customer deployments, case studies, contract wins
+- Leadership Changes: C-suite appointments, board changes, VP+ departures
+- General: events, awards, analyst mentions, routine updates
 
-YOUR EDITORIAL PRINCIPLES:
-1. SKEPTICAL BY DEFAULT — Press releases are marketing. Your job is to extract what actually matters and flag what doesn't hold up.
-2. VENDOR-NEUTRAL — You have no affiliations. Praise what deserves it. Criticize what warrants it.
-3. SPECIFIC OVER VAGUE — Name vendors, products, features, numbers, and timelines. Never write "competitors in this space" when you can write specific vendor names.
-4. PRACTICAL — Every paragraph should help a reader make a decision or take an action.
-5. HONEST ABOUT UNCERTAINTY — If you can't verify a claim, say so explicitly.
+Impact:
+- HIGH: Changes competitive calculus for buyers evaluating this segment
+- MEDIUM: Noteworthy for people tracking this vendor but doesn't force re-evaluation
+- LOW: Incremental or routine
 
-NEVER USE THESE PHRASES:
-"remains to be seen", "could potentially disrupt", "in today's rapidly evolving landscape", "positions [vendor] well for the future", "a step in the right direction", "only time will tell", "game-changer", "raises the bar", "doubles down on"
+Respond with valid JSON only:
+{"category": "...", "impact_score": "HIGH" | "MEDIUM" | "LOW"}`;
+
+  let category: ArticleCategory = 'General';
+  let impactLabel: ImpactLabel = 'MEDIUM';
+
+  try {
+    const classifyCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: classifyPrompt }],
+      temperature: 0.1,
+      max_tokens: 100,
+      response_format: { type: 'json_object' },
+    });
+    const classified = JSON.parse(classifyCompletion.choices[0].message.content?.trim() || '{}');
+    if (['Product Announcement', 'M&A', 'Financial Results', 'Partnership', 'Customer Success', 'Leadership Changes', 'General'].includes(classified.category)) {
+      category = classified.category as ArticleCategory;
+    }
+    if (['HIGH', 'MEDIUM', 'LOW'].includes(classified.impact_score)) {
+      impactLabel = classified.impact_score as ImpactLabel;
+    }
+  } catch {
+    // fall through with defaults
+  }
+
+  const categoryGuidance = getCategoryPrompt(category);
+
+  const prompt = `You are an independent enterprise storage and data infrastructure analyst. Your readers are storage architects, infrastructure VPs, IT directors, and CTOs making real procurement, partnership, and strategy decisions.
+
+EDITORIAL PRINCIPLES:
+- Skeptical by default — press releases are marketing; extract what actually matters and flag what doesn't hold up
+- Vendor-neutral — no affiliations; praise what deserves it, criticize what warrants it
+- Specific over vague — name vendors, products, features, numbers, and timelines
+- Practical — every paragraph should help a reader make a decision or take action
+- Honest about uncertainty — if you can't verify a claim, say so
+
+NEVER USE: "remains to be seen", "could potentially disrupt", "in today's rapidly evolving landscape", "positions [vendor] well for the future", "a step in the right direction", "only time will tell", "game-changer", "raises the bar", "doubles down on"
+
+OUTPUT FORMAT RULES — STRICTLY ENFORCED:
+- Write in plain paragraphs only. No bullet points, no numbered lists, no headers, no bold labels, no section titles.
+- Do not prefix paragraphs with any label, number, or marker (e.g. never write "P1 —", "PARAGRAPH 1 —", "First:", or any similar prefix).
+- Each field in the JSON response must be pure prose paragraphs separated by newlines.
 
 ---
 
-ARTICLE TO ANALYZE:
+ARTICLE:
 Title: ${title}
 Vendor: ${vendorName}
 URL: ${url}
-Date Published: ${publishedDate || 'Unknown'}
+Date: ${publishedDate || 'Unknown'}
 ${articleSection}
 
 ---
 
-STEP 1 — CLASSIFY THE ARTICLE:
+ANALYSIS INSTRUCTIONS — opinion_en field:
 
-| Category               | Criteria                                                    |
-|------------------------|-------------------------------------------------------------|
-| Product Announcement   | New product line, platform, service tier, features,         |
-|                        | version upgrades, performance improvements                  |
-| M&A                    | Acquisitions, mergers, divestitures, acqui-hires            |
-| Financial Results      | Quarterly/annual earnings, revenue, funding rounds, IPO     |
-| Partnership            | Technology alliances, channel partnerships, OEM deals,      |
-|                        | certification programs, integration announcements           |
-| Customer Success       | Named customer deployments, case studies, large contract wins|
-| Leadership Changes     | C-suite appointments, board changes, VP+ departures         |
-| General                | Events, awards, analyst mentions, routine updates           |
-
-IMPACT SCORING:
-- HIGH: Changes the competitive calculus for buyers evaluating this segment.
-- MEDIUM: Noteworthy for people tracking this vendor or segment but doesn't force re-evaluation.
-- LOW: Incremental or routine.
+${categoryGuidance}
 
 ---
 
-STEP 2 — WRITE CATEGORY-SPECIFIC ANALYSIS:
+ANALYSIS INSTRUCTIONS — vendor_context field:
 
-${allCategoryPrompts}
+Write 2-4 plain paragraphs of competitive context with no labels or markers of any kind.
 
----
+Name every vendor directly affected. For each, state their current competitive position, their most recent relevant move, and how this announcement changes (or does not change) the dynamic. Use specific product names.
 
-VENDOR CONTEXT — APPLIES TO ALL CATEGORIES (2-4 paragraphs):
+Then cover where this fits in the broader market evolution and what trends are driving all vendors in this segment.
 
-PARAGRAPH 1 — DIRECT COMPETITIVE RESPONSE: Name every vendor directly affected. For each, state their current competitive position, their most recent relevant move, and how this announcement changes (or doesn't change) the dynamic. Use specific product names.
+Then address how similar announcements have played out historically and what comparable moves competitors have made.
 
-PARAGRAPH 2 — MARKET SEGMENT DYNAMICS: Where does this fit in the broader market evolution? What trends are driving all vendors in this segment?
-
-PARAGRAPH 3 — HISTORICAL CONTEXT: How have similar announcements played out in the past? What comparable moves did competitors make?
-
-PARAGRAPH 4 (if warranted) — WHAT TO WATCH NEXT: What competitive responses are likely?
+If warranted, add a final paragraph on what competitive responses are likely next.
 
 ---
 
-KEY TAKEAWAY — One sentence, max 30 words. Pattern: [Action Verb] — [Specific insight with at least one named entity]
+KEY TAKEAWAY: One sentence, max 30 words. Pattern: [Action Verb] — [Specific insight with at least one named entity].
 
-GOOD examples:
-  "Evaluate — Vast Data's NFS-over-RDMA support closes the performance gap with Pure FlashBlade for AI training workloads."
-  "Flag risk — Dell ISG revenue declined 8% while Pure grew 18%; widening gap suggests share shift in all-flash."
-
-BAD examples (NEVER write these):
-  "This announcement has significant implications for the storage market."
-  "Organizations should keep an eye on this developing situation."
+Good: "Evaluate — Vast Data's NFS-over-RDMA support closes the performance gap with Pure FlashBlade for AI training workloads."
+Good: "Flag risk — Dell ISG revenue declined 8% while Pure grew 18%; widening gap suggests share shift in all-flash."
+Bad: "This announcement has significant implications for the storage market."
 
 ---
 
 Respond with valid JSON only:
 {
-  "impact_score": "HIGH" or "MEDIUM" or "LOW",
-  "category": "Product Announcement" | "M&A" | "Financial Results" | "Partnership" | "Customer Success" | "Leadership Changes" | "General",
-  "opinion_en": "Full category-specific analysis as described above",
-  "vendor_context": "2-4 paragraph competitive analysis as described above",
+  "opinion_en": "plain prose paragraphs, no labels or markers",
+  "vendor_context": "plain prose paragraphs, no labels or markers",
   "key_takeaway": "Action Verb — specific insight with named entities, max 30 words"
 }`;
 
@@ -275,8 +297,8 @@ Respond with valid JSON only:
     const parsed = JSON.parse(raw);
 
     return {
-      impactLabel: (['HIGH', 'MEDIUM', 'LOW'].includes(parsed.impact_score) ? parsed.impact_score : 'MEDIUM') as ImpactLabel,
-      category: (parsed.category || 'General') as ArticleCategory,
+      impactLabel,
+      category,
       opinion: parsed.opinion_en || '',
       vendorContext: parsed.vendor_context || '',
       keyTakeaway: parsed.key_takeaway || '',

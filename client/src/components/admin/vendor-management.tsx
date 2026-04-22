@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -115,27 +115,6 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
     },
   });
 
-  const watchedName = useWatch({ control: vendorForm.control, name: "name" });
-  const watchedNewsroomUrl = useWatch({ control: vendorForm.control, name: "newsroomUrl" });
-  const watchedMarketId = useWatch({ control: vendorForm.control, name: "marketId" });
-
-  const duplicateUrlMarkets: string[] = (() => {
-    if (!watchedNewsroomUrl || !watchedName || !allVendors || !markets) return [];
-    const normalizedUrl = watchedNewsroomUrl.trim().toLowerCase().replace(/\/+$/, "");
-    const normalizedName = watchedName.trim().toLowerCase();
-    if (!normalizedUrl || !normalizedName) return [];
-    const currentVendorId = editingVendor?.id;
-    const currentMarketId = watchedMarketId || selectedMarket;
-    return allVendors
-      .filter(v => {
-        if (currentVendorId && v.id === currentVendorId) return false;
-        if (v.marketId === currentMarketId) return false;
-        const vUrl = (v.newsroomUrl ?? "").trim().toLowerCase().replace(/\/+$/, "");
-        const vName = v.name.trim().toLowerCase();
-        return vUrl === normalizedUrl && vName === normalizedName;
-      })
-      .map(v => markets.find(m => m.id === v.marketId)?.name ?? v.marketId);
-  })();
 
   const createVendorMutation = useMutation({
     mutationFn: async (data: InsertVendor) => {
@@ -738,15 +717,6 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                             <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                               Without a newsroom URL this vendor will be skipped by the daily news scraper.
-                            </p>
-                          )}
-                          {duplicateUrlMarkets.length > 0 && (
-                            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1">
-                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                              <span>
-                                This newsroom URL is already used by this vendor in{" "}
-                                {duplicateUrlMarkets.join(", ")}. Verify it is the correct URL for this market.
-                              </span>
                             </p>
                           )}
                           <FormMessage />
