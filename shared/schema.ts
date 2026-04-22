@@ -81,10 +81,19 @@ export const vendors = pgTable("vendors", {
   description: text("description"),
   website: text("website"),
   newsroomUrl: text("newsroom_url"), // Vendor newsroom page for scraping
+  newsroomAlertDisabled: boolean("newsroom_alert_disabled").notNull().default(false), // Per-vendor opt-out from email alerts
   revenue: decimal("revenue", { precision: 15, scale: 2 }),
   product: text("product"), // Product being evaluated for this vendor
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Admin alert settings — single-row global configuration for URL health email alerts
+export const adminAlertSettings = pgTable("admin_alert_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailAlertsEnabled: boolean("email_alerts_enabled").notNull().default(true),
+  recipientEmails: text("recipient_emails"), // comma-separated list; if null, falls back to all admin user emails
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
@@ -446,6 +455,11 @@ export const insertNewsFetchLogSchema = createInsertSchema(newsFetchLogs).omit({
   fetchedAt: true,
 });
 
+export const insertAdminAlertSettingsSchema = createInsertSchema(adminAlertSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -505,6 +519,9 @@ export type NewsArticle = typeof newsArticles.$inferSelect;
 
 export type InsertNewsFetchLog = z.infer<typeof insertNewsFetchLogSchema>;
 export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;
+
+export type InsertAdminAlertSettings = z.infer<typeof insertAdminAlertSettingsSchema>;
+export type AdminAlertSettings = typeof adminAlertSettings.$inferSelect;
 
 // Chat Conversations - Store chat sessions per market
 export const chatConversations = pgTable("chat_conversations", {

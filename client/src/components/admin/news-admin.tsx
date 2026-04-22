@@ -47,9 +47,20 @@ import {
   XCircle,
   Pencil,
   Zap,
+  Bell,
+  BellOff,
+  Send,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { NewsArticle, Vendor, Market, NewsFetchLog } from "@shared/schema";
+
+interface AlertSettings {
+  emailAlertsEnabled: boolean;
+  recipientEmails: string | null;
+}
 
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
@@ -84,6 +95,7 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
   const [analyzeCount, setAnalyzeCount] = useState<number | null>(null);
   const [vendorScrapeResults, setVendorScrapeResults] = useState<Record<string, ScrapeResult>>({});
   const [scrapingVendorIds, setScrapingVendorIds] = useState<Set<string>>(new Set());
+  const [recipientEmailDraft, setRecipientEmailDraft] = useState<string>("");
 
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>("all");
   const [selectedImpactFilter, setSelectedImpactFilter] = useState<string>("all");
@@ -106,6 +118,45 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
     isLoading: articlesLoading,
     refetch: refetchArticles,
   } = useQuery<NewsArticleExtended[]>({ queryKey: [newsUrl] });
+
+  const { data: alertSettings, isLoading: alertSettingsLoading } = useQuery<AlertSettings>({
+    queryKey: ["/api/admin/alert-settings"],
+  });
+
+  const updateAlertSettingsMutation = useMutation({
+    mutationFn: async (data: Partial<AlertSettings>) => {
+      const response = await apiRequest("/api/admin/alert-settings", "PUT", data);
+      return response.json() as Promise<AlertSettings>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/admin/alert-settings"], data);
+      toast({ title: "Alert settings saved" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save alert settings", variant: "destructive" });
+    },
+  });
+
+  const sendTestEmailMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/alert-settings/test", "POST");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.sent) {
+        toast({ title: "Test email sent", description: `Sent to ${data.recipientCount} recipient(s)` });
+      } else {
+        toast({
+          title: "Test email not sent",
+          description: data.reason || "Check SMTP configuration",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: () => {
+      toast({ title: "Failed to send test email", variant: "destructive" });
+    },
+  });
 
   const vendorsWithUrl = vendors?.filter((v) => v.newsroomUrl) ?? [];
   const vendorsWithoutUrl = vendors?.filter((v) => !v.newsroomUrl) ?? [];
@@ -647,6 +698,103 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
             <p className="text-sm text-muted-foreground">
               Showing {displayedArticles.length} article{displayedArticles.length !== 1 ? "s" : ""}
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Email Alert Settings ─────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Newsroom URL Alert Emails
+          </CardTitle>
+          <CardDescription>
+            When a vendor newsroom URL goes down, an email is sent to admin users.
+            Configure SMTP via the <code className="text-xs">SMTP_HOST</code>, <code className="text-xs">SMTP_USER</code>,
+            and <code className="text-xs">SMTP_PASS</code> environment variables.
+            Optionally set <code className="text-xs">ALERT_FROM_EMAIL</code> for the sender address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {alertSettingsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              {/* Global toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <p className="font-medium text-sm">Enable email alerts</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Send email when any newsroom URL changes from reachable to unreachable.
+                  </p>
+                </div>
+                <Switch
+                  checked={alertSettings?.emailAlertsEnabled ?? true}
+                  disabled={updateAlertSettingsMutation.isPending}
+                  onCheckedChange={(checked) =>
+                    updateAlertSettingsMutation.mutate({ emailAlertsEnabled: checked })
+                  }
+                />
+              </div>
+
+              {/* Recipient emails */}
+              <div className="space-y-2">
+                <Label htmlFor="recipient-emails">
+                  Recipient emails
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">
+                    (comma-separated; leave blank to use all admin account emails)
+                  </span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="recipient-emails"
+                    placeholder="alice@example.com, bob@example.com"
+                    value={recipientEmailDraft !== "" ? recipientEmailDraft : (alertSettings?.recipientEmails ?? "")}
+                    onChange={(e) => setRecipientEmailDraft(e.target.value)}
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={updateAlertSettingsMutation.isPending}
+                    onClick={() => {
+                      updateAlertSettingsMutation.mutate({
+                        recipientEmails: recipientEmailDraft.trim() || null,
+                      });
+                      setRecipientEmailDraft("");
+                    }}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              {/* Test email */}
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sendTestEmailMutation.isPending}
+                  onClick={() => sendTestEmailMutation.mutate()}
+                >
+                  {sendTestEmailMutation.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-1.5" />
+                  )}
+                  Send test email
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Sends a sample alert to verify your SMTP configuration.
+                </p>
+              </div>
+
+              {!(alertSettings?.emailAlertsEnabled ?? true) && (
+                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                  <BellOff className="h-4 w-4 shrink-0" />
+                  Email alerts are currently disabled globally.
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

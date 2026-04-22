@@ -11,7 +11,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock } from "lucide-react";
+import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
 
@@ -107,6 +108,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       description: "",
       website: "",
       newsroomUrl: "",
+      newsroomAlertDisabled: false,
       revenue: undefined,
       product: "",
       marketId: "",
@@ -389,6 +391,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
           description: vendor.description || "",
           website: vendor.website || "",
           newsroomUrl: vendor.newsroomUrl || "",
+          newsroomAlertDisabled: vendor.newsroomAlertDisabled ?? false,
           revenue: vendor.revenue || "",
           product: vendor.product || "",
           marketId: vendor.marketId,
@@ -415,6 +418,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       description: vendor.description || "",
       website: vendor.website || "",
       newsroomUrl: vendor.newsroomUrl || "",
+      newsroomAlertDisabled: vendor.newsroomAlertDisabled ?? false,
       revenue: vendor.revenue || "",
       product: vendor.product || "",
       marketId: vendor.marketId,
@@ -428,6 +432,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       description: "",
       website: "",
       newsroomUrl: "",
+      newsroomAlertDisabled: false,
       revenue: "",
       product: "",
       marketId: "",
@@ -745,6 +750,30 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                             </p>
                           )}
                           <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="newsroomAlertDisabled"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="space-y-0.5">
+                            <FormLabel className="flex items-center gap-1.5">
+                              <BellOff className="h-3.5 w-3.5" />
+                              Disable URL alert emails
+                            </FormLabel>
+                            <p className="text-xs text-muted-foreground">
+                              When enabled, this vendor will be excluded from broken-URL alert emails.
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />

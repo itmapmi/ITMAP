@@ -1751,11 +1751,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/newsroom-url-health/run", requireAdmin, async (_req, res) => {
     try {
       const { checkAllNewsroomUrls } = await import("./news/ingestion/urlHealthCheck");
+      const { dispatchHealthAlertEmails } = await import("./cronJobs");
       const results = await checkAllNewsroomUrls();
+      // Fire alerts asynchronously — don't block the HTTP response
+      dispatchHealthAlertEmails(results).catch(err =>
+        console.error("[Route] Error dispatching health alert emails:", err)
+      );
       res.json({ results, lastCheckedAt: new Date() });
     } catch (error) {
       console.error("Error running newsroom URL health check:", error);
       res.status(500).json({ error: "Failed to run health check" });
+    }
+  });
+
+  // Alert settings
+  app.get("/api/admin/alert-settings", requireAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getAlertSettings();
+      res.json(settings ?? { emailAlertsEnabled: true, recipientEmails: null });
+    } catch (error) {
+      console.error("Error getting alert settings:", error);
+      res.status(500).json({ error: "Failed to get alert settings" });
+    }
+  });
+
+  app.put("/api/admin/alert-settings", requireAdmin, async (req, res) => {
+    try {
+      const { emailAlertsEnabled, recipientEmails } = req.body as {
+        emailAlertsEnabled?: boolean;
+        recipientEmails?: string | null;
+      };
+      const updated = await storage.upsertAlertSettings({
+        ...(emailAlertsEnabled !== undefined ? { emailAlertsEnabled } : {}),
+        ...(recipientEmails !== undefined ? { recipientEmails: recipientEmails || null } : {}),
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating alert settings:", error);
+      res.status(500).json({ error: "Failed to update alert settings" });
+    }
+  });
+
+  app.post("/api/admin/alert-settings/test", requireAdmin, async (_req, res) => {
+    try {
+      const { sendNewsroomAlertEmail } = await import("./emailService");
+      const alertSettings = await storage.getAlertSettings();
+
+      let recipients: string[] = [];
+      if (alertSettings?.recipientEmails) {
+        recipients = alertSettings.recipientEmails.split(',').map(e => e.trim()).filter(Boolean);
+      }
+      if (recipients.length === 0) {
+        const adminUsers = await storage.getAdminUsers();
+        recipients = adminUsers.map(u => u.email).filter((e): e is string => !!e);
+      }
+
+      const fakeResult = [{
+        vendorId: 'test-vendor',
+        vendorName: 'Test Vendor (Example)',
+        url: 'https://example.com/newsroom',
+        status: 'broken' as const,
+        statusCode: 503,
+        error: 'Test alert — this vendor is not actually down',
+        lastChecked: new Date(),
+      }];
+
+      const result = await sendNewsroomAlertEmail(fakeResult, recipients);
+      res.json(result);
+    } catch (error) {
+      console.error("Error sending test alert email:", error);
+      res.status(500).json({ error: "Failed to send test email" });
     }
   });
 

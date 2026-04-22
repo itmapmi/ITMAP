@@ -32,6 +32,8 @@ import {
   type InsertChatConversation,
   type ChatMessage,
   type InsertChatMessage,
+  type AdminAlertSettings,
+  type InsertAdminAlertSettings,
   users,
   userActivityLogs,
   markets,
@@ -49,6 +51,7 @@ import {
   newPlayers,
   chatConversations,
   chatMessages,
+  adminAlertSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -150,6 +153,13 @@ export interface IStorage {
   // Chat Messages
   getConversationMessages(conversationId: string): Promise<any[]>;
   createMessage(message: any): Promise<any>;
+
+  // Admin users
+  getAdminUsers(): Promise<User[]>;
+
+  // Alert Settings
+  getAlertSettings(): Promise<AdminAlertSettings | null>;
+  upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -881,6 +891,33 @@ export class DatabaseStorage implements IStorage {
       .values(message)
       .returning();
     return newMessage!;
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'admin'));
+  }
+
+  async getAlertSettings(): Promise<AdminAlertSettings | null> {
+    const [settings] = await db.select().from(adminAlertSettings).limit(1);
+    return settings ?? null;
+  }
+
+  async upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings> {
+    const existing = await this.getAlertSettings();
+    if (existing) {
+      const [updated] = await db
+        .update(adminAlertSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(adminAlertSettings.id, existing.id))
+        .returning();
+      return updated!;
+    } else {
+      const [created] = await db
+        .insert(adminAlertSettings)
+        .values({ emailAlertsEnabled: true, ...settings })
+        .returning();
+      return created!;
+    }
   }
 }
 

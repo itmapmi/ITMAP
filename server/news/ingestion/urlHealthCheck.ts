@@ -11,6 +11,8 @@ export interface UrlHealthResult {
 }
 
 const healthResults = new Map<string, UrlHealthResult>();
+// Track the status from the previous run so we can detect ok → broken transitions
+const previousStatuses = new Map<string, 'ok' | 'broken'>();
 let lastFullCheckAt: Date | null = null;
 
 const USER_AGENT = 'Mozilla/5.0 (compatible; NewsroomHealthCheck/1.0)';
@@ -128,6 +130,11 @@ export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
 
   console.log(`[URLHealthCheck] Checking ${vendorsWithUrls.length} newsroom URLs…`);
 
+  // Snapshot previous statuses before overwriting
+  for (const [id, result] of healthResults.entries()) {
+    previousStatuses.set(id, result.status);
+  }
+
   const results: UrlHealthResult[] = [];
 
   for (const vendor of vendorsWithUrls) {
@@ -149,6 +156,26 @@ export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
 
   lastFullCheckAt = new Date();
   return results;
+}
+
+/**
+ * Returns results for vendors whose status changed from 'ok' to 'broken' in the
+ * most recent run compared to the run before it.
+ * 
+ * On the very first run (no previous data), ALL broken vendors are considered
+ * newly broken so admins are notified immediately.
+ */
+export function getNewlyBrokenResults(currentResults: UrlHealthResult[]): UrlHealthResult[] {
+  const isFirstRun = previousStatuses.size === 0;
+  return currentResults.filter(r => {
+    if (r.status !== 'broken') return false;
+    // On the very first run there is no baseline; alert on all broken URLs so
+    // admins are notified about any pre-existing problems immediately.
+    if (isFirstRun) return true;
+    const prev = previousStatuses.get(r.vendorId);
+    // Strict ok → broken transition only; unknown/new vendors don't alert.
+    return prev === 'ok';
+  });
 }
 
 export function getHealthCheckResults(): { results: UrlHealthResult[]; lastCheckedAt: Date | null } {

@@ -1,7 +1,9 @@
 import * as cron from 'node-cron';
 import { scrapeAllVendors, scrapeSingleVendor, type ScrapeResult } from './news/ingestion/scraper';
 import { analyzeAllPending } from './news/impact/analyzer';
-import { checkAllNewsroomUrls } from './news/ingestion/urlHealthCheck';
+import { checkAllNewsroomUrls, getNewlyBrokenResults } from './news/ingestion/urlHealthCheck';
+import { sendNewsroomAlertEmail } from './emailService';
+import { storage } from './storage';
 
 export class CronJobManager {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -83,6 +85,9 @@ export class CronJobManager {
         }
         console.log(`[Cron] Newsroom URL health check done: ${results.length} checked, ${broken.length} broken`);
         this.lastRun.set('newsroomHealthCheck', { timestamp: new Date(), status: 'success' });
+
+        // Send email alerts for newly-broken URLs
+        await dispatchHealthAlertEmails(results);
       } catch (error) {
         console.error('[Cron] Error in newsroom URL health check:', error);
         this.lastRun.set('newsroomHealthCheck', { timestamp: new Date(), status: 'failed', error: String(error) });
@@ -413,3 +418,56 @@ export class CronJobManager {
 
 // Export singleton instance
 export const cronJobManager = new CronJobManager();
+
+/**
+ * Resolves alert recipients and sends alert emails for newly-broken URLs.
+ * Respects the global email alerts toggle and per-vendor opt-out flags.
+ */
+export async function dispatchHealthAlertEmails(
+  results: import('./news/ingestion/urlHealthCheck').UrlHealthResult[]
+): Promise<void> {
+  try {
+    const alertSettings = await storage.getAlertSettings();
+
+    // Global opt-out
+    if (alertSettings && !alertSettings.emailAlertsEnabled) {
+      console.log('[EmailAlert] Email alerts are globally disabled. Skipping.');
+      return;
+    }
+
+    // Determine newly broken URLs
+    const newlyBroken = getNewlyBrokenResults(results);
+    if (newlyBroken.length === 0) {
+      console.log('[EmailAlert] No newly-broken URLs. Skipping alert email.');
+      return;
+    }
+
+    // Filter out vendors that opted out of alerts
+    const allVendors = await storage.getAllVendors();
+    const disabledVendorIds = new Set(
+      allVendors.filter(v => v.newsroomAlertDisabled).map(v => v.id)
+    );
+    const alertable = newlyBroken.filter(r => !disabledVendorIds.has(r.vendorId));
+    if (alertable.length === 0) {
+      console.log('[EmailAlert] All newly-broken vendors have alerts disabled. Skipping.');
+      return;
+    }
+
+    // Resolve recipient emails
+    let recipients: string[] = [];
+    if (alertSettings?.recipientEmails) {
+      recipients = alertSettings.recipientEmails
+        .split(',')
+        .map(e => e.trim())
+        .filter(Boolean);
+    }
+    if (recipients.length === 0) {
+      const adminUsers = await storage.getAdminUsers();
+      recipients = adminUsers.map(u => u.email).filter((e): e is string => !!e);
+    }
+
+    await sendNewsroomAlertEmail(alertable, recipients);
+  } catch (err) {
+    console.error('[EmailAlert] Error dispatching health alert emails:', err);
+  }
+}
