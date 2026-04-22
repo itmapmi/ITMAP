@@ -50,7 +50,14 @@ import {
   Bell,
   BellOff,
   Send,
+  History,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,6 +103,7 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
   const [vendorScrapeResults, setVendorScrapeResults] = useState<Record<string, ScrapeResult>>({});
   const [scrapingVendorIds, setScrapingVendorIds] = useState<Set<string>>(new Set());
   const [recipientEmailDraft, setRecipientEmailDraft] = useState<string>("");
+  const [historyVendorId, setHistoryVendorId] = useState<string | null>(null);
 
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>("all");
   const [selectedImpactFilter, setSelectedImpactFilter] = useState<string>("all");
@@ -105,6 +113,15 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
   const { data: markets } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
   const { data: latestFetchLogs } = useQuery<NewsFetchLog[]>({
     queryKey: ["/api/news/fetch-logs/latest-per-vendor"],
+  });
+
+  const historyUrl = historyVendorId
+    ? `/api/news/fetch-logs?source_id=${encodeURIComponent(historyVendorId)}&limit=50`
+    : null;
+
+  const { data: vendorHistoryLogs, isLoading: historyLoading } = useQuery<NewsFetchLog[]>({
+    queryKey: historyUrl ? [historyUrl] : ["/api/news/fetch-logs"],
+    enabled: historyVendorId !== null,
   });
 
   const filterParams = new URLSearchParams();
@@ -400,6 +417,16 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
                           <ExternalLink className="h-3 w-3" />
                           {v.newsroomUrl}
                         </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setHistoryVendorId(v.id)}
+                          data-testid={`button-history-vendor-${v.id}`}
+                          title="View scrape history"
+                        >
+                          <History className="h-3 w-3 mr-1" />
+                          History
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -798,6 +825,66 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Scrape History Dialog ─────────────────────────────── */}
+      <Dialog
+        open={historyVendorId !== null}
+        onOpenChange={(open) => { if (!open) setHistoryVendorId(null); }}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Scrape History — {vendors?.find((v) => v.id === historyVendorId)?.name ?? "Vendor"}
+            </DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">Loading history…</div>
+          ) : !vendorHistoryLogs || vendorHistoryLogs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">No scrape runs recorded yet.</div>
+          ) : (
+            <div className="border rounded-lg divide-y">
+              {vendorHistoryLogs.map((log) => {
+                const statusVariant =
+                  log.status === "success" ? "secondary" :
+                  log.status === "partial" ? "default" :
+                  "destructive";
+                const statusLabel =
+                  log.status === "success" ? "Success" :
+                  log.status === "partial" ? "Partial" :
+                  "Failed";
+                const durationSec = log.duration != null
+                  ? (log.duration / 1000).toFixed(1) + "s"
+                  : null;
+                return (
+                  <div key={log.id} className="px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {log.fetchedAt
+                            ? new Date(log.fetchedAt).toLocaleString()
+                            : "—"}
+                        </span>
+                      </div>
+                      {durationSec && (
+                        <span className="text-xs text-muted-foreground">{durationSec}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Found: <span className="font-medium text-foreground">{log.articlesFound ?? 0}</span></span>
+                      <span>New: <span className="font-medium text-foreground">{log.articlesNew ?? 0}</span></span>
+                      <span>Skipped: <span className="font-medium text-foreground">{log.articlesSkipped ?? 0}</span></span>
+                    </div>
+                    {log.errorMessage && (
+                      <p className="text-xs text-destructive break-all">{log.errorMessage}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
