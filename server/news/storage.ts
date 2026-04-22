@@ -1,8 +1,6 @@
 import { db } from "../db";
-import { newsSources, newsArticles, newsFetchLogs, vendors } from "@shared/schema";
+import { newsArticles, newsFetchLogs, vendors } from "@shared/schema";
 import type {
-  InsertNewsSource,
-  NewsSource,
   InsertNewsArticle,
   NewsArticle,
   InsertNewsFetchLog,
@@ -12,43 +10,6 @@ import type {
 import { eq, desc, and, or, gte, lte, sql, isNull, type SQL } from "drizzle-orm";
 
 export class NewsStorage {
-  // ==================== News Sources ====================
-
-  async getAllSources(): Promise<NewsSource[]> {
-    return await db.select().from(newsSources).orderBy(desc(newsSources.priority));
-  }
-
-  async getEnabledSources(): Promise<NewsSource[]> {
-    return await db
-      .select()
-      .from(newsSources)
-      .where(eq(newsSources.enabled, true))
-      .orderBy(desc(newsSources.priority));
-  }
-
-  async getSourceById(id: string): Promise<NewsSource | undefined> {
-    const results = await db.select().from(newsSources).where(eq(newsSources.id, id));
-    return results[0];
-  }
-
-  async createSource(source: InsertNewsSource): Promise<NewsSource> {
-    const results = await db.insert(newsSources).values(source).returning();
-    return results[0];
-  }
-
-  async updateSource(id: string, source: Partial<InsertNewsSource>): Promise<NewsSource> {
-    const results = await db
-      .update(newsSources)
-      .set({ ...source, updatedAt: new Date() })
-      .where(eq(newsSources.id, id))
-      .returning();
-    return results[0];
-  }
-
-  async deleteSource(id: string): Promise<void> {
-    await db.delete(newsSources).where(eq(newsSources.id, id));
-  }
-
   // ==================== News Articles ====================
 
   async getArticles(filters: {

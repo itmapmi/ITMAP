@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, ExternalLink, RefreshCw } from "lucide-react";
+import { Trash2, ExternalLink, RefreshCw, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { NewsArticle, Market, Vendor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +70,31 @@ export function NewsArticlesAdmin() {
   // Fetch articles with filters
   const { data: articles, isLoading: articlesLoading, refetch } = useQuery<NewsArticleExtended[]>({
     queryKey: [newsUrl]
+  });
+
+  // Run full news pipeline (scrape + analyze) mutation
+  const runPipelineMutation = useMutation({
+    mutationFn: async (vendorId?: string) => {
+      const url = vendorId
+        ? `/api/news/ingest/run?vendor_id=${vendorId}`
+        : '/api/news/ingest/run';
+      return await apiRequest(url, 'POST');
+    },
+    onSuccess: (data: { analyzed: number; results: Array<{ vendorName: string; newCount: number }> }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/news'] });
+      const totalNew = data.results?.reduce((s, r) => s + r.newCount, 0) ?? 0;
+      toast({
+        title: "Pipeline complete",
+        description: `Scraped ${totalNew} new articles, analyzed ${data.analyzed ?? 0}`
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Pipeline failed",
+        description: error.message || "Failed to run news pipeline",
+        variant: "destructive"
+      });
+    }
   });
 
   // Delete article mutation
@@ -124,15 +149,32 @@ export function NewsArticlesAdmin() {
                 View and manage ingested news articles. Delete articles to re-import with updated scoring.
               </CardDescription>
             </div>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              size="sm"
-              data-testid="button-refresh-articles"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => runPipelineMutation.mutate(
+                  selectedVendor !== "all" ? selectedVendor : undefined
+                )}
+                disabled={runPipelineMutation.isPending}
+                size="sm"
+                data-testid="button-run-pipeline"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                {runPipelineMutation.isPending
+                  ? "Running..."
+                  : selectedVendor !== "all"
+                    ? "Run Pipeline (Vendor)"
+                    : "Run Pipeline (All)"}
+              </Button>
+              <Button
+                onClick={() => refetch()}
+                variant="outline"
+                size="sm"
+                data-testid="button-refresh-articles"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

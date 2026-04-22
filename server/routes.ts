@@ -2133,16 +2133,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { vendor_id } = req.query;
 
-      if (vendor_id) {
-        const result = await scrapeSingleVendor(vendor_id as string);
-        res.json({ success: true, results: [result] });
-      } else {
-        const results = await scrapeAllVendors();
-        res.json({ success: true, results });
-      }
+      // Phase 1: Scrape
+      const scrapeResults = vendor_id
+        ? [await scrapeSingleVendor(vendor_id as string)]
+        : await scrapeAllVendors();
+
+      // Phase 2: Analyze all newly scraped articles
+      const { analyzed } = await analyzeAllPending(50);
+
+      res.json({ success: true, results: scrapeResults, analyzed });
     } catch (error) {
-      console.error("Error running news scrape:", error);
-      res.status(500).json({ error: "Failed to run news scrape" });
+      console.error("Error running news pipeline:", error);
+      res.status(500).json({ error: "Failed to run news pipeline" });
     }
   });
 

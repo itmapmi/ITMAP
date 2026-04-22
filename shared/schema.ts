@@ -179,29 +179,10 @@ export const newPlayers = pgTable("new_players", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
-// News Sources - RSS/HTML sources for news ingestion
-export const newsSources = pgTable("news_sources", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(), // e.g., "Salesforce Blog"
-  sourceUrl: text("source_url").notNull(), // Main page URL
-  rssUrl: text("rss_url"), // RSS feed URL if available
-  listSelector: text("list_selector"), // CSS selector for HTML list scraping
-  enabled: boolean("enabled").notNull().default(true),
-  priority: integer("priority").default(0), // Higher = checked first
-  pollingFrequency: text("polling_frequency").notNull().default("daily"), // hourly, daily, weekly
-  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }), // Optional: link to specific vendor
-  marketIds: text("market_ids").array(), // Array of market IDs this source relates to
-  lastFetchedAt: timestamp("last_fetched_at"),
-  lastETag: text("last_etag"), // For RSS caching
-  lastModified: text("last_modified"), // For RSS caching
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
-
 // News Articles - Stored articles with impact scoring
 export const newsArticles = pgTable("news_articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sourceId: varchar("source_id").references(() => newsSources.id, { onDelete: "set null" }),
+  sourceId: varchar("source_id"), // Legacy: previously referenced news_sources; kept for backward compat
   vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
   marketIds: text("market_ids").array(), // Array of market IDs
   
@@ -231,7 +212,7 @@ export const newsArticles = pgTable("news_articles", {
 // News Fetch Logs - Track ingestion history
 export const newsFetchLogs = pgTable("news_fetch_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sourceId: varchar("source_id").references(() => newsSources.id, { onDelete: "set null" }),
+  sourceId: varchar("source_id"), // Legacy: previously referenced news_sources
   status: text("status").notNull(), // 'success', 'partial', 'failed'
   articlesFound: integer("articles_found").default(0),
   articlesNew: integer("articles_new").default(0),
@@ -347,30 +328,10 @@ export const newPlayersRelations = relations(newPlayers, ({ one }) => ({
   }),
 }));
 
-export const newsSourcesRelations = relations(newsSources, ({ one, many }) => ({
-  vendor: one(vendors, {
-    fields: [newsSources.vendorId],
-    references: [vendors.id],
-  }),
-  articles: many(newsArticles),
-  fetchLogs: many(newsFetchLogs),
-}));
-
 export const newsArticlesRelations = relations(newsArticles, ({ one }) => ({
-  source: one(newsSources, {
-    fields: [newsArticles.sourceId],
-    references: [newsSources.id],
-  }),
   vendor: one(vendors, {
     fields: [newsArticles.vendorId],
     references: [vendors.id],
-  }),
-}));
-
-export const newsFetchLogsRelations = relations(newsFetchLogs, ({ one }) => ({
-  source: one(newsSources, {
-    fields: [newsFetchLogs.sourceId],
-    references: [newsSources.id],
   }),
 }));
 
@@ -474,13 +435,6 @@ export const insertNewPlayerSchema = createInsertSchema(newPlayers).omit({
   updatedAt: true,
 });
 
-export const insertNewsSourceSchema = createInsertSchema(newsSources).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  lastFetchedAt: true,
-});
-
 export const insertNewsArticleSchema = createInsertSchema(newsArticles).omit({
   id: true,
   createdAt: true,
@@ -545,9 +499,6 @@ export type VendorLabelPosition = typeof vendorLabelPositions.$inferSelect;
 
 export type InsertNewPlayer = z.infer<typeof insertNewPlayerSchema>;
 export type NewPlayer = typeof newPlayers.$inferSelect;
-
-export type InsertNewsSource = z.infer<typeof insertNewsSourceSchema>;
-export type NewsSource = typeof newsSources.$inferSelect;
 
 export type InsertNewsArticle = z.infer<typeof insertNewsArticleSchema>;
 export type NewsArticle = typeof newsArticles.$inferSelect;
