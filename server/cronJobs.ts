@@ -75,6 +75,15 @@ export class CronJobManager {
     const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
       console.log('[Cron] Starting daily news pipeline (scrape + analyze)...');
       try {
+        const { storage } = await import('./storage');
+        const allVendors = await storage.getAllVendors();
+        const missingUrl = allVendors.filter(v => !v.newsroomUrl);
+        if (missingUrl.length > 0) {
+          console.warn(
+            `[Cron] WARNING: ${missingUrl.length} vendor(s) are missing a newsroom URL and will be skipped by the scraper: ${missingUrl.map(v => v.name).join(', ')}`
+          );
+        }
+
         const scrapeResults = await scrapeAllVendors();
         const totalNew = scrapeResults.reduce((sum, r) => sum + r.newCount, 0);
         console.log(`[Cron] Scrape done: ${totalNew} new articles across ${scrapeResults.length} vendors`);
@@ -230,6 +239,17 @@ export class CronJobManager {
   public async triggerNewsIngestion(vendorId?: string): Promise<{ scrapeResults: ScrapeResult[]; analyzed: number }> {
     console.log('[Cron] Manually triggering news pipeline (scrape + analyze)...');
     try {
+      if (!vendorId) {
+        const { storage } = await import('./storage');
+        const allVendors = await storage.getAllVendors();
+        const missingUrl = allVendors.filter(v => !v.newsroomUrl);
+        if (missingUrl.length > 0) {
+          console.warn(
+            `[Cron] WARNING: ${missingUrl.length} vendor(s) are missing a newsroom URL and will be skipped by the scraper: ${missingUrl.map(v => v.name).join(', ')}`
+          );
+        }
+      }
+
       const scrapeResults = vendorId
         ? await scrapeSingleVendor(vendorId)
         : await scrapeAllVendors();

@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, Building2, Save } from "lucide-react";
+import { Edit, Trash2, Building2, Save, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
 
@@ -529,6 +529,12 @@ export default function VendorManagement() {
                           <FormControl>
                             <Input placeholder="https://vendor.com/newsroom" {...field} value={field.value || ""} />
                           </FormControl>
+                          {!field.value && (
+                            <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                              Without a newsroom URL this vendor will be skipped by the daily news scraper.
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
