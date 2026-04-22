@@ -145,6 +145,13 @@ export class NewsStorage {
     return results[0];
   }
 
+  async deleteFetchLogsOlderThan(cutoffDate: Date): Promise<number> {
+    const result = await db
+      .delete(newsFetchLogs)
+      .where(lte(newsFetchLogs.fetchedAt, cutoffDate));
+    return result.rowCount || 0;
+  }
+
   async getRecentFetchLogs(sourceId?: string, limit: number = 50): Promise<NewsFetchLog[]> {
     return db
       .select()
