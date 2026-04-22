@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import type { NewsArticle, Vendor } from "@shared/schema";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
@@ -237,21 +239,43 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                             </Button>
 
                             {isExpanded && (
-                              <div className="mt-4 space-y-4 border-t pt-4">
+                              <div className="mt-4 space-y-5 border-t pt-4">
                                 {article.opinion && (
                                   <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Editorial Analysis</h4>
-                                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                      {article.opinion}
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                                      <BookOpen className="h-4 w-4 text-blue-500" />
+                                      Editorial Analysis
+                                    </h4>
+                                    <div className="prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed
+                                      [&>p]:mb-3 [&>p:last-child]:mb-0
+                                      [&>h1]:text-base [&>h1]:font-semibold [&>h1]:mt-4 [&>h1]:mb-2
+                                      [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mt-3 [&>h2]:mb-1
+                                      [&>h3]:text-sm [&>h3]:font-semibold [&>h3]:mt-3 [&>h3]:mb-1
+                                      [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ul>li]:mb-1
+                                      [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3 [&>ol>li]:mb-1
+                                      [&>strong]:font-semibold [&>em]:italic
+                                      [&>blockquote]:border-l-2 [&>blockquote]:border-blue-300 [&>blockquote]:pl-3 [&>blockquote]:italic [&>blockquote]:text-gray-600">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {article.opinion}
+                                      </ReactMarkdown>
                                     </div>
                                   </div>
                                 )}
 
                                 {article.vendorContext && (
                                   <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Competitive Context</h4>
-                                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-md p-3">
-                                      {article.vendorContext}
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                                      <TrendingUp className="h-4 w-4 text-purple-500" />
+                                      Competitive Context
+                                    </h4>
+                                    <div className="bg-gray-50 rounded-md p-4 prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed
+                                      [&>p]:mb-3 [&>p:last-child]:mb-0
+                                      [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-3 [&>ul>li]:mb-1
+                                      [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-3 [&>ol>li]:mb-1
+                                      [&>strong]:font-semibold [&>em]:italic">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {article.vendorContext}
+                                      </ReactMarkdown>
                                     </div>
                                   </div>
                                 )}
