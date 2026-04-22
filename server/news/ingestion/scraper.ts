@@ -134,9 +134,14 @@ Respond ONLY with valid JSON:
     });
 
     const raw = completion.choices[0].message.content?.trim() || '{}';
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as { articles?: unknown[] };
     if (Array.isArray(parsed.articles)) {
-      return parsed.articles.filter((a: any) => a.title && a.url);
+      return parsed.articles.filter(
+        (a): a is ScrapedArticle =>
+          typeof a === 'object' && a !== null &&
+          'title' in a && 'url' in a &&
+          Boolean((a as ScrapedArticle).title) && Boolean((a as ScrapedArticle).url)
+      );
     }
   } catch (err: any) {
     console.error(`[Scraper] AI extraction failed for ${vendor.name}:`, err.message);

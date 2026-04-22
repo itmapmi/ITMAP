@@ -34,6 +34,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { NewsArticle, Market, Vendor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 
+type NewsArticleExtended = NewsArticle & {
+  category?: string | null;
+  opinion?: string | null;
+  vendorContext?: string | null;
+  keyTakeaway?: string | null;
+};
+
 export function NewsArticlesAdmin() {
   const { toast } = useToast();
   const [selectedMarket, setSelectedMarket] = useState<string>("all");
@@ -61,7 +68,7 @@ export function NewsArticlesAdmin() {
   const newsUrl = `/api/news${queryString ? `?${queryString}` : ''}`;
 
   // Fetch articles with filters
-  const { data: articles, isLoading: articlesLoading, refetch } = useQuery<NewsArticle[]>({
+  const { data: articles, isLoading: articlesLoading, refetch } = useQuery<NewsArticleExtended[]>({
     queryKey: [newsUrl]
   });
 
@@ -91,16 +98,16 @@ export function NewsArticlesAdmin() {
   };
 
   const getImpactBadge = (impact: string | null) => {
-    if (!impact) return <Badge variant="outline">Unknown</Badge>;
-    
+    if (!impact) return <Badge variant="outline">Pending</Badge>;
+
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      high: "destructive",
-      medium: "default",
-      low: "secondary"
+      HIGH: "destructive",
+      MEDIUM: "default",
+      LOW: "secondary"
     };
-    
+
     return (
-      <Badge variant={variants[impact] || "outline"} data-testid={`badge-impact-${impact}`}>
+      <Badge variant={variants[impact.toUpperCase()] || "outline"} data-testid={`badge-impact-${impact}`}>
         {impact.toUpperCase()}
       </Badge>
     );
@@ -173,9 +180,9 @@ export function NewsArticlesAdmin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Impacts</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -186,7 +193,7 @@ export function NewsArticlesAdmin() {
             <div className="text-center py-8 text-muted-foreground">Loading articles...</div>
           ) : !articles || articles.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No articles found. Add news sources and run ingestion to populate articles.
+              No articles found. Add newsroom URLs to vendors and trigger a scrape run.
             </div>
           ) : (
             <div className="border rounded-lg">
@@ -195,7 +202,7 @@ export function NewsArticlesAdmin() {
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Impact</TableHead>
-                    <TableHead>Score</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Published</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -218,8 +225,8 @@ export function NewsArticlesAdmin() {
                       <TableCell>
                         {getImpactBadge(article.impactLabel)}
                       </TableCell>
-                      <TableCell data-testid={`text-score-${article.id}`}>
-                        {article.impactScore || '-'}
+                      <TableCell data-testid={`text-category-${article.id}`} className="text-sm text-muted-foreground">
+                        {article.category || '-'}
                       </TableCell>
                       <TableCell data-testid={`text-published-${article.id}`}>
                         {article.publishedAt

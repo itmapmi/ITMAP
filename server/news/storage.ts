@@ -9,7 +9,7 @@ import type {
   NewsFetchLog,
   Vendor,
 } from "@shared/schema";
-import { eq, desc, and, or, gte, lte, sql, isNull } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, isNull, type SQL } from "drizzle-orm";
 
 export class NewsStorage {
   // ==================== News Sources ====================
@@ -61,7 +61,7 @@ export class NewsStorage {
     limit?: number;
     offset?: number;
   }): Promise<NewsArticle[]> {
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
 
     if (filters.sourceId) {
       conditions.push(eq(newsArticles.sourceId, filters.sourceId));
@@ -87,22 +87,15 @@ export class NewsStorage {
       )}]::text[]`);
     }
 
-    let query = db.select().from(newsArticles);
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    query = query.orderBy(desc(newsArticles.publishedAt)) as any;
-
-    if (filters.limit) {
-      query = query.limit(filters.limit) as any;
-    }
-    if (filters.offset) {
-      query = query.offset(filters.offset) as any;
-    }
-
-    return await query;
+    return db
+      .select()
+      .from(newsArticles)
+      .where(whereClause)
+      .orderBy(desc(newsArticles.publishedAt))
+      .limit(filters.limit ?? 100)
+      .offset(filters.offset ?? 0);
   }
 
   async getArticleById(id: string): Promise<NewsArticle | undefined> {
@@ -192,13 +185,12 @@ export class NewsStorage {
   }
 
   async getRecentFetchLogs(sourceId?: string, limit: number = 50): Promise<NewsFetchLog[]> {
-    let query = db.select().from(newsFetchLogs);
-
-    if (sourceId) {
-      query = query.where(eq(newsFetchLogs.sourceId, sourceId)) as any;
-    }
-
-    return await query.orderBy(desc(newsFetchLogs.fetchedAt)).limit(limit);
+    return db
+      .select()
+      .from(newsFetchLogs)
+      .where(sourceId ? eq(newsFetchLogs.sourceId, sourceId) : undefined)
+      .orderBy(desc(newsFetchLogs.fetchedAt))
+      .limit(limit);
   }
 
   // ==================== Metrics ====================

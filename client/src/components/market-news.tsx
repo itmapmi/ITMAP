@@ -9,9 +9,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import type { NewsArticle, Vendor } from "@shared/schema";
+
+type NewsArticleExtended = NewsArticle & {
+  category?: string | null;
+  opinion?: string | null;
+  vendorContext?: string | null;
+  keyTakeaway?: string | null;
+};
 
 interface MarketNewsProps {
   marketId: string;
@@ -20,12 +28,13 @@ interface MarketNewsProps {
 export function MarketNews({ marketId }: MarketNewsProps) {
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
+  const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['/api/markets', marketId, 'vendors']
   });
 
-  const { data: articles, isLoading } = useQuery<NewsArticle[]>({
+  const { data: articles, isLoading } = useQuery<NewsArticleExtended[]>({
     queryKey: ['/api/news', {
       market: marketId,
       vendor_id: selectedVendor !== 'all' ? selectedVendor : undefined,
@@ -33,13 +42,13 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       limit: 50
     }],
     queryFn: async ({ queryKey }) => {
-      const [, params] = queryKey as [string, any];
+      const [, params] = queryKey as [string, Record<string, string | undefined | number>];
       const queryParams = new URLSearchParams();
 
-      if (params.market) queryParams.append('market', params.market);
-      if (params.vendor_id) queryParams.append('vendor_id', params.vendor_id);
-      if (params.impact) queryParams.append('impact', params.impact);
-      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.market) queryParams.append('market', String(params.market));
+      if (params.vendor_id) queryParams.append('vendor_id', String(params.vendor_id));
+      if (params.impact) queryParams.append('impact', String(params.impact));
+      if (params.limit) queryParams.append('limit', String(params.limit));
 
       const response = await fetch(`/api/news?${queryParams}`);
       if (!response.ok) throw new Error('Failed to fetch news');
@@ -47,9 +56,18 @@ export function MarketNews({ marketId }: MarketNewsProps) {
     }
   });
 
+  const toggleExpanded = (articleId: string) => {
+    setExpandedArticles(prev => {
+      const next = new Set(prev);
+      if (next.has(articleId)) { next.delete(articleId); } else { next.add(articleId); }
+      return next;
+    });
+  };
+
   const getImpactBadge = (label: string | null) => {
     if (!label) return null;
 
+    const normalized = label.toUpperCase();
     const variants: Record<string, { className: string; icon: React.ReactNode }> = {
       HIGH: {
         className: "bg-red-100 text-red-800 border-red-300",
@@ -65,8 +83,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       }
     };
 
-    const key = label.toUpperCase();
-    const variant = variants[key] || variants.LOW;
+    const variant = variants[normalized] || variants.LOW;
 
     return (
       <Badge variant="outline" className={`${variant.className} flex items-center gap-1`}>
@@ -78,9 +95,9 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
   const getBorderColor = (label: string | null) => {
     if (!label) return 'border-l-gray-300';
-    const key = label.toUpperCase();
-    if (key === 'HIGH') return 'border-l-red-400';
-    if (key === 'MEDIUM') return 'border-l-yellow-400';
+    const normalized = label.toUpperCase();
+    if (normalized === 'HIGH') return 'border-l-red-400';
+    if (normalized === 'MEDIUM') return 'border-l-yellow-400';
     return 'border-l-blue-400';
   };
 
@@ -142,6 +159,8 @@ export function MarketNews({ marketId }: MarketNewsProps) {
             <div className="space-y-4">
               {articles?.map((article) => {
                 const vendor = vendors?.find(v => v.id === article.vendorId);
+                const isExpanded = expandedArticles.has(article.id);
+                const hasAnalysis = !!(article.opinion || article.vendorContext);
 
                 return (
                   <Card
@@ -180,26 +199,64 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
                           {getImpactBadge(article.impactLabel)}
 
-                          {(article as any).category && (
+                          {article.category && (
                             <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 flex items-center gap-1">
                               <Tag className="h-3 w-3" />
-                              {(article as any).category}
+                              {article.category}
                             </Badge>
                           )}
                         </div>
 
-                        {article.summary && !(article as any).keyTakeaway && (
+                        {article.summary && !article.keyTakeaway && (
                           <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                             {article.summary}
                           </p>
                         )}
 
-                        {(article as any).keyTakeaway && (
+                        {article.keyTakeaway && (
                           <div className="mt-3 flex items-start gap-2 bg-blue-50 rounded-md p-3 text-sm">
                             <Lightbulb className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                            <p className="text-blue-800 font-medium">
-                              {(article as any).keyTakeaway}
-                            </p>
+                            <p className="text-blue-800 font-medium">{article.keyTakeaway}</p>
+                          </div>
+                        )}
+
+                        {hasAnalysis && (
+                          <div className="mt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleExpanded(article.id)}
+                              className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal"
+                              data-testid={`button-expand-${article.id}`}
+                            >
+                              {isExpanded ? (
+                                <><ChevronUp className="h-4 w-4 mr-1" />Hide Analysis</>
+                              ) : (
+                                <><ChevronDown className="h-4 w-4 mr-1" />Read Analysis</>
+                              )}
+                            </Button>
+
+                            {isExpanded && (
+                              <div className="mt-4 space-y-4 border-t pt-4">
+                                {article.opinion && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Editorial Analysis</h4>
+                                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                      {article.opinion}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {article.vendorContext && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Competitive Context</h4>
+                                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-md p-3">
+                                      {article.vendorContext}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

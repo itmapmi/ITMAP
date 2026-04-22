@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pdfService } from "./pdf-generator/pdf-service";
-import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, insertNewsSourceSchema, type Vendor } from "@shared/schema";
+import { insertMarketSchema, insertVendorSchema, insertCriteriaSchema, insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema, insertVendorFeatureSupportSchema, insertResearchReportSchema, insertResearchMethodologySchema, insertVendorLabelPositionSchema, registerUserSchema, loginUserSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
@@ -2056,74 +2056,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== NEWS SOURCES API ====================
-  
-  // GET all news sources
-  app.get("/api/news/sources", requireAuth, async (_req, res) => {
-    try {
-      const sources = await newsStorage.getAllSources();
-      res.json(sources);
-    } catch (error) {
-      console.error("Error fetching news sources:", error);
-      res.status(500).json({ error: "Failed to fetch news sources" });
-    }
-  });
-  
-  // GET single news source
-  app.get("/api/news/sources/:id", requireAuth, async (req, res) => {
-    try {
-      const source = await newsStorage.getSourceById(req.params.id);
-      if (!source) {
-        return res.status(404).json({ error: "Source not found" });
-      }
-      res.json(source);
-    } catch (error) {
-      console.error("Error fetching news source:", error);
-      res.status(500).json({ error: "Failed to fetch news source" });
-    }
-  });
-  
-  // POST create news source
-  app.post("/api/news/sources", requireAdmin, async (req, res) => {
-    try {
-      const validatedData = insertNewsSourceSchema.parse(req.body);
-      const source = await newsStorage.createSource(validatedData);
-      res.status(201).json(source);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.errors });
-      }
-      console.error("Error creating news source:", error);
-      res.status(500).json({ error: "Failed to create news source" });
-    }
-  });
-  
-  // PUT update news source
-  app.put("/api/news/sources/:id", requireAdmin, async (req, res) => {
-    try {
-      const validatedData = insertNewsSourceSchema.partial().parse(req.body);
-      const source = await newsStorage.updateSource(req.params.id, validatedData);
-      res.json(source);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.errors });
-      }
-      console.error("Error updating news source:", error);
-      res.status(500).json({ error: "Failed to update news source" });
-    }
-  });
-  
-  // DELETE news source
-  app.delete("/api/news/sources/:id", requireAdmin, async (req, res) => {
-    try {
-      await newsStorage.deleteSource(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting news source:", error);
-      res.status(500).json({ error: "Failed to delete news source" });
-    }
-  });
-  
   // ==================== NEWS ARTICLES API ====================
   
   // GET news articles with filters and search

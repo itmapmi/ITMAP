@@ -13,7 +13,6 @@ import ResearchMethodologyManagement from "@/components/admin/research-methodolo
 import OperationsManagement from "@/components/admin/operations-management";
 import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
-import { NewsSourcesAdmin } from "@/components/admin/news-sources-admin";
 import { NewsArticlesAdmin } from "@/components/admin/news-articles-admin";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
@@ -64,11 +63,10 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs defaultValue="market-management" className="w-full">
-          <TabsList className="grid w-full grid-cols-12">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
-            <TabsTrigger value="news-sources">News Sources</TabsTrigger>
             <TabsTrigger value="news-articles">News Articles</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
@@ -90,10 +88,6 @@ export default function Admin() {
 
           <TabsContent value="new-players" className="mt-6">
             <NewPlayersAdmin />
-          </TabsContent>
-
-          <TabsContent value="news-sources" className="mt-6">
-            <NewsSourcesAdmin />
           </TabsContent>
 
           <TabsContent value="news-articles" className="mt-6">

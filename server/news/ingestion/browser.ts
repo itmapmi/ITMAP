@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer';
 
 function getChromiumPath(): string {
   const candidates = [
@@ -40,7 +40,7 @@ export async function fetchRenderedHtml(
   }
 
   await waitForBrowserSlot();
-  let browser: any;
+  let browser: Browser | undefined;
   try {
     browser = await puppeteer.launch({
       executablePath: getChromiumPath(),

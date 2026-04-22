@@ -2,6 +2,16 @@ import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
 import { fetchPageHtml } from '../ingestion/browser';
 import { newsStorage } from '../storage';
+import type { NewsArticle } from '@shared/schema';
+
+type ArticleWithVendor = NewsArticle & { vendorName?: string };
+
+interface AnalyzedResult {
+  id: string;
+  title: string;
+  impact: string;
+  category: string;
+}
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -302,14 +312,15 @@ function generateFallbackAnalysis(title: string, vendorName: string): AnalysisRe
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-export async function analyzeAllPending(batchSize = 20): Promise<{ analyzed: number; results: any[] }> {
+export async function analyzeAllPending(batchSize = 20): Promise<{ analyzed: number; results: AnalyzedResult[] }> {
   const pending = await newsStorage.getUnanalyzedArticles(batchSize);
-  const results = [];
+  const results: AnalyzedResult[] = [];
 
   for (const article of pending) {
     console.log(`[Analyzer] Analyzing: ${article.title}`);
     try {
-      const vendorName = (article as any).vendorName || 'Unknown Vendor';
+      const extended = article as ArticleWithVendor;
+      const vendorName = extended.vendorName || 'Unknown Vendor';
       const analysis = await analyzeArticle(
         article.title,
         article.url,
@@ -342,7 +353,7 @@ export async function analyzeSingleArticle(articleId: string): Promise<AnalysisR
   const analysis = await analyzeArticle(
     article.title,
     article.url,
-    (article as any).vendorName || 'Unknown Vendor',
+    'Unknown Vendor',
     article.publishedAt ? article.publishedAt.toISOString().split('T')[0] : null,
     article.summary
   );
