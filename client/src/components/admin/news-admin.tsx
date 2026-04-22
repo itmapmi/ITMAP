@@ -46,6 +46,7 @@ import {
   CheckCircle2,
   XCircle,
   Pencil,
+  Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { NewsArticle, Vendor, Market, NewsFetchLog } from "@shared/schema";
@@ -81,6 +82,8 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
 
   const [scrapeResults, setScrapeResults] = useState<ScrapeResult[] | null>(null);
   const [analyzeCount, setAnalyzeCount] = useState<number | null>(null);
+  const [vendorScrapeResults, setVendorScrapeResults] = useState<Record<string, ScrapeResult>>({});
+  const [scrapingVendorIds, setScrapingVendorIds] = useState<Set<string>>(new Set());
 
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>("all");
   const [selectedImpactFilter, setSelectedImpactFilter] = useState<string>("all");
@@ -145,6 +148,43 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
       });
     },
     onError: (error: Error) => {
+      toast({
+        title: "Scrape failed",
+        description: error.message || "Failed to run scrape",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runVendorScrapeMutation = useMutation({
+    mutationFn: async (vendorId: string): Promise<RunPipelineResponse> => {
+      setScrapingVendorIds((prev) => new Set(prev).add(vendorId));
+      return await apiRequestJson(`/api/news/ingest/run?vendor_id=${encodeURIComponent(vendorId)}`, "POST");
+    },
+    onSuccess: (data, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      const result = data.results?.find((r) => r.vendorName) ?? data.results?.[0];
+      if (result) {
+        setVendorScrapeResults((prev) => ({ ...prev, [vendorId]: result }));
+      }
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.startsWith("/api/news");
+        },
+      });
+      const newCount = data.results?.reduce((s, r) => s + r.newCount, 0) ?? 0;
+      toast({
+        title: "Scrape complete",
+        description: `Found ${newCount} new article(s) for this vendor.`,
+      });
+    },
+    onError: (error: Error, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      setVendorScrapeResults((prev) => ({
+        ...prev,
+        [vendorId]: { vendorName: vendorId, newCount: 0, error: error.message || "Failed" },
+      }));
       toast({
         title: "Scrape failed",
         description: error.message || "Failed to run scrape",
@@ -255,6 +295,8 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
                     log.status === "success" ? "Success" :
                     log.status === "partial" ? "Partial" :
                     "Failed";
+                  const isScrapingThis = scrapingVendorIds.has(v.id);
+                  const vendorResult = vendorScrapeResults[v.id];
                   return (
                     <div
                       key={v.id}
@@ -279,6 +321,25 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
                             {formatRelativeTime(log?.fetchedAt)}
                           </span>
                         </div>
+                        {vendorResult && (
+                          vendorResult.error ? (
+                            <Badge
+                              variant="destructive"
+                              className="text-xs"
+                              data-testid={`vendor-scrape-result-${v.id}`}
+                            >
+                              {vendorResult.error}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs"
+                              data-testid={`vendor-scrape-result-${v.id}`}
+                            >
+                              +{vendorResult.newCount} new
+                            </Badge>
+                          )
+                        )}
                         <a
                           href={v.newsroomUrl!}
                           target="_blank"
@@ -288,6 +349,16 @@ export function NewsAdmin({ onNavigateToVendors }: NewsAdminProps) {
                           <ExternalLink className="h-3 w-3" />
                           {v.newsroomUrl}
                         </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isScrapingThis || runScrapeMutation.isPending}
+                          onClick={() => runVendorScrapeMutation.mutate(v.id)}
+                          data-testid={`button-scrape-vendor-${v.id}`}
+                        >
+                          <Zap className="h-3 w-3 mr-1" />
+                          {isScrapingThis ? "Scraping…" : "Scrape"}
+                        </Button>
                       </div>
                     </div>
                   );
