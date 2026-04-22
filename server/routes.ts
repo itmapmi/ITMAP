@@ -315,6 +315,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vendors
+  app.get("/api/vendors", requireAdmin, async (req, res) => {
+    try {
+      const allVendors = await storage.getAllVendors();
+      res.json(allVendors);
+    } catch (error) {
+      console.error("Error fetching all vendors:", error);
+      res.status(500).json({ error: "Failed to fetch vendors" });
+    }
+  });
+
   app.get("/api/markets/:marketId/vendors", async (req, res) => {
     try {
       const vendors = await storage.getVendorsByMarket(req.params.marketId);
