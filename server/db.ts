@@ -75,6 +75,29 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
+    // 6. ai_suggestions — AI-generated market update suggestions pending admin review
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_suggestions (
+        id                       varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vendor_id                varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        market_id                varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        status                   text NOT NULL DEFAULT 'pending',
+        suggestion_type          text NOT NULL,
+        subject_id               varchar NOT NULL,
+        subject_name             text NOT NULL,
+        subject_category         text,
+        current_value            numeric(5,2),
+        suggested_value          numeric(5,2),
+        current_commentary       text,
+        suggested_commentary     text,
+        reasoning                text NOT NULL,
+        confidence               text NOT NULL DEFAULT 'MEDIUM',
+        triggered_by_article_ids text[],
+        created_at               timestamp DEFAULT now(),
+        reviewed_at              timestamp
+      )
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

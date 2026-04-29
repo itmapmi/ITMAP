@@ -622,3 +622,55 @@ export type ChatConversation = typeof chatConversations.$inferSelect;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ── AI Market Suggestions ─────────────────────────────────────────────────────
+// One row per suggested change (a single criterion score or a single feature support level).
+// Fine-grained so admin can approve/reject each change independently.
+
+export const aiSuggestions = pgTable("ai_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+
+  // What is being suggested
+  suggestionType: text("suggestion_type").notNull(), // criterion_score | feature_support
+  subjectId: varchar("subject_id").notNull(),         // criterionId or featureId
+  subjectName: text("subject_name").notNull(),
+  subjectCategory: text("subject_category"),          // execution | viability | feature-category name
+
+  // Value change (0-10 for criterion scores; 0-4 for feature support)
+  currentValue: decimal("current_value", { precision: 5, scale: 2 }),
+  suggestedValue: decimal("suggested_value", { precision: 5, scale: 2 }),
+
+  // Commentary — AI produces the full updated text (addendum merged in)
+  currentCommentary: text("current_commentary"),
+  suggestedCommentary: text("suggested_commentary"),
+
+  // AI metadata
+  reasoning: text("reasoning").notNull(),
+  confidence: text("confidence").notNull().default("MEDIUM"), // HIGH | MEDIUM
+  triggeredByArticleIds: text("triggered_by_article_ids").array(),
+
+  createdAt: timestamp("created_at").default(sql`now()`),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export const aiSuggestionsRelations = relations(aiSuggestions, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [aiSuggestions.vendorId],
+    references: [vendors.id],
+  }),
+  market: one(markets, {
+    fields: [aiSuggestions.marketId],
+    references: [markets.id],
+  }),
+}));
+
+export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
+});
+export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
+export type AiSuggestion = typeof aiSuggestions.$inferSelect;

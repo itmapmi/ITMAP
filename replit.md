@@ -45,6 +45,9 @@ Designed for internal enterprise use, featuring basic user management and role-b
 ### API Design
 Follows RESTful principles with standardized error handling, request/response logging, Zod schema validation, and consistent JSON response formats.
 
+### AI Market Suggestions
+After each daily news scrape, AI automatically reviews new articles and proposes specific score/commentary changes pending admin review. Only HIGH/MEDIUM impact articles trigger suggestions. Criterion score changes are modest (0.3-1.0); feature support changes require strong product announcement evidence. Admins review suggestions in the new "AI Suggestions" admin tab with full before/after comparisons and commentary diffs. Approving applies the change live; rejecting discards it. Suggestions are grouped by vendor with pending count badge on the tab. Duplicate prevention stops redundant pending suggestions per vendor/subject. Key files: `server/news/suggestions/generator.ts` (OpenAI-powered generator), `server/routes.ts` (GET/POST /api/admin/ai-suggestions/*), `shared/schema.ts` (`aiSuggestions` table), `client/src/components/admin/ai-suggestions-admin.tsx`, `client/src/pages/admin.tsx`.
+
 ### External Partner API
 A public REST API for third-party integrations (e.g. Slack bots, custom agents). Partners authenticate via Bearer token or `X-Api-Key` header. API keys are managed in the admin panel (Admin → API Keys tab). Keys are stored as SHA-256 hashes and the raw key is shown only once on creation.
 

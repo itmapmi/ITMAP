@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
@@ -15,8 +16,23 @@ import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
+import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
+
+function PendingBadge() {
+  const { data } = useQuery<{ count: number }>({
+    queryKey: ["/api/admin/ai-suggestions/count"],
+    refetchInterval: 60000,
+  });
+  const count = data?.count ?? 0;
+  if (!count) return null;
+  return (
+    <span className="rounded-full bg-amber-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
+      {count}
+    </span>
+  );
+}
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<string>("market-management");
@@ -26,7 +42,7 @@ export default function Admin() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <FadeInSection className="mb-8 flex items-start justify-between">
         <div>
-          <motion.h2 
+          <motion.h2
             className="text-3xl font-bold text-gray-900 mb-2"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -34,7 +50,7 @@ export default function Admin() {
           >
             Admin Portal
           </motion.h2>
-          <motion.p 
+          <motion.p
             className="text-gray-600"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -58,18 +74,22 @@ export default function Admin() {
         </motion.div>
       </FadeInSection>
 
-      <motion.div 
+      <motion.div
         className="bg-white rounded-xl shadow-sm p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-12">
+          <TabsList className="flex w-full overflow-x-auto flex-wrap gap-0 h-auto">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
             <TabsTrigger value="news">News</TabsTrigger>
+            <TabsTrigger value="ai-suggestions" className="gap-1.5">
+              AI Suggestions
+              <PendingBadge />
+            </TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Eval</TabsTrigger>
@@ -103,6 +123,10 @@ export default function Admin() {
                 setActiveTab("vendor-management");
               }}
             />
+          </TabsContent>
+
+          <TabsContent value="ai-suggestions" className="mt-6">
+            <AiSuggestionsAdmin />
           </TabsContent>
 
           <TabsContent value="criteria-management" className="mt-6">

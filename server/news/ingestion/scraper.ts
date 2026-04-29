@@ -4,6 +4,7 @@ import { db } from '../../db';
 import { vendors } from '@shared/schema';
 import { isNotNull, eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { generateSuggestionsForVendorById } from '../suggestions/generator';
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -172,15 +173,15 @@ function generateContentHash(title: string, url: string): string {
   return crypto.createHash('sha256').update(`${title}::${url}`).digest('hex');
 }
 
-async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecord): Promise<boolean> {
+async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecord): Promise<string | null> {
   const canonicalUrl = article.url.split('?')[0].replace(/\/$/, '');
 
   const existing = await newsStorage.getArticleByUrl(canonicalUrl);
-  if (existing) return false;
+  if (existing) return null;
 
   const contentHash = generateContentHash(article.title, canonicalUrl);
   const existingByHash = await newsStorage.getArticleByContentHash(contentHash);
-  if (existingByHash) return false;
+  if (existingByHash) return null;
 
   const normalizeImpact = (val: string | undefined): 'HIGH' | 'MEDIUM' | 'LOW' | null => {
     const v = (val ?? '').toUpperCase();
@@ -194,7 +195,7 @@ async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecor
   ];
   const category = validCategories.includes(article.category) ? article.category : 'General';
 
-  await newsStorage.createArticle({
+  const saved = await newsStorage.createArticle({
     sourceId: null,
     vendorId: vendor.id,
     marketIds: [vendor.marketId],
@@ -213,7 +214,7 @@ async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecor
     keyTakeaway: article.key_takeaway || null,
   });
 
-  return true;
+  return saved.id;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────
@@ -241,24 +242,31 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
     try {
       const { articles, error } = await fetchAndAnalyzeVendorNews(v);
 
-      let newCount = 0;
+      const newArticleIds: string[] = [];
       for (const article of articles) {
-        const saved = await saveAnalyzedArticle(article, v);
-        if (saved) newCount++;
+        const savedId = await saveAnalyzedArticle(article, v);
+        if (savedId) newArticleIds.push(savedId);
       }
 
-      results.push({ vendorId: v.id, vendor: v.name, total: articles.length, newCount, error });
-      console.log(`[Scraper] ${v.name}: ${articles.length} found, ${newCount} new`);
+      results.push({ vendorId: v.id, vendor: v.name, total: articles.length, newCount: newArticleIds.length, error });
+      console.log(`[Scraper] ${v.name}: ${articles.length} found, ${newArticleIds.length} new`);
 
       await newsStorage.createFetchLog({
         sourceId: v.id,
         status: error ? 'partial' : 'success',
         articlesFound: articles.length,
-        articlesNew: newCount,
-        articlesSkipped: articles.length - newCount,
+        articlesNew: newArticleIds.length,
+        articlesSkipped: articles.length - newArticleIds.length,
         errorMessage: error ?? null,
         duration: Date.now() - startTime,
       });
+
+      // Trigger AI suggestion generation for new articles (fire-and-forget with logging)
+      if (newArticleIds.length > 0) {
+        generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
+          console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);
+        });
+      }
 
       // Small delay between vendors to avoid rate limiting
       if (results.length < allVendors.length) {
@@ -300,23 +308,30 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
   try {
     const { articles, error } = await fetchAndAnalyzeVendorNews(v);
 
-    let newCount = 0;
+    const newArticleIds: string[] = [];
     for (const article of articles) {
-      const saved = await saveAnalyzedArticle(article, v);
-      if (saved) newCount++;
+      const savedId = await saveAnalyzedArticle(article, v);
+      if (savedId) newArticleIds.push(savedId);
     }
 
     await newsStorage.createFetchLog({
       sourceId: v.id,
       status: error ? 'partial' : 'success',
       articlesFound: articles.length,
-      articlesNew: newCount,
-      articlesSkipped: articles.length - newCount,
+      articlesNew: newArticleIds.length,
+      articlesSkipped: articles.length - newArticleIds.length,
       errorMessage: error ?? null,
       duration: Date.now() - startTime,
     });
 
-    return { vendorId: v.id, vendor: v.name, total: articles.length, newCount, error };
+    // Trigger AI suggestion generation (fire-and-forget)
+    if (newArticleIds.length > 0) {
+      generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
+        console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);
+      });
+    }
+
+    return { vendorId: v.id, vendor: v.name, total: articles.length, newCount: newArticleIds.length, error };
   } catch (err: any) {
     await newsStorage.createFetchLog({
       sourceId: v.id,

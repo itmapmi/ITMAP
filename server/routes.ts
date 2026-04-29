@@ -3054,6 +3054,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── AI Suggestions ──────────────────────────────────────────────────────────
+
+  // GET /api/admin/ai-suggestions — list suggestions with optional status filter
+  app.get('/api/admin/ai-suggestions', requireAdmin, async (req, res) => {
+    try {
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
+      const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
+      const suggestions = await storage.getAiSuggestions({ status, vendorId, marketId });
+      res.json(suggestions);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/admin/ai-suggestions/count — pending count for badge
+  app.get('/api/admin/ai-suggestions/count', requireAdmin, async (_req, res) => {
+    try {
+      const count = await storage.getPendingAiSuggestionsCount();
+      res.json({ count });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/admin/ai-suggestions/:id/approve — apply the change and mark approved
+  app.post('/api/admin/ai-suggestions/:id/approve', requireAdmin, async (req, res) => {
+    try {
+      const suggestion = await storage.getAiSuggestionById(req.params.id);
+      if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
+      if (suggestion.status !== 'pending') return res.status(400).json({ error: 'Suggestion is not pending' });
+
+      const suggestedValue = suggestion.suggestedValue != null ? parseFloat(suggestion.suggestedValue) : null;
+
+      if (suggestion.suggestionType === 'criterion_score') {
+        if (suggestedValue == null) return res.status(400).json({ error: 'Missing suggested value' });
+        await storage.createOrUpdateVendorScore({
+          vendorId: suggestion.vendorId,
+          criteriaId: suggestion.subjectId,
+          score: suggestedValue,
+          notes: suggestion.suggestedCommentary ?? undefined,
+        });
+      } else if (suggestion.suggestionType === 'feature_support') {
+        if (suggestedValue == null) return res.status(400).json({ error: 'Missing suggested value' });
+        await storage.createOrUpdateVendorFeatureSupport({
+          vendorId: suggestion.vendorId,
+          featureId: suggestion.subjectId,
+          supportLevel: Math.round(suggestedValue), // 0-4
+          comments: suggestion.suggestedCommentary ?? undefined,
+        });
+      }
+
+      const updated = await storage.updateAiSuggestionStatus(suggestion.id, 'approved');
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/admin/ai-suggestions/:id/reject
+  app.post('/api/admin/ai-suggestions/:id/reject', requireAdmin, async (req, res) => {
+    try {
+      const suggestion = await storage.getAiSuggestionById(req.params.id);
+      if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
+      const updated = await storage.updateAiSuggestionStatus(suggestion.id, 'rejected');
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,4 +1,7 @@
 import {
+  type AiSuggestion,
+  type InsertAiSuggestion,
+  aiSuggestions,
   type User,
   type InsertUser,
   type UserActivityLog,
@@ -60,7 +63,7 @@ import {
   externalChatMessages,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -166,6 +169,14 @@ export interface IStorage {
   // Alert Settings
   getAlertSettings(): Promise<AdminAlertSettings | null>;
   upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;
+
+  // AI Suggestions
+  createAiSuggestion(data: InsertAiSuggestion): Promise<AiSuggestion>;
+  getAiSuggestions(filters?: { status?: string; vendorId?: string; marketId?: string }): Promise<(AiSuggestion & { vendorName: string; marketName: string })[]>;
+  getAiSuggestionById(id: string): Promise<AiSuggestion | undefined>;
+  updateAiSuggestionStatus(id: string, status: 'approved' | 'rejected'): Promise<AiSuggestion>;
+  getPendingAiSuggestionsCount(): Promise<number>;
+  hasPendingDuplicateSuggestion(vendorId: string, subjectId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -990,6 +1001,74 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created!;
     }
+  }
+
+  // ── AI Suggestions ────────────────────────────────────────────────────────
+
+  async createAiSuggestion(data: InsertAiSuggestion): Promise<AiSuggestion> {
+    const [created] = await db.insert(aiSuggestions).values(data).returning();
+    return created!;
+  }
+
+  async getAiSuggestions(
+    filters?: { status?: string; vendorId?: string; marketId?: string }
+  ): Promise<(AiSuggestion & { vendorName: string; marketName: string })[]> {
+    const rows = await db
+      .select({
+        suggestion: aiSuggestions,
+        vendorName: vendors.name,
+        marketName: markets.name,
+      })
+      .from(aiSuggestions)
+      .innerJoin(vendors, eq(aiSuggestions.vendorId, vendors.id))
+      .innerJoin(markets, eq(aiSuggestions.marketId, markets.id))
+      .where(
+        and(
+          filters?.status ? eq(aiSuggestions.status, filters.status) : undefined,
+          filters?.vendorId ? eq(aiSuggestions.vendorId, filters.vendorId) : undefined,
+          filters?.marketId ? eq(aiSuggestions.marketId, filters.marketId) : undefined,
+        )
+      )
+      .orderBy(desc(aiSuggestions.createdAt));
+
+    return rows.map(r => ({ ...r.suggestion, vendorName: r.vendorName, marketName: r.marketName }));
+  }
+
+  async getAiSuggestionById(id: string): Promise<AiSuggestion | undefined> {
+    const [row] = await db.select().from(aiSuggestions).where(eq(aiSuggestions.id, id));
+    return row;
+  }
+
+  async updateAiSuggestionStatus(id: string, status: 'approved' | 'rejected'): Promise<AiSuggestion> {
+    const [updated] = await db
+      .update(aiSuggestions)
+      .set({ status, reviewedAt: new Date() })
+      .where(eq(aiSuggestions.id, id))
+      .returning();
+    return updated!;
+  }
+
+  async getPendingAiSuggestionsCount(): Promise<number> {
+    const rows = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(aiSuggestions)
+      .where(eq(aiSuggestions.status, 'pending'));
+    return rows[0]?.count ?? 0;
+  }
+
+  async hasPendingDuplicateSuggestion(vendorId: string, subjectId: string): Promise<boolean> {
+    const rows = await db
+      .select({ id: aiSuggestions.id })
+      .from(aiSuggestions)
+      .where(
+        and(
+          eq(aiSuggestions.vendorId, vendorId),
+          eq(aiSuggestions.subjectId, subjectId),
+          eq(aiSuggestions.status, 'pending')
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 }
 
