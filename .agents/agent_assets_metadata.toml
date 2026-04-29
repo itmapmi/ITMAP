@@ -6,3 +6,9 @@ id = "WqI81APRQd-aMYcr5nejy"
 uri = "file://docs/partner-api.md"
 type = "text"
 title = "ITMAP Partner API — Integration Guide"
+
+[[outputs]]
+id = "gOF3d-IoNG0PqxYhHyBFo"
+uri = "file://docs/ITMAP-Partner-API-Guide.docx"
+type = "word_document"
+title = "ITMAP Partner API Guide (Word)"
