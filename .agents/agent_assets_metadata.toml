@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "WqI81APRQd-aMYcr5nejy"
+uri = "file://docs/partner-api.md"
+type = "text"
+title = "ITMAP Partner API — Integration Guide"
