@@ -523,7 +523,48 @@ export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;
 export type InsertAdminAlertSettings = z.infer<typeof insertAdminAlertSettingsSchema>;
 export type AdminAlertSettings = typeof adminAlertSettings.$inferSelect;
 
-// Chat Conversations - Store chat sessions per market
+// ── External Partner API ─────────────────────────────────────────────────────
+
+export const externalApiKeys = pgTable("external_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  keyPrefix: text("key_prefix").notNull(),
+  allowedMarketIds: text("allowed_market_ids").array(),
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const externalChatSessions = pgTable("external_chat_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeyId: varchar("api_key_id").notNull().references(() => externalApiKeys.id, { onDelete: "cascade" }),
+  externalSessionId: text("external_session_id").notNull(),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const externalChatMessages = pgTable("external_chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => externalChatSessions.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertExternalApiKeySchema = createInsertSchema(externalApiKeys).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+});
+export type InsertExternalApiKey = z.infer<typeof insertExternalApiKeySchema>;
+export type ExternalApiKey = typeof externalApiKeys.$inferSelect;
+
+export type ExternalChatSession = typeof externalChatSessions.$inferSelect;
+export type ExternalChatMessage = typeof externalChatMessages.$inferSelect;
+
+// ── Chat Conversations - Store chat sessions per market ───────────────────────
 export const chatConversations = pgTable("chat_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

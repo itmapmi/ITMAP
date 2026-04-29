@@ -34,6 +34,9 @@ import {
   type InsertChatMessage,
   type AdminAlertSettings,
   type InsertAdminAlertSettings,
+  type ExternalApiKey,
+  type ExternalChatSession,
+  type ExternalChatMessage,
   users,
   userActivityLogs,
   markets,
@@ -52,6 +55,9 @@ import {
   chatConversations,
   chatMessages,
   adminAlertSettings,
+  externalApiKeys,
+  externalChatSessions,
+  externalChatMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -891,6 +897,72 @@ export class DatabaseStorage implements IStorage {
       .values(message)
       .returning();
     return newMessage!;
+  }
+
+  // ── External API Keys ──────────────────────────────────────────────────────
+  async listExternalApiKeys(): Promise<ExternalApiKey[]> {
+    return await db.select().from(externalApiKeys).orderBy(desc(externalApiKeys.createdAt));
+  }
+
+  async getExternalApiKeyByHash(hash: string): Promise<ExternalApiKey | undefined> {
+    const [key] = await db.select().from(externalApiKeys).where(eq(externalApiKeys.keyHash, hash));
+    return key;
+  }
+
+  async createExternalApiKey(data: {
+    name: string;
+    keyHash: string;
+    keyPrefix: string;
+    allowedMarketIds: string[] | null;
+  }): Promise<ExternalApiKey> {
+    const [key] = await db.insert(externalApiKeys).values(data).returning();
+    return key!;
+  }
+
+  async updateExternalApiKey(id: string, data: Partial<Pick<ExternalApiKey, 'name' | 'isActive' | 'allowedMarketIds' | 'lastUsedAt'>>): Promise<ExternalApiKey> {
+    const [updated] = await db.update(externalApiKeys).set(data).where(eq(externalApiKeys.id, id)).returning();
+    return updated!;
+  }
+
+  async deleteExternalApiKey(id: string): Promise<void> {
+    await db.delete(externalApiKeys).where(eq(externalApiKeys.id, id));
+  }
+
+  // ── External Chat Sessions ─────────────────────────────────────────────────
+  async getOrCreateExternalSession(apiKeyId: string, externalSessionId: string, marketId: string): Promise<ExternalChatSession> {
+    const [existing] = await db
+      .select()
+      .from(externalChatSessions)
+      .where(and(eq(externalChatSessions.apiKeyId, apiKeyId), eq(externalChatSessions.externalSessionId, externalSessionId)));
+
+    if (existing) {
+      await db.update(externalChatSessions).set({ updatedAt: new Date() }).where(eq(externalChatSessions.id, existing.id));
+      return existing;
+    }
+
+    const [created] = await db.insert(externalChatSessions).values({ apiKeyId, externalSessionId, marketId }).returning();
+    return created!;
+  }
+
+  async getExternalSession(apiKeyId: string, externalSessionId: string): Promise<ExternalChatSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(externalChatSessions)
+      .where(and(eq(externalChatSessions.apiKeyId, apiKeyId), eq(externalChatSessions.externalSessionId, externalSessionId)));
+    return session;
+  }
+
+  async getExternalSessionMessages(sessionId: string): Promise<ExternalChatMessage[]> {
+    return await db
+      .select()
+      .from(externalChatMessages)
+      .where(eq(externalChatMessages.sessionId, sessionId))
+      .orderBy(externalChatMessages.createdAt);
+  }
+
+  async addExternalMessage(sessionId: string, role: string, content: string): Promise<ExternalChatMessage> {
+    const [msg] = await db.insert(externalChatMessages).values({ sessionId, role, content }).returning();
+    return msg!;
   }
 
   async getAdminUsers(): Promise<User[]> {

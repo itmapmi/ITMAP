@@ -14,11 +14,11 @@ import OperationsManagement from "@/components/admin/operations-management";
 import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
+import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
 export default function Admin() {
-  const [selectedMarket, setSelectedMarket] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("market-management");
   const [pendingEditVendor, setPendingEditVendor] = useState<{ id: string; marketId: string } | null>(null);
 
@@ -65,19 +65,20 @@ export default function Admin() {
         transition={{ duration: 0.6, delay: 0.3 }}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-11">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
             <TabsTrigger value="news">News</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
-            <TabsTrigger value="support-matrix">Product Evaluation</TabsTrigger>
+            <TabsTrigger value="support-matrix">Product Eval</TabsTrigger>
             <TabsTrigger value="graphic">Graphic</TabsTrigger>
             <TabsTrigger value="import-export">Import/Export</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -134,6 +135,10 @@ export default function Admin() {
 
           <TabsContent value="operations" className="mt-6">
             <OperationsManagement />
+          </TabsContent>
+
+          <TabsContent value="api-keys" className="mt-6">
+            <ApiKeysAdmin />
           </TabsContent>
         </Tabs>
       </motion.div>

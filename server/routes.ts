@@ -9,8 +9,10 @@ import { setupSession, setupPassport, requireAuth, requireAdmin } from "./auth";
 import { newsStorage } from "./news/storage";
 import { scrapeAllVendors, scrapeSingleVendor } from "./news/ingestion/scraper";
 import { analyzeAllPending, analyzeSingleArticle } from "./news/impact/analyzer";
+import { externalRouter } from "./external";
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import path from 'path';
 
   // Cache to track which sessions we've already logged
@@ -20,6 +22,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupSession(app);
   setupPassport(app);
+
+  // External partner API (API-key auth, no session required)
+  app.use('/api/external', externalRouter);
 
   // Serve sitemap.xml and robots.txt from public folder
   app.get('/sitemap.xml', (_req, res) => {
@@ -2969,6 +2974,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating functional spec document:", error);
       res.status(500).json({ error: "Failed to generate document" });
+    }
+  });
+
+  // ── Admin: External API Key Management ──────────────────────────────────
+
+  app.get('/api/admin/api-keys', requireAdmin, async (_req, res) => {
+    try {
+      const keys = await storage.listExternalApiKeys();
+      res.json(keys);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/admin/api-keys', requireAdmin, async (req, res) => {
+    try {
+      const { name, allowedMarketIds } = req.body as {
+        name?: string;
+        allowedMarketIds?: string[] | null;
+      };
+
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ error: 'name is required' });
+      }
+
+      // Generate a secure key: itmap_ + 32 random hex bytes
+      const rawKey = `itmap_${crypto.randomBytes(32).toString('hex')}`;
+      const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+      const keyPrefix = rawKey.substring(0, 14); // "itmap_" + first 8 hex chars
+
+      const created = await storage.createExternalApiKey({
+        name: name.trim(),
+        keyHash,
+        keyPrefix,
+        allowedMarketIds: Array.isArray(allowedMarketIds) && allowedMarketIds.length > 0
+          ? allowedMarketIds
+          : null,
+      });
+
+      // Return the full key ONCE — it is never stored and cannot be recovered
+      res.status(201).json({ ...created, rawKey });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch('/api/admin/api-keys/:id', requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, isActive, allowedMarketIds } = req.body as {
+        name?: string;
+        isActive?: boolean;
+        allowedMarketIds?: string[] | null;
+      };
+
+      const updates: Record<string, any> = {};
+      if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+      if (typeof isActive === 'boolean') updates.isActive = isActive;
+      if (Object.prototype.hasOwnProperty.call(req.body, 'allowedMarketIds')) {
+        updates.allowedMarketIds = Array.isArray(allowedMarketIds) && allowedMarketIds.length > 0
+          ? allowedMarketIds
+          : null;
+      }
+
+      const updated = await storage.updateExternalApiKey(id, updates);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/admin/api-keys/:id', requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteExternalApiKey(req.params.id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 

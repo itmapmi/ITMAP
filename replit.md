@@ -45,6 +45,18 @@ Designed for internal enterprise use, featuring basic user management and role-b
 ### API Design
 Follows RESTful principles with standardized error handling, request/response logging, Zod schema validation, and consistent JSON response formats.
 
+### External Partner API
+A public REST API for third-party integrations (e.g. Slack bots, custom agents). Partners authenticate via Bearer token or `X-Api-Key` header. API keys are managed in the admin panel (Admin → API Keys tab). Keys are stored as SHA-256 hashes and the raw key is shown only once on creation.
+
+**Endpoints:**
+- `GET /api/external/v1/markets` — list markets the key is authorized to query
+- `POST /api/external/v1/chat` — send a question, get an AI-powered answer (body: `market_id`, `message`, optional `session_id`)
+- `GET /api/external/v1/sessions/:sessionId` — retrieve full conversation history for a session
+
+**Session management:** Partners pass their own session identifier (e.g. Slack thread ID) as `session_id`. ITMAP stores conversation history keyed on `api_key_id + session_id`, so the same Slack thread automatically continues the same conversation.
+
+**Key files:** `server/external/index.ts` (routes + auth middleware), `client/src/components/admin/api-keys-admin.tsx` (admin UI), `shared/schema.ts` (`external_api_keys`, `external_chat_sessions`, `external_chat_messages` tables).
+
 ### File Upload Strategy
 Supports document uploads for research reports using Google Cloud Storage as primary storage, with Uppy.js for the frontend interface. AWS S3 is available as an alternative.
 
