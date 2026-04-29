@@ -3080,29 +3080,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/ai-suggestions/:id/approve — apply the change and mark approved
+  // Body (optional): { value?: number, commentary?: string } — admin overrides take precedence
   app.post('/api/admin/ai-suggestions/:id/approve', requireAdmin, async (req, res) => {
     try {
       const suggestion = await storage.getAiSuggestionById(req.params.id);
       if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
       if (suggestion.status !== 'pending') return res.status(400).json({ error: 'Suggestion is not pending' });
 
-      const suggestedValue = suggestion.suggestedValue != null ? parseFloat(suggestion.suggestedValue) : null;
+      // Admin may override the AI's value/commentary before approving
+      const finalValue = req.body.value !== undefined
+        ? parseFloat(req.body.value)
+        : (suggestion.suggestedValue != null ? parseFloat(suggestion.suggestedValue) : null);
+      const finalCommentary = req.body.commentary !== undefined
+        ? req.body.commentary
+        : (suggestion.suggestedCommentary ?? undefined);
 
       if (suggestion.suggestionType === 'criterion_score') {
-        if (suggestedValue == null) return res.status(400).json({ error: 'Missing suggested value' });
+        if (finalValue == null) return res.status(400).json({ error: 'Missing value' });
         await storage.createOrUpdateVendorScore({
           vendorId: suggestion.vendorId,
           criteriaId: suggestion.subjectId,
-          score: suggestedValue,
-          notes: suggestion.suggestedCommentary ?? undefined,
+          score: finalValue,
+          notes: finalCommentary,
         });
       } else if (suggestion.suggestionType === 'feature_support') {
-        if (suggestedValue == null) return res.status(400).json({ error: 'Missing suggested value' });
+        if (finalValue == null) return res.status(400).json({ error: 'Missing value' });
         await storage.createOrUpdateVendorFeatureSupport({
           vendorId: suggestion.vendorId,
           featureId: suggestion.subjectId,
-          supportLevel: Math.round(suggestedValue), // 0-4
-          comments: suggestion.suggestedCommentary ?? undefined,
+          supportLevel: Math.round(finalValue), // 0-4
+          comments: finalCommentary,
         });
       }
 
