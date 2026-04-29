@@ -38,6 +38,43 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS newsroom_alert_disabled boolean NOT NULL DEFAULT false
     `);
 
+    // 3. external_api_keys — partner API key management
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS external_api_keys (
+        id         varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name       text NOT NULL,
+        key_hash   text NOT NULL UNIQUE,
+        key_prefix text NOT NULL,
+        allowed_market_ids text[],
+        is_active  boolean NOT NULL DEFAULT true,
+        last_used_at timestamp,
+        created_at timestamp DEFAULT now()
+      )
+    `);
+
+    // 4. external_chat_sessions — one row per partner session (keyed by their own ID e.g. Slack thread)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS external_chat_sessions (
+        id                  varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        api_key_id          varchar NOT NULL REFERENCES external_api_keys(id) ON DELETE CASCADE,
+        external_session_id text NOT NULL,
+        market_id           varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        created_at          timestamp DEFAULT now(),
+        updated_at          timestamp DEFAULT now()
+      )
+    `);
+
+    // 5. external_chat_messages — conversation history per session
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS external_chat_messages (
+        id         varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id varchar NOT NULL REFERENCES external_chat_sessions(id) ON DELETE CASCADE,
+        role       text NOT NULL,
+        content    text NOT NULL,
+        created_at timestamp DEFAULT now()
+      )
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
