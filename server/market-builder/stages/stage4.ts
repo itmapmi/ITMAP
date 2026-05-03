@@ -116,13 +116,28 @@ Respond with ONLY a JSON object:
   ]
 }`;
 
-  const result = await callLLMForJSON<Stage4Result>(llmConfig, SYSTEM_PROMPT, userPrompt);
+  const expectedCount = vendors.length * features.length;
 
-  if (!Array.isArray(result.support)) {
-    throw new Error(`Stage 4 batch ${batchLabel}: invalid response from LLM`);
+  // Attempt up to 2 tries — LLM occasionally truncates output silently
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<Stage4Result>(llmConfig, SYSTEM_PROMPT, userPrompt);
+    if (!Array.isArray(result.support)) {
+      if (attempt === 2) throw new Error(`Stage 4 batch ${batchLabel}: invalid response from LLM`);
+      continue;
+    }
+    if (result.support.length >= expectedCount * 0.85) {
+      // ≥85 % of expected records — accept the batch
+      return result.support;
+    }
+    if (attempt === 2) {
+      // Accept whatever we got on the second attempt rather than failing entirely
+      console.warn(`[Stage4] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} after 2 attempts — accepting partial batch`);
+      return result.support;
+    }
+    console.warn(`[Stage4] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} — retrying (attempt ${attempt})`);
   }
 
-  return result.support;
+  return [];
 }
 
 export async function runStage4Full(
@@ -133,8 +148,10 @@ export async function runStage4Full(
   sourceContext: string = "",
   onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>
 ): Promise<Stage4Result> {
-  const VENDOR_BATCH = 3;
-  const FEATURE_BATCH = 12;
+  // 1 vendor at a time keeps output to ~10 records × ~300 tokens = ~3 000 tokens per call,
+  // well within model output limits. 3-vendor batches risked silent truncation (~9–11 k tokens).
+  const VENDOR_BATCH = 1;
+  const FEATURE_BATCH = 10;
 
   // Flatten all features with their category names
   const allFeatures: FeatureBatch[] = stage3.categories.flatMap(cat =>

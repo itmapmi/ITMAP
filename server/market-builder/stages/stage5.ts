@@ -167,11 +167,25 @@ Respond with ONLY a JSON object:
   ]
 }`;
 
-  const result = await callLLMForJSON<{ support: Stage5SupportRecord[] }>(llmConfig, SCORE_SYSTEM_PROMPT, userPrompt);
-  if (!Array.isArray(result.support)) {
-    throw new Error(`Stage 5 batch ${batchLabel}: invalid response from LLM`);
+  const expectedCount = vendors.length * features.length;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<{ support: Stage5SupportRecord[] }>(llmConfig, SCORE_SYSTEM_PROMPT, userPrompt);
+    if (!Array.isArray(result.support)) {
+      if (attempt === 2) throw new Error(`Stage 6 batch ${batchLabel}: invalid response from LLM`);
+      continue;
+    }
+    if (result.support.length >= expectedCount * 0.85) {
+      return result.support;
+    }
+    if (attempt === 2) {
+      console.warn(`[Stage6] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} after 2 attempts — accepting partial batch`);
+      return result.support;
+    }
+    console.warn(`[Stage6] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} — retrying (attempt ${attempt})`);
   }
-  return result.support;
+
+  return [];
 }
 
 // ── Stage 5A: Define ecosystem categories + features ─────────────────────
@@ -201,7 +215,8 @@ export async function runStage6(
   sourceContext: string = "",
   onProgress?: (msg: string) => Promise<void>
 ): Promise<Stage5Result> {
-  const VENDOR_BATCH = 3;
+  // 1 vendor at a time keeps output to ~10 records × ~300 tokens = ~3 000 tokens per call.
+  const VENDOR_BATCH = 1;
   const FEATURE_BATCH = 10;
 
   const allFeatures = stage5A.categories.flatMap(cat =>
