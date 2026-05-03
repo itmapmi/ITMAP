@@ -189,7 +189,9 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
   const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
-  const [editScore, setEditScore] = useState(""); const [editCommentary, setEditCommentary] = useState("");
+  const [editScore, setEditScore] = useState("");
+  const [editCommentary, setEditCommentary] = useState("");
+  const [editSources, setEditSources] = useState<string[]>([]);
 
   const updateWeight = (criterionName: string, weight: number) =>
     onChange({ ...result, criteriaWeights: weights.map((w: any) => w.criterionName === criterionName ? { ...w, weight } : w) });
@@ -197,7 +199,7 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   const getScore = (v: string, c: string) => scores.find((s: any) => s.vendorName === v && s.criterionName === c);
   const saveScore = () => {
     if (!selected) return;
-    onChange({ ...result, scores: scores.map((s: any) => s.vendorName === selected.v && s.criterionName === selected.c ? { ...s, score: parseFloat(editScore) || s.score, commentary: editCommentary } : s) });
+    onChange({ ...result, scores: scores.map((s: any) => s.vendorName === selected.v && s.criterionName === selected.c ? { ...s, score: parseFloat(editScore) || s.score, commentary: editCommentary, sources: editSources.filter(Boolean) } : s) });
     setSelected(null);
   };
 
@@ -234,21 +236,40 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
       })}
 
       {/* Score edit panel */}
-      {selected && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.c}</p>
-          <div className="flex gap-2">
-            <div className="w-24"><Label className="text-xs">Score (0–10)</Label>
-              <Input type="number" min={0} max={10} step={0.1} value={editScore} onChange={e => setEditScore(e.target.value)} className="h-7 text-xs text-center mt-0.5" /></div>
-            <div className="flex-1"><Label className="text-xs">Commentary</Label>
-              <Textarea value={editCommentary} onChange={e => setEditCommentary(e.target.value)} rows={2} className="text-xs resize-none mt-0.5" /></div>
+      {selected && (() => {
+        const wordCount = editCommentary.trim().split(/\s+/).filter(Boolean).length;
+        const wColor = wordCount < 100 ? "text-red-500" : wordCount > 250 ? "text-orange-500" : "text-green-600";
+        return (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+            <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.c}</p>
+            <div className="flex gap-2">
+              <div className="w-24 shrink-0"><Label className="text-xs">Score (0–10)</Label>
+                <Input type="number" min={0} max={10} step={0.1} value={editScore} onChange={e => setEditScore(e.target.value)} className="h-7 text-xs text-center mt-0.5" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <Label className="text-xs">Commentary</Label>
+                  <span className={`text-xs font-mono ${wColor}`}>{wordCount} words</span>
+                </div>
+                <Textarea value={editCommentary} onChange={e => setEditCommentary(e.target.value)} rows={5} className="text-xs resize-none" placeholder="100–250 words of evidence-based commentary. No inline references — add sources below." />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Sources <span className="text-gray-400 font-normal">(one per line, no inline refs in commentary)</span></Label>
+              <Textarea
+                value={editSources.join("\n")}
+                onChange={e => setEditSources(e.target.value.split("\n"))}
+                rows={3}
+                className="text-xs resize-none font-mono"
+                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nGartner Peer Insights — customer reviews"}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Score matrix */}
       <div>
@@ -265,7 +286,7 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
                 {weights.map((w: any) => {
                   const s = getScore(v, w.criterionName);
                   return <td key={w.criterionName} className="p-1 text-center">
-                    <button onClick={() => { setSelected({ v, c: w.criterionName }); setEditScore(s?.score?.toString() ?? ""); setEditCommentary(s?.commentary ?? ""); }}
+                    <button onClick={() => { setSelected({ v, c: w.criterionName }); setEditScore(s?.score?.toString() ?? ""); setEditCommentary(s?.commentary ?? ""); setEditSources(s?.sources ?? []); }}
                       className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${scoreCellColor(s?.score ?? 0)}`}
                       title={s?.commentary}>{s?.score?.toFixed(1) ?? "–"}</button>
                   </td>;
@@ -345,28 +366,51 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
   const [selected, setSelected] = useState<{ v: string; f: string } | null>(null);
   const [editLevel, setEditLevel] = useState(0);
   const [editComments, setEditComments] = useState("");
+  const [editSources, setEditSources] = useState<string[]>([]);
   const HARVEY = ["✕ None", "◔ Limited", "◑ Partial", "◕ Good", "● Full"];
   const lcolor = (l: number) => ["text-gray-300", "text-red-400", "text-yellow-500", "text-blue-500", "text-green-600"][l] ?? "";
   const get = (v: string, f: string) => support.find((s: any) => s.vendorName === v && s.featureName === f);
   const save = () => {
     if (!selected) return;
-    onChange(support.map((s: any) => s.vendorName === selected.v && s.featureName === selected.f ? { ...s, supportLevel: editLevel, comments: editComments } : s));
+    onChange(support.map((s: any) => s.vendorName === selected.v && s.featureName === selected.f
+      ? { ...s, supportLevel: editLevel, comments: editComments, sources: editSources.filter(Boolean) }
+      : s));
     setSelected(null);
   };
   return (
     <div className="space-y-3">
       {label && <p className="text-sm font-semibold text-gray-700">{label}</p>}
-      {selected && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.f}</p>
-          <div className="flex gap-1.5 flex-wrap">{HARVEY.map((h, l) => <button key={l} onClick={() => setEditLevel(l)} className={`text-xs px-2 py-1 rounded border ${editLevel === l ? "border-blue-500 bg-blue-100 font-semibold" : "border-gray-200"}`}>{h}</button>)}</div>
-          <Textarea value={editComments} onChange={e => setEditComments(e.target.value)} rows={2} className="text-xs resize-none" placeholder="Comments…" />
-          <div className="flex gap-2">
-            <Button size="sm" className="h-7 text-xs" onClick={save}><Save className="h-3 w-3 mr-1" />Save</Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
+      {selected && (() => {
+        const wordCount = editComments.trim().split(/\s+/).filter(Boolean).length;
+        const wColor = wordCount < 100 ? "text-red-500" : wordCount > 250 ? "text-orange-500" : "text-green-600";
+        return (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+            <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.f}</p>
+            <div className="flex gap-1.5 flex-wrap">{HARVEY.map((h, l) => <button key={l} onClick={() => setEditLevel(l)} className={`text-xs px-2 py-1 rounded border ${editLevel === l ? "border-blue-500 bg-blue-100 font-semibold" : "border-gray-200"}`}>{h}</button>)}</div>
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <Label className="text-xs">Commentary</Label>
+                <span className={`text-xs font-mono ${wColor}`}>{wordCount} words</span>
+              </div>
+              <Textarea value={editComments} onChange={e => setEditComments(e.target.value)} rows={5} className="text-xs resize-none" placeholder="100–250 words of evidence-based commentary. No inline references — add sources below." />
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Sources <span className="text-gray-400 font-normal">(one per line)</span></Label>
+              <Textarea
+                value={editSources.join("\n")}
+                onChange={e => setEditSources(e.target.value.split("\n"))}
+                rows={3}
+                className="text-xs resize-none font-mono"
+                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nGartner Peer Insights — customer reviews"}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="h-7 text-xs" onClick={save}><Save className="h-3 w-3 mr-1" />Save</Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       <div className="overflow-x-auto rounded-lg border max-h-64">
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-gray-50">
@@ -382,7 +426,7 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
               {features.slice(0, 22).map(f => {
                 const s = get(v, f);
                 return <td key={f} className="p-1 text-center">
-                  <button onClick={() => { setSelected({ v, f }); setEditLevel(s?.supportLevel ?? 0); setEditComments(s?.comments ?? ""); }}
+                  <button onClick={() => { setSelected({ v, f }); setEditLevel(s?.supportLevel ?? 0); setEditComments(s?.comments ?? ""); setEditSources(s?.sources ?? []); }}
                     className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel ?? 0)}`}
                     title={s?.comments}>{HARVEY[s?.supportLevel ?? 0]?.split(" ")[0] ?? "✕"}</button>
                 </td>;

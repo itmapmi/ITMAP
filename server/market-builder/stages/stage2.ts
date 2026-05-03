@@ -4,12 +4,10 @@
  * Uses PREDEFINED global criteria already in the DB.
  * The LLM does NOT create new criteria — it:
  *   1. Assigns a market-specific weight (1-100) to each predefined criterion
- *   2. Writes a scoringRationale: what the criterion means in THIS market
- *      and what high vs low scores look like
- *   3. Scores each vendor (0.0–10.0) against every criterion
- *   4. Writes evidence-based commentary for each individual score
- *
- * This drives the quadrant chart (Execution = X-axis / Viability = Y-axis).
+ *   2. Writes a scoringRationale for each criterion (what it measures in this market + high/low score guidance)
+ *   3. Scores each vendor (0.0–10.0) against every criterion with:
+ *      - 100–250 word evidence-based commentary (no inline references)
+ *      - A sources[] list cited at the end
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result } from "./stage1";
@@ -25,15 +23,16 @@ export interface Stage2CriterionWeight {
   criterionId: string;
   criterionName: string;
   criterionCategory: string;
-  weight: number;          // 1–100 within its axis
-  scoringRationale: string; // What this criterion means for THIS market + high/low score guidance
+  weight: number;           // 1–100 within its axis
+  scoringRationale: string; // 2–3 sentences: what it means here + high/low score guidance
 }
 
 export interface Stage2Score {
   vendorName: string;
   criterionName: string;
-  score: number;      // 0.0–10.0
-  commentary: string; // 1–2 sentences of evidence explaining this vendor's score
+  score: number;       // 0.0–10.0
+  commentary: string;  // 100–250 words, no inline references
+  sources: string[];   // list of sources used, cited at the bottom
 }
 
 export interface Stage2Result {
@@ -41,7 +40,8 @@ export interface Stage2Result {
   scores: Stage2Score[];
 }
 
-const SYSTEM_PROMPT = `You are a senior technology market research analyst specialising in vendor evaluation frameworks.
+const SYSTEM_PROMPT = `You are a senior technology market research analyst producing an enterprise vendor evaluation report.
+Your commentary must be detailed, evidence-based, balanced, and actionable.
 Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
 
 export async function runStage2(
@@ -67,7 +67,7 @@ export async function runStage2(
   ).join("\n\n");
 
   const userPrompt = `
-You are producing the Vendor Evaluation section for a technology market research report.
+You are producing the Vendor Evaluation section for a professional enterprise market research report on the ${marketName} market.
 
 Market: ${marketName}
 Summary: ${stage1.marketSummary}
@@ -81,19 +81,32 @@ You MUST use ALL of these — do not add or remove any.
 
 ${criteriaBlock}
 
+═══════════════════════════════════
 TASK 1 — Market-specific weights and scoring rationale:
 For each criterion provide:
 - weight: integer 1–100 reflecting importance for THIS specific market (weights within each axis should roughly sum to 100)
-- scoringRationale: 2–3 sentences that explain:
+- scoringRationale: 2–3 sentences explaining:
     (a) exactly what this criterion measures in the context of the ${marketName} market
-    (b) what a HIGH score (8–10) looks like for a vendor in this market
-    (c) what a LOW score (1–3) looks like
-  This gives readers a clear framework for interpreting vendor scores.
+    (b) what a HIGH score (8–10) looks like vs a LOW score (1–3)
 
-TASK 2 — Score every vendor against every criterion:
-- score: decimal 0.0–10.0 (one decimal place)
-- commentary: 1–2 sentences with specific, evidence-based reasoning for THIS vendor's score on THIS criterion
-- Be differentiated — avoid clustering vendors at the same score
+═══════════════════════════════════
+TASK 2 — Score every vendor × criterion combination:
+
+COMMENTARY STANDARDS (mandatory):
+• Length: 100–250 words per commentary
+• No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array only
+• Content must be balanced: acknowledge both strengths and weaknesses
+• Draw from multiple perspectives: vendor documentation, independent analyst reports, user communities (Reddit r/homelab, r/sysadmin, r/storage, etc.), industry forums, and third-party reviews
+• Be specific: name actual product features, version numbers, known limitations, real customer feedback themes
+• Be actionable: the reader should understand what this score means for a buyer's decision
+
+SOURCES (mandatory):
+• List 2–5 sources used to inform the commentary
+• Format each as: "Source name / URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback on reliability", "Gartner Peer Insights — customer reviews")
+• Include a mix: at least one official vendor source AND at least one independent/community source per commentary
+
+SCORING:
+- score: decimal 0.0–10.0 (one decimal place), be differentiated — avoid clustering vendors
 
 Respond with ONLY a JSON object:
 {
@@ -103,11 +116,17 @@ Respond with ONLY a JSON object:
       "criterionName": "<name>",
       "criterionCategory": "<category>",
       "weight": <1-100>,
-      "scoringRationale": "<2-3 sentences: what it measures here, what high/low scores mean>"
+      "scoringRationale": "<2-3 sentences>"
     }
   ],
   "scores": [
-    { "vendorName": "<name>", "criterionName": "<name>", "score": <0.0-10.0>, "commentary": "<1-2 sentences of evidence>" }
+    {
+      "vendorName": "<name>",
+      "criterionName": "<name>",
+      "score": <0.0-10.0>,
+      "commentary": "<100-250 words, no inline refs, balanced and evidence-based>",
+      "sources": ["<source 1>", "<source 2>"]
+    }
   ]
 }`;
 

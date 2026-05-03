@@ -228,16 +228,21 @@ export function registerMarketBuilderRoutes(app: Express): void {
         await storage.updateMarketCriteriaWeight(market.id, criterionId, cw.weight);
       }
 
-      // Save vendor scores per criterion
+      // Save vendor scores per criterion (commentary + sources appended)
       for (const s of (stage2.scores ?? [])) {
         const vendorId = vendorIdMap.get(s.vendorName);
         const criterionId = findCriterionId(s.criterionName);
         if (!vendorId || !criterionId) continue;
+        const rawCommentary = s.commentary ?? s.notes ?? "";
+        const srcList: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+        const notes = srcList.length > 0
+          ? `${rawCommentary}\n\nSources:\n${srcList.map((src: string) => `• ${src}`).join("\n")}`
+          : rawCommentary;
         await storage.createOrUpdateVendorScore({
           vendorId,
           criteriaId: criterionId,
           score: s.score,
-          notes: s.commentary ?? s.notes,
+          notes,
         });
       }
 
@@ -267,8 +272,12 @@ export function registerMarketBuilderRoutes(app: Express): void {
         const vendorId = vendorIdMap.get(s.vendorName);
         const featureId = productFeatureIdMap.get(s.featureName);
         if (!vendorId || !featureId) continue;
+        const srcList4: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+        const comments4 = srcList4.length > 0
+          ? `${s.comments ?? ""}\n\nSources:\n${srcList4.map((src: string) => `• ${src}`).join("\n")}`
+          : (s.comments ?? "");
         await storage.createOrUpdateVendorFeatureSupport({
-          vendorId, featureId, supportLevel: s.supportLevel, comments: s.comments,
+          vendorId, featureId, supportLevel: s.supportLevel, comments: comments4,
         });
       }
 
@@ -296,8 +305,12 @@ export function registerMarketBuilderRoutes(app: Express): void {
         const vendorId = vendorIdMap.get(s.vendorName);
         const featureId = ecoFeatureIdMap.get(s.featureName);
         if (!vendorId || !featureId) continue;
+        const srcList5: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+        const comments5 = srcList5.length > 0
+          ? `${s.comments ?? ""}\n\nSources:\n${srcList5.map((src: string) => `• ${src}`).join("\n")}`
+          : (s.comments ?? "");
         await storage.createOrUpdateVendorFeatureSupport({
-          vendorId, featureId, supportLevel: s.supportLevel, comments: s.comments,
+          vendorId, featureId, supportLevel: s.supportLevel, comments: comments5,
         });
       }
 
