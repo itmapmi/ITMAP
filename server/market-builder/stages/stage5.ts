@@ -128,14 +128,16 @@ COMMENTARY STANDARDS (mandatory for every vendor × integration):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (no [1], no (Source: X)) — sources go in the sources array
 • Content must be balanced: acknowledge both integration strengths and real limitations
-• Draw from: official partner/marketplace pages, integration documentation, user communities (Reddit, Hacker News), independent reviews, changelogs, partner certification pages
+• Draw from: official partner/marketplace pages, integration documentation, GitHub repositories and issues, Reddit communities (r/devops, r/sysadmin, r/selfhosted, r/aws, etc.), Hacker News discussions, independent engineering blogs and write-ups, changelogs, partner certification pages
+• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
 • Be specific: reference official certification status, API/SDK availability, known limitations, version requirements, number of supported connectors
 • Be actionable: a buyer comparing vendors on ecosystem fit should be able to decide based on this
 
 SOURCES (mandatory):
 • 2–4 sources per commentary
 • Format: "Source name — URL or description"
-• Mix: at least one official source AND one independent/community source
+• Mix: at least one official vendor/partner source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
 
 For EVERY vendor × integration combination:
 - vendorName: exact vendor name

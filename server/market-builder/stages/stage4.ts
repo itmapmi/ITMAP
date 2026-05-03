@@ -77,14 +77,16 @@ COMMENTARY STANDARDS (mandatory for every vendor × feature):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array
 • Content must be balanced: acknowledge both product strengths and real limitations or gaps
-• Draw from: official product documentation, changelog/release notes, user reviews (G2, Gartner Peer Insights, TrustRadius), community feedback (Reddit, Hacker News, Stack Overflow), independent analyst reports
+• Draw from: official product documentation, changelog/release notes, GitHub issues and discussions, community feedback (Reddit r/sysadmin, r/devops, r/aws, r/azure, r/selfhosted, etc.), Hacker News threads, independent tech blogs and engineering write-ups
+• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
 • Be specific: reference actual feature names, version capabilities, known bugs or limitations, performance benchmarks where relevant
 • Be actionable: a buyer should be able to make a decision based on this commentary
 
 SOURCES (mandatory):
 • 2–4 sources per commentary
 • Format: "Source name — URL or description"
-• Mix: at least one official vendor source AND at least one independent/community source
+• Mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
 
 For EVERY vendor × feature combination:
 - vendorName: exact vendor name

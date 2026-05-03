@@ -96,14 +96,16 @@ COMMENTARY STANDARDS (mandatory):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array only
 • Content must be balanced: acknowledge both strengths and weaknesses
-• Draw from multiple perspectives: vendor documentation, independent analyst reports, user communities (Reddit r/homelab, r/sysadmin, r/storage, etc.), industry forums, and third-party reviews
-• Be specific: name actual product features, version numbers, known limitations, real customer feedback themes
+• Draw from multiple perspectives: vendor documentation, independent tech blogs and analyst posts, user communities (Reddit r/sysadmin, r/homelab, r/devops, r/aws, r/azure, etc.), Hacker News discussions, GitHub issues/discussions, and independent technical reviews
+• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
+• Be specific: name actual product features, version numbers, known limitations, real community feedback themes
 • Be actionable: the reader should understand what this score means for a buyer's decision
 
 SOURCES (mandatory):
 • List 2–5 sources used to inform the commentary
-• Format each as: "Source name / URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback on reliability", "Gartner Peer Insights — customer reviews")
-• Include a mix: at least one official vendor source AND at least one independent/community source per commentary
+• Format each as: "Source name — URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback thread on durability", "Hacker News — discussion on pricing model changes")
+• Include a mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
 
 SCORING:
 - score: decimal 0.0–10.0 (one decimal place), be differentiated — avoid clustering vendors
