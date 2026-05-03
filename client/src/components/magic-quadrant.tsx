@@ -208,12 +208,12 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const defaultWeightsByName: { [name: string]: number } = {
         'ISV Ecosystem': 100,
         'Innovation': 50,
-        'Pricing strategy': 100,
-        'Product capabilities': 100,
+        'Pricing Strategy': 100,
+        'Product Capabilities': 100,
         'Business Model': 50,
-        'Customer experience': 100,
+        'Customer Experience': 100,
         'Partner Ecosystem': 75,
-        'Revenue': 50
+        'Revenue': 100,
       };
 
       const initialWeights: { [id: string]: number } = {};

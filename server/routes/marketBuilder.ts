@@ -235,11 +235,22 @@ export function registerMarketBuilderRoutes(app: Express): void {
         // fallback: use the criterionId embedded in the stage2 result
         stage2.criteriaWeights?.find((cw: any) => cw.criterionName === name)?.criterionId;
 
-      // Save market-specific weights
-      for (const cw of (stage2.criteriaWeights ?? [])) {
-        const criterionId = cw.criterionId ?? findCriterionId(cw.criterionName);
-        if (!criterionId) { console.warn(`[Publish] Unknown criterion: ${cw.criterionName}`); continue; }
-        await storage.updateMarketCriteriaWeight(market.id, criterionId, cw.weight);
+      // Save market-specific weights — use product-defined defaults for new markets,
+      // ignoring whatever the LLM proposed. Admins can adjust per-market via the UI.
+      const DEFAULT_WEIGHTS: Record<string, number> = {
+        'ISV Ecosystem': 100,
+        'Innovation': 50,
+        'Pricing Strategy': 100,
+        'Product Capabilities': 100,
+        'Business Model': 50,
+        'Customer Experience': 100,
+        'Partner Ecosystem': 75,
+        'Revenue': 100,
+      };
+      for (const c of allCriteria) {
+        const w = DEFAULT_WEIGHTS[c.name];
+        if (w === undefined) continue;
+        await storage.updateMarketCriteriaWeight(market.id, c.id, w);
       }
 
       // Save vendor scores per criterion (commentary + sources appended)
