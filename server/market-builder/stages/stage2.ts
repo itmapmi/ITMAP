@@ -66,6 +66,19 @@ export async function runStage2(
     cList.map(c => `  • ${c.name} (id: ${c.id}): ${c.description}`).join("\n")
   ).join("\n\n");
 
+  const hasSources = sourceContext.trim().length > 0;
+  const sourcesGuidance = hasSources
+    ? `SOURCES (mandatory):
+• List 2–5 sources used, drawn from the provided research materials above
+• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
+• Only cite sources that are listed in the PROVIDED RESEARCH SOURCES section above
+• Do NOT cite Reddit, Hacker News, Gartner, G2, or any external source not in the provided materials`
+    : `SOURCES (mandatory):
+• List 2–5 sources used to inform the commentary
+• Format each as: "Source name — URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback thread on durability", "Hacker News — discussion on pricing model changes")
+• Include a mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
+
   const userPrompt = `
 You are producing the Vendor Evaluation section for a professional enterprise market research report on the ${marketName} market.
 
@@ -95,17 +108,11 @@ TASK 2 — Score every vendor × criterion combination:
 COMMENTARY STANDARDS (mandatory):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array only
-• Content must be balanced: acknowledge both strengths and weaknesses
-• Draw from multiple perspectives: vendor documentation, independent tech blogs and analyst posts, user communities (Reddit r/sysadmin, r/homelab, r/devops, r/aws, r/azure, etc.), Hacker News discussions, GitHub issues/discussions, and independent technical reviews
-• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
+• Content must be balanced: acknowledge both strengths and weaknesses${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from multiple perspectives: vendor documentation, independent tech blogs and analyst posts, user communities (Reddit r/sysadmin, r/homelab, r/devops, r/aws, r/azure, etc.), Hacker News discussions, GitHub issues/discussions, and independent technical reviews\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
 • Be specific: name actual product features, version numbers, known limitations, real community feedback themes
 • Be actionable: the reader should understand what this score means for a buyer's decision
 
-SOURCES (mandatory):
-• List 2–5 sources used to inform the commentary
-• Format each as: "Source name — URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback thread on durability", "Hacker News — discussion on pricing model changes")
-• Include a mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
+${sourcesGuidance}
 
 SCORING:
 - score: decimal 0.0–10.0 (one decimal place), be differentiated — avoid clustering vendors

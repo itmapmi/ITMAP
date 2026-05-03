@@ -109,6 +109,18 @@ async function scoreEcosystemBatch(
   const vendorList = vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
   const featureList = features.map(f => `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}`).join("\n");
 
+  const hasSources = sourceContext.trim().length > 0;
+  const sourcesGuidance = hasSources
+    ? `SOURCES (mandatory):
+• 2–4 sources per commentary, drawn strictly from the provided research materials above
+• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
+• Only cite sources listed in the PROVIDED RESEARCH SOURCES section above — do NOT cite external sources`
+    : `SOURCES (mandatory):
+• 2–4 sources per commentary
+• Format: "Source name — URL or description"
+• Mix: at least one official vendor/partner source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
+
   const userPrompt = `
 You are producing the ISV Ecosystem section of an enterprise market research report.
 
@@ -127,17 +139,11 @@ ${featureList}
 COMMENTARY STANDARDS (mandatory for every vendor × integration):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (no [1], no (Source: X)) — sources go in the sources array
-• Content must be balanced: acknowledge both integration strengths and real limitations
-• Draw from: official partner/marketplace pages, integration documentation, GitHub repositories and issues, Reddit communities (r/devops, r/sysadmin, r/selfhosted, r/aws, etc.), Hacker News discussions, independent engineering blogs and write-ups, changelogs, partner certification pages
-• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
+• Content must be balanced: acknowledge both integration strengths and real limitations${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from: official partner/marketplace pages, integration documentation, GitHub repositories and issues, Reddit communities (r/devops, r/sysadmin, r/selfhosted, r/aws, etc.), Hacker News discussions, independent engineering blogs and write-ups, changelogs, partner certification pages\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
 • Be specific: reference official certification status, API/SDK availability, known limitations, version requirements, number of supported connectors
 • Be actionable: a buyer comparing vendors on ecosystem fit should be able to decide based on this
 
-SOURCES (mandatory):
-• 2–4 sources per commentary
-• Format: "Source name — URL or description"
-• Mix: at least one official vendor/partner source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
+${sourcesGuidance}
 
 For EVERY vendor × integration combination:
 - vendorName: exact vendor name

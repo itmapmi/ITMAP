@@ -58,6 +58,18 @@ async function runStage4Batch(
   const vendorList = vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
   const featureList = features.map(f => `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}`).join("\n");
 
+  const hasSources = sourceContext.trim().length > 0;
+  const sourcesGuidance = hasSources
+    ? `SOURCES (mandatory):
+• 2–4 sources per commentary, drawn strictly from the provided research materials above
+• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
+• Only cite sources listed in the PROVIDED RESEARCH SOURCES section above — do NOT cite external sources`
+    : `SOURCES (mandatory):
+• 2–4 sources per commentary
+• Format: "Source name — URL or description"
+• Mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
+• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
+
   const userPrompt = `
 You are producing the Product Evaluation section of an enterprise market research report.
 
@@ -76,17 +88,11 @@ ${featureList}
 COMMENTARY STANDARDS (mandatory for every vendor × feature):
 • Length: 100–250 words per commentary
 • No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array
-• Content must be balanced: acknowledge both product strengths and real limitations or gaps
-• Draw from: official product documentation, changelog/release notes, GitHub issues and discussions, community feedback (Reddit r/sysadmin, r/devops, r/aws, r/azure, r/selfhosted, etc.), Hacker News threads, independent tech blogs and engineering write-ups
-• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform
+• Content must be balanced: acknowledge both product strengths and real limitations or gaps${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from: official product documentation, changelog/release notes, GitHub issues and discussions, community feedback (Reddit r/sysadmin, r/devops, r/aws, r/azure, r/selfhosted, etc.), Hacker News threads, independent tech blogs and engineering write-ups\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
 • Be specific: reference actual feature names, version capabilities, known bugs or limitations, performance benchmarks where relevant
 • Be actionable: a buyer should be able to make a decision based on this commentary
 
-SOURCES (mandatory):
-• 2–4 sources per commentary
-• Format: "Source name — URL or description"
-• Mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms
+${sourcesGuidance}
 
 For EVERY vendor × feature combination:
 - vendorName: exact vendor name
