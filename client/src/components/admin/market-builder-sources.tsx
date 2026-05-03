@@ -182,7 +182,7 @@ export function SourcesPanel({ jobId, currentStage }: SourcesPanelProps) {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Label (optional)</Label>
-                <Input value={urlName} onChange={e => setUrlName(e.target.value)} placeholder="e.g. Gartner Report 2024" className="h-8 text-xs" />
+                <Input value={urlName} onChange={e => setUrlName(e.target.value)} placeholder="e.g. Vendor Whitepaper 2024" className="h-8 text-xs" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Apply to</Label>

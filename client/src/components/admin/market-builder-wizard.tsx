@@ -267,7 +267,7 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
                 onChange={e => setEditSources(e.target.value.split("\n"))}
                 rows={3}
                 className="text-xs resize-none font-mono"
-                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nGartner Peer Insights — customer reviews"}
+                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nVendor blog post — vendor.com/blog/announcement"}
               />
             </div>
             <div className="flex gap-2">
@@ -437,7 +437,7 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
                 onChange={e => setEditSources(e.target.value.split("\n"))}
                 rows={3}
                 className="text-xs resize-none font-mono"
-                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nGartner Peer Insights — customer reviews"}
+                placeholder={"Vendor documentation — vendor.com/docs\nReddit r/sysadmin — community feedback\nVendor blog post — vendor.com/blog/announcement"}
               />
             </div>
             <div className="flex gap-2">
