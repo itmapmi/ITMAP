@@ -93,7 +93,7 @@ export function PromptSelector({
     mutationFn: async (selectionsToSave: Array<{
       stage: StageKind; targetType: TargetType; targetKey: string; promptType: PromptType; promptId: string | null;
     }>) => {
-      return apiRequest("PUT", `${apiBase}/jobs/${jobId}/prompt-selections`, { selections: selectionsToSave });
+      return apiRequest(`${apiBase}/jobs/${jobId}/prompt-selections`, "PUT", { selections: selectionsToSave });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [apiBase, "jobs", jobId, "prompt-selections"] });

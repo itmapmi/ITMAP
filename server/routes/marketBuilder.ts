@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAdmin, requireAuth } from "../auth";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
-import { initSSE, sendEvent, runSingleStage } from "../market-builder/runner";
+import { initSSE, sendEvent, runSingleStage, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 
@@ -138,6 +138,23 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const job = await storage.getMarketBuilderJob(req.params.id);
       if (!job) { res.status(404).json({ error: "Job not found" }); return; }
       if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
+
+      // Preflight LLM config before opening SSE so missing-key errors get a
+      // clean 412 with a structured error code the UI can recognise (rather
+      // than an in-stream stage_error after partial output).
+      try {
+        await buildLLMConfig(job);
+      } catch (err: any) {
+        if (err instanceof MissingLlmKeyError) {
+          return res.status(412).json({
+            error: err.message,
+            code: "MISSING_LLM_KEY",
+            provider: err.provider,
+            forUser: err.forUser,
+          });
+        }
+        throw err;
+      }
 
       initSSE(res);
       req.on("close", () => {});
@@ -655,6 +672,21 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
       const job = (req as any).job;
       if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
+      // Preflight LLM key resolution — surface missing keys as a structured
+      // 412 so the wizard can deep-link the user to /me/settings/llm-keys.
+      try {
+        await buildLLMConfig(job);
+      } catch (err: any) {
+        if (err instanceof MissingLlmKeyError) {
+          return res.status(412).json({
+            error: err.message,
+            code: "MISSING_LLM_KEY",
+            provider: err.provider,
+            forUser: err.forUser,
+          });
+        }
+        throw err;
+      }
       initSSE(res);
       req.on("close", () => {});
       runSingleStage(res, job, stageNum).catch(err => {

@@ -72,7 +72,7 @@ async function resolveJobOwnerKey(
   return userKey?.apiKey;
 }
 
-async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> {
+export async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> {
   const provider = (job.llmProvider ?? "openai") as LLMConfig["provider"];
   const model = job.llmModel ?? "gpt-4.1-mini";
   const apiKey = await resolveJobOwnerKey(job, provider);

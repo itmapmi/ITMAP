@@ -67,7 +67,9 @@ function Router() {
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
-        <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} requireAdmin={true} />} />
+        {/* /market-builder is shared: admins see the admin wizard, end users
+            are redirected to /me/market-builder via the page itself. */}
+        <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />

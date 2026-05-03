@@ -53,7 +53,7 @@ export function LlmSelectorPanel({ jobId, stageKind, defaultProvider, defaultMod
 
   const saveMut = useMutation({
     mutationFn: (item: { stage: StageKind; promptType: PromptType; provider: string | null; model: string | null }) =>
-      apiRequest("PUT", `${apiBase}/jobs/${jobId}/llm-selections`, { selections: [item] }),
+      apiRequest(`${apiBase}/jobs/${jobId}/llm-selections`, "PUT", { selections: [item] }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [apiBase, "jobs", jobId, "llm-selections"] }),
     onError: (err: any) => toast({ title: "Couldn't save LLM selection", description: err.message, variant: "destructive" }),
   });

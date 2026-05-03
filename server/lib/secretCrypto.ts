@@ -17,12 +17,19 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 const PREFIX = "v1:";
 
 function getKey(): Buffer {
-  const secret =
-    process.env.LLM_KEY_ENCRYPTION_SECRET ||
-    process.env.SESSION_SECRET ||
-    // Last-resort fallback so dev environments without explicit secrets don't
-    // crash on first use. Production deployments should set one of the above.
-    "itmap-default-dev-secret-change-me";
+  const secret = process.env.LLM_KEY_ENCRYPTION_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    // Fail closed in production — predictable encryption defeats the
+    // purpose. In development we fall back to a clearly-labelled key so
+    // local Replits without explicit env vars still boot.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "LLM_KEY_ENCRYPTION_SECRET (or SESSION_SECRET) must be set in production " +
+        "to encrypt user LLM API keys."
+      );
+    }
+    return createHash("sha256").update("itmap-dev-only-not-for-production").digest();
+  }
   return createHash("sha256").update(secret).digest();
 }
 
