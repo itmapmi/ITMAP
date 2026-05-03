@@ -567,6 +567,20 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
       const data = insertMarketBuilderJobSchema.parse({ ...req.body, createdBy: user.id });
+      // Preflight: end-user jobs run on BYO keys, so reject early (412
+      // Precondition Failed) if the user has no key for the chosen provider.
+      // The wizard surfaces the typed error and links to /me/settings/llm-keys.
+      const provider = (data as any).llmProvider as string | undefined;
+      if (provider) {
+        const key = await storage.getUserLlmApiKey(user.id, provider as any);
+        if (!key?.apiKey) {
+          return res.status(412).json({
+            error: `Missing ${provider} API key`,
+            code: "MISSING_LLM_KEY",
+            provider,
+          });
+        }
+      }
       res.status(201).json(await storage.createMarketBuilderJob(data));
     } catch (err: any) { res.status(400).json({ error: err.message }); }
   });
@@ -716,5 +730,33 @@ export function registerMarketBuilderRoutes(app: Express): void {
       console.error("[MarketBuilder] User publish error:", err);
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // Complete — mark the job as completed once all 6 stages are done. Mirrors
+  // the admin /complete endpoint exactly, scoped to the job owner.
+  app.post("/api/market-builder/jobs/:id/complete", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+      const allDone = [1, 2, 3, 4, 5, 6].every(n =>
+        job.stages.find(s => s.stage === n)?.status === "completed"
+      );
+      if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
+      const updated = await storage.updateMarketBuilderJob(job.id, { status: "completed" });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Visibility — end-user markets are always private, but the wizard still
+  // calls this endpoint after publish. We accept the request and clamp
+  // isVisible=false so private markets stay private regardless of payload.
+  app.patch("/api/market-builder/jobs/:id/visibility", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const job = await storage.getMarketBuilderJob(req.params.id);
+      if (!job?.marketId) return res.status(400).json({ error: "No market linked to this job" });
+      // Force private — end users cannot toggle public visibility.
+      await storage.updateMarket(job.marketId, { isVisible: false });
+      res.json({ success: true, isVisible: false });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 }

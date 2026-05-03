@@ -44,7 +44,7 @@ export default function MyReportsPage() {
       ) : (
         <div className="space-y-3">
           {myMarkets.map(m => (
-            <Link key={m.id} href={`/markets/${m.id}`}>
+            <Link key={m.id} href={`/market/${m.id}`}>
               <a className="block rounded-lg border bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-colors">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

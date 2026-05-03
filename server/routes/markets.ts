@@ -1,7 +1,36 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
+
+/**
+ * Centralized read-authorization for any /api/markets/:marketId/* endpoint.
+ *
+ * Public/visible markets remain readable by any caller (existing behavior).
+ * Private markets (visibility="private", set by end-user Market Builder)
+ * are restricted to the market owner OR an admin. Returns 404 (not 403) for
+ * unauthorized private markets so callers can't probe for existence.
+ */
+async function requireMarketAccess(req: Request, res: Response, next: NextFunction) {
+  try {
+    const marketId = (req.params as any).marketId;
+    if (!marketId) return res.status(400).json({ error: "Missing marketId" });
+    const market = await storage.getMarketById(marketId);
+    if (!market) return res.status(404).json({ error: "Market not found" });
+    if (market.visibility === "private") {
+      const isAuth = (req as any).isAuthenticated?.();
+      const user = isAuth ? (req.user as any) : null;
+      const isAdmin = !!user && user.role === 'admin';
+      if (!isAdmin && (!user || (market as any).ownerUserId !== user.id)) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+    }
+    (req as any).market = market;
+    return next();
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
 import {
   insertMarketSchema, insertVendorSchema, insertCriteriaSchema,
   insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema,
@@ -97,7 +126,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/markets/:marketId/vendors", async (req, res) => {
+  app.get("/api/markets/:marketId/vendors", requireMarketAccess, async (req, res) => {
     try {
       const vendors = await storage.getVendorsByMarket(req.params.marketId);
       res.json(vendors);
@@ -146,7 +175,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── New Players ───────────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/new-players", async (req, res) => {
+  app.get("/api/markets/:marketId/new-players", requireMarketAccess, async (req, res) => {
     try {
       const players = await storage.getNewPlayersByMarket(req.params.marketId);
       res.json(players);
@@ -192,7 +221,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Vendor Label Positions ─────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/label-positions", async (req, res) => {
+  app.get("/api/markets/:marketId/label-positions", requireMarketAccess, async (req, res) => {
     try {
       const positions = await storage.getVendorLabelPositions(req.params.marketId);
       res.json(positions);
@@ -259,7 +288,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Vendor Scores ─────────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/scores", async (req, res) => {
+  app.get("/api/markets/:marketId/scores", requireMarketAccess, async (req, res) => {
     try {
       const scores = await storage.getMarketVendorScores(req.params.marketId);
       res.json(scores);
@@ -282,7 +311,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Market Criteria Weights ───────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/weights", async (req, res) => {
+  app.get("/api/markets/:marketId/weights", requireMarketAccess, async (req, res) => {
     try {
       const weights = await storage.getMarketCriteriaWeights(req.params.marketId);
       res.json(weights);
@@ -292,7 +321,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/markets/:marketId/weights/:criteriaId", async (req, res) => {
+  app.put("/api/markets/:marketId/weights/:criteriaId", requireMarketAccess, async (req, res) => {
     try {
       const { weight } = z.object({ weight: z.number().min(0).max(100) }).parse(req.body);
       const weightRecord = await storage.updateMarketCriteriaWeight(req.params.marketId, req.params.criteriaId, weight);
@@ -305,7 +334,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Historical Positions ──────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/historical-positions", async (req, res) => {
+  app.get("/api/markets/:marketId/historical-positions", requireMarketAccess, async (req, res) => {
     try {
       const { date, vendorId } = req.query;
       const positions = await storage.getHistoricalPositions(req.params.marketId, vendorId as string | undefined);
@@ -345,7 +374,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/markets/:marketId/generate-historical-data", async (req, res) => {
+  app.post("/api/markets/:marketId/generate-historical-data", requireMarketAccess, async (req, res) => {
     try {
       const marketId = req.params.marketId;
       const vendors = await storage.getVendorsByMarket(marketId);
@@ -389,7 +418,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Feature Categories ────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/feature-categories", async (req, res) => {
+  app.get("/api/markets/:marketId/feature-categories", requireMarketAccess, async (req, res) => {
     try {
       const categories = await storage.getMarketFeatureCategories(req.params.marketId);
       res.json(categories);
@@ -433,7 +462,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Features ──────────────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/features", async (req, res) => {
+  app.get("/api/markets/:marketId/features", requireMarketAccess, async (req, res) => {
     try {
       const features = await storage.getMarketFeatures(req.params.marketId);
       res.json(features);
@@ -477,7 +506,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Vendor Feature Support ─────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/feature-support", async (req, res) => {
+  app.get("/api/markets/:marketId/feature-support", requireMarketAccess, async (req, res) => {
     try {
       const support = await storage.getVendorFeatureSupport(req.params.marketId);
       res.json(support);
@@ -526,7 +555,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Research Reports (market-scoped listing) ───────────────────────────────
 
-  app.get("/api/markets/:marketId/reports", async (req, res) => {
+  app.get("/api/markets/:marketId/reports", requireMarketAccess, async (req, res) => {
     try {
       const reports = await storage.getMarketResearchReports(req.params.marketId);
       res.json(reports);

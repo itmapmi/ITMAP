@@ -1301,7 +1301,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                       stageKind="vendor_evaluation"
                       criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
                       apiBase={apiBase}
-                      promptsBase={promptsBase}
+                      promptsBase={promptsBase} mode={mode}
                     />
                   </>
                 )}
@@ -1319,7 +1319,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                       stageKind="product_evaluation"
                       categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
                       apiBase={apiBase}
-                      promptsBase={promptsBase}
+                      promptsBase={promptsBase} mode={mode}
                     />
                   </>
                 )}
@@ -1337,7 +1337,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                       stageKind="ecosystem_evaluation"
                       categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
                       apiBase={apiBase}
-                      promptsBase={promptsBase}
+                      promptsBase={promptsBase} mode={mode}
                     />
                   </>
                 )}

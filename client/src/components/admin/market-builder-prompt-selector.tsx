@@ -51,12 +51,17 @@ interface Props {
   // API bases — admin defaults preserve existing admin-only call sites
   apiBase?: string;
   promptsBase?: string;
+  // "admin" mounts the full PromptsAdmin CRUD dialog. "user" hides it (admin
+  // CRUD is gated to admins) and points the user at their personal prompt
+  // repository on /me/market-builder?tab=prompts instead.
+  mode?: "admin" | "user";
 }
 
 export function PromptSelector({
   jobId, stageKind, criteria, categories,
   apiBase = "/api/admin/market-builder",
   promptsBase = "/api/admin/prompts",
+  mode = "admin",
 }: Props) {
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(true);
@@ -127,14 +132,24 @@ export function PromptSelector({
           )}
           <span className="text-xs text-purple-700/80">— each row uses the system default unless you choose a custom prompt.</span>
         </button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-xs gap-1 shrink-0 border-purple-200 bg-white hover:bg-purple-50"
-          onClick={(e) => { e.stopPropagation(); setManageOpen(true); }}
-        >
-          <Plus className="h-3.5 w-3.5" /> New / Manage Prompts
-        </Button>
+        {mode === "admin" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1 shrink-0 border-purple-200 bg-white hover:bg-purple-50"
+            onClick={(e) => { e.stopPropagation(); setManageOpen(true); }}
+          >
+            <Plus className="h-3.5 w-3.5" /> New / Manage Prompts
+          </Button>
+        ) : (
+          <a
+            href="/me/market-builder?tab=prompts"
+            onClick={(e) => e.stopPropagation()}
+            className="h-7 px-2 text-xs gap-1 shrink-0 border border-purple-200 bg-white hover:bg-purple-50 inline-flex items-center rounded-md"
+          >
+            <Plus className="h-3.5 w-3.5" /> Manage My Prompts
+          </a>
+        )}
         <button
           type="button"
           className="shrink-0"
@@ -145,14 +160,16 @@ export function PromptSelector({
         </button>
       </div>
 
-      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Prompt Repository</DialogTitle>
-          </DialogHeader>
-          <PromptsAdmin />
-        </DialogContent>
-      </Dialog>
+      {mode === "admin" && (
+        <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Prompt Repository</DialogTitle>
+            </DialogHeader>
+            <PromptsAdmin />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {!collapsed && (
         <div className="px-4 pb-4 space-y-3">
