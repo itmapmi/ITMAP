@@ -755,6 +755,13 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
   app.delete("/api/market-builder/jobs/:id/sources/:sourceId", requireAuth, requireJobOwner, async (req, res) => {
     try {
+      // Defence-in-depth: requireJobOwner already verifies the user owns
+      // :id, but we additionally assert the source actually belongs to that
+      // job so a guessed sourceId from a different job can't be deleted.
+      const sources = await storage.listMarketBuilderSources(req.params.id);
+      if (!sources.some(s => s.id === req.params.sourceId)) {
+        return res.status(404).json({ error: "Source not found" });
+      }
       await storage.deleteMarketBuilderSource(req.params.sourceId);
       res.status(204).end();
     } catch (err: any) { res.status(500).json({ error: err.message }); }

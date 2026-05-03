@@ -105,11 +105,22 @@ export default function Navigation() {
               {isAuthenticated && (
                 <Link href="/me/market-builder">
                   <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
-                    location.startsWith("/me")
+                    location === "/me/market-builder" || location === "/market-builder"
                       ? "text-gray-900 hover:text-primary-600"
                       : "text-gray-500 hover:text-gray-700"
                   }`}>
-                    Build
+                    Market Builder
+                  </div>
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link href="/me/reports">
+                  <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                    location.startsWith("/me/reports")
+                      ? "text-gray-900 hover:text-primary-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                    My Reports
                   </div>
                 </Link>
               )}

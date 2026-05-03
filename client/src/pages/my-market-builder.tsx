@@ -1,10 +1,23 @@
-import { Link } from "wouter";
-import { ChevronLeft, Sparkles, Lock, Key, FileText } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Sparkles, Lock, Key, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
 import { MyPromptsRepository } from "@/components/me/my-prompts-repository";
 
 export default function MyMarketBuilderPage() {
+  // URL-driven tab so deep-links like ?tab=prompts (used by the prompt
+  // selector's "Manage My Prompts" link) auto-open the right view.
+  const [location, setLocation] = useLocation();
+  const params = new URLSearchParams(location.includes("?") ? location.split("?")[1] : window.location.search);
+  const tab = params.get("tab") === "prompts" ? "prompts" : "builder";
+
+  const onTabChange = (next: string) => {
+    const search = new URLSearchParams(window.location.search);
+    if (next === "builder") search.delete("tab"); else search.set("tab", next);
+    const qs = search.toString();
+    setLocation(`/me/market-builder${qs ? `?${qs}` : ""}`, { replace: true });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
@@ -31,7 +44,7 @@ export default function MyMarketBuilderPage() {
           </Link>
         </div>
       </div>
-      <Tabs defaultValue="builder" className="w-full">
+      <Tabs value={tab} onValueChange={onTabChange} className="w-full">
         <TabsList>
           <TabsTrigger value="builder">Builder</TabsTrigger>
           <TabsTrigger value="prompts">My Prompts</TabsTrigger>
