@@ -781,6 +781,10 @@ export function MarketBuilderWizard() {
     refetchInterval: view === "stages" ? 0 : 15_000, // auto-refresh dashboard every 15s
   });
 
+  const { data: allCriteria = [] } = useQuery<{ id: string; name: string; description: string | null; category: string }[]>({
+    queryKey: ["/api/criteria"],
+  });
+
   // ── Activity log: poll DB every 2.5 s while a stage is running ───────────
   // This survives navigation — when the user leaves and comes back, the log
   // is re-fetched from DB immediately so they see everything that happened.
@@ -1167,6 +1171,46 @@ export function MarketBuilderWizard() {
                   <p className="text-sm font-semibold text-gray-700">What this stage generates</p>
                   <p className="text-sm text-gray-500">{currentMeta.what}</p>
                 </div>
+
+                {/* Stage 2 only: show the predefined criteria the AI will score against */}
+                {activeStage === 2 && (
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4 space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">Scoring criteria</p>
+                      <p className="text-xs text-blue-700 mt-0.5">The AI will score every vendor against each of the following criteria with a 0–10 score and 100–250 word commentary.</p>
+                    </div>
+                    {allCriteria.length === 0 ? (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-3">
+                        No criteria found. Add Execution and Viability criteria via <strong>Admin → Criteria</strong> before running this stage.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(["execution", "viability"] as const).map(axis => {
+                          const axisCriteria = allCriteria.filter(c => c.category === axis);
+                          if (!axisCriteria.length) return null;
+                          return (
+                            <div key={axis}>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                                {axis === "execution" ? "Execution (X-axis)" : "Viability (Y-axis)"}
+                              </p>
+                              <div className="space-y-2">
+                                {axisCriteria.map(c => (
+                                  <div key={c.id} className="rounded border border-gray-200 bg-white px-3 py-2">
+                                    <p className="text-xs font-semibold text-gray-800">{c.name}</p>
+                                    {c.description && (
+                                      <p className="text-xs text-gray-500 mt-0.5 leading-snug">{c.description}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <SourcesOnlyNotice />
                 <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
                 <div className="flex items-center justify-between pt-2">
