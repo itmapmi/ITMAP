@@ -7,7 +7,7 @@ import { runStage1 } from "./stages/stage1";
 import { runStage2 } from "./stages/stage2";
 import { runStage3 } from "./stages/stage3";
 import { runStage4Full } from "./stages/stage4";
-import { runStage5 } from "./stages/stage5";
+import { runStage5A, runStage6 } from "./stages/stage5";
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -179,11 +179,25 @@ export async function runSingleStage(
         break;
       }
 
-      // ── Stage 5: Ecosystem (define + score) ────────────────────────────
+      // ── Stage 5: Ecosystem — define categories + integration points ────
       case 5: {
         const stage1 = await loadStageResult(jobId, 1);
-        result = await runStage5(
-          inputName, stage1, llmConfig, sourceContext,
+        await progress(`Defining ecosystem integration categories for "${inputName}"…`);
+        await progress(`Calling AI — building ecosystem taxonomy…`);
+        result = await runStage5A(inputName, stage1, llmConfig, sourceContext);
+        const totalEcoFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`✓ Defined ${result.categories?.length ?? 0} ecosystem categories with ${totalEcoFeatures} integration points`);
+        break;
+      }
+
+      // ── Stage 6: Ecosystem Scoring — Harvey Ball per vendor × feature ──
+      case 6: {
+        const stage1 = await loadStageResult(jobId, 1);
+        const stage5A = await loadStageResult(jobId, 5);
+        const totalEcoFeatures = (stage5A.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
+        result = await runStage6(
+          inputName, stage1, stage5A, llmConfig, sourceContext,
           async (msg: string) => { await progress(msg); }
         );
         await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem integration scores`);
@@ -198,7 +212,7 @@ export async function runSingleStage(
 
     // Check if all 5 stages are now done and mark job completed
     const allStages = await storage.getMarketBuilderStages(jobId);
-    const allDone = [1,2,3,4,5].every(n => allStages.find(s => s.stage === n)?.status === "completed");
+    const allDone = [1,2,3,4,5,6].every(n => allStages.find(s => s.stage === n)?.status === "completed");
     if (allDone) {
       await storage.updateMarketBuilderJob(jobId, { status: "completed" });
     }
@@ -208,7 +222,8 @@ export async function runSingleStage(
       stageNum === 2 ? `Scored ${result.scores?.length ?? 0} vendor × criterion combinations` :
       stageNum === 3 ? `Built ${result.categories?.length ?? 0} product categories` :
       stageNum === 4 ? `Generated ${result.support?.length ?? 0} product support records` :
-      `Defined ${result.categories?.length ?? 0} ecosystem categories with ${result.support?.length ?? 0} scores`;
+      stageNum === 5 ? `Defined ${result.categories?.length ?? 0} ecosystem categories` :
+      `Generated ${result.support?.length ?? 0} ecosystem integration scores`;
 
     sendEvent(res, { type: "stage_complete", stage: stageNum, result, summary });
 

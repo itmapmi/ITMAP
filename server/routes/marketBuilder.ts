@@ -48,8 +48,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
   app.get("/api/admin/market-builder/jobs/:id/stream", requireAdmin, async (req, res) => {
     try {
       const stageNum = parseInt(req.query.stage as string, 10);
-      if (!stageNum || stageNum < 1 || stageNum > 5) {
-        res.status(400).json({ error: "?stage=1..5 is required" });
+      if (!stageNum || stageNum < 1 || stageNum > 6) {
+        res.status(400).json({ error: "?stage=1..6 is required" });
         return;
       }
 
@@ -96,7 +96,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
     try {
       const job = await storage.getMarketBuilderJobWithStages(req.params.id);
       if (!job) return res.status(404).json({ error: "Job not found" });
-      const allDone = [1,2,3,4,5].every(n =>
+      const allDone = [1,2,3,4,5,6].every(n =>
         job.stages.find(s => s.stage === n)?.status === "completed"
       );
       if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
@@ -200,8 +200,9 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const stage3 = job.stages.find(s => s.stage === 3)?.result as any;
       const stage4 = job.stages.find(s => s.stage === 4)?.result as any;
       const stage5 = job.stages.find(s => s.stage === 5)?.result as any;
+      const stage6 = job.stages.find(s => s.stage === 6)?.result as any;
 
-      if (!stage1 || !stage2 || !stage3 || !stage4 || !stage5) {
+      if (!stage1 || !stage2 || !stage3 || !stage4 || !stage5 || !stage6) {
         return res.status(400).json({ error: "One or more stages are missing results" });
       }
 
@@ -294,7 +295,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
 
-      // ── Stage 5: Ecosystem categories (isEcosystem = true) + scores ────
+      // ── Stage 5: Ecosystem categories (isEcosystem = true) ─────────────
       const ecoFeatureIdMap = new Map<string, string>();
       let ecoCatOrder = 0;
       for (const cat of (stage5.categories ?? [])) {
@@ -314,16 +315,18 @@ export function registerMarketBuilderRoutes(app: Express): void {
           ecoFeatureIdMap.set(f.name, feature.id);
         }
       }
-      for (const s of (stage5.support ?? [])) {
+
+      // ── Stage 6: Ecosystem Harvey Ball support scores ────────────────────
+      for (const s of (stage6.support ?? [])) {
         const vendorId = vendorIdMap.get(s.vendorName);
         const featureId = ecoFeatureIdMap.get(s.featureName);
         if (!vendorId || !featureId) continue;
-        const srcList5: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
-        const comments5 = srcList5.length > 0
-          ? `${s.comments ?? ""}\n\nSources:\n${srcList5.map((src: string) => `• ${src}`).join("\n")}`
+        const srcList6: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+        const comments6 = srcList6.length > 0
+          ? `${s.comments ?? ""}\n\nSources:\n${srcList6.map((src: string) => `• ${src}`).join("\n")}`
           : (s.comments ?? "");
         await storage.createOrUpdateVendorFeatureSupport({
-          vendorId, featureId, supportLevel: s.supportLevel, comments: comments5,
+          vendorId, featureId, supportLevel: s.supportLevel, comments: comments6,
         });
       }
 

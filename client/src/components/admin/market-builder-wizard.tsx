@@ -49,11 +49,12 @@ type StagePhase = "ready" | "running" | "done" | "failed";
 type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
-  { num: 1, label: "Vendors",            icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
-  { num: 2, label: "Vendor Evaluation",  icon: BarChart3,  desc: "AI scores vendors against predefined Execution & Viability criteria — driving the quadrant chart.", what: "Market-specific criterion weights and a 0–10 score per vendor × criterion with commentary." },
-  { num: 3, label: "Product Features",   icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
-  { num: 4, label: "Product Scoring",    icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × product feature, with commentary." },
-  { num: 5, label: "Ecosystem",          icon: Layers,     desc: "AI defines ISV/partner ecosystem categories and scores vendor integrations.", what: "Ecosystem integration categories, individual integration points, and Harvey Ball scores per vendor." },
+  { num: 1, label: "Vendors",             icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
+  { num: 2, label: "Vendor Evaluation",   icon: BarChart3,  desc: "AI scores vendors against predefined Execution & Viability criteria — driving the quadrant chart.", what: "Market-specific criterion weights and a 0–10 score per vendor × criterion with commentary." },
+  { num: 3, label: "Product Features",    icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
+  { num: 4, label: "Product Scoring",     icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × product feature, with commentary." },
+  { num: 5, label: "Ecosystem",           icon: Layers,     desc: "AI defines ISV/partner ecosystem integration categories and individual integration points.", what: "5–8 ecosystem categories with individual integration features — the framework that Stage 6 scores." },
+  { num: 6, label: "Ecosystem Scoring",   icon: BarChart3,  desc: "AI rates each vendor's ecosystem integrations using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × ecosystem integration, with 100–250 word commentary." },
 ];
 
 const CATEGORIES = [
@@ -67,7 +68,7 @@ const CATEGORIES = [
 function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
   return (
     <div className="flex items-center gap-1.5">
-      {[1,2,3,4,5].map(n => {
+      {[1,2,3,4,5,6].map(n => {
         const s = stageSummary[n];
         return (
           <div key={n} className="flex items-center gap-1">
@@ -77,7 +78,7 @@ function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
               s === "failed"    ? "bg-red-400" :
                                   "bg-gray-200"
             }`} />
-            {n < 5 && <div className={`h-px w-3 ${s === "completed" ? "bg-green-300" : "bg-gray-200"}`} />}
+            {n < 6 && <div className={`h-px w-3 ${s === "completed" ? "bg-green-300" : "bg-gray-200"}`} />}
           </div>
         );
       })}
@@ -462,35 +463,36 @@ function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) =>
 }
 
 function Stage5Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
-  const [tab, setTab] = useState<"categories" | "scoring">("categories");
   const cats = result?.categories ?? [];
-  const support = result?.support ?? [];
   const totalFeatures = cats.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 text-xs text-gray-500 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
         <Layers className="h-3.5 w-3.5 text-purple-600 shrink-0" />
-        <span><strong>{cats.length}</strong> ecosystem categories · <strong>{totalFeatures}</strong> integrations · <strong>{support.length}</strong> total scores</span>
+        <span><strong>{cats.length}</strong> ecosystem categories · <strong>{totalFeatures}</strong> integration points defined</span>
       </div>
+      <FeatureCategoryEditor result={result} onChange={onChange} addCatLabel="Add Ecosystem Category" />
+    </div>
+  );
+}
 
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-        <button onClick={() => setTab("categories")} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${tab === "categories" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>Categories & Integrations</button>
-        <button onClick={() => setTab("scoring")} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${tab === "scoring" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>Harvey Ball Scores</button>
+function Stage6Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+  const cats = result?.categories ?? [];
+  const support = result?.support ?? [];
+  const totalFeatures = cats.length > 0
+    ? cats.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0)
+    : [...new Set<string>(support.map((s: any) => s.featureName))].length;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 text-xs text-gray-500 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+        <BarChart3 className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+        <span><strong>{[...new Set<string>(support.map((s: any) => s.vendorName))].length}</strong> vendors · <strong>{totalFeatures}</strong> ecosystem integrations · <strong>{support.length}</strong> total scores</span>
       </div>
-
-      {tab === "categories" && (
-        <FeatureCategoryEditor result={result} onChange={onChange} addCatLabel="Add Ecosystem Category" />
-      )}
-
-      {tab === "scoring" && (
-        <HarveyBallGrid
-          support={support}
-          onChange={s => onChange({ ...result, support: s })}
-          label="Ecosystem Integration Scores"
-        />
-      )}
+      <HarveyBallGrid
+        support={support}
+        onChange={s => onChange({ ...result, support: s })}
+        label="Ecosystem Integration Scores"
+      />
     </div>
   );
 }
@@ -517,7 +519,8 @@ function PublishPanel({ job, stageResults, onPublished }: {
 }) {
   const { toast } = useToast();
   const [isVisible, setIsVisible] = useState(false);
-  const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4]; const s5 = stageResults[5];
+  const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4];
+  const s5 = stageResults[5]; const s6 = stageResults[6];
   const productFeatures = s3?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const ecoFeatures = s5?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const publish = useMutation({
@@ -586,6 +589,7 @@ function DoneStageView({ stageNum, result, jobId, onSave }: {
         {stageNum === 3 && <Stage3Editor result={localResult} onChange={handleChange} />}
         {stageNum === 4 && <Stage4Editor result={localResult} onChange={handleChange} />}
         {stageNum === 5 && <Stage5Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 6 && <Stage6Editor result={localResult} onChange={handleChange} />}
       </div>
     </div>
   );
@@ -897,9 +901,9 @@ export function MarketBuilderWizard() {
   // ── Approve stage and advance ─────────────────────────────────────────
 
   const approveStage = async (stageNum: number) => {
-    if (stageNum === 5) {
+    if (stageNum === 6) {
       await completeJob.mutateAsync(activeJob!.id);
-      setActiveStage(6);
+      setActiveStage(7);
     } else {
       setActiveStage(stageNum + 1);
       setStagePhases(prev => ({ ...prev, [stageNum + 1]: "ready" }));
@@ -946,12 +950,12 @@ export function MarketBuilderWizard() {
     setStageResults(results);
 
     if (job.status === "completed" || job.status === "published") {
-      setActiveStage(6);
+      setActiveStage(7);
     } else if (runningStage !== null) {
       // A stage was running when we left — jump straight to it; polling will resume
       setActiveStage(runningStage);
     } else {
-      const nextStage = Math.min(highestDone + 1, 5);
+      const nextStage = Math.min(highestDone + 1, 6);
       setActiveStage(nextStage);
       if (!phases[nextStage]) phases[nextStage] = "ready";
     }
@@ -968,8 +972,8 @@ export function MarketBuilderWizard() {
           else if (s.status === "failed") p2[s.stage] = "failed";
         });
         setStageResults(r2);
-        const next2 = Math.min(hd2 + 1, 5);
-        if (!p2[next2] && hd2 < 5) p2[next2] = "ready";
+        const next2 = Math.min(hd2 + 1, 6);
+        if (!p2[next2] && hd2 < 6) p2[next2] = "ready";
         setStagePhases(p2);
         if (job.status !== "completed" && job.status !== "published") setActiveStage(next2);
       }).catch(() => {});
@@ -1128,8 +1132,8 @@ export function MarketBuilderWizard() {
         />
       </div>
 
-      {/* Publish panel (stage 6) */}
-      {activeStage === 6 && (
+      {/* Publish panel (stage 7) */}
+      {activeStage === 7 && (
         <PublishPanel
           job={activeJob!}
           stageResults={stageResults}
@@ -1142,13 +1146,13 @@ export function MarketBuilderWizard() {
         />
       )}
 
-      {/* Active stage panel (stages 1–5) */}
-      {activeStage <= 5 && currentMeta && (
+      {/* Active stage panel (stages 1–6) */}
+      {activeStage <= 6 && currentMeta && (
         <div className="rounded-xl border bg-white">
           <div className="border-b px-6 py-4 flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Stage {activeStage} of 5</span>
+                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Stage {activeStage} of 6</span>
                 {currentPhase === "running" && <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 gap-1 text-xs py-0"><Loader2 className="h-3 w-3 animate-spin"/>Running</Badge>}
                 {currentPhase === "done" && <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 text-xs py-0">Complete</Badge>}
                 {currentPhase === "failed" && <Badge variant="outline" className="text-red-700 border-red-300 bg-red-50 text-xs py-0">Failed</Badge>}

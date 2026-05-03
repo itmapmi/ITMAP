@@ -174,33 +174,45 @@ Respond with ONLY a JSON object:
   return result.support;
 }
 
-// ── Main export ───────────────────────────────────────────────────────────
+// ── Stage 5A: Define ecosystem categories + features ─────────────────────
 
-export async function runStage5(
+export interface Stage5AResult {
+  categories: Stage5Category[];
+}
+
+export async function runStage5A(
   marketName: string,
   stage1: Stage1Result,
   llmConfig: LLMConfig,
+  sourceContext: string = ""
+): Promise<Stage5AResult> {
+  const categories = await defineEcosystem(marketName, stage1, llmConfig, sourceContext);
+  if (categories.length === 0) throw new Error("Stage 5: no ecosystem categories defined");
+  return { categories };
+}
+
+// ── Stage 6: Score vendors across ecosystem integrations ──────────────────
+
+export async function runStage6(
+  marketName: string,
+  stage1: Stage1Result,
+  stage5A: Stage5AResult,
+  llmConfig: LLMConfig,
   sourceContext: string = "",
-  onProgress?: (msg: string) => void
+  onProgress?: (msg: string) => Promise<void>
 ): Promise<Stage5Result> {
   const VENDOR_BATCH = 3;
   const FEATURE_BATCH = 10;
 
-  // Phase A: define the ecosystem
-  onProgress?.("Defining ecosystem categories and integration points…");
-  const categories = await defineEcosystem(marketName, stage1, llmConfig, sourceContext);
-
-  // Flatten all integration features
-  const allFeatures = categories.flatMap(cat =>
+  const allFeatures = stage5A.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
   );
 
-  // Phase B: score in batches
   const vendorBatches: Stage1Vendor[][] = [];
   for (let i = 0; i < stage1.vendors.length; i += VENDOR_BATCH) {
     vendorBatches.push(stage1.vendors.slice(i, i + VENDOR_BATCH));
   }
-  const featureBatches = [];
+  const featureBatches: { categoryName: string; featureName: string; featureDescription: string }[][] = [];
   for (let i = 0; i < allFeatures.length; i += FEATURE_BATCH) {
     featureBatches.push(allFeatures.slice(i, i + FEATURE_BATCH));
   }
@@ -211,20 +223,20 @@ export async function runStage5(
 
   for (let vi = 0; vi < vendorBatches.length; vi++) {
     for (let fi = 0; fi < featureBatches.length; fi++) {
+      const vendorNames = vendorBatches[vi].map(v => v.name).join(", ");
+      const featStart = fi * FEATURE_BATCH + 1;
+      const featEnd = Math.min((fi + 1) * FEATURE_BATCH, allFeatures.length);
       const label = `vendors ${vi + 1}/${vendorBatches.length}, integrations ${fi + 1}/${featureBatches.length}`;
-      onProgress?.(`Scoring ecosystem: ${label}…`);
+      await onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendorNames} | Integrations ${featStart}–${featEnd} of ${allFeatures.length}`);
       const records = await scoreEcosystemBatch(
         marketName, vendorBatches[vi], featureBatches[fi],
         llmConfig, sourceContext, label
       );
       allSupport.push(...records);
       done++;
-      onProgress?.(`Ecosystem scoring: ${done}/${totalBatches} batches complete`);
     }
   }
 
-  if (categories.length === 0) throw new Error("Stage 5: no ecosystem categories defined");
-  if (allSupport.length === 0) throw new Error("Stage 5: no ecosystem scores generated");
-
-  return { categories, support: allSupport };
+  if (allSupport.length === 0) throw new Error("Stage 6: no ecosystem scores generated");
+  return { categories: stage5A.categories, support: allSupport };
 }
