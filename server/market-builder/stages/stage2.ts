@@ -105,8 +105,13 @@ For each criterion provide:
 ═══════════════════════════════════
 TASK 2 — Score every vendor × criterion combination:
 
+⚠ SPECIAL RULE — Two criteria are auto-computed from later stages and must NOT be scored by you:
+• "Product Capabilities" → score: 0, commentary: "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).", sources: []
+• "ISV Ecosystem" → score: 0, commentary: "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).", sources: []
+You MUST still include these two criteria in the scores array with exactly the values above.
+
 COMMENTARY STANDARDS (mandatory):
-• Length: 100–250 words per commentary
+• Length: 100–250 words per commentary (except the two auto-computed criteria above)
 • No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array only
 • Content must be balanced: acknowledge both strengths and weaknesses${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from multiple perspectives: vendor documentation, independent tech blogs and analyst posts, user communities (Reddit r/sysadmin, r/homelab, r/devops, r/aws, r/azure, etc.), Hacker News discussions, GitHub issues/discussions, and independent technical reviews\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
 • Be specific: name actual product features, version numbers, known limitations, real community feedback themes
@@ -147,6 +152,18 @@ Respond with ONLY a JSON object:
   if (!Array.isArray(result.scores) || result.scores.length === 0) {
     throw new Error("Stage 2: LLM returned no vendor scores");
   }
+
+  // Enforce placeholder scores for auto-computed criteria regardless of what the LLM returned
+  const AUTO_COMPUTED = new Set(["Product Capabilities", "ISV Ecosystem"]);
+  const PLACEHOLDERS: Record<string, string> = {
+    "Product Capabilities": "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).",
+    "ISV Ecosystem":        "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).",
+  };
+  result.scores = result.scores.map(s =>
+    AUTO_COMPUTED.has(s.criterionName)
+      ? { ...s, score: 0, commentary: PLACEHOLDERS[s.criterionName], sources: [] }
+      : s
+  );
 
   return result;
 }

@@ -330,6 +330,48 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
 
+      // ── Auto-compute Product Capabilities & ISV Ecosystem scores ─────────
+      // These two Vendor Evaluation criteria are derived from Harvey Ball data,
+      // not scored by the Stage 2 AI. Formula (same as admin panel):
+      //   Harvey Ball 4→1.0, 3→0.75, 2→0.5, 0-1→0.0
+      //   normalizedScore = (sum / (featureCount * 1.0)) * 10, rounded to 1dp
+      const harveyWeight = (level: number) =>
+        level === 4 ? 1.0 : level === 3 ? 0.75 : level === 2 ? 0.5 : 0.0;
+
+      const productCapCriterionId = findCriterionId("Product Capabilities");
+      const isvEcoCriterionId     = findCriterionId("ISV Ecosystem");
+
+      const productFeatureIds = new Set(productFeatureIdMap.values());
+      const ecoFeatureIds     = new Set(ecoFeatureIdMap.values());
+
+      for (const [vendorName, vendorId] of vendorIdMap) {
+        // Product Capabilities — from stage4.support
+        if (productCapCriterionId && productFeatureIds.size > 0) {
+          const prodSupport = (stage4.support ?? []).filter((s: any) => s.vendorName === vendorName);
+          const prodSum = prodSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
+          const prodScore = Number(((prodSum / productFeatureIds.size) * 10).toFixed(1));
+          await storage.createOrUpdateVendorScore({
+            vendorId,
+            criteriaId: productCapCriterionId,
+            score: prodScore,
+            notes: `Auto-computed from ${productFeatureIds.size} product evaluation features.`,
+          });
+        }
+
+        // ISV Ecosystem — from stage6.support
+        if (isvEcoCriterionId && ecoFeatureIds.size > 0) {
+          const ecoSupport = (stage6.support ?? []).filter((s: any) => s.vendorName === vendorName);
+          const ecoSum = ecoSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
+          const ecoScore = Number(((ecoSum / ecoFeatureIds.size) * 10).toFixed(1));
+          await storage.createOrUpdateVendorScore({
+            vendorId,
+            criteriaId: isvEcoCriterionId,
+            score: ecoScore,
+            notes: `Auto-computed from ${ecoFeatureIds.size} ISV ecosystem features.`,
+          });
+        }
+      }
+
       await storage.updateMarketBuilderJob(job.id, { status: "published", marketId: market.id });
       res.json({ success: true, marketId: market.id, isVisible });
     } catch (err: any) {
