@@ -398,6 +398,11 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
   const [editLevel, setEditLevel] = useState(0);
   const [editComments, setEditComments] = useState("");
   const [editSources, setEditSources] = useState<string[]>([]);
+  const PAGE_SIZE = 22;
+  const [page, setPage] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(features.length / PAGE_SIZE));
+  const pageStart = page * PAGE_SIZE;
+  const pageFeatures = features.slice(pageStart, pageStart + PAGE_SIZE);
   const HARVEY = ["✕ None", "◔ Limited", "◑ Partial", "◕ Good", "● Full"];
   const lcolor = (l: number) => ["text-gray-300", "text-red-400", "text-yellow-500", "text-blue-500", "text-green-600"][l] ?? "";
   const get = (v: string, f: string) => support.find((s: any) => s.vendorName === v && s.featureName === f);
@@ -447,14 +452,13 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
           <thead className="sticky top-0 bg-gray-50">
             <tr className="border-b">
               <th className="text-left p-2 text-gray-600 w-28">Vendor</th>
-              {features.slice(0, 22).map(f => <th key={f} className="p-1.5 text-gray-600 text-center whitespace-nowrap max-w-16 truncate" title={f}>{f.slice(0, 12)}</th>)}
-              {features.length > 22 && <th className="p-1.5 text-gray-400 text-xs">+{features.length - 22} more</th>}
+              {pageFeatures.map(f => <th key={f} className="p-1.5 text-gray-600 text-center whitespace-nowrap max-w-16 truncate" title={f}>{f.slice(0, 12)}</th>)}
             </tr>
           </thead>
           <tbody>{vendors.map(v => (
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
               <td className="p-2 font-medium whitespace-nowrap">{v}</td>
-              {features.slice(0, 22).map(f => {
+              {pageFeatures.map(f => {
                 const s = get(v, f);
                 return <td key={f} className="p-1 text-center">
                   <button onClick={() => { setSelected({ v, f }); setEditLevel(s?.supportLevel ?? 0); setEditComments(s?.comments ?? ""); setEditSources(s?.sources ?? []); }}
@@ -466,7 +470,18 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
           ))}</tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400">Click any Harvey Ball to edit the support level and commentary. Showing first 22 features.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400">Click any Harvey Ball to edit the support level and commentary.</p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-xs">
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>← Prev</Button>
+            <span className="text-gray-600 font-medium">
+              Features {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, features.length)} of {features.length}
+            </span>
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Next →</Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
