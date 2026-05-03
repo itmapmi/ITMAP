@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -769,24 +769,48 @@ export function MarketBuilderWizard() {
   const [stagePhases, setStagePhases] = useState<Record<number, StagePhase>>({});
   const [stageResults, setStageResults] = useState<Record<number, any>>({});
   const [streamError, setStreamError] = useState<string | null>(null);
-  const [progressMsg, setProgressMsg] = useState("");
 
   const [publishedMarketId, setPublishedMarketId] = useState<string | null>(null);
   const [publishedVisible, setPublishedVisible] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const { data: jobs = [], refetch: refetchJobs } = useQuery<MarketBuilderJob[]>({
     queryKey: ["/api/admin/market-builder/jobs"],
     refetchInterval: view === "stages" ? 0 : 15_000, // auto-refresh dashboard every 15s
   });
 
+  // ── Activity log: poll DB every 2.5 s while a stage is running ───────────
+  // This survives navigation — when the user leaves and comes back, the log
+  // is re-fetched from DB immediately so they see everything that happened.
+
+  const pollingEnabled = view === "stages" && stagePhases[activeStage] === "running" && !!activeJob;
+  const { data: progressData } = useQuery<{ progressLog: string; status: string }>({
+    queryKey: [`/api/admin/market-builder/jobs/${activeJob?.id}/stages/${activeStage}/progress`],
+    enabled: pollingEnabled,
+    refetchInterval: pollingEnabled ? 2500 : false,
+  });
+
+  const activityLines = useMemo(() => {
+    const raw = progressData?.progressLog ?? "";
+    return raw ? raw.split("\n").filter(Boolean) : [];
+  }, [progressData]);
+
+  // Auto-scroll to bottom of log whenever new lines arrive
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activityLines.length]);
+
   // ── SSE: run a single stage ───────────────────────────────────────────
 
   const runStage = (jobId: string, stageNum: number) => {
     esRef.current?.close();
     setStreamError(null);
-    setProgressMsg("");
+    // Reset cached progress log so the new run starts fresh in the UI
+    queryClient.resetQueries({
+      queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+    });
     setStagePhases(prev => ({ ...prev, [stageNum]: "running" }));
 
     const es = new EventSource(`/api/admin/market-builder/jobs/${jobId}/stream?stage=${stageNum}`);
@@ -798,15 +822,21 @@ export function MarketBuilderWizard() {
         if (event.type === "stage_complete") {
           setStageResults(prev => ({ ...prev, [stageNum]: event.result }));
           setStagePhases(prev => ({ ...prev, [stageNum]: "done" }));
+          // Final poll to capture any last log lines written just before completion
+          queryClient.invalidateQueries({
+            queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+          });
           refetchJobs();
           es.close();
         } else if (event.type === "stage_error") {
           setStagePhases(prev => ({ ...prev, [stageNum]: "failed" }));
           setStreamError(event.error ?? "Stage failed");
+          queryClient.invalidateQueries({
+            queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+          });
           es.close();
-        } else if (event.type === "stage_progress") {
-          setProgressMsg(event.message ?? "");
         }
+        // stage_progress events are handled via DB polling — no local state needed
       } catch (_) {}
     };
 
@@ -879,11 +909,12 @@ export function MarketBuilderWizard() {
     setActiveJob(job);
     setView("stages");
     setStreamError(null);
-    setProgressMsg("");
 
     const phases: Record<number, StagePhase> = {};
     const results: Record<number, any> = {};
     let highestDone = 0;
+
+    let runningStage: number | null = null;
 
     (job.stages ?? []).forEach(s => {
       if (s.status === "completed" && s.result) {
@@ -892,6 +923,9 @@ export function MarketBuilderWizard() {
         highestDone = Math.max(highestDone, s.stage);
       } else if (s.status === "failed") {
         phases[s.stage] = "failed";
+      } else if (s.status === "running") {
+        phases[s.stage] = "running";
+        runningStage = s.stage;
       }
     });
 
@@ -901,6 +935,7 @@ export function MarketBuilderWizard() {
         const n = parseInt(stageStr);
         if (status === "completed") { phases[n] = "done"; highestDone = Math.max(highestDone, n); }
         else if (status === "failed") phases[n] = "failed";
+        else if (status === "running") { phases[n] = "running"; runningStage = n; }
       });
     }
 
@@ -908,6 +943,9 @@ export function MarketBuilderWizard() {
 
     if (job.status === "completed" || job.status === "published") {
       setActiveStage(6);
+    } else if (runningStage !== null) {
+      // A stage was running when we left — jump straight to it; polling will resume
+      setActiveStage(runningStage);
     } else {
       const nextStage = Math.min(highestDone + 1, 5);
       setActiveStage(nextStage);
@@ -1144,13 +1182,42 @@ export function MarketBuilderWizard() {
 
             {/* RUNNING state */}
             {currentPhase === "running" && (
-              <div className="py-12 flex flex-col items-center gap-4 text-center">
-                <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta.label}</p>
-                  {progressMsg && <p className="text-xs text-gray-500 mt-1">{progressMsg}</p>}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 py-3">
+                  <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta?.label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Updates every few seconds · Page will refresh automatically when complete</p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400 max-w-sm">This may take 30–90 seconds. The page will update automatically when complete.</p>
+
+                {/* Activity log */}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 border-b border-gray-200">
+                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Activity Log</span>
+                  </div>
+                  <div className="h-56 overflow-y-auto p-3 font-mono text-xs space-y-1 scroll-smooth">
+                    {activityLines.length === 0 ? (
+                      <p className="text-gray-400 italic">Waiting for first update…</p>
+                    ) : (
+                      activityLines.map((line, i) => {
+                        const isError = line.includes("✗");
+                        const isSuccess = line.includes("✓");
+                        return (
+                          <p key={i} className={
+                            isError   ? "text-red-600" :
+                            isSuccess ? "text-green-700 font-medium" :
+                                        "text-gray-700"
+                          }>
+                            {line}
+                          </p>
+                        );
+                      })
+                    )}
+                    <div ref={logEndRef} />
+                  </div>
+                </div>
               </div>
             )}
 

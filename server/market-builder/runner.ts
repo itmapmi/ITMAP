@@ -24,6 +24,22 @@ export function sendEvent(res: Response, event: Record<string, unknown>): void {
   if (typeof (res as any).flush === "function") (res as any).flush();
 }
 
+// ── Progress: send SSE AND persist to DB for reconnect resilience ─────────
+
+function makeProgress(
+  res: Response,
+  jobId: string,
+  stageNum: number
+) {
+  return async (message: string): Promise<void> => {
+    sendEvent(res, { type: "stage_progress", stage: stageNum, message });
+    // Fire-and-forget persist — don't let a DB write failure abort the LLM work
+    storage.appendStageProgress(jobId, stageNum, message).catch(e =>
+      console.error("[MarketBuilder] Progress persist error:", e)
+    );
+  };
+}
+
 // ── Build LLM config from job ─────────────────────────────────────────────
 
 async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> {
@@ -66,6 +82,11 @@ export async function runSingleStage(
   const allSources = await storage.listMarketBuilderSources(jobId);
   const sourceContext = buildSourceContext(allSources, stageNum);
 
+  // Clear old progress log and start fresh for this run
+  await storage.clearStageProgress(jobId, stageNum);
+
+  const progress = makeProgress(res, jobId, stageNum);
+
   const markRunning = () =>
     storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "running",
@@ -99,18 +120,19 @@ export async function runSingleStage(
 
       // ── Stage 1: Identify vendors ───────────────────────────────────────
       case 1: {
+        await progress(`Identifying vendors in the "${inputName}" market…`);
         result = await runStage1(
           { name: inputName, description: inputDescription, category: inputCategory, context: inputContext },
           llmConfig,
           sourceContext
         );
+        await progress(`✓ Found ${result.vendors?.length ?? 0} vendors`);
         break;
       }
 
       // ── Stage 2: Vendor Evaluation (predefined criteria) ────────────────
       case 2: {
         const stage1 = await loadStageResult(jobId, 1);
-        // Fetch all predefined criteria from the global DB table
         const allCriteria = await storage.getAllCriteria();
         if (allCriteria.length === 0) {
           throw new Error(
@@ -118,14 +140,26 @@ export async function runSingleStage(
             "Please add execution and viability criteria via Admin → Criteria before building a market."
           );
         }
+        const vendorNames = (stage1.vendors ?? []).map((v: any) => v.name).join(", ");
+        const execCriteria = allCriteria.filter(c => c.category === "execution").map(c => c.name).join(", ");
+        const viabCriteria = allCriteria.filter(c => c.category === "viability").map(c => c.name).join(", ");
+        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors: ${vendorNames}`);
+        await progress(`Execution criteria: ${execCriteria}`);
+        await progress(`Viability criteria: ${viabCriteria}`);
+        await progress(`Calling AI — generating ${(stage1.vendors?.length ?? 0) * allCriteria.length} scores with 100–250 word commentary each…`);
         result = await runStage2(inputName, stage1, allCriteria, llmConfig, sourceContext);
+        await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
         break;
       }
 
       // ── Stage 3: Product feature matrix ────────────────────────────────
       case 3: {
         const stage1 = await loadStageResult(jobId, 1);
+        await progress(`Building product feature matrix for "${inputName}"…`);
+        await progress(`Calling AI — defining product categories and features…`);
         result = await runStage3(inputName, stage1, llmConfig, sourceContext);
+        const totalFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`✓ Built ${result.categories?.length ?? 0} categories with ${totalFeatures} features`);
         break;
       }
 
@@ -133,16 +167,15 @@ export async function runSingleStage(
       case 4: {
         const stage1 = await loadStageResult(jobId, 1);
         const stage3 = await loadStageResult(jobId, 3);
+        const totalFeatures = (stage3.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
         result = await runStage4Full(
           inputName, stage1, stage3, llmConfig, sourceContext,
-          (done, total) => {
-            sendEvent(res, {
-              type: "stage_progress",
-              stage: 4,
-              message: `Scoring product capabilities — vendor batch ${done} of ${total}…`,
-            });
+          async (done, total, vendorNames, featureRange) => {
+            await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
           }
         );
+        await progress(`✓ Generated ${result.support?.length ?? 0} product support scores`);
         break;
       }
 
@@ -151,8 +184,9 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         result = await runStage5(
           inputName, stage1, llmConfig, sourceContext,
-          (msg: string) => sendEvent(res, { type: "stage_progress", stage: 5, message: msg })
+          async (msg: string) => { await progress(msg); }
         );
+        await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem integration scores`);
         break;
       }
 
@@ -180,6 +214,7 @@ export async function runSingleStage(
 
   } catch (err: any) {
     console.error(`[MarketBuilder] Stage ${stageNum} error for job ${jobId}:`, err);
+    await progress(`✗ Error: ${err.message}`);
     await markFailed(err.message);
     await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
     sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });

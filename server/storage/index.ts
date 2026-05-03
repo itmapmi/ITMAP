@@ -154,6 +154,8 @@ export interface IStorage {
   getMarketBuilderStages(jobId: string): Promise<import("@shared/schema").MarketBuilderStage[]>;
   getMarketBuilderStage(jobId: string, stage: number): Promise<import("@shared/schema").MarketBuilderStage | undefined>;
   upsertMarketBuilderStage(jobId: string, stage: number, data: Partial<Pick<import("@shared/schema").MarketBuilderStage, "status" | "result" | "error" | "startedAt" | "completedAt">>): Promise<import("@shared/schema").MarketBuilderStage>;
+  appendStageProgress(jobId: string, stage: number, message: string): Promise<void>;
+  clearStageProgress(jobId: string, stage: number): Promise<void>;
   resetMarketBuilderStage(jobId: string, stage: number): Promise<void>;
   updateStageResult(jobId: string, stage: number, result: unknown): Promise<import("@shared/schema").MarketBuilderStage>;
   // Market Builder — LLM Settings

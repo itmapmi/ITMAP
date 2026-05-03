@@ -67,6 +67,19 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── Stage progress log (polled by frontend for real-time activity feed) ──
+
+  app.get("/api/admin/market-builder/jobs/:id/stages/:stageNum/progress", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      const stage = await storage.getMarketBuilderStage(req.params.id, stageNum);
+      res.json({
+        progressLog: (stage as any)?.progressLog ?? "",
+        status: stage?.status ?? "pending",
+      });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── Update stage result (manual edits before approval) ───────────────────
 
   app.patch("/api/admin/market-builder/jobs/:id/stages/:stage/result", requireAdmin, async (req, res) => {

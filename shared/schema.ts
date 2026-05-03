@@ -752,6 +752,10 @@ export const marketBuilderStages = pgTable("market_builder_stages", {
   // Human-readable error if this stage failed
   error: text("error"),
 
+  // Newline-delimited activity log written as the LLM processes each step.
+  // Persists across navigation — polled by the frontend for real-time updates.
+  progressLog: text("progress_log"),
+
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
 });

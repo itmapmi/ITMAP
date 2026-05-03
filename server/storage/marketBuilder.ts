@@ -105,6 +105,35 @@ export async function getMarketBuilderStage(
   return rows.find(r => r.stage === stage);
 }
 
+export async function appendStageProgress(
+  jobId: string,
+  stage: number,
+  message: string
+): Promise<void> {
+  const ts = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const line = `[${ts}] ${message}`;
+  const existing = await getMarketBuilderStage(jobId, stage);
+  if (!existing) return;
+  const current = (existing as any).progressLog ?? "";
+  const next = current ? `${current}\n${line}` : line;
+  await db
+    .update(marketBuilderStages)
+    .set({ progressLog: next } as any)
+    .where(eq(marketBuilderStages.id, existing.id));
+}
+
+export async function clearStageProgress(
+  jobId: string,
+  stage: number
+): Promise<void> {
+  const existing = await getMarketBuilderStage(jobId, stage);
+  if (!existing) return;
+  await db
+    .update(marketBuilderStages)
+    .set({ progressLog: "" } as any)
+    .where(eq(marketBuilderStages.id, existing.id));
+}
+
 export async function upsertMarketBuilderStage(
   jobId: string,
   stage: number,

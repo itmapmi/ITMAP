@@ -131,7 +131,7 @@ export async function runStage4Full(
   stage3: { categories: Stage3Category[] },
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  onBatchComplete?: (done: number, total: number) => void
+  onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>
 ): Promise<Stage4Result> {
   const VENDOR_BATCH = 3;
   const FEATURE_BATCH = 12;
@@ -164,7 +164,12 @@ export async function runStage4Full(
       );
       allSupport.push(...records);
       batchsDone++;
-      onBatchComplete?.(batchsDone, totalBatches);
+
+      const vendorNames = vendorBatches[vi].map(v => v.name).join(", ");
+      const featStart = fi * FEATURE_BATCH + 1;
+      const featEnd = Math.min((fi + 1) * FEATURE_BATCH, allFeatures.length);
+      const featureRange = `${featStart}–${featEnd} of ${allFeatures.length}`;
+      await onBatchComplete?.(batchsDone, totalBatches, vendorNames, featureRange);
     }
   }
 
