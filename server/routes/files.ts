@@ -80,12 +80,15 @@ export function registerFileRoutes(app: Express): void {
 
   // ── Excel Export ──────────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/export", requireAdmin, async (req, res) => {
+  app.get("/api/markets/:marketId/export", requireAuth, async (req, res) => {
     try {
       const marketId = req.params.marketId;
       const xlsx = await import('xlsx');
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      // Public markets: any authenticated user. Private markets: owner or
+      // admin only — same rule as PDF exports below.
+      if (!canReadMarket(market, req)) return res.status(404).json({ error: "Market not found" });
       const vendors = await storage.getVendorsByMarket(marketId);
       const criteria = await storage.getAllCriteria();
       const executionCriteria = criteria.filter((c: any) => c.category === 'execution');
@@ -243,6 +246,11 @@ export function registerFileRoutes(app: Express): void {
 
   app.get("/api/markets/:marketId/research-reports", async (req, res) => {
     try {
+      // Gate by market visibility — private-market reports are
+      // owner/admin only.
+      const market = await storage.getMarketById(req.params.marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(404).json({ error: "Market not found" });
       const reports = await storage.getResearchReportsByMarket(req.params.marketId);
       res.json(reports);
     } catch (error) {
@@ -299,6 +307,9 @@ export function registerFileRoutes(app: Express): void {
 
   app.get("/api/markets/:marketId/research-methodology", async (req, res) => {
     try {
+      const market = await storage.getMarketById(req.params.marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(404).json({ error: "Market not found" });
       const methodology = await storage.getResearchMethodologyByMarketId(req.params.marketId);
       res.json(methodology);
     } catch (error) {

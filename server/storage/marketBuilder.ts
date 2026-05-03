@@ -51,6 +51,11 @@ export async function listMarketBuilderJobsForUser(
 }
 
 // Per-user rate-limit helpers.
+//
+// "Active" = a job that's still in flight (idle but not yet started counts —
+// that's a draft the user can resume). Published / completed / failed jobs
+// don't count toward the concurrency cap so users aren't blocked from new
+// builds after publishing.
 export async function countActiveJobsForUser(userId: string): Promise<number> {
   const rows = await db
     .select({ value: count() })
@@ -59,6 +64,7 @@ export async function countActiveJobsForUser(userId: string): Promise<number> {
       eq(marketBuilderJobs.createdBy, userId),
       ne(marketBuilderJobs.status, "completed"),
       ne(marketBuilderJobs.status, "failed"),
+      ne(marketBuilderJobs.status, "published"),
     ));
   return Number(rows[0]?.value ?? 0);
 }
