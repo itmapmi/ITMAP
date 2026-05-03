@@ -22,6 +22,51 @@ import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { insertPromptRepositorySchema } from "@shared/schema";
 
+/**
+ * Lightweight "ping" against each LLM provider — used by the /me/llm-keys
+ * "Test connection" button so users can verify a key works before saving.
+ * Each call lists models (cheapest available endpoint per provider) and
+ * succeeds when the API returns 2xx.
+ */
+async function testLlmKey(
+  provider: "openai" | "anthropic" | "perplexity",
+  apiKey: string,
+): Promise<{ ok: boolean; error?: string; model?: string }> {
+  try {
+    if (provider === "openai") {
+      const r = await fetch("https://api.openai.com/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!r.ok) return { ok: false, error: `OpenAI returned ${r.status}` };
+      return { ok: true };
+    }
+    if (provider === "anthropic") {
+      const r = await fetch("https://api.anthropic.com/v1/models", {
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      });
+      if (!r.ok) return { ok: false, error: `Anthropic returned ${r.status}` };
+      return { ok: true };
+    }
+    if (provider === "perplexity") {
+      // Perplexity has no list-models endpoint, so do a tiny chat completion.
+      const r = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
+        }),
+      });
+      if (!r.ok) return { ok: false, error: `Perplexity returned ${r.status}` };
+      return { ok: true };
+    }
+    return { ok: false, error: `Unknown provider: ${provider}` };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
+}
+
 const ALLOWED_PROVIDERS = ["openai", "anthropic", "perplexity"] as const;
 type Provider = (typeof ALLOWED_PROVIDERS)[number];
 
@@ -73,6 +118,31 @@ export function registerMeRoutes(app: Express): void {
         preview: maskKey(saved.apiKey),
         updatedAt: saved.updatedAt,
       });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Test connection — make a tiny "ping" call to the provider with the
+  // user's saved key (or a key supplied in the request body for unsaved
+  // keys during the add-key flow). Returns { ok: true } on success or 4xx
+  // with the provider's error message on failure.
+  app.post("/api/me/llm-keys/:provider/test", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const provider = req.params.provider as Provider;
+      if (!ALLOWED_PROVIDERS.includes(provider)) {
+        return res.status(400).json({ error: `Unknown provider: ${provider}` });
+      }
+      let apiKey: string | undefined = (req.body?.apiKey ?? "").toString().trim();
+      if (!apiKey) {
+        const saved = await storage.getUserLlmApiKey(user.id, provider);
+        apiKey = saved?.apiKey;
+      }
+      if (!apiKey) return res.status(400).json({ error: "No API key to test" });
+      const ok = await testLlmKey(provider, apiKey);
+      if (!ok.ok) return res.status(400).json({ error: ok.error });
+      res.json({ ok: true, model: ok.model ?? null });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }

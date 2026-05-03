@@ -238,6 +238,7 @@ export async function resolveLlmConfig(
   promptType: PromptType,
   fallback: LLMConfig,
   keyResolver?: (provider: LLMConfig["provider"]) => Promise<string | undefined>,
+  forUser: boolean = false,
 ): Promise<LLMConfig> {
   const sel = await storage.getJobLlmSelection(jobId, stage, promptType);
   if (!sel?.provider || !sel?.model) return fallback;
@@ -245,5 +246,12 @@ export async function resolveLlmConfig(
   const apiKey = provider === fallback.provider
     ? fallback.apiKey
     : (keyResolver ? await keyResolver(provider) : undefined);
+  // OpenAI is special-cased downstream (Replit AI Integration fallback) so we
+  // don't pre-throw. For any other provider, surface a typed MissingLlmKeyError
+  // so the caller can return a 412 with an actionable "add your key" message.
+  if (!apiKey && provider !== "openai") {
+    const { MissingLlmKeyError } = await import("./runner");
+    throw new MissingLlmKeyError(provider, forUser);
+  }
   return { ...fallback, provider, model: sel.model, apiKey };
 }

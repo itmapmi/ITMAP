@@ -91,6 +91,19 @@ function ProviderCard({
     onSuccess: () => { toast({ title: `${label} key removed` }); onChanged(); },
   });
 
+  const test = useMutation({
+    // If we're editing, test the typed key; otherwise test the saved key.
+    mutationFn: () =>
+      apiRequest(
+        `/api/me/llm-keys/${providerId}/test`,
+        "POST",
+        newKey.trim() ? { apiKey: newKey.trim() } : {},
+      ).then(r => r.json()),
+    onSuccess: () => toast({ title: `${label} connection successful` }),
+    onError: (err: any) =>
+      toast({ title: `${label} test failed`, description: err.message, variant: "destructive" }),
+  });
+
   const hasKey = state?.hasKey ?? false;
 
   return (
@@ -123,6 +136,14 @@ function ProviderCard({
             <Button size="sm" disabled={!newKey.trim() || save.isPending} onClick={() => save.mutate()}>
               {save.isPending ? "Saving…" : "Save"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!newKey.trim() || test.isPending}
+              onClick={() => test.mutate()}
+            >
+              {test.isPending ? "Testing…" : "Test"}
+            </Button>
             {editing && (
               <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setNewKey(""); }}>
                 Cancel
@@ -134,6 +155,9 @@ function ProviderCard({
         <div className="flex items-center justify-between gap-3 pt-1">
           <code className="text-xs text-gray-600 font-mono">{state?.preview ?? "••••"}</code>
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => test.mutate()} disabled={test.isPending}>
+              {test.isPending ? "Testing…" : "Test"}
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Replace</Button>
             <Button size="sm" variant="ghost" onClick={() => remove.mutate()} disabled={remove.isPending}>
               <Trash2 className="h-3.5 w-3.5 text-red-500" />

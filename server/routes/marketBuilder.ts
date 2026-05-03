@@ -537,7 +537,9 @@ export function registerMarketBuilderRoutes(app: Express): void {
   app.get("/api/market-builder/jobs", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
-      res.json(await storage.listMarketBuilderJobsForUser(user.id));
+      // Include stage summaries so the wizard can resume to the correct stage
+      // (matches the admin /jobs response shape consumed by the same component).
+      res.json(await storage.listMarketBuilderJobsForUserWithStageSummaries(user.id));
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 

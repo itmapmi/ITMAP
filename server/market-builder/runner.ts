@@ -116,6 +116,8 @@ export async function runSingleStage(
   const { id: jobId, inputName, inputDescription, inputCategory, inputContext } = job;
 
   const llmConfig = await buildLLMConfig(job);
+  const _owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
+  const forUser = !!_owner && _owner.role !== "admin";
   const allSources = await storage.listMarketBuilderSources(jobId);
   const sourceContext = buildSourceContext(allSources, stageNum);
 
@@ -189,8 +191,8 @@ export async function runSingleStage(
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "scoring", criterionName }),
           resolveCommentaryPrompt: (criterionName) =>
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
-          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
-          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
+          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
+          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
           onProgress: progress,
         });
         await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
@@ -221,8 +223,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
             onBatchComplete: async (done, total, vendorNames, featureRange) => {
               await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
             },
@@ -256,8 +258,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
             onProgress: async (msg: string) => { await progress(msg); },
           }
         );

@@ -81,6 +81,30 @@ export type JobWithStageSummary = MarketBuilderJob & {
   stageSummary: Record<number, "pending" | "running" | "completed" | "failed">;
 };
 
+// Same shape, but scoped to one user — backs the end-user wizard's resume
+// flow which needs stageSummary to restore which stage the user was on.
+export async function listMarketBuilderJobsForUserWithStageSummaries(
+  userId: string,
+): Promise<JobWithStageSummary[]> {
+  const jobs = await listMarketBuilderJobsForUser(userId);
+  if (jobs.length === 0) return [];
+  const jobIds = jobs.map(j => j.id);
+  const stages = await db
+    .select({
+      jobId: marketBuilderStages.jobId,
+      stage: marketBuilderStages.stage,
+      status: marketBuilderStages.status,
+    })
+    .from(marketBuilderStages)
+    .where(inArray(marketBuilderStages.jobId, jobIds));
+  const stageMap = new Map<string, Record<number, any>>();
+  for (const s of stages) {
+    if (!stageMap.has(s.jobId)) stageMap.set(s.jobId, {});
+    stageMap.get(s.jobId)![s.stage] = s.status;
+  }
+  return jobs.map(j => ({ ...j, stageSummary: stageMap.get(j.id) ?? {} }));
+}
+
 export async function listMarketBuilderJobsWithStageSummaries(): Promise<JobWithStageSummary[]> {
   const jobs = await listMarketBuilderJobs();
   if (jobs.length === 0) return [];

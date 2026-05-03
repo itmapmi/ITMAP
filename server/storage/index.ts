@@ -159,6 +159,7 @@ export interface IStorage {
   getMarketBuilderJob(id: string): Promise<import("@shared/schema").MarketBuilderJob | undefined>;
   listMarketBuilderJobs(): Promise<import("@shared/schema").MarketBuilderJob[]>;
   listMarketBuilderJobsForUser(userId: string): Promise<import("@shared/schema").MarketBuilderJob[]>;
+  listMarketBuilderJobsForUserWithStageSummaries(userId: string): Promise<import("./marketBuilder").JobWithStageSummary[]>;
   countActiveJobsForUser(userId: string): Promise<number>;
   countJobsForUserSince(userId: string, since: Date): Promise<number>;
   updateMarketBuilderJob(id: string, data: Partial<Pick<import("@shared/schema").MarketBuilderJob, "status" | "marketId" | "error" | "updatedAt">>): Promise<import("@shared/schema").MarketBuilderJob>;
