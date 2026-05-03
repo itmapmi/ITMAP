@@ -559,19 +559,23 @@ function SourcesOnlyNotice() {
 
 // ── Publish panel ─────────────────────────────────────────────────────────
 
-function PublishPanel({ job, stageResults, onPublished }: {
+function PublishPanel({ job, stageResults, onPublished, apiBase, mode }: {
   job: MarketBuilderJob;
   stageResults: Record<number, any>;
   onPublished: (marketId: string, isVisible: boolean) => void;
+  apiBase: string;
+  mode: "admin" | "user";
 }) {
   const { toast } = useToast();
+  // End-user markets are always private — the visibility toggle only makes
+  // sense for admin-published public markets.
   const [isVisible, setIsVisible] = useState(false);
   const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4];
   const s5 = stageResults[5]; const s6 = stageResults[6];
   const productFeatures = s3?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const ecoFeatures = s5?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const publish = useMutation({
-    mutationFn: () => apiRequest(`/api/admin/market-builder/jobs/${job.id}/publish`, "POST", { isVisible }).then(r => r.json()),
+    mutationFn: () => apiRequest(`${apiBase}/jobs/${job.id}/publish`, "POST", { isVisible }).then(r => r.json()),
     onSuccess: (data: any) => { onPublished(data.marketId, isVisible); toast({ title: "Market published!" }); },
     onError: (err: any) => toast({ title: "Publish failed", description: err.message, variant: "destructive" }),
   });
@@ -594,13 +598,23 @@ function PublishPanel({ job, stageResults, onPublished }: {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 rounded-lg bg-white border border-green-200 p-4">
-        <Switch checked={isVisible} onCheckedChange={setIsVisible} />
-        <div>
-          <p className="text-sm font-medium text-gray-800">Make market visible immediately</p>
-          <p className="text-xs text-gray-500">If off, the market is created but hidden — enable it later from the Markets admin tab.</p>
+      {mode === "admin" ? (
+        <div className="flex items-center gap-3 rounded-lg bg-white border border-green-200 p-4">
+          <Switch checked={isVisible} onCheckedChange={setIsVisible} />
+          <div>
+            <p className="text-sm font-medium text-gray-800">Make market visible immediately</p>
+            <p className="text-xs text-gray-500">If off, the market is created but hidden — enable it later from the Markets admin tab.</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg bg-white border border-green-200 p-4">
+          <Lock className="h-4 w-4 text-green-700" />
+          <div>
+            <p className="text-sm font-medium text-gray-800">Private market</p>
+            <p className="text-xs text-gray-500">Only you will be able to see this market and its reports.</p>
+          </div>
+        </div>
+      )}
       <Button className="w-full gap-2 bg-green-700 hover:bg-green-800 h-10" onClick={() => publish.mutate()} disabled={publish.isPending}>
         {publish.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
         Publish Market
@@ -611,8 +625,8 @@ function PublishPanel({ job, stageResults, onPublished }: {
 
 // ── Done stage view ───────────────────────────────────────────────────────
 
-function DoneStageView({ stageNum, result, jobId, onSave }: {
-  stageNum: number; result: any; jobId: string; onSave: (r: any) => void;
+function DoneStageView({ stageNum, result, jobId, onSave, apiBase }: {
+  stageNum: number; result: any; jobId: string; onSave: (r: any) => void; apiBase: string;
 }) {
   const [localResult, setLocalResult] = useState(result);
   const [isDirty, setIsDirty] = useState(false);
@@ -620,7 +634,7 @@ function DoneStageView({ stageNum, result, jobId, onSave }: {
   const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); };
   return (
     <div className="space-y-5">
-      <SourcesPanel jobId={jobId} currentStage={stageNum} />
+      <SourcesPanel jobId={jobId} currentStage={stageNum} apiBase={apiBase} />
       {isDirty && (
         <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
           <p className="text-xs text-amber-800 font-medium">You have unsaved edits</p>
@@ -810,8 +824,12 @@ function SetupForm({ onBack, onCreate }: {
 
 // ── Main wizard ───────────────────────────────────────────────────────────
 
-export function MarketBuilderWizard() {
+export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user" } = {}) {
   const { toast } = useToast();
+  // API base differs for admin vs end-user surfaces. Sub-components are
+  // passed apiBase/promptsBase so they hit the right routes.
+  const apiBase = mode === "user" ? "/api/market-builder" : "/api/admin/market-builder";
+  const promptsBase = mode === "user" ? "/api/me/prompts" : "/api/admin/prompts";
 
   const [view, setView] = useState<WizardView>("dashboard");
   const [activeJob, setActiveJob] = useState<MarketBuilderJob | null>(null);
@@ -828,7 +846,7 @@ export function MarketBuilderWizard() {
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const { data: jobs = [], refetch: refetchJobs } = useQuery<MarketBuilderJob[]>({
-    queryKey: ["/api/admin/market-builder/jobs"],
+    queryKey: [apiBase, "jobs"],
     refetchInterval: view === "stages" ? 0 : 15_000, // auto-refresh dashboard every 15s
   });
 
@@ -842,7 +860,7 @@ export function MarketBuilderWizard() {
 
   const pollingEnabled = view === "stages" && stagePhases[activeStage] === "running" && !!activeJob;
   const { data: progressData } = useQuery<{ progressLog: string; status: string }>({
-    queryKey: [`/api/admin/market-builder/jobs/${activeJob?.id}/stages/${activeStage}/progress`],
+    queryKey: [`${apiBase}/jobs/${activeJob?.id}/stages/${activeStage}/progress`],
     enabled: pollingEnabled,
     refetchInterval: pollingEnabled ? 2500 : false,
   });
@@ -864,11 +882,11 @@ export function MarketBuilderWizard() {
     setStreamError(null);
     // Reset cached progress log so the new run starts fresh in the UI
     queryClient.resetQueries({
-      queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+      queryKey: [`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`],
     });
     setStagePhases(prev => ({ ...prev, [stageNum]: "running" }));
 
-    const es = new EventSource(`/api/admin/market-builder/jobs/${jobId}/stream?stage=${stageNum}`);
+    const es = new EventSource(`${apiBase}/jobs/${jobId}/stream?stage=${stageNum}`);
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -879,7 +897,7 @@ export function MarketBuilderWizard() {
           setStagePhases(prev => ({ ...prev, [stageNum]: "done" }));
           // Final poll to capture any last log lines written just before completion
           queryClient.invalidateQueries({
-            queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+            queryKey: [`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`],
           });
           refetchJobs();
           es.close();
@@ -887,7 +905,7 @@ export function MarketBuilderWizard() {
           setStagePhases(prev => ({ ...prev, [stageNum]: "failed" }));
           setStreamError(event.error ?? "Stage failed");
           queryClient.invalidateQueries({
-            queryKey: [`/api/admin/market-builder/jobs/${jobId}/stages/${stageNum}/progress`],
+            queryKey: [`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`],
           });
           es.close();
         }
@@ -908,7 +926,7 @@ export function MarketBuilderWizard() {
   // ── Mutations ─────────────────────────────────────────────────────────
 
   const createJob = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/admin/market-builder/jobs", "POST", data).then(r => r.json()),
+    mutationFn: (data: any) => apiRequest(`${apiBase}/jobs`, "POST", data).then(r => r.json()),
     onSuccess: (job: MarketBuilderJob) => {
       setActiveJob(job);
       setView("stages");
@@ -922,26 +940,26 @@ export function MarketBuilderWizard() {
   });
 
   const completeJob = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/market-builder/jobs/${id}/complete`, "POST").then(r => r.json()),
+    mutationFn: (id: string) => apiRequest(`${apiBase}/jobs/${id}/complete`, "POST").then(r => r.json()),
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const saveEdits = useMutation({
     mutationFn: ({ stageNum, result }: { stageNum: number; result: any }) =>
-      apiRequest(`/api/admin/market-builder/jobs/${activeJob!.id}/stages/${stageNum}/result`, "PATCH", result).then(r => r.json()),
+      apiRequest(`${apiBase}/jobs/${activeJob!.id}/stages/${stageNum}/result`, "PATCH", result).then(r => r.json()),
     onSuccess: () => toast({ title: "Edits saved" }),
     onError: (err: any) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
   });
 
   const deleteJob = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/admin/market-builder/jobs/${id}`, "DELETE"),
+    mutationFn: (id: string) => apiRequest(`${apiBase}/jobs/${id}`, "DELETE"),
     onSuccess: () => { refetchJobs(); },
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 
   const updateVisibility = useMutation({
     mutationFn: ({ id, isVisible }: { id: string; isVisible: boolean }) =>
-      apiRequest(`/api/admin/market-builder/jobs/${id}/visibility`, "PATCH", { isVisible }).then(r => r.json()),
+      apiRequest(`${apiBase}/jobs/${id}/visibility`, "PATCH", { isVisible }).then(r => r.json()),
     onSuccess: (_, { isVisible }) => { setPublishedVisible(isVisible); toast({ title: isVisible ? "Market now visible" : "Market now hidden" }); },
   });
 
@@ -1017,7 +1035,7 @@ export function MarketBuilderWizard() {
 
     // If we need full stage results, fetch the job with stages
     if (Object.keys(results).length === 0 && highestDone > 0) {
-      apiRequest(`/api/admin/market-builder/jobs/${job.id}`, "GET").then(r => r.json()).then((fullJob: any) => {
+      apiRequest(`${apiBase}/jobs/${job.id}`, "GET").then(r => r.json()).then((fullJob: any) => {
         const r2: Record<number, any> = {};
         const p2: Record<number, StagePhase> = { ...phases };
         let hd2 = 0;
@@ -1191,6 +1209,8 @@ export function MarketBuilderWizard() {
         <PublishPanel
           job={activeJob!}
           stageResults={stageResults}
+          apiBase={apiBase}
+          mode={mode}
           onPublished={(marketId, isVisible) => {
             setPublishedMarketId(marketId);
             setPublishedVisible(isVisible);
@@ -1264,7 +1284,7 @@ export function MarketBuilderWizard() {
                 )}
 
                 <SourcesOnlyNotice />
-                <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
+                <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} apiBase={apiBase} />
 
                 {/* Per-stage LLM model + prompt customization (stages 2 / 4 / 6) */}
                 {activeStage === 2 && (
@@ -1274,11 +1294,14 @@ export function MarketBuilderWizard() {
                       stageKind="vendor_evaluation"
                       defaultProvider={activeJob!.llmProvider}
                       defaultModel={activeJob!.llmModel}
+                      apiBase={apiBase}
                     />
                     <PromptSelector
                       jobId={activeJob!.id}
                       stageKind="vendor_evaluation"
                       criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
+                      apiBase={apiBase}
+                      promptsBase={promptsBase}
                     />
                   </>
                 )}
@@ -1289,11 +1312,14 @@ export function MarketBuilderWizard() {
                       stageKind="product_evaluation"
                       defaultProvider={activeJob!.llmProvider}
                       defaultModel={activeJob!.llmModel}
+                      apiBase={apiBase}
                     />
                     <PromptSelector
                       jobId={activeJob!.id}
                       stageKind="product_evaluation"
                       categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                      apiBase={apiBase}
+                      promptsBase={promptsBase}
                     />
                   </>
                 )}
@@ -1304,11 +1330,14 @@ export function MarketBuilderWizard() {
                       stageKind="ecosystem_evaluation"
                       defaultProvider={activeJob!.llmProvider}
                       defaultModel={activeJob!.llmModel}
+                      apiBase={apiBase}
                     />
                     <PromptSelector
                       jobId={activeJob!.id}
                       stageKind="ecosystem_evaluation"
                       categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                      apiBase={apiBase}
+                      promptsBase={promptsBase}
                     />
                   </>
                 )}
@@ -1376,7 +1405,7 @@ export function MarketBuilderWizard() {
                   </div>
                 </div>
                 <SourcesOnlyNotice />
-                <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
+                <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} apiBase={apiBase} />
                 <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => runStage(activeJob!.id, activeStage)}>
                   <RefreshCw className="h-4 w-4" />Try Again
                 </Button>
@@ -1389,6 +1418,7 @@ export function MarketBuilderWizard() {
                 stageNum={activeStage}
                 result={currentResult}
                 jobId={activeJob!.id}
+                apiBase={apiBase}
                 onSave={r => {
                   setStageResults(prev => ({ ...prev, [activeStage]: r }));
                   saveEdits.mutate({ stageNum: activeStage, result: r });

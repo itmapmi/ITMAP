@@ -32,6 +32,7 @@ The platform uses a relational data model for Markets, Sub-Markets, Vendors, Cri
 
 ### Feature Specifications
 - **Market Builder**: An AI-powered wizard with LLM provider selection (OpenAI, Anthropic, Perplexity), per-stage source materials, step-by-step approval gates, editable stage results, and post-publish market visibility toggles.
+- **End-User Market Builder**: Logged-in non-admin users can run the same wizard at `/me/market-builder` to build their own private markets (`visibility="private"`, owned by the user). Users bring their own LLM API keys (managed at `/me/settings/llm-keys`), author their own private prompts (with system defaults still available read-only), and view their reports at `/me/reports`. Per-user rate limits cap concurrent and daily job creation. Private market PDF/Excel generation is gated to the owner (or admins).
 - **Feature Support Scoring**: Utilizes a Harvey Ball scale (0-4) for vendor feature support, converted to percentages for AI context and handled natively (0-4) by the frontend.
 - **Authentication and Authorization**: Basic user management with role-based access control for administrators and end-users.
 - **API Design**: RESTful principles with Zod schema validation, standardized error handling, and consistent JSON formats.

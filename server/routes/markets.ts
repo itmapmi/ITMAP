@@ -15,9 +15,19 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets", async (req, res) => {
     try {
-      const markets = await storage.getAllMarkets();
-      const isAdmin = req.isAuthenticated() && (req.user as any)?.role === 'admin';
-      const filteredMarkets = isAdmin ? markets : markets.filter(m => m.isVisible !== false);
+      const isAuth = req.isAuthenticated();
+      const user = isAuth ? (req.user as any) : null;
+      const isAdmin = !!user && user.role === 'admin';
+      const all = await storage.getAllMarkets();
+      // Visibility model:
+      //  - public markets are visible to everyone (subject to isVisible toggle for non-admins)
+      //  - private markets are visible only to their owner (or any admin)
+      const filteredMarkets = isAdmin
+        ? all
+        : all.filter(m => {
+            if (m.visibility === "private") return user && m.ownerUserId === user.id;
+            return m.isVisible !== false;
+          });
       res.json(filteredMarkets);
     } catch (error) {
       console.error("Error fetching markets:", error);
@@ -29,6 +39,12 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const market = await storage.getMarketById(req.params.id);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      const isAuth = req.isAuthenticated();
+      const user = isAuth ? (req.user as any) : null;
+      const isAdmin = !!user && user.role === 'admin';
+      if (market.visibility === "private" && !isAdmin && (!user || market.ownerUserId !== user.id)) {
+        return res.status(404).json({ error: "Market not found" });
+      }
       res.json(market);
     } catch (error) {
       console.error("Error fetching market:", error);

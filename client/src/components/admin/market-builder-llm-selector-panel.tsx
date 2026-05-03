@@ -35,15 +35,17 @@ interface Props {
   // Job-level fallback shown in the UI as the default option label
   defaultProvider: string;
   defaultModel: string;
+  // API base — defaults to admin so existing admin-only callers continue to work
+  apiBase?: string;
 }
 
-export function LlmSelectorPanel({ jobId, stageKind, defaultProvider, defaultModel }: Props) {
+export function LlmSelectorPanel({ jobId, stageKind, defaultProvider, defaultModel, apiBase = "/api/admin/market-builder" }: Props) {
   const { toast } = useToast();
 
   const { data: selections = [] } = useQuery<LlmSelection[]>({
-    queryKey: ["/api/admin/market-builder/jobs", jobId, "llm-selections"],
+    queryKey: [apiBase, "jobs", jobId, "llm-selections"],
     queryFn: async () => {
-      const r = await fetch(`/api/admin/market-builder/jobs/${jobId}/llm-selections`, { credentials: "include" });
+      const r = await fetch(`${apiBase}/jobs/${jobId}/llm-selections`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load LLM selections");
       return r.json();
     },
@@ -51,8 +53,8 @@ export function LlmSelectorPanel({ jobId, stageKind, defaultProvider, defaultMod
 
   const saveMut = useMutation({
     mutationFn: (item: { stage: StageKind; promptType: PromptType; provider: string | null; model: string | null }) =>
-      apiRequest("PUT", `/api/admin/market-builder/jobs/${jobId}/llm-selections`, { selections: [item] }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/market-builder/jobs", jobId, "llm-selections"] }),
+      apiRequest("PUT", `${apiBase}/jobs/${jobId}/llm-selections`, { selections: [item] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [apiBase, "jobs", jobId, "llm-selections"] }),
     onError: (err: any) => toast({ title: "Couldn't save LLM selection", description: err.message, variant: "destructive" }),
   });
 

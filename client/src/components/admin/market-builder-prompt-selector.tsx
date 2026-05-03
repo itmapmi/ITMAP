@@ -48,27 +48,34 @@ interface Props {
   // For stage 2: pass criteria[]; for 4 & 6: pass categories with features
   criteria?: Array<{ id: string; name: string; category: string }>;
   categories?: Array<{ name: string; features: Array<{ name: string }> }>;
+  // API bases — admin defaults preserve existing admin-only call sites
+  apiBase?: string;
+  promptsBase?: string;
 }
 
-export function PromptSelector({ jobId, stageKind, criteria, categories }: Props) {
+export function PromptSelector({
+  jobId, stageKind, criteria, categories,
+  apiBase = "/api/admin/market-builder",
+  promptsBase = "/api/admin/prompts",
+}: Props) {
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
 
   const { data: prompts = [] } = useQuery<Prompt[]>({
-    queryKey: ["/api/admin/prompts", { stage: stageKind }],
+    queryKey: [promptsBase, { stage: stageKind }],
     queryFn: async () => {
-      const r = await fetch(`/api/admin/prompts?stage=${stageKind}`, { credentials: "include" });
+      const r = await fetch(`${promptsBase}?stage=${stageKind}`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load prompts");
       return r.json();
     },
   });
 
   const { data: selections = [] } = useQuery<Selection[]>({
-    queryKey: ["/api/admin/market-builder/jobs", jobId, "prompt-selections"],
+    queryKey: [apiBase, "jobs", jobId, "prompt-selections"],
     queryFn: async () => {
-      const r = await fetch(`/api/admin/market-builder/jobs/${jobId}/prompt-selections`, { credentials: "include" });
+      const r = await fetch(`${apiBase}/jobs/${jobId}/prompt-selections`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load selections");
       return r.json();
     },
@@ -81,10 +88,10 @@ export function PromptSelector({ jobId, stageKind, criteria, categories }: Props
     mutationFn: async (selectionsToSave: Array<{
       stage: StageKind; targetType: TargetType; targetKey: string; promptType: PromptType; promptId: string | null;
     }>) => {
-      return apiRequest("PUT", `/api/admin/market-builder/jobs/${jobId}/prompt-selections`, { selections: selectionsToSave });
+      return apiRequest("PUT", `${apiBase}/jobs/${jobId}/prompt-selections`, { selections: selectionsToSave });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/market-builder/jobs", jobId, "prompt-selections"] });
+      queryClient.invalidateQueries({ queryKey: [apiBase, "jobs", jobId, "prompt-selections"] });
     },
     onError: (err: any) => toast({ title: "Couldn't save prompt selection", description: err.message, variant: "destructive" }),
   });

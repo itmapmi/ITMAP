@@ -22,6 +22,7 @@ import {
   type PromptRepository, type InsertPromptRepository,
   type MarketBuilderPromptSelection, type InsertMarketBuilderPromptSelection,
   type MarketBuilderLlmSelection, type InsertMarketBuilderLlmSelection,
+  type UserLlmApiKey,
 } from "@shared/schema";
 
 export * from "./users";
@@ -32,6 +33,7 @@ export * from "./research";
 export * from "./admin";
 export * from "./marketBuilder";
 export * from "./prompts";
+export * from "./userLlmKeys";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -41,6 +43,7 @@ import * as researchStorage from "./research";
 import * as adminStorage from "./admin";
 import * as marketBuilderStorage from "./marketBuilder";
 import * as promptsStorage from "./prompts";
+import * as userLlmKeysStorage from "./userLlmKeys";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -50,7 +53,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
 
   getAllMarkets(): Promise<Market[]>;
+  getPublicMarkets(): Promise<Market[]>;
+  getMarketsByOwner(ownerUserId: string): Promise<Market[]>;
   getMarketById(id: string): Promise<Market | undefined>;
+  getMarketByIdForViewer(id: string, viewerUserId: string | null): Promise<Market | undefined>;
   createMarket(market: InsertMarket): Promise<Market>;
   updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market>;
   deleteMarket(id: string): Promise<void>;
@@ -152,6 +158,9 @@ export interface IStorage {
   createMarketBuilderJob(data: import("@shared/schema").InsertMarketBuilderJob): Promise<import("@shared/schema").MarketBuilderJob>;
   getMarketBuilderJob(id: string): Promise<import("@shared/schema").MarketBuilderJob | undefined>;
   listMarketBuilderJobs(): Promise<import("@shared/schema").MarketBuilderJob[]>;
+  listMarketBuilderJobsForUser(userId: string): Promise<import("@shared/schema").MarketBuilderJob[]>;
+  countActiveJobsForUser(userId: string): Promise<number>;
+  countJobsForUserSince(userId: string, since: Date): Promise<number>;
   updateMarketBuilderJob(id: string, data: Partial<Pick<import("@shared/schema").MarketBuilderJob, "status" | "marketId" | "error" | "updatedAt">>): Promise<import("@shared/schema").MarketBuilderJob>;
   deleteMarketBuilderJob(id: string): Promise<void>;
   getMarketBuilderJobWithStages(id: string): Promise<(import("@shared/schema").MarketBuilderJob & { stages: import("@shared/schema").MarketBuilderStage[] }) | undefined>;
@@ -189,6 +198,12 @@ export interface IStorage {
   getJobLlmSelection(jobId: string, stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType): Promise<MarketBuilderLlmSelection | undefined>;
   upsertJobLlmSelection(data: InsertMarketBuilderLlmSelection): Promise<MarketBuilderLlmSelection>;
   clearJobLlmSelection(jobId: string, stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType): Promise<void>;
+
+  // User-owned LLM API keys (BYO for end-user Market Builder).
+  listUserLlmApiKeys(userId: string): Promise<UserLlmApiKey[]>;
+  getUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider): Promise<UserLlmApiKey | undefined>;
+  upsertUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider, apiKey: string): Promise<UserLlmApiKey>;
+  deleteUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider): Promise<void>;
 }
 
 export const storage: IStorage = {
@@ -200,4 +215,5 @@ export const storage: IStorage = {
   ...adminStorage,
   ...marketBuilderStorage,
   ...promptsStorage,
+  ...userLlmKeysStorage,
 };

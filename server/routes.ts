@@ -8,6 +8,7 @@ import { registerNewsRoutes } from "./routes/news";
 import { registerChatRoutes } from "./routes/chat";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerMarketBuilderRoutes } from "./routes/marketBuilder";
+import { registerMeRoutes } from "./routes/me";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // External partner API (API-key auth, no session required) — must come first
@@ -21,6 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerChatRoutes(app);
   registerAdminRoutes(app);
   registerMarketBuilderRoutes(app);
+  registerMeRoutes(app);
 
   return createServer(app);
 }

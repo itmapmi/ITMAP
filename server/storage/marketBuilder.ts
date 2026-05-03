@@ -1,4 +1,4 @@
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and, gte, count, ne } from "drizzle-orm";
 import { db } from "../db";
 import {
   marketBuilderJobs,
@@ -37,6 +37,44 @@ export async function listMarketBuilderJobs(): Promise<MarketBuilderJob[]> {
     .select()
     .from(marketBuilderJobs)
     .orderBy(desc(marketBuilderJobs.createdAt));
+}
+
+// Jobs owned by one user — used by the end-user "My Reports" page.
+export async function listMarketBuilderJobsForUser(
+  userId: string,
+): Promise<MarketBuilderJob[]> {
+  return db
+    .select()
+    .from(marketBuilderJobs)
+    .where(eq(marketBuilderJobs.createdBy, userId))
+    .orderBy(desc(marketBuilderJobs.createdAt));
+}
+
+// Per-user rate-limit helpers.
+export async function countActiveJobsForUser(userId: string): Promise<number> {
+  const rows = await db
+    .select({ value: count() })
+    .from(marketBuilderJobs)
+    .where(and(
+      eq(marketBuilderJobs.createdBy, userId),
+      ne(marketBuilderJobs.status, "completed"),
+      ne(marketBuilderJobs.status, "failed"),
+    ));
+  return Number(rows[0]?.value ?? 0);
+}
+
+export async function countJobsForUserSince(
+  userId: string,
+  since: Date,
+): Promise<number> {
+  const rows = await db
+    .select({ value: count() })
+    .from(marketBuilderJobs)
+    .where(and(
+      eq(marketBuilderJobs.createdBy, userId),
+      gte(marketBuilderJobs.createdAt, since),
+    ));
+  return Number(rows[0]?.value ?? 0);
 }
 
 export type JobWithStageSummary = MarketBuilderJob & {

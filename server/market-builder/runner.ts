@@ -42,12 +42,48 @@ function makeProgress(
 }
 
 // ── Build LLM config from job ─────────────────────────────────────────────
+//
+// Key-resolution rules:
+//  - Admin jobs: use the global marketBuilderLlmSettings entry (the platform's key)
+//  - End-user jobs: use the user's own BYO key from userLlmApiKeys
+// If a required key is missing we throw a typed error so the route can
+// surface a 412 with an actionable message ("add your <provider> key in Settings").
+
+export class MissingLlmKeyError extends Error {
+  constructor(public readonly provider: string, public readonly forUser: boolean) {
+    super(forUser
+      ? `Missing ${provider} API key. Add it in Settings → LLM Keys before running this stage.`
+      : `Missing ${provider} API key in admin LLM Settings.`);
+    this.name = "MissingLlmKeyError";
+  }
+}
+
+async function resolveJobOwnerKey(
+  job: MarketBuilderJob,
+  provider: LLMConfig["provider"],
+): Promise<string | undefined> {
+  const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
+  const isAdminJob = !owner || owner.role === "admin";
+  if (isAdminJob) {
+    const setting = await storage.getMarketBuilderLlmSetting(provider);
+    return setting?.apiKey;
+  }
+  const userKey = await storage.getUserLlmApiKey(owner.id, provider as any);
+  return userKey?.apiKey;
+}
 
 async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> {
   const provider = (job.llmProvider ?? "openai") as LLMConfig["provider"];
   const model = job.llmModel ?? "gpt-4.1-mini";
-  const setting = await storage.getMarketBuilderLlmSetting(provider);
-  return { provider, model, apiKey: setting?.apiKey };
+  const apiKey = await resolveJobOwnerKey(job, provider);
+  // OpenAI is special-cased downstream: it falls back to the Replit AI Integration
+  // when no key is supplied, so we don't pre-throw here for openai.
+  if (!apiKey && provider !== "openai") {
+    const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
+    const forUser = !!owner && owner.role !== "admin";
+    throw new MissingLlmKeyError(provider, forUser);
+  }
+  return { provider, model, apiKey };
 }
 
 // ── Load a completed stage result ─────────────────────────────────────────
@@ -153,8 +189,8 @@ export async function runSingleStage(
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "scoring", criterionName }),
           resolveCommentaryPrompt: (criterionName) =>
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
-          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig),
-          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig),
+          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
+          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
           onProgress: progress,
         });
         await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
@@ -185,8 +221,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
             onBatchComplete: async (done, total, vendorNames, featureRange) => {
               await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
             },
@@ -220,8 +256,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p)),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p)),
             onProgress: async (msg: string) => { await progress(msg); },
           }
         );

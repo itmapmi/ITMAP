@@ -14,6 +14,9 @@ import Markets from "@/pages/markets";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
 import MarketBuilderPage from "@/pages/market-builder";
+import MyMarketBuilderPage from "@/pages/my-market-builder";
+import MyReportsPage from "@/pages/my-reports";
+import MyLlmKeysPage from "@/pages/my-llm-keys";
 import ReportViewer from "@/pages/report-viewer";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -65,6 +68,9 @@ function Router() {
         <Route path="/market/:marketId" component={MarketDetails} />
         <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
         <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} requireAdmin={true} />} />
+        <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
+        <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
+        <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route component={NotFound} />
       </Switch>

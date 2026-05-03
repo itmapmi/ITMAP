@@ -6,6 +6,23 @@ import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { pdfService } from "../pdf-generator/pdf-service";
 import { insertResearchReportSchema, insertResearchMethodologySchema } from "@shared/schema";
 
+/**
+ * Returns true if the request user may read this market.
+ *
+ * Rules:
+ *  - Public/visible markets: any authenticated user (existing behavior)
+ *  - Private markets (visibility="private", set by end-user Market Builder):
+ *      only the market owner OR an admin
+ */
+function canReadMarket(market: any, req: any): boolean {
+  if (!market) return false;
+  if (market.visibility !== "private") return true;
+  const user = req.user as any;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return market.ownerUserId === user.id;
+}
+
 export function registerFileRoutes(app: Express): void {
 
   // ── Object Storage ────────────────────────────────────────────────────────
@@ -375,6 +392,7 @@ export function registerFileRoutes(app: Express): void {
       const { vendorIds } = req.body;
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(403).json({ error: "Forbidden" });
       let vendors = await storage.getVendorsByMarket(marketId);
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allScores = await storage.getMarketVendorScores(marketId);
@@ -406,6 +424,7 @@ export function registerFileRoutes(app: Express): void {
       const { vendorIds } = req.body;
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(403).json({ error: "Forbidden" });
       let vendors = await storage.getVendorsByMarket(marketId);
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allScores = await storage.getMarketVendorScores(marketId);
@@ -428,6 +447,7 @@ export function registerFileRoutes(app: Express): void {
       const { vendorIds } = req.body;
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(403).json({ error: "Forbidden" });
       let vendors = await storage.getVendorsByMarket(marketId);
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allCategories = await storage.getMarketFeatureCategories(marketId);
@@ -455,6 +475,7 @@ export function registerFileRoutes(app: Express): void {
       const { vendorIds } = req.body;
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(403).json({ error: "Forbidden" });
       let vendors = await storage.getVendorsByMarket(marketId);
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allCategories = await storage.getMarketFeatureCategories(marketId);

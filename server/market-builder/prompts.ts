@@ -226,15 +226,24 @@ export async function resolvePromptContent(input: PromptResolverInput): Promise<
 
 // Resolve effective LLM config for a (stage, promptType) on a job. Falls back
 // to the job-level llmConfig when no per-stage selection exists.
+//
+// When the per-stage selection picks a provider different from the fallback,
+// we must also re-resolve the API key for that provider using the same
+// ownership rules as buildLLMConfig (BYO key for end users, admin-global key
+// for admin jobs). The keyResolver argument lets the caller inject the right
+// lookup without this module needing to know about the user/admin distinction.
 export async function resolveLlmConfig(
   jobId: string,
   stage: PromptStage,
   promptType: PromptType,
   fallback: LLMConfig,
+  keyResolver?: (provider: LLMConfig["provider"]) => Promise<string | undefined>,
 ): Promise<LLMConfig> {
   const sel = await storage.getJobLlmSelection(jobId, stage, promptType);
-  if (sel?.provider && sel?.model) {
-    return { ...fallback, provider: sel.provider as LLMConfig["provider"], model: sel.model };
-  }
-  return fallback;
+  if (!sel?.provider || !sel?.model) return fallback;
+  const provider = sel.provider as LLMConfig["provider"];
+  const apiKey = provider === fallback.provider
+    ? fallback.apiKey
+    : (keyResolver ? await keyResolver(provider) : undefined);
+  return { ...fallback, provider, model: sel.model, apiKey };
 }

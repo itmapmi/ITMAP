@@ -6,7 +6,7 @@ import {
   markets, vendors, historicalPositions, vendorLabelPositions,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, isNull } from "drizzle-orm";
 
 // ── Markets ────────────────────────────────────────────────────────────────
 
@@ -14,8 +14,43 @@ export async function getAllMarkets(): Promise<Market[]> {
   return await db.select().from(markets).orderBy(markets.name);
 }
 
+// Public catalog — only markets that are public. Used by the public site so
+// that private end-user reports never leak.
+export async function getPublicMarkets(): Promise<Market[]> {
+  return await db
+    .select()
+    .from(markets)
+    .where(eq(markets.visibility, "public"))
+    .orderBy(markets.name);
+}
+
+// Markets owned by a specific user (their private reports).
+export async function getMarketsByOwner(ownerUserId: string): Promise<Market[]> {
+  return await db
+    .select()
+    .from(markets)
+    .where(eq(markets.ownerUserId, ownerUserId))
+    .orderBy(desc(markets.updatedAt));
+}
+
 export async function getMarketById(id: string): Promise<Market | undefined> {
   const [market] = await db.select().from(markets).where(eq(markets.id, id));
+  return market || undefined;
+}
+
+// Returns the market only if the viewer is allowed to see it: public markets
+// are visible to everyone, private markets only to their owner. Admin checks
+// must be done at the route layer (admins should call getMarketById directly).
+export async function getMarketByIdForViewer(
+  id: string,
+  viewerUserId: string | null,
+): Promise<Market | undefined> {
+  const conditions = [eq(markets.id, id)];
+  const visibilityClause = viewerUserId
+    ? or(eq(markets.visibility, "public"), eq(markets.ownerUserId, viewerUserId))
+    : eq(markets.visibility, "public");
+  conditions.push(visibilityClause as any);
+  const [market] = await db.select().from(markets).where(and(...conditions));
   return market || undefined;
 }
 

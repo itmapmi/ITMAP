@@ -47,6 +47,10 @@ export const markets = pgTable("markets", {
   category: text("category"),
   imageUrl: text("image_url"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
+  // Ownership: null = platform-owned (admin-created public market).
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  // 'public' | 'private'. Private markets only visible to owner + admins.
+  visibility: text("visibility").notNull().default("public"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -828,6 +832,9 @@ export const promptRepository = pgTable("prompt_repository", {
   stage: text("stage").notNull(),
   content: text("content").notNull(),
   isSystem: boolean("is_system").notNull().default(false),
+  // Owner of this prompt. null = system default (visible to everyone, read-only).
+  // Otherwise the prompt is private to that user (admins can see all).
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -887,3 +894,24 @@ export const insertMarketBuilderLlmSelectionSchema = createInsertSchema(marketBu
 
 export type MarketBuilderLlmSelection = typeof marketBuilderLlmSelections.$inferSelect;
 export type InsertMarketBuilderLlmSelection = z.infer<typeof insertMarketBuilderLlmSelectionSchema>;
+
+// ── User BYO LLM API Keys ────────────────────────────────────────────────
+// Stores per-user API keys for end-user Market Builder runs. The platform
+// does not pay for end-user LLM usage, so each end user must supply their
+// own key for the providers they intend to use.
+export const userLlmApiKeys = pgTable("user_llm_api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // 'openai' | 'anthropic' | 'perplexity'
+  provider: text("provider").notNull(),
+  apiKey: text("api_key").notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const insertUserLlmApiKeySchema = createInsertSchema(userLlmApiKeys).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type UserLlmApiKey = typeof userLlmApiKeys.$inferSelect;
+export type InsertUserLlmApiKey = z.infer<typeof insertUserLlmApiKeySchema>;

@@ -1,10 +1,28 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
-import { requireAdmin } from "../auth";
+import { requireAdmin, requireAuth } from "../auth";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
 import { initSSE, sendEvent, runSingleStage } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
+
+// Per-user rate limits for end-user Market Builder runs.
+// These are intentionally generous; tighten if abuse appears.
+const USER_MAX_ACTIVE_JOBS = 2;
+const USER_MAX_JOBS_PER_24H = 5;
+
+// Middleware: ensure the authenticated user owns the job in :id (or is admin).
+// Usage: app.get("/api/market-builder/jobs/:id", requireAuth, requireJobOwner, handler)
+async function requireJobOwner(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const user = req.user as any;
+  const job = await storage.getMarketBuilderJob(req.params.id);
+  if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+  if (user?.role !== "admin" && job.createdBy !== user?.id) {
+    res.status(403).json({ error: "You do not own this job" }); return;
+  }
+  (req as any).job = job;
+  next();
+}
 
 export function registerMarketBuilderRoutes(app: Express): void {
 
@@ -252,12 +270,44 @@ export function registerMarketBuilderRoutes(app: Express): void {
   });
 
   // ── Publish ───────────────────────────────────────────────────────────────
+  //
+  // Shared between the admin and end-user route groups. The publish flow:
+  //  1. Validate the job is completed and all 6 stages have results.
+  //  2. Detect whether this is an end-user job (creator role !== admin).
+  //     End-user jobs always become PRIVATE markets owned by the creator.
+  //     Admin jobs become PUBLIC markets controlled by the isVisible toggle.
+  //  3. Materialise vendors, criteria scores, feature categories, features,
+  //     Harvey Ball support data, then auto-compute Product Capabilities &
+  //     ISV Ecosystem aggregate scores.
+
+  async function publishJob(jobId: string, isVisibleRequested?: boolean): Promise<
+    | { ok: true; marketId: string; isVisible: boolean }
+    | { ok: false; status: number; error: string }
+  > {
+    const job = await storage.getMarketBuilderJobWithStages(jobId);
+    if (!job) return { ok: false, status: 404, error: "Job not found" };
+    if (job.status !== "completed") return { ok: false, status: 400, error: "Job must be completed before publishing" };
+    return await publishJobInner(job, isVisibleRequested);
+  }
 
   app.post("/api/admin/market-builder/jobs/:id/publish", requireAdmin, async (req, res) => {
     try {
-      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
-      if (!job) return res.status(404).json({ error: "Job not found" });
-      if (job.status !== "completed") return res.status(400).json({ error: "Job must be completed before publishing" });
+      const result = await publishJob(req.params.id, req.body?.isVisible);
+      if (!result.ok) return res.status(result.status).json({ error: result.error });
+      res.json({ success: true, marketId: result.marketId, isVisible: result.isVisible });
+    } catch (err: any) {
+      console.error("[MarketBuilder] Publish error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // The actual publish work, factored out so both admin and end-user routes
+  // can share it without re-dispatch hacks.
+  async function publishJobInner(
+    job: NonNullable<Awaited<ReturnType<typeof storage.getMarketBuilderJobWithStages>>>,
+    isVisibleRequested?: boolean,
+  ): Promise<{ ok: true; marketId: string; isVisible: boolean } | { ok: false; status: number; error: string }> {
+    try {
 
       const stage1 = job.stages.find(s => s.stage === 1)?.result as any;
       const stage2 = job.stages.find(s => s.stage === 2)?.result as any;
@@ -267,10 +317,15 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const stage6 = job.stages.find(s => s.stage === 6)?.result as any;
 
       if (!stage1 || !stage2 || !stage3 || !stage4 || !stage5 || !stage6) {
-        return res.status(400).json({ error: "One or more stages are missing results" });
+        return { ok: false, status: 400, error: "One or more stages are missing results" };
       }
 
-      const isVisible = req.body?.isVisible ?? false;
+      // End-user jobs always publish private markets owned by the creator.
+      // Admin jobs default to public (visibility toggle controlled separately).
+      const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
+      const isEndUserJob = !!owner && owner.role !== "admin";
+      const visibility = isEndUserJob ? "private" : "public";
+      const isVisible = isEndUserJob ? false : (isVisibleRequested ?? false);
 
       const market = await storage.createMarket({
         name: job.inputName,
@@ -278,6 +333,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
         shortDescription: job.inputDescription,
         category: job.inputCategory ?? undefined,
         isVisible,
+        ownerUserId: isEndUserJob ? owner!.id : null,
+        visibility,
       });
 
       const vendorIdMap = new Map<string, string>();
@@ -448,12 +505,12 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
 
       await storage.updateMarketBuilderJob(job.id, { status: "published", marketId: market.id });
-      res.json({ success: true, marketId: market.id, isVisible });
+      return { ok: true, marketId: market.id, isVisible };
     } catch (err: any) {
       console.error("[MarketBuilder] Publish error:", err);
-      res.status(500).json({ error: err.message });
+      return { ok: false, status: 500, error: err.message };
     }
-  });
+  }
 
   // ── Update market visibility after publish ────────────────────────────────
 
@@ -465,5 +522,199 @@ export function registerMarketBuilderRoutes(app: Express): void {
       await storage.updateMarket(job.marketId, { isVisible });
       res.json({ success: true, isVisible });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // END-USER MARKET BUILDER ROUTES
+  //
+  // Same wizard, scoped to the authenticated user's own jobs. All endpoints
+  // sit under /api/market-builder/* (no /admin/) and enforce ownership via
+  // requireJobOwner. Mirrors the admin route surface above so the wizard
+  // component can switch base URLs without changing its API contract.
+  // ════════════════════════════════════════════════════════════════════════
+
+  // List my jobs
+  app.get("/api/market-builder/jobs", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      res.json(await storage.listMarketBuilderJobsForUser(user.id));
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Get a single job (with stages) — owner only
+  app.get("/api/market-builder/jobs/:id", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
+      res.json(job);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Create a job (rate-limited per user)
+  app.post("/api/market-builder/jobs", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const active = await storage.countActiveJobsForUser(user.id);
+      if (active >= USER_MAX_ACTIVE_JOBS) {
+        return res.status(429).json({
+          error: `You already have ${active} active market build${active === 1 ? "" : "s"} in progress. Finish or delete them before starting another.`,
+        });
+      }
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await storage.countJobsForUserSince(user.id, since);
+      if (recent >= USER_MAX_JOBS_PER_24H) {
+        return res.status(429).json({
+          error: `Daily limit reached (${USER_MAX_JOBS_PER_24H} markets / 24 hrs). Try again later.`,
+        });
+      }
+      const data = insertMarketBuilderJobSchema.parse({ ...req.body, createdBy: user.id });
+      res.status(201).json(await storage.createMarketBuilderJob(data));
+    } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
+  app.delete("/api/market-builder/jobs/:id", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      await storage.deleteMarketBuilderJob(req.params.id);
+      res.status(204).end();
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Per-job prompt + LLM selections (read + bulk write)
+  app.get("/api/market-builder/jobs/:id/prompt-selections", requireAuth, requireJobOwner, async (req, res) => {
+    try { res.json(await storage.listJobPromptSelections(req.params.id)); }
+    catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/market-builder/jobs/:id/prompt-selections", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const items: Array<{ stage: any; targetType: string; targetKey: string; promptType: any; promptId: string | null }>
+        = Array.isArray(req.body?.selections) ? req.body.selections : [];
+      for (const item of items) {
+        if (!item.stage || !item.targetType || !item.targetKey || !item.promptType) continue;
+        if (item.promptId) {
+          await storage.upsertJobPromptSelection({
+            jobId, stage: item.stage, targetType: item.targetType,
+            targetKey: item.targetKey, promptType: item.promptType, promptId: item.promptId,
+          });
+        } else {
+          await storage.clearJobPromptSelection(jobId, item.stage, item.targetType, item.targetKey, item.promptType);
+        }
+      }
+      res.json(await storage.listJobPromptSelections(jobId));
+    } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
+  app.get("/api/market-builder/jobs/:id/llm-selections", requireAuth, requireJobOwner, async (req, res) => {
+    try { res.json(await storage.listJobLlmSelections(req.params.id)); }
+    catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/market-builder/jobs/:id/llm-selections", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const items: Array<{ stage: any; promptType: any; provider: string | null; model: string | null }>
+        = Array.isArray(req.body?.selections) ? req.body.selections : [];
+      for (const item of items) {
+        if (!item.stage || !item.promptType) continue;
+        if (item.provider && item.model) {
+          await storage.upsertJobLlmSelection({
+            jobId, stage: item.stage, promptType: item.promptType,
+            provider: item.provider, model: item.model,
+          });
+        } else {
+          await storage.clearJobLlmSelection(jobId, item.stage, item.promptType);
+        }
+      }
+      res.json(await storage.listJobLlmSelections(jobId));
+    } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
+  // SSE stream — runs ONE stage. Owner only.
+  app.get("/api/market-builder/jobs/:id/stream", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.query.stage as string, 10);
+      if (!stageNum || stageNum < 1 || stageNum > 6) {
+        res.status(400).json({ error: "?stage=1..6 is required" });
+        return;
+      }
+      const job = (req as any).job;
+      if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
+      initSSE(res);
+      req.on("close", () => {});
+      runSingleStage(res, job, stageNum).catch(err => {
+        console.error(`[MarketBuilder] Stage ${stageNum} error for ${job.id}:`, err);
+        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+      });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/market-builder/jobs/:id/stages/:stageNum/progress", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      const stage = await storage.getMarketBuilderStage(req.params.id, stageNum);
+      res.json({ progressLog: (stage as any)?.progressLog ?? "", status: stage?.status ?? "pending" });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.patch("/api/market-builder/jobs/:id/stages/:stage/result", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stage, 10);
+      const updated = await storage.updateStageResult(req.params.id, stageNum, req.body);
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Sources — owner only
+  app.get("/api/market-builder/jobs/:id/sources", requireAuth, requireJobOwner, async (req, res) => {
+    try { res.json(await storage.listMarketBuilderSources(req.params.id)); }
+    catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.post("/api/market-builder/jobs/:id/sources/url", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const { url, name, stage } = req.body;
+      if (!url) return res.status(400).json({ error: "url is required" });
+      let content = "";
+      try { content = await fetchUrlContent(url); }
+      catch (err: any) { content = `[Error fetching URL: ${err.message}]`; }
+      const source = await storage.createMarketBuilderSource({
+        jobId: req.params.id, stage: stage ?? null, type: "url",
+        name: name || url, url, content,
+      });
+      res.status(201).json(source);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.post("/api/market-builder/jobs/:id/sources/file", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const { name, content, stage } = req.body;
+      if (!name || !content) return res.status(400).json({ error: "name and content are required" });
+      const source = await storage.createMarketBuilderSource({
+        jobId: req.params.id, stage: stage ?? null, type: "file",
+        name, url: null, content,
+      });
+      res.status(201).json(source);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.delete("/api/market-builder/jobs/:id/sources/:sourceId", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      await storage.deleteMarketBuilderSource(req.params.sourceId);
+      res.status(204).end();
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Publish — calls the same shared publishJob() helper as the admin route.
+  // The helper auto-detects end-user jobs and forces visibility=private +
+  // ownerUserId based on the job creator's role.
+  app.post("/api/market-builder/jobs/:id/publish", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const result = await publishJob(req.params.id, false);
+      if (!result.ok) return res.status(result.status).json({ error: result.error });
+      res.json({ success: true, marketId: result.marketId, isVisible: result.isVisible });
+    } catch (err: any) {
+      console.error("[MarketBuilder] User publish error:", err);
+      res.status(500).json({ error: err.message });
+    }
   });
 }

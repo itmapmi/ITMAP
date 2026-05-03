@@ -34,9 +34,12 @@ const STAGE_LABELS: Record<number, string> = {
 interface SourcesPanelProps {
   jobId: string;
   currentStage?: number;
+  // API base for the parent wizard. Defaults to the admin route so existing
+  // admin-only callers don't need updating.
+  apiBase?: string;
 }
 
-export function SourcesPanel({ jobId, currentStage }: SourcesPanelProps) {
+export function SourcesPanel({ jobId, currentStage, apiBase = "/api/admin/market-builder" }: SourcesPanelProps) {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState<"url" | "file" | null>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -52,18 +55,18 @@ export function SourcesPanel({ jobId, currentStage }: SourcesPanelProps) {
   const [fileStage, setFileStage] = useState<string>(currentStage?.toString() ?? "all");
 
   const { data: sources = [], isLoading } = useQuery<Source[]>({
-    queryKey: [`/api/admin/market-builder/jobs/${jobId}/sources`],
+    queryKey: [`${apiBase}/jobs/${jobId}/sources`],
   });
 
   const addUrl = useMutation({
     mutationFn: () =>
-      apiRequest(`/api/admin/market-builder/jobs/${jobId}/sources/url`, "POST", {
+      apiRequest(`${apiBase}/jobs/${jobId}/sources/url`, "POST", {
         url: urlInput.trim(),
         name: urlName.trim() || urlInput.trim(),
         stage: urlStage === "all" ? null : parseInt(urlStage),
       }).then(r => r.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/market-builder/jobs/${jobId}/sources`] });
+      queryClient.invalidateQueries({ queryKey: [`${apiBase}/jobs/${jobId}/sources`] });
       setUrlInput(""); setUrlName(""); setShowForm(null);
       toast({ title: "URL source added" });
     },
@@ -72,13 +75,13 @@ export function SourcesPanel({ jobId, currentStage }: SourcesPanelProps) {
 
   const addFile = useMutation({
     mutationFn: () =>
-      apiRequest(`/api/admin/market-builder/jobs/${jobId}/sources/file`, "POST", {
+      apiRequest(`${apiBase}/jobs/${jobId}/sources/file`, "POST", {
         name: fileName.trim(),
         content: fileContent.trim(),
         stage: fileStage === "all" ? null : parseInt(fileStage),
       }).then(r => r.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/market-builder/jobs/${jobId}/sources`] });
+      queryClient.invalidateQueries({ queryKey: [`${apiBase}/jobs/${jobId}/sources`] });
       setFileName(""); setFileContent(""); setShowForm(null);
       toast({ title: "File source added" });
     },
@@ -87,8 +90,8 @@ export function SourcesPanel({ jobId, currentStage }: SourcesPanelProps) {
 
   const removeSource = useMutation({
     mutationFn: (sourceId: string) =>
-      apiRequest(`/api/admin/market-builder/jobs/${jobId}/sources/${sourceId}`, "DELETE"),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/admin/market-builder/jobs/${jobId}/sources`] }),
+      apiRequest(`${apiBase}/jobs/${jobId}/sources/${sourceId}`, "DELETE"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`${apiBase}/jobs/${jobId}/sources`] }),
   });
 
   // Handle file upload — read text from selected file

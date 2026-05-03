@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, isNull, gte, count, ne } from "drizzle-orm";
 import { db } from "../db";
 import {
   promptRepository,
@@ -20,10 +20,24 @@ export type PromptType = "scoring" | "commentary";
 export async function listPrompts(filters?: {
   stage?: PromptStage;
   promptType?: PromptType;
+  // Ownership scope:
+  //   { kind: "all" }              → admin view, every prompt
+  //   { kind: "user", userId }    → system defaults + this user's private prompts
+  //   { kind: "system" }           → only system defaults
+  ownerScope?:
+    | { kind: "all" }
+    | { kind: "user"; userId: string }
+    | { kind: "system" };
 }): Promise<PromptRepository[]> {
-  const conditions = [];
+  const conditions: any[] = [];
   if (filters?.stage) conditions.push(eq(promptRepository.stage, filters.stage));
   if (filters?.promptType) conditions.push(eq(promptRepository.promptType, filters.promptType));
+  const scope = filters?.ownerScope ?? { kind: "all" };
+  if (scope.kind === "system") {
+    conditions.push(isNull(promptRepository.ownerUserId));
+  } else if (scope.kind === "user") {
+    conditions.push(or(isNull(promptRepository.ownerUserId), eq(promptRepository.ownerUserId, scope.userId))!);
+  }
   const q = conditions.length > 0
     ? db.select().from(promptRepository).where(and(...conditions))
     : db.select().from(promptRepository);

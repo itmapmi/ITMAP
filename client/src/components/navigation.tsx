@@ -102,6 +102,17 @@ export default function Navigation() {
                   Contact Us
                 </div>
               </Link>
+              {isAuthenticated && (
+                <Link href="/me/market-builder">
+                  <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
+                    location.startsWith("/me")
+                      ? "text-gray-900 hover:text-primary-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                    Build
+                  </div>
+                </Link>
+              )}
               {isAuthenticated && isAdmin && (
                 <Link href="/admin">
                   <div className={`px-3 py-2 text-lg font-medium cursor-pointer ${
