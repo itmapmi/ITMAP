@@ -17,7 +17,6 @@ import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
-import { PromptsAdmin } from "@/components/admin/prompts-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight } from "lucide-react";
@@ -126,7 +125,6 @@ export default function Admin() {
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
-            <TabsTrigger value="prompts">Prompts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -191,10 +189,6 @@ export default function Admin() {
 
           <TabsContent value="api-keys" className="mt-6">
             <ApiKeysAdmin />
-          </TabsContent>
-
-          <TabsContent value="prompts" className="mt-6">
-            <PromptsAdmin />
           </TabsContent>
         </Tabs>
       </motion.div>

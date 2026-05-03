@@ -1,6 +1,8 @@
 import { Link } from "wouter";
 import { ChevronLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
+import { PromptsAdmin } from "@/components/admin/prompts-admin";
 
 export default function MarketBuilderPage() {
   return (
@@ -13,7 +15,18 @@ export default function MarketBuilderPage() {
           </a>
         </Link>
       </div>
-      <MarketBuilderWizard />
+      <Tabs defaultValue="builder" className="w-full">
+        <TabsList>
+          <TabsTrigger value="builder">Builder</TabsTrigger>
+          <TabsTrigger value="prompts">Prompts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="builder" className="mt-6">
+          <MarketBuilderWizard />
+        </TabsContent>
+        <TabsContent value="prompts" className="mt-6">
+          <PromptsAdmin />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
