@@ -4,8 +4,10 @@
  * Uses PREDEFINED global criteria already in the DB.
  * The LLM does NOT create new criteria — it:
  *   1. Assigns a market-specific weight (1-100) to each predefined criterion
- *   2. Scores each vendor (0.0–10.0) against every criterion
- *   3. Writes evidence-based commentary for each score
+ *   2. Writes a scoringRationale: what the criterion means in THIS market
+ *      and what high vs low scores look like
+ *   3. Scores each vendor (0.0–10.0) against every criterion
+ *   4. Writes evidence-based commentary for each individual score
  *
  * This drives the quadrant chart (Execution = X-axis / Viability = Y-axis).
  */
@@ -23,14 +25,15 @@ export interface Stage2CriterionWeight {
   criterionId: string;
   criterionName: string;
   criterionCategory: string;
-  weight: number; // 1–100 within its axis
+  weight: number;          // 1–100 within its axis
+  scoringRationale: string; // What this criterion means for THIS market + high/low score guidance
 }
 
 export interface Stage2Score {
   vendorName: string;
   criterionName: string;
   score: number;      // 0.0–10.0
-  commentary: string; // 1–2 sentences of evidence
+  commentary: string; // 1–2 sentences of evidence explaining this vendor's score
 }
 
 export interface Stage2Result {
@@ -78,22 +81,33 @@ You MUST use ALL of these — do not add or remove any.
 
 ${criteriaBlock}
 
-TASK 1 — Market-specific weights:
-Assign a weight (integer 1–100) to each criterion reflecting its importance for THIS specific market.
-Weights within each axis should roughly sum to 100.
+TASK 1 — Market-specific weights and scoring rationale:
+For each criterion provide:
+- weight: integer 1–100 reflecting importance for THIS specific market (weights within each axis should roughly sum to 100)
+- scoringRationale: 2–3 sentences that explain:
+    (a) exactly what this criterion measures in the context of the ${marketName} market
+    (b) what a HIGH score (8–10) looks like for a vendor in this market
+    (c) what a LOW score (1–3) looks like
+  This gives readers a clear framework for interpreting vendor scores.
 
 TASK 2 — Score every vendor against every criterion:
 - score: decimal 0.0–10.0 (one decimal place)
-- commentary: 1–2 sentences with specific, evidence-based reasoning
+- commentary: 1–2 sentences with specific, evidence-based reasoning for THIS vendor's score on THIS criterion
 - Be differentiated — avoid clustering vendors at the same score
 
 Respond with ONLY a JSON object:
 {
   "criteriaWeights": [
-    { "criterionId": "<id>", "criterionName": "<name>", "criterionCategory": "<category>", "weight": <1-100> }
+    {
+      "criterionId": "<id>",
+      "criterionName": "<name>",
+      "criterionCategory": "<category>",
+      "weight": <1-100>,
+      "scoringRationale": "<2-3 sentences: what it measures here, what high/low scores mean>"
+    }
   ],
   "scores": [
-    { "vendorName": "<name>", "criterionName": "<name>", "score": <0.0-10.0>, "commentary": "<1-2 sentences>" }
+    { "vendorName": "<name>", "criterionName": "<name>", "score": <0.0-10.0>, "commentary": "<1-2 sentences of evidence>" }
   ]
 }`;
 

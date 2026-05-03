@@ -206,21 +206,26 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
 
   return (
     <div className="space-y-5">
-      {/* Criteria weights by axis */}
+      {/* Criteria weights by axis — shows rationale + editable weight */}
       {["execution", "viability"].map(axis => {
         const axisCriteria = weights.filter((w: any) => w.criterionCategory === axis);
         if (!axisCriteria.length) return null;
         return (
           <div key={axis}>
-            <p className="text-sm font-semibold capitalize text-gray-700 mb-2">{axis} Axis — Criterion Weights</p>
-            <div className="space-y-1.5">
+            <p className="text-sm font-semibold capitalize text-gray-700 mb-2">{axis} Axis — Criteria</p>
+            <div className="space-y-2">
               {axisCriteria.map((w: any) => (
-                <div key={w.criterionName} className="flex items-center gap-3 rounded-lg border bg-white p-2.5">
-                  <p className="text-xs font-medium flex-1 truncate">{w.criterionName}</p>
-                  <Label className="text-xs text-gray-400 shrink-0">Weight</Label>
-                  <Input type="number" min={1} max={100} value={w.weight}
-                    onChange={e => updateWeight(w.criterionName, parseInt(e.target.value) || 1)}
-                    className="h-7 text-xs w-14 text-center" />
+                <div key={w.criterionName} className="rounded-lg border bg-white p-3 space-y-1.5">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs font-semibold text-gray-800 flex-1">{w.criterionName}</p>
+                    <Label className="text-xs text-gray-400 shrink-0">Weight</Label>
+                    <Input type="number" min={1} max={100} value={w.weight}
+                      onChange={e => updateWeight(w.criterionName, parseInt(e.target.value) || 1)}
+                      className="h-7 text-xs w-14 text-center" />
+                  </div>
+                  {w.scoringRationale && (
+                    <p className="text-xs text-gray-500 leading-relaxed border-t pt-1.5">{w.scoringRationale}</p>
+                  )}
                 </div>
               ))}
             </div>
