@@ -250,7 +250,9 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
   };
 
   // Filter out ecosystem-related features from product capabilities scoring
-  const productCapabilityFeatures = features?.filter(feature => 
+  // Uses isEcosystem flag (new) with fallback to name-based check (backward compat)
+  const productCapabilityFeatures = features?.filter(feature =>
+    (feature.category as any).isEcosystem !== true &&
     !feature.category.name.toLowerCase().includes('ecosystem') &&
     !feature.category.name.toLowerCase().includes('integration') &&
     !feature.category.name.toLowerCase().includes('partnership') &&

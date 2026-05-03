@@ -212,42 +212,93 @@ export function registerMarketBuilderRoutes(app: Express): void {
         vendorIdMap.set(v.name, vendor.id);
       }
 
-      const criteriaIdMap = new Map<string, string>();
-      for (const c of stage2.criteria) {
-        const criterion = await storage.createCriteria({ name: c.name, description: c.description, category: c.category });
-        criteriaIdMap.set(c.name, criterion.id);
-        await storage.updateMarketCriteriaWeight(market.id, criterion.id, c.weight);
+      // ── Stage 2: Vendor Evaluation — score against PREDEFINED criteria ──
+      // The LLM returned criterion names & weights. Match them back to DB IDs.
+      const allCriteria = await storage.getAllCriteria();
+      const findCriterionId = (name: string): string | undefined =>
+        allCriteria.find(c => c.name === name)?.id ??
+        allCriteria.find(c => c.name.toLowerCase() === name.toLowerCase())?.id ??
+        // fallback: use the criterionId embedded in the stage2 result
+        stage2.criteriaWeights?.find((cw: any) => cw.criterionName === name)?.criterionId;
+
+      // Save market-specific weights
+      for (const cw of (stage2.criteriaWeights ?? [])) {
+        const criterionId = cw.criterionId ?? findCriterionId(cw.criterionName);
+        if (!criterionId) { console.warn(`[Publish] Unknown criterion: ${cw.criterionName}`); continue; }
+        await storage.updateMarketCriteriaWeight(market.id, criterionId, cw.weight);
       }
 
-      const featureIdMap = new Map<string, string>();
+      // Save vendor scores per criterion
+      for (const s of (stage2.scores ?? [])) {
+        const vendorId = vendorIdMap.get(s.vendorName);
+        const criterionId = findCriterionId(s.criterionName);
+        if (!vendorId || !criterionId) continue;
+        await storage.createOrUpdateVendorScore({
+          vendorId,
+          criteriaId: criterionId,
+          score: s.score,
+          notes: s.commentary ?? s.notes,
+        });
+      }
+
+      // ── Stage 3: Product feature categories (isEcosystem = false) ────────
+      const productFeatureIdMap = new Map<string, string>();
       let catOrder = 0;
-      for (const cat of stage3.categories) {
+      for (const cat of (stage3.categories ?? [])) {
         const category = await storage.createFeatureCategory({
-          name: cat.name, description: cat.description,
-          marketId: market.id, displayOrder: catOrder++,
+          name: cat.name,
+          description: cat.description,
+          marketId: market.id,
+          isEcosystem: false,
+          displayOrder: catOrder++,
         });
         let featOrder = 0;
-        for (const f of cat.features) {
+        for (const f of (cat.features ?? [])) {
           const feature = await storage.createFeature({
             name: f.name, description: f.description,
             categoryId: category.id, displayOrder: featOrder++,
           });
-          featureIdMap.set(f.name, feature.id);
+          productFeatureIdMap.set(f.name, feature.id);
         }
       }
 
-      for (const s of stage4.scores) {
+      // ── Stage 4: Product feature Harvey Ball support ───────────────────
+      for (const s of (stage4.support ?? [])) {
         const vendorId = vendorIdMap.get(s.vendorName);
-        const criteriaId = criteriaIdMap.get(s.criterionName);
-        if (!vendorId || !criteriaId) continue;
-        await storage.createOrUpdateVendorScore({ vendorId, criteriaId, score: s.score, notes: s.notes });
+        const featureId = productFeatureIdMap.get(s.featureName);
+        if (!vendorId || !featureId) continue;
+        await storage.createOrUpdateVendorFeatureSupport({
+          vendorId, featureId, supportLevel: s.supportLevel, comments: s.comments,
+        });
       }
 
-      for (const s of stage5.support) {
+      // ── Stage 5: Ecosystem categories (isEcosystem = true) + scores ────
+      const ecoFeatureIdMap = new Map<string, string>();
+      let ecoCatOrder = 0;
+      for (const cat of (stage5.categories ?? [])) {
+        const category = await storage.createFeatureCategory({
+          name: cat.name,
+          description: cat.description,
+          marketId: market.id,
+          isEcosystem: true,
+          displayOrder: ecoCatOrder++,
+        });
+        let featOrder = 0;
+        for (const f of (cat.features ?? [])) {
+          const feature = await storage.createFeature({
+            name: f.name, description: f.description,
+            categoryId: category.id, displayOrder: featOrder++,
+          });
+          ecoFeatureIdMap.set(f.name, feature.id);
+        }
+      }
+      for (const s of (stage5.support ?? [])) {
         const vendorId = vendorIdMap.get(s.vendorName);
-        const featureId = featureIdMap.get(s.featureName);
+        const featureId = ecoFeatureIdMap.get(s.featureName);
         if (!vendorId || !featureId) continue;
-        await storage.createOrUpdateVendorFeatureSupport({ vendorId, featureId, supportLevel: s.supportLevel, comments: s.comments });
+        await storage.createOrUpdateVendorFeatureSupport({
+          vendorId, featureId, supportLevel: s.supportLevel, comments: s.comments,
+        });
       }
 
       await storage.updateMarketBuilderJob(job.id, { status: "published", marketId: market.id });

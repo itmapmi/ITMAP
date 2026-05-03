@@ -119,6 +119,7 @@ export const featureCategories = pgTable("feature_categories", {
   name: text("name").notNull(),
   description: text("description"),
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  isEcosystem: boolean("is_ecosystem").default(false).notNull(),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
 });

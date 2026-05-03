@@ -49,11 +49,11 @@ type StagePhase = "ready" | "running" | "done" | "failed";
 type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
-  { num: 1, label: "Vendors",         icon: Building2, desc: "AI identifies key vendors and products in the market.", what: "A list of 8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
-  { num: 2, label: "Criteria",        icon: BarChart3,  desc: "AI defines evaluation criteria split across Execution and Viability axes.", what: "7–9 weighted criteria used to position vendors on the chart." },
-  { num: 3, label: "Feature Matrix",  icon: Grid3X3,    desc: "AI builds a product capability matrix with feature categories.", what: "Feature categories and individual features (60–100 total) to evaluate across all vendors." },
-  { num: 4, label: "Scoring",         icon: BarChart3,  desc: "AI scores each vendor against every criterion with justification.", what: "A score 0–10 for each vendor × criterion, with evidence-based notes." },
-  { num: 5, label: "Feature Support", icon: Layers,     desc: "AI rates each vendor's support level for every feature (Harvey Ball).", what: "0–4 Harvey Ball ratings for every vendor × feature combination, with commentary." },
+  { num: 1, label: "Vendors",            icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
+  { num: 2, label: "Vendor Evaluation",  icon: BarChart3,  desc: "AI scores vendors against predefined Execution & Viability criteria — driving the quadrant chart.", what: "Market-specific criterion weights and a 0–10 score per vendor × criterion with commentary." },
+  { num: 3, label: "Product Features",   icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
+  { num: 4, label: "Product Scoring",    icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × product feature, with commentary." },
+  { num: 5, label: "Ecosystem",          icon: Layers,     desc: "AI defines ISV/partner ecosystem categories and scores vendor integrations.", what: "Ecosystem integration categories, individual integration points, and Harvey Ball scores per vendor." },
 ];
 
 const CATEGORIES = [
@@ -186,158 +186,262 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
 }
 
 function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
-  const criteria = result?.criteria ?? [];
-  const update = (i: number, field: string, value: any) =>
-    onChange({ ...result, criteria: criteria.map((c: any, j: number) => j === i ? { ...c, [field]: value } : c) });
-  const remove = (i: number) => onChange({ ...result, criteria: criteria.filter((_: any, j: number) => j !== i) });
-  const add = (cat: string) => onChange({ ...result, criteria: [...criteria, { name: "", description: "", category: cat, weight: 20 }] });
+  const weights: any[] = result?.criteriaWeights ?? [];
+  const scores: any[] = result?.scores ?? [];
+  const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
+  const [editScore, setEditScore] = useState(""); const [editCommentary, setEditCommentary] = useState("");
+
+  const updateWeight = (criterionName: string, weight: number) =>
+    onChange({ ...result, criteriaWeights: weights.map((w: any) => w.criterionName === criterionName ? { ...w, weight } : w) });
+
+  const getScore = (v: string, c: string) => scores.find((s: any) => s.vendorName === v && s.criterionName === c);
+  const saveScore = () => {
+    if (!selected) return;
+    onChange({ ...result, scores: scores.map((s: any) => s.vendorName === selected.v && s.criterionName === selected.c ? { ...s, score: parseFloat(editScore) || s.score, commentary: editCommentary } : s) });
+    setSelected(null);
+  };
+
+  const vendors = [...new Set<string>(scores.map((s: any) => s.vendorName))];
+  const scoreCellColor = (s: number) => s >= 8 ? "bg-green-100 text-green-800" : s >= 6 ? "bg-blue-100 text-blue-800" : s >= 4 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+
   return (
-    <div className="space-y-4">
-      {["execution","viability"].map(axis => (
-        <div key={axis}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold capitalize text-gray-700">{axis} Axis</p>
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => add(axis)}><Plus className="h-3.5 w-3.5" />Add</Button>
-          </div>
-          {criteria.filter((c: any) => c.category === axis).map((c: any) => {
-            const i = criteria.indexOf(c);
-            return (
-              <div key={i} className="rounded-lg border bg-white p-3 mb-2 space-y-2">
-                <div className="flex gap-2 items-center">
-                  <Input value={c.name} onChange={e => update(i, "name", e.target.value)} placeholder="Criterion name" className="h-7 text-xs flex-1" />
-                  <Label className="text-xs text-gray-500 shrink-0">Weight</Label>
-                  <Input type="number" min={0} max={100} value={c.weight} onChange={e => update(i, "weight", parseInt(e.target.value)||0)} className="h-7 text-xs w-14 text-center" />
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(i)}><X className="h-3.5 w-3.5 text-red-400" /></Button>
+    <div className="space-y-5">
+      {/* Criteria weights by axis */}
+      {["execution", "viability"].map(axis => {
+        const axisCriteria = weights.filter((w: any) => w.criterionCategory === axis);
+        if (!axisCriteria.length) return null;
+        return (
+          <div key={axis}>
+            <p className="text-sm font-semibold capitalize text-gray-700 mb-2">{axis} Axis — Criterion Weights</p>
+            <div className="space-y-1.5">
+              {axisCriteria.map((w: any) => (
+                <div key={w.criterionName} className="flex items-center gap-3 rounded-lg border bg-white p-2.5">
+                  <p className="text-xs font-medium flex-1 truncate">{w.criterionName}</p>
+                  <Label className="text-xs text-gray-400 shrink-0">Weight</Label>
+                  <Input type="number" min={1} max={100} value={w.weight}
+                    onChange={e => updateWeight(w.criterionName, parseInt(e.target.value) || 1)}
+                    className="h-7 text-xs w-14 text-center" />
                 </div>
-                <Textarea value={c.description} onChange={e => update(i, "description", e.target.value)} rows={2} placeholder="Description…" className="text-xs resize-none" />
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Score edit panel */}
+      {selected && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.c}</p>
+          <div className="flex gap-2">
+            <div className="w-24"><Label className="text-xs">Score (0–10)</Label>
+              <Input type="number" min={0} max={10} step={0.1} value={editScore} onChange={e => setEditScore(e.target.value)} className="h-7 text-xs text-center mt-0.5" /></div>
+            <div className="flex-1"><Label className="text-xs">Commentary</Label>
+              <Textarea value={editCommentary} onChange={e => setEditCommentary(e.target.value)} rows={2} className="text-xs resize-none mt-0.5" /></div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
+          </div>
         </div>
-      ))}
+      )}
+
+      {/* Score matrix */}
+      <div>
+        <p className="text-sm font-semibold text-gray-700 mb-2">Vendor Scores (0–10)</p>
+        <div className="overflow-x-auto rounded-lg border text-xs">
+          <table className="w-full">
+            <thead><tr className="bg-gray-50 border-b">
+              <th className="text-left p-2 text-gray-600 w-32">Vendor</th>
+              {weights.map((w: any) => <th key={w.criterionName} className="p-2 text-gray-600 text-center whitespace-nowrap max-w-20 truncate" title={w.criterionName}>{w.criterionName}</th>)}
+            </tr></thead>
+            <tbody>{vendors.map(v => (
+              <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
+                <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+                {weights.map((w: any) => {
+                  const s = getScore(v, w.criterionName);
+                  return <td key={w.criterionName} className="p-1 text-center">
+                    <button onClick={() => { setSelected({ v, c: w.criterionName }); setEditScore(s?.score?.toString() ?? ""); setEditCommentary(s?.commentary ?? ""); }}
+                      className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${scoreCellColor(s?.score ?? 0)}`}
+                      title={s?.commentary}>{s?.score?.toFixed(1) ?? "–"}</button>
+                  </td>;
+                })}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Click any score cell to edit the score and commentary.</p>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCategoryEditor({ result, onChange, addCatLabel = "Add Category" }: { result: any; onChange: (r: any) => void; addCatLabel?: string }) {
+  const cats = result?.categories ?? [];
+  const updateCat = (i: number, field: string, v: any) =>
+    onChange({ ...result, categories: cats.map((c: any, j: number) => j === i ? { ...c, [field]: v } : c) });
+  const removeCat = (i: number) => onChange({ ...result, categories: cats.filter((_: any, j: number) => j !== i) });
+  const addFeature = (ci: number) => updateCat(ci, "features", [...(cats[ci].features ?? []), { name: "", description: "" }]);
+  const updateFeature = (ci: number, fi: number, field: string, v: string) =>
+    updateCat(ci, "features", cats[ci].features.map((f: any, j: number) => j === fi ? { ...f, [field]: v } : f));
+  const removeFeature = (ci: number, fi: number) =>
+    updateCat(ci, "features", cats[ci].features.filter((_: any, j: number) => j !== fi));
+  return (
+    <div className="space-y-2">
+      <Accordion type="multiple" className="space-y-2">
+        {cats.map((cat: any, ci: number) => (
+          <AccordionItem key={ci} value={`cat-${ci}`} className="border rounded-lg px-3">
+            <AccordionTrigger className="text-sm py-3 hover:no-underline">
+              <div className="flex items-center gap-2 flex-1">
+                <Input value={cat.name} onChange={e => { e.stopPropagation(); updateCat(ci, "name", e.target.value); }} onClick={e => e.stopPropagation()} className="h-7 text-sm flex-1 max-w-xs" />
+                <Badge variant="outline" className="text-gray-400 text-xs">{cat.features?.length ?? 0} features</Badge>
+                <button onClick={e => { e.stopPropagation(); removeCat(ci); }} className="text-red-400 hover:text-red-600 ml-1"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-3 space-y-2">
+              <Textarea value={cat.description} onChange={e => updateCat(ci, "description", e.target.value)} rows={2} className="text-xs resize-none" placeholder="Category description…" />
+              <div className="flex flex-wrap gap-1.5">
+                {(cat.features ?? []).map((f: any, fi: number) => (
+                  <div key={fi} className="flex items-center gap-1 bg-gray-100 rounded-full px-2 py-0.5 group">
+                    <Input value={f.name} onChange={e => updateFeature(ci, fi, "name", e.target.value)} className="h-5 text-xs border-0 bg-transparent p-0 w-24 focus-visible:ring-0" />
+                    <button onClick={() => removeFeature(ci, fi)} className="opacity-0 group-hover:opacity-100 text-red-400"><X className="h-3 w-3" /></button>
+                  </div>
+                ))}
+                <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full px-2" onClick={() => addFeature(ci)}><Plus className="h-3 w-3 mr-0.5" />Add</Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+      <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() =>
+        onChange({ ...result, categories: [...cats, { name: "New Category", description: "", features: [] }] })}>
+        <Plus className="h-3.5 w-3.5 mr-1" />{addCatLabel}
+      </Button>
     </div>
   );
 }
 
 function Stage3Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
   const cats = result?.categories ?? [];
-  const updateCat = (i: number, field: string, v: any) =>
-    onChange({ ...result, categories: cats.map((c: any, j: number) => j === i ? { ...c, [field]: v } : c) });
-  const addFeature = (ci: number) => updateCat(ci, "features", [...(cats[ci].features??[]), { name: "", description: "" }]);
-  const updateFeature = (ci: number, fi: number, field: string, v: string) =>
-    updateCat(ci, "features", cats[ci].features.map((f: any, j: number) => j === fi ? { ...f, [field]: v } : f));
-  const removeFeature = (ci: number, fi: number) =>
-    updateCat(ci, "features", cats[ci].features.filter((_: any, j: number) => j !== fi));
+  const totalFeatures = cats.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
   return (
-    <Accordion type="multiple" className="space-y-2">
-      {cats.map((cat: any, ci: number) => (
-        <AccordionItem key={ci} value={`cat-${ci}`} className="border rounded-lg px-3">
-          <AccordionTrigger className="text-sm py-3 hover:no-underline">
-            <div className="flex items-center gap-2 flex-1">
-              <Input value={cat.name} onChange={e => { e.stopPropagation(); updateCat(ci, "name", e.target.value); }} onClick={e => e.stopPropagation()} className="h-7 text-sm flex-1 max-w-xs" />
-              {cat.isEcosystem && <Badge variant="outline" className="text-purple-600 border-purple-200 text-xs">Ecosystem</Badge>}
-              <Badge variant="outline" className="text-gray-400 text-xs">{cat.features?.length ?? 0}</Badge>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pb-3 space-y-2">
-            <Textarea value={cat.description} onChange={e => updateCat(ci, "description", e.target.value)} rows={2} className="text-xs resize-none" />
-            <div className="flex flex-wrap gap-1.5">
-              {(cat.features ?? []).map((f: any, fi: number) => (
-                <div key={fi} className="flex items-center gap-1 bg-gray-100 rounded-full px-2 py-0.5 group">
-                  <Input value={f.name} onChange={e => updateFeature(ci, fi, "name", e.target.value)} className="h-5 text-xs border-0 bg-transparent p-0 w-24 focus-visible:ring-0" />
-                  <button onClick={() => removeFeature(ci, fi)} className="opacity-0 group-hover:opacity-100 text-red-400"><X className="h-3 w-3" /></button>
-                </div>
-              ))}
-              <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full px-2" onClick={() => addFeature(ci)}><Plus className="h-3 w-3 mr-0.5" />Add</Button>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-      <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() =>
-        onChange({ ...result, categories: [...cats, { name: "New Category", description: "", isEcosystem: false, features: [] }] })}>
-        <Plus className="h-3.5 w-3.5 mr-1" />Add Category
-      </Button>
-    </Accordion>
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+        <Grid3X3 className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+        <span><strong>{cats.length}</strong> product categories · <strong>{totalFeatures}</strong> features — these drive the product capability matrix (Support Matrix tab)</span>
+      </div>
+      <FeatureCategoryEditor result={result} onChange={onChange} addCatLabel="Add Product Category" />
+    </div>
   );
 }
 
-function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
-  const scores = result?.scores ?? [];
-  const vendors = [...new Set<string>(scores.map((s: any) => s.vendorName))];
-  const criteria = [...new Set<string>(scores.map((s: any) => s.criterionName))];
-  const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
-  const [editScore, setEditScore] = useState(""); const [editNotes, setEditNotes] = useState("");
-  const getScore = (v: string, c: string) => scores.find((s: any) => s.vendorName === v && s.criterionName === c);
-  const saveScore = () => {
+function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange: (s: any[]) => void; label?: string }) {
+  const vendors = [...new Set<string>(support.map((s: any) => s.vendorName))];
+  const features = [...new Set<string>(support.map((s: any) => s.featureName))];
+  const [selected, setSelected] = useState<{ v: string; f: string } | null>(null);
+  const [editLevel, setEditLevel] = useState(0);
+  const [editComments, setEditComments] = useState("");
+  const HARVEY = ["✕ None", "◔ Limited", "◑ Partial", "◕ Good", "● Full"];
+  const lcolor = (l: number) => ["text-gray-300", "text-red-400", "text-yellow-500", "text-blue-500", "text-green-600"][l] ?? "";
+  const get = (v: string, f: string) => support.find((s: any) => s.vendorName === v && s.featureName === f);
+  const save = () => {
     if (!selected) return;
-    onChange({ ...result, scores: scores.map((s: any) => s.vendorName === selected.v && s.criterionName === selected.c ? { ...s, score: parseFloat(editScore)||s.score, notes: editNotes } : s) });
+    onChange(support.map((s: any) => s.vendorName === selected.v && s.featureName === selected.f ? { ...s, supportLevel: editLevel, comments: editComments } : s));
     setSelected(null);
   };
-  const color = (s: number) => s>=8?"bg-green-100 text-green-800":s>=6?"bg-blue-100 text-blue-800":s>=4?"bg-yellow-100 text-yellow-800":"bg-red-100 text-red-800";
   return (
     <div className="space-y-3">
+      {label && <p className="text-sm font-semibold text-gray-700">{label}</p>}
       {selected && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.c}</p>
+          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.f}</p>
+          <div className="flex gap-1.5 flex-wrap">{HARVEY.map((h, l) => <button key={l} onClick={() => setEditLevel(l)} className={`text-xs px-2 py-1 rounded border ${editLevel === l ? "border-blue-500 bg-blue-100 font-semibold" : "border-gray-200"}`}>{h}</button>)}</div>
+          <Textarea value={editComments} onChange={e => setEditComments(e.target.value)} rows={2} className="text-xs resize-none" placeholder="Comments…" />
           <div className="flex gap-2">
-            <div className="w-20"><Label className="text-xs">Score (0–10)</Label><Input type="number" min={0} max={10} step={0.1} value={editScore} onChange={e=>setEditScore(e.target.value)} className="h-7 text-xs text-center mt-0.5" /></div>
-            <div className="flex-1"><Label className="text-xs">Notes</Label><Textarea value={editNotes} onChange={e=>setEditNotes(e.target.value)} rows={2} className="text-xs resize-none mt-0.5" /></div>
+            <Button size="sm" className="h-7 text-xs" onClick={save}><Save className="h-3 w-3 mr-1" />Save</Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
           </div>
-          <div className="flex gap-2"><Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1"/>Save</Button><Button variant="ghost" size="sm" className="h-7 text-xs" onClick={()=>setSelected(null)}>Cancel</Button></div>
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border text-xs">
-        <table className="w-full">
-          <thead><tr className="bg-gray-50 border-b"><th className="text-left p-2 text-gray-600 w-32">Vendor</th>{criteria.map(c=><th key={c} className="p-2 text-gray-600 text-center whitespace-nowrap max-w-20 truncate" title={c}>{c}</th>)}</tr></thead>
-          <tbody>{vendors.map(v=>(
+      <div className="overflow-x-auto rounded-lg border max-h-64">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-gray-50">
+            <tr className="border-b">
+              <th className="text-left p-2 text-gray-600 w-28">Vendor</th>
+              {features.slice(0, 22).map(f => <th key={f} className="p-1.5 text-gray-600 text-center whitespace-nowrap max-w-16 truncate" title={f}>{f.slice(0, 12)}</th>)}
+              {features.length > 22 && <th className="p-1.5 text-gray-400 text-xs">+{features.length - 22} more</th>}
+            </tr>
+          </thead>
+          <tbody>{vendors.map(v => (
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
               <td className="p-2 font-medium whitespace-nowrap">{v}</td>
-              {criteria.map(c=>{const s=getScore(v,c);return(<td key={c} className="p-1 text-center"><button onClick={()=>{setSelected({v,c});setEditScore(s?.score?.toString()??"");setEditNotes(s?.notes??"");}} className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${color(s?.score??0)}`} title={s?.notes}>{s?.score?.toFixed(1)??"–"}</button></td>);})}
+              {features.slice(0, 22).map(f => {
+                const s = get(v, f);
+                return <td key={f} className="p-1 text-center">
+                  <button onClick={() => { setSelected({ v, f }); setEditLevel(s?.supportLevel ?? 0); setEditComments(s?.comments ?? ""); }}
+                    className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel ?? 0)}`}
+                    title={s?.comments}>{HARVEY[s?.supportLevel ?? 0]?.split(" ")[0] ?? "✕"}</button>
+                </td>;
+              })}
             </tr>
           ))}</tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400">Click any score cell to edit.</p>
+      <p className="text-xs text-gray-400">Click any Harvey Ball to edit the support level and commentary. Showing first 22 features.</p>
+    </div>
+  );
+}
+
+function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+  const support = result?.support ?? [];
+  const cats = result?.categories ?? [];
+  const totalFeatures = cats.length > 0
+    ? cats.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0)
+    : [...new Set<string>(support.map((s: any) => s.featureName))].length;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 text-xs text-gray-500 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+        <BarChart3 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+        <span><strong>{[...new Set<string>(support.map((s: any) => s.vendorName))].length}</strong> vendors · <strong>{totalFeatures}</strong> product features · <strong>{support.length}</strong> total scores</span>
+      </div>
+      <HarveyBallGrid
+        support={support}
+        onChange={s => onChange({ ...result, support: s })}
+        label="Product Capability Scores"
+      />
     </div>
   );
 }
 
 function Stage5Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+  const [tab, setTab] = useState<"categories" | "scoring">("categories");
+  const cats = result?.categories ?? [];
   const support = result?.support ?? [];
-  const vendors = [...new Set<string>(support.map((s: any) => s.vendorName))];
-  const features = [...new Set<string>(support.map((s: any) => s.featureName))];
-  const [selected, setSelected] = useState<{ v: string; f: string }|null>(null);
-  const [editLevel, setEditLevel] = useState(0); const [editComments, setEditComments] = useState("");
-  const HARVEY = ["✕ None","◔ Limited","◑ Partial","◕ Good","● Full"];
-  const get = (v: string, f: string) => support.find((s: any) => s.vendorName===v && s.featureName===f);
-  const save = () => {
-    if(!selected) return;
-    onChange({...result, support: support.map((s: any) => s.vendorName===selected.v&&s.featureName===selected.f?{...s,supportLevel:editLevel,comments:editComments}:s)});
-    setSelected(null);
-  };
-  const lcolor = (l: number) => ["text-gray-300","text-red-400","text-yellow-500","text-blue-500","text-green-600"][l]??"";
+  const totalFeatures = cats.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+
   return (
     <div className="space-y-3">
-      {selected && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
-          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.f}</p>
-          <div className="flex gap-1.5 flex-wrap">{HARVEY.map((h,l)=><button key={l} onClick={()=>setEditLevel(l)} className={`text-xs px-2 py-1 rounded border ${editLevel===l?"border-blue-500 bg-blue-100 font-semibold":"border-gray-200"}`}>{h}</button>)}</div>
-          <Textarea value={editComments} onChange={e=>setEditComments(e.target.value)} rows={2} className="text-xs resize-none" placeholder="Comments…" />
-          <div className="flex gap-2"><Button size="sm" className="h-7 text-xs" onClick={save}><Save className="h-3 w-3 mr-1"/>Save</Button><Button variant="ghost" size="sm" className="h-7 text-xs" onClick={()=>setSelected(null)}>Cancel</Button></div>
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-lg border max-h-72">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-gray-50"><tr className="border-b"><th className="text-left p-2 text-gray-600 w-28">Vendor</th>{features.slice(0,20).map(f=><th key={f} className="p-1.5 text-gray-600 text-center whitespace-nowrap max-w-16 truncate" title={f}>{f.slice(0,12)}</th>)}{features.length>20&&<th className="p-1.5 text-gray-400">+{features.length-20}</th>}</tr></thead>
-          <tbody>{vendors.map(v=>(
-            <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
-              <td className="p-2 font-medium whitespace-nowrap">{v}</td>
-              {features.slice(0,20).map(f=>{const s=get(v,f);return(<td key={f} className="p-1 text-center"><button onClick={()=>{setSelected({v,f});setEditLevel(s?.supportLevel??0);setEditComments(s?.comments??"");}} className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel??0)}`} title={s?.comments}>{HARVEY[s?.supportLevel??0]?.split(" ")[0]??"✕"}</button></td>);})}
-            </tr>
-          ))}</tbody>
-        </table>
+      <div className="flex items-center gap-3 text-xs text-gray-500 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+        <Layers className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+        <span><strong>{cats.length}</strong> ecosystem categories · <strong>{totalFeatures}</strong> integrations · <strong>{support.length}</strong> total scores</span>
       </div>
-      <p className="text-xs text-gray-400">Click any Harvey Ball to edit the support level and commentary.</p>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        <button onClick={() => setTab("categories")} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${tab === "categories" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>Categories & Integrations</button>
+        <button onClick={() => setTab("scoring")} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${tab === "scoring" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"}`}>Harvey Ball Scores</button>
+      </div>
+
+      {tab === "categories" && (
+        <FeatureCategoryEditor result={result} onChange={onChange} addCatLabel="Add Ecosystem Category" />
+      )}
+
+      {tab === "scoring" && (
+        <HarveyBallGrid
+          support={support}
+          onChange={s => onChange({ ...result, support: s })}
+          label="Ecosystem Integration Scores"
+        />
+      )}
     </div>
   );
 }
@@ -365,7 +469,8 @@ function PublishPanel({ job, stageResults, onPublished }: {
   const { toast } = useToast();
   const [isVisible, setIsVisible] = useState(false);
   const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4]; const s5 = stageResults[5];
-  const fc = s3?.categories?.reduce((n: number, c: any) => n + c.features.length, 0) ?? 0;
+  const productFeatures = s3?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
+  const ecoFeatures = s5?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const publish = useMutation({
     mutationFn: () => apiRequest(`/api/admin/market-builder/jobs/${job.id}/publish`, "POST", { isVisible }).then(r => r.json()),
     onSuccess: (data: any) => { onPublished(data.marketId, isVisible); toast({ title: "Market published!" }); },
@@ -378,7 +483,12 @@ function PublishPanel({ job, stageResults, onPublished }: {
         <p className="text-sm text-green-700 mt-0.5">Review the summary, set visibility, then publish to create the market.</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[{l:"Vendors",v:s1?.vendors?.length??0},{l:"Criteria",v:s2?.criteria?.length??0},{l:"Features",v:fc},{l:"Scores",v:s4?.scores?.length??0}].map(({l,v})=>(
+        {[
+          { l: "Vendors", v: s1?.vendors?.length ?? 0 },
+          { l: "Criteria", v: s2?.criteriaWeights?.length ?? 0 },
+          { l: "Product Features", v: productFeatures },
+          { l: "Ecosystem Features", v: ecoFeatures },
+        ].map(({ l, v }) => (
           <div key={l} className="rounded-lg bg-white border border-green-200 p-3 text-center">
             <p className="text-2xl font-bold text-green-800">{v}</p>
             <p className="text-xs text-green-600">{l}</p>

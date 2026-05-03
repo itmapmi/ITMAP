@@ -160,7 +160,9 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
   };
 
   // Filter features to only include ecosystem-related categories
-  const ecosystemFeatures = features?.filter(feature => 
+  // Uses isEcosystem flag (new) with fallback to name-based check (backward compat)
+  const ecosystemFeatures = features?.filter(feature =>
+    (feature.category as any).isEcosystem === true ||
     feature.category.name.toLowerCase().includes('ecosystem') ||
     feature.category.name.toLowerCase().includes('integration') ||
     feature.category.name.toLowerCase().includes('partnership') ||
