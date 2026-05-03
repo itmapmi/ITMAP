@@ -936,7 +936,14 @@ export function MarketBuilderWizard() {
       setActiveStage(7);
     } else {
       setActiveStage(stageNum + 1);
-      setStagePhases(prev => ({ ...prev, [stageNum + 1]: "ready" }));
+      // Only initialise the next stage as "ready" if it hasn't already been run.
+      // Overwriting "done" with "ready" would hide completed results when the
+      // user navigates back to a prior stage and clicks Approve again.
+      setStagePhases(prev => {
+        const nextPhase = prev[stageNum + 1];
+        if (nextPhase === "done" || nextPhase === "failed") return prev;
+        return { ...prev, [stageNum + 1]: "ready" };
+      });
     }
     refetchJobs();
   };
@@ -1337,7 +1344,7 @@ export function MarketBuilderWizard() {
                 disabled={completeJob.isPending}
               >
                 {completeJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {activeStage < 5 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
+                {activeStage < 6 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
               </Button>
             </div>
           )}
