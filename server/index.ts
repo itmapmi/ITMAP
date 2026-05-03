@@ -74,6 +74,14 @@ app.use((req, res, next) => {
   // Apply any additive schema changes that may not have been db:pushed yet
   await runStartupMigrations();
 
+  // Seed Market Builder system default prompts (idempotent)
+  try {
+    const { seedSystemPrompts } = await import("./market-builder/prompts");
+    await seedSystemPrompts();
+  } catch (err) {
+    log("Warning: Could not seed Market Builder system prompts:", String(err));
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

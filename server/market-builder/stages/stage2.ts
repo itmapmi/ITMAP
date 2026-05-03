@@ -1,13 +1,14 @@
 /**
- * Stage 2 — Vendor Evaluation Scores
+ * Stage 2 — Vendor Evaluation Scores (TWO-CALL pattern)
  *
- * Uses PREDEFINED global criteria already in the DB.
- * The LLM does NOT create new criteria — it:
- *   1. Assigns a market-specific weight (1-100) to each predefined criterion
- *   2. Writes a scoringRationale for each criterion (what it measures in this market + high/low score guidance)
- *   3. Scores each vendor (0.0–10.0) against every criterion with:
- *      - 100–250 word evidence-based commentary (no inline references)
- *      - A sources[] list cited at the end
+ * 1. ONE up-front call generates per-criterion weight + scoringRationale.
+ * 2. PER CRITERION: scoring call → numeric scores for every vendor.
+ * 3. PER CRITERION: commentary call → 100–250 word commentary using the
+ *    score from step 2 as input.
+ *
+ * Per-criterion prompt overrides (scoring + commentary) are applied at
+ * step 2 and step 3 via the resolveScoringPrompt / resolveCommentaryPrompt
+ * callbacks supplied by the runner.
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result } from "./stage1";
@@ -23,8 +24,8 @@ export interface Stage2CriterionWeight {
   criterionId: string;
   criterionName: string;
   criterionCategory: string;
-  weight: number;           // 1–100 within its axis
-  scoringRationale: string; // 2–3 sentences: what it means here + high/low score guidance
+  weight: number;
+  scoringRationale: string;
 }
 
 export interface Stage2Score {
@@ -32,7 +33,7 @@ export interface Stage2Score {
   criterionName: string;
   score: number;       // 0.0–10.0
   commentary: string;  // 100–250 words, no inline references
-  sources: string[];   // list of sources used, cited at the bottom
+  sources: string[];
 }
 
 export interface Stage2Result {
@@ -40,130 +41,234 @@ export interface Stage2Result {
   scores: Stage2Score[];
 }
 
-const SYSTEM_PROMPT = `You are a senior technology market research analyst producing an enterprise vendor evaluation report.
-Your commentary must be detailed, evidence-based, balanced, and actionable.
+export interface Stage2Hooks {
+  resolveScoringPrompt: (criterionName: string) => Promise<string>;
+  resolveCommentaryPrompt: (criterionName: string) => Promise<string>;
+  onProgress?: (msg: string) => Promise<void>;
+}
+
+const WEIGHTS_SYSTEM_PROMPT = `You are a senior technology market research analyst. You define market-specific weights and rationale for predefined evaluation criteria.
 Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
+
+// ── Step 1: weights + rationale (one shot) ────────────────────────────────
+
+async function generateWeights(
+  marketName: string,
+  stage1: Stage1Result,
+  predefinedCriteria: PredefinedCriterion[],
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Stage2CriterionWeight[]> {
+  const criteriaByAxis: Record<string, PredefinedCriterion[]> = {};
+  for (const c of predefinedCriteria) {
+    if (!criteriaByAxis[c.category]) criteriaByAxis[c.category] = [];
+    criteriaByAxis[c.category].push(c);
+  }
+  const criteriaBlock = Object.entries(criteriaByAxis).map(([axis, cList]) =>
+    `${axis.toUpperCase()} AXIS:\n` +
+    cList.map(c => `  • ${c.name} (id: ${c.id}): ${c.description}`).join("\n")
+  ).join("\n\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Summary: ${stage1.marketSummary}
+${sourceContext}
+
+You are setting up market-specific weights for these PREDEFINED evaluation criteria. Use ALL of them — do not add or remove any.
+
+${criteriaBlock}
+
+For each criterion provide:
+- weight: integer 1–100 reflecting importance for THIS specific market (weights within each axis should roughly sum to 100)
+- scoringRationale: 2–3 sentences explaining (a) what this criterion measures in the ${marketName} market, and (b) what a HIGH score (8–10) looks like vs a LOW score (1–3).
+
+Respond with ONLY a JSON object:
+{
+  "criteriaWeights": [
+    { "criterionId": "<id>", "criterionName": "<name>", "criterionCategory": "<category>", "weight": <1-100>, "scoringRationale": "<2-3 sentences>" }
+  ]
+}`;
+
+  const result = await callLLMForJSON<{ criteriaWeights: Stage2CriterionWeight[] }>(
+    llmConfig, WEIGHTS_SYSTEM_PROMPT, userPrompt
+  );
+  if (!Array.isArray(result.criteriaWeights) || result.criteriaWeights.length === 0) {
+    throw new Error("Stage 2: LLM returned no criteria weights");
+  }
+  return result.criteriaWeights;
+}
+
+// ── Step 2: per-criterion scoring (numbers only) ──────────────────────────
+
+async function scoreCriterion(
+  marketName: string,
+  stage1: Stage1Result,
+  criterion: PredefinedCriterion,
+  rationale: string,
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ vendorName: string; score: number }>> {
+  const vendorList = stage1.vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Criterion: ${criterion.name} (${criterion.category} axis)
+Criterion description: ${criterion.description}
+Scoring rationale for this market: ${rationale}
+
+Vendors to score:
+${vendorList}
+${sourceContext}
+
+Output a 0.0–10.0 score for EACH vendor on this single criterion. Be differentiated — avoid clustering vendors at the same number.
+
+Respond with ONLY a JSON object:
+{
+  "scores": [
+    { "vendorName": "<exact vendor name>", "score": <0.0-10.0, one decimal place> }
+  ]
+}`;
+
+  const result = await callLLMForJSON<{ scores: Array<{ vendorName: string; score: number }> }>(
+    llmConfig, systemPrompt, userPrompt
+  );
+  if (!Array.isArray(result.scores)) throw new Error(`Stage 2 scoring: invalid response for ${criterion.name}`);
+  return result.scores;
+}
+
+// ── Step 3: per-criterion commentary (uses scores from step 2) ────────────
+
+async function commentCriterion(
+  marketName: string,
+  stage1: Stage1Result,
+  criterion: PredefinedCriterion,
+  rationale: string,
+  scores: Array<{ vendorName: string; score: number }>,
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ vendorName: string; commentary: string; sources: string[] }>> {
+  const vendorBlock = stage1.vendors.map(v => {
+    const s = scores.find(x => x.vendorName === v.name)?.score ?? 0;
+    return `- ${v.name} (${v.product}) — assigned score: ${s.toFixed(1)}/10\n  ${v.description}`;
+  }).join("\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Criterion: ${criterion.name} (${criterion.category} axis)
+Criterion description: ${criterion.description}
+Scoring rationale: ${rationale}
+
+Vendors and their pre-assigned scores on this criterion:
+${vendorBlock}
+${sourceContext}
+
+For each vendor, write a balanced 100–250 word commentary that justifies and contextualises the assigned score. Do NOT change the score. Cite 2–5 sources at the bottom of each commentary.
+
+Respond with ONLY a JSON object:
+{
+  "commentary": [
+    { "vendorName": "<exact vendor name>", "commentary": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
+  ]
+}`;
+
+  const result = await callLLMForJSON<{ commentary: Array<{ vendorName: string; commentary: string; sources: string[] }> }>(
+    llmConfig, systemPrompt, userPrompt
+  );
+  if (!Array.isArray(result.commentary)) throw new Error(`Stage 2 commentary: invalid response for ${criterion.name}`);
+  return result.commentary;
+}
+
+// ── Auto-computed criteria — never sent to LLM ────────────────────────────
+
+const AUTO_COMPUTED = new Set(["Product Capabilities", "ISV Ecosystem"]);
+const PLACEHOLDERS: Record<string, string> = {
+  "Product Capabilities": "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).",
+  "ISV Ecosystem":        "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).",
+};
+
+// ── Public entry point ───────────────────────────────────────────────────
 
 export async function runStage2(
   marketName: string,
   stage1: Stage1Result,
   predefinedCriteria: PredefinedCriterion[],
   llmConfig: LLMConfig,
-  sourceContext: string = ""
+  sourceContext: string = "",
+  hooks?: Stage2Hooks,
 ): Promise<Stage2Result> {
-  const vendorList = stage1.vendors
-    .map(v => `- ${v.name} (${v.product}): ${v.description}`)
-    .join("\n");
+  const progress = hooks?.onProgress ?? (async () => {});
 
-  const criteriaByAxis: Record<string, PredefinedCriterion[]> = {};
-  for (const c of predefinedCriteria) {
-    if (!criteriaByAxis[c.category]) criteriaByAxis[c.category] = [];
-    criteriaByAxis[c.category].push(c);
-  }
-
-  const criteriaBlock = Object.entries(criteriaByAxis).map(([axis, cList]) =>
-    `${axis.toUpperCase()} AXIS:\n` +
-    cList.map(c => `  • ${c.name} (id: ${c.id}): ${c.description}`).join("\n")
-  ).join("\n\n");
-
-  const hasSources = sourceContext.trim().length > 0;
-  const sourcesGuidance = hasSources
-    ? `SOURCES (mandatory):
-• List 2–5 sources used, drawn from the provided research materials above
-• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
-• Only cite sources that are listed in the PROVIDED RESEARCH SOURCES section above
-• Do NOT cite Reddit, Hacker News, Gartner, G2, or any external source not in the provided materials`
-    : `SOURCES (mandatory):
-• List 2–5 sources used to inform the commentary
-• Format each as: "Source name — URL or description" (e.g. "AWS S3 documentation — aws.amazon.com/s3", "Reddit r/aws — community feedback thread on durability", "Hacker News — discussion on pricing model changes")
-• Include a mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
-
-  const userPrompt = `
-You are producing the Vendor Evaluation section for a professional enterprise market research report on the ${marketName} market.
-
-Market: ${marketName}
-Summary: ${stage1.marketSummary}
-
-Vendors being evaluated:
-${vendorList}
-${sourceContext}
-
-The platform uses the following PREDEFINED evaluation criteria.
-You MUST use ALL of these — do not add or remove any.
-
-${criteriaBlock}
-
-═══════════════════════════════════
-TASK 1 — Market-specific weights and scoring rationale:
-For each criterion provide:
-- weight: integer 1–100 reflecting importance for THIS specific market (weights within each axis should roughly sum to 100)
-- scoringRationale: 2–3 sentences explaining:
-    (a) exactly what this criterion measures in the context of the ${marketName} market
-    (b) what a HIGH score (8–10) looks like vs a LOW score (1–3)
-
-═══════════════════════════════════
-TASK 2 — Score every vendor × criterion combination:
-
-⚠ SPECIAL RULE — Two criteria are auto-computed from later stages and must NOT be scored by you:
-• "Product Capabilities" → score: 0, commentary: "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).", sources: []
-• "ISV Ecosystem" → score: 0, commentary: "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).", sources: []
-You MUST still include these two criteria in the scores array with exactly the values above.
-
-COMMENTARY STANDARDS (mandatory):
-• Length: 100–250 words per commentary (except the two auto-computed criteria above)
-• No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array only
-• Content must be balanced: acknowledge both strengths and weaknesses${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from multiple perspectives: vendor documentation, independent tech blogs and analyst posts, user communities (Reddit r/sysadmin, r/homelab, r/devops, r/aws, r/azure, etc.), Hacker News discussions, GitHub issues/discussions, and independent technical reviews\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
-• Be specific: name actual product features, version numbers, known limitations, real community feedback themes
-• Be actionable: the reader should understand what this score means for a buyer's decision
-
-${sourcesGuidance}
-
-SCORING:
-- score: decimal 0.0–10.0 (one decimal place), be differentiated — avoid clustering vendors
-
-Respond with ONLY a JSON object:
-{
-  "criteriaWeights": [
-    {
-      "criterionId": "<id>",
-      "criterionName": "<name>",
-      "criterionCategory": "<category>",
-      "weight": <1-100>,
-      "scoringRationale": "<2-3 sentences>"
-    }
-  ],
-  "scores": [
-    {
-      "vendorName": "<name>",
-      "criterionName": "<name>",
-      "score": <0.0-10.0>,
-      "commentary": "<100-250 words, no inline refs, balanced and evidence-based>",
-      "sources": ["<source 1>", "<source 2>"]
-    }
-  ]
-}`;
-
-  const result = await callLLMForJSON<Stage2Result>(llmConfig, SYSTEM_PROMPT, userPrompt);
-
-  if (!Array.isArray(result.criteriaWeights) || result.criteriaWeights.length === 0) {
-    throw new Error("Stage 2: LLM returned no criteria weights");
-  }
-  if (!Array.isArray(result.scores) || result.scores.length === 0) {
-    throw new Error("Stage 2: LLM returned no vendor scores");
-  }
-
-  // Enforce placeholder scores for auto-computed criteria regardless of what the LLM returned
-  const AUTO_COMPUTED = new Set(["Product Capabilities", "ISV Ecosystem"]);
-  const PLACEHOLDERS: Record<string, string> = {
-    "Product Capabilities": "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).",
-    "ISV Ecosystem":        "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).",
-  };
-  result.scores = result.scores.map(s =>
-    AUTO_COMPUTED.has(s.criterionName)
-      ? { ...s, score: 0, commentary: PLACEHOLDERS[s.criterionName], sources: [] }
-      : s
+  // Step 1 — weights for all criteria
+  await progress("Computing market-specific criterion weights and rationale…");
+  const criteriaWeights = await generateWeights(
+    marketName, stage1, predefinedCriteria, llmConfig, sourceContext
   );
 
-  return result;
+  // Steps 2 + 3 — per criterion (skipping auto-computed ones)
+  const allScores: Stage2Score[] = [];
+
+  for (const criterion of predefinedCriteria) {
+    if (AUTO_COMPUTED.has(criterion.name)) {
+      // Emit placeholder rows for every vendor
+      for (const v of stage1.vendors) {
+        allScores.push({
+          vendorName: v.name,
+          criterionName: criterion.name,
+          score: 0,
+          commentary: PLACEHOLDERS[criterion.name],
+          sources: [],
+        });
+      }
+      continue;
+    }
+
+    const rationale = criteriaWeights.find(w => w.criterionId === criterion.id)?.scoringRationale
+      ?? `Evaluates ${criterion.name} for the ${marketName} market.`;
+
+    const scoringPrompt = hooks
+      ? await hooks.resolveScoringPrompt(criterion.name)
+      : await defaultScoringPrompt();
+    const commentaryPrompt = hooks
+      ? await hooks.resolveCommentaryPrompt(criterion.name)
+      : await defaultCommentaryPrompt();
+
+    await progress(`Scoring "${criterion.name}" across ${stage1.vendors.length} vendors…`);
+    const scores = await scoreCriterion(
+      marketName, stage1, criterion, rationale, scoringPrompt, llmConfig, sourceContext
+    );
+
+    await progress(`Writing commentary for "${criterion.name}"…`);
+    const commentary = await commentCriterion(
+      marketName, stage1, criterion, rationale, scores, commentaryPrompt, llmConfig, sourceContext
+    );
+
+    // Merge scores + commentary
+    for (const v of stage1.vendors) {
+      const s = scores.find(x => x.vendorName === v.name);
+      const c = commentary.find(x => x.vendorName === v.name);
+      allScores.push({
+        vendorName: v.name,
+        criterionName: criterion.name,
+        score: s?.score ?? 0,
+        commentary: c?.commentary ?? "",
+        sources: c?.sources ?? [],
+      });
+    }
+  }
+
+  return { criteriaWeights, scores: allScores };
+}
+
+// Lazy fallbacks for direct callers that don't pass hooks (e.g. tests)
+async function defaultScoringPrompt(): Promise<string> {
+  const { storage } = await import("../../storage");
+  const p = await storage.getSystemDefaultPrompt("vendor_evaluation", "scoring");
+  return p?.content ?? "You are a senior analyst. Output JSON only.";
+}
+async function defaultCommentaryPrompt(): Promise<string> {
+  const { storage } = await import("../../storage");
+  const p = await storage.getSystemDefaultPrompt("vendor_evaluation", "commentary");
+  return p?.content ?? "You are a senior analyst. Output JSON only.";
 }

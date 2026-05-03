@@ -2,8 +2,62 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
+import { insertPromptRepositorySchema } from "@shared/schema";
 
 export function registerAdminRoutes(app: Express): void {
+
+  // ── Prompt Repository ────────────────────────────────────────────────────
+
+  app.get("/api/admin/prompts", requireAdmin, async (req, res) => {
+    try {
+      const stage = req.query.stage as any;
+      const promptType = req.query.promptType as any;
+      const prompts = await storage.listPrompts({ stage, promptType });
+      res.json(prompts);
+    } catch (err: any) {
+      console.error("Error listing prompts:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/admin/prompts/:id", requireAdmin, async (req, res) => {
+    try {
+      const p = await storage.getPrompt(req.params.id);
+      if (!p) return res.status(404).json({ error: "Prompt not found" });
+      res.json(p);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/prompts", requireAdmin, async (req, res) => {
+    try {
+      const data = insertPromptRepositorySchema.parse({ ...req.body, isSystem: false });
+      const created = await storage.createPrompt(data);
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/admin/prompts/:id", requireAdmin, async (req, res) => {
+    try {
+      const { name, description, content } = req.body ?? {};
+      const updated = await storage.updatePrompt(req.params.id, { name, description, content });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/admin/prompts/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deletePrompt(req.params.id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
 
   // ── Cron Job Management ───────────────────────────────────────────────────
 

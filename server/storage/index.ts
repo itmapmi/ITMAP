@@ -19,6 +19,8 @@ import {
   type AdminAlertSettings, type InsertAdminAlertSettings,
   type ExternalApiKey, type ExternalChatSession, type ExternalChatMessage,
   type AiSuggestion, type InsertAiSuggestion,
+  type PromptRepository, type InsertPromptRepository,
+  type MarketBuilderPromptSelection, type InsertMarketBuilderPromptSelection,
 } from "@shared/schema";
 
 export * from "./users";
@@ -28,6 +30,7 @@ export * from "./features";
 export * from "./research";
 export * from "./admin";
 export * from "./marketBuilder";
+export * from "./prompts";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -36,6 +39,7 @@ import * as featureStorage from "./features";
 import * as researchStorage from "./research";
 import * as adminStorage from "./admin";
 import * as marketBuilderStorage from "./marketBuilder";
+import * as promptsStorage from "./prompts";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -168,6 +172,18 @@ export interface IStorage {
   createMarketBuilderSource(data: import("@shared/schema").InsertMarketBuilderSource): Promise<import("@shared/schema").MarketBuilderSource>;
   updateMarketBuilderSourceContent(id: string, content: string): Promise<void>;
   deleteMarketBuilderSource(id: string): Promise<void>;
+
+  // Prompt Repository
+  listPrompts(filters?: { stage?: import("./prompts").PromptStage; promptType?: import("./prompts").PromptType }): Promise<PromptRepository[]>;
+  getPrompt(id: string): Promise<PromptRepository | undefined>;
+  createPrompt(data: InsertPromptRepository): Promise<PromptRepository>;
+  updatePrompt(id: string, data: Partial<Pick<PromptRepository, "name" | "description" | "content">>): Promise<PromptRepository>;
+  deletePrompt(id: string): Promise<void>;
+  getSystemDefaultPrompt(stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType): Promise<PromptRepository | undefined>;
+  upsertSystemPrompt(stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType, name: string, content: string, description: string): Promise<PromptRepository>;
+  listJobPromptSelections(jobId: string): Promise<MarketBuilderPromptSelection[]>;
+  upsertJobPromptSelection(data: InsertMarketBuilderPromptSelection): Promise<MarketBuilderPromptSelection>;
+  clearJobPromptSelection(jobId: string, stage: import("./prompts").PromptStage, targetType: string, targetKey: string, promptType: import("./prompts").PromptType): Promise<void>;
 }
 
 export const storage: IStorage = {
@@ -178,4 +194,5 @@ export const storage: IStorage = {
   ...researchStorage,
   ...adminStorage,
   ...marketBuilderStorage,
+  ...promptsStorage,
 };

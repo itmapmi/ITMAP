@@ -1,21 +1,14 @@
 /**
- * Stage 5 — Ecosystem (ISV / Partner Integrations)
+ * Stage 5A — Define ecosystem categories + integration points (single call)
+ * Stage 6  — Score vendors × ecosystem integrations (TWO-CALL pattern)
  *
- * Two-phase approach:
- *   Phase A: Define ecosystem categories + integration features (one LLM call)
- *   Phase B: Score each vendor × feature with rich 100–250 word commentary
- *            + sources list. Batched: 3 vendors × 10 features per call.
- *
- * isEcosystem = true in the DB for all categories created here.
+ * Stage 6 batches features sharing the same (scoring, commentary) prompts
+ * together. Per-feature override beats per-category override.
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
 
-export interface Stage5Feature {
-  name: string;
-  description: string;
-}
-
+export interface Stage5Feature { name: string; description: string; }
 export interface Stage5Category {
   name: string;
   description: string;
@@ -27,8 +20,8 @@ export interface Stage5SupportRecord {
   categoryName: string;
   featureName: string;
   supportLevel: 0 | 1 | 2 | 3 | 4;
-  comments: string;   // 100–250 words, no inline references
-  sources: string[];  // list of sources cited
+  comments: string;
+  sources: string[];
 }
 
 export interface Stage5Result {
@@ -36,27 +29,26 @@ export interface Stage5Result {
   support: Stage5SupportRecord[];
 }
 
+export interface Stage5AResult { categories: Stage5Category[]; }
+
+export interface Stage6Hooks {
+  resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  onProgress?: (msg: string) => Promise<void>;
+}
+
 const DEFINE_SYSTEM_PROMPT = `You are a senior technology market research analyst specialising in technology ecosystems and ISV integrations.
 Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
 
-const SCORE_SYSTEM_PROMPT = `You are a senior technology market research analyst producing detailed ecosystem integration analysis for an enterprise report.
-Your commentary must be detailed, evidence-based, balanced, and actionable.
-Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
+const FEATURE_BATCH = 10;
 
-const HARVEY_SCALE = `Harvey Ball integration scale:
-  0 = Not Supported — no integration exists, not on public roadmap
-  1 = Limited (25%) — basic/undocumented integration, community-built only, or beta
-  2 = Partial (50%) — integration works but has significant gaps, missing key capabilities
-  3 = Good (75%) — solid, well-documented integration with minor limitations
-  4 = Full Support (100%) — deep, certified, officially supported integration with strong documentation`;
-
-// ── Phase A: Define ecosystem categories and features ─────────────────────
+// ── Stage 5A — define ecosystem ───────────────────────────────────────────
 
 async function defineEcosystem(
   marketName: string,
   stage1: Stage1Result,
   llmConfig: LLMConfig,
-  sourceContext: string
+  sourceContext: string,
 ): Promise<Stage5Category[]> {
   const vendorList = stage1.vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
 
@@ -71,24 +63,12 @@ Vendors:
 ${vendorList}
 ${sourceContext}
 
-Create 4–6 ecosystem/integration categories relevant to this market.
-Examples: Cloud Platforms, Security & Identity, Monitoring & Observability, Data & Analytics, Developer Tools, ITSM & Ticketing, Backup & DR.
-Each category: 6–10 specific integration points that buyers care about.
-Total integrations: aim for 30–45 across all categories.
-
-For each category:
-- name: short (2–4 words)
-- description: 1 sentence explaining what this integration area covers
-- features: array of { name, description } — each feature is a specific integration point (e.g. "AWS S3 Integration", "Splunk Log Forwarding")
+Create 4–6 ecosystem/integration categories relevant to this market. Each category: 6–10 specific integration points. Total integrations: aim for 30–45.
 
 Respond with ONLY a JSON object:
 {
   "categories": [
-    {
-      "name": "...",
-      "description": "...",
-      "features": [{ "name": "...", "description": "..." }]
-    }
+    { "name": "...", "description": "...", "features": [{ "name": "...", "description": "..." }] }
   ]
 }`;
 
@@ -96,116 +76,97 @@ Respond with ONLY a JSON object:
   return result.categories;
 }
 
-// ── Phase B: Score vendors × features (batched) ───────────────────────────
-
-async function scoreEcosystemBatch(
-  marketName: string,
-  vendors: Stage1Vendor[],
-  features: Array<{ categoryName: string; featureName: string; featureDescription: string }>,
-  llmConfig: LLMConfig,
-  sourceContext: string,
-  batchLabel: string
-): Promise<Stage5SupportRecord[]> {
-  const vendorList = vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
-  const featureList = features.map(f => `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}`).join("\n");
-
-  const hasSources = sourceContext.trim().length > 0;
-  const sourcesGuidance = hasSources
-    ? `SOURCES (mandatory):
-• 2–4 sources per commentary, drawn strictly from the provided research materials above
-• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
-• Only cite sources listed in the PROVIDED RESEARCH SOURCES section above — do NOT cite external sources`
-    : `SOURCES (mandatory):
-• 2–4 sources per commentary
-• Format: "Source name — URL or description"
-• Mix: at least one official vendor/partner source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
-
-  const userPrompt = `
-You are producing the ISV Ecosystem section of an enterprise market research report.
-
-Market: ${marketName}
-Batch: ${batchLabel}
-
-Vendors to score:
-${vendorList}
-${sourceContext}
-
-${HARVEY_SCALE}
-
-Ecosystem integrations to evaluate (format: [Category] Integration Name: description):
-${featureList}
-
-COMMENTARY STANDARDS (mandatory for every vendor × integration):
-• Length: 100–250 words per commentary
-• No inline references or citation markers (no [1], no (Source: X)) — sources go in the sources array
-• Content must be balanced: acknowledge both integration strengths and real limitations${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from: official partner/marketplace pages, integration documentation, GitHub repositories and issues, Reddit communities (r/devops, r/sysadmin, r/selfhosted, r/aws, etc.), Hacker News discussions, independent engineering blogs and write-ups, changelogs, partner certification pages\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
-• Be specific: reference official certification status, API/SDK availability, known limitations, version requirements, number of supported connectors
-• Be actionable: a buyer comparing vendors on ecosystem fit should be able to decide based on this
-
-${sourcesGuidance}
-
-For EVERY vendor × integration combination:
-- vendorName: exact vendor name
-- categoryName: exact category name (without square brackets)
-- featureName: exact integration name
-- supportLevel: 0, 1, 2, 3, or 4
-- comments: 100–250 words, balanced, no inline refs
-- sources: array of 2–4 source strings
-
-Respond with ONLY a JSON object:
-{
-  "support": [
-    {
-      "vendorName": "...",
-      "categoryName": "...",
-      "featureName": "...",
-      "supportLevel": 3,
-      "comments": "<100-250 words>",
-      "sources": ["<source 1>", "<source 2>"]
-    }
-  ]
-}`;
-
-  const expectedCount = vendors.length * features.length;
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const result = await callLLMForJSON<{ support: Stage5SupportRecord[] }>(llmConfig, SCORE_SYSTEM_PROMPT, userPrompt);
-    if (!Array.isArray(result.support)) {
-      if (attempt === 2) throw new Error(`Stage 6 batch ${batchLabel}: invalid response from LLM`);
-      continue;
-    }
-    if (result.support.length >= expectedCount * 0.85) {
-      return result.support;
-    }
-    if (attempt === 2) {
-      console.warn(`[Stage6] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} after 2 attempts — accepting partial batch`);
-      return result.support;
-    }
-    console.warn(`[Stage6] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} — retrying (attempt ${attempt})`);
-  }
-
-  return [];
-}
-
-// ── Stage 5A: Define ecosystem categories + features ─────────────────────
-
-export interface Stage5AResult {
-  categories: Stage5Category[];
-}
-
 export async function runStage5A(
   marketName: string,
   stage1: Stage1Result,
   llmConfig: LLMConfig,
-  sourceContext: string = ""
+  sourceContext: string = "",
 ): Promise<Stage5AResult> {
   const categories = await defineEcosystem(marketName, stage1, llmConfig, sourceContext);
   if (categories.length === 0) throw new Error("Stage 5: no ecosystem categories defined");
   return { categories };
 }
 
-// ── Stage 6: Score vendors across ecosystem integrations ──────────────────
+// ── Stage 6 — score vendors × integrations ────────────────────────────────
+
+interface FeatureRow { categoryName: string; featureName: string; featureDescription: string; }
+
+async function scoreEcosystemBatch(
+  marketName: string,
+  vendor: Stage1Vendor,
+  features: FeatureRow[],
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ categoryName: string; featureName: string; supportLevel: number }>> {
+  const featureList = features.map(f => `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}`).join("\n");
+  const userPrompt = `
+Market: ${marketName}
+Vendor: ${vendor.name} (${vendor.product})
+Vendor description: ${vendor.description}
+${sourceContext}
+
+Score this vendor's ISV ecosystem integrations against the following points (Harvey Ball 0–4):
+
+${featureList}
+
+Output ONLY the numeric supportLevel for each integration. No commentary in this call.
+
+Respond with ONLY a JSON object:
+{
+  "scores": [
+    { "categoryName": "<exact category>", "featureName": "<exact integration>", "supportLevel": <0|1|2|3|4> }
+  ]
+}`;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<{ scores: Array<{ categoryName: string; featureName: string; supportLevel: number }> }>(
+      llmConfig, systemPrompt, userPrompt
+    );
+    if (Array.isArray(result.scores) && result.scores.length >= features.length * 0.85) return result.scores;
+    if (attempt === 2) return result.scores ?? [];
+  }
+  return [];
+}
+
+async function commentEcosystemBatch(
+  marketName: string,
+  vendor: Stage1Vendor,
+  features: FeatureRow[],
+  scores: Array<{ categoryName: string; featureName: string; supportLevel: number }>,
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ categoryName: string; featureName: string; comments: string; sources: string[] }>> {
+  const featureBlock = features.map(f => {
+    const s = scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName)?.supportLevel ?? 0;
+    return `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}\n    → assigned Harvey Ball score: ${s}/4`;
+  }).join("\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Vendor: ${vendor.name} (${vendor.product})
+Vendor description: ${vendor.description}
+${sourceContext}
+
+For each integration, write a 100–250 word balanced commentary that justifies the assigned Harvey Ball score. Do NOT change the score.
+
+${featureBlock}
+
+Respond with ONLY a JSON object:
+{
+  "commentary": [
+    { "categoryName": "<exact category>", "featureName": "<exact integration>", "comments": "<100-250 words>", "sources": ["<source 1>", "<source 2>"] }
+  ]
+}`;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<{ commentary: Array<{ categoryName: string; featureName: string; comments: string; sources: string[] }> }>(
+      llmConfig, systemPrompt, userPrompt
+    );
+    if (Array.isArray(result.commentary) && result.commentary.length >= features.length * 0.85) return result.commentary;
+    if (attempt === 2) return result.commentary ?? [];
+  }
+  return [];
+}
 
 export async function runStage6(
   marketName: string,
@@ -213,45 +174,83 @@ export async function runStage6(
   stage5A: Stage5AResult,
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  onProgress?: (msg: string) => Promise<void>
+  hooksOrLegacy?: Stage6Hooks | ((msg: string) => Promise<void>),
 ): Promise<Stage5Result> {
-  // 1 vendor at a time keeps output to ~10 records × ~300 tokens = ~3 000 tokens per call.
-  const VENDOR_BATCH = 1;
-  const FEATURE_BATCH = 10;
+  const hooks: Stage6Hooks = typeof hooksOrLegacy === "function" || !hooksOrLegacy
+    ? {
+        resolveScoringPrompt: async () => (await defaultPrompt("scoring")),
+        resolveCommentaryPrompt: async () => (await defaultPrompt("commentary")),
+        onProgress: typeof hooksOrLegacy === "function" ? hooksOrLegacy : undefined,
+      }
+    : hooksOrLegacy;
 
-  const allFeatures = stage5A.categories.flatMap(cat =>
+  const allFeatures: FeatureRow[] = stage5A.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
   );
 
-  const vendorBatches: Stage1Vendor[][] = [];
-  for (let i = 0; i < stage1.vendors.length; i += VENDOR_BATCH) {
-    vendorBatches.push(stage1.vendors.slice(i, i + VENDOR_BATCH));
-  }
-  const featureBatches: { categoryName: string; featureName: string; featureDescription: string }[][] = [];
-  for (let i = 0; i < allFeatures.length; i += FEATURE_BATCH) {
-    featureBatches.push(allFeatures.slice(i, i + FEATURE_BATCH));
+  // Resolve prompts per feature, then group
+  const featurePrompts = await Promise.all(
+    allFeatures.map(async f => ({
+      feature: f,
+      scoring: await hooks.resolveScoringPrompt(f.categoryName, f.featureName),
+      commentary: await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName),
+    }))
+  );
+
+  type Group = { scoring: string; commentary: string; features: FeatureRow[] };
+  const groups: Group[] = [];
+  for (const fp of featurePrompts) {
+    let g = groups.find(x => x.scoring === fp.scoring && x.commentary === fp.commentary);
+    if (!g) { g = { scoring: fp.scoring, commentary: fp.commentary, features: [] }; groups.push(g); }
+    g.features.push(fp.feature);
   }
 
-  const totalBatches = vendorBatches.length * featureBatches.length;
+  let totalBatches = 0;
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  totalBatches *= stage1.vendors.length;
+
   let done = 0;
   const allSupport: Stage5SupportRecord[] = [];
 
-  for (let vi = 0; vi < vendorBatches.length; vi++) {
-    for (let fi = 0; fi < featureBatches.length; fi++) {
-      const vendorNames = vendorBatches[vi].map(v => v.name).join(", ");
-      const featStart = fi * FEATURE_BATCH + 1;
-      const featEnd = Math.min((fi + 1) * FEATURE_BATCH, allFeatures.length);
-      const label = `vendors ${vi + 1}/${vendorBatches.length}, integrations ${fi + 1}/${featureBatches.length}`;
-      await onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendorNames} | Integrations ${featStart}–${featEnd} of ${allFeatures.length}`);
-      const records = await scoreEcosystemBatch(
-        marketName, vendorBatches[vi], featureBatches[fi],
-        llmConfig, sourceContext, label
-      );
-      allSupport.push(...records);
-      done++;
+  for (const vendor of stage1.vendors) {
+    for (const g of groups) {
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+        const featStart = i + 1;
+        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        await hooks.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length}`);
+
+        const scores = await scoreEcosystemBatch(
+          marketName, vendor, chunk, g.scoring, llmConfig, sourceContext
+        );
+        const commentary = await commentEcosystemBatch(
+          marketName, vendor, chunk, scores, g.commentary, llmConfig, sourceContext
+        );
+
+        for (const f of chunk) {
+          const s = scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
+          const c = commentary.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
+          const lvl = Math.max(0, Math.min(4, s?.supportLevel ?? 0)) as 0 | 1 | 2 | 3 | 4;
+          allSupport.push({
+            vendorName: vendor.name,
+            categoryName: f.categoryName,
+            featureName: f.featureName,
+            supportLevel: lvl,
+            comments: c?.comments ?? "",
+            sources: c?.sources ?? [],
+          });
+        }
+        done++;
+      }
     }
   }
 
   if (allSupport.length === 0) throw new Error("Stage 6: no ecosystem scores generated");
   return { categories: stage5A.categories, support: allSupport };
+}
+
+async function defaultPrompt(type: "scoring" | "commentary"): Promise<string> {
+  const { storage } = await import("../../storage");
+  const p = await storage.getSystemDefaultPrompt("ecosystem_evaluation", type);
+  return p?.content ?? "You are a senior analyst. Output JSON only.";
 }

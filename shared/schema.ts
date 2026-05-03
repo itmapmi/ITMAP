@@ -811,3 +811,56 @@ export type MarketBuilderStage = typeof marketBuilderStages.$inferSelect;
 export type MarketBuilderLlmSettings = typeof marketBuilderLlmSettings.$inferSelect;
 export type MarketBuilderSource = typeof marketBuilderSources.$inferSelect;
 export type InsertMarketBuilderSource = z.infer<typeof insertMarketBuilderSourceSchema>;
+
+// ── Prompt Repository ─────────────────────────────────────────────────────
+//
+// User-managed library of system prompts that drive Market Builder LLM calls.
+// Each prompt is scoped to a stage (vendor / product / ecosystem evaluation)
+// and a type (scoring vs commentary). System defaults are seeded with
+// isSystem=true and cannot be deleted.
+export const promptRepository = pgTable("prompt_repository", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  // 'scoring' | 'commentary'
+  promptType: text("prompt_type").notNull(),
+  // 'vendor_evaluation' | 'product_evaluation' | 'ecosystem_evaluation'
+  stage: text("stage").notNull(),
+  content: text("content").notNull(),
+  isSystem: boolean("is_system").notNull().default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Per-job prompt selections. A row exists for each (job, stage, target, type)
+// combination that has been overridden. Missing rows = use system default.
+export const marketBuilderPromptSelections = pgTable("market_builder_prompt_selections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => marketBuilderJobs.id, { onDelete: "cascade" }),
+  // 'vendor_evaluation' | 'product_evaluation' | 'ecosystem_evaluation'
+  stage: text("stage").notNull(),
+  // 'criterion' | 'category' | 'feature'
+  targetType: text("target_type").notNull(),
+  // Name of the criterion / category / feature this override applies to
+  targetKey: text("target_key").notNull(),
+  // 'scoring' | 'commentary'
+  promptType: text("prompt_type").notNull(),
+  promptId: varchar("prompt_id").references(() => promptRepository.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertPromptRepositorySchema = createInsertSchema(promptRepository).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMarketBuilderPromptSelectionSchema = createInsertSchema(marketBuilderPromptSelections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PromptRepository = typeof promptRepository.$inferSelect;
+export type InsertPromptRepository = z.infer<typeof insertPromptRepositorySchema>;
+export type MarketBuilderPromptSelection = typeof marketBuilderPromptSelections.$inferSelect;
+export type InsertMarketBuilderPromptSelection = z.infer<typeof insertMarketBuilderPromptSelectionSchema>;

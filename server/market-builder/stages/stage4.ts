@@ -1,17 +1,15 @@
 /**
- * Stage 4 — Product Feature Scoring (Harvey Ball + Rich Commentary)
+ * Stage 4 — Product Feature Scoring (TWO-CALL pattern + per-feature/category overrides)
  *
- * Scores every vendor against every product feature defined in Stage 3.
- * Harvey Ball scale (0–4):
- *   0 = Not Supported
- *   1 = Limited (25%)
- *   2 = Partial (50%)
- *   3 = Good (75%)
- *   4 = Full Support (100%)
+ * For each vendor:
+ *   1. Group features by their (scoringPromptId, commentaryPromptId) — features
+ *      sharing both prompts batch together. Per-feature override beats per-category.
+ *   2. For each group, batch in chunks of 10:
+ *        a. Scoring call → Harvey Ball score per feature
+ *        b. Commentary call → 100–250 word commentary using assigned scores
  *
- * Batching strategy: 3 vendors × 12 features per LLM call to keep
- * output within context limits while producing 100–250 word commentary
- * per vendor × feature combination.
+ * When no overrides exist, all features share the system defaults → behaviour
+ * matches the previous one-call batching (just doubled API calls).
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
@@ -22,123 +20,119 @@ export interface Stage4SupportRecord {
   categoryName: string;
   featureName: string;
   supportLevel: 0 | 1 | 2 | 3 | 4;
-  comments: string;   // 100–250 words, no inline references
-  sources: string[];  // list of sources cited
+  comments: string;
+  sources: string[];
 }
 
 export interface Stage4Result {
   support: Stage4SupportRecord[];
 }
 
-const SYSTEM_PROMPT = `You are a senior technology market research analyst evaluating vendor product capabilities for an enterprise report.
-Your commentary must be detailed, evidence-based, balanced, and actionable.
-Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
+export interface Stage4Hooks {
+  // Returns the scoring system prompt to use for this feature
+  resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  // Returns the commentary system prompt to use for this feature
+  resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>;
+}
 
-const HARVEY_SCALE = `Harvey Ball support scale:
-  0 = Not Supported — feature does not exist or is on roadmap only
-  1 = Limited (25%) — basic implementation with significant gaps, not production-ready
-  2 = Partial (50%) — functional but missing key capabilities or has notable limitations
-  3 = Good (75%) — strong implementation with only minor gaps
-  4 = Full Support (100%) — comprehensive, industry-leading implementation`;
-
-interface FeatureBatch {
+interface FeatureRow {
   categoryName: string;
   featureName: string;
   featureDescription: string;
 }
 
-async function runStage4Batch(
+const FEATURE_BATCH = 10;
+
+// ── Per-batch LLM calls ───────────────────────────────────────────────────
+
+async function scoreFeatureBatch(
   marketName: string,
-  vendors: Stage1Vendor[],
-  features: FeatureBatch[],
+  vendor: Stage1Vendor,
+  features: FeatureRow[],
+  systemPrompt: string,
   llmConfig: LLMConfig,
   sourceContext: string,
-  batchLabel: string
-): Promise<Stage4SupportRecord[]> {
-  const vendorList = vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
+): Promise<Array<{ featureName: string; categoryName: string; supportLevel: number }>> {
   const featureList = features.map(f => `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}`).join("\n");
 
-  const hasSources = sourceContext.trim().length > 0;
-  const sourcesGuidance = hasSources
-    ? `SOURCES (mandatory):
-• 2–4 sources per commentary, drawn strictly from the provided research materials above
-• Format each as: "Source name — URL or file name" matching exactly the source labels in the provided materials
-• Only cite sources listed in the PROVIDED RESEARCH SOURCES section above — do NOT cite external sources`
-    : `SOURCES (mandatory):
-• 2–4 sources per commentary
-• Format: "Source name — URL or description"
-• Mix: at least one official vendor source AND at least one Reddit/Hacker News/independent community source
-• Never cite Gartner, G2, TrustRadius, Forrester, IDC, or similar paid review platforms`;
-
   const userPrompt = `
-You are producing the Product Evaluation section of an enterprise market research report.
-
 Market: ${marketName}
-Batch: ${batchLabel}
-
-Vendors to score:
-${vendorList}
+Vendor: ${vendor.name} (${vendor.product})
+Vendor description: ${vendor.description}
 ${sourceContext}
 
-${HARVEY_SCALE}
+Score this vendor's product capability against the following features (Harvey Ball 0–4 scale):
 
-Product features to evaluate (format: [Category] Feature Name: description):
 ${featureList}
 
-COMMENTARY STANDARDS (mandatory for every vendor × feature):
-• Length: 100–250 words per commentary
-• No inline references or citation markers (e.g. no [1], no (Source: X)) — sources go in the sources array
-• Content must be balanced: acknowledge both product strengths and real limitations or gaps${hasSources ? "\n• Base ALL analysis strictly on the provided research sources above — do not introduce information from outside those sources" : "\n• Draw from: official product documentation, changelog/release notes, GitHub issues and discussions, community feedback (Reddit r/sysadmin, r/devops, r/aws, r/azure, r/selfhosted, etc.), Hacker News threads, independent tech blogs and engineering write-ups\n• Do NOT cite or reference Gartner, G2, TrustRadius, Forrester, IDC, or any paid analyst/peer-review platform"}
-• Be specific: reference actual feature names, version capabilities, known bugs or limitations, performance benchmarks where relevant
-• Be actionable: a buyer should be able to make a decision based on this commentary
-
-${sourcesGuidance}
-
-For EVERY vendor × feature combination:
-- vendorName: exact vendor name
-- categoryName: exact category name (without square brackets)
-- featureName: exact feature name
-- supportLevel: 0, 1, 2, 3, or 4 — be differentiated across vendors
-- comments: 100–250 words, balanced, evidence-based, no inline refs
-- sources: array of 2–4 source strings
+Output ONLY the numeric supportLevel for each feature. Be differentiated. No commentary in this call.
 
 Respond with ONLY a JSON object:
 {
-  "support": [
-    {
-      "vendorName": "...",
-      "categoryName": "...",
-      "featureName": "...",
-      "supportLevel": 3,
-      "comments": "<100-250 words>",
-      "sources": ["<source 1>", "<source 2>"]
-    }
+  "scores": [
+    { "categoryName": "<exact category name>", "featureName": "<exact feature name>", "supportLevel": <0|1|2|3|4> }
   ]
 }`;
 
-  const expectedCount = vendors.length * features.length;
-
-  // Attempt up to 2 tries — LLM occasionally truncates output silently
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const result = await callLLMForJSON<Stage4Result>(llmConfig, SYSTEM_PROMPT, userPrompt);
-    if (!Array.isArray(result.support)) {
-      if (attempt === 2) throw new Error(`Stage 4 batch ${batchLabel}: invalid response from LLM`);
-      continue;
-    }
-    if (result.support.length >= expectedCount * 0.85) {
-      // ≥85 % of expected records — accept the batch
-      return result.support;
-    }
+    const result = await callLLMForJSON<{ scores: Array<{ featureName: string; categoryName: string; supportLevel: number }> }>(
+      llmConfig, systemPrompt, userPrompt
+    );
+    if (Array.isArray(result.scores) && result.scores.length >= features.length * 0.85) return result.scores;
     if (attempt === 2) {
-      // Accept whatever we got on the second attempt rather than failing entirely
-      console.warn(`[Stage4] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} after 2 attempts — accepting partial batch`);
-      return result.support;
+      console.warn(`[Stage4] Scoring batch (${vendor.name}): expected ${features.length}, got ${result.scores?.length ?? 0} — accepting partial`);
+      return result.scores ?? [];
     }
-    console.warn(`[Stage4] Batch ${batchLabel}: expected ${expectedCount} records, got ${result.support.length} — retrying (attempt ${attempt})`);
   }
-
   return [];
 }
+
+async function commentFeatureBatch(
+  marketName: string,
+  vendor: Stage1Vendor,
+  features: FeatureRow[],
+  scores: Array<{ featureName: string; categoryName: string; supportLevel: number }>,
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ featureName: string; categoryName: string; comments: string; sources: string[] }>> {
+  const featureBlock = features.map(f => {
+    const s = scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName)?.supportLevel ?? 0;
+    return `  [${f.categoryName}] ${f.featureName}: ${f.featureDescription}\n    → assigned Harvey Ball score: ${s}/4`;
+  }).join("\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Vendor: ${vendor.name} (${vendor.product})
+Vendor description: ${vendor.description}
+${sourceContext}
+
+For each of the following features, write a 100–250 word balanced commentary that justifies the assigned Harvey Ball score. Do NOT change the score.
+
+${featureBlock}
+
+Respond with ONLY a JSON object:
+{
+  "commentary": [
+    { "categoryName": "<exact category name>", "featureName": "<exact feature name>", "comments": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
+  ]
+}`;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<{ commentary: Array<{ featureName: string; categoryName: string; comments: string; sources: string[] }> }>(
+      llmConfig, systemPrompt, userPrompt
+    );
+    if (Array.isArray(result.commentary) && result.commentary.length >= features.length * 0.85) return result.commentary;
+    if (attempt === 2) {
+      console.warn(`[Stage4] Commentary batch (${vendor.name}): expected ${features.length}, got ${result.commentary?.length ?? 0} — accepting partial`);
+      return result.commentary ?? [];
+    }
+  }
+  return [];
+}
+
+// ── Public entry point ───────────────────────────────────────────────────
 
 export async function runStage4Full(
   marketName: string,
@@ -146,49 +140,87 @@ export async function runStage4Full(
   stage3: { categories: Stage3Category[] },
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>
+  hooksOrLegacy?: Stage4Hooks | ((done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>),
 ): Promise<Stage4Result> {
-  // 1 vendor at a time keeps output to ~10 records × ~300 tokens = ~3 000 tokens per call,
-  // well within model output limits. 3-vendor batches risked silent truncation (~9–11 k tokens).
-  const VENDOR_BATCH = 1;
-  const FEATURE_BATCH = 10;
+  // Backwards-compat: if a plain progress fn was passed, wrap it as hooks with system defaults
+  const hooks: Stage4Hooks = typeof hooksOrLegacy === "function" || !hooksOrLegacy
+    ? {
+        resolveScoringPrompt: async () => (await defaultPrompt("scoring")),
+        resolveCommentaryPrompt: async () => (await defaultPrompt("commentary")),
+        onBatchComplete: typeof hooksOrLegacy === "function" ? hooksOrLegacy : undefined,
+      }
+    : hooksOrLegacy;
 
-  // Flatten all features with their category names
-  const allFeatures: FeatureBatch[] = stage3.categories.flatMap(cat =>
+  // Flatten features
+  const allFeatures: FeatureRow[] = stage3.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
   );
 
-  const vendorBatches: Stage1Vendor[][] = [];
-  for (let i = 0; i < stage1.vendors.length; i += VENDOR_BATCH) {
-    vendorBatches.push(stage1.vendors.slice(i, i + VENDOR_BATCH));
+  // Pre-resolve prompts for every feature so we can group by prompt content
+  const featurePrompts = await Promise.all(
+    allFeatures.map(async f => ({
+      feature: f,
+      scoring: await hooks.resolveScoringPrompt(f.categoryName, f.featureName),
+      commentary: await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName),
+    }))
+  );
+
+  // Group by (scoring prompt content, commentary prompt content)
+  type Group = { scoring: string; commentary: string; features: FeatureRow[] };
+  const groups: Group[] = [];
+  for (const fp of featurePrompts) {
+    let g = groups.find(x => x.scoring === fp.scoring && x.commentary === fp.commentary);
+    if (!g) { g = { scoring: fp.scoring, commentary: fp.commentary, features: [] }; groups.push(g); }
+    g.features.push(fp.feature);
   }
 
-  const featureBatches: FeatureBatch[][] = [];
-  for (let i = 0; i < allFeatures.length; i += FEATURE_BATCH) {
-    featureBatches.push(allFeatures.slice(i, i + FEATURE_BATCH));
-  }
+  // Total batches across all vendors and groups (for progress)
+  let totalBatches = 0;
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  totalBatches *= stage1.vendors.length;
 
-  const totalBatches = vendorBatches.length * featureBatches.length;
-  let batchsDone = 0;
+  let done = 0;
   const allSupport: Stage4SupportRecord[] = [];
 
-  for (let vi = 0; vi < vendorBatches.length; vi++) {
-    for (let fi = 0; fi < featureBatches.length; fi++) {
-      const label = `vendors ${vi + 1}/${vendorBatches.length}, features ${fi + 1}/${featureBatches.length}`;
-      const records = await runStage4Batch(
-        marketName, vendorBatches[vi], featureBatches[fi],
-        llmConfig, sourceContext, label
-      );
-      allSupport.push(...records);
-      batchsDone++;
+  for (const vendor of stage1.vendors) {
+    for (const g of groups) {
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH);
 
-      const vendorNames = vendorBatches[vi].map(v => v.name).join(", ");
-      const featStart = fi * FEATURE_BATCH + 1;
-      const featEnd = Math.min((fi + 1) * FEATURE_BATCH, allFeatures.length);
-      const featureRange = `${featStart}–${featEnd} of ${allFeatures.length}`;
-      await onBatchComplete?.(batchsDone, totalBatches, vendorNames, featureRange);
+        const scores = await scoreFeatureBatch(
+          marketName, vendor, chunk, g.scoring, llmConfig, sourceContext
+        );
+        const commentary = await commentFeatureBatch(
+          marketName, vendor, chunk, scores, g.commentary, llmConfig, sourceContext
+        );
+
+        for (const f of chunk) {
+          const s = scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
+          const c = commentary.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
+          const lvl = Math.max(0, Math.min(4, s?.supportLevel ?? 0)) as 0 | 1 | 2 | 3 | 4;
+          allSupport.push({
+            vendorName: vendor.name,
+            categoryName: f.categoryName,
+            featureName: f.featureName,
+            supportLevel: lvl,
+            comments: c?.comments ?? "",
+            sources: c?.sources ?? [],
+          });
+        }
+
+        done++;
+        const featStart = i + 1;
+        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        await hooks.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
+      }
     }
   }
 
   return { support: allSupport };
+}
+
+async function defaultPrompt(type: "scoring" | "commentary"): Promise<string> {
+  const { storage } = await import("../../storage");
+  const p = await storage.getSystemDefaultPrompt("product_evaluation", type);
+  return p?.content ?? "You are a senior analyst. Output JSON only.";
 }

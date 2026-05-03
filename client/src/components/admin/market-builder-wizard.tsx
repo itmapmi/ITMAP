@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
+import { PromptSelector } from "./market-builder-prompt-selector";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -1263,6 +1264,30 @@ export function MarketBuilderWizard() {
 
                 <SourcesOnlyNotice />
                 <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
+
+                {/* Per-stage prompt customization (stages 2 / 4 / 6) */}
+                {activeStage === 2 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="vendor_evaluation"
+                    criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
+                  />
+                )}
+                {activeStage === 4 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="product_evaluation"
+                    categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                  />
+                )}
+                {activeStage === 6 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="ecosystem_evaluation"
+                    categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                  />
+                )}
+
                 <div className="flex items-center justify-between pt-2">
                   {activeStage > 1 ? (
                     <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}><ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}</Button>

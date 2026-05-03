@@ -8,6 +8,7 @@ import { runStage2 } from "./stages/stage2";
 import { runStage3 } from "./stages/stage3";
 import { runStage4Full } from "./stages/stage4";
 import { runStage5A, runStage6 } from "./stages/stage5";
+import { resolvePromptContent } from "./prompts";
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -146,8 +147,14 @@ export async function runSingleStage(
         await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors: ${vendorNames}`);
         await progress(`Execution criteria: ${execCriteria}`);
         await progress(`Viability criteria: ${viabCriteria}`);
-        await progress(`Calling AI — generating ${(stage1.vendors?.length ?? 0) * allCriteria.length} scores with 100–250 word commentary each…`);
-        result = await runStage2(inputName, stage1, allCriteria, llmConfig, sourceContext);
+        await progress(`Calling AI — two-call pattern (scoring → commentary) per criterion…`);
+        result = await runStage2(inputName, stage1, allCriteria, llmConfig, sourceContext, {
+          resolveScoringPrompt: (criterionName) =>
+            resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "scoring", criterionName }),
+          resolveCommentaryPrompt: (criterionName) =>
+            resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
+          onProgress: progress,
+        });
         await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
         break;
       }
@@ -171,8 +178,14 @@ export async function runSingleStage(
         await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
         result = await runStage4Full(
           inputName, stage1, stage3, llmConfig, sourceContext,
-          async (done, total, vendorNames, featureRange) => {
-            await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
+          {
+            resolveScoringPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
+            resolveCommentaryPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
+            onBatchComplete: async (done, total, vendorNames, featureRange) => {
+              await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
+            },
           }
         );
         await progress(`✓ Generated ${result.support?.length ?? 0} product support scores`);
@@ -198,7 +211,13 @@ export async function runSingleStage(
         await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
         result = await runStage6(
           inputName, stage1, stage5A, llmConfig, sourceContext,
-          async (msg: string) => { await progress(msg); }
+          {
+            resolveScoringPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
+            resolveCommentaryPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
+            onProgress: async (msg: string) => { await progress(msg); },
+          }
         );
         await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem integration scores`);
         break;

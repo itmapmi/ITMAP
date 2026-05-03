@@ -38,6 +38,38 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── Per-job prompt selections ────────────────────────────────────────────
+
+  app.get("/api/admin/market-builder/jobs/:id/prompt-selections", requireAdmin, async (req, res) => {
+    try {
+      const selections = await storage.listJobPromptSelections(req.params.id);
+      res.json(selections);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Bulk upsert. Body: { selections: Array<{stage, targetType, targetKey, promptType, promptId|null}> }
+  // Pass promptId=null to clear an override.
+  app.put("/api/admin/market-builder/jobs/:id/prompt-selections", requireAdmin, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const items: Array<{ stage: any; targetType: string; targetKey: string; promptType: any; promptId: string | null }>
+        = Array.isArray(req.body?.selections) ? req.body.selections : [];
+      for (const item of items) {
+        if (!item.stage || !item.targetType || !item.targetKey || !item.promptType) continue;
+        if (item.promptId) {
+          await storage.upsertJobPromptSelection({
+            jobId, stage: item.stage, targetType: item.targetType,
+            targetKey: item.targetKey, promptType: item.promptType, promptId: item.promptId,
+          });
+        } else {
+          await storage.clearJobPromptSelection(jobId, item.stage, item.targetType, item.targetKey, item.promptType);
+        }
+      }
+      const updated = await storage.listJobPromptSelections(jobId);
+      res.json(updated);
+    } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
   // ── SSE stream — runs exactly ONE stage ──────────────────────────────────
   //
   // Required query param: ?stage=1..5
