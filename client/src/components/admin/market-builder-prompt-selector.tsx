@@ -14,7 +14,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Sparkles, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ChevronDown, ChevronRight, Sparkles, Lock, Plus } from "lucide-react";
+import { PromptsAdmin } from "./prompts-admin";
 
 type StageKind = "vendor_evaluation" | "product_evaluation" | "ecosystem_evaluation";
 type PromptType = "scoring" | "commentary";
@@ -52,6 +54,7 @@ export function PromptSelector({ jobId, stageKind, criteria, categories }: Props
   const { toast } = useToast();
   const [collapsed, setCollapsed] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const { data: prompts = [] } = useQuery<Prompt[]>({
     queryKey: ["/api/admin/prompts", { stage: stageKind }],
@@ -104,21 +107,45 @@ export function PromptSelector({ jobId, stageKind, criteria, categories }: Props
 
   return (
     <div className="rounded-lg border border-purple-100 bg-purple-50/30">
-      <button
-        type="button"
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-purple-50/50 transition-colors"
-        onClick={() => setCollapsed(c => !c)}
-      >
-        <div className="flex items-center gap-2">
+      <div className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-purple-50/50 transition-colors">
+        <button
+          type="button"
+          className="flex items-center gap-2 flex-1 text-left"
+          onClick={() => setCollapsed(c => !c)}
+        >
           <Sparkles className="h-4 w-4 text-purple-600" />
           <span className="text-sm font-semibold text-purple-900">Customize Prompts</span>
           {overrideCount > 0 && (
             <span className="text-xs bg-purple-600 text-white rounded-full px-2 py-0.5">{overrideCount} override{overrideCount === 1 ? "" : "s"}</span>
           )}
           <span className="text-xs text-purple-700/80">— each row uses the system default unless you choose a custom prompt.</span>
-        </div>
-        {collapsed ? <ChevronRight className="h-4 w-4 text-purple-700" /> : <ChevronDown className="h-4 w-4 text-purple-700" />}
-      </button>
+        </button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs gap-1 shrink-0 border-purple-200 bg-white hover:bg-purple-50"
+          onClick={(e) => { e.stopPropagation(); setManageOpen(true); }}
+        >
+          <Plus className="h-3.5 w-3.5" /> New / Manage Prompts
+        </Button>
+        <button
+          type="button"
+          className="shrink-0"
+          onClick={() => setCollapsed(c => !c)}
+          aria-label={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4 text-purple-700" /> : <ChevronDown className="h-4 w-4 text-purple-700" />}
+        </button>
+      </div>
+
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Prompt Repository</DialogTitle>
+          </DialogHeader>
+          <PromptsAdmin />
+        </DialogContent>
+      </Dialog>
 
       {!collapsed && (
         <div className="px-4 pb-4 space-y-3">
