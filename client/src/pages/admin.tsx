@@ -17,8 +17,9 @@ import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
-import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
+import { Wand2, ArrowRight } from "lucide-react";
 import { FadeInSection } from "@/components/ui/animated-card";
 
 function PendingBadge() {
@@ -76,6 +77,30 @@ export default function Admin() {
       </FadeInSection>
 
       <motion.div
+        className="mb-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.35 }}
+      >
+        <Link href="/market-builder">
+          <a className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100 transition-colors group">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2">
+                <Wand2 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-900 text-sm">AI Market Builder</p>
+                <p className="text-xs text-blue-600 mt-0.5">
+                  Generate a complete market — vendors, criteria, features, scores and support levels — from a description
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 text-blue-400 group-hover:text-blue-600 transition-colors shrink-0" />
+          </a>
+        </Link>
+      </motion.div>
+
+      <motion.div
         className="bg-white rounded-xl shadow-sm p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -100,7 +125,6 @@ export default function Admin() {
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
-            <TabsTrigger value="market-builder">AI Builder</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -165,10 +189,6 @@ export default function Admin() {
 
           <TabsContent value="api-keys" className="mt-6">
             <ApiKeysAdmin />
-          </TabsContent>
-
-          <TabsContent value="market-builder" className="mt-6">
-            <MarketBuilderWizard />
           </TabsContent>
         </Tabs>
       </motion.div>
