@@ -29,170 +29,134 @@ export function sendEvent(res: Response, event: Record<string, unknown>): void {
 async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> {
   const provider = (job.llmProvider ?? "openai") as LLMConfig["provider"];
   const model = job.llmModel ?? "gpt-4.1-mini";
-
-  // Look up stored API key for this provider
   const setting = await storage.getMarketBuilderLlmSetting(provider);
-  const apiKey = setting?.apiKey;
-
-  return { provider, model, apiKey };
+  return { provider, model, apiKey: setting?.apiKey };
 }
 
-// ── Stage runner ──────────────────────────────────────────────────────────
+// ── Load a completed stage result from DB ─────────────────────────────────
 
-export async function runMarketBuilderJob(
+async function loadStageResult(jobId: string, stage: number): Promise<any> {
+  const row = await storage.getMarketBuilderStage(jobId, stage);
+  if (!row || row.status !== "completed" || !row.result) {
+    throw new Error(`Stage ${stage} has not been completed yet — run it first before running stage ${stage + 1}.`);
+  }
+  return row.result;
+}
+
+// ── Run exactly ONE stage ─────────────────────────────────────────────────
+//
+// Each stage runs independently. The frontend controls sequencing and
+// approval — this function always runs exactly the stage requested.
+
+export async function runSingleStage(
   res: Response,
   job: MarketBuilderJob,
-  startFromStage?: number   // if set, only run this specific stage (regenerate mode)
+  stageNum: number
 ): Promise<void> {
   const { id: jobId, inputName, inputDescription, inputCategory, inputContext } = job;
 
   const llmConfig = await buildLLMConfig(job);
-
-  // Load all sources for this job once
   const allSources = await storage.listMarketBuilderSources(jobId);
+  const sourceContext = buildSourceContext(allSources, stageNum);
 
-  const loadStage = async (stage: number) => {
-    const row = await storage.getMarketBuilderStage(jobId, stage);
-    return row?.status === "completed" ? (row.result as any) : null;
-  };
-
-  const markRunning = (stage: number) =>
-    storage.upsertMarketBuilderStage(jobId, stage, {
+  const markRunning = () =>
+    storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "running",
       startedAt: new Date(),
+      result: null,
+      error: null,
     });
 
-  const markComplete = (stage: number, result: unknown) =>
-    storage.upsertMarketBuilderStage(jobId, stage, {
+  const markComplete = (result: unknown) =>
+    storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "completed",
       result: result as any,
       completedAt: new Date(),
     });
 
-  const markFailed = (stage: number, error: string) =>
-    storage.upsertMarketBuilderStage(jobId, stage, {
+  const markFailed = (error: string) =>
+    storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "failed",
       error,
       completedAt: new Date(),
     });
 
-  const shouldRun = (stage: number) =>
-    startFromStage == null || stage === startFromStage;
-
   try {
     await storage.updateMarketBuilderJob(jobId, { status: "running" });
-    sendEvent(res, { type: "job_start", jobId });
+    await markRunning();
+    sendEvent(res, { type: "stage_start", stage: stageNum });
 
-    // ── Stage 1 ────────────────────────────────────────────────────────
-    let stage1Result = await loadStage(1);
-    if (!stage1Result || shouldRun(1)) {
-      const ctx = buildSourceContext(allSources, 1);
-      sendEvent(res, { type: "stage_start", stage: 1, label: "Identifying vendors" });
-      await markRunning(1);
-      try {
-        stage1Result = await runStage1({ name: inputName, description: inputDescription, category: inputCategory, context: inputContext }, llmConfig, ctx);
-        await markComplete(1, stage1Result);
-        sendEvent(res, { type: "stage_complete", stage: 1, label: "Vendors identified", summary: `Found ${stage1Result.vendors.length} vendors`, result: stage1Result });
-      } catch (err: any) {
-        await markFailed(1, err.message);
-        sendEvent(res, { type: "stage_error", stage: 1, error: err.message });
-        await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-        res.end(); return;
+    let result: any;
+
+    switch (stageNum) {
+      case 1: {
+        result = await runStage1(
+          { name: inputName, description: inputDescription, category: inputCategory, context: inputContext },
+          llmConfig,
+          sourceContext
+        );
+        break;
       }
-    } else {
-      sendEvent(res, { type: "stage_skipped", stage: 1, label: "Vendors identified (resumed)", result: stage1Result });
+
+      case 2: {
+        const stage1 = await loadStageResult(jobId, 1);
+        result = await runStage2(inputName, stage1, llmConfig, sourceContext);
+        break;
+      }
+
+      case 3: {
+        const stage1 = await loadStageResult(jobId, 1);
+        result = await runStage3(inputName, stage1, llmConfig, sourceContext);
+        break;
+      }
+
+      case 4: {
+        const stage1 = await loadStageResult(jobId, 1);
+        const stage2 = await loadStageResult(jobId, 2);
+        result = await runStage4(inputName, stage1, stage2, llmConfig, sourceContext);
+        break;
+      }
+
+      case 5: {
+        const stage1 = await loadStageResult(jobId, 1);
+        const stage3 = await loadStageResult(jobId, 3);
+        result = await runStage5Full(
+          inputName, stage1, stage3, llmConfig, sourceContext,
+          (done, total) => {
+            sendEvent(res, { type: "stage_progress", stage: 5, message: `Scoring vendor batch ${done} of ${total}…` });
+          }
+        );
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown stage number: ${stageNum}`);
     }
 
-    // ── Stage 2 ────────────────────────────────────────────────────────
-    let stage2Result = await loadStage(2);
-    if (!stage2Result || shouldRun(2)) {
-      const ctx = buildSourceContext(allSources, 2);
-      sendEvent(res, { type: "stage_start", stage: 2, label: "Defining evaluation criteria" });
-      await markRunning(2);
-      try {
-        stage2Result = await runStage2(inputName, stage1Result, llmConfig, ctx);
-        await markComplete(2, stage2Result);
-        sendEvent(res, { type: "stage_complete", stage: 2, label: "Criteria defined", summary: `${stage2Result.criteria.length} criteria`, result: stage2Result });
-      } catch (err: any) {
-        await markFailed(2, err.message);
-        sendEvent(res, { type: "stage_error", stage: 2, error: err.message });
-        await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-        res.end(); return;
-      }
-    } else {
-      sendEvent(res, { type: "stage_skipped", stage: 2, label: "Criteria defined (resumed)", result: stage2Result });
+    await markComplete(result);
+
+    // After all 5 stages are done and approved, mark job completed.
+    // We only set "running" here; the client calls the /complete endpoint after approving stage 5.
+    const allStages = await storage.getMarketBuilderStages(jobId);
+    const allDone = [1,2,3,4,5].every(n => allStages.find(s => s.stage === n)?.status === "completed");
+    if (allDone) {
+      await storage.updateMarketBuilderJob(jobId, { status: "completed" });
     }
 
-    // ── Stage 3 ────────────────────────────────────────────────────────
-    let stage3Result = await loadStage(3);
-    if (!stage3Result || shouldRun(3)) {
-      const ctx = buildSourceContext(allSources, 3);
-      sendEvent(res, { type: "stage_start", stage: 3, label: "Building feature matrix" });
-      await markRunning(3);
-      try {
-        stage3Result = await runStage3(inputName, stage1Result, llmConfig, ctx);
-        await markComplete(3, stage3Result);
-        const fc = stage3Result.categories.reduce((s: number, c: any) => s + c.features.length, 0);
-        sendEvent(res, { type: "stage_complete", stage: 3, label: "Feature matrix built", summary: `${stage3Result.categories.length} categories, ${fc} features`, result: stage3Result });
-      } catch (err: any) {
-        await markFailed(3, err.message);
-        sendEvent(res, { type: "stage_error", stage: 3, error: err.message });
-        await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-        res.end(); return;
-      }
-    } else {
-      sendEvent(res, { type: "stage_skipped", stage: 3, label: "Feature matrix built (resumed)", result: stage3Result });
-    }
+    const summary =
+      stageNum === 1 ? `Found ${result.vendors?.length ?? 0} vendors` :
+      stageNum === 2 ? `Defined ${result.criteria?.length ?? 0} criteria` :
+      stageNum === 3 ? `Built ${result.categories?.length ?? 0} categories` :
+      stageNum === 4 ? `Generated ${result.scores?.length ?? 0} scores` :
+      `Generated ${result.support?.length ?? 0} support records`;
 
-    // ── Stage 4 ────────────────────────────────────────────────────────
-    let stage4Result = await loadStage(4);
-    if (!stage4Result || shouldRun(4)) {
-      const ctx = buildSourceContext(allSources, 4);
-      sendEvent(res, { type: "stage_start", stage: 4, label: "Scoring vendors" });
-      await markRunning(4);
-      try {
-        stage4Result = await runStage4(inputName, stage1Result, stage2Result, llmConfig, ctx);
-        await markComplete(4, stage4Result);
-        sendEvent(res, { type: "stage_complete", stage: 4, label: "Scoring complete", summary: `${stage4Result.scores.length} scores`, result: stage4Result });
-      } catch (err: any) {
-        await markFailed(4, err.message);
-        sendEvent(res, { type: "stage_error", stage: 4, error: err.message });
-        await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-        res.end(); return;
-      }
-    } else {
-      sendEvent(res, { type: "stage_skipped", stage: 4, label: "Scoring complete (resumed)", result: stage4Result });
-    }
-
-    // ── Stage 5 ────────────────────────────────────────────────────────
-    let stage5Result = await loadStage(5);
-    if (!stage5Result || shouldRun(5)) {
-      const ctx = buildSourceContext(allSources, 5);
-      sendEvent(res, { type: "stage_start", stage: 5, label: "Evaluating feature support" });
-      await markRunning(5);
-      try {
-        stage5Result = await runStage5Full(inputName, stage1Result, stage3Result, llmConfig, ctx, (done, total) => {
-          sendEvent(res, { type: "stage_progress", stage: 5, message: `Evaluating vendor batch ${done} of ${total}…` });
-        });
-        await markComplete(5, stage5Result);
-        sendEvent(res, { type: "stage_complete", stage: 5, label: "Feature support evaluated", summary: `${stage5Result.support.length} records`, result: stage5Result });
-      } catch (err: any) {
-        await markFailed(5, err.message);
-        sendEvent(res, { type: "stage_error", stage: 5, error: err.message });
-        await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-        res.end(); return;
-      }
-    } else {
-      sendEvent(res, { type: "stage_skipped", stage: 5, label: "Feature support evaluated (resumed)", result: stage5Result });
-    }
-
-    await storage.updateMarketBuilderJob(jobId, { status: "completed" });
-    sendEvent(res, { type: "job_complete", jobId, message: "All stages complete. Ready to publish." });
+    sendEvent(res, { type: "stage_complete", stage: stageNum, result, summary });
 
   } catch (err: any) {
-    console.error(`[MarketBuilder] Unexpected error for job ${jobId}:`, err);
+    console.error(`[MarketBuilder] Stage ${stageNum} error for job ${jobId}:`, err);
+    await markFailed(err.message);
     await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
-    sendEvent(res, { type: "job_error", error: err.message });
+    sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
   } finally {
     res.end();
   }

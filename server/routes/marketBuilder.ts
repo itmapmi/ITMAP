@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
-import { initSSE, sendEvent, runMarketBuilderJob } from "../market-builder/runner";
+import { initSSE, sendEvent, runSingleStage } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 
 export function registerMarketBuilderRoutes(app: Express): void {
@@ -37,47 +37,36 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  // ── SSE stream — run or resume all stages ────────────────────────────────
+  // ── SSE stream — runs exactly ONE stage ──────────────────────────────────
+  //
+  // Required query param: ?stage=1..5
+  // The frontend calls this once per stage, waits for stage_complete,
+  // shows results for approval, then calls it again for the next stage.
+  // The same endpoint is used for initial runs AND re-runs.
 
   app.get("/api/admin/market-builder/jobs/:id/stream", requireAdmin, async (req, res) => {
     try {
+      const stageNum = parseInt(req.query.stage as string, 10);
+      if (!stageNum || stageNum < 1 || stageNum > 5) {
+        res.status(400).json({ error: "?stage=1..5 is required" });
+        return;
+      }
+
       const job = await storage.getMarketBuilderJob(req.params.id);
       if (!job) { res.status(404).json({ error: "Job not found" }); return; }
       if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
 
       initSSE(res);
-      req.on("close", () => console.log(`[MarketBuilder] Client disconnected: ${job.id}`));
+      req.on("close", () => {});
 
-      runMarketBuilderJob(res, job).catch(err => {
-        console.error(`[MarketBuilder] Runner error for ${job.id}:`, err);
-        try { sendEvent(res, { type: "job_error", error: err.message }); res.end(); } catch (_) {}
+      runSingleStage(res, job, stageNum).catch(err => {
+        console.error(`[MarketBuilder] Stage ${stageNum} error for ${job.id}:`, err);
+        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
       });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  // ── Regenerate a single stage ─────────────────────────────────────────────
-  // Resets the stage, then streams just that one stage (others are skipped).
-
-  app.post("/api/admin/market-builder/jobs/:id/stages/:stage/regenerate", requireAdmin, async (req, res) => {
-    try {
-      const stageNum = parseInt(req.params.stage, 10);
-      const job = await storage.getMarketBuilderJob(req.params.id);
-      if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-
-      await storage.resetMarketBuilderStage(job.id, stageNum);
-      await storage.updateMarketBuilderJob(job.id, { status: "running" });
-
-      initSSE(res);
-      req.on("close", () => console.log(`[MarketBuilder] Regen client disconnected: ${job.id} stage ${stageNum}`));
-
-      runMarketBuilderJob(res, job, stageNum).catch(err => {
-        console.error(`[MarketBuilder] Regen error for ${job.id} stage ${stageNum}:`, err);
-        try { sendEvent(res, { type: "job_error", error: err.message }); res.end(); } catch (_) {}
-      });
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
-  });
-
-  // ── Update stage result (manual edits) ───────────────────────────────────
+  // ── Update stage result (manual edits before approval) ───────────────────
 
   app.patch("/api/admin/market-builder/jobs/:id/stages/:stage/result", requireAdmin, async (req, res) => {
     try {
@@ -87,12 +76,26 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── Mark job completed (called after all 5 stages approved) ──────────────
+
+  app.post("/api/admin/market-builder/jobs/:id/complete", requireAdmin, async (req, res) => {
+    try {
+      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+      const allDone = [1,2,3,4,5].every(n =>
+        job.stages.find(s => s.stage === n)?.status === "completed"
+      );
+      if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
+      const updated = await storage.updateMarketBuilderJob(job.id, { status: "completed" });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── LLM Settings ──────────────────────────────────────────────────────────
 
   app.get("/api/admin/market-builder/settings/llm", requireAdmin, async (_req, res) => {
     try {
       const settings = await storage.listMarketBuilderLlmSettings();
-      // Mask keys for security — only send whether they exist
       const masked = settings.map(s => ({
         provider: s.provider,
         hasKey: !!s.apiKey,
@@ -125,13 +128,11 @@ export function registerMarketBuilderRoutes(app: Express): void {
     catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  // Add a URL source — fetches content server-side
   app.post("/api/admin/market-builder/jobs/:id/sources/url", requireAdmin, async (req, res) => {
     try {
       const { url, name, stage } = req.body;
       if (!url) return res.status(400).json({ error: "url is required" });
 
-      // Fetch content
       let content = "";
       try { content = await fetchUrlContent(url); }
       catch (err: any) { content = `[Error fetching URL: ${err.message}]`; }
@@ -148,7 +149,6 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  // Add a file source — client sends extracted text in request body
   app.post("/api/admin/market-builder/jobs/:id/sources/file", requireAdmin, async (req, res) => {
     try {
       const { name, content, stage } = req.body;
@@ -203,7 +203,11 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       const vendorIdMap = new Map<string, string>();
       for (const v of stage1.vendors) {
-        const vendor = await storage.createVendor({ name: v.name, product: v.product, website: v.website, description: v.description, newsroomUrl: v.newsroomUrl, marketId: market.id, revenue: null });
+        const vendor = await storage.createVendor({
+          name: v.name, product: v.product, website: v.website,
+          description: v.description, newsroomUrl: v.newsroomUrl,
+          marketId: market.id, revenue: null,
+        });
         vendorIdMap.set(v.name, vendor.id);
       }
 
@@ -217,10 +221,16 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const featureIdMap = new Map<string, string>();
       let catOrder = 0;
       for (const cat of stage3.categories) {
-        const category = await storage.createFeatureCategory({ name: cat.name, description: cat.description, marketId: market.id, displayOrder: catOrder++ });
+        const category = await storage.createFeatureCategory({
+          name: cat.name, description: cat.description,
+          marketId: market.id, displayOrder: catOrder++,
+        });
         let featOrder = 0;
         for (const f of cat.features) {
-          const feature = await storage.createFeature({ name: f.name, description: f.description, categoryId: category.id, displayOrder: featOrder++ });
+          const feature = await storage.createFeature({
+            name: f.name, description: f.description,
+            categoryId: category.id, displayOrder: featOrder++,
+          });
           featureIdMap.set(f.name, feature.id);
         }
       }
@@ -240,7 +250,6 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
 
       await storage.updateMarketBuilderJob(job.id, { status: "published", marketId: market.id });
-
       res.json({ success: true, marketId: market.id, isVisible });
     } catch (err: any) {
       console.error("[MarketBuilder] Publish error:", err);

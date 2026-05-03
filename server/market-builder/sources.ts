@@ -1,6 +1,9 @@
 /**
  * Handles fetching and extracting content from user-provided sources
  * (public URLs and uploaded file text) to inject into LLM prompts.
+ *
+ * When sources are present the LLM is instructed to use ONLY those sources.
+ * When no sources are present the LLM falls back to its general knowledge.
  */
 
 const MAX_CHARS_PER_SOURCE = 10_000;
@@ -62,6 +65,9 @@ export interface SourceRecord {
 /**
  * Builds the source context string to inject into LLM prompts.
  * Includes global sources (stage = null) + stage-specific sources.
+ *
+ * IMPORTANT: When sources are present, the returned string instructs the LLM
+ * to use ONLY those sources — not its training knowledge.
  */
 export function buildSourceContext(
   allSources: SourceRecord[],
@@ -92,8 +98,20 @@ export function buildSourceContext(
   if (sections.length === 0) return "";
 
   return (
-    "\n\n=== ADDITIONAL RESEARCH SOURCES (use these alongside your own knowledge) ===\n" +
+    "\n\n" +
+    "╔══════════════════════════════════════════════════════════════╗\n" +
+    "║  MANDATORY INSTRUCTION — READ CAREFULLY BEFORE RESPONDING  ║\n" +
+    "║                                                              ║\n" +
+    "║  The user has provided specific research sources below.      ║\n" +
+    "║  You MUST base your ENTIRE response ONLY on the content     ║\n" +
+    "║  of those sources. Do NOT use general knowledge, training   ║\n" +
+    "║  data, or any information not explicitly stated in the      ║\n" +
+    "║  sources. If a vendor or feature is not mentioned in the    ║\n" +
+    "║  sources, state that it is 'not covered in provided         ║\n" +
+    "║  sources' rather than guessing.                             ║\n" +
+    "╚══════════════════════════════════════════════════════════════╝\n\n" +
+    "=== PROVIDED RESEARCH SOURCES ===\n\n" +
     sections.join("\n\n") +
-    "\n=== END OF ADDITIONAL SOURCES ===\n"
+    "\n\n=== END OF PROVIDED SOURCES ===\n"
   );
 }
