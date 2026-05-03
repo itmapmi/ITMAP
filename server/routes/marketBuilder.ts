@@ -586,19 +586,19 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
       const data = insertMarketBuilderJobSchema.parse({ ...req.body, createdBy: user.id });
-      // Preflight: end-user jobs run on BYO keys, so reject early (412
-      // Precondition Failed) if the user has no key for the chosen provider.
-      // The wizard surfaces the typed error and links to /me/settings/llm-keys.
-      const provider = (data as any).llmProvider as string | undefined;
-      if (provider) {
-        const key = await storage.getUserLlmApiKey(user.id, provider as any);
-        if (!key?.apiKey) {
-          return res.status(412).json({
-            error: `Missing ${provider} API key`,
-            code: "MISSING_LLM_KEY",
-            provider,
-          });
-        }
+      // Preflight: end-user jobs run strictly on BYO keys for ALL providers
+      // (no Replit AI Integration fallback). Resolve the effective provider
+      // — body wins, otherwise the schema/DB default of "openai" — and
+      // reject early (412) if the user has no key for it.
+      const provider = ((data as any).llmProvider ?? "openai") as string;
+      const key = await storage.getUserLlmApiKey(user.id, provider as any);
+      if (!key?.apiKey) {
+        return res.status(412).json({
+          error: `Missing ${provider} API key. Add it in Settings → LLM Keys before running.`,
+          code: "MISSING_LLM_KEY",
+          provider,
+          forUser: true,
+        });
       }
       res.status(201).json(await storage.createMarketBuilderJob(data));
     } catch (err: any) { res.status(400).json({ error: err.message }); }
@@ -619,12 +619,20 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
   app.put("/api/market-builder/jobs/:id/prompt-selections", requireAuth, requireJobOwner, async (req, res) => {
     try {
+      const user = req.user as any;
       const jobId = req.params.id;
       const items: Array<{ stage: any; targetType: string; targetKey: string; promptType: any; promptId: string | null }>
         = Array.isArray(req.body?.selections) ? req.body.selections : [];
       for (const item of items) {
         if (!item.stage || !item.targetType || !item.targetKey || !item.promptType) continue;
         if (item.promptId) {
+          // Validate scope: end users may only select system prompts
+          // (ownerUserId IS NULL) or prompts they themselves own. Reject
+          // anything else with 403 to prevent picking another user's
+          // private prompt by guessing its UUID.
+          const prompt = await storage.getPrompt(item.promptId);
+          const ok = prompt && (prompt.ownerUserId === null || prompt.ownerUserId === user.id);
+          if (!ok) return res.status(403).json({ error: "You don't have access to that prompt." });
           await storage.upsertJobPromptSelection({
             jobId, stage: item.stage, targetType: item.targetType,
             targetKey: item.targetKey, promptType: item.promptType, promptId: item.promptId,

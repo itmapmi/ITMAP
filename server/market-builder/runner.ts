@@ -76,11 +76,14 @@ export async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> 
   const provider = (job.llmProvider ?? "openai") as LLMConfig["provider"];
   const model = job.llmModel ?? "gpt-4.1-mini";
   const apiKey = await resolveJobOwnerKey(job, provider);
-  // OpenAI is special-cased downstream: it falls back to the Replit AI Integration
-  // when no key is supplied, so we don't pre-throw here for openai.
-  if (!apiKey && provider !== "openai") {
-    const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
-    const forUser = !!owner && owner.role !== "admin";
+  const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
+  const forUser = !!owner && owner.role !== "admin";
+  // BYO-key policy:
+  //   - End users MUST supply their own key for every provider (including
+  //     OpenAI) — the platform's Replit AI Integration fallback is admin-only.
+  //   - Admin jobs may run on the OpenAI integration fallback when no
+  //     marketBuilderLlmSettings key is set, so we only pre-throw for non-openai.
+  if (!apiKey && (forUser || provider !== "openai")) {
     throw new MissingLlmKeyError(provider, forUser);
   }
   return { provider, model, apiKey };

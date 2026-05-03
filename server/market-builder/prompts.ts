@@ -246,10 +246,10 @@ export async function resolveLlmConfig(
   const apiKey = provider === fallback.provider
     ? fallback.apiKey
     : (keyResolver ? await keyResolver(provider) : undefined);
-  // OpenAI is special-cased downstream (Replit AI Integration fallback) so we
-  // don't pre-throw. For any other provider, surface a typed MissingLlmKeyError
-  // so the caller can return a 412 with an actionable "add your key" message.
-  if (!apiKey && provider !== "openai") {
+  // BYO enforcement: end-user jobs may NOT use the Replit AI Integration
+  // OpenAI fallback. Admin jobs may, so we only allow the missing-openai
+  // case through for admin runs.
+  if (!apiKey && (forUser || provider !== "openai")) {
     const { MissingLlmKeyError } = await import("./runner");
     throw new MissingLlmKeyError(provider, forUser);
   }
