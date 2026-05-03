@@ -186,6 +186,12 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
+const AUTO_COMPUTED_CRITERIA = new Set(["Product Capabilities", "ISV Ecosystem"]);
+const AUTO_COMPUTED_LABELS: Record<string, string> = {
+  "Product Capabilities": "Auto-computed from Stages 3–4",
+  "ISV Ecosystem":        "Auto-computed from Stages 5–6",
+};
+
 function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
@@ -272,6 +278,15 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
         );
       })()}
 
+      {/* Auto-computed notice */}
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-800">
+          <strong>Product Capabilities</strong> and <strong>ISV Ecosystem</strong> scores are locked —
+          they are automatically computed from Harvey Ball data when the market is published (Stages 3–4 and 5–6 respectively).
+        </p>
+      </div>
+
       {/* Score matrix */}
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-2">Vendor Scores (0–10)</p>
@@ -279,13 +294,28 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
           <table className="w-full">
             <thead><tr className="bg-gray-50 border-b">
               <th className="text-left p-2 text-gray-600 w-32">Vendor</th>
-              {weights.map((w: any) => <th key={w.criterionName} className="p-2 text-gray-600 text-center whitespace-nowrap max-w-20 truncate" title={w.criterionName}>{w.criterionName}</th>)}
+              {weights.map((w: any) => (
+                <th key={w.criterionName} className={`p-2 text-center whitespace-nowrap max-w-20 truncate ${AUTO_COMPUTED_CRITERIA.has(w.criterionName) ? "text-amber-600" : "text-gray-600"}`}
+                    title={AUTO_COMPUTED_CRITERIA.has(w.criterionName) ? AUTO_COMPUTED_LABELS[w.criterionName] : w.criterionName}>
+                  {w.criterionName}
+                  {AUTO_COMPUTED_CRITERIA.has(w.criterionName) && <Lock className="inline h-2.5 w-2.5 ml-0.5 mb-0.5" />}
+                </th>
+              ))}
             </tr></thead>
             <tbody>{vendors.map(v => (
               <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="p-2 font-medium whitespace-nowrap">{v}</td>
                 {weights.map((w: any) => {
                   const s = getScore(v, w.criterionName);
+                  const isLocked = AUTO_COMPUTED_CRITERIA.has(w.criterionName);
+                  if (isLocked) {
+                    return (
+                      <td key={w.criterionName} className="p-1 text-center">
+                        <span className="rounded px-2 py-0.5 text-xs font-mono font-semibold bg-amber-50 text-amber-500 border border-amber-200 cursor-default select-none"
+                              title={AUTO_COMPUTED_LABELS[w.criterionName]}>auto</span>
+                      </td>
+                    );
+                  }
                   return <td key={w.criterionName} className="p-1 text-center">
                     <button onClick={() => { setSelected({ v, c: w.criterionName }); setEditScore(s?.score?.toString() ?? ""); setEditCommentary(s?.commentary ?? ""); setEditSources(s?.sources ?? []); }}
                       className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${scoreCellColor(s?.score ?? 0)}`}
@@ -296,7 +326,7 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
             ))}</tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Click any score cell to edit the score and commentary.</p>
+        <p className="text-xs text-gray-400 mt-1">Click any unlocked score cell to edit. Locked cells are auto-computed at publish.</p>
       </div>
     </div>
   );
