@@ -1,10 +1,5 @@
-import OpenAI from "openai";
+import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result } from "./stage1";
-
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
 
 export interface Stage3Feature {
   name: string;
@@ -27,39 +22,35 @@ Always respond with valid JSON only — no markdown, no explanation outside the 
 
 export async function runStage3(
   marketName: string,
-  stage1: Stage1Result
+  stage1: Stage1Result,
+  llmConfig: LLMConfig,
+  sourceContext: string = ""
 ): Promise<Stage3Result> {
   const vendorList = stage1.vendors.map(v => `- ${v.name}: ${v.description}`).join("\n");
 
   const userPrompt = `
-You are building a product capability evaluation matrix for the following technology market:
+You are building a product capability evaluation matrix for:
 
 Market: ${marketName}
 Summary: ${stage1.marketSummary}
 
 Vendors:
 ${vendorList}
+${sourceContext}
 
 Define feature categories and individual features to evaluate across all vendors.
 
 Structure:
-- 4–7 product feature categories (e.g. "Data Management", "Security & Compliance", "Performance & Scalability")
-- 1 ecosystem/integrations category (set isEcosystem: true) — covers third-party integrations, connectors, partner ecosystem
-- Each category should have 5–12 individual features
-- Features should be specific, binary or gradable capabilities (not vague)
+- 4–7 product feature categories
+- 1 ecosystem/integrations category (set isEcosystem: true)
+- Each category: 5–12 individual features
+- Total features across all categories: aim for 60–100
 
 For each category:
-- name: clear, short category name
-- description: 1 sentence describing what this category covers
-- isEcosystem: true only for the ecosystem/integrations category, false for all others
-- features: array of features within this category
+- name, description, isEcosystem (true only for ecosystem category)
+- features: array of { name, description }
 
-For each feature:
-- name: short, specific feature name (2–5 words)
-- description: 1 sentence describing what this feature means in the context of this market
-
-Make features specific to this market — they should be things a buyer would actually evaluate when selecting a vendor.
-Total features across all categories: aim for 60–100.
+Make features specific to this market — things a buyer would actually evaluate.
 
 Respond with ONLY a JSON object:
 {
@@ -68,31 +59,14 @@ Respond with ONLY a JSON object:
       "name": "...",
       "description": "...",
       "isEcosystem": false,
-      "features": [
-        { "name": "...", "description": "..." }
-      ]
+      "features": [{ "name": "...", "description": "..." }]
     }
   ]
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.3,
-  });
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("Stage 3: empty response from OpenAI");
-
-  const parsed = JSON.parse(content) as Stage3Result;
-
-  if (!Array.isArray(parsed.categories) || parsed.categories.length === 0) {
-    throw new Error("Stage 3: invalid response structure from OpenAI");
+  const result = await callLLMForJSON<Stage3Result>(llmConfig, SYSTEM_PROMPT, userPrompt);
+  if (!Array.isArray(result.categories) || result.categories.length === 0) {
+    throw new Error("Stage 3: invalid response structure from LLM");
   }
-
-  return parsed;
+  return result;
 }

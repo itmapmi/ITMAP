@@ -30,10 +30,22 @@ Preferred communication style: Simple, everyday language.
 ### Data Model
 The platform utilizes a relational data model encompassing Markets, Sub-Markets, Vendors, Criteria (Execution vs. Viability), Vendor Scores, Market Criteria Weights, Vendor News, Features, Research Reports, Historical Positions, and Market Builder Jobs/Stages.
 
-**Market Builder**: Two new tables support the AI Market Builder wizard (`/admin/market-builder`):
+**Market Builder**: Four tables support the AI Market Builder wizard (`/market-builder`):
 - `market_builder_jobs` — one row per wizard session (inputs, status, link to created market once published). Job lifecycle: `idle → running → completed | failed → published`.
 - `market_builder_stages` — one row per stage per job (stage 1–5, status, JSONB AI result, error, timestamps). Stage lifecycle: `pending → running → completed | failed`.
+- `market_builder_llm_settings` — one row per LLM provider, stores encrypted API key. Providers: `openai`, `anthropic`, `perplexity`.
+- `market_builder_sources` — source materials (URLs + uploaded files) attached to a job, optionally scoped to a specific stage.
+
 Storage module: `server/storage/marketBuilder.ts`. These tables enable resumability — if the browser closes mid-wizard, the job survives.
+
+**Market Builder features:**
+- **LLM provider selection**: Choose OpenAI, Anthropic (Claude), or Perplexity, with all published models listed. API keys stored via `PUT /api/admin/market-builder/settings/llm/:provider`, shown only as preview.
+- **Per-stage source materials**: URLs are fetched server-side (HTML stripped, capped at 10k chars each, 40k total). Files can be uploaded or pasted as text. Sources can be scoped globally or to a specific stage.
+- **Editable stage results**: Each stage result is editable inline — vendors, criteria weights, feature chips, score matrix (click-to-edit), and Harvey Ball support grid. Edits saved via `PATCH /api/admin/market-builder/jobs/:id/stages/:stage/result`.
+- **Regenerate individual stages**: POST to `/api/admin/market-builder/jobs/:id/stages/:stage/regenerate` resets and re-runs a single stage via SSE stream.
+- **Horizontal step tracker**: Top-of-page tracker shows all 5 stages with completion status; clicking a completed stage navigates to it in review mode.
+- **Post-publish visibility toggle**: After publishing, a Switch lets admins toggle market visibility without navigating away. Also available via `PATCH /api/admin/market-builder/jobs/:id/visibility`.
+- **Key files**: `server/market-builder/llm.ts` (OpenAI/Anthropic/Perplexity abstraction), `server/market-builder/sources.ts` (URL fetch + source context builder), `server/market-builder/stages/stage{1-5}.ts` (per-stage runners), `server/market-builder/runner.ts` (SSE orchestrator), `server/routes/marketBuilder.ts` (API routes), `client/src/components/admin/market-builder-wizard.tsx` (complete UI), `client/src/components/admin/market-builder-llm-panel.tsx`, `client/src/components/admin/market-builder-sources.tsx`.
 
 **Feature Support Scoring**: Uses Harvey Ball scale (0-4) for vendor feature support:
 - 0 = Not Supported (0%)

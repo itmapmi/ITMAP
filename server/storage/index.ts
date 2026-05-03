@@ -143,16 +143,29 @@ export interface IStorage {
   getExternalSessionMessages(sessionId: string): Promise<ExternalChatMessage[]>;
   addExternalMessage(sessionId: string, role: string, content: string): Promise<ExternalChatMessage>;
 
-  // Market Builder
+  // Market Builder — Jobs
   createMarketBuilderJob(data: import("@shared/schema").InsertMarketBuilderJob): Promise<import("@shared/schema").MarketBuilderJob>;
   getMarketBuilderJob(id: string): Promise<import("@shared/schema").MarketBuilderJob | undefined>;
   listMarketBuilderJobs(): Promise<import("@shared/schema").MarketBuilderJob[]>;
   updateMarketBuilderJob(id: string, data: Partial<Pick<import("@shared/schema").MarketBuilderJob, "status" | "marketId" | "error" | "updatedAt">>): Promise<import("@shared/schema").MarketBuilderJob>;
   deleteMarketBuilderJob(id: string): Promise<void>;
+  getMarketBuilderJobWithStages(id: string): Promise<(import("@shared/schema").MarketBuilderJob & { stages: import("@shared/schema").MarketBuilderStage[] }) | undefined>;
+  // Market Builder — Stages
   getMarketBuilderStages(jobId: string): Promise<import("@shared/schema").MarketBuilderStage[]>;
   getMarketBuilderStage(jobId: string, stage: number): Promise<import("@shared/schema").MarketBuilderStage | undefined>;
   upsertMarketBuilderStage(jobId: string, stage: number, data: Partial<Pick<import("@shared/schema").MarketBuilderStage, "status" | "result" | "error" | "startedAt" | "completedAt">>): Promise<import("@shared/schema").MarketBuilderStage>;
-  getMarketBuilderJobWithStages(id: string): Promise<(import("@shared/schema").MarketBuilderJob & { stages: import("@shared/schema").MarketBuilderStage[] }) | undefined>;
+  resetMarketBuilderStage(jobId: string, stage: number): Promise<void>;
+  updateStageResult(jobId: string, stage: number, result: unknown): Promise<import("@shared/schema").MarketBuilderStage>;
+  // Market Builder — LLM Settings
+  listMarketBuilderLlmSettings(): Promise<import("@shared/schema").MarketBuilderLlmSettings[]>;
+  getMarketBuilderLlmSetting(provider: string): Promise<import("@shared/schema").MarketBuilderLlmSettings | undefined>;
+  upsertMarketBuilderLlmSetting(provider: string, apiKey: string): Promise<import("@shared/schema").MarketBuilderLlmSettings>;
+  deleteMarketBuilderLlmSetting(provider: string): Promise<void>;
+  // Market Builder — Sources
+  listMarketBuilderSources(jobId: string): Promise<import("@shared/schema").MarketBuilderSource[]>;
+  createMarketBuilderSource(data: import("@shared/schema").InsertMarketBuilderSource): Promise<import("@shared/schema").MarketBuilderSource>;
+  updateMarketBuilderSourceContent(id: string, content: string): Promise<void>;
+  deleteMarketBuilderSource(id: string): Promise<void>;
 }
 
 export const storage: IStorage = {

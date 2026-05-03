@@ -696,20 +696,44 @@ export const marketBuilderJobs = pgTable("market_builder_jobs", {
   status: text("status").notNull().default("idle"),
   // idle | running | completed | failed | published
 
-  // Market being built — null until Stage 1 completes
+  // Market being built — null until published
   marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
 
   // Inputs supplied by the admin in the wizard form
   inputName: text("input_name").notNull(),
   inputDescription: text("input_description").notNull(),
   inputCategory: text("input_category"),
-  inputContext: text("input_context"), // extra free-text context for the AI
+  inputContext: text("input_context"),
+
+  // LLM configuration
+  llmProvider: text("llm_provider").notNull().default("openai"),
+  llmModel: text("llm_model").notNull().default("gpt-4.1-mini"),
 
   // Error message if the job failed at the job level
   error: text("error"),
 
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// ── LLM provider API keys (one row per provider) ──────────────────────────
+export const marketBuilderLlmSettings = pgTable("market_builder_llm_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull().unique(), // openai | anthropic | perplexity
+  apiKey: text("api_key").notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// ── Source materials: URLs/files attached to a job, optionally per-stage ──
+export const marketBuilderSources = pgTable("market_builder_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => marketBuilderJobs.id, { onDelete: "cascade" }),
+  stage: integer("stage"),  // null = global (all stages)
+  type: text("type").notNull(), // url | file
+  name: text("name").notNull(), // display label
+  url: text("url"),             // for url type
+  content: text("content").notNull().default(""), // extracted text
+  createdAt: timestamp("created_at").default(sql`now()`),
 });
 
 export const marketBuilderStages = pgTable("market_builder_stages", {
@@ -767,9 +791,18 @@ export const insertMarketBuilderStageSchema = createInsertSchema(marketBuilderSt
   completedAt: true,
 });
 
+export const insertMarketBuilderSourceSchema = createInsertSchema(marketBuilderSources).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertMarketBuilderJob = z.infer<typeof insertMarketBuilderJobSchema>;
 export type MarketBuilderJob = typeof marketBuilderJobs.$inferSelect;
 
 export type InsertMarketBuilderStage = z.infer<typeof insertMarketBuilderStageSchema>;
 export type MarketBuilderStage = typeof marketBuilderStages.$inferSelect;
+
+export type MarketBuilderLlmSettings = typeof marketBuilderLlmSettings.$inferSelect;
+export type MarketBuilderSource = typeof marketBuilderSources.$inferSelect;
+export type InsertMarketBuilderSource = z.infer<typeof insertMarketBuilderSourceSchema>;

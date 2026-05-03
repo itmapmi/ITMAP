@@ -3,9 +3,14 @@ import { db } from "../db";
 import {
   marketBuilderJobs,
   marketBuilderStages,
+  marketBuilderLlmSettings,
+  marketBuilderSources,
   type MarketBuilderJob,
   type MarketBuilderStage,
+  type MarketBuilderLlmSettings,
+  type MarketBuilderSource,
   type InsertMarketBuilderJob,
+  type InsertMarketBuilderSource,
 } from "@shared/schema";
 
 // ── Jobs ──────────────────────────────────────────────────────────────────
@@ -13,10 +18,7 @@ import {
 export async function createMarketBuilderJob(
   data: InsertMarketBuilderJob
 ): Promise<MarketBuilderJob> {
-  const [job] = await db
-    .insert(marketBuilderJobs)
-    .values(data)
-    .returning();
+  const [job] = await db.insert(marketBuilderJobs).values(data).returning();
   return job;
 }
 
@@ -69,12 +71,11 @@ export async function getMarketBuilderStage(
   jobId: string,
   stage: number
 ): Promise<MarketBuilderStage | undefined> {
-  const [row] = await db
+  const rows = await db
     .select()
     .from(marketBuilderStages)
-    .where(eq(marketBuilderStages.jobId, jobId))
-    .then(rows => rows.filter(r => r.stage === stage));
-  return row;
+    .where(eq(marketBuilderStages.jobId, jobId));
+  return rows.find(r => r.stage === stage);
 }
 
 export async function upsertMarketBuilderStage(
@@ -100,6 +101,27 @@ export async function upsertMarketBuilderStage(
   return created;
 }
 
+export async function resetMarketBuilderStage(
+  jobId: string,
+  stage: number
+): Promise<void> {
+  const existing = await getMarketBuilderStage(jobId, stage);
+  if (existing) {
+    await db
+      .update(marketBuilderStages)
+      .set({ status: "pending", result: null, error: null, startedAt: null, completedAt: null })
+      .where(eq(marketBuilderStages.id, existing.id));
+  }
+}
+
+export async function updateStageResult(
+  jobId: string,
+  stage: number,
+  result: unknown
+): Promise<MarketBuilderStage> {
+  return upsertMarketBuilderStage(jobId, stage, { result: result as any });
+}
+
 // ── Convenience: full job with stages ─────────────────────────────────────
 
 export async function getMarketBuilderJobWithStages(
@@ -109,4 +131,82 @@ export async function getMarketBuilderJobWithStages(
   if (!job) return undefined;
   const stages = await getMarketBuilderStages(id);
   return { ...job, stages };
+}
+
+// ── LLM Settings ──────────────────────────────────────────────────────────
+
+export async function listMarketBuilderLlmSettings(): Promise<MarketBuilderLlmSettings[]> {
+  return db.select().from(marketBuilderLlmSettings);
+}
+
+export async function getMarketBuilderLlmSetting(
+  provider: string
+): Promise<MarketBuilderLlmSettings | undefined> {
+  const [row] = await db
+    .select()
+    .from(marketBuilderLlmSettings)
+    .where(eq(marketBuilderLlmSettings.provider, provider));
+  return row;
+}
+
+export async function upsertMarketBuilderLlmSetting(
+  provider: string,
+  apiKey: string
+): Promise<MarketBuilderLlmSettings> {
+  const existing = await getMarketBuilderLlmSetting(provider);
+  if (existing) {
+    const [updated] = await db
+      .update(marketBuilderLlmSettings)
+      .set({ apiKey, updatedAt: new Date() })
+      .where(eq(marketBuilderLlmSettings.provider, provider))
+      .returning();
+    return updated;
+  }
+  const [created] = await db
+    .insert(marketBuilderLlmSettings)
+    .values({ provider, apiKey })
+    .returning();
+  return created;
+}
+
+export async function deleteMarketBuilderLlmSetting(provider: string): Promise<void> {
+  await db
+    .delete(marketBuilderLlmSettings)
+    .where(eq(marketBuilderLlmSettings.provider, provider));
+}
+
+// ── Sources ───────────────────────────────────────────────────────────────
+
+export async function listMarketBuilderSources(
+  jobId: string
+): Promise<MarketBuilderSource[]> {
+  return db
+    .select()
+    .from(marketBuilderSources)
+    .where(eq(marketBuilderSources.jobId, jobId))
+    .orderBy(marketBuilderSources.createdAt);
+}
+
+export async function createMarketBuilderSource(
+  data: InsertMarketBuilderSource
+): Promise<MarketBuilderSource> {
+  const [created] = await db
+    .insert(marketBuilderSources)
+    .values(data)
+    .returning();
+  return created;
+}
+
+export async function updateMarketBuilderSourceContent(
+  id: string,
+  content: string
+): Promise<void> {
+  await db
+    .update(marketBuilderSources)
+    .set({ content })
+    .where(eq(marketBuilderSources.id, id));
+}
+
+export async function deleteMarketBuilderSource(id: string): Promise<void> {
+  await db.delete(marketBuilderSources).where(eq(marketBuilderSources.id, id));
 }
