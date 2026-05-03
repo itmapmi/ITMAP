@@ -17,6 +17,7 @@ import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
+import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 
@@ -99,6 +100,7 @@ export default function Admin() {
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+            <TabsTrigger value="market-builder">AI Builder</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -163,6 +165,10 @@ export default function Admin() {
 
           <TabsContent value="api-keys" className="mt-6">
             <ApiKeysAdmin />
+          </TabsContent>
+
+          <TabsContent value="market-builder" className="mt-6">
+            <MarketBuilderWizard />
           </TabsContent>
         </Tabs>
       </motion.div>
