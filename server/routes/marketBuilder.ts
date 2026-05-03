@@ -4,13 +4,14 @@ import { requireAdmin } from "../auth";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
 import { initSSE, sendEvent, runSingleStage } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
+import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 
 export function registerMarketBuilderRoutes(app: Express): void {
 
   // ── Jobs: list / get / create / delete ───────────────────────────────────
 
   app.get("/api/admin/market-builder/jobs", requireAdmin, async (_req, res) => {
-    try { res.json(await storage.listMarketBuilderJobs()); }
+    try { res.json(await listMarketBuilderJobsWithStageSummaries()); }
     catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 

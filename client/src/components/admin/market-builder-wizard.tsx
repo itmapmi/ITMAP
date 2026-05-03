@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   CheckCircle2, Circle, Loader2, AlertCircle, Wand2, Sparkles, Lock,
   ChevronRight, ChevronLeft, RefreshCw, Trash2, RotateCcw,
   ExternalLink, Eye, EyeOff, Building2, BarChart3, Grid3X3, Layers, Save,
-  Plus, X, Globe, PencilLine, PlayCircle, FileSearch,
+  Plus, X, Globe, PencilLine, PlayCircle, FileSearch, Clock, Zap,
+  ArrowRight, MoreHorizontal, FolderOpen,
 } from "lucide-react";
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
@@ -34,6 +36,7 @@ interface MarketBuilderJob {
   error: string | null;
   createdAt: string;
   stages?: MarketBuilderStage[];
+  stageSummary?: Record<number, "pending" | "running" | "completed" | "failed">;
 }
 
 interface MarketBuilderStage {
@@ -43,6 +46,7 @@ interface MarketBuilderStage {
 }
 
 type StagePhase = "ready" | "running" | "done" | "failed";
+type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
   { num: 1, label: "Vendors",         icon: Building2, desc: "AI identifies key vendors and products in the market.", what: "A list of 8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
@@ -58,7 +62,30 @@ const CATEGORIES = [
   "Database","ERP & Business Applications","CRM & Marketing","Other",
 ];
 
-// ── Step tracker ──────────────────────────────────────────────────────────
+// ── Mini stage progress dots (used in dashboard cards) ────────────────────
+
+function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {[1,2,3,4,5].map(n => {
+        const s = stageSummary[n];
+        return (
+          <div key={n} className="flex items-center gap-1">
+            <div title={`Stage ${n}: ${s ?? "not started"}`} className={`h-2.5 w-2.5 rounded-full transition-all ${
+              s === "completed" ? "bg-green-500" :
+              s === "running"   ? "bg-blue-500 animate-pulse" :
+              s === "failed"    ? "bg-red-400" :
+                                  "bg-gray-200"
+            }`} />
+            {n < 5 && <div className={`h-px w-3 ${s === "completed" ? "bg-green-300" : "bg-gray-200"}`} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Step tracker (in-wizard top bar) ──────────────────────────────────────
 
 function StepTracker({ activeStage, stagePhases, onStepClick }: {
   activeStage: number;
@@ -78,11 +105,9 @@ function StepTracker({ activeStage, stagePhases, onStepClick }: {
             <button
               onClick={() => isDone && onStepClick(s.num)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-lg flex-1 min-w-0 text-left transition-all ${
-                isActive
-                  ? "bg-blue-50 border-2 border-blue-300"
-                  : isDone
-                  ? "hover:bg-gray-50 cursor-pointer border border-transparent"
-                  : "cursor-default border border-transparent"
+                isActive  ? "bg-blue-50 border-2 border-blue-300" :
+                isDone    ? "hover:bg-gray-50 cursor-pointer border border-transparent" :
+                            "cursor-default border border-transparent"
               }`}
             >
               <div className="shrink-0">
@@ -93,16 +118,11 @@ function StepTracker({ activeStage, stagePhases, onStepClick }: {
               </div>
               <div className="min-w-0 hidden sm:block">
                 <p className={`text-xs font-semibold truncate ${
-                  isActive ? "text-blue-800" :
-                  isDone   ? "text-gray-700" : "text-gray-400"
-                }`}>
-                  {s.num}. {s.label}
-                </p>
+                  isActive ? "text-blue-800" : isDone ? "text-gray-700" : "text-gray-400"
+                }`}>{s.num}. {s.label}</p>
               </div>
             </button>
-            {i < STAGE_META.length - 1 && (
-              <ChevronRight className="h-4 w-4 text-gray-200 shrink-0" />
-            )}
+            {i < STAGE_META.length - 1 && <ChevronRight className="h-4 w-4 text-gray-200 shrink-0" />}
           </div>
         );
       })}
@@ -134,28 +154,17 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
       </div>
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-gray-700">{vendors.length} Vendors</p>
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={addVendor}>
-          <Plus className="h-3.5 w-3.5" /> Add Vendor
-        </Button>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={addVendor}><Plus className="h-3.5 w-3.5" />Add Vendor</Button>
       </div>
       {vendors.map((v: any, i: number) => (
         <div key={i} className="rounded-lg border bg-white p-3">
           {editing === i ? (
             <div className="space-y-2">
               {["name","product","website","newsroomUrl"].map(field => (
-                <div key={field}>
-                  <Label className="text-xs capitalize">{field === "newsroomUrl" ? "Newsroom URL" : field}</Label>
-                  <Input value={draft?.[field] ?? ""} onChange={e => setDraft((d: any) => ({ ...d, [field]: e.target.value }))} className="h-7 text-xs mt-0.5" />
-                </div>
+                <div key={field}><Label className="text-xs capitalize">{field === "newsroomUrl" ? "Newsroom URL" : field}</Label><Input value={draft?.[field] ?? ""} onChange={e => setDraft((d: any) => ({ ...d, [field]: e.target.value }))} className="h-7 text-xs mt-0.5" /></div>
               ))}
-              <div>
-                <Label className="text-xs">Description</Label>
-                <Textarea value={draft?.description ?? ""} onChange={e => setDraft((d: any) => ({ ...d, description: e.target.value }))} rows={2} className="text-xs resize-none mt-0.5" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={saveEdit}><Save className="h-3 w-3 mr-1" />Save</Button>
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditing(null); setDraft(null); }}>Cancel</Button>
-              </div>
+              <div><Label className="text-xs">Description</Label><Textarea value={draft?.description ?? ""} onChange={e => setDraft((d: any) => ({ ...d, description: e.target.value }))} rows={2} className="text-xs resize-none mt-0.5" /></div>
+              <div className="flex gap-2"><Button size="sm" className="h-7 text-xs" onClick={saveEdit}><Save className="h-3 w-3 mr-1" />Save</Button><Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditing(null); setDraft(null); }}>Cancel</Button></div>
             </div>
           ) : (
             <div className="flex items-start gap-2">
@@ -239,9 +248,7 @@ function Stage3Editor({ result, onChange }: { result: any; onChange: (r: any) =>
                   <button onClick={() => removeFeature(ci, fi)} className="opacity-0 group-hover:opacity-100 text-red-400"><X className="h-3 w-3" /></button>
                 </div>
               ))}
-              <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full px-2" onClick={() => addFeature(ci)}>
-                <Plus className="h-3 w-3 mr-0.5" />Add
-              </Button>
+              <Button variant="ghost" size="sm" className="h-6 text-xs rounded-full px-2" onClick={() => addFeature(ci)}><Plus className="h-3 w-3 mr-0.5" />Add</Button>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -285,11 +292,7 @@ function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) =>
           <tbody>{vendors.map(v=>(
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
               <td className="p-2 font-medium whitespace-nowrap">{v}</td>
-              {criteria.map(c=>{const s=getScore(v,c);return(
-                <td key={c} className="p-1 text-center">
-                  <button onClick={()=>{setSelected({v,c});setEditScore(s?.score?.toString()??"");setEditNotes(s?.notes??"");}} className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${color(s?.score??0)}`} title={s?.notes}>{s?.score?.toFixed(1)??"–"}</button>
-                </td>
-              );})}
+              {criteria.map(c=>{const s=getScore(v,c);return(<td key={c} className="p-1 text-center"><button onClick={()=>{setSelected({v,c});setEditScore(s?.score?.toString()??"");setEditNotes(s?.notes??"");}} className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${color(s?.score??0)}`} title={s?.notes}>{s?.score?.toFixed(1)??"–"}</button></td>);})}
             </tr>
           ))}</tbody>
         </table>
@@ -329,9 +332,7 @@ function Stage5Editor({ result, onChange }: { result: any; onChange: (r: any) =>
           <tbody>{vendors.map(v=>(
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
               <td className="p-2 font-medium whitespace-nowrap">{v}</td>
-              {features.slice(0,20).map(f=>{const s=get(v,f);return(
-                <td key={f} className="p-1 text-center"><button onClick={()=>{setSelected({v,f});setEditLevel(s?.supportLevel??0);setEditComments(s?.comments??"");}} className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel??0)}`} title={s?.comments}>{HARVEY[s?.supportLevel??0]?.split(" ")[0]??"✕"}</button></td>
-              );})}
+              {features.slice(0,20).map(f=>{const s=get(v,f);return(<td key={f} className="p-1 text-center"><button onClick={()=>{setSelected({v,f});setEditLevel(s?.supportLevel??0);setEditComments(s?.comments??"");}} className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel??0)}`} title={s?.comments}>{HARVEY[s?.supportLevel??0]?.split(" ")[0]??"✕"}</button></td>);})}
             </tr>
           ))}</tbody>
         </table>
@@ -354,44 +355,6 @@ function SourcesOnlyNotice() {
   );
 }
 
-// ── Previous jobs ─────────────────────────────────────────────────────────
-
-function PreviousJobs({ jobs, onResume, onDelete }: {
-  jobs: MarketBuilderJob[];
-  onResume: (j: MarketBuilderJob) => void;
-  onDelete: (id: string) => void;
-}) {
-  if (jobs.length === 0) return null;
-  const badge = (s: string) => ({ completed:"text-green-700 border-green-300 bg-green-50", published:"text-blue-700 border-blue-300 bg-blue-50", running:"text-amber-700 border-amber-300 bg-amber-50", failed:"text-red-700 border-red-300 bg-red-50" }[s] ?? "text-gray-600 border-gray-300");
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Previous Jobs</p>
-      {jobs.map(j => (
-        <div key={j.id} className="flex items-center gap-3 rounded-lg border bg-white px-3 py-2.5">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium truncate">{j.inputName}</span>
-              <Badge variant="outline" className={`text-xs py-0 ${badge(j.status)}`}>{j.status}</Badge>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">{new Date(j.createdAt).toLocaleDateString()} · {j.llmProvider}/{j.llmModel}</p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {j.status === "published" && j.marketId && (
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => window.open(`/markets/${j.marketId}`, "_blank")}><ExternalLink className="h-3.5 w-3.5" /></Button>
-            )}
-            {j.status !== "published" && (
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-blue-600" onClick={() => onResume(j)}>
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />Resume
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onDelete(j.id)}><Trash2 className="h-3.5 w-3.5 text-red-400" /></Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Publish panel ─────────────────────────────────────────────────────────
 
 function PublishPanel({ job, stageResults, onPublished }: {
@@ -403,13 +366,11 @@ function PublishPanel({ job, stageResults, onPublished }: {
   const [isVisible, setIsVisible] = useState(false);
   const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4]; const s5 = stageResults[5];
   const fc = s3?.categories?.reduce((n: number, c: any) => n + c.features.length, 0) ?? 0;
-
   const publish = useMutation({
     mutationFn: () => apiRequest(`/api/admin/market-builder/jobs/${job.id}/publish`, "POST", { isVisible }).then(r => r.json()),
     onSuccess: (data: any) => { onPublished(data.marketId, isVisible); toast({ title: "Market published!" }); },
     onError: (err: any) => toast({ title: "Publish failed", description: err.message, variant: "destructive" }),
   });
-
   return (
     <div className="rounded-xl border-2 border-green-200 bg-green-50 p-6 space-y-4">
       <div>
@@ -439,14 +400,143 @@ function PublishPanel({ job, stageResults, onPublished }: {
   );
 }
 
-// ── Main wizard ───────────────────────────────────────────────────────────
+// ── Done stage view ───────────────────────────────────────────────────────
 
-type WizardView = "setup" | "stages" | "published";
+function DoneStageView({ stageNum, result, jobId, onSave }: {
+  stageNum: number; result: any; jobId: string; onSave: (r: any) => void;
+}) {
+  const [localResult, setLocalResult] = useState(result);
+  const [isDirty, setIsDirty] = useState(false);
+  useEffect(() => { setLocalResult(result); setIsDirty(false); }, [result]);
+  const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); };
+  return (
+    <div className="space-y-5">
+      <SourcesPanel jobId={jobId} currentStage={stageNum} />
+      {isDirty && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
+          <p className="text-xs text-amber-800 font-medium">You have unsaved edits</p>
+          <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 gap-1" onClick={() => onSave(localResult)}>
+            <Save className="h-3 w-3" />Save Changes
+          </Button>
+        </div>
+      )}
+      <div>
+        <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
+        {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 2 && <Stage2Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 3 && <Stage3Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 4 && <Stage4Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 5 && <Stage5Editor result={localResult} onChange={handleChange} />}
+      </div>
+    </div>
+  );
+}
 
-export function MarketBuilderWizard() {
+// ── Dashboard — project cards ─────────────────────────────────────────────
+
+function statusColor(s: string) {
+  return {
+    completed: "text-green-700 border-green-300 bg-green-50",
+    published:  "text-blue-700 border-blue-300 bg-blue-50",
+    running:    "text-amber-700 border-amber-300 bg-amber-50",
+    failed:     "text-red-700 border-red-300 bg-red-50",
+    idle:       "text-gray-600 border-gray-300 bg-gray-50",
+  }[s] ?? "text-gray-600 border-gray-300";
+}
+
+function stagesCompletedCount(summary: Record<number, string>) {
+  return [1,2,3,4,5].filter(n => summary[n] === "completed").length;
+}
+
+function nextPendingStage(summary: Record<number, string>): number {
+  for (let n = 1; n <= 5; n++) {
+    if (summary[n] !== "completed") return n;
+  }
+  return 6; // all done
+}
+
+function ProjectCard({ job, onResume, onDelete }: {
+  job: MarketBuilderJob;
+  onResume: (j: MarketBuilderJob) => void;
+  onDelete: (id: string) => void;
+}) {
+  const summary = job.stageSummary ?? {};
+  const done = stagesCompletedCount(summary);
+  const next = nextPendingStage(summary);
+  const isPublished = job.status === "published";
+  const isFailed = job.status === "failed";
+  const dateStr = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <Card className="group relative hover:shadow-md transition-shadow border-gray-200 overflow-hidden">
+      {/* Progress bar along the top */}
+      <div className="h-1 bg-gray-100">
+        <div
+          className={`h-full transition-all ${isPublished ? "bg-blue-500" : done === 5 ? "bg-green-500" : isFailed ? "bg-red-400" : "bg-amber-400"}`}
+          style={{ width: `${(done / 5) * 100}%` }}
+        />
+      </div>
+
+      <CardContent className="p-5 space-y-4">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 truncate text-base leading-tight">{job.inputName}</h3>
+            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{job.inputDescription}</p>
+          </div>
+          <Badge variant="outline" className={`text-xs shrink-0 capitalize ${statusColor(job.status)}`}>{job.status}</Badge>
+        </div>
+
+        {/* Stage progress dots */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400 font-medium">Stage progress</p>
+            <p className="text-xs text-gray-500 font-semibold">{done}/5 complete</p>
+          </div>
+          <StageDots stageSummary={summary} />
+          <div className="flex gap-2 text-xs text-gray-400">
+            {STAGE_META.map((s, i) => (
+              <span key={s.num} className={`flex-1 text-center truncate ${summary[s.num] === "completed" ? "text-green-600 font-medium" : summary[s.num] === "running" ? "text-blue-500 font-medium" : "text-gray-300"}`}>{s.label}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Clock className="h-3 w-3" />
+            <span>{dateStr}</span>
+            <span>·</span>
+            <span className="capitalize">{job.llmProvider}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {isPublished && job.marketId && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-700" onClick={() => window.open(`/markets/${job.marketId}`, "_blank")}>
+                <ExternalLink className="h-3.5 w-3.5" />View
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={e => { e.stopPropagation(); onDelete(job.id); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            {!isPublished && (
+              <Button size="sm" className="h-7 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={() => onResume(job)}>
+                {done === 5 ? <><CheckCircle2 className="h-3.5 w-3.5" />Publish</> : <><ArrowRight className="h-3.5 w-3.5" />Continue — Stage {next}</>}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Setup form (New Market) ───────────────────────────────────────────────
+
+function SetupForm({ onBack, onCreate }: {
+  onBack: () => void;
+  onCreate: (data: any) => void;
+}) {
   const { toast } = useToast();
-
-  // Setup form
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -454,18 +544,74 @@ export function MarketBuilderWizard() {
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4.1-mini");
 
-  // Wizard
-  const [view, setView] = useState<WizardView>("setup");
-  const [activeJob, setActiveJob] = useState<MarketBuilderJob | null>(null);
-  const [activeStage, setActiveStage] = useState(1);   // 1–5 = stages, 6 = publish panel
+  const handleSubmit = () => {
+    if (!name.trim() || !description.trim()) {
+      toast({ title: "Please fill in the market name and description", variant: "destructive" });
+      return;
+    }
+    onCreate({ inputName: name.trim(), inputDescription: description.trim(), inputCategory: category || undefined, inputContext: context.trim() || undefined, llmProvider: provider, llmModel: model });
+  };
 
-  // Per-stage state
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500" onClick={onBack}>
+          <ChevronLeft className="h-4 w-4" />Back to Projects
+        </Button>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">New Market</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Describe the technology market. AI will generate all data across 5 stages — you approve each one.</p>
+        </div>
+        <LLMSelector provider={provider} model={model} onProviderChange={setProvider} onModelChange={setModel} />
+      </div>
+
+      <div className="rounded-xl border bg-white p-6 space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Market Name *</Label>
+          <Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Enterprise Object Storage" className="h-9" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Description *</Label>
+          <Textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="What technology? Who buys it? What problem does it solve?" rows={4} className="resize-none" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+              <SelectContent>{CATEGORIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Extra context <span className="text-gray-400">(optional)</span></Label>
+          <Textarea value={context} onChange={e=>setContext(e.target.value)} placeholder="Specific vendors to include, regional focus, buyer segment…" rows={2} className="resize-none" />
+        </div>
+        <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 h-10" onClick={handleSubmit}>
+          <Sparkles className="h-4 w-4" />Start Building
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main wizard ───────────────────────────────────────────────────────────
+
+export function MarketBuilderWizard() {
+  const { toast } = useToast();
+
+  const [view, setView] = useState<WizardView>("dashboard");
+  const [activeJob, setActiveJob] = useState<MarketBuilderJob | null>(null);
+  const [activeStage, setActiveStage] = useState(1);
+
   const [stagePhases, setStagePhases] = useState<Record<number, StagePhase>>({});
   const [stageResults, setStageResults] = useState<Record<number, any>>({});
   const [streamError, setStreamError] = useState<string | null>(null);
   const [progressMsg, setProgressMsg] = useState("");
 
-  // Post-publish
   const [publishedMarketId, setPublishedMarketId] = useState<string | null>(null);
   const [publishedVisible, setPublishedVisible] = useState(false);
 
@@ -473,9 +619,10 @@ export function MarketBuilderWizard() {
 
   const { data: jobs = [], refetch: refetchJobs } = useQuery<MarketBuilderJob[]>({
     queryKey: ["/api/admin/market-builder/jobs"],
+    refetchInterval: view === "stages" ? 0 : 15_000, // auto-refresh dashboard every 15s
   });
 
-  // ── Run a single stage via SSE ────────────────────────────────────────
+  // ── SSE: run a single stage ───────────────────────────────────────────
 
   const runStage = (jobId: string, stageNum: number) => {
     esRef.current?.close();
@@ -492,6 +639,7 @@ export function MarketBuilderWizard() {
         if (event.type === "stage_complete") {
           setStageResults(prev => ({ ...prev, [stageNum]: event.result }));
           setStagePhases(prev => ({ ...prev, [stageNum]: "done" }));
+          refetchJobs();
           es.close();
         } else if (event.type === "stage_error") {
           setStagePhases(prev => ({ ...prev, [stageNum]: "failed" }));
@@ -543,7 +691,8 @@ export function MarketBuilderWizard() {
 
   const deleteJob = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/market-builder/jobs/${id}`, "DELETE"),
-    onSuccess: () => refetchJobs(),
+    onSuccess: () => { refetchJobs(); },
+    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 
   const updateVisibility = useMutation({
@@ -556,7 +705,6 @@ export function MarketBuilderWizard() {
 
   const approveStage = async (stageNum: number) => {
     if (stageNum === 5) {
-      // All stages done — mark job completed then show publish panel
       await completeJob.mutateAsync(activeJob!.id);
       setActiveStage(6);
     } else {
@@ -588,31 +736,45 @@ export function MarketBuilderWizard() {
       }
     });
 
+    // Also use stageSummary for jobs loaded from the list (no full stage data)
+    if (Object.keys(phases).length === 0 && job.stageSummary) {
+      Object.entries(job.stageSummary).forEach(([stageStr, status]) => {
+        const n = parseInt(stageStr);
+        if (status === "completed") { phases[n] = "done"; highestDone = Math.max(highestDone, n); }
+        else if (status === "failed") phases[n] = "failed";
+      });
+    }
+
     setStageResults(results);
 
-    const nextStage = Math.min(highestDone + 1, 5);
     if (job.status === "completed" || job.status === "published") {
       setActiveStage(6);
     } else {
+      const nextStage = Math.min(highestDone + 1, 5);
       setActiveStage(nextStage);
       if (!phases[nextStage]) phases[nextStage] = "ready";
     }
     setStagePhases(phases);
-  };
 
-  const handleSubmit = () => {
-    if (!name.trim() || !description.trim()) {
-      toast({ title: "Please fill in the market name and description", variant: "destructive" });
-      return;
+    // If we need full stage results, fetch the job with stages
+    if (Object.keys(results).length === 0 && highestDone > 0) {
+      apiRequest(`/api/admin/market-builder/jobs/${job.id}`, "GET").then(r => r.json()).then((fullJob: any) => {
+        const r2: Record<number, any> = {};
+        const p2: Record<number, StagePhase> = { ...phases };
+        let hd2 = 0;
+        (fullJob.stages ?? []).forEach((s: any) => {
+          if (s.status === "completed" && s.result) { r2[s.stage] = s.result; p2[s.stage] = "done"; hd2 = Math.max(hd2, s.stage); }
+          else if (s.status === "failed") p2[s.stage] = "failed";
+        });
+        setStageResults(r2);
+        const next2 = Math.min(hd2 + 1, 5);
+        if (!p2[next2] && hd2 < 5) p2[next2] = "ready";
+        setStagePhases(p2);
+        if (job.status !== "completed" && job.status !== "published") setActiveStage(next2);
+      }).catch(() => {});
     }
-    createJob.mutate({
-      inputName: name.trim(), inputDescription: description.trim(),
-      inputCategory: category || undefined, inputContext: context.trim() || undefined,
-      llmProvider: provider, llmModel: model,
-    });
   };
 
-  const prevJobs = jobs.filter(j => j.id !== activeJob?.id);
   const currentMeta = STAGE_META.find(s => s.num === activeStage);
   const currentPhase = stagePhases[activeStage];
   const currentResult = stageResults[activeStage];
@@ -637,78 +799,104 @@ export function MarketBuilderWizard() {
           </div>
           <div className="flex gap-3">
             {publishedMarketId && <Button variant="outline" className="flex-1 text-sm gap-2" onClick={() => window.open(`/markets/${publishedMarketId}`, "_blank")}><ExternalLink className="h-4 w-4"/>Preview</Button>}
-            <Button className="flex-1 text-sm gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => {
-              setView("setup"); setActiveJob(null);
-              setName(""); setDescription(""); setCategory(""); setContext("");
-              setPublishedMarketId(null); setStageResults({}); setStagePhases({});
-            }}><Wand2 className="h-4 w-4"/>Build Another</Button>
+            <Button className="flex-1 text-sm gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => { setView("dashboard"); setActiveJob(null); setStageResults({}); setStagePhases({}); setPublishedMarketId(null); refetchJobs(); }}>
+              <FolderOpen className="h-4 w-4"/>Back to Projects
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Setup view ────────────────────────────────────────────────────────
+  // ── Dashboard view ────────────────────────────────────────────────────
 
-  if (view === "setup") {
+  if (view === "dashboard") {
+    const draftJobs = jobs.filter(j => j.status !== "published");
+    const publishedJobs = jobs.filter(j => j.status === "published");
+
     return (
-      <div className="space-y-6 max-w-4xl">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="space-y-6 max-w-5xl">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Wand2 className="h-6 w-6 text-blue-600" />AI Market Builder
               <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50 text-xs">Beta</Badge>
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Describe a technology market. AI generates vendors, criteria, features, scores, and support data — one stage at a time, with your approval between each.</p>
+            <p className="text-sm text-gray-500 mt-0.5">AI-powered market research — 5 stages, each waiting for your review and approval.</p>
           </div>
-          <LLMSelector provider={provider} model={model} onProviderChange={setProvider} onModelChange={setModel} />
+          <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setView("new-setup")}>
+            <Plus className="h-4 w-4" />New Market
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4 rounded-xl border bg-white p-6">
-            <h2 className="font-semibold text-gray-800">Market Details</h2>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Market Name *</Label>
-              <Input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Enterprise Object Storage" className="h-9" />
+        {/* Empty state */}
+        {jobs.length === 0 && (
+          <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-12 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
+              <Wand2 className="h-7 w-7 text-blue-600" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Description *</Label>
-              <Textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="What technology? Who buys it? What problem does it solve?" rows={4} className="resize-none" />
+            <div>
+              <h3 className="font-semibold text-gray-900">No markets built yet</h3>
+              <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">Describe a technology market and AI will generate vendors, criteria, features, and scores across 5 approval stages.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Select category…" /></SelectTrigger>
-                <SelectContent>{CATEGORIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Extra context <span className="text-gray-400">(optional)</span></Label>
-              <Textarea value={context} onChange={e=>setContext(e.target.value)} placeholder="Specific vendors to include, regional focus, buyer segment…" rows={2} className="resize-none" />
-            </div>
-            <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 h-10" onClick={handleSubmit} disabled={createJob.isPending}>
-              {createJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Start Building
+            <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setView("new-setup")}>
+              <Sparkles className="h-4 w-4" />Start Building Your First Market
             </Button>
           </div>
+        )}
 
-          <div className="space-y-4">
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-              <p className="font-semibold text-blue-900 mb-3">Step-by-step approval flow</p>
-              <ol className="space-y-2">
-                {STAGE_META.map(s => (
-                  <li key={s.num} className="flex items-start gap-2 text-sm text-blue-800">
-                    <span className="font-bold shrink-0">{s.num}.</span>
-                    <div><span className="font-medium">{s.label}</span> — <span className="text-blue-600">{s.desc}</span></div>
-                  </li>
-                ))}
-              </ol>
-              <p className="text-xs text-blue-600 mt-3 pt-3 border-t border-blue-200">Each stage stops for your review. You can add research sources, edit the output, or re-run before approving and moving on.</p>
+        {/* Draft / In-progress projects */}
+        {draftJobs.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-700">In Progress</h2>
+              <Badge variant="outline" className="text-xs text-gray-400 border-gray-200">{draftJobs.length}</Badge>
             </div>
-            <PreviousJobs jobs={prevJobs} onResume={handleResume} onDelete={id=>deleteJob.mutate(id)} />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+              {draftJobs.map(job => (
+                <ProjectCard
+                  key={job.id}
+                  job={job}
+                  onResume={handleResume}
+                  onDelete={id => deleteJob.mutate(id)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Published markets */}
+        {publishedJobs.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-700">Published</h2>
+              <Badge variant="outline" className="text-xs text-gray-400 border-gray-200">{publishedJobs.length}</Badge>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+              {publishedJobs.map(job => (
+                <ProjectCard
+                  key={job.id}
+                  job={job}
+                  onResume={handleResume}
+                  onDelete={id => deleteJob.mutate(id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+    );
+  }
+
+  // ── New setup form ────────────────────────────────────────────────────
+
+  if (view === "new-setup") {
+    return (
+      <SetupForm
+        onBack={() => setView("dashboard")}
+        onCreate={data => createJob.mutate(data)}
+      />
     );
   }
 
@@ -719,12 +907,15 @@ export function MarketBuilderWizard() {
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{activeJob?.inputName}</h1>
-          <p className="text-xs text-gray-400 mt-0.5">{activeJob?.llmProvider} / {activeJob?.llmModel}</p>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500 -ml-2" onClick={() => { esRef.current?.close(); setView("dashboard"); }}>
+              <ChevronLeft className="h-4 w-4" />Projects
+            </Button>
+            <span className="text-gray-300">/</span>
+            <h1 className="text-base font-semibold text-gray-900">{activeJob?.inputName}</h1>
+          </div>
+          <p className="text-xs text-gray-400 ml-1">{activeJob?.llmProvider} / {activeJob?.llmModel}</p>
         </div>
-        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { esRef.current?.close(); setView("setup"); }}>
-          <ChevronLeft className="h-4 w-4" />Back
-        </Button>
       </div>
 
       {/* Step tracker */}
@@ -750,10 +941,9 @@ export function MarketBuilderWizard() {
         />
       )}
 
-      {/* Active stage panel (stages 1-5) */}
+      {/* Active stage panel (stages 1–5) */}
       {activeStage <= 5 && currentMeta && (
         <div className="rounded-xl border bg-white">
-          {/* Stage header */}
           <div className="border-b px-6 py-4 flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -765,7 +955,6 @@ export function MarketBuilderWizard() {
               <h2 className="text-lg font-bold text-gray-900">{currentMeta.label}</h2>
               <p className="text-sm text-gray-500 mt-0.5">{currentMeta.desc}</p>
             </div>
-            {/* Re-run button (only when done) */}
             {currentPhase === "done" && (
               <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => runStage(activeJob!.id, activeStage)}>
                 <RefreshCw className="h-3.5 w-3.5" />Re-run Stage
@@ -774,20 +963,18 @@ export function MarketBuilderWizard() {
           </div>
 
           <div className="p-6 space-y-5">
-            {/* READY state — show sources + run button */}
+            {/* READY / initial state */}
             {(currentPhase === "ready" || !currentPhase) && (
               <>
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 space-y-1">
-                  <p className="text-sm font-semibold text-gray-700">What this stage will generate</p>
+                  <p className="text-sm font-semibold text-gray-700">What this stage generates</p>
                   <p className="text-sm text-gray-500">{currentMeta.what}</p>
                 </div>
                 <SourcesOnlyNotice />
                 <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
                 <div className="flex items-center justify-between pt-2">
                   {activeStage > 1 ? (
-                    <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}>
-                      <ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}
-                    </Button>
+                    <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}><ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}</Button>
                   ) : <div />}
                   <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
                     <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
@@ -826,20 +1013,17 @@ export function MarketBuilderWizard() {
               </>
             )}
 
-            {/* DONE state — sources + editable results */}
+            {/* DONE state */}
             {currentPhase === "done" && currentResult && (
-              <>
-                {/* Inline dirty-save wrapper */}
-                <DoneStageView
-                  stageNum={activeStage}
-                  result={currentResult}
-                  jobId={activeJob!.id}
-                  onSave={r => {
-                    setStageResults(prev => ({ ...prev, [activeStage]: r }));
-                    saveEdits.mutate({ stageNum: activeStage, result: r });
-                  }}
-                />
-              </>
+              <DoneStageView
+                stageNum={activeStage}
+                result={currentResult}
+                jobId={activeJob!.id}
+                onSave={r => {
+                  setStageResults(prev => ({ ...prev, [activeStage]: r }));
+                  saveEdits.mutate({ stageNum: activeStage, result: r });
+                }}
+              />
             )}
           </div>
 
@@ -847,9 +1031,7 @@ export function MarketBuilderWizard() {
           {currentPhase === "done" && (
             <div className="border-t px-6 py-4 flex items-center justify-between">
               {activeStage > 1 ? (
-                <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}>
-                  <ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}
-                </Button>
+                <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}><ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}</Button>
               ) : <div />}
               <Button
                 className="gap-2 bg-green-600 hover:bg-green-700 px-6"
@@ -863,44 +1045,6 @@ export function MarketBuilderWizard() {
           )}
         </div>
       )}
-
-      <PreviousJobs jobs={prevJobs} onResume={handleResume} onDelete={id=>deleteJob.mutate(id)} />
-    </div>
-  );
-}
-
-// ── Done stage view (sources + editable results with save) ────────────────
-
-function DoneStageView({ stageNum, result, jobId, onSave }: {
-  stageNum: number; result: any; jobId: string;
-  onSave: (r: any) => void;
-}) {
-  const [localResult, setLocalResult] = useState(result);
-  const [isDirty, setIsDirty] = useState(false);
-  useEffect(() => { setLocalResult(result); setIsDirty(false); }, [result]);
-  const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); };
-
-  return (
-    <div className="space-y-5">
-      <SourcesPanel jobId={jobId} currentStage={stageNum} />
-
-      {isDirty && (
-        <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
-          <p className="text-xs text-amber-800 font-medium">You have unsaved edits</p>
-          <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 gap-1" onClick={() => onSave(localResult)}>
-            <Save className="h-3 w-3" />Save Changes
-          </Button>
-        </div>
-      )}
-
-      <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
-        {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 2 && <Stage2Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 3 && <Stage3Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 4 && <Stage4Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 5 && <Stage5Editor result={localResult} onChange={handleChange} />}
-      </div>
     </div>
   );
 }

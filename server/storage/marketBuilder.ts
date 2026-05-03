@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   marketBuilderJobs,
@@ -37,6 +37,33 @@ export async function listMarketBuilderJobs(): Promise<MarketBuilderJob[]> {
     .select()
     .from(marketBuilderJobs)
     .orderBy(desc(marketBuilderJobs.createdAt));
+}
+
+export type JobWithStageSummary = MarketBuilderJob & {
+  stageSummary: Record<number, "pending" | "running" | "completed" | "failed">;
+};
+
+export async function listMarketBuilderJobsWithStageSummaries(): Promise<JobWithStageSummary[]> {
+  const jobs = await listMarketBuilderJobs();
+  if (jobs.length === 0) return [];
+
+  const jobIds = jobs.map(j => j.id);
+  const stages = await db
+    .select({
+      jobId: marketBuilderStages.jobId,
+      stage: marketBuilderStages.stage,
+      status: marketBuilderStages.status,
+    })
+    .from(marketBuilderStages)
+    .where(inArray(marketBuilderStages.jobId, jobIds));
+
+  const stageMap = new Map<string, Record<number, any>>();
+  for (const s of stages) {
+    if (!stageMap.has(s.jobId)) stageMap.set(s.jobId, {});
+    stageMap.get(s.jobId)![s.stage] = s.status;
+  }
+
+  return jobs.map(j => ({ ...j, stageSummary: stageMap.get(j.id) ?? {} }));
 }
 
 export async function updateMarketBuilderJob(
