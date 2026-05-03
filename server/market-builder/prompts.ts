@@ -16,6 +16,7 @@
  */
 import { storage } from "../storage";
 import type { PromptStage, PromptType } from "../storage/prompts";
+import type { LLMConfig } from "./llm";
 
 // ── System defaults ───────────────────────────────────────────────────────
 
@@ -221,4 +222,19 @@ export async function resolvePromptContent(input: PromptResolverInput): Promise<
   if (fallback) return fallback.content;
   // Should never happen if seedSystemPrompts ran on boot
   throw new Error(`No system default prompt for ${input.stage}/${input.promptType}`);
+}
+
+// Resolve effective LLM config for a (stage, promptType) on a job. Falls back
+// to the job-level llmConfig when no per-stage selection exists.
+export async function resolveLlmConfig(
+  jobId: string,
+  stage: PromptStage,
+  promptType: PromptType,
+  fallback: LLMConfig,
+): Promise<LLMConfig> {
+  const sel = await storage.getJobLlmSelection(jobId, stage, promptType);
+  if (sel?.provider && sel?.model) {
+    return { ...fallback, provider: sel.provider as LLMConfig["provider"], model: sel.model };
+  }
+  return fallback;
 }

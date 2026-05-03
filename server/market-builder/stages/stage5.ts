@@ -34,6 +34,8 @@ export interface Stage5AResult { categories: Stage5Category[]; }
 export interface Stage6Hooks {
   resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
   resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  resolveScoringLlm?: () => Promise<LLMConfig>;
+  resolveCommentaryLlm?: () => Promise<LLMConfig>;
   onProgress?: (msg: string) => Promise<void>;
 }
 
@@ -209,6 +211,10 @@ export async function runStage6(
   for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
   totalBatches *= stage1.vendors.length;
 
+  // Resolve LLM configs once per stage run
+  const scoringLlm = hooks.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
+  const commentaryLlm = hooks.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
+
   let done = 0;
   const allSupport: Stage5SupportRecord[] = [];
 
@@ -218,13 +224,13 @@ export async function runStage6(
         const chunk = g.features.slice(i, i + FEATURE_BATCH);
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
-        await hooks.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length}`);
+        await hooks.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${scoringLlm.provider}/${scoringLlm.model})`);
 
         const scores = await scoreEcosystemBatch(
-          marketName, vendor, chunk, g.scoring, llmConfig, sourceContext
+          marketName, vendor, chunk, g.scoring, scoringLlm, sourceContext
         );
         const commentary = await commentEcosystemBatch(
-          marketName, vendor, chunk, scores, g.commentary, llmConfig, sourceContext
+          marketName, vendor, chunk, scores, g.commentary, commentaryLlm, sourceContext
         );
 
         for (const f of chunk) {

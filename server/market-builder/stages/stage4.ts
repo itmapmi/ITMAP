@@ -33,6 +33,9 @@ export interface Stage4Hooks {
   resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
   // Returns the commentary system prompt to use for this feature
   resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
+  // Returns the LLM config for scoring / commentary calls (per-stage override)
+  resolveScoringLlm?: () => Promise<LLMConfig>;
+  resolveCommentaryLlm?: () => Promise<LLMConfig>;
   onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>;
 }
 
@@ -179,6 +182,10 @@ export async function runStage4Full(
   for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
   totalBatches *= stage1.vendors.length;
 
+  // Resolve LLM configs once per stage run
+  const scoringLlm = hooks.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
+  const commentaryLlm = hooks.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
+
   let done = 0;
   const allSupport: Stage4SupportRecord[] = [];
 
@@ -188,10 +195,10 @@ export async function runStage4Full(
         const chunk = g.features.slice(i, i + FEATURE_BATCH);
 
         const scores = await scoreFeatureBatch(
-          marketName, vendor, chunk, g.scoring, llmConfig, sourceContext
+          marketName, vendor, chunk, g.scoring, scoringLlm, sourceContext
         );
         const commentary = await commentFeatureBatch(
-          marketName, vendor, chunk, scores, g.commentary, llmConfig, sourceContext
+          marketName, vendor, chunk, scores, g.commentary, commentaryLlm, sourceContext
         );
 
         for (const f of chunk) {

@@ -8,7 +8,7 @@ import { runStage2 } from "./stages/stage2";
 import { runStage3 } from "./stages/stage3";
 import { runStage4Full } from "./stages/stage4";
 import { runStage5A, runStage6 } from "./stages/stage5";
-import { resolvePromptContent } from "./prompts";
+import { resolvePromptContent, resolveLlmConfig } from "./prompts";
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -153,6 +153,8 @@ export async function runSingleStage(
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "scoring", criterionName }),
           resolveCommentaryPrompt: (criterionName) =>
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
+          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig),
+          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig),
           onProgress: progress,
         });
         await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
@@ -183,6 +185,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig),
             onBatchComplete: async (done, total, vendorNames, featureRange) => {
               await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
             },
@@ -216,6 +220,8 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
+            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig),
+            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig),
             onProgress: async (msg: string) => { await progress(msg); },
           }
         );

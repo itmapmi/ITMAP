@@ -44,6 +44,8 @@ export interface Stage2Result {
 export interface Stage2Hooks {
   resolveScoringPrompt: (criterionName: string) => Promise<string>;
   resolveCommentaryPrompt: (criterionName: string) => Promise<string>;
+  resolveScoringLlm?: () => Promise<LLMConfig>;
+  resolveCommentaryLlm?: () => Promise<LLMConfig>;
   onProgress?: (msg: string) => Promise<void>;
 }
 
@@ -234,14 +236,17 @@ export async function runStage2(
       ? await hooks.resolveCommentaryPrompt(criterion.name)
       : await defaultCommentaryPrompt();
 
-    await progress(`Scoring "${criterion.name}" across ${stage1.vendors.length} vendors…`);
+    const scoringLlm = hooks?.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
+    const commentaryLlm = hooks?.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
+
+    await progress(`Scoring "${criterion.name}" across ${stage1.vendors.length} vendors (using ${scoringLlm.provider}/${scoringLlm.model})…`);
     const scores = await scoreCriterion(
-      marketName, stage1, criterion, rationale, scoringPrompt, llmConfig, sourceContext
+      marketName, stage1, criterion, rationale, scoringPrompt, scoringLlm, sourceContext
     );
 
-    await progress(`Writing commentary for "${criterion.name}"…`);
+    await progress(`Writing commentary for "${criterion.name}" (using ${commentaryLlm.provider}/${commentaryLlm.model})…`);
     const commentary = await commentCriterion(
-      marketName, stage1, criterion, rationale, scores, commentaryPrompt, llmConfig, sourceContext
+      marketName, stage1, criterion, rationale, scores, commentaryPrompt, commentaryLlm, sourceContext
     );
 
     // Merge scores + commentary

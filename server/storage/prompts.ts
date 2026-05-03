@@ -3,10 +3,13 @@ import { db } from "../db";
 import {
   promptRepository,
   marketBuilderPromptSelections,
+  marketBuilderLlmSelections,
   type PromptRepository,
   type InsertPromptRepository,
   type MarketBuilderPromptSelection,
   type InsertMarketBuilderPromptSelection,
+  type MarketBuilderLlmSelection,
+  type InsertMarketBuilderLlmSelection,
 } from "@shared/schema";
 
 export type PromptStage = "vendor_evaluation" | "product_evaluation" | "ecosystem_evaluation";
@@ -153,5 +156,60 @@ export async function clearJobPromptSelection(
       eq(marketBuilderPromptSelections.targetType, targetType),
       eq(marketBuilderPromptSelections.targetKey, targetKey),
       eq(marketBuilderPromptSelections.promptType, promptType),
+    ));
+}
+
+// ── Per-Job LLM Selections ────────────────────────────────────────────────
+
+export async function listJobLlmSelections(jobId: string): Promise<MarketBuilderLlmSelection[]> {
+  return db
+    .select()
+    .from(marketBuilderLlmSelections)
+    .where(eq(marketBuilderLlmSelections.jobId, jobId));
+}
+
+export async function getJobLlmSelection(
+  jobId: string,
+  stage: PromptStage,
+  promptType: PromptType,
+): Promise<MarketBuilderLlmSelection | undefined> {
+  const rows = await db
+    .select()
+    .from(marketBuilderLlmSelections)
+    .where(and(
+      eq(marketBuilderLlmSelections.jobId, jobId),
+      eq(marketBuilderLlmSelections.stage, stage),
+      eq(marketBuilderLlmSelections.promptType, promptType),
+    ));
+  return rows[0];
+}
+
+export async function upsertJobLlmSelection(
+  data: InsertMarketBuilderLlmSelection,
+): Promise<MarketBuilderLlmSelection> {
+  const existing = await getJobLlmSelection(data.jobId, data.stage as PromptStage, data.promptType as PromptType);
+  if (existing) {
+    const [updated] = await db
+      .update(marketBuilderLlmSelections)
+      .set({ provider: data.provider, model: data.model })
+      .where(eq(marketBuilderLlmSelections.id, existing.id))
+      .returning();
+    return updated;
+  }
+  const [created] = await db.insert(marketBuilderLlmSelections).values(data).returning();
+  return created;
+}
+
+export async function clearJobLlmSelection(
+  jobId: string,
+  stage: PromptStage,
+  promptType: PromptType,
+): Promise<void> {
+  await db
+    .delete(marketBuilderLlmSelections)
+    .where(and(
+      eq(marketBuilderLlmSelections.jobId, jobId),
+      eq(marketBuilderLlmSelections.stage, stage),
+      eq(marketBuilderLlmSelections.promptType, promptType),
     ));
 }

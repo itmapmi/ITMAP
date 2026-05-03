@@ -21,6 +21,7 @@ import {
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
 import { PromptSelector } from "./market-builder-prompt-selector";
+import { LlmSelectorPanel } from "./market-builder-llm-selector-panel";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -1265,27 +1266,51 @@ export function MarketBuilderWizard() {
                 <SourcesOnlyNotice />
                 <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} />
 
-                {/* Per-stage prompt customization (stages 2 / 4 / 6) */}
+                {/* Per-stage LLM model + prompt customization (stages 2 / 4 / 6) */}
                 {activeStage === 2 && (
-                  <PromptSelector
-                    jobId={activeJob!.id}
-                    stageKind="vendor_evaluation"
-                    criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
-                  />
+                  <>
+                    <LlmSelectorPanel
+                      jobId={activeJob!.id}
+                      stageKind="vendor_evaluation"
+                      defaultProvider={activeJob!.llmProvider}
+                      defaultModel={activeJob!.llmModel}
+                    />
+                    <PromptSelector
+                      jobId={activeJob!.id}
+                      stageKind="vendor_evaluation"
+                      criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
+                    />
+                  </>
                 )}
                 {activeStage === 4 && (
-                  <PromptSelector
-                    jobId={activeJob!.id}
-                    stageKind="product_evaluation"
-                    categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
-                  />
+                  <>
+                    <LlmSelectorPanel
+                      jobId={activeJob!.id}
+                      stageKind="product_evaluation"
+                      defaultProvider={activeJob!.llmProvider}
+                      defaultModel={activeJob!.llmModel}
+                    />
+                    <PromptSelector
+                      jobId={activeJob!.id}
+                      stageKind="product_evaluation"
+                      categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    />
+                  </>
                 )}
                 {activeStage === 6 && (
-                  <PromptSelector
-                    jobId={activeJob!.id}
-                    stageKind="ecosystem_evaluation"
-                    categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
-                  />
+                  <>
+                    <LlmSelectorPanel
+                      jobId={activeJob!.id}
+                      stageKind="ecosystem_evaluation"
+                      defaultProvider={activeJob!.llmProvider}
+                      defaultModel={activeJob!.llmModel}
+                    />
+                    <PromptSelector
+                      jobId={activeJob!.id}
+                      stageKind="ecosystem_evaluation"
+                      categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    />
+                  </>
                 )}
 
                 <div className="flex items-center justify-between pt-2">

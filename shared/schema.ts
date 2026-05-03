@@ -864,3 +864,26 @@ export type PromptRepository = typeof promptRepository.$inferSelect;
 export type InsertPromptRepository = z.infer<typeof insertPromptRepositorySchema>;
 export type MarketBuilderPromptSelection = typeof marketBuilderPromptSelections.$inferSelect;
 export type InsertMarketBuilderPromptSelection = z.infer<typeof insertMarketBuilderPromptSelectionSchema>;
+
+// Per-job LLM model selection. One row per (jobId, stage, promptType).
+// Missing row = use the job's default llmProvider/llmModel.
+export const marketBuilderLlmSelections = pgTable("market_builder_llm_selections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => marketBuilderJobs.id, { onDelete: "cascade" }),
+  // 'vendor_evaluation' | 'product_evaluation' | 'ecosystem_evaluation'
+  stage: text("stage").notNull(),
+  // 'scoring' | 'commentary'
+  promptType: text("prompt_type").notNull(),
+  // 'openai' | 'anthropic' | 'perplexity'
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertMarketBuilderLlmSelectionSchema = createInsertSchema(marketBuilderLlmSelections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type MarketBuilderLlmSelection = typeof marketBuilderLlmSelections.$inferSelect;
+export type InsertMarketBuilderLlmSelection = z.infer<typeof insertMarketBuilderLlmSelectionSchema>;

@@ -21,6 +21,7 @@ import {
   type AiSuggestion, type InsertAiSuggestion,
   type PromptRepository, type InsertPromptRepository,
   type MarketBuilderPromptSelection, type InsertMarketBuilderPromptSelection,
+  type MarketBuilderLlmSelection, type InsertMarketBuilderLlmSelection,
 } from "@shared/schema";
 
 export * from "./users";
@@ -184,6 +185,10 @@ export interface IStorage {
   listJobPromptSelections(jobId: string): Promise<MarketBuilderPromptSelection[]>;
   upsertJobPromptSelection(data: InsertMarketBuilderPromptSelection): Promise<MarketBuilderPromptSelection>;
   clearJobPromptSelection(jobId: string, stage: import("./prompts").PromptStage, targetType: string, targetKey: string, promptType: import("./prompts").PromptType): Promise<void>;
+  listJobLlmSelections(jobId: string): Promise<MarketBuilderLlmSelection[]>;
+  getJobLlmSelection(jobId: string, stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType): Promise<MarketBuilderLlmSelection | undefined>;
+  upsertJobLlmSelection(data: InsertMarketBuilderLlmSelection): Promise<MarketBuilderLlmSelection>;
+  clearJobLlmSelection(jobId: string, stage: import("./prompts").PromptStage, promptType: import("./prompts").PromptType): Promise<void>;
 }
 
 export const storage: IStorage = {

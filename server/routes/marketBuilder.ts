@@ -47,6 +47,38 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── Per-job LLM model selections ─────────────────────────────────────────
+
+  app.get("/api/admin/market-builder/jobs/:id/llm-selections", requireAdmin, async (req, res) => {
+    try {
+      const selections = await storage.listJobLlmSelections(req.params.id);
+      res.json(selections);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Bulk upsert. Body: { selections: Array<{stage, promptType, provider|null, model|null}> }
+  // Pass provider=null to clear (revert to job default).
+  app.put("/api/admin/market-builder/jobs/:id/llm-selections", requireAdmin, async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const items: Array<{ stage: any; promptType: any; provider: string | null; model: string | null }>
+        = Array.isArray(req.body?.selections) ? req.body.selections : [];
+      for (const item of items) {
+        if (!item.stage || !item.promptType) continue;
+        if (item.provider && item.model) {
+          await storage.upsertJobLlmSelection({
+            jobId, stage: item.stage, promptType: item.promptType,
+            provider: item.provider, model: item.model,
+          });
+        } else {
+          await storage.clearJobLlmSelection(jobId, item.stage, item.promptType);
+        }
+      }
+      const updated = await storage.listJobLlmSelections(jobId);
+      res.json(updated);
+    } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
   // Bulk upsert. Body: { selections: Array<{stage, targetType, targetKey, promptType, promptId|null}> }
   // Pass promptId=null to clear an override.
   app.put("/api/admin/market-builder/jobs/:id/prompt-selections", requireAdmin, async (req, res) => {
