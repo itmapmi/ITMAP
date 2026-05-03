@@ -367,7 +367,7 @@ export function AiSuggestionsAdmin() {
 
   const approveMutation = useMutation({
     mutationFn: ({ id, value, commentary }: { id: string; value: number; commentary: string }) =>
-      apiRequest("POST", `/api/admin/ai-suggestions/${id}/approve`, { value, commentary }),
+      apiRequest(`/api/admin/ai-suggestions/${id}/approve`, "POST", { value, commentary }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions/count"] });
@@ -379,7 +379,7 @@ export function AiSuggestionsAdmin() {
 
   const rejectMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest("POST", `/api/admin/ai-suggestions/${id}/reject`),
+      apiRequest(`/api/admin/ai-suggestions/${id}/reject`, "POST"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions/count"] });
