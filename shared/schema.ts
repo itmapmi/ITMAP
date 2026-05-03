@@ -674,3 +674,102 @@ export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
 });
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 export type AiSuggestion = typeof aiSuggestions.$inferSelect;
+
+// ── Market Builder ─────────────────────────────────────────────────────────
+// Tracks long-running AI wizard sessions so they survive browser refreshes.
+//
+// Job lifecycle:  idle → running → completed | failed → published
+// Stage statuses: pending → running → completed | failed
+//
+// Stage numbers:
+//   1  Market overview + vendor list
+//   2  Criteria & weights
+//   3  Feature categories & features
+//   4  Vendor scores (per criterion)
+//   5  Feature support levels (Harvey Ball per vendor per feature)
+
+export const marketBuilderJobs = pgTable("market_builder_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // High-level status of the whole job
+  status: text("status").notNull().default("idle"),
+  // idle | running | completed | failed | published
+
+  // Market being built — null until Stage 1 completes
+  marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
+
+  // Inputs supplied by the admin in the wizard form
+  inputName: text("input_name").notNull(),
+  inputDescription: text("input_description").notNull(),
+  inputCategory: text("input_category"),
+  inputContext: text("input_context"), // extra free-text context for the AI
+
+  // Error message if the job failed at the job level
+  error: text("error"),
+
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const marketBuilderStages = pgTable("market_builder_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => marketBuilderJobs.id, { onDelete: "cascade" }),
+
+  stage: integer("stage").notNull(), // 1–5
+
+  status: text("status").notNull().default("pending"),
+  // pending | running | completed | failed
+
+  // Raw AI output for this stage — schema varies per stage, stored as JSONB
+  result: jsonb("result"),
+
+  // Human-readable error if this stage failed
+  error: text("error"),
+
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+// Relations
+export const marketBuilderJobsRelations = relations(marketBuilderJobs, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [marketBuilderJobs.createdBy],
+    references: [users.id],
+  }),
+  market: one(markets, {
+    fields: [marketBuilderJobs.marketId],
+    references: [markets.id],
+  }),
+  stages: many(marketBuilderStages),
+}));
+
+export const marketBuilderStagesRelations = relations(marketBuilderStages, ({ one }) => ({
+  job: one(marketBuilderJobs, {
+    fields: [marketBuilderStages.jobId],
+    references: [marketBuilderJobs.id],
+  }),
+}));
+
+// Insert schemas
+export const insertMarketBuilderJobSchema = createInsertSchema(marketBuilderJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  marketId: true,
+  error: true,
+});
+
+export const insertMarketBuilderStageSchema = createInsertSchema(marketBuilderStages).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+// Types
+export type InsertMarketBuilderJob = z.infer<typeof insertMarketBuilderJobSchema>;
+export type MarketBuilderJob = typeof marketBuilderJobs.$inferSelect;
+
+export type InsertMarketBuilderStage = z.infer<typeof insertMarketBuilderStageSchema>;
+export type MarketBuilderStage = typeof marketBuilderStages.$inferSelect;

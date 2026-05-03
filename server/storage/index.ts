@@ -27,6 +27,7 @@ export * from "./criteria";
 export * from "./features";
 export * from "./research";
 export * from "./admin";
+export * from "./marketBuilder";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -34,6 +35,7 @@ import * as criteriaStorage from "./criteria";
 import * as featureStorage from "./features";
 import * as researchStorage from "./research";
 import * as adminStorage from "./admin";
+import * as marketBuilderStorage from "./marketBuilder";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -140,6 +142,17 @@ export interface IStorage {
   getExternalSession(apiKeyId: string, externalSessionId: string): Promise<ExternalChatSession | undefined>;
   getExternalSessionMessages(sessionId: string): Promise<ExternalChatMessage[]>;
   addExternalMessage(sessionId: string, role: string, content: string): Promise<ExternalChatMessage>;
+
+  // Market Builder
+  createMarketBuilderJob(data: import("@shared/schema").InsertMarketBuilderJob): Promise<import("@shared/schema").MarketBuilderJob>;
+  getMarketBuilderJob(id: string): Promise<import("@shared/schema").MarketBuilderJob | undefined>;
+  listMarketBuilderJobs(): Promise<import("@shared/schema").MarketBuilderJob[]>;
+  updateMarketBuilderJob(id: string, data: Partial<Pick<import("@shared/schema").MarketBuilderJob, "status" | "marketId" | "error" | "updatedAt">>): Promise<import("@shared/schema").MarketBuilderJob>;
+  deleteMarketBuilderJob(id: string): Promise<void>;
+  getMarketBuilderStages(jobId: string): Promise<import("@shared/schema").MarketBuilderStage[]>;
+  getMarketBuilderStage(jobId: string, stage: number): Promise<import("@shared/schema").MarketBuilderStage | undefined>;
+  upsertMarketBuilderStage(jobId: string, stage: number, data: Partial<Pick<import("@shared/schema").MarketBuilderStage, "status" | "result" | "error" | "startedAt" | "completedAt">>): Promise<import("@shared/schema").MarketBuilderStage>;
+  getMarketBuilderJobWithStages(id: string): Promise<(import("@shared/schema").MarketBuilderJob & { stages: import("@shared/schema").MarketBuilderStage[] }) | undefined>;
 }
 
 export const storage: IStorage = {
@@ -149,4 +162,5 @@ export const storage: IStorage = {
   ...featureStorage,
   ...researchStorage,
   ...adminStorage,
+  ...marketBuilderStorage,
 };

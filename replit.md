@@ -28,7 +28,12 @@ Preferred communication style: Simple, everyday language.
 - **Development**: TSX
 
 ### Data Model
-The platform utilizes a relational data model encompassing Markets, Sub-Markets, Vendors, Criteria (Execution vs. Viability), Vendor Scores, Market Criteria Weights, Vendor News, Features, Research Reports, and Historical Positions.
+The platform utilizes a relational data model encompassing Markets, Sub-Markets, Vendors, Criteria (Execution vs. Viability), Vendor Scores, Market Criteria Weights, Vendor News, Features, Research Reports, Historical Positions, and Market Builder Jobs/Stages.
+
+**Market Builder**: Two new tables support the AI Market Builder wizard (`/admin/market-builder`):
+- `market_builder_jobs` — one row per wizard session (inputs, status, link to created market once published). Job lifecycle: `idle → running → completed | failed → published`.
+- `market_builder_stages` — one row per stage per job (stage 1–5, status, JSONB AI result, error, timestamps). Stage lifecycle: `pending → running → completed | failed`.
+Storage module: `server/storage/marketBuilder.ts`. These tables enable resumability — if the browser closes mid-wizard, the job survives.
 
 **Feature Support Scoring**: Uses Harvey Ball scale (0-4) for vendor feature support:
 - 0 = Not Supported (0%)
