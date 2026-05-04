@@ -1,11 +1,15 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client using Replit AI Integrations
-// This uses Replit credits instead of requiring your own OpenAI API key
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    });
+  }
+  return _openai;
+}
 
 export interface ChatContext {
   marketId: string;
@@ -169,7 +173,7 @@ export async function generateChatResponse(
     ];
 
     // Call OpenAI with GPT-4.1 mini (1M token context window)
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-4.1-mini",
       messages,
       temperature: 0.3, // Low temperature for factual responses

@@ -13,10 +13,16 @@ interface AnalyzedResult {
   category: string;
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return _openai;
+}
 
 export type ImpactLabel = 'HIGH' | 'MEDIUM' | 'LOW';
 export type ArticleCategory =
@@ -202,7 +208,7 @@ Respond with valid JSON only:
   let impactLabel: ImpactLabel = 'MEDIUM';
 
   try {
-    const classifyCompletion = await openai.chat.completions.create({
+    const classifyCompletion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: classifyPrompt }],
       temperature: 0.1,
@@ -285,7 +291,7 @@ Respond with valid JSON only:
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.4,

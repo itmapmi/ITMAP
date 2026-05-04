@@ -6,10 +6,16 @@ import { isNotNull, eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import { generateSuggestionsForVendorById } from '../suggestions/generator';
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return _openai;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -87,7 +93,7 @@ Category values (choose one): Product Announcement, Partnership, M&A, Financial 
 
   try {
     // Use OpenAI Responses API with web_search_preview for real internet access
-    const responseApi = (openai as any).responses;
+    const responseApi = (getOpenAI() as any).responses;
     if (!responseApi) {
       throw new Error('Responses API not available on this OpenAI client');
     }
