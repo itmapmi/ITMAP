@@ -1,8 +1,22 @@
-# ITMAP - Enterprise Market Research Platform
+# spectio.ai — Enterprise IT Vendor Intelligence Platform
 
 ## Overview
 
-ITMAP is a comprehensive enterprise market research platform for technology vendor analysis. It provides interactive Vendor Evaluation visualizations, competitive intelligence, and detailed market insights. Users can explore technology markets, compare vendors, track news, and access research reports. The platform's business vision is to deliver unbiased, comprehensive market intelligence, serving as a critical tool for understanding and navigating technology markets.
+spectio.ai (formerly ITMAP) is a premium enterprise IT vendor selection platform delivering independent, AI-powered intelligence — vendor rankings, feature evaluations, news impact analysis, and research reports. The company tagline is "See Every Vendor. Know Every Move." The platform serves enterprise IT buyers who need unbiased, real-time intelligence on technology vendors across multiple markets.
+
+## Brand & Design System
+
+- **Brand name**: spectio.ai (Latin: "observation")
+- **Tagline**: "See Every Vendor. Know Every Move."
+- **Logo**: Custom SVG eye/radar icon + spectio.ai wordmark — `client/src/components/spectio-logo.tsx`
+- **Design aesthetic**: Dark premium (inspired by igloo.inc) — deep navy/slate backgrounds, cyan + violet gradient accents
+- **Base color**: `bg-slate-950` (#020617)
+- **Primary accent**: `text-cyan-400` / `from-cyan-500`
+- **Secondary accent**: `text-violet-400` / `to-violet-600`
+- **Cards**: `bg-slate-900 border border-white/5` glassmorphism style
+- **Gradient buttons**: `bg-gradient-to-r from-cyan-500 to-violet-600`
+- **Navigation**: Dark glassmorphism `bg-slate-950/80 backdrop-blur-xl` — auto-detects admin routes and renders a light variant instead
+- **Market name display**: DB stores "ITMAP for X" prefix — all display code strips it: `name.replace(/^ITMAP for /i, "")`
 
 ## User Preferences
 
@@ -13,9 +27,10 @@ Preferred communication style: Simple, everyday language.
 ### Frontend
 - **Framework**: React 18 with TypeScript
 - **Routing**: Wouter
-- **State Management**: TanStack Query
+- **State Management**: TanStack Query v5 (object-form only)
 - **UI Framework**: Radix UI primitives with shadcn/ui
 - **Styling**: Tailwind CSS with CSS variables
+- **Animations**: Framer Motion (no `useScroll`/`useTransform` in home.tsx — removed to fix ref warnings)
 - **Build Tool**: Vite
 - **Data Visualization**: D3.js for Vendor Evaluation charts
 
@@ -23,9 +38,21 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript
 - **Database ORM**: Drizzle ORM
-- **Database**: PostgreSQL via Neon serverless
+- **Database**: Replit managed PostgreSQL (DATABASE_URL env var) — 27 tables migrated from NeonDB
 - **File Uploads**: Google Cloud Storage and Uppy
 - **Development**: TSX
+- **Cron jobs**: 7 running (news ingestion, weekly backup, health check, user logs cleanup, news cleanup, newsroom health, new players discovery)
+
+### Key Pages (Public — Dark Premium Design)
+- `/` — Home (`client/src/pages/home.tsx`): Hero, stats, live market cards, features, news preview, footer
+- `/markets` — Markets (`client/src/pages/markets.tsx`): Pill filter, glassmorphism market cards, live data
+- `/platform` — Platform (`client/src/pages/Platform.tsx`): Feature showcase, comparison vs traditional analysts
+- `/about` — About (`client/src/pages/About.tsx`): Brand story, mission, team
+- `/licensing` — Licensing (`client/src/pages/Licensing.tsx`): IP / reprint licensing info
+- `/contact` — Contact (`client/src/pages/Contact.tsx`): Contact form + info cards
+
+### Admin Panel (Light Theme — Untouched)
+- `/admin/*` and `/market-builder` — light-themed nav variant auto-applied by `navigation.tsx`
 
 ### Data Model
 The platform uses a relational data model for Markets, Sub-Markets, Vendors, Criteria (Execution vs. Viability), Vendor Scores, Market Criteria Weights, Vendor News, Features, Research Reports, Historical Positions, and Market Builder Jobs/Stages. The Market Builder feature uses specific tables to support its AI-driven wizard for market creation, ensuring resumability and detailed tracking of job and stage lifecycles.
@@ -44,17 +71,26 @@ The platform uses a relational data model for Markets, Sub-Markets, Vendors, Cri
 - **Automated News Processing**: Daily pipeline using OpenAI for combined scrape and analysis of vendor news, classifying impact, and providing key takeaways. Includes a newsroom URL health check and email alerts for unreachable URLs.
 - **AI Chat Agent**: Conversational AI assistant (GPT-4.1 mini) accessible from market detail pages, answering complex market intelligence questions using database context with custom RAG, persistent conversations, markdown formatting, and source citations.
 - **Mobile Responsiveness**: UI adapts to different screen sizes.
-- **Domain Management**: Enforces a custom primary domain (itemap.ai) with 301 redirects and smart OAuth handling.
+- **Domain Management**: Enforces a custom primary domain with 301 redirects and smart OAuth handling.
 - **Ecosystem Support**: Dedicated section for third-party integrations.
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables.
 - **Import/Export**: Admin-only feature for Excel data import/export (Vendor Evaluation, Product Evaluation, ISV Ecosystem).
 - **PDF Report Generation**: Professional PDF reports with vendor filtering, detailed commentary, and support level badges, rendered using Puppeteer with system Chromium.
-- **New Players Discovery Agent**: Admin-only AI agent (`server/agents/new-players-discovery.ts`, route `POST /api/markets/:marketId/discover-new-players`) that scans a market's definition with GPT-4.1-mini to surface emerging/lesser-known vendors and writes them to the existing `new_players` table for admin review. The prompt is given the current vendor + new-player names as exclusions, and a normalized-name dedup pass (strips Inc/Corp/Ltd/etc.) filters anything the model still returns. Triggered manually from a "Scan for New Vendors" button in the New Players admin tab, and automatically by a monthly cron job (`newPlayersDiscovery` in `server/cronJobs.ts`, runs on the 1st of each month at 5:00 AM UTC) that iterates every market with per-market error isolation.
+- **New Players Discovery Agent**: Admin-only AI agent (`server/agents/new-players-discovery.ts`) that scans a market's definition with GPT-4.1-mini to surface emerging vendors. Triggered manually and by monthly cron job.
+
+## Environment Variables / Secrets
+
+- `DATABASE_URL` — Replit managed PostgreSQL (auto-set)
+- `AI_INTEGRATIONS_OPENAI_API_KEY` + `AI_INTEGRATIONS_OPENAI_BASE_URL` — Replit OpenAI integration (active)
+- `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` — LinkedIn OAuth (present)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth
+- `SESSION_SECRET` — Session signing
+- Optional (features degrade gracefully): `PERPLEXITY_API_KEY`, `LLM_KEY_ENCRYPTION_SECRET`, `TINYMCE_API_KEY`, SMTP vars
 
 ## External Dependencies
 
 ### Database Services
-- **Neon Database**: Serverless PostgreSQL.
+- **Replit PostgreSQL**: Managed serverless PostgreSQL (migrated from NeonDB).
 - **Drizzle ORM**: Type-safe database operations.
 
 ### Cloud Storage
@@ -65,6 +101,7 @@ The platform uses a relational data model for Markets, Sub-Markets, Vendors, Cri
 - **Radix UI**: Accessibility-focused primitive components.
 - **D3.js**: Data visualization library.
 - **Lucide React**: Icon library.
+- **Framer Motion**: Animation library.
 
 ### Development and Build Tools
 - **Vite**: Build tool.

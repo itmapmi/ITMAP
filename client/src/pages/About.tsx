@@ -1,71 +1,265 @@
-import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
+import { motion } from "framer-motion";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Shield, Zap, Eye, Users, Globe2, ArrowRight, CheckCircle2, Database, Brain } from "lucide-react";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 30 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-80px" },
+  transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
+};
+
+const VALUES = [
+  {
+    icon: <Shield className="h-6 w-6 text-cyan-400" />,
+    title: "Radical Independence",
+    desc: "We accept zero vendor payments, sponsorships or paid placements. Every score is determined purely by data and methodology.",
+  },
+  {
+    icon: <Eye className="h-6 w-6 text-violet-400" />,
+    title: "Total Transparency",
+    desc: "Every vendor evaluation exposes its sources, criteria and weights. Nothing is hidden. Everything is verifiable.",
+  },
+  {
+    icon: <Zap className="h-6 w-6 text-cyan-400" />,
+    title: "Real-Time Precision",
+    desc: "Market intelligence that reflects today — not last quarter. Our AI processes news, releases and signals continuously.",
+  },
+  {
+    icon: <Brain className="h-6 w-6 text-violet-400" />,
+    title: "AI-Native Methodology",
+    desc: "Built from the ground up around large language models — not retrofitted. AI is at the core of every analysis we produce.",
+  },
+];
+
+const TEAM_VALUES = [
+  "40+ years of combined enterprise IT experience",
+  "Former analysts from leading research firms",
+  "Deep operational expertise in infrastructure, cloud and data protection",
+  "Technologists who've lived the vendor selection challenge firsthand",
+];
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-8">
-            <img src={itmapLogo} alt="ITMAP" className="h-28 w-auto" />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">About ITMAP</h1>
-          <div className="text-xl text-blue-600 font-semibold mb-8">
-            Unbiased. Comprehensive.
-          </div>
-        </div>
-
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
-            <p className="text-gray-600 leading-relaxed">
-              ITMAP is dedicated to providing unbiased, comprehensive technology intelligence that empowers 
-              enterprise decision-makers to make informed choices about their technology stack. We deliver 
-              independent analysis, detailed vendor comparisons, and strategic insights that cut through 
-              marketing noise to reveal the truth about technology solutions.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">What Sets Us Apart</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Unbiased Analysis</h3>
-                <p className="text-gray-600">
-                  Our research is completely independent, free from vendor influence or bias.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Comprehensive Coverage</h3>
-                <p className="text-gray-600">
-                  We cover the full spectrum of enterprise technology markets and vendors.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Data-Driven Insights</h3>
-                <p className="text-gray-600">
-                  Our analysis is based on rigorous methodology and real-world data.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Expert Analysis</h3>
-                <p className="text-gray-600">
-                  Our team consists of industry veterans with deep technical expertise.
-                </p>
-              </div>
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* Hero */}
+      <section className="relative py-28 overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(14,165,233,0.1)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_60%,rgba(124,58,237,0.08)_0%,transparent_60%)]" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
+              <Globe2 className="h-4 w-4" /> About spectio.ai
             </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Team</h2>
-            <p className="text-gray-600 leading-relaxed">
-              The ITMAP team brings together decades of experience in enterprise technology, 
-              market research, and strategic consulting. Our analysts have worked at leading 
-              technology companies and research firms, giving them unique insights into both 
-              vendor capabilities and customer needs.
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-8">
+              Built to cut through
+              <br />
+              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">the analyst noise</span>
+            </h1>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              spectio.ai was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
             </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Mission */}
+      <section className="py-24 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div {...fadeUp}>
+              <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
+                <div className="h-px w-8 bg-cyan-400" /> OUR MISSION
+              </div>
+              <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
+                Giving enterprise buyers the intelligence they deserve
+              </h2>
+              <p className="text-slate-400 text-lg leading-relaxed mb-6">
+                For too long, enterprise technology research has been a product sold to vendors first, and to buyers second. Gartner Magic Quadrants, Forrester Waves, IDC MarketScapes — all funded, in part, by the very companies they rank.
+              </p>
+              <p className="text-slate-400 text-lg leading-relaxed mb-8">
+                spectio.ai is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
+              </p>
+              <Link href="/platform">
+                <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
+                  See How We Analyze <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="space-y-4"
+            >
+              {[
+                { label: "Independence", pct: 100, color: "from-cyan-500 to-cyan-400", note: "Zero vendor funding" },
+                { label: "Data Currency", pct: 97, color: "from-cyan-500 to-violet-500", note: "Updated daily" },
+                { label: "Source Transparency", pct: 100, color: "from-violet-500 to-violet-400", note: "All sources disclosed" },
+                { label: "Coverage Breadth", pct: 85, color: "from-cyan-400 to-violet-500", note: "6+ markets, growing" },
+              ].map((item) => (
+                <div key={item.label} className="bg-slate-900 border border-white/5 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-white">{item.label}</span>
+                    <div className="text-right">
+                      <span className="text-xl font-bold text-white">{item.pct}%</span>
+                      <p className="text-xs text-slate-500">{item.note}</p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full bg-gradient-to-r ${item.color} rounded-full`}
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${item.pct}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </motion.div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Values */}
+      <section className="py-24 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div {...fadeUp} className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4">
+              <div className="h-px w-8 bg-violet-400" /> OUR VALUES
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white">
+              Principles we won't compromise
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {VALUES.map((v, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className="bg-slate-900 border border-white/5 hover:border-white/10 rounded-2xl p-8 transition-all"
+              >
+                <div className="p-3 bg-slate-800 rounded-xl w-fit mb-5">{v.icon}</div>
+                <h3 className="text-xl font-bold text-white mb-3">{v.title}</h3>
+                <p className="text-slate-400 leading-relaxed">{v.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section className="py-24 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div {...fadeUp}>
+              <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
+                <div className="h-px w-8 bg-cyan-400" /> THE TEAM
+              </div>
+              <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
+                Practitioners building for practitioners
+              </h2>
+              <p className="text-slate-400 text-lg leading-relaxed mb-8">
+                spectio.ai is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
+              </p>
+              <ul className="space-y-3">
+                {TEAM_VALUES.map((t) => (
+                  <li key={t} className="flex items-start gap-3 text-slate-300">
+                    <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-10 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(14,165,233,0.08)_0%,transparent_60%)]" />
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="flex -space-x-2">
+                    {["P", "A", "S", "R"].map((l, i) => (
+                      <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30 border-2 border-slate-900 flex items-center justify-center text-sm font-bold text-cyan-400">
+                        {l}
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">Core Team</p>
+                    <p className="text-slate-500 text-sm">Dubai · Global</p>
+                  </div>
+                </div>
+
+                <blockquote className="text-slate-300 text-lg leading-relaxed italic mb-6">
+                  "We were tired of paying six figures for research that told us what vendors had already paid to say. So we built the alternative."
+                </blockquote>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-sm font-bold text-white">P</div>
+                  <div>
+                    <p className="text-white font-medium text-sm">Priyanka</p>
+                    <p className="text-slate-500 text-xs">Founder, spectio.ai</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-white/5 flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-slate-500 text-sm">
+                    <Database className="h-4 w-4 text-cyan-400" />
+                    Dubai, UAE (DMCC)
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-500 text-sm">
+                    <Users className="h-4 w-4 text-violet-400" />
+                    +971-569221785
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div {...fadeUp}>
+            <h2 className="text-4xl font-bold text-white mb-6">
+              Ready to see differently?
+            </h2>
+            <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
+              Join the growing number of enterprise IT leaders choosing intelligence without an agenda.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register">
+                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-10">
+                  Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="outline" size="lg" className="border-white/10 text-slate-300 hover:text-white bg-transparent px-10">
+                  Contact Us
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

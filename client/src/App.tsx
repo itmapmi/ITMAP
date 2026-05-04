@@ -53,7 +53,7 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navigation />
       <Switch>
         <Route path="/" component={Home} />
