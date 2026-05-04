@@ -117,8 +117,12 @@
     overscroll-behavior: none;
   }
   
-  html, body {
-    overflow-x: hidden;
+  html {
+    width: 100%;
+  }
+
+  body {
+    overflow-x: clip;
     width: 100%;
   }
   
