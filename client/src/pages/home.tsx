@@ -172,7 +172,7 @@ export default function Home() {
   return (
     <div className="bg-slate-950 text-white overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-[92vh] flex items-center overflow-hidden">
+      <section className="relative min-h-[92vh] flex items-center overflow-x-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(14,165,233,0.12)_0%,transparent_55%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(124,58,237,0.12)_0%,transparent_55%)]" />
