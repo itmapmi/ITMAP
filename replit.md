@@ -49,6 +49,7 @@ The platform uses a relational data model for Markets, Sub-Markets, Vendors, Cri
 - **Vendor Scoring**: Admin portal separates X-axis (Execution) and Y-axis (Viability) criteria tables.
 - **Import/Export**: Admin-only feature for Excel data import/export (Vendor Evaluation, Product Evaluation, ISV Ecosystem).
 - **PDF Report Generation**: Professional PDF reports with vendor filtering, detailed commentary, and support level badges, rendered using Puppeteer with system Chromium.
+- **New Players Discovery Agent**: Admin-only AI agent (`server/agents/new-players-discovery.ts`, route `POST /api/markets/:marketId/discover-new-players`) that scans a market's definition with GPT-4.1-mini to surface emerging/lesser-known vendors and writes them to the existing `new_players` table for admin review. The prompt is given the current vendor + new-player names as exclusions, and a normalized-name dedup pass (strips Inc/Corp/Ltd/etc.) filters anything the model still returns. Triggered from a "Scan for New Vendors" button in the New Players admin tab.
 
 ## External Dependencies
 

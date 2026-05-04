@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { insertNewPlayerSchema, type NewPlayer, type InsertNewPlayer } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +113,39 @@ export function NewPlayersAdmin() {
     },
   });
 
+  const discoverMutation = useMutation({
+    mutationFn: async (marketId: string) => {
+      return await apiRequest(
+        `/api/markets/${marketId}/discover-new-players`,
+        "POST",
+      ) as {
+        added: NewPlayer[];
+        skippedDuplicates: string[];
+        totalSuggested: number;
+        marketName: string;
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
+      const addedCount = result.added.length;
+      const skippedCount = result.skippedDuplicates.length;
+      toast({
+        title: addedCount > 0 ? `Added ${addedCount} new vendor${addedCount === 1 ? "" : "s"}` : "No new vendors found",
+        description:
+          addedCount > 0
+            ? `Scanned ${result.marketName}. ${skippedCount > 0 ? `Skipped ${skippedCount} duplicate${skippedCount === 1 ? "" : "s"}.` : ""}`
+            : `The agent didn't find any vendors that aren't already tracked${skippedCount > 0 ? ` (${skippedCount} duplicate${skippedCount === 1 ? "" : "s"} skipped)` : ""}.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Vendor discovery failed",
+        description: err?.message || "The AI agent couldn't complete the scan. Try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAdd = (data: InsertNewPlayer) => {
     createMutation.mutate({ ...data, marketId: selectedMarketId });
   };
@@ -159,6 +192,25 @@ export function NewPlayersAdmin() {
         </div>
 
         {selectedMarketId && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => discoverMutation.mutate(selectedMarketId)}
+              disabled={discoverMutation.isPending}
+              data-testid="button-discover-players"
+            >
+              {discoverMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Scanning market…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Scan for New Vendors
+                </>
+              )}
+            </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-player">
@@ -259,6 +311,7 @@ export function NewPlayersAdmin() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 

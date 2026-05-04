@@ -219,6 +219,19 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Discover new players via AI agent — scans the market definition and adds
+  // candidate vendors to the new-players list for admin approval.
+  app.post("/api/markets/:marketId/discover-new-players", requireAdmin, async (req, res) => {
+    try {
+      const { discoverNewPlayers } = await import("../agents/new-players-discovery");
+      const result = await discoverNewPlayers(req.params.marketId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error discovering new players:", error);
+      res.status(500).json({ error: error?.message || "Failed to discover new players" });
+    }
+  });
+
   // ── Vendor Label Positions ─────────────────────────────────────────────────
 
   app.get("/api/markets/:marketId/label-positions", requireMarketAccess, async (req, res) => {
