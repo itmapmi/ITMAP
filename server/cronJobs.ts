@@ -129,6 +129,44 @@ export class CronJobManager {
 
     this.jobs.set('newsIngestion', newsIngestionJob);
 
+    // Monthly new-players discovery scan — runs on the 1st of each month at 5:00 AM UTC.
+    // Iterates over every market and asks the AI agent to surface new candidate vendors,
+    // which land in the new_players table for admin approval.
+    const newPlayersDiscoveryJob = cron.schedule('0 5 1 * *', async () => {
+      console.log('[Cron] Starting monthly new-players discovery scan...');
+      try {
+        const { discoverNewPlayers } = await import('./agents/new-players-discovery');
+        const markets = await storage.getAllMarkets();
+        let scanned = 0;
+        let totalAdded = 0;
+        let failed = 0;
+        for (const market of markets) {
+          try {
+            const result = await discoverNewPlayers(market.id);
+            scanned++;
+            totalAdded += result.added.length;
+            console.log(
+              `[Cron] Discovery: ${market.name} → +${result.added.length} added, ${result.skippedDuplicates.length} skipped (of ${result.totalSuggested} suggested)`
+            );
+          } catch (err) {
+            failed++;
+            console.error(`[Cron] Discovery failed for market "${market.name}" (${market.id}):`, err);
+          }
+        }
+        console.log(
+          `[Cron] Monthly discovery done: ${scanned}/${markets.length} markets scanned, ${totalAdded} new candidates added, ${failed} failed`
+        );
+        this.lastRun.set('newPlayersDiscovery', { timestamp: new Date(), status: failed === 0 ? 'success' : 'failed' });
+      } catch (error) {
+        console.error('[Cron] Error in monthly new-players discovery scan:', error);
+        this.lastRun.set('newPlayersDiscovery', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, {
+      timezone: 'UTC'
+    });
+
+    this.jobs.set('newPlayersDiscovery', newPlayersDiscoveryJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 
@@ -236,7 +274,13 @@ export class CronJobManager {
       nextRun: 'Daily at 6:30 AM UTC',
       lastRun: this.lastRun.get('newsroomHealthCheck')
     };
-    
+
+    status['newPlayersDiscovery'] = {
+      running: this.jobs.has('newPlayersDiscovery'),
+      nextRun: 'Monthly on the 1st at 5:00 AM UTC',
+      lastRun: this.lastRun.get('newPlayersDiscovery')
+    };
+
     return status;
   }
 
