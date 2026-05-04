@@ -11,29 +11,17 @@ const app = express();
 // Trust proxy for HTTPS detection in Replit environment
 app.set('trust proxy', true);
 
-// Redirect .replit.app domain to custom domain
+// Custom domain redirect — only fires when BASE_URL is explicitly set
+// (e.g. BASE_URL=https://spectio.ai). Do NOT enable REPLIT_DOMAINS-based
+// redirect until DNS is fully pointed at Replit, or .replit.app will break.
 app.use((req, res, next) => {
   const host = req.get('host');
-  
-  // If accessing via .replit.app domain, redirect to custom domain
-  if (host && host.includes('.replit.app')) {
-    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
-    let baseUrl = process.env.BASE_URL;
-    if (!baseUrl) {
-      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-      const customDomain = domains.find(d => !d.includes('.replit.app'));
-      if (customDomain) {
-        baseUrl = `https://${customDomain}`;
-      }
-    }
-    
-    // Only redirect if we have a valid custom domain
-    if (baseUrl) {
-      const newUrl = `${baseUrl}${req.originalUrl}`;
-      return res.redirect(301, newUrl);
-    }
+  const baseUrl = process.env.BASE_URL;
+
+  if (baseUrl && host && !host.includes(new URL(baseUrl).hostname)) {
+    return res.redirect(301, `${baseUrl}${req.originalUrl}`);
   }
-  
+
   next();
 });
 
