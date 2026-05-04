@@ -121,6 +121,7 @@ export interface IStorage {
   createNewPlayer(player: InsertNewPlayer): Promise<NewPlayer>;
   updateNewPlayer(id: string, player: Partial<InsertNewPlayer>): Promise<NewPlayer>;
   deleteNewPlayer(id: string): Promise<void>;
+  promoteNewPlayerToVendor(id: string): Promise<Vendor>;
 
   getUserConversations(userId: string): Promise<ChatConversation[]>;
   getConversationById(id: string): Promise<ChatConversation | undefined>;

@@ -219,6 +219,21 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Promote a discovered new-player to the official `vendors` table for its
+  // market. Atomic: creates the vendor and removes the new-player row in a
+  // single transaction so admins never see the same record in both lists.
+  app.post("/api/new-players/:id/promote", requireAdmin, async (req, res) => {
+    try {
+      const vendor = await storage.promoteNewPlayerToVendor(req.params.id);
+      res.status(201).json(vendor);
+    } catch (error: any) {
+      console.error("Error promoting new player:", error);
+      const msg = error?.message || "Failed to promote new player";
+      const status = msg === "New player not found" ? 404 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
   // Discover new players via AI agent — scans the market definition and adds
   // candidate vendors to the new-players list for admin approval.
   app.post("/api/markets/:marketId/discover-new-players", requireAdmin, async (req, res) => {

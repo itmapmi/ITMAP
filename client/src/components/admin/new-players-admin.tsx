@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Loader2, ArrowUpCircle } from "lucide-react";
 import { insertNewPlayerSchema, type NewPlayer, type InsertNewPlayer } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +110,25 @@ export function NewPlayersAdmin() {
     },
     onError: () => {
       toast({ title: "Failed to delete new player", variant: "destructive" });
+    },
+  });
+
+  const promoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/new-players/${id}/promote`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "new-players"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      toast({ title: "Promoted to vendor", description: "The new player is now in the vendor list." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to promote new player",
+        description: err?.message || "Try again in a moment.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -368,6 +387,21 @@ export function NewPlayersAdmin() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => promoteMutation.mutate(player.id)}
+                          data-testid={`button-promote-${player.id}`}
+                          disabled={promoteMutation.isPending}
+                          title="Promote to Vendor"
+                        >
+                          {promoteMutation.isPending && promoteMutation.variables === player.id ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <ArrowUpCircle className="h-4 w-4 mr-1" />
+                          )}
+                          Promote to Vendor
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

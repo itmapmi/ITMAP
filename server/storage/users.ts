@@ -2,9 +2,10 @@ import {
   type User, type InsertUser,
   type UserActivityLog, type InsertUserActivityLog,
   type NewPlayer, type InsertNewPlayer,
+  type Vendor,
   type ChatConversation, type InsertChatConversation,
   type ChatMessage, type InsertChatMessage,
-  users, userActivityLogs, newPlayers, chatConversations, chatMessages,
+  users, userActivityLogs, newPlayers, vendors, chatConversations, chatMessages,
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -106,6 +107,30 @@ export async function updateNewPlayer(id: string, player: Partial<InsertNewPlaye
 
 export async function deleteNewPlayer(id: string): Promise<void> {
   await db.delete(newPlayers).where(eq(newPlayers.id, id));
+}
+
+// Atomically promote a discovered new-player into the official `vendors`
+// table for its market and remove the original new-player row. If either side
+// fails the whole operation is rolled back so admins never end up with a
+// duplicate row in both tables.
+export async function promoteNewPlayerToVendor(id: string): Promise<Vendor> {
+  return await db.transaction(async (tx) => {
+    const [player] = await tx.select().from(newPlayers).where(eq(newPlayers.id, id));
+    if (!player) {
+      throw new Error("New player not found");
+    }
+    const [vendor] = await tx
+      .insert(vendors)
+      .values({
+        name: player.name,
+        website: player.websiteUrl ?? null,
+        description: player.description ?? null,
+        marketId: player.marketId,
+      })
+      .returning();
+    await tx.delete(newPlayers).where(eq(newPlayers.id, id));
+    return vendor!;
+  });
 }
 
 // ── Chat Conversations ─────────────────────────────────────────────────────
