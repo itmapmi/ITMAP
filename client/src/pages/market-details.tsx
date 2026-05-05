@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, FileDown } from "lucide-react";
+import { ArrowLeft, FileDown, Lock, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { FREE_MARKET_ID } from "@/pages/markets";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
@@ -26,7 +28,9 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const isFreeMarket = marketId === FREE_MARKET_ID;
 
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -179,6 +183,44 @@ export default function MarketDetails() {
             </Button>
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && !isFreeMarket) {
+    return (
+      <div className="min-h-[80vh] bg-[#1e2130] flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="w-16 h-16 bg-slate-800 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-7 w-7 text-slate-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">{market.name}</h2>
+          <p className="text-slate-400 mb-8 leading-relaxed">
+            This market research is available to registered users. Sign in or create a free account to access vendor scores, feature matrices, news analysis, and downloadable reports.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/register">
+              <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-8 w-full sm:w-auto">
+                Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white bg-transparent w-full sm:w-auto">
+                Sign In
+              </Button>
+            </Link>
+          </div>
+          <Link href="/markets">
+            <button className="mt-6 text-sm text-slate-600 hover:text-slate-400 flex items-center gap-1 mx-auto transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Markets
+            </button>
+          </Link>
+        </motion.div>
       </div>
     );
   }
