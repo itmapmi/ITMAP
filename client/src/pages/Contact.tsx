@@ -45,7 +45,7 @@ const CONTACT_DETAILS = [
 
 export default function Contact() {
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-[#0a0f1e] text-white">
       {/* Hero */}
       <section className="relative py-24 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(14,165,233,0.09)_0%,transparent_60%)]" />
