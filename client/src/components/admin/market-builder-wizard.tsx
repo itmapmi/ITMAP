@@ -51,7 +51,7 @@ type StagePhase = "ready" | "running" | "done" | "failed";
 type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
-  { num: 1, label: "Vendors",             icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "8–15 vendors with names, product descriptions, websites, and newsroom URLs." },
+  { num: 1, label: "Vendors",             icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "Top 15 vendors with names, product descriptions, websites, and newsroom URLs — plus a 'Next 10' suggestions list to optionally include." },
   { num: 2, label: "Vendor Evaluation",   icon: BarChart3,  desc: "AI scores vendors against predefined Execution & Viability criteria — driving the quadrant chart.", what: "Market-specific criterion weights and a 0–10 score per vendor × criterion with commentary." },
   { num: 3, label: "Product Features",    icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
   { num: 4, label: "Product Scoring",     icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × product feature, with commentary." },
@@ -141,6 +141,7 @@ function StepTracker({ activeStage, stagePhases, onStepClick }: {
 
 function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
   const vendors = result?.vendors ?? [];
+  const nextTen: any[] = result?.nextTenVendors ?? [];
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<any>(null);
   const startEdit = (i: number) => { setEditing(i); setDraft({ ...vendors[i] }); };
@@ -153,6 +154,19 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
     onChange({ ...result, vendors: [...vendors, { name: "", product: "", website: "", description: "", newsroomUrl: "" }] });
     setEditing(vendors.length); setDraft({ name: "", product: "", website: "", description: "", newsroomUrl: "" });
   };
+
+  const promoteVendor = (nv: any) => {
+    const promoted = { name: nv.name, product: nv.product, website: "", description: nv.description, newsroomUrl: "" };
+    onChange({
+      ...result,
+      vendors: [...vendors, promoted],
+      nextTenVendors: nextTen.filter((v: any) => v.name !== nv.name),
+    });
+  };
+  const dismissNext = (name: string) => {
+    onChange({ ...result, nextTenVendors: nextTen.filter((v: any) => v.name !== name) });
+  };
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -188,6 +202,45 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
           )}
         </div>
       ))}
+
+      {nextTen.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-dashed border-gray-200" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+              <p className="text-sm font-semibold text-gray-700">Next 10 — Suggested Players</p>
+            </div>
+            <div className="flex-1 border-t border-dashed border-gray-200" />
+          </div>
+          <p className="text-xs text-gray-500">
+            These vendors are notable but not yet in the top tier. Add any that should be included in the full research.
+          </p>
+          <div className="space-y-2">
+            {nextTen.map((nv: any) => (
+              <div key={nv.name} className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">{nv.name} <span className="text-gray-400 font-normal">— {nv.product}</span></p>
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{nv.description}</p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1 border-violet-300 text-violet-700 hover:bg-violet-50"
+                    onClick={() => promoteVendor(nv)}
+                  >
+                    <Plus className="h-3 w-3" />Include
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => dismissNext(nv.name)}>
+                    <X className="h-3.5 w-3.5 text-gray-400" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
