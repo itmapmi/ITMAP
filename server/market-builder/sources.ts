@@ -15,7 +15,7 @@ export async function fetchUrlContent(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "ITMAP Market Research Agent/1.0 (market analysis bot)",
+        "User-Agent": "Spectio Market Research Agent/1.0 (market analysis bot)",
         "Accept": "text/html,text/plain,application/json,*/*",
       },
       signal: AbortSignal.timeout(15_000),

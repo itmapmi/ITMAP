@@ -362,14 +362,14 @@ export function registerAdminRoutes(app: Express): void {
         sections: [{
           properties: { page: { margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) } } },
           children: [
-            new Paragraph({ children: [new TextRun({ text: "ITMAP", bold: true, size: 72, color: "1E3A5F" })], alignment: AlignmentType.CENTER, spacing: { before: 800, after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: "Spectio", bold: true, size: 72, color: "1E3A5F" })], alignment: AlignmentType.CENTER, spacing: { before: 800, after: 200 } }),
             new Paragraph({ children: [new TextRun({ text: "Functional Specification Document", size: 36, color: "2D6A9F" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
             new Paragraph({ children: [new TextRun({ text: "Enterprise Market Research Platform", size: 26, color: "555555" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
             new Paragraph({ children: [new TextRun({ text: "Version 1.0  |  March 2026", size: 22, color: "888888" })], alignment: AlignmentType.CENTER, spacing: { after: 800 } }),
             new Paragraph({ children: [new PageBreak()] }),
             heading1("1. Overview"),
-            body("ITMAP is a private, enterprise-grade market research platform designed for technology vendor analysis. It provides structured methodologies for evaluating vendors across complex technology markets, combining interactive visualizations, AI-assisted intelligence, and professional-grade PDF reporting. The platform is positioned as an independent and unbiased source of market intelligence for enterprise buyers."),
-            body("The platform is accessible at itmap.ai and is currently live for one market: ITMAP for Public Cloud Object Storage Providers, covering 12 vendors across 98 features and 8 evaluation criteria."),
+            body("Spectio is a private, enterprise-grade market research platform designed for technology vendor analysis. It provides structured methodologies for evaluating vendors across complex technology markets, combining interactive visualizations, AI-assisted intelligence, and professional-grade PDF reporting. The platform is positioned as an independent and unbiased source of market intelligence for enterprise buyers."),
+            body("The platform is accessible at spectio.ai and is currently live for one market: Public Cloud Object Storage Providers, covering 12 vendors across 98 features and 8 evaluation criteria."),
             spacer(),
             heading1("2. User Roles"),
             makeTable(["Role", "Description"], [
@@ -442,7 +442,7 @@ export function registerAdminRoutes(app: Express): void {
               ["Database", "PostgreSQL (Neon serverless)"],
               ["AI", "OpenAI GPT-4.1 mini via Replit AI Integrations"],
               ["PDF Generation", "Puppeteer + system Chromium"],
-              ["Deployment", "Replit, custom domain itmap.ai"],
+              ["Deployment", "Replit, custom domain spectio.ai"],
             ]),
             spacer(),
           ],
@@ -450,7 +450,7 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       const buffer = await Packer.toBuffer(doc);
-      res.setHeader("Content-Disposition", 'attachment; filename="ITMAP_Functional_Specification_v1.0.docx"');
+      res.setHeader("Content-Disposition", 'attachment; filename="Spectio_Functional_Specification_v1.0.docx"');
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.send(buffer);
     } catch (error) {
@@ -473,7 +473,7 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const { name, allowedMarketIds } = req.body as { name?: string; allowedMarketIds?: string[] | null };
       if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'name is required' });
-      const rawKey = `itmap_${crypto.randomBytes(32).toString('hex')}`;
+      const rawKey = `spectio_${crypto.randomBytes(32).toString('hex')}`;
       const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
       const keyPrefix = rawKey.substring(0, 14);
       const created = await storage.createExternalApiKey({

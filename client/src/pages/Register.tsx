@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { UserPlus, Chrome, Linkedin } from "lucide-react";
-import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
+import SpectioLogo from "@/components/spectio-logo";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -78,9 +78,9 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src={itmapLogo} alt="ITMAP" className="h-28 w-auto" />
+            <SpectioLogo />
           </div>
-          <CardTitle className="text-2xl text-center">Join ITMAP</CardTitle>
+          <CardTitle className="text-2xl text-center">Join Spectio</CardTitle>
           <CardDescription className="text-center">
             <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
             Create your account to start your free trial

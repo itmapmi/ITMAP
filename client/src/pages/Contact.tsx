@@ -16,8 +16,8 @@ const CONTACT_DETAILS = [
   {
     icon: <Mail className="h-5 w-5 text-cyan-400" />,
     label: "Email",
-    value: "priyanka@itmap.com",
-    href: "mailto:priyanka@itmap.com",
+    value: "priyanka@spectio.ai",
+    href: "mailto:priyanka@spectio.ai",
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
@@ -139,7 +139,7 @@ export default function Contact() {
 
                 <Button
                   className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
-                  onClick={() => window.location.href = "mailto:priyanka@itmap.com"}
+                  onClick={() => window.location.href = "mailto:priyanka@spectio.ai"}
                 >
                   Send Message <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -195,7 +195,7 @@ export default function Contact() {
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
                   We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating spectio.ai intelligence into your workflow, let's talk.
                 </p>
-                <a href="mailto:priyanka@itmap.com?subject=Partnership Enquiry">
+                <a href="mailto:priyanka@spectio.ai?subject=Partnership Enquiry">
                   <Button variant="outline" size="sm" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 bg-transparent">
                     Explore Partnership <ArrowRight className="ml-2 h-3.5 w-3.5" />
                   </Button>

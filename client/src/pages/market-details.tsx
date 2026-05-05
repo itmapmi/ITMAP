@@ -59,7 +59,7 @@ export default function MarketDetails() {
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `ITMAP for ${cleanMarketName}.pdf`;
+      a.download = `Spectio for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

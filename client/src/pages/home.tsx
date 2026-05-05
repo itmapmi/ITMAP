@@ -647,8 +647,8 @@ export default function Home() {
                 ))}
               </ul>
               <div className="mt-5">
-                <a href="mailto:priyanka@itmap.com" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
-                  priyanka@itmap.com
+                <a href="mailto:priyanka@spectio.ai" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
+                  priyanka@spectio.ai
                 </a>
               </div>
             </div>

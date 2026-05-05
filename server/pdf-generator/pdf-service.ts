@@ -17,7 +17,7 @@ export class PDFService {
 
   constructor() {
     this.templatePath = path.join(process.cwd(), 'server/pdf-generator/report-template.html');
-    this.logoPath = path.join(process.cwd(), 'attached_assets/ITMAP_logo_transparent_1755237362280.png');
+    this.logoPath = path.join(process.cwd(), 'attached_assets/spectio_logo.png');
   }
 
   private async getLogoBase64(): Promise<string> {
@@ -102,7 +102,7 @@ export class PDFService {
         `,
         footerTemplate: `
           <div style="width: 100%; padding: 0 20mm; font-size: 9px; color: #718096; text-align: center; margin-bottom: 10px;">
-            <span>© ${now.getFullYear()} ITMAP Research — All Rights Reserved</span>
+            <span>© ${now.getFullYear()} Spectio — All Rights Reserved</span>
             <span style="margin-left: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
           </div>
         `,

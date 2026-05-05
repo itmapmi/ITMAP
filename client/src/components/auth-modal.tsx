@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { LogIn, UserPlus, Chrome, Linkedin } from "lucide-react";
-import itmapLogo from "@assets/ITMAP_logo_transparent_1755237362280.png";
+import SpectioLogo from "@/components/spectio-logo";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -125,7 +125,7 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <div className="flex justify-center mb-4">
-            <img src={itmapLogo} alt="ITMAP" className="h-20 w-auto" />
+            <SpectioLogo />
           </div>
           <DialogTitle className="text-center text-xl">
             Sign in to access market analysis

@@ -30,9 +30,9 @@ export interface ChatResponse {
 }
 
 /**
- * System prompt that guides the AI to answer questions using ITMAP data
+ * System prompt that guides the AI to answer questions using Spectio data
  */
-const SYSTEM_PROMPT = `You are ITMAP AI, an expert market intelligence assistant for the ITMAP platform.
+const SYSTEM_PROMPT = `You are Spectio AI, an expert market intelligence assistant for the Spectio platform.
 
 **Your Role:**
 You help users analyze technology vendor markets by answering questions about vendor evaluations, product capabilities, ecosystem support, and market trends.

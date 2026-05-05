@@ -28,7 +28,7 @@ function getKey(): Buffer {
         "to encrypt user LLM API keys."
       );
     }
-    return createHash("sha256").update("itmap-dev-only-not-for-production").digest();
+    return createHash("sha256").update("spectio-dev-only-not-for-production").digest();
   }
   return createHash("sha256").update(secret).digest();
 }
