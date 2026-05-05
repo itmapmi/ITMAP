@@ -17,6 +17,8 @@ import MarketBuilderPage from "@/pages/market-builder";
 import MyMarketBuilderPage from "@/pages/my-market-builder";
 import MyReportsPage from "@/pages/my-reports";
 import MyLlmKeysPage from "@/pages/my-llm-keys";
+import MyProfile from "@/pages/my-profile";
+import MySettings from "@/pages/my-settings";
 import ReportViewer from "@/pages/report-viewer";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -73,6 +75,8 @@ function Router() {
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
+        <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
+        <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route component={NotFound} />
       </Switch>

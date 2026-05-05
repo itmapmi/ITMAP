@@ -18,6 +18,7 @@
  */
 import type { Express } from "express";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { insertPromptRepositorySchema } from "@shared/schema";
@@ -76,6 +77,67 @@ function maskKey(key: string): string {
 }
 
 export function registerMeRoutes(app: Express): void {
+
+  // ── Profile ─────────────────────────────────────────────────────────────
+
+  app.patch("/api/me/profile", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { firstName, lastName, email } = z.object({
+        firstName: z.string().min(1).optional(),
+        lastName:  z.string().min(1).optional(),
+        email:     z.string().email().optional(),
+      }).parse(req.body);
+
+      if (email && email !== user.email) {
+        const existing = await storage.getUserByEmail(email);
+        if (existing && existing.id !== user.id) {
+          return res.status(400).json({ error: "Email already in use" });
+        }
+      }
+
+      const updated = await storage.updateUser(user.id, {
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName  !== undefined && { lastName }),
+        ...(email     !== undefined && { email }),
+      });
+
+      // Refresh the passport session object so the client sees the new name.
+      (req as any).user = updated;
+
+      const { password, ...safe } = updated as any;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // ── Password ─────────────────────────────────────────────────────────────
+
+  app.patch("/api/me/password", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { currentPassword, newPassword } = z.object({
+        currentPassword: z.string().min(1),
+        newPassword:     z.string().min(8),
+      }).parse(req.body);
+
+      const dbUser = await storage.getUser(user.id);
+      if (!dbUser?.password) {
+        return res.status(400).json({ error: "No password set on this account (OAuth login)" });
+      }
+      const match = await bcrypt.compare(currentPassword, dbUser.password);
+      if (!match) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashed });
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
 
   // ── BYO LLM keys ────────────────────────────────────────────────────────
 

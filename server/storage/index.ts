@@ -51,6 +51,7 @@ export interface IStorage {
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByLinkedinId(linkedinId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User>;
 
   getAllMarkets(): Promise<Market[]>;
   getPublicMarkets(): Promise<Market[]>;

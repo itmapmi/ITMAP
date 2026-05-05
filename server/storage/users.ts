@@ -35,6 +35,15 @@ export async function createUser(insertUser: InsertUser): Promise<User> {
   return user;
 }
 
+export async function updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 export async function getAdminUsers(): Promise<User[]> {
   return await db.select().from(users).where(eq(users.role, 'admin'));
 }

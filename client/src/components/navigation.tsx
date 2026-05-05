@@ -133,8 +133,12 @@ export default function Navigation() {
                       <p className="font-medium text-sm text-white">{user?.firstName} {user?.lastName}</p>
                       <p className="text-xs text-slate-400 truncate">{user?.email}</p>
                     </div>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><User className="mr-2 h-4 w-4" />Profile</DropdownMenuItem>
-                    <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><Settings className="mr-2 h-4 w-4" />Settings</DropdownMenuItem>
+                    <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                      <Link href="/me/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                      <Link href="/me/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout} className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
