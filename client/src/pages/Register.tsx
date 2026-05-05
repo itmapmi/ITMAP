@@ -78,7 +78,7 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <SpectioLogo />
+            <SpectioLogo variant="dark" size="lg" />
           </div>
           <CardTitle className="text-2xl text-center">Join Spectio</CardTitle>
           <CardDescription className="text-center">

@@ -125,7 +125,7 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <div className="flex justify-center mb-4">
-            <SpectioLogo />
+            <SpectioLogo variant="dark" />
           </div>
           <DialogTitle className="text-center text-xl">
             Sign in to access market analysis
