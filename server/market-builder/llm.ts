@@ -29,11 +29,8 @@ export const LLM_MODELS: Record<string, { id: string; label: string }[]> = {
     { id: "o4-mini",        label: "o4-mini (Reasoning)" },
   ],
   anthropic: [
-    { id: "claude-opus-4-5",                label: "Claude Opus 4.5 (Most Capable)" },
-    { id: "claude-sonnet-4-5",              label: "Claude Sonnet 4.5 (Balanced)" },
-    { id: "claude-3-7-sonnet-20250219",     label: "Claude 3.7 Sonnet" },
+    { id: "claude-3-7-sonnet-20250219",     label: "Claude 3.7 Sonnet (Recommended)" },
     { id: "claude-3-5-sonnet-20241022",     label: "Claude 3.5 Sonnet" },
-    { id: "claude-3-5-haiku-20241022",      label: "Claude 3.5 Haiku (Fast)" },
     { id: "claude-3-opus-20240229",         label: "Claude 3 Opus" },
   ],
   perplexity: [
