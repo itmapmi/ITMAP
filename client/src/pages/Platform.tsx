@@ -90,7 +90,7 @@ const HOW_STEPS = [
 
 export default function Platform() {
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white">
+    <div className="min-h-screen bg-[#0d1b3a] text-white">
       {/* Hero */}
       <section className="relative py-28 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_40%,rgba(14,165,233,0.1)_0%,transparent_60%)]" />
