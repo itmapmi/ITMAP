@@ -56,9 +56,10 @@ interface LLMSelectorProps {
   onProviderChange: (p: string) => void;
   onModelChange: (m: string) => void;
   disabled?: boolean;
+  mode?: "admin" | "user";
 }
 
-export function LLMSelector({ provider, model, onProviderChange, onModelChange, disabled }: LLMSelectorProps) {
+export function LLMSelector({ provider, model, onProviderChange, onModelChange, disabled, mode = "admin" }: LLMSelectorProps) {
   const models = MODELS[provider] ?? [];
   return (
     <div className="flex items-center gap-2">
@@ -78,26 +79,40 @@ export function LLMSelector({ provider, model, onProviderChange, onModelChange, 
           {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
         </SelectContent>
       </Select>
-      <LLMSettingsButton />
+      <LLMSettingsButton mode={mode} />
     </div>
   );
 }
 
-function LLMSettingsButton() {
+function LLMSettingsButton({ mode = "admin" }: { mode?: "admin" | "user" }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [inputs, setInputs] = useState<Record<string, string>>({});
 
-  const { data: keyStatuses = [] } = useQuery<KeyStatus[]>({
-    queryKey: ["/api/admin/market-builder/settings/llm"],
+  const isUser = mode === "user";
+  const queryKey = isUser ? ["/api/me/llm-keys"] : ["/api/admin/market-builder/settings/llm"];
+
+  const { data: rawData } = useQuery<any>({
+    queryKey,
     enabled: open,
   });
 
+  // Normalise both response shapes into { provider, hasKey, keyPreview }[]
+  const keyStatuses: KeyStatus[] = isUser
+    ? PROVIDERS.map(p => ({
+        provider: p.id,
+        hasKey: rawData?.[p.id]?.hasKey ?? false,
+        keyPreview: rawData?.[p.id]?.preview ?? null,
+      }))
+    : (rawData ?? []) as KeyStatus[];
+
   const saveKey = useMutation({
     mutationFn: ({ provider, apiKey }: { provider: string; apiKey: string }) =>
-      apiRequest(`/api/admin/market-builder/settings/llm/${provider}`, "PUT", { apiKey }).then(r => r.json()),
+      isUser
+        ? apiRequest(`/api/me/llm-keys/${provider}`, "PUT", { apiKey }).then(r => r.json())
+        : apiRequest(`/api/admin/market-builder/settings/llm/${provider}`, "PUT", { apiKey }).then(r => r.json()),
     onSuccess: (_, { provider }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/market-builder/settings/llm"] });
+      queryClient.invalidateQueries({ queryKey });
       setInputs(prev => ({ ...prev, [provider]: "" }));
       toast({ title: `${provider} API key saved` });
     },
@@ -106,8 +121,10 @@ function LLMSettingsButton() {
 
   const removeKey = useMutation({
     mutationFn: (provider: string) =>
-      apiRequest(`/api/admin/market-builder/settings/llm/${provider}`, "DELETE"),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/market-builder/settings/llm"] }),
+      isUser
+        ? apiRequest(`/api/me/llm-keys/${provider}`, "DELETE")
+        : apiRequest(`/api/admin/market-builder/settings/llm/${provider}`, "DELETE"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const statusFor = (pid: string) => keyStatuses.find(k => k.provider === pid);

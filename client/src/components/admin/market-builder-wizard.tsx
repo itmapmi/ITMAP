@@ -756,9 +756,10 @@ function ProjectCard({ job, onResume, onDelete }: {
 
 // ── Setup form (New Market) ───────────────────────────────────────────────
 
-function SetupForm({ onBack, onCreate }: {
+function SetupForm({ onBack, onCreate, mode = "admin" }: {
   onBack: () => void;
   onCreate: (data: any) => void;
+  mode?: "admin" | "user";
 }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -789,7 +790,7 @@ function SetupForm({ onBack, onCreate }: {
           <h2 className="text-xl font-bold text-gray-900">New Market</h2>
           <p className="text-sm text-gray-500 mt-0.5">Describe the technology market. AI will generate all data across 5 stages — you approve each one.</p>
         </div>
-        <LLMSelector provider={provider} model={model} onProviderChange={setProvider} onModelChange={setModel} />
+        <LLMSelector provider={provider} model={model} onProviderChange={setProvider} onModelChange={setModel} mode={mode} />
       </div>
 
       <div className="rounded-xl border bg-white p-6 space-y-4">
@@ -1173,6 +1174,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
       <SetupForm
         onBack={() => setView("dashboard")}
         onCreate={data => createJob.mutate(data)}
+        mode={mode}
       />
     );
   }
