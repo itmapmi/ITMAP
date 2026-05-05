@@ -98,6 +98,18 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
+    // 7. user_llm_api_keys — per-user BYO LLM API keys for Market Builder
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_llm_api_keys (
+        id         varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider   text NOT NULL,
+        api_key    text NOT NULL,
+        updated_at timestamp DEFAULT now(),
+        UNIQUE(user_id, provider)
+      )
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
