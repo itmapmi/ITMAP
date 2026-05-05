@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -19,16 +19,17 @@ import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle,
   XCircle,
-  TrendingUp,
-  TrendingDown,
   Lightbulb,
   AlertCircle,
   BarChart3,
   Layers,
   Pencil,
+  Network,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────
+
+type EvalType = "vendor_evaluation" | "product_evaluation" | "ecosystem_evaluation";
 
 interface AiSuggestion {
   id: string;
@@ -52,6 +53,29 @@ interface AiSuggestion {
   reviewedAt: string | null;
 }
 
+interface Criteria {
+  id: string;
+  name: string;
+  category: string;
+  description?: string | null;
+}
+
+interface Feature {
+  id: string;
+  name: string;
+  categoryId: string;
+  displayOrder?: number | null;
+}
+
+interface FeatureCategoryWithFeatures {
+  id: string;
+  name: string;
+  marketId: string;
+  isEcosystem: boolean;
+  displayOrder?: number | null;
+  features: Feature[];
+}
+
 // ─── Harvey Ball labels ───────────────────────────────────────────────────
 
 const HARVEY_OPTIONS = [
@@ -62,51 +86,11 @@ const HARVEY_OPTIONS = [
   { value: "4", label: "4 — Full Support (100%)" },
 ];
 
-const harveyLabel = (v: number) =>
-  HARVEY_OPTIONS.find(o => o.value === String(v))?.label ?? String(v);
-
-// ─── Score delta indicator ────────────────────────────────────────────────
-
-function ScoreDelta({
-  current,
-  suggested,
-  type,
-}: {
-  current: number;
-  suggested: number;
-  type: "criterion_score" | "feature_support";
-}) {
-  const delta = suggested - current;
-  const isUp = delta > 0;
-  const isDown = delta < 0;
-  const fmt = (v: number) =>
-    type === "criterion_score" ? v.toFixed(1) : harveyLabel(v);
-
-  return (
-    <div className="flex items-center gap-3 flex-wrap text-sm">
-      <span className="text-gray-500">
-        Current: <span className="font-semibold text-gray-800">{fmt(current)}</span>
-      </span>
-      <span className="text-gray-400">→</span>
-      <span className="text-gray-500">
-        AI suggests:{" "}
-        <span className={`font-bold ${isUp ? "text-green-700" : isDown ? "text-red-700" : "text-gray-700"}`}>
-          {fmt(suggested)}
-        </span>
-      </span>
-      {isUp && (
-        <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 text-xs gap-1">
-          <TrendingUp className="h-3 w-3" /> +{type === "criterion_score" ? delta.toFixed(1) : delta}
-        </Badge>
-      )}
-      {isDown && (
-        <Badge variant="outline" className="text-red-700 border-red-300 bg-red-50 text-xs gap-1">
-          <TrendingDown className="h-3 w-3" /> {type === "criterion_score" ? delta.toFixed(1) : delta}
-        </Badge>
-      )}
-    </div>
-  );
-}
+const EVAL_TYPE_OPTIONS: { value: EvalType; label: string; icon: React.ReactNode }[] = [
+  { value: "vendor_evaluation", label: "Vendor Evaluation", icon: <BarChart3 className="h-3.5 w-3.5" /> },
+  { value: "product_evaluation", label: "Product Evaluation", icon: <Layers className="h-3.5 w-3.5" /> },
+  { value: "ecosystem_evaluation", label: "Ecosystem Evaluation", icon: <Network className="h-3.5 w-3.5" /> },
+];
 
 // ─── Single suggestion card ───────────────────────────────────────────────
 
@@ -117,46 +101,116 @@ function SuggestionCard({
   isMutating,
 }: {
   s: AiSuggestion;
-  onApprove: (id: string, value: number, commentary: string) => void;
+  onApprove: (id: string, value: number, commentary: string, overrideSubjectId: string, overrideEvalType: EvalType) => void;
   onReject: (id: string) => void;
   isMutating: boolean;
 }) {
-  const aiValue =
-    s.suggestedValue != null ? parseFloat(s.suggestedValue) : null;
-  const currentVal =
-    s.currentValue != null ? parseFloat(s.currentValue) : null;
+  const currentVal = s.currentValue != null ? parseFloat(s.currentValue) : null;
+  const isPending = s.status === "pending";
   const isScore = s.suggestionType === "criterion_score";
 
-  // Editable local state — pre-filled with AI suggestion
-  const [editedValue, setEditedValue] = useState<string>(
-    aiValue != null ? String(isScore ? aiValue.toFixed(1) : Math.round(aiValue)) : ""
+  const [evalType, setEvalType] = useState<EvalType>(
+    isScore ? "vendor_evaluation" : "product_evaluation"
   );
-  const [editedCommentary, setEditedCommentary] = useState<string>(
-    s.suggestedCommentary ?? ""
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+  const [editedValue, setEditedValue] = useState<string>("");
+  const [editedCommentary, setEditedCommentary] = useState<string>(s.suggestedCommentary ?? "");
 
-  const handleApprove = () => {
-    const numVal = parseFloat(editedValue);
-    if (isNaN(numVal)) return;
-    onApprove(s.id, numVal, editedCommentary);
+  // Fetch all criteria (global, not per-market)
+  const { data: allCriteria = [] } = useQuery<Criteria[]>({
+    queryKey: ["/api/criteria"],
+    staleTime: 5 * 60 * 1000,
+    enabled: isPending,
+  });
+
+  // Fetch feature categories + features for this market
+  const { data: featureCatData = [] } = useQuery<FeatureCategoryWithFeatures[]>({
+    queryKey: ["/api/markets", s.marketId, "feature-categories"],
+    staleTime: 5 * 60 * 1000,
+    enabled: isPending,
+  });
+
+  // On data load, pre-select category + subject based on original suggestion
+  useEffect(() => {
+    if (!isPending) return;
+
+    if (isScore) {
+      // Vendor evaluation — pre-select the criteria
+      if (allCriteria.some(c => c.id === s.subjectId)) {
+        setSelectedSubjectId(s.subjectId);
+      }
+    } else if (featureCatData.length > 0 && !selectedCategoryId) {
+      // Find which category this feature belongs to
+      for (const cat of featureCatData) {
+        if (cat.features.some(f => f.id === s.subjectId)) {
+          setEvalType(cat.isEcosystem ? "ecosystem_evaluation" : "product_evaluation");
+          setSelectedCategoryId(cat.id);
+          setSelectedSubjectId(s.subjectId);
+          break;
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCriteria, featureCatData]);
+
+  // Derived category lists
+  const productCategories = featureCatData.filter(c => !c.isEcosystem);
+  const ecosystemCategories = featureCatData.filter(c => c.isEcosystem);
+  const activeCats = evalType === "product_evaluation" ? productCategories : ecosystemCategories;
+  const selectedCat = activeCats.find(c => c.id === selectedCategoryId);
+
+  // Group vendor criteria by category (execution / viability)
+  const criteriaByCategory = allCriteria.reduce<Record<string, Criteria[]>>((acc, c) => {
+    if (!acc[c.category]) acc[c.category] = [];
+    acc[c.category].push(c);
+    return acc;
+  }, {});
+
+  const handleEvalTypeChange = (val: EvalType) => {
+    setEvalType(val);
+    setSelectedCategoryId("");
+    setSelectedSubjectId("");
+    setEditedValue("");
   };
 
-  const isPending = s.status === "pending";
+  const handleCategoryChange = (val: string) => {
+    setSelectedCategoryId(val);
+    setSelectedSubjectId("");
+    setEditedValue("");
+  };
+
+  const handleApprove = () => {
+    if (!selectedSubjectId) return;
+    const numVal = parseFloat(editedValue);
+    if (isNaN(numVal)) return;
+    onApprove(s.id, numVal, editedCommentary, selectedSubjectId, evalType);
+  };
+
+  const canApprove = !!selectedSubjectId && editedValue !== "" && !isNaN(parseFloat(editedValue));
+
+  // Eval type badge for display (non-pending cards)
+  const evalBadge = () => {
+    if (isScore) {
+      return (
+        <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50 gap-1 text-xs">
+          <BarChart3 className="h-3 w-3" /> Vendor Evaluation
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50 gap-1 text-xs">
+        <Layers className="h-3 w-3" /> Feature Support
+      </Badge>
+    );
+  };
 
   return (
     <Card className="border border-gray-200 shadow-sm">
       <CardContent className="p-4 space-y-4">
         {/* Header row */}
         <div className="flex items-start gap-2 flex-wrap">
-          {isScore ? (
-            <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50 gap-1 text-xs">
-              <BarChart3 className="h-3 w-3" /> Vendor Evaluation
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50 gap-1 text-xs">
-              <Layers className="h-3 w-3" /> Feature Support
-            </Badge>
-          )}
+          {evalBadge()}
           <Badge
             variant="outline"
             className={`text-xs gap-1 ${
@@ -186,18 +240,19 @@ function SuggestionCard({
           )}
         </div>
 
-        {/* Subject */}
+        {/* Original subject info from AI */}
         <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-0.5">AI identified subject</p>
           <p className="text-sm font-semibold text-gray-900">{s.subjectName}</p>
           {s.subjectCategory && (
             <p className="text-xs text-gray-500">{s.subjectCategory}</p>
           )}
+          {currentVal != null && (
+            <p className="text-xs text-gray-500 mt-1">
+              Current score: <span className="font-semibold text-gray-800">{currentVal.toFixed(1)}</span>
+            </p>
+          )}
         </div>
-
-        {/* Original score delta */}
-        {currentVal != null && aiValue != null && (
-          <ScoreDelta current={currentVal} suggested={aiValue} type={s.suggestionType} />
-        )}
 
         {/* AI Reasoning */}
         <div className="rounded bg-gray-50 border border-gray-200 p-3">
@@ -205,46 +260,139 @@ function SuggestionCard({
           <p className="text-xs text-gray-700 leading-relaxed">{s.reasoning}</p>
         </div>
 
-        {/* ── Editable fields (pending only) ── */}
+        {/* ── Review & edit section (pending only) ── */}
         {isPending && (
-          <div className="space-y-3 border-t border-gray-100 pt-3">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 mb-1">
+          <div className="space-y-4 border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
               <Pencil className="h-3.5 w-3.5" />
-              Review & edit before approving
+              Select criteria to update
             </div>
 
-            {/* Score editor */}
+            {/* Evaluation type */}
             <div className="space-y-1">
-              <Label className="text-xs text-gray-600">
-                {isScore ? "Score (0–10)" : "Support Level"}
-              </Label>
-              {isScore ? (
-                <Input
-                  type="number"
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  value={editedValue}
-                  onChange={e => setEditedValue(e.target.value)}
-                  className="w-28 h-8 text-sm"
-                />
-              ) : (
-                <Select value={editedValue} onValueChange={setEditedValue}>
-                  <SelectTrigger className="w-56 h-8 text-sm">
-                    <SelectValue placeholder="Select level" />
+              <Label className="text-xs text-gray-600">Evaluation Type</Label>
+              <Select value={evalType} onValueChange={(v) => handleEvalTypeChange(v as EvalType)}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVAL_TYPE_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>
+                      <span className="flex items-center gap-2">{o.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Vendor Evaluation — criteria picker */}
+            {evalType === "vendor_evaluation" && (
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">Criteria</Label>
+                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select criteria…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {HARVEY_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
+                    {Object.entries(criteriaByCategory).map(([cat, items]) => (
+                      <div key={cat}>
+                        <div className="px-2 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                          {cat}
+                        </div>
+                        {items.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Commentary editor */}
+            {/* Product / Ecosystem Evaluation — category then feature */}
+            {(evalType === "product_evaluation" || evalType === "ecosystem_evaluation") && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Category</Label>
+                  <Select value={selectedCategoryId} onValueChange={handleCategoryChange}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select category…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeCats.length === 0 ? (
+                        <div className="px-2 py-2 text-xs text-gray-400">No categories found</div>
+                      ) : (
+                        activeCats.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedCategoryId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">Feature</Label>
+                    <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select feature…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(selectedCat?.features ?? []).length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-gray-400">No features in this category</div>
+                        ) : (
+                          (selectedCat?.features ?? []).map(f => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Score / Harvey Ball input — only shown once a subject is picked */}
+            {selectedSubjectId && (
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">
+                  {evalType === "vendor_evaluation" ? "New Score (0–10)" : "New Support Level"}
+                </Label>
+                {evalType === "vendor_evaluation" ? (
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={editedValue}
+                    onChange={e => setEditedValue(e.target.value)}
+                    placeholder="Enter score…"
+                    className="w-32 h-8 text-sm"
+                  />
+                ) : (
+                  <Select value={editedValue} onValueChange={setEditedValue}>
+                    <SelectTrigger className="w-56 h-8 text-sm">
+                      <SelectValue placeholder="Select level…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HARVEY_OPTIONS.map(o => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {/* Commentary — always visible, pre-filled with AI suggestion */}
             <div className="space-y-1">
               <Label className="text-xs text-gray-600">Commentary</Label>
               <Textarea
@@ -252,7 +400,7 @@ function SuggestionCard({
                 onChange={e => setEditedCommentary(e.target.value)}
                 rows={5}
                 className="text-xs resize-y"
-                placeholder="Commentary that will be saved with this score…"
+                placeholder="Commentary that will be saved…"
               />
               {s.currentCommentary && (
                 <details className="mt-1">
@@ -272,7 +420,7 @@ function SuggestionCard({
                 size="sm"
                 className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
                 onClick={handleApprove}
-                disabled={isMutating || editedValue === ""}
+                disabled={isMutating || !canApprove}
               >
                 <CheckCircle className="h-3.5 w-3.5" /> Approve
               </Button>
@@ -289,7 +437,7 @@ function SuggestionCard({
           </div>
         )}
 
-        {/* Approved — show what was actually saved */}
+        {/* Approved — show what was reviewed */}
         {!isPending && s.status === "approved" && (
           <div className="border-t border-gray-100 pt-3 space-y-1">
             <p className="text-xs text-gray-400">
@@ -315,7 +463,7 @@ function VendorGroup({
   vendorName: string;
   marketName: string;
   suggestions: AiSuggestion[];
-  onApprove: (id: string, value: number, commentary: string) => void;
+  onApprove: (id: string, value: number, commentary: string, overrideSubjectId: string, overrideEvalType: EvalType) => void;
   onReject: (id: string) => void;
   mutating: boolean;
 }) {
@@ -366,8 +514,21 @@ export function AiSuggestionsAdmin() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: ({ id, value, commentary }: { id: string; value: number; commentary: string }) =>
-      apiRequest(`/api/admin/ai-suggestions/${id}/approve`, "POST", { value, commentary }),
+    mutationFn: ({
+      id, value, commentary, overrideSubjectId, overrideEvalType,
+    }: {
+      id: string;
+      value: number;
+      commentary: string;
+      overrideSubjectId: string;
+      overrideEvalType: EvalType;
+    }) =>
+      apiRequest(`/api/admin/ai-suggestions/${id}/approve`, "POST", {
+        value,
+        commentary,
+        overrideSubjectId,
+        overrideEvalType,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions/count"] });
@@ -406,8 +567,8 @@ export function AiSuggestionsAdmin() {
         <div>
           <h2 className="text-xl font-bold text-gray-900">AI Market Suggestions</h2>
           <p className="text-sm text-gray-500 mt-1">
-            After each news scrape, the AI proposes score and commentary changes for admin review.
-            Edit the values before approving, or reject to discard.
+            After each news scrape, the AI proposes commentary changes for admin review.
+            Select the evaluation type and criteria to update, enter the new score, and approve.
           </p>
         </div>
         {pendingCount > 0 && (
@@ -422,9 +583,9 @@ export function AiSuggestionsAdmin() {
         <p className="font-semibold">How this works</p>
         <ul className="list-disc list-inside space-y-0.5 text-blue-700 text-xs">
           <li>Suggestions are generated automatically after the daily news scrape (7 AM UTC).</li>
-          <li>Only HIGH or MEDIUM impact articles trigger criterion score changes.</li>
-          <li>Feature support changes require an article explicitly describing a new capability.</li>
-          <li>You can edit the score and commentary before approving — changes apply immediately.</li>
+          <li>The AI proposes commentary only — you decide which criteria/feature to update and what score to assign.</li>
+          <li>Use the dropdowns to select Vendor Evaluation, Product Evaluation, or Ecosystem Evaluation, then pick the category and criteria.</li>
+          <li>Enter a new score and edit the commentary before approving — changes apply immediately.</li>
           <li>Rejecting discards the suggestion with no changes to live data.</li>
         </ul>
       </div>
@@ -466,8 +627,8 @@ export function AiSuggestionsAdmin() {
                     vendorName={vendorSuggestions[0].vendorName}
                     marketName={vendorSuggestions[0].marketName}
                     suggestions={vendorSuggestions}
-                    onApprove={(id, value, commentary) =>
-                      approveMutation.mutate({ id, value, commentary })
+                    onApprove={(id, value, commentary, overrideSubjectId, overrideEvalType) =>
+                      approveMutation.mutate({ id, value, commentary, overrideSubjectId, overrideEvalType })
                     }
                     onReject={id => rejectMutation.mutate(id)}
                     mutating={mutating}

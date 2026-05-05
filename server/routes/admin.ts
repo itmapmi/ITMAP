@@ -537,17 +537,25 @@ export function registerAdminRoutes(app: Express): void {
       const suggestion = await storage.getAiSuggestionById(req.params.id);
       if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
       if (suggestion.status !== 'pending') return res.status(400).json({ error: 'Suggestion is not pending' });
-      const finalValue = req.body.value !== undefined
-        ? parseFloat(req.body.value)
-        : (suggestion.suggestedValue != null ? parseFloat(suggestion.suggestedValue) : null);
+
+      const finalValue = req.body.value !== undefined ? parseFloat(req.body.value) : null;
       const finalCommentary = req.body.commentary !== undefined ? req.body.commentary : (suggestion.suggestedCommentary ?? undefined);
-      if (suggestion.suggestionType === 'criterion_score') {
-        if (finalValue == null) return res.status(400).json({ error: 'Missing value' });
-        await storage.createOrUpdateVendorScore({ vendorId: suggestion.vendorId, criteriaId: suggestion.subjectId, score: finalValue, notes: finalCommentary });
-      } else if (suggestion.suggestionType === 'feature_support') {
-        if (finalValue == null) return res.status(400).json({ error: 'Missing value' });
-        await storage.createOrUpdateVendorFeatureSupport({ vendorId: suggestion.vendorId, featureId: suggestion.subjectId, supportLevel: Math.round(finalValue), comments: finalCommentary });
+
+      // Admin can override which subject (criteria/feature) to apply the update to
+      const evalType: string = req.body.overrideEvalType ?? (suggestion.suggestionType === 'criterion_score' ? 'vendor_evaluation' : 'product_evaluation');
+      const subjectId: string = req.body.overrideSubjectId ?? suggestion.subjectId;
+
+      if (finalValue == null || isNaN(finalValue)) {
+        return res.status(400).json({ error: 'Missing or invalid value' });
       }
+
+      if (evalType === 'vendor_evaluation') {
+        await storage.createOrUpdateVendorScore({ vendorId: suggestion.vendorId, criteriaId: subjectId, score: finalValue, notes: finalCommentary });
+      } else {
+        // product_evaluation or ecosystem_evaluation — both update feature support
+        await storage.createOrUpdateVendorFeatureSupport({ vendorId: suggestion.vendorId, featureId: subjectId, supportLevel: Math.round(finalValue), comments: finalCommentary });
+      }
+
       const updated = await storage.updateAiSuggestionStatus(suggestion.id, 'approved');
       res.json(updated);
     } catch (err: any) {
