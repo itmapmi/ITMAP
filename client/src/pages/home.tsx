@@ -204,10 +204,10 @@ export default function Home() {
               transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.25, 0, 1] }}
               className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-6"
             >
-              See Every Vendor.
+              The IT Vendor Landscape,
               <br />
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
-                Know Every Move.
+                Decoded.
               </span>
             </motion.h1>
 
