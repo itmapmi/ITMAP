@@ -1011,7 +1011,12 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
   const deleteJob = useMutation({
     mutationFn: (id: string) => apiRequest(`${apiBase}/jobs/${id}`, "DELETE"),
-    onSuccess: () => { refetchJobs(); },
+    onSuccess: () => {
+      refetchJobs();
+      // My Reports uses a flat query key — bust its cache too so deleted jobs
+      // don't keep showing as "Running" there after deletion.
+      queryClient.invalidateQueries({ queryKey: ["/api/market-builder/jobs"] });
+    },
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 

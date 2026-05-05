@@ -35,6 +35,7 @@ export default function MyReportsPage() {
   // includes stageSummary so we can show which stage a running job is on.
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobRow[]>({
     queryKey: ["/api/market-builder/jobs"],
+    staleTime: 0, // always re-fetch on mount so deletions/completions are reflected immediately
   });
 
   return (
