@@ -9,13 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import SpectioLogo from "@/components/spectio-logo";
 
 const ADMIN_PATHS = ["/admin", "/market-builder"];
-const PUBLIC_NAV = [
-  { href: "/platform", label: "Platform" },
-  { href: "/markets", label: "Markets" },
-  { href: "/about", label: "About Us" },
-  { href: "/licensing", label: "Licensing" },
-  { href: "/contact", label: "Contact" },
-];
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -38,6 +31,17 @@ export default function Navigation() {
     if (!user?.firstName || !user?.lastName) return "U";
     return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
   };
+
+  const marketBuilderHref = isAuthenticated ? "/me/market-builder" : "/login";
+  const isMarketBuilderActive = location.includes("market-builder");
+
+  const navItems = [
+    { href: "/platform",        label: "Platform" },
+    { href: "/markets",         label: "Markets" },
+    { href: marketBuilderHref,  label: "Market Builder", active: isMarketBuilderActive },
+    { href: "/licensing",       label: "Licensing" },
+    { href: "/about",           label: "About Us" },
+  ];
 
   if (isAdminArea) {
     return (
@@ -84,21 +88,18 @@ export default function Navigation() {
               <SpectioLogo />
             </Link>
 
+            {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1">
-              {PUBLIC_NAV.map(({ href, label }) => (
-                <Link key={href} href={href}>
-                  <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                    location === href
-                      ? "text-white bg-white/10"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}>{label}</span>
-                </Link>
-              ))}
-              <Link href={isAuthenticated ? "/me/market-builder" : "/login"}>
-                <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                  location.includes("market-builder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}>Market Builder</span>
-              </Link>
+              {navItems.map(({ href, label, active }) => {
+                const isActive = active !== undefined ? active : location === href;
+                return (
+                  <Link key={label} href={href}>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                      isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}>{label}</span>
+                  </Link>
+                );
+              })}
               {isAuthenticated && (
                 <>
                   <Link href="/me/reports">
@@ -115,6 +116,7 @@ export default function Navigation() {
               )}
             </div>
 
+            {/* Desktop auth */}
             <div className="hidden md:flex items-center gap-3">
               {isAuthenticated ? (
                 <DropdownMenu>
@@ -159,20 +161,34 @@ export default function Navigation() {
           </div>
         </div>
 
+        {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden bg-[#1e2130] border-t border-white/5 px-4 py-4 space-y-1">
-            {PUBLIC_NAV.map(({ href, label }) => (
-              <Link key={href} href={href}>
+            {navItems.map(({ href, label, active }) => {
+              const isActive = active !== undefined ? active : location === href;
+              return (
+                <Link key={label} href={href}>
+                  <div
+                    className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
+                      isActive ? "text-white bg-white/10" : "text-slate-400"
+                    }`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {label}
+                  </div>
+                </Link>
+              );
+            })}
+            {isAuthenticated && (
+              <Link href="/me/reports">
                 <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location === href ? "text-white bg-white/10" : "text-slate-400"
-                  }`}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-400"}`}
                   onClick={() => setMobileOpen(false)}
                 >
-                  {label}
+                  My Reports
                 </div>
               </Link>
-            ))}
+            )}
             <div className="pt-3 border-t border-white/5 flex flex-col gap-2">
               {isAuthenticated ? (
                 <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full justify-start text-slate-400">
