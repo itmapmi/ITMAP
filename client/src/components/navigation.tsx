@@ -94,13 +94,13 @@ export default function Navigation() {
                   }`}>{label}</span>
                 </Link>
               ))}
+              <Link href={isAuthenticated ? "/me/market-builder" : "/login"}>
+                <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                  location.includes("market-builder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}>Market Builder</span>
+              </Link>
               {isAuthenticated && (
                 <>
-                  <Link href="/me/market-builder">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                      location.includes("market-builder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}>Market Builder</span>
-                  </Link>
                   <Link href="/me/reports">
                     <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
                       location.includes("reports") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"

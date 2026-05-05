@@ -137,7 +137,7 @@ export default function Markets() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, delay: i * 0.06 }}
               >
-                <Link href={`/markets/${market.id}`}>
+                <Link href={isAuthenticated ? `/markets/${market.id}` : "/login"}>
                   <div className="group relative bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-2xl p-6 h-full cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(14,165,233,0.07)]">
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-violet-600/0 group-hover:from-cyan-500/5 group-hover:to-violet-600/5 transition-all duration-500" />
                     <div className="relative flex flex-col h-full">
