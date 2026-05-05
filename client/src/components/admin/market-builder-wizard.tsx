@@ -60,9 +60,13 @@ const STAGE_META = [
 ];
 
 const CATEGORIES = [
-  "Cloud & Infrastructure","Security & Identity","Data & Analytics","AI & Machine Learning",
-  "DevOps & Platform","Collaboration & Productivity","Storage & Backup","Networking",
-  "Database","ERP & Business Applications","CRM & Marketing","Other",
+  "Infrastructure",
+  "Data, Analytics & AI",
+  "Cybersecurity",
+  "DevOps & Platforms",
+  "Business Applications",
+  "Collaboration and Productivity",
+  "Industrial Applications",
 ];
 
 // ── Mini stage progress dots (used in dashboard cards) ────────────────────

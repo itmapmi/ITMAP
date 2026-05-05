@@ -255,10 +255,12 @@ export default function MarketManagement() {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Infrastructure">Infrastructure</SelectItem>
-                  <SelectItem value="Security">Security</SelectItem>
-                  <SelectItem value="Analytics">Analytics</SelectItem>
-                  <SelectItem value="Productivity">Productivity</SelectItem>
-                  <SelectItem value="Development">Development</SelectItem>
+                  <SelectItem value="Data, Analytics & AI">Data, Analytics & AI</SelectItem>
+                  <SelectItem value="Cybersecurity">Cybersecurity</SelectItem>
+                  <SelectItem value="DevOps & Platforms">DevOps & Platforms</SelectItem>
+                  <SelectItem value="Business Applications">Business Applications</SelectItem>
+                  <SelectItem value="Collaboration and Productivity">Collaboration and Productivity</SelectItem>
+                  <SelectItem value="Industrial Applications">Industrial Applications</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
