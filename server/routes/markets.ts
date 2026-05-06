@@ -592,11 +592,18 @@ export function registerMarketRoutes(app: Express): void {
       const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 15;
 
+      const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs'] as const;
+      type ValidSource = typeof VALID_SOURCE_TYPES[number];
+      const validatedSource: ValidSource | undefined =
+        sourceType && (VALID_SOURCE_TYPES as readonly string[]).includes(sourceType)
+          ? (sourceType as ValidSource)
+          : undefined;
+
       const { getVendorSignals } = await import('../storage/signals');
       const signals = await getVendorSignals({
         vendorId,
         marketId: req.params.marketId,
-        sourceType: sourceType as any,
+        sourceType: validatedSource,
         limit,
       });
       res.json(signals);

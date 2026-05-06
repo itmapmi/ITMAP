@@ -1,7 +1,9 @@
 /**
  * GitHub collector — public unauthenticated REST API (60 req/hr).
- * Generates a single summary signal per vendor covering recent commit
+ * Generates a daily summary signal per vendor covering recent commit
  * activity, star count, and open issue count for their primary org.
+ * Uses a date-scoped URL so each daily run creates a fresh row rather
+ * than being deduped against a prior collection.
  */
 
 export interface GitHubRawSignal {
@@ -59,7 +61,7 @@ export async function collectGithubSignals(vendorName: string): Promise<GitHubRa
   );
 
   if (!repos || repos.length === 0) {
-    // Fallback: try as a user (some vendors use user accounts not orgs)
+    // Fallback: try as a user account (some vendors use user accounts not orgs)
     const userRepos = await githubFetch<GhRepo[]>(
       `/users/${orgName}/repos?type=public&sort=stars&per_page=10`
     );
@@ -80,7 +82,7 @@ async function buildSignals(
 ): Promise<GitHubRawSignal[]> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // Pick the most active repo (most recently pushed)
+  // Pick the most recently pushed repo as primary
   const sorted = [...repos].sort(
     (a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime()
   );
@@ -103,13 +105,18 @@ async function buildSignals(
     recentCommits > 30  ? 'active' :
     recentCommits > 5   ? 'moderate' : 'low';
 
+  const today = new Date().toISOString().split('T')[0];
   const title = `${vendorName} GitHub activity — ${recentCommits} commits in last 30 days`;
   const content = `${vendorName} has ${repos.length} public repos with ${totalStars.toLocaleString()} total stars and ${totalOpenIssues.toLocaleString()} open issues. Primary repo: ${primaryRepo.name} (${primaryRepo.description ?? 'no description'}). Development activity is ${activityLevel} (${recentCommits} commits, ${activeRepos}/${repos.length} repos active in last 30 days).`;
+
+  // Use a date-scoped URL so each daily collection creates a distinct row
+  // rather than being deduplicated against a prior run's stable org URL.
+  const dailyUrl = `https://github.com/${orgName}?spectio_date=${today}`;
 
   return [
     {
       title,
-      url: `https://github.com/${orgName}`,
+      url: dailyUrl,
       content,
       signalDate: new Date(),
       rawData: {
@@ -121,6 +128,7 @@ async function buildSignals(
         totalRepos: repos.length,
         activeRepos,
         activityLevel,
+        collectionDate: today,
       },
     },
   ];

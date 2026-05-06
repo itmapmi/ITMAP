@@ -566,15 +566,23 @@ export function registerAdminRoutes(app: Express): void {
   // ── Vendor Signals ────────────────────────────────────────────────────────
 
   app.get('/api/admin/vendor-signals', requireAdmin, async (req, res) => {
+    const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs'] as const;
+    type ValidSource = typeof VALID_SOURCE_TYPES[number];
+
     try {
+      const { getVendorSignals } = await import('../storage/signals');
+
       const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
       const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
-      const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const rawSource = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
+      const sourceType: ValidSource | undefined =
+        rawSource && (VALID_SOURCE_TYPES as readonly string[]).includes(rawSource)
+          ? (rawSource as ValidSource)
+          : undefined;
+      const limit = req.query.limit ? Math.min(parseInt(req.query.limit as string, 10), 200) : 50;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
 
-      const { getVendorSignals } = await import('../storage/signals');
-      const signals = await getVendorSignals({ vendorId, marketId, sourceType: sourceType as any, limit, offset });
+      const signals = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
       res.json(signals);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -582,28 +590,35 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   app.post('/api/admin/vendor-signals/collect', requireAdmin, async (req, res) => {
+    const COLLECT_TIMEOUT_MS = 60_000;
+
     try {
       const { vendorId, marketId } = req.body ?? {};
       const { collectSignalsForVendor, collectSignalsForMarket, collectSignalsForAllVendors } = await import('../signals/orchestrator');
+      const { storage: st } = await import('../storage');
 
-      let results;
-      if (vendorId) {
-        const { storage } = await import('../storage');
-        const vendor = await storage.getVendorById(vendorId);
-        if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
-        results = [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId)];
-      } else if (marketId) {
-        results = await collectSignalsForMarket(marketId);
-      } else {
-        results = await collectSignalsForAllVendors();
-      }
+      const collectPromise = (async () => {
+        if (vendorId) {
+          const vendor = await st.getVendorById(vendorId);
+          if (!vendor) throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
+          return [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId)];
+        }
+        if (marketId) return collectSignalsForMarket(marketId);
+        return collectSignalsForAllVendors();
+      })();
 
-      const totalNew = results.reduce((s: number, r: any) => s + r.new, 0);
-      const totalSuggestions = results.reduce((s: number, r: any) => s + r.suggestionsTriggered, 0);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Collection timed out after 60 seconds')), COLLECT_TIMEOUT_MS)
+      );
+
+      const results = await Promise.race([collectPromise, timeoutPromise]);
+      const totalNew = results.reduce((s, r) => s + r.new, 0);
+      const totalSuggestions = results.reduce((s, r) => s + r.suggestionsTriggered, 0);
       res.json({ results, summary: { totalNew, totalSuggestions } });
     } catch (err: any) {
+      const status = err.statusCode ?? 500;
       console.error('[Admin] Signal collection error:', err);
-      res.status(500).json({ error: err.message });
+      res.status(status).json({ error: err.message });
     }
   });
 
