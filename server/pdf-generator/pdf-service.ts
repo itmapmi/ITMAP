@@ -1,7 +1,37 @@
 import puppeteer from 'puppeteer';
-import { readFile } from 'fs/promises';
+import { readFile, access } from 'fs/promises';
+import { execSync } from 'child_process';
 import path from 'path';
 import type { Market, Vendor } from '@shared/schema';
+
+async function findChromiumPath(): Promise<string | undefined> {
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+
+  const candidates = [
+    '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+  ];
+
+  for (const p of candidates) {
+    try { await access(p); return p; } catch { /* not found */ }
+  }
+
+  try {
+    const nixChromium = execSync(
+      'ls /nix/store/ 2>/dev/null | grep "^[a-z0-9]*-chromium-[0-9]" | grep -v "unwrapped\\|bsu\\|drv\\|dict\\|codec\\|sandbox\\|ungoogled\\|playwright" | sort -r | head -1',
+      { encoding: 'utf8', timeout: 3000 }
+    ).trim();
+    if (nixChromium) {
+      const candidate = `/nix/store/${nixChromium}/bin/chromium`;
+      try { await access(candidate); return candidate; } catch { /* not found */ }
+    }
+  } catch { /* ignore */ }
+
+  return undefined;
+}
 
 interface ReportOptions {
   marketName: string;
@@ -67,10 +97,11 @@ export class PDFService {
       .replace(/{{title}}/g, `${options.marketName} - ${options.reportType}`)
       .replace('{{{content}}}', options.content);
 
-    const chromiumPath = process.env.CHROMIUM_PATH || '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium';
+    const chromiumPath = await findChromiumPath();
+    console.log('[PDF] Chromium path:', chromiumPath ?? '(puppeteer bundled)');
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: chromiumPath,
+      ...(chromiumPath ? { executablePath: chromiumPath } : {}),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
