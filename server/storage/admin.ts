@@ -87,22 +87,30 @@ export async function getAiSuggestions(
     )
     .orderBy(desc(aiSuggestions.createdAt));
 
-  return rows.map(r => ({
-    ...r.suggestion,
-    vendorName: r.vendorName,
-    marketName: r.marketName,
-    sourceSignal: r.signalId ? {
-      id: r.signalId,
-      sourceType: r.signalSourceType!,
-      title: r.signalTitle,
-      content: r.signalContent,
-      url: r.signalUrl,
-      sentiment: r.signalSentiment,
-      impactLabel: r.signalImpactLabel,
-      collectedAt: r.signalCollectedAt,
-      fedIntoSuggestion: r.signalFedIntoSuggestion ?? false,
-    } : null,
-  }));
+  // Deduplicate: multiple signals can reference the same suggestion; keep the first signal per suggestion.
+  const seen = new Set<string>();
+  const deduped: AiSuggestionWithContext[] = [];
+  for (const r of rows) {
+    if (seen.has(r.suggestion.id)) continue;
+    seen.add(r.suggestion.id);
+    deduped.push({
+      ...r.suggestion,
+      vendorName: r.vendorName,
+      marketName: r.marketName,
+      sourceSignal: r.signalId ? {
+        id: r.signalId,
+        sourceType: r.signalSourceType!,
+        title: r.signalTitle,
+        content: r.signalContent,
+        url: r.signalUrl,
+        sentiment: r.signalSentiment,
+        impactLabel: r.signalImpactLabel,
+        collectedAt: r.signalCollectedAt,
+        fedIntoSuggestion: r.signalFedIntoSuggestion ?? false,
+      } : null,
+    });
+  }
+  return deduped;
 }
 
 export async function getAiSuggestionById(id: string): Promise<AiSuggestion | undefined> {
