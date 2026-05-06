@@ -278,7 +278,7 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
     <div className="space-y-5">
       {/* Criteria weights by axis — shows rationale + editable weight */}
       {["execution", "viability"].map(axis => {
-        const axisCriteria = weights.filter((w: any) => w.criterionCategory === axis);
+        const axisCriteria = weights.filter((w: any) => (w.criterionCategory ?? "").toLowerCase() === axis);
         if (!axisCriteria.length) return null;
         return (
           <div key={axis}>
@@ -720,7 +720,7 @@ function Stage2ScoringEditor({ result, onChange }: { result: any; onChange: (r: 
   return (
     <div className="space-y-5">
       {["execution", "viability"].map(axis => {
-        const axisCriteria = weights.filter((w: any) => w.criterionCategory === axis);
+        const axisCriteria = weights.filter((w: any) => (w.criterionCategory ?? "").toLowerCase() === axis);
         if (!axisCriteria.length) return null;
         return (
           <div key={axis}>

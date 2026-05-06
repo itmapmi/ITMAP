@@ -92,7 +92,7 @@ For each criterion provide:
 Respond with ONLY a JSON object:
 {
   "criteriaWeights": [
-    { "criterionId": "<id>", "criterionName": "<name>", "criterionCategory": "<category>", "weight": <1-100>, "scoringRationale": "<2-3 sentences>" }
+    { "criterionId": "<id>", "criterionName": "<name>", "criterionCategory": "execution" or "viability" (lowercase exactly), "weight": <1-100>, "scoringRationale": "<2-3 sentences>" }
   ]
 }`;
 
@@ -102,7 +102,11 @@ Respond with ONLY a JSON object:
   if (!Array.isArray(result.criteriaWeights) || result.criteriaWeights.length === 0) {
     throw new Error("Stage 2: LLM returned no criteria weights");
   }
-  return result.criteriaWeights;
+  // Normalize criterionCategory to lowercase so frontend axis filters ("execution" / "viability") always match
+  return result.criteriaWeights.map(w => ({
+    ...w,
+    criterionCategory: (w.criterionCategory ?? "").toLowerCase(),
+  }));
 }
 
 // ── Vendor name fuzzy matcher ─────────────────────────────────────────────
