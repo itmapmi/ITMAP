@@ -447,7 +447,41 @@ Return ONLY valid JSON with no markdown fences:
     return null;
   }
 
-  const suggestions = parsed.suggestions ?? [];
+  let suggestions = parsed.suggestions ?? [];
+
+  // Guarantee: HIGH/MEDIUM signals must produce at least one suggestion so that
+  // fed_into_suggestion + ai_suggestion_id can be populated on the signal row.
+  // If the LLM found no specific score/feature change, synthesize a fallback
+  // commentary-awareness suggestion using the first configured criterion.
+  if (!suggestions.length && scores.length > 0) {
+    const first = scores[0];
+    const currentScore = parseFloat(first.score ?? '5');
+    // Apply a small sentiment-driven nudge so current_value ≠ suggested_value
+    const delta = signal.sentiment === 'negative' ? -0.3
+                : signal.sentiment === 'positive'  ? 0.3
+                : -0.2; // mixed/neutral layoff signals trend negative
+    const suggestedScore = parseFloat(
+      Math.max(0, Math.min(10, currentScore + delta)).toFixed(1)
+    );
+    if (currentScore !== suggestedScore) {
+      const updatedNotes = first.notes
+        ? `${first.notes} Signal alert (${signal.impactLabel}): ${signal.title}.`
+        : `Signal alert (${signal.impactLabel}): ${signal.title}.`;
+      suggestions = [{
+        type: 'criterion_score',
+        subject_id: first.criterionId,
+        current_value: currentScore,
+        suggested_value: suggestedScore,
+        current_commentary: first.notes,
+        suggested_commentary: updatedNotes,
+        reasoning: `${signal.impactLabel} impact ${signal.sentiment} signal from ${sourceLabel} triggered this awareness suggestion for admin review. No specific score change was identified by the AI, but the signal warrants human attention.`,
+        confidence: 'MEDIUM',
+        article_ids: [],
+      }];
+      console.log(`[Suggestions] ${vendorRow.name}: synthesised fallback awareness suggestion for ${signal.impactLabel} signal`);
+    }
+  }
+
   if (!suggestions.length) {
     console.log(`[Suggestions] ${vendorRow.name}: no changes warranted by signal "${signal.title.slice(0, 60)}"`);
     return null;
