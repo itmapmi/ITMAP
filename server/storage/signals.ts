@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { vendorSignals, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs';
 
@@ -18,13 +18,33 @@ export type VendorSignalWithContext = VendorSignal & {
   marketName: string;
 };
 
+export interface VendorSignalsPage {
+  data: VendorSignalWithContext[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export async function insertVendorSignal(data: InsertVendorSignal): Promise<VendorSignal> {
   const [row] = await db.insert(vendorSignals).values(data).returning();
   return row;
 }
 
-export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Promise<VendorSignalWithContext[]> {
+export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Promise<VendorSignalsPage> {
   const { vendorId, marketId, sourceType, limit = 50, offset = 0 } = opts;
+
+  const where = and(
+    vendorId ? eq(vendorSignals.vendorId, vendorId) : undefined,
+    marketId ? eq(vendorSignals.marketId, marketId) : undefined,
+    sourceType ? eq(vendorSignals.sourceType, sourceType) : undefined,
+  );
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(vendorSignals)
+    .innerJoin(vendors, eq(vendorSignals.vendorId, vendors.id))
+    .innerJoin(markets, eq(vendorSignals.marketId, markets.id))
+    .where(where);
 
   const rows = await db
     .select({
@@ -49,18 +69,12 @@ export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Prom
     .from(vendorSignals)
     .innerJoin(vendors, eq(vendorSignals.vendorId, vendors.id))
     .innerJoin(markets, eq(vendorSignals.marketId, markets.id))
-    .where(
-      and(
-        vendorId ? eq(vendorSignals.vendorId, vendorId) : undefined,
-        marketId ? eq(vendorSignals.marketId, marketId) : undefined,
-        sourceType ? eq(vendorSignals.sourceType, sourceType) : undefined,
-      )
-    )
+    .where(where)
     .orderBy(desc(vendorSignals.collectedAt))
     .limit(limit)
     .offset(offset);
 
-  return rows as VendorSignalWithContext[];
+  return { data: rows as VendorSignalWithContext[], total, limit, offset };
 }
 
 export async function getVendorSignalByUrl(url: string, vendorId: string): Promise<VendorSignal | undefined> {

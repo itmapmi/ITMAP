@@ -137,7 +137,14 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
-    // 10. Fix any anthropic jobs that have invalid/deprecated model IDs
+    // 10. Unique index on vendor_signals(vendor_id, url) to prevent concurrent duplicates
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS vendor_signals_vendor_url_uidx
+      ON vendor_signals (vendor_id, url)
+      WHERE url IS NOT NULL
+    `);
+
+    // 11. Fix any anthropic jobs that have invalid/deprecated model IDs
     await client.query(`
       UPDATE market_builder_jobs
       SET llm_model = 'claude-3-7-sonnet-20250219'

@@ -584,8 +584,8 @@ export function registerAdminRoutes(app: Express): void {
       const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
       const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-      const signals = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
-      res.json(signals);
+      const page = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
+      res.json(page);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

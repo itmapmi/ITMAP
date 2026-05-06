@@ -601,13 +601,13 @@ export function registerMarketRoutes(app: Express): void {
           : undefined;
 
       const { getVendorSignals } = await import('../storage/signals');
-      const signals = await getVendorSignals({
+      const page = await getVendorSignals({
         vendorId,
         marketId: req.params.marketId,
         sourceType: validatedSource,
         limit,
       });
-      res.json(signals);
+      res.json(page);
     } catch (error) {
       console.error("Error fetching vendor signals:", error);
       res.status(500).json({ error: "Failed to fetch vendor signals" });
