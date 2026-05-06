@@ -106,10 +106,15 @@ async function callOpenAI<T>(
     ],
     response_format: { type: "json_object" },
     temperature: 0.2,
+    max_tokens: 16384,
   });
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("OpenAI returned an empty response");
+  const finishReason = response.choices[0]?.finish_reason;
+  if (finishReason === "length") {
+    console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}. Consider reducing vendor/feature count.`);
+  }
   return JSON.parse(content) as T;
 }
 

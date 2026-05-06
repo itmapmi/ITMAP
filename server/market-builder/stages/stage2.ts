@@ -100,6 +100,33 @@ Respond with ONLY a JSON object:
   return result.criteriaWeights;
 }
 
+// ── Vendor name fuzzy matcher ─────────────────────────────────────────────
+//
+// The LLM sometimes returns names with slight differences (casing, whitespace,
+// abbreviated parenthetical, etc.). Exact match is tried first; falls back to
+// case-insensitive then partial containment so a mismatch never silently
+// produces score=0 / commentary="".
+
+function matchByVendorName<T extends { vendorName: string }>(
+  list: T[],
+  name: string,
+): T | undefined {
+  // 1. Exact match
+  const exact = list.find(x => x.vendorName === name);
+  if (exact) return exact;
+
+  // 2. Case-insensitive + trim
+  const lower = name.trim().toLowerCase();
+  const ci = list.find(x => x.vendorName.trim().toLowerCase() === lower);
+  if (ci) return ci;
+
+  // 3. Partial — one name contains the other (handles "HPE" ↔ "Hewlett Packard Enterprise (HPE)")
+  return list.find(x => {
+    const xl = x.vendorName.trim().toLowerCase();
+    return xl.includes(lower) || lower.includes(xl);
+  });
+}
+
 // ── Step 2: per-criterion scoring (numbers only) ──────────────────────────
 
 async function scoreCriterion(
@@ -111,7 +138,8 @@ async function scoreCriterion(
   llmConfig: LLMConfig,
   sourceContext: string,
 ): Promise<Array<{ vendorName: string; score: number }>> {
-  const vendorList = stage1.vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
+  const vendorNames = stage1.vendors.map(v => v.name);
+  const vendorList  = stage1.vendors.map(v => `- ${v.name} (${v.product}): ${v.description}`).join("\n");
 
   const userPrompt = `
 Market: ${marketName}
@@ -119,23 +147,33 @@ Criterion: ${criterion.name} (${criterion.category} axis)
 Criterion description: ${criterion.description}
 Scoring rationale for this market: ${rationale}
 
-Vendors to score:
+Vendors to score (use these EXACT names in your response):
 ${vendorList}
 ${sourceContext}
 
-Output a 0.0–10.0 score for EACH vendor on this single criterion. Be differentiated — avoid clustering vendors at the same number.
+Output a 0.0–10.0 score for EACH of the ${vendorNames.length} vendors on this single criterion. Be differentiated — avoid clustering vendors at the same number. You MUST include all ${vendorNames.length} vendors.
 
 Respond with ONLY a JSON object:
 {
   "scores": [
-    { "vendorName": "<exact vendor name>", "score": <0.0-10.0, one decimal place> }
+    { "vendorName": "<exact vendor name from the list above>", "score": <0.0-10.0, one decimal place> }
   ]
 }`;
 
   const result = await callLLMForJSON<{ scores: Array<{ vendorName: string; score: number }> }>(
     llmConfig, systemPrompt, userPrompt
   );
-  if (!Array.isArray(result.scores)) throw new Error(`Stage 2 scoring: invalid response for ${criterion.name}`);
+  if (!Array.isArray(result.scores)) {
+    throw new Error(`Stage 2 scoring: LLM returned non-array for "${criterion.name}". Got: ${JSON.stringify(result).slice(0, 200)}`);
+  }
+  if (result.scores.length === 0) {
+    throw new Error(`Stage 2 scoring: LLM returned empty scores array for "${criterion.name}"`);
+  }
+
+  // Log returned names so mismatches are visible in server logs
+  const returnedNames = result.scores.map(s => s.vendorName).join(", ");
+  console.log(`[Stage2] Scoring "${criterion.name}": LLM returned ${result.scores.length}/${vendorNames.length} vendors: ${returnedNames}`);
+
   return result.scores;
 }
 
@@ -151,10 +189,14 @@ async function commentCriterion(
   llmConfig: LLMConfig,
   sourceContext: string,
 ): Promise<Array<{ vendorName: string; commentary: string; sources: string[] }>> {
+  // Use fuzzy matching here too so commentary prompt has correct scores even
+  // if the scoring LLM returned slightly different vendor names
   const vendorBlock = stage1.vendors.map(v => {
-    const s = scores.find(x => x.vendorName === v.name)?.score ?? 0;
+    const s = matchByVendorName(scores, v.name)?.score ?? 0;
     return `- ${v.name} (${v.product}) — assigned score: ${s.toFixed(1)}/10\n  ${v.description}`;
   }).join("\n");
+
+  const vendorNames = stage1.vendors.map(v => v.name);
 
   const userPrompt = `
 Market: ${marketName}
@@ -162,23 +204,33 @@ Criterion: ${criterion.name} (${criterion.category} axis)
 Criterion description: ${criterion.description}
 Scoring rationale: ${rationale}
 
-Vendors and their pre-assigned scores on this criterion:
+Vendors and their pre-assigned scores on this criterion (use these EXACT names in your response):
 ${vendorBlock}
 ${sourceContext}
 
-For each vendor, write a balanced 100–250 word commentary that justifies and contextualises the assigned score. Do NOT change the score. Cite 2–5 sources at the bottom of each commentary.
+For each vendor, write a balanced 100–250 word commentary that justifies and contextualises the assigned score. Do NOT change the score. Cite 2–5 sources at the bottom of each commentary. You MUST include all ${vendorNames.length} vendors.
 
 Respond with ONLY a JSON object:
 {
   "commentary": [
-    { "vendorName": "<exact vendor name>", "commentary": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
+    { "vendorName": "<exact vendor name from the list above>", "commentary": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
   ]
 }`;
 
   const result = await callLLMForJSON<{ commentary: Array<{ vendorName: string; commentary: string; sources: string[] }> }>(
     llmConfig, systemPrompt, userPrompt
   );
-  if (!Array.isArray(result.commentary)) throw new Error(`Stage 2 commentary: invalid response for ${criterion.name}`);
+  if (!Array.isArray(result.commentary)) {
+    throw new Error(`Stage 2 commentary: LLM returned non-array for "${criterion.name}". Got: ${JSON.stringify(result).slice(0, 200)}`);
+  }
+  if (result.commentary.length === 0) {
+    throw new Error(`Stage 2 commentary: LLM returned empty commentary array for "${criterion.name}"`);
+  }
+
+  // Log returned names
+  const returnedNames = result.commentary.map(c => c.vendorName).join(", ");
+  console.log(`[Stage2] Commentary "${criterion.name}": LLM returned ${result.commentary.length}/${vendorNames.length} vendors: ${returnedNames}`);
+
   return result.commentary;
 }
 
@@ -249,10 +301,13 @@ export async function runStage2(
       marketName, stage1, criterion, rationale, scores, commentaryPrompt, commentaryLlm, sourceContext
     );
 
-    // Merge scores + commentary
+    // Merge scores + commentary — use fuzzy matcher so slight name differences
+    // (casing, whitespace, abbreviation) never silently produce score=0 / commentary=""
     for (const v of stage1.vendors) {
-      const s = scores.find(x => x.vendorName === v.name);
-      const c = commentary.find(x => x.vendorName === v.name);
+      const s = matchByVendorName(scores, v.name);
+      const c = matchByVendorName(commentary, v.name);
+      if (!s) console.warn(`[Stage2] No score match for vendor "${v.name}" in criterion "${criterion.name}"`);
+      if (!c) console.warn(`[Stage2] No commentary match for vendor "${v.name}" in criterion "${criterion.name}"`);
       allScores.push({
         vendorName: v.name,
         criterionName: criterion.name,
