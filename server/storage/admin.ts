@@ -69,8 +69,16 @@ export async function createAiSuggestion(data: InsertAiSuggestion): Promise<AiSu
 }
 
 export async function getAiSuggestions(
-  filters?: { status?: string; vendorId?: string; marketId?: string }
+  filters?: { status?: string; vendorId?: string; marketId?: string; sourceType?: string }
 ): Promise<AiSuggestionWithContext[]> {
+  const sourceTypeCondition = (() => {
+    if (!filters?.sourceType) return undefined;
+    if (filters.sourceType === "news_article") {
+      return sql`array_length(${aiSuggestions.triggeredByArticleIds}, 1) > 0`;
+    }
+    return eq(vendorSignals.sourceType, filters.sourceType);
+  })();
+
   const rows = await db
     .select({
       suggestion: aiSuggestions,
@@ -95,6 +103,7 @@ export async function getAiSuggestions(
         filters?.status ? eq(aiSuggestions.status, filters.status) : undefined,
         filters?.vendorId ? eq(aiSuggestions.vendorId, filters.vendorId) : undefined,
         filters?.marketId ? eq(aiSuggestions.marketId, filters.marketId) : undefined,
+        sourceTypeCondition,
       )
     )
     .orderBy(desc(aiSuggestions.createdAt));

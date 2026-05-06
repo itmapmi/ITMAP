@@ -975,19 +975,31 @@ function SignalsPanel({ onSwitchToSuggestions }: { onSwitchToSuggestions?: () =>
   );
 }
 
+const SUGGESTION_SOURCE_TYPES = [
+  { value: "all", label: "All Sources" },
+  { value: "hackernews", label: "Hacker News" },
+  { value: "reddit", label: "Reddit" },
+  { value: "github", label: "GitHub" },
+  { value: "layoffs", label: "Layoffs" },
+  { value: "news_article", label: "News Article" },
+] as const;
+
 // ─── Main component ───────────────────────────────────────────────────────
 
 export function AiSuggestionsAdmin() {
   const { toast } = useToast();
   const [mainTab, setMainTab] = useState("suggestions");
   const [tab, setTab] = useState("pending");
+  const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
+
+  const suggestionsUrl = `/api/admin/ai-suggestions?status=${tab === "all" ? "" : tab}${
+    sourceTypeFilter !== "all" ? `&sourceType=${sourceTypeFilter}` : ""
+  }`;
 
   const { data: suggestions = [], isLoading } = useQuery<AiSuggestion[]>({
-    queryKey: ["/api/admin/ai-suggestions", tab],
+    queryKey: ["/api/admin/ai-suggestions", tab, sourceTypeFilter],
     queryFn: () =>
-      fetch(`/api/admin/ai-suggestions?status=${tab === "all" ? "" : tab}`, {
-        credentials: "include",
-      }).then(r => r.json()),
+      fetch(suggestionsUrl, { credentials: "include" }).then(r => r.json()),
   });
 
   const { data: countData } = useQuery<{ count: number }>({
@@ -1086,6 +1098,28 @@ export function AiSuggestionsAdmin() {
               <li>Enter a new score and edit the commentary before approving — changes apply immediately.</li>
               <li>Rejecting discards the suggestion with no changes to live data.</li>
             </ul>
+          </div>
+
+          {/* Filter bar */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <Select value={sourceTypeFilter} onValueChange={setSourceTypeFilter}>
+              <SelectTrigger className="w-36 h-8 text-sm">
+                <SelectValue placeholder="All Sources" />
+              </SelectTrigger>
+              <SelectContent>
+                {SUGGESTION_SOURCE_TYPES.map(s => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {sourceTypeFilter !== "all" && (
+              <button
+                className="text-xs text-gray-400 hover:text-gray-600 underline"
+                onClick={() => setSourceTypeFilter("all")}
+              >
+                Clear
+              </button>
+            )}
           </div>
 
           {/* Status tabs */}

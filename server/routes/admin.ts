@@ -548,7 +548,8 @@ export function registerAdminRoutes(app: Express): void {
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
       const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
       const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
-      res.json(await storage.getAiSuggestions({ status, vendorId, marketId }));
+      const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
+      res.json(await storage.getAiSuggestions({ status, vendorId, marketId, sourceType }));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
