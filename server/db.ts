@@ -110,7 +110,13 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
-    // 8. Fix any anthropic jobs that have invalid/deprecated model IDs
+    // 8. is_ecosystem column on feature_categories (missed in original schema push)
+    await client.query(`
+      ALTER TABLE feature_categories
+        ADD COLUMN IF NOT EXISTS is_ecosystem boolean NOT NULL DEFAULT false
+    `);
+
+    // 9. Fix any anthropic jobs that have invalid/deprecated model IDs
     await client.query(`
       UPDATE market_builder_jobs
       SET llm_model = 'claude-3-7-sonnet-20250219'
