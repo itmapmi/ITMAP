@@ -76,8 +76,65 @@ const SOURCE_TYPES = [
   { value: "layoffs", label: "Layoffs" },
 ] as const;
 
+interface SentimentBreakdown {
+  positive: number;
+  neutral: number;
+  negative: number;
+  unknown: number;
+  total: number;
+}
+
 interface SignalFeedAdminProps {
   initialVendorId?: string | null;
+}
+
+function SentimentBreakdownChart({ breakdown }: { breakdown: SentimentBreakdown }) {
+  const { positive, neutral, negative, unknown, total } = breakdown;
+  if (total === 0) return null;
+
+  const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0;
+
+  const bars = [
+    { label: "Positive", count: positive, pct: pct(positive), color: "bg-emerald-500", textColor: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
+    { label: "Neutral", count: neutral, pct: pct(neutral), color: "bg-gray-400", textColor: "text-gray-600", bg: "bg-gray-50 border-gray-200" },
+    { label: "Negative", count: negative, pct: pct(negative), color: "bg-red-500", textColor: "text-red-700", bg: "bg-red-50 border-red-200" },
+    ...(unknown > 0 ? [{ label: "Unknown", count: unknown, pct: pct(unknown), color: "bg-slate-300", textColor: "text-slate-500", bg: "bg-slate-50 border-slate-200" }] : []),
+  ];
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-700">Sentiment Breakdown</p>
+        <p className="text-xs text-muted-foreground">{total.toLocaleString()} signals total</p>
+      </div>
+
+      {/* Stacked bar */}
+      <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
+        {bars.map(bar =>
+          bar.count > 0 ? (
+            <div
+              key={bar.label}
+              className={`${bar.color} transition-all`}
+              style={{ width: `${bar.pct}%` }}
+              title={`${bar.label}: ${bar.count} (${bar.pct}%)`}
+            />
+          ) : null
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3">
+        {bars.map(bar => (
+          <div key={bar.label} className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${bar.bg}`}>
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${bar.color}`} />
+            <span className={`text-xs font-medium ${bar.textColor}`}>{bar.label}</span>
+            <span className="text-xs font-bold text-gray-700">{bar.count.toLocaleString()}</span>
+            <span className="text-xs text-gray-400">({bar.pct}%)</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) {
@@ -107,9 +164,20 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
 
   const signalsUrl = `/api/admin/vendor-signals?limit=50${buildFilterParams()}`;
   const csvUrl = `/api/admin/vendor-signals?format=csv${buildFilterParams()}`;
+  const buildSummaryUrl = () => {
+    const params = buildFilterParams();
+    return params
+      ? `/api/admin/vendor-signals/summary?${params.slice(1)}`
+      : `/api/admin/vendor-signals/summary`;
+  };
+  const summaryUrl = buildSummaryUrl();
 
   const { data: page, isLoading, refetch } = useQuery<VendorSignalsPage>({
     queryKey: [signalsUrl],
+  });
+
+  const { data: sentimentSummary } = useQuery<SentimentBreakdown>({
+    queryKey: [summaryUrl],
   });
 
   const collectMutation = useMutation({
@@ -124,6 +192,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
       queryClient.invalidateQueries({
         predicate: (q) => (q.queryKey[0] as string).includes("/api/admin/vendor-signals"),
       });
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string).includes("vendor-signals/summary") });
       toast({ title: "Collection complete", description: `${data.summary.totalNew} new signal(s) collected.` });
     },
     onError: (err: any) => {
@@ -222,6 +291,9 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
           </p>
         </div>
       </div>
+
+      {/* Sentiment breakdown chart */}
+      {sentimentSummary && <SentimentBreakdownChart breakdown={sentimentSummary} />}
 
       {/* Controls */}
       <Card>

@@ -675,6 +675,35 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/admin/vendor-signals/summary', requireAdmin, async (req, res) => {
+    const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs'] as const;
+    type ValidSource = typeof VALID_SOURCE_TYPES[number];
+    try {
+      const { getSentimentBreakdown } = await import('../storage/signals');
+      const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
+      const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
+      const rawSource = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
+      const sourceType: ValidSource | undefined =
+        rawSource && (VALID_SOURCE_TYPES as readonly string[]).includes(rawSource)
+          ? (rawSource as ValidSource)
+          : undefined;
+      const rawFrom = typeof req.query.dateFrom === 'string' ? req.query.dateFrom : undefined;
+      const rawTo = typeof req.query.dateTo === 'string' ? req.query.dateTo : undefined;
+      const from = rawFrom ? new Date(rawFrom) : undefined;
+      const to = rawTo ? new Date(rawTo + 'T23:59:59.999Z') : undefined;
+      if (from && isNaN(from.getTime())) {
+        return res.status(400).json({ error: 'Invalid "dateFrom" date.' });
+      }
+      if (to && isNaN(to.getTime())) {
+        return res.status(400).json({ error: 'Invalid "dateTo" date.' });
+      }
+      const breakdown = await getSentimentBreakdown({ vendorId, marketId, sourceType, from, to });
+      res.json(breakdown);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/admin/vendor-signals/counts', requireAdmin, async (req, res) => {
     try {
       const { countSignalsPerVendor } = await import('../storage/signals');

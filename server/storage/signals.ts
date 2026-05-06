@@ -165,6 +165,50 @@ export async function markVendorSignalFeedAttempted(id: string): Promise<void> {
     .where(eq(vendorSignals.id, id));
 }
 
+export interface SentimentBreakdown {
+  positive: number;
+  neutral: number;
+  negative: number;
+  unknown: number;
+  total: number;
+}
+
+/**
+ * Count signals grouped by sentiment for the given filter options.
+ * Returns counts across ALL matching rows (no pagination).
+ */
+export async function getSentimentBreakdown(
+  opts: Omit<GetVendorSignalsOptions, 'limit' | 'offset'> = {}
+): Promise<SentimentBreakdown> {
+  const { vendorId, marketId, sourceType, from, to } = opts;
+
+  const where = and(
+    vendorId ? eq(vendorSignals.vendorId, vendorId) : undefined,
+    marketId ? eq(vendorSignals.marketId, marketId) : undefined,
+    sourceType ? eq(vendorSignals.sourceType, sourceType) : undefined,
+    from ? gte(vendorSignals.collectedAt, from) : undefined,
+    to ? lte(vendorSignals.collectedAt, to) : undefined,
+  );
+
+  const rows = await db
+    .select({ sentiment: vendorSignals.sentiment, cnt: count() })
+    .from(vendorSignals)
+    .where(where)
+    .groupBy(vendorSignals.sentiment);
+
+  const result: SentimentBreakdown = { positive: 0, neutral: 0, negative: 0, unknown: 0, total: 0 };
+  for (const row of rows) {
+    const s = (row.sentiment ?? '').toLowerCase();
+    const n = Number(row.cnt);
+    if (s === 'positive') result.positive += n;
+    else if (s === 'neutral') result.neutral += n;
+    else if (s === 'negative') result.negative += n;
+    else result.unknown += n;
+    result.total += n;
+  }
+  return result;
+}
+
 /**
  * Update a signal with the AI suggestion ID it produced.
  * Called after markVendorSignalFeedAttempted when the generator returned an ID.
