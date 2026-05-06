@@ -147,12 +147,13 @@ export async function runStartupMigrations(): Promise<void> {
     // 11. Fix any anthropic jobs that have invalid/deprecated model IDs
     await client.query(`
       UPDATE market_builder_jobs
-      SET llm_model = 'claude-3-7-sonnet-20250219'
+      SET llm_model = 'claude-sonnet-4-6'
       WHERE llm_provider = 'anthropic'
         AND llm_model NOT IN (
-          'claude-3-7-sonnet-20250219',
-          'claude-3-5-sonnet-20241022',
-          'claude-3-opus-20240229'
+          'claude-opus-4-7',
+          'claude-opus-4-6',
+          'claude-sonnet-4-6',
+          'claude-haiku-4-5-20251001'
         )
     `);
 

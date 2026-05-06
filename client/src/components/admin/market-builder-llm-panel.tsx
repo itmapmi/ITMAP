@@ -32,9 +32,10 @@ const MODELS: Record<string, { id: string; label: string }[]> = {
     { id: "o4-mini",       label: "o4-mini" },
   ],
   anthropic: [
-    { id: "claude-3-7-sonnet-20250219",  label: "Claude 3.7 Sonnet (Recommended)" },
-    { id: "claude-3-5-sonnet-20241022",  label: "Claude 3.5 Sonnet" },
-    { id: "claude-3-opus-20240229",      label: "Claude 3 Opus" },
+    { id: "claude-opus-4-7",            label: "Claude Opus 4.7 (Most Capable)" },
+    { id: "claude-opus-4-6",            label: "Claude Opus 4.6" },
+    { id: "claude-sonnet-4-6",          label: "Claude Sonnet 4.6 (Recommended)" },
+    { id: "claude-haiku-4-5-20251001",  label: "Claude Haiku 4.5 (Fastest)" },
   ],
   perplexity: [
     { id: "sonar-pro",           label: "Sonar Pro (Web Search)" },
