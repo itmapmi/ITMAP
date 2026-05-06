@@ -28,7 +28,14 @@ import {
   Radio,
   ExternalLink,
   Newspaper,
+  BookOpen,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 
@@ -137,6 +144,142 @@ const EVAL_TYPE_OPTIONS: { value: EvalType; label: string; icon: React.ReactNode
   { value: "ecosystem_evaluation", label: "Ecosystem Evaluation", icon: <Network className="h-3.5 w-3.5" /> },
 ];
 
+// ─── Article detail dialog ────────────────────────────────────────────────
+
+interface FullArticle {
+  id: string;
+  title: string;
+  url: string;
+  summary: string | null;
+  content: string | null;
+  publishedAt: string | null;
+  impactLabel: string | null;
+  category: string | null;
+  opinion: string | null;
+  vendorContext: string | null;
+  keyTakeaway: string | null;
+}
+
+function ArticleDetailDialog({
+  articleId,
+  onClose,
+}: {
+  articleId: string | null;
+  onClose: () => void;
+}) {
+  const { data: article, isLoading, isError } = useQuery<FullArticle>({
+    queryKey: ["/api/news", articleId],
+    enabled: articleId !== null,
+    retry: 1,
+  });
+
+  const impactColors: Record<string, string> = {
+    HIGH: "bg-red-100 text-red-700",
+    MEDIUM: "bg-amber-100 text-amber-700",
+    LOW: "bg-gray-100 text-gray-500",
+  };
+
+  return (
+    <Dialog open={articleId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="leading-snug pr-6">
+            {isLoading ? "Loading…" : (article?.title ?? "Article Detail")}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading && (
+          <div className="py-10 text-center text-sm text-muted-foreground">Loading article…</div>
+        )}
+
+        {!isLoading && isError && (
+          <div className="py-10 text-center text-sm text-destructive">
+            Failed to load article. It may have been deleted or is temporarily unavailable.
+          </div>
+        )}
+
+        {!isLoading && !isError && !article && (
+          <div className="py-10 text-center text-sm text-muted-foreground italic">
+            Article not found.
+          </div>
+        )}
+
+        {!isLoading && !isError && article && (
+          <div className="space-y-4 text-sm">
+            {/* Meta row */}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              {article.impactLabel && (
+                <span className={`font-semibold px-2 py-0.5 rounded text-[11px] ${impactColors[article.impactLabel] ?? "bg-gray-100 text-gray-500"}`}>
+                  {article.impactLabel}
+                </span>
+              )}
+              {article.category && (
+                <span className="bg-violet-100 text-violet-700 font-medium px-2 py-0.5 rounded text-[11px]">
+                  {article.category}
+                </span>
+              )}
+              {article.publishedAt && (
+                <span>
+                  {new Date(article.publishedAt).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+              )}
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto flex items-center gap-1 text-violet-600 hover:text-violet-800 hover:underline font-medium"
+              >
+                Original article
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+
+            {/* Key takeaway */}
+            {article.keyTakeaway && (
+              <div className="rounded-md bg-violet-50 border border-violet-100 px-4 py-3">
+                <p className="text-xs font-semibold text-violet-700 mb-1 uppercase tracking-wide">Key Takeaway</p>
+                <p className="text-sm text-gray-800 leading-relaxed">{article.keyTakeaway}</p>
+              </div>
+            )}
+
+            {/* Editorial opinion */}
+            {article.opinion && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Editorial Analysis</p>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{article.opinion}</p>
+              </div>
+            )}
+
+            {/* Vendor context */}
+            {article.vendorContext && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Vendor Context</p>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{article.vendorContext}</p>
+              </div>
+            )}
+
+            {/* Summary / excerpt */}
+            {article.summary && !article.opinion && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Summary</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{article.summary}</p>
+              </div>
+            )}
+
+            {!article.opinion && !article.vendorContext && !article.keyTakeaway && !article.summary && (
+              <p className="text-sm text-muted-foreground italic">No AI analysis available for this article yet.</p>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Single suggestion card ───────────────────────────────────────────────
 
 function SuggestionCard({
@@ -161,6 +304,7 @@ function SuggestionCard({
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [editedValue, setEditedValue] = useState<string>("");
   const [editedCommentary, setEditedCommentary] = useState<string>(s.suggestedCommentary ?? "");
+  const [detailArticleId, setDetailArticleId] = useState<string | null>(null);
 
   // Fetch all criteria (global, not per-market)
   const { data: allCriteria = [] } = useQuery<Criteria[]>({
@@ -378,17 +522,28 @@ function SuggestionCard({
                           <ExternalLink className="h-3 w-3 shrink-0 mt-0.5 text-gray-400" />
                         </a>
                       </div>
-                      {article.impactLabel && (
-                        <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                          article.impactLabel === "HIGH"
-                            ? "bg-red-100 text-red-700"
-                            : article.impactLabel === "MEDIUM"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}>
-                          {article.impactLabel}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {article.impactLabel && (
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                            article.impactLabel === "HIGH"
+                              ? "bg-red-100 text-red-700"
+                              : article.impactLabel === "MEDIUM"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {article.impactLabel}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDetailArticleId(article.id)}
+                          className="flex items-center gap-0.5 text-[10px] font-medium text-violet-600 hover:text-violet-800 hover:underline"
+                          title="View full analysis in newsroom"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          View in newsroom
+                        </button>
+                      </div>
                     </div>
                     <p className="text-[10px] text-gray-400">
                       {article.source}
@@ -594,6 +749,7 @@ function SuggestionCard({
           </div>
         )}
       </CardContent>
+      <ArticleDetailDialog articleId={detailArticleId} onClose={() => setDetailArticleId(null)} />
     </Card>
   );
 }
