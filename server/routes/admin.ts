@@ -614,6 +614,16 @@ export function registerAdminRoutes(app: Express): void {
       const parsedOffset = parseInt(req.query.offset as string, 10);
       const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
       const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+      const rawFrom = typeof req.query.from === 'string' ? req.query.from : undefined;
+      const rawTo = typeof req.query.to === 'string' ? req.query.to : undefined;
+      const from = rawFrom ? new Date(rawFrom) : undefined;
+      const to = rawTo ? new Date(rawTo + 'T23:59:59.999Z') : undefined;
+      if (from && isNaN(from.getTime())) {
+        return res.status(400).json({ error: 'Invalid "from" date.' });
+      }
+      if (to && isNaN(to.getTime())) {
+        return res.status(400).json({ error: 'Invalid "to" date.' });
+      }
 
       const format = typeof req.query.format === 'string' ? req.query.format : undefined;
 
@@ -645,7 +655,7 @@ export function registerAdminRoutes(app: Express): void {
         let fetchOffset = 0;
         let hasMore = true;
         while (hasMore) {
-          const batch = await getVendorSignals({ vendorId, marketId, sourceType, limit: PAGE_SIZE, offset: fetchOffset });
+          const batch = await getVendorSignals({ vendorId, marketId, sourceType, from, to, limit: PAGE_SIZE, offset: fetchOffset });
           for (const s of batch.data) res.write(toRow(s));
           fetchOffset += PAGE_SIZE;
           hasMore = fetchOffset < batch.total;
@@ -653,7 +663,7 @@ export function registerAdminRoutes(app: Express): void {
         return res.end();
       }
 
-      const page = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
+      const page = await getVendorSignals({ vendorId, marketId, sourceType, from, to, limit, offset });
       res.json(page);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

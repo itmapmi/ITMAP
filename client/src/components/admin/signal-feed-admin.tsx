@@ -29,8 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download, X } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 
@@ -83,6 +85,8 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
   const [vendorFilter, setVendorFilter] = useState(initialVendorId ?? "all");
   const [marketFilter, setMarketFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [rawDataSignal, setRawDataSignal] = useState<SignalData | null>(null);
   const [collectResults, setCollectResults] = useState<CollectResult[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -91,17 +95,18 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
   const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 
-  const signalsUrl = `/api/admin/vendor-signals?limit=50${
-    vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""
-  }${marketFilter !== "all" ? `&marketId=${marketFilter}` : ""}${
-    sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
-  }`;
+  const buildFilterParams = () => {
+    const parts: string[] = [];
+    if (vendorFilter !== "all") parts.push(`vendorId=${vendorFilter}`);
+    if (marketFilter !== "all") parts.push(`marketId=${marketFilter}`);
+    if (sourceFilter !== "all") parts.push(`sourceType=${sourceFilter}`);
+    if (dateFrom) parts.push(`from=${dateFrom}`);
+    if (dateTo) parts.push(`to=${dateTo}`);
+    return parts.length ? `&${parts.join("&")}` : "";
+  };
 
-  const csvUrl = `/api/admin/vendor-signals?format=csv${
-    vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""
-  }${marketFilter !== "all" ? `&marketId=${marketFilter}` : ""}${
-    sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
-  }`;
+  const signalsUrl = `/api/admin/vendor-signals?limit=50${buildFilterParams()}`;
+  const csvUrl = `/api/admin/vendor-signals?format=csv${buildFilterParams()}`;
 
   const { data: page, isLoading, refetch } = useQuery<VendorSignalsPage>({
     queryKey: [signalsUrl],
@@ -293,6 +298,35 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
               ))}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-1">
+            <Label className="text-xs text-gray-500 shrink-0">From</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 w-36 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <Label className="text-xs text-gray-500 shrink-0">To</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 w-36 text-sm"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-gray-500"
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Clear dates
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="h-8" onClick={() => refetch()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Refresh
