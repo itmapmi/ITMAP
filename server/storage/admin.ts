@@ -3,10 +3,21 @@ import {
   type AdminAlertSettings, type InsertAdminAlertSettings,
   type ExternalApiKey, type ExternalChatSession, type ExternalChatMessage,
   aiSuggestions, adminAlertSettings, externalApiKeys, externalChatSessions, externalChatMessages,
-  vendors, markets, vendorSignals,
+  vendors, markets, vendorSignals, newsArticles,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
+
+export interface SourceArticle {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: Date | null;
+  impactLabel: string | null;
+  keyTakeaway: string | null;
+  summary: string | null;
+}
 
 export interface AiSuggestionWithContext extends AiSuggestion {
   vendorName: string;
@@ -22,6 +33,7 @@ export interface AiSuggestionWithContext extends AiSuggestion {
     collectedAt: Date | null;
     fedIntoSuggestion: boolean;
   } | null;
+  sourceArticles?: SourceArticle[];
 }
 
 // ── Alert Settings ─────────────────────────────────────────────────────────
@@ -108,8 +120,53 @@ export async function getAiSuggestions(
         collectedAt: r.signalCollectedAt,
         fedIntoSuggestion: r.signalFedIntoSuggestion ?? false,
       } : null,
+      sourceArticles: [],
     });
   }
+
+  // Fetch article data for article-triggered suggestions
+  const allArticleIds = deduped
+    .flatMap(s => s.triggeredByArticleIds ?? [])
+    .filter(Boolean);
+
+  const uniqueArticleIds = [...new Set(allArticleIds)];
+
+  if (uniqueArticleIds.length > 0) {
+    const articles = await db
+      .select({
+        id: newsArticles.id,
+        title: newsArticles.title,
+        url: newsArticles.url,
+        publishedAt: newsArticles.publishedAt,
+        impactLabel: newsArticles.impactLabel,
+        keyTakeaway: newsArticles.keyTakeaway,
+        summary: newsArticles.summary,
+      })
+      .from(newsArticles)
+      .where(inArray(newsArticles.id, uniqueArticleIds));
+
+    const articleMap = new Map(
+      articles.map(a => [a.id, {
+        ...a,
+        source: (() => {
+          try {
+            return new URL(a.url).hostname.replace(/^www\./, "");
+          } catch {
+            return a.url;
+          }
+        })(),
+      }])
+    );
+
+    for (const s of deduped) {
+      if (s.triggeredByArticleIds && s.triggeredByArticleIds.length > 0) {
+        s.sourceArticles = s.triggeredByArticleIds
+          .map(id => articleMap.get(id))
+          .filter((a): a is SourceArticle => a !== undefined);
+      }
+    }
+  }
+
   return deduped;
 }
 

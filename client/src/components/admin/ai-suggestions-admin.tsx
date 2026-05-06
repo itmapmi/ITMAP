@@ -27,6 +27,7 @@ import {
   Network,
   Radio,
   ExternalLink,
+  Newspaper,
 } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
@@ -62,6 +63,17 @@ interface SourceSignal {
   fedIntoSuggestion: boolean;
 }
 
+interface SourceArticle {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string | null;
+  impactLabel: string | null;
+  keyTakeaway: string | null;
+  summary: string | null;
+}
+
 interface AiSuggestion {
   id: string;
   vendorId: string;
@@ -83,6 +95,7 @@ interface AiSuggestion {
   createdAt: string;
   reviewedAt: string | null;
   sourceSignal?: SourceSignal | null;
+  sourceArticles?: SourceArticle[];
 }
 
 interface Criteria {
@@ -327,6 +340,73 @@ function SuggestionCard({
             </details>
           );
         })()}
+
+        {/* Source Articles — shown when suggestion was triggered by news articles */}
+        {s.triggeredByArticleIds && s.triggeredByArticleIds.length > 0 && (
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1.5 hover:text-gray-700 list-none">
+              <Newspaper className="h-3 w-3 text-violet-500" />
+              Source articles
+              <span className="text-[10px] text-gray-400 font-normal">({s.triggeredByArticleIds.length})</span>
+              <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
+              <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
+            </summary>
+            <div className="mt-2 space-y-2">
+              {s.triggeredByArticleIds.map(articleId => {
+                const article = (s.sourceArticles ?? []).find(a => a.id === articleId);
+                if (!article) {
+                  return (
+                    <div key={articleId} className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
+                      <p className="text-[11px] text-gray-400 italic">Article unavailable (id: {articleId})</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div
+                    key={article.id}
+                    className="rounded border border-violet-100 bg-violet-50/40 px-3 py-2 space-y-1"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-gray-800 hover:text-violet-700 hover:underline leading-snug flex items-start gap-1"
+                        >
+                          {article.title}
+                          <ExternalLink className="h-3 w-3 shrink-0 mt-0.5 text-gray-400" />
+                        </a>
+                      </div>
+                      {article.impactLabel && (
+                        <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          article.impactLabel === "HIGH"
+                            ? "bg-red-100 text-red-700"
+                            : article.impactLabel === "MEDIUM"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {article.impactLabel}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                      {article.source}
+                      {article.publishedAt && (
+                        <> &middot; {new Date(article.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</>
+                      )}
+                    </p>
+                    {(article.keyTakeaway || article.summary) && (
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        {article.keyTakeaway ?? article.summary}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+        )}
 
         {/* ── Review & edit section (pending only) ── */}
         {isPending && (
