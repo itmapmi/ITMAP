@@ -204,6 +204,30 @@ export async function clearStageProgress(
     .where(eq(marketBuilderStages.id, existing.id));
 }
 
+// Reset any stages stuck in "running" status back to "idle" — called at server
+// startup so orphaned runs from a previous deploy/crash don't block new ones.
+export async function resetOrphanedRunningStages(): Promise<number> {
+  const runningStages = await db
+    .select({ id: marketBuilderStages.id, jobId: marketBuilderStages.jobId })
+    .from(marketBuilderStages)
+    .where(eq(marketBuilderStages.status, "running" as any));
+
+  if (runningStages.length === 0) return 0;
+
+  for (const s of runningStages) {
+    await db
+      .update(marketBuilderStages)
+      .set({ status: "idle" as any, error: "Server restarted — please re-run this stage." })
+      .where(eq(marketBuilderStages.id, s.id));
+    // Also reset the parent job status if it was "running"
+    await db
+      .update(marketBuilderJobs)
+      .set({ status: "idle", error: null, updatedAt: new Date() })
+      .where(and(eq(marketBuilderJobs.id, s.jobId), eq(marketBuilderJobs.status, "running")));
+  }
+  return runningStages.length;
+}
+
 export async function upsertMarketBuilderStage(
   jobId: string,
   stage: number,

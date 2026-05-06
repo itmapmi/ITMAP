@@ -49,6 +49,15 @@ app.use((req, res, next) => {
   // Apply any additive schema changes that may not have been db:pushed yet
   await runStartupMigrations();
 
+  // Recover any stages left in "running" state from a previous server crash/deploy
+  try {
+    const { resetOrphanedRunningStages } = await import("./storage/marketBuilder");
+    const recovered = await resetOrphanedRunningStages();
+    if (recovered > 0) log(`[MarketBuilder] Recovered ${recovered} orphaned running stage(s) → idle`);
+  } catch (err) {
+    log("Warning: Could not reset orphaned Market Builder stages:", String(err));
+  }
+
   // Seed Market Builder system default prompts (idempotent)
   try {
     const { seedSystemPrompts } = await import("./market-builder/prompts");

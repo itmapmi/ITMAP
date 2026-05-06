@@ -71,6 +71,57 @@ const CATEGORIES = [
   "Industrial Applications",
 ];
 
+// ── Stuck-stage reset helper ───────────────────────────────────────────────
+// Shown when a stage is "running" but the activity log is empty (orphaned run).
+// After 30 s the user sees an option to reset it back to idle.
+
+function StuckStageReset({ jobId, stageNum, apiBase, onReset }: {
+  jobId: string; stageNum: number; apiBase: string; onReset: () => void;
+}) {
+  const { toast } = useToast();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 30_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const resetMutation = useMutation({
+    mutationFn: () =>
+      apiRequest(`${apiBase}/jobs/${jobId}/stages/${stageNum}/reset`, "POST").then(r => r.json()),
+    onSuccess: () => {
+      toast({ title: `Stage ${stageNum} reset`, description: "You can now re-run this stage." });
+      onReset();
+    },
+    onError: (err: any) => toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
+  });
+
+  if (!show) return null;
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
+      <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-amber-800">Stage appears stuck</p>
+        <p className="text-xs text-amber-700 mt-0.5">
+          No activity logged in 30 s — the server may have restarted mid-run.
+          Reset this stage so you can run it again.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3 gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-100"
+          disabled={resetMutation.isPending}
+          onClick={() => resetMutation.mutate()}
+        >
+          {resetMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+          Reset Stage {stageNum}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Mini stage progress dots (used in dashboard cards) ────────────────────
 
 function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
@@ -1681,7 +1732,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3 py-3">
                   <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta?.label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">Updates every few seconds · Page will refresh automatically when complete</p>
                   </div>
@@ -1714,6 +1765,16 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     <div ref={logEndRef} />
                   </div>
                 </div>
+
+                {/* Stuck-stage escape hatch — shown after 30 s with no log updates */}
+                {activityLines.length === 0 && (
+                  <StuckStageReset
+                    jobId={activeJob!.id}
+                    stageNum={activeStage}
+                    apiBase={apiBase}
+                    onReset={() => setStagePhases(prev => ({ ...prev, [activeStage]: "ready" }))}
+                  />
+                )}
               </div>
             )}
 

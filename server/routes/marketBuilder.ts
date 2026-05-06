@@ -166,6 +166,50 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── Stage reset — unstick a "running" stage orphaned by a server restart ──
+
+  app.post("/api/admin/market-builder/jobs/:id/stages/:stageNum/reset", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      const job = await storage.getMarketBuilderJob(req.params.id);
+      if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+      const stage = await storage.getMarketBuilderStage(req.params.id, stageNum);
+      if (!stage) { res.status(404).json({ error: "Stage not found" }); return; }
+      if ((stage as any).status !== "running") {
+        res.status(400).json({ error: `Stage is not stuck — current status: ${(stage as any).status}` }); return;
+      }
+      await storage.upsertMarketBuilderStage(req.params.id, stageNum, {
+        status: "idle" as any,
+        error: "Manually reset by admin",
+      });
+      if (job.status === "running") {
+        await storage.updateMarketBuilderJob(req.params.id, { status: "idle", error: null });
+      }
+      res.json({ ok: true, message: `Stage ${stageNum} reset to idle — you can now re-run it.` });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // End-user variant of stage reset (owner only)
+  app.post("/api/market-builder/jobs/:id/stages/:stageNum/reset", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      const job = (req as any).job;
+      const stage = await storage.getMarketBuilderStage(req.params.id, stageNum);
+      if (!stage) { res.status(404).json({ error: "Stage not found" }); return; }
+      if ((stage as any).status !== "running") {
+        res.status(400).json({ error: `Stage is not stuck — current status: ${(stage as any).status}` }); return;
+      }
+      await storage.upsertMarketBuilderStage(req.params.id, stageNum, {
+        status: "idle" as any,
+        error: "Reset — please re-run",
+      });
+      if (job.status === "running") {
+        await storage.updateMarketBuilderJob(req.params.id, { status: "idle", error: null });
+      }
+      res.json({ ok: true, message: `Stage ${stageNum} reset to idle — you can now re-run it.` });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── Stage progress log (polled by frontend for real-time activity feed) ──
 
   app.get("/api/admin/market-builder/jobs/:id/stages/:stageNum/progress", requireAdmin, async (req, res) => {
