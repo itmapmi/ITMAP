@@ -27,6 +27,24 @@ interface GhCommit {
   commit: { author: { date: string } };
 }
 
+/**
+ * Try to extract a GitHub org/user slug from a vendor's website URL.
+ * Returns null if the URL isn't a github.com URL.
+ * e.g. "https://github.com/hashicorp" → "hashicorp"
+ */
+function extractGithubOrgFromWebsite(website: string): string | null {
+  try {
+    const url = new URL(website.trim());
+    if (url.hostname === 'github.com' || url.hostname === 'www.github.com') {
+      const parts = url.pathname.replace(/^\//, '').split('/').filter(Boolean);
+      if (parts.length > 0 && parts[0]) return parts[0];
+    }
+  } catch {
+    // malformed URL — ignore
+  }
+  return null;
+}
+
 function deriveGithubOrg(vendorName: string): string {
   return vendorName
     .toLowerCase()
@@ -52,8 +70,19 @@ async function githubFetch<T>(path: string): Promise<T | null> {
   }
 }
 
-export async function collectGithubSignals(vendorName: string): Promise<GitHubRawSignal[]> {
-  const orgName = deriveGithubOrg(vendorName);
+/**
+ * Collect GitHub signals for a vendor.
+ * @param vendorName  Display name used for name-based org fallback
+ * @param website     Optional vendor website URL — checked first for github.com org
+ */
+export async function collectGithubSignals(vendorName: string, website?: string): Promise<GitHubRawSignal[]> {
+  // Prefer a GitHub org parsed directly from the vendor's website URL
+  const orgFromWebsite = website ? extractGithubOrgFromWebsite(website) : null;
+  const orgName = orgFromWebsite ?? deriveGithubOrg(vendorName);
+
+  if (orgFromWebsite) {
+    console.log(`[GitHub] Using org "${orgName}" from website URL for ${vendorName}`);
+  }
 
   // Fetch up to 10 most-starred repos for the org
   const repos = await githubFetch<GhRepo[]>(

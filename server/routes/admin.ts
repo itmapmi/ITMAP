@@ -601,7 +601,7 @@ export function registerAdminRoutes(app: Express): void {
         if (vendorId) {
           const vendor = await st.getVendorById(vendorId);
           if (!vendor) throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
-          return [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId)];
+          return [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website)];
         }
         if (marketId) return collectSignalsForMarket(marketId);
         return collectSignalsForAllVendors();

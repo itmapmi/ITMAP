@@ -75,6 +75,22 @@ export async function deleteVendorSignal(id: string): Promise<void> {
   await db.delete(vendorSignals).where(eq(vendorSignals.id, id));
 }
 
+/**
+ * Mark a signal as having been evaluated for a suggestion (attempted feed).
+ * Called for every HIGH/MEDIUM HN/Layoffs signal, regardless of whether
+ * the LLM actually produced an actionable suggestion.
+ */
+export async function markVendorSignalFeedAttempted(id: string): Promise<void> {
+  await db
+    .update(vendorSignals)
+    .set({ fedIntoSuggestion: true })
+    .where(eq(vendorSignals.id, id));
+}
+
+/**
+ * Update a signal with the AI suggestion ID it produced.
+ * Called after markVendorSignalFeedAttempted when the generator returned an ID.
+ */
 export async function updateVendorSignalSuggestionLink(
   id: string,
   aiSuggestionId: string

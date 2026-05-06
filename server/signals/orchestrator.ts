@@ -15,6 +15,7 @@ import { classifySignal } from './classifier';
 import {
   insertVendorSignal,
   getVendorSignalByUrl,
+  markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
 } from '../storage/signals';
 import { generateSuggestionsFromSignal } from '../news/suggestions/generator';
@@ -34,19 +35,22 @@ const SUGGESTION_SOURCES = new Set(['hackernews', 'layoffs']);
 export async function collectSignalsForVendor(
   vendorId: string,
   vendorName: string,
-  marketId: string
+  marketId: string,
+  vendorWebsite?: string | null,
 ): Promise<SignalCollectionResult> {
   let collected = 0;
   let newCount = 0;
   let suggestionsTriggered = 0;
 
   try {
-    // Run all four collectors concurrently
+    // Run all four collectors concurrently.
+    // GitHub receives the vendor's website so it can parse a GitHub org URL
+    // directly instead of guessing from the vendor name.
     const [hnSignals, redditSignals, layoffsSignals, githubSignals] = await Promise.allSettled([
       collectHnSignals(vendorName),
       collectRedditSignals(vendorName),
       collectLayoffsSignals(vendorName),
-      collectGithubSignals(vendorName),
+      collectGithubSignals(vendorName, vendorWebsite ?? undefined),
     ]);
 
     const allRaw: Array<{
@@ -114,12 +118,18 @@ export async function collectSignalsForVendor(
 
       newCount++;
 
-      // Feed HIGH/MEDIUM HN and Layoffs signals into AI suggestion pipeline
+      // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
+      // fedIntoSuggestion is set to true whenever we *attempt* feeding, regardless
+      // of whether the LLM produces an actionable suggestion. This allows the UI to
+      // distinguish "evaluated but nothing warranted" from "not yet evaluated".
       if (
         SUGGESTION_SOURCES.has(raw.sourceType) &&
         (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
       ) {
         try {
+          // Mark as feed-attempted before calling the generator
+          await markVendorSignalFeedAttempted(signal.id);
+
           const suggestionId = await generateSuggestionsFromSignal(vendorId, {
             signalId: signal.id,
             sourceType: raw.sourceType,
@@ -132,6 +142,7 @@ export async function collectSignalsForVendor(
           });
 
           if (suggestionId) {
+            // Store the suggestion ID link (also re-confirms fedIntoSuggestion)
             await updateVendorSignalSuggestionLink(signal.id, suggestionId);
             suggestionsTriggered++;
           }
@@ -157,14 +168,14 @@ export async function collectSignalsForVendor(
 
 export async function collectSignalsForMarket(marketId: string): Promise<SignalCollectionResult[]> {
   const marketVendors = await db
-    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId })
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, website: vendors.website })
     .from(vendors)
     .where(eq(vendors.marketId, marketId));
 
   const results: SignalCollectionResult[] = [];
 
   for (const vendor of marketVendors) {
-    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId);
+    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website);
     results.push(result);
     // Pause between vendors to avoid hammering external APIs
     await new Promise(r => setTimeout(r, 2000));
@@ -175,13 +186,13 @@ export async function collectSignalsForMarket(marketId: string): Promise<SignalC
 
 export async function collectSignalsForAllVendors(): Promise<SignalCollectionResult[]> {
   const allVendors = await db
-    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId })
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, website: vendors.website })
     .from(vendors);
 
   const results: SignalCollectionResult[] = [];
 
   for (const vendor of allVendors) {
-    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId);
+    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website);
     results.push(result);
     await new Promise(r => setTimeout(r, 2000));
   }
