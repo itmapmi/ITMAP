@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 
@@ -92,6 +92,12 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 
   const signalsUrl = `/api/admin/vendor-signals?limit=50${
+    vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""
+  }${marketFilter !== "all" ? `&marketId=${marketFilter}` : ""}${
+    sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
+  }`;
+
+  const csvUrl = `/api/admin/vendor-signals?format=csv${
     vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""
   }${marketFilter !== "all" ? `&marketId=${marketFilter}` : ""}${
     sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
@@ -290,6 +296,17 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
           <Button variant="ghost" size="sm" className="h-8" onClick={() => refetch()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            asChild
+          >
+            <a href={csvUrl} download="vendor-signals.csv">
+              <Download className="h-3.5 w-3.5 mr-1" />
+              Export CSV
+            </a>
           </Button>
           {page && (
             <span className="text-xs text-gray-400 ml-auto">{page.total} total</span>

@@ -614,6 +614,44 @@ export function registerAdminRoutes(app: Express): void {
       const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
       const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
+      const format = typeof req.query.format === 'string' ? req.query.format : undefined;
+
+      if (format === 'csv') {
+        const escape = (v: unknown) => {
+          let s = v == null ? '' : String(v);
+          // Neutralise CSV formula injection (Excel/Sheets treat leading =,+,-,@ as formulas)
+          if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+          return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const toRow = (s: Awaited<ReturnType<typeof getVendorSignals>>['data'][number]) =>
+          [
+            s.vendorName,
+            s.marketName.replace(/^ITMAP for /i, ''),
+            s.sourceType,
+            s.signalDate ? new Date(s.signalDate).toISOString().split('T')[0] : '',
+            s.title,
+            s.sentiment ?? '',
+            s.impactLabel ?? '',
+            s.fedIntoSuggestion ? 'Yes' : 'No',
+            s.url ?? '',
+          ].map(escape).join(',') + '\r\n';
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="vendor-signals.csv"');
+        res.write('Vendor,Market,Source,Date,Title,Sentiment,Impact,Influenced Scoring,URL\r\n');
+
+        const PAGE_SIZE = 500;
+        let fetchOffset = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const batch = await getVendorSignals({ vendorId, marketId, sourceType, limit: PAGE_SIZE, offset: fetchOffset });
+          for (const s of batch.data) res.write(toRow(s));
+          fetchOffset += PAGE_SIZE;
+          hasMore = fetchOffset < batch.total;
+        }
+        return res.end();
+      }
+
       const page = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
       res.json(page);
     } catch (err: any) {
