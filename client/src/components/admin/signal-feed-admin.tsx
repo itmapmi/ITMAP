@@ -100,8 +100,8 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
     if (vendorFilter !== "all") parts.push(`vendorId=${vendorFilter}`);
     if (marketFilter !== "all") parts.push(`marketId=${marketFilter}`);
     if (sourceFilter !== "all") parts.push(`sourceType=${sourceFilter}`);
-    if (dateFrom) parts.push(`from=${dateFrom}`);
-    if (dateTo) parts.push(`to=${dateTo}`);
+    if (dateFrom) parts.push(`dateFrom=${dateFrom}`);
+    if (dateTo) parts.push(`dateTo=${dateTo}`);
     return parts.length ? `&${parts.join("&")}` : "";
   };
 
