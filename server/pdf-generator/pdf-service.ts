@@ -371,6 +371,61 @@ export class PDFService {
     return content;
   }
 
+  generateVendorNewsContent(vendors: any[], newsByVendor: Record<string, any[]>): string {
+    const vendorsWithNews = vendors.filter(v => (newsByVendor[v.id] ?? []).length > 0);
+    if (vendorsWithNews.length === 0) return '';
+
+    const impactColor: Record<string, string> = {
+      HIGH: '#c53030',
+      MEDIUM: '#b7791f',
+      LOW: '#276749',
+    };
+
+    let content = `
+      <div class="content-section">
+        <h2 class="section-title">Vendor News</h2>
+        <p class="section-description">
+          Recent news articles collected for each vendor, classified by impact level.
+        </p>
+      </div>
+    `;
+
+    vendorsWithNews.forEach(vendor => {
+      const articles: any[] = newsByVendor[vendor.id] ?? [];
+      content += `
+        <div class="content-section">
+          <h3 class="section-subtitle">${this.escapeHtml(vendor.name)}</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 16%;">Date</th>
+                <th style="width: 52%;">Headline</th>
+                <th style="width: 16%; text-align: center;">Impact</th>
+                <th style="width: 16%; text-align: center;">Takeaway</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${articles.slice(0, 10).map(a => {
+                const impact = (a.impactLabel ?? '').toUpperCase();
+                const color = impactColor[impact] ?? '#4a5568';
+                return `
+                  <tr>
+                    <td>${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                    <td>${this.escapeHtml(a.headline ?? a.title ?? '')}</td>
+                    <td style="text-align: center;"><strong style="color: ${color};">${this.escapeHtml(impact || '—')}</strong></td>
+                    <td style="font-size: 11px; color: #4a5568;">${this.escapeHtml((a.keyTakeaways ?? a.summary ?? '').slice(0, 120))}${(a.keyTakeaways ?? a.summary ?? '').length > 120 ? '…' : ''}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    return content;
+  }
+
   generateIntelligenceFeedContent(vendors: any[], signalsByVendor: Record<string, any[]>): string {
     const vendorsWithSignals = vendors.filter(v => (signalsByVendor[v.id] ?? []).length > 0);
 
@@ -438,30 +493,44 @@ export class PDFService {
     supportData: any[],
     ecosystemFeatures: any[],
     ecosystemSupport: any[],
+    newsByVendor?: Record<string, any[]>,
     signalsByVendor?: Record<string, any[]>
   ): string {
     let content = '';
 
+    // 1. Vendor Evaluation
     console.log('[PDF] Generating vendor evaluation content...');
     console.log('[PDF] Vendors count:', vendors.length);
     console.log('[PDF] Scores count:', scores.length);
     const vendorEvalContent = this.generateVendorEvaluationContent(market, vendors, scores);
     console.log('[PDF] Vendor evaluation content length:', vendorEvalContent.length);
     content += vendorEvalContent;
-    
+
+    // 2. Product Evaluation
     console.log('[PDF] Generating product evaluation content...');
     const productEvalContent = this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
     console.log('[PDF] Product evaluation content length:', productEvalContent.length);
     content += productEvalContent;
-    
+
+    // 3. Ecosystem
     console.log('[PDF] Generating ecosystem content...');
     const ecosystemContent = this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
     console.log('[PDF] Ecosystem content length:', ecosystemContent.length);
     content += ecosystemContent;
 
+    // 4. Vendor News
+    if (newsByVendor) {
+      console.log('[PDF] Generating vendor news content...');
+      const newsContent = this.generateVendorNewsContent(vendors, newsByVendor);
+      console.log('[PDF] Vendor news content length:', newsContent.length);
+      content += newsContent;
+    }
+
+    // 5. Intelligence Feed (signals — placed after Vendor News)
     if (signalsByVendor) {
       console.log('[PDF] Generating intelligence feed content...');
       const intelligenceContent = this.generateIntelligenceFeedContent(vendors, signalsByVendor);
+      console.log('[PDF] Intelligence feed content length:', intelligenceContent.length);
       content += intelligenceContent;
     }
 

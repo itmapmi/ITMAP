@@ -418,14 +418,24 @@ export function registerFileRoutes(app: Express): void {
       const productSupport = ecosystemCategory ? allSupport.filter((s: any) => !ecosystemFeatures.find((f: any) => f.id === s.featureId)) : allSupport;
       const ecosystemSupport = ecosystemCategory ? allSupport.filter((s: any) => ecosystemFeatures.find((f: any) => f.id === s.featureId)) : [];
       const { getVendorSignals } = await import('../storage/signals');
+      const { newsStorage } = await import('../news/storage');
       const signalsByVendor: Record<string, any[]> = {};
+      const newsByVendor: Record<string, any[]> = {};
       for (const vendor of vendors) {
         try {
           const sigPage = await getVendorSignals({ vendorId: vendor.id, marketId, limit: 20 });
           if (sigPage.data.length > 0) signalsByVendor[vendor.id] = sigPage.data;
-        } catch { }
+        } catch (err) {
+          console.warn(`[PDF] Failed to fetch signals for vendor ${vendor.id} (${vendor.name}):`, err);
+        }
+        try {
+          const articles = await newsStorage.getArticles({ vendorId: vendor.id, marketIds: [marketId], limit: 10 });
+          if (articles.length > 0) newsByVendor[vendor.id] = articles;
+        } catch (err) {
+          console.warn(`[PDF] Failed to fetch news for vendor ${vendor.id} (${vendor.name}):`, err);
+        }
       }
-      const content = pdfService.generateFullReportContent(market, vendors, scores, productFeatures, productCategories, productSupport, ecosystemFeatures, ecosystemSupport, signalsByVendor);
+      const content = pdfService.generateFullReportContent(market, vendors, scores, productFeatures, productCategories, productSupport, ecosystemFeatures, ecosystemSupport, newsByVendor, signalsByVendor);
       const pdfBuffer = await pdfService.generatePDF({ marketName: market.name, reportTitle: 'Complete Market Analysis', reportType: 'Full Market Report', content });
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName}.pdf`;
