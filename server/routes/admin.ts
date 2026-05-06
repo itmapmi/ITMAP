@@ -621,6 +621,18 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/admin/vendor-signals/counts', requireAdmin, async (req, res) => {
+    try {
+      const { countSignalsPerVendor } = await import('../storage/signals');
+      const days = parseInt(req.query.days as string, 10);
+      const parsedDays = !isNaN(days) && days > 0 ? Math.min(days, 365) : 30;
+      const counts = await countSignalsPerVendor(parsedDays);
+      res.json({ counts, days: parsedDays });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/admin/vendor-signals/collect-log', requireAdmin, (_req, res) => {
     res.json(collectionLog);
   });

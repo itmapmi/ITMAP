@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { vendorSignals, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, gte, sql } from 'drizzle-orm';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs';
 
@@ -115,6 +115,19 @@ export async function getVendorSignalByUrl(url: string, vendorId: string): Promi
 
 export async function deleteVendorSignal(id: string): Promise<void> {
   await db.delete(vendorSignals).where(eq(vendorSignals.id, id));
+}
+
+/**
+ * Return signal counts per vendor for the last `days` days (default 30).
+ */
+export async function countSignalsPerVendor(days = 30): Promise<{ vendorId: string; count: number }[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ vendorId: vendorSignals.vendorId, count: count() })
+    .from(vendorSignals)
+    .where(gte(vendorSignals.collectedAt, since))
+    .groupBy(vendorSignals.vendorId);
+  return rows.map(r => ({ vendorId: r.vendorId, count: Number(r.count) }));
 }
 
 /**

@@ -74,9 +74,13 @@ const SOURCE_TYPES = [
   { value: "layoffs", label: "Layoffs" },
 ] as const;
 
-export function SignalFeedAdmin() {
+interface SignalFeedAdminProps {
+  initialVendorId?: string | null;
+}
+
+export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) {
   const { toast } = useToast();
-  const [vendorFilter, setVendorFilter] = useState("all");
+  const [vendorFilter, setVendorFilter] = useState(initialVendorId ?? "all");
   const [marketFilter, setMarketFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [rawDataSignal, setRawDataSignal] = useState<SignalData | null>(null);

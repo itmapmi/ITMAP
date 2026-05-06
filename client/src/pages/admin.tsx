@@ -40,6 +40,7 @@ function PendingBadge() {
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<string>("market-management");
   const [pendingEditVendor, setPendingEditVendor] = useState<{ id: string; marketId: string } | null>(null);
+  const [pendingSignalFeedVendor, setPendingSignalFeedVendor] = useState<string | null>(null);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -107,7 +108,7 @@ export default function Admin() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(tab) => { if (tab !== "signal-feed") setPendingSignalFeedVendor(null); setActiveTab(tab); }} className="w-full">
           <TabsList className="flex w-full overflow-x-auto flex-wrap gap-0 h-auto">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
@@ -137,6 +138,10 @@ export default function Admin() {
             <VendorManagement
               initialEditVendor={pendingEditVendor}
               onInitialEditConsumed={() => setPendingEditVendor(null)}
+              onNavigateToSignals={(vendorId) => {
+                setPendingSignalFeedVendor(vendorId);
+                setActiveTab("signal-feed");
+              }}
             />
           </TabsContent>
 
@@ -158,7 +163,10 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="signal-feed" className="mt-6">
-            <SignalFeedAdmin />
+            <SignalFeedAdmin
+              initialVendorId={pendingSignalFeedVendor}
+              key={pendingSignalFeedVendor ?? "signal-feed"}
+            />
           </TabsContent>
 
           <TabsContent value="criteria-management" className="mt-6">

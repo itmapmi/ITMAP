@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff } from "lucide-react";
+import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff, Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
@@ -31,12 +31,18 @@ interface HealthCheckResponse {
   lastCheckedAt: string | null;
 }
 
+interface VendorSignalCountsResponse {
+  counts: { vendorId: string; count: number }[];
+  days: number;
+}
+
 interface VendorManagementProps {
   initialEditVendor?: { id: string; marketId: string } | null;
   onInitialEditConsumed?: () => void;
+  onNavigateToSignals?: (vendorId: string) => void;
 }
 
-export default function VendorManagement({ initialEditVendor, onInitialEditConsumed }: VendorManagementProps = {}) {
+export default function VendorManagement({ initialEditVendor, onInitialEditConsumed, onNavigateToSignals }: VendorManagementProps = {}) {
   const { toast } = useToast();
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<string>("");
@@ -70,6 +76,17 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
   const { data: allVendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
+
+  const { data: signalCounts, isLoading: signalCountsLoading } = useQuery<VendorSignalCountsResponse>({
+    queryKey: ["/api/admin/vendor-signals/counts"],
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const getSignalCount = (vendorId: string): number | undefined => {
+    if (!signalCounts) return undefined;
+    const entry = signalCounts.counts.find(c => c.vendorId === vendorId);
+    return entry?.count ?? 0;
+  };
 
   const runHealthCheckMutation = useMutation({
     mutationFn: async () => {
@@ -882,6 +899,38 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                     );
                                     return null;
                                   })()}
+                                  {(() => {
+                                    if (signalCountsLoading) return (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 px-2 py-0.5 text-xs font-medium animate-pulse">
+                                        <Zap className="h-3 w-3" />
+                                        …
+                                      </span>
+                                    );
+                                    const cnt = getSignalCount(vendor.id);
+                                    if (cnt === undefined) return null;
+                                    if (cnt === 0) return (
+                                      <button
+                                        type="button"
+                                        onClick={() => onNavigateToSignals?.(vendor.id)}
+                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                        title="No signals in last 30 days — click to view Signal Feed"
+                                      >
+                                        <Zap className="h-3 w-3" />
+                                        No signals
+                                      </button>
+                                    );
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => onNavigateToSignals?.(vendor.id)}
+                                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                        title={`${cnt} signals in last 30 days — click to view Signal Feed`}
+                                      >
+                                        <Zap className="h-3 w-3" />
+                                        {cnt} signal{cnt !== 1 ? 's' : ''}
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="flex space-x-2 mt-1">
                                   <Button 
@@ -1043,6 +1092,38 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                       </span>
                                     );
                                     return null;
+                                  })()}
+                                  {(() => {
+                                    if (signalCountsLoading) return (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 px-2 py-0.5 text-xs font-medium animate-pulse">
+                                        <Zap className="h-3 w-3" />
+                                        …
+                                      </span>
+                                    );
+                                    const cnt = getSignalCount(vendor.id);
+                                    if (cnt === undefined) return null;
+                                    if (cnt === 0) return (
+                                      <button
+                                        type="button"
+                                        onClick={() => onNavigateToSignals?.(vendor.id)}
+                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                        title="No signals in last 30 days — click to view Signal Feed"
+                                      >
+                                        <Zap className="h-3 w-3" />
+                                        No signals
+                                      </button>
+                                    );
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => onNavigateToSignals?.(vendor.id)}
+                                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                        title={`${cnt} signals in last 30 days — click to view Signal Feed`}
+                                      >
+                                        <Zap className="h-3 w-3" />
+                                        {cnt} signal{cnt !== 1 ? 's' : ''}
+                                      </button>
+                                    );
                                   })()}
                                 </div>
                                 <div className="flex space-x-2 mt-1">
