@@ -55,12 +55,14 @@ function extractJSON<T>(text: string): T {
     try { return JSON.parse(fenceMatch[1]) as T; } catch {}
   }
 
-  // Extract first {...} block
+  // Extract first {...} block (greedy — captures the largest balanced object)
   const objMatch = text.match(/\{[\s\S]*\}/);
   if (objMatch) {
     try { return JSON.parse(objMatch[0]) as T; } catch {}
   }
 
+  const preview = text.slice(0, 300).replace(/\n/g, "↵");
+  console.error(`[LLM] extractJSON failed. Response preview: ${preview}`);
   throw new Error("LLM returned a response that is not valid JSON");
 }
 
@@ -131,10 +133,14 @@ async function callAnthropic<T>(
 
   const response = await client.messages.create({
     model: config.model,
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });
+
+  if (response.stop_reason === "max_tokens") {
+    console.warn(`[LLM] Anthropic response truncated (stop_reason=max_tokens) for model ${config.model}. The JSON will likely be incomplete.`);
+  }
 
   const block = response.content[0];
   const text = block.type === "text" ? block.text : "";
