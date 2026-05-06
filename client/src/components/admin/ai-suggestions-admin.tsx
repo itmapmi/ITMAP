@@ -292,60 +292,41 @@ function SuggestionCard({
           <p className="text-xs text-gray-700 leading-relaxed">{s.reasoning}</p>
         </div>
 
-        {/* Source Signal — shown when a signal triggered this suggestion */}
-        {s.sourceSignal && (
-          <details className="group">
-            <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1 hover:text-gray-700 list-none">
-              <Radio className="h-3 w-3 text-cyan-500" />
-              Source signal
-              <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
-              <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
-            </summary>
-            <div className="mt-2 rounded border border-cyan-100 bg-cyan-50/40 p-2.5 space-y-1.5">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                  s.sourceSignal.sourceType === "hackernews" ? "bg-orange-100 text-orange-700 border-orange-200" :
-                  s.sourceSignal.sourceType === "reddit" ? "bg-red-100 text-red-700 border-red-200" :
-                  s.sourceSignal.sourceType === "github" ? "bg-gray-100 text-gray-700 border-gray-200" :
-                  "bg-amber-100 text-amber-700 border-amber-200"
-                }`}>
-                  {s.sourceSignal.sourceType === "hackernews" ? "HN" :
-                   s.sourceSignal.sourceType.charAt(0).toUpperCase() + s.sourceSignal.sourceType.slice(1)}
-                </span>
-                {s.sourceSignal.sentiment && (
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                    s.sourceSignal.sentiment.toUpperCase() === "POSITIVE" ? "bg-green-100 text-green-700 border-green-200" :
-                    s.sourceSignal.sentiment.toUpperCase() === "NEGATIVE" ? "bg-red-100 text-red-700 border-red-200" :
-                    "bg-gray-100 text-gray-600 border-gray-200"
-                  }`}>
-                    {s.sourceSignal.sentiment.charAt(0).toUpperCase() + s.sourceSignal.sentiment.slice(1).toLowerCase()}
-                  </span>
-                )}
-                {s.sourceSignal.impactLabel && (
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                    s.sourceSignal.impactLabel.toUpperCase() === "HIGH" ? "bg-red-100 text-red-700 border-red-200" :
-                    s.sourceSignal.impactLabel.toUpperCase() === "MEDIUM" ? "bg-amber-100 text-amber-700 border-amber-200" :
-                    "bg-slate-100 text-slate-500 border-slate-200"
-                  }`}>
-                    {s.sourceSignal.impactLabel.toUpperCase()}
-                  </span>
-                )}
+        {/* Source Signal — uses the shared SignalCard compact variant */}
+        {s.sourceSignal && (() => {
+          const signalData: SignalData = {
+            id: s.sourceSignal.id,
+            vendorId: s.vendorId,
+            marketId: s.marketId,
+            sourceType: s.sourceSignal.sourceType,
+            title: s.sourceSignal.title,
+            content: s.sourceSignal.content,
+            url: s.sourceSignal.url,
+            sentiment: s.sourceSignal.sentiment,
+            sentimentScore: null,
+            impactLabel: s.sourceSignal.impactLabel,
+            fedIntoSuggestion: s.sourceSignal.fedIntoSuggestion,
+            aiSuggestionId: s.id,
+            signalDate: null,
+            collectedAt: s.sourceSignal.collectedAt,
+            rawData: null,
+            vendorName: s.vendorName,
+            marketName: s.marketName,
+          };
+          return (
+            <details className="group">
+              <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1.5 hover:text-gray-700 list-none">
+                <Radio className="h-3 w-3 text-cyan-500" />
+                Source signal
+                <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
+                <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
+              </summary>
+              <div className="mt-2 rounded border border-cyan-100 bg-cyan-50/40 px-2 py-1">
+                <SignalCard signal={signalData} compact />
               </div>
-              {s.sourceSignal.title && (
-                <p className="text-xs font-medium text-gray-800 leading-snug">{s.sourceSignal.title}</p>
-              )}
-              {s.sourceSignal.content && (
-                <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-3">{s.sourceSignal.content}</p>
-              )}
-              {s.sourceSignal.url && (
-                <a href={s.sourceSignal.url} target="_blank" rel="noopener noreferrer"
-                   className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800">
-                  <ExternalLink className="h-3 w-3" /> View source
-                </a>
-              )}
-            </div>
-          </details>
-        )}
+            </details>
+          );
+        })()}
 
         {/* ── Review & edit section (pending only) ── */}
         {isPending && (

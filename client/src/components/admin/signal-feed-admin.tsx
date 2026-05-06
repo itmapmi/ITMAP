@@ -4,6 +4,7 @@ import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, Trash2, Code } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 
@@ -58,6 +69,8 @@ export function SignalFeedAdmin() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [rawDataSignal, setRawDataSignal] = useState<SignalData | null>(null);
   const [collectResults, setCollectResults] = useState<CollectResult[] | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
@@ -104,7 +117,46 @@ export function SignalFeedAdmin() {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await apiRequest(`/api/admin/vendor-signals/${id}`, "DELETE");
+      }
+    },
+    onSuccess: () => {
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      queryClient.invalidateQueries({
+        predicate: (q) => (q.queryKey[0] as string).includes("/api/admin/vendor-signals"),
+      });
+      toast({ title: "Signals deleted", description: `${selectedIds.size} signal(s) removed.` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Bulk delete failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const signals = page?.data ?? [];
+
+  const allSelected = signals.length > 0 && signals.every(s => selectedIds.has(s.id));
+  const someSelected = signals.some(s => selectedIds.has(s.id));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(signals.map(s => s.id)));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -230,19 +282,76 @@ export function SignalFeedAdmin() {
             No signals collected yet. Run a collection or wait for the next scheduled job.
           </div>
         ) : (
-          <div className="space-y-2">
-            {signals.map(signal => (
-              <SignalCard
-                key={signal.id}
-                signal={signal}
-                showVendor
-                onDelete={(id) => deleteMutation.mutate(id)}
-                onViewRaw={(s) => setRawDataSignal(s)}
+          <>
+            {/* Bulk select toolbar */}
+            <div className="flex items-center gap-3 py-2 border-b border-gray-100">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={toggleAll}
+                aria-label="Select all signals"
+                className={someSelected && !allSelected ? "opacity-50" : ""}
               />
-            ))}
-          </div>
+              <span className="text-xs text-gray-500">
+                {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select all"}
+              </span>
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 text-xs ml-auto"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  Delete selected ({selectedIds.size})
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {signals.map(signal => (
+                <div key={signal.id} className="flex items-start gap-2">
+                  <Checkbox
+                    checked={selectedIds.has(signal.id)}
+                    onCheckedChange={() => toggleOne(signal.id)}
+                    aria-label={`Select signal ${signal.id}`}
+                    className="mt-3 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <SignalCard
+                      signal={signal}
+                      showVendor
+                      onDelete={(id) => deleteMutation.mutate(id)}
+                      onViewRaw={(s) => setRawDataSignal(s)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} signal(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the selected signals. Any associated pending AI suggestions will not be affected. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+              disabled={bulkDeleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteMutation.isPending ? "Deleting…" : `Delete ${selectedIds.size}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Raw data dialog */}
       <Dialog open={!!rawDataSignal} onOpenChange={() => setRawDataSignal(null)}>
