@@ -35,6 +35,16 @@ import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download, X } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 interface VendorSignalsPage {
   data: SignalData[];
@@ -80,6 +90,15 @@ interface SentimentBreakdown {
   positive: number;
   neutral: number;
   negative: number;
+  unknown: number;
+  total: number;
+}
+
+interface SentimentTrendPoint {
+  bucket: string;
+  positive: number;
+  negative: number;
+  neutral: number;
   unknown: number;
   total: number;
 }
@@ -137,6 +156,128 @@ function SentimentBreakdownChart({ breakdown }: { breakdown: SentimentBreakdown 
   );
 }
 
+function formatBucketLabel(bucket: string) {
+  const d = new Date(bucket);
+  if (isNaN(d.getTime())) return bucket;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function addMissingWeeks(data: SentimentTrendPoint[]): SentimentTrendPoint[] {
+  if (data.length < 2) return data;
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const filled: SentimentTrendPoint[] = [];
+  for (let i = 0; i < data.length; i++) {
+    filled.push(data[i]);
+    if (i < data.length - 1) {
+      const current = new Date(data[i].bucket).getTime();
+      const next = new Date(data[i + 1].bucket).getTime();
+      let cursor = current + MS_PER_WEEK;
+      while (cursor < next - MS_PER_WEEK / 2) {
+        const iso = new Date(cursor).toISOString().split("T")[0];
+        filled.push({ bucket: iso, positive: 0, negative: 0, neutral: 0, unknown: 0, total: 0 });
+        cursor += MS_PER_WEEK;
+      }
+    }
+  }
+  return filled;
+}
+
+function SentimentTrendChart({ data }: { data: SentimentTrendPoint[] }) {
+  const filled = addMissingWeeks(data);
+
+  const chartData = filled.map(pt => {
+    const total = pt.total || 1;
+    return {
+      week: formatBucketLabel(pt.bucket),
+      positivePct: pt.total > 0 ? Math.round((pt.positive / total) * 100) : 0,
+      negativePct: pt.total > 0 ? Math.round((pt.negative / total) * 100) : 0,
+      neutralPct: pt.total > 0 ? Math.round((pt.neutral / total) * 100) : 0,
+      total: pt.total,
+    };
+  });
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-700">Sentiment Trend (weekly)</p>
+        <p className="text-xs text-muted-foreground">{data.length} week{data.length !== 1 ? "s" : ""} of data</p>
+      </div>
+
+      {data.length === 0 ? (
+        <p className="text-xs text-muted-foreground py-6 text-center">
+          No signals yet — collect signals to see the trend chart.
+        </p>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradPos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradNeg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradNeu" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#9ca3af" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#9ca3af" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis
+                dataKey="week"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                unit="%"
+                domain={[0, 100]}
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                width={38}
+              />
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 6, border: "1px solid #e2e8f0" }}
+                formatter={(value: number, name: string) => {
+                  const labels: Record<string, string> = {
+                    positivePct: "Positive",
+                    negativePct: "Negative",
+                    neutralPct: "Neutral",
+                  };
+                  return [`${value}%`, labels[name] ?? name];
+                }}
+                labelFormatter={(label) => `Week of ${label}`}
+              />
+              <Legend
+                formatter={(value) => {
+                  const labels: Record<string, string> = {
+                    positivePct: "Positive %",
+                    negativePct: "Negative %",
+                    neutralPct: "Neutral %",
+                  };
+                  return <span style={{ fontSize: 11, color: "#6b7280" }}>{labels[value] ?? value}</span>;
+                }}
+              />
+              <Area type="monotone" dataKey="positivePct" stroke="#10b981" strokeWidth={2} fill="url(#gradPos)" dot={chartData.length <= 1} />
+              <Area type="monotone" dataKey="negativePct" stroke="#ef4444" strokeWidth={2} fill="url(#gradNeg)" dot={chartData.length <= 1} />
+              <Area type="monotone" dataKey="neutralPct" stroke="#9ca3af" strokeWidth={1.5} fill="url(#gradNeu)" dot={chartData.length <= 1} strokeDasharray="4 2" />
+            </AreaChart>
+          </ResponsiveContainer>
+          {data.length === 1 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Only one week of data — more weeks will extend the trend line.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) {
   const { toast } = useToast();
   const [vendorFilter, setVendorFilter] = useState(initialVendorId ?? "all");
@@ -164,13 +305,12 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
 
   const signalsUrl = `/api/admin/vendor-signals?limit=50${buildFilterParams()}`;
   const csvUrl = `/api/admin/vendor-signals?format=csv${buildFilterParams()}`;
-  const buildSummaryUrl = () => {
+  const buildParamUrl = (base: string) => {
     const params = buildFilterParams();
-    return params
-      ? `/api/admin/vendor-signals/summary?${params.slice(1)}`
-      : `/api/admin/vendor-signals/summary`;
+    return params ? `${base}?${params.slice(1)}` : base;
   };
-  const summaryUrl = buildSummaryUrl();
+  const summaryUrl = buildParamUrl("/api/admin/vendor-signals/summary");
+  const trendUrl = buildParamUrl("/api/admin/vendor-signals/sentiment-trend");
 
   const { data: page, isLoading, refetch } = useQuery<VendorSignalsPage>({
     queryKey: [signalsUrl],
@@ -178,6 +318,10 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
 
   const { data: sentimentSummary } = useQuery<SentimentBreakdown>({
     queryKey: [summaryUrl],
+  });
+
+  const { data: sentimentTrend } = useQuery<SentimentTrendPoint[]>({
+    queryKey: [trendUrl],
   });
 
   const collectMutation = useMutation({
@@ -294,6 +438,9 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
 
       {/* Sentiment breakdown chart */}
       {sentimentSummary && <SentimentBreakdownChart breakdown={sentimentSummary} />}
+
+      {/* Sentiment trend chart */}
+      {sentimentTrend && <SentimentTrendChart data={sentimentTrend} />}
 
       {/* Controls */}
       <Card>

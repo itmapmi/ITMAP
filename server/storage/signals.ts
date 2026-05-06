@@ -209,6 +209,62 @@ export async function getSentimentBreakdown(
   return result;
 }
 
+export interface SentimentTrendPoint {
+  bucket: string;
+  positive: number;
+  negative: number;
+  neutral: number;
+  unknown: number;
+  total: number;
+}
+
+/**
+ * Return weekly sentiment counts bucketed by date_trunc('week', collectedAt).
+ * Respects the same filter options as getVendorSignals.
+ */
+export async function getSentimentTrend(
+  opts: Omit<GetVendorSignalsOptions, 'limit' | 'offset'> = {}
+): Promise<SentimentTrendPoint[]> {
+  const { vendorId, marketId, sourceType, from, to } = opts;
+
+  const where = and(
+    vendorId ? eq(vendorSignals.vendorId, vendorId) : undefined,
+    marketId ? eq(vendorSignals.marketId, marketId) : undefined,
+    sourceType ? eq(vendorSignals.sourceType, sourceType) : undefined,
+    from ? gte(vendorSignals.collectedAt, from) : undefined,
+    to ? lte(vendorSignals.collectedAt, to) : undefined,
+  );
+
+  const rows = await db
+    .select({
+      bucket: sql<string>`date_trunc('week', ${vendorSignals.collectedAt})::date`.as('bucket'),
+      sentiment: vendorSignals.sentiment,
+      cnt: count(),
+    })
+    .from(vendorSignals)
+    .where(where)
+    .groupBy(sql`date_trunc('week', ${vendorSignals.collectedAt})::date`, vendorSignals.sentiment)
+    .orderBy(sql`date_trunc('week', ${vendorSignals.collectedAt})::date`);
+
+  const bucketMap = new Map<string, SentimentTrendPoint>();
+  for (const row of rows) {
+    const key = String(row.bucket);
+    if (!bucketMap.has(key)) {
+      bucketMap.set(key, { bucket: key, positive: 0, negative: 0, neutral: 0, unknown: 0, total: 0 });
+    }
+    const point = bucketMap.get(key)!;
+    const n = Number(row.cnt);
+    const s = (row.sentiment ?? '').toLowerCase();
+    if (s === 'positive') point.positive += n;
+    else if (s === 'negative') point.negative += n;
+    else if (s === 'neutral') point.neutral += n;
+    else point.unknown += n;
+    point.total += n;
+  }
+
+  return Array.from(bucketMap.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+}
+
 /**
  * Update a signal with the AI suggestion ID it produced.
  * Called after markVendorSignalFeedAttempted when the generator returned an ID.
