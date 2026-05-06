@@ -3,6 +3,36 @@ import { storage } from "../storage";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
 import { insertPromptRepositorySchema } from "@shared/schema";
+import type { SignalCollectionResult } from "../signals/orchestrator";
+
+interface CollectionLogEntry {
+  id: string;
+  triggeredAt: string;
+  scope: string;
+  totalNew: number;
+  totalSuggestions: number;
+  vendorCount: number;
+  errorCount: number;
+  results: SignalCollectionResult[];
+}
+
+const COLLECTION_LOG_MAX = 20;
+const collectionLog: CollectionLogEntry[] = [];
+
+function pushCollectionLog(scope: string, results: SignalCollectionResult[]): void {
+  const entry: CollectionLogEntry = {
+    id: crypto.randomUUID(),
+    triggeredAt: new Date().toISOString(),
+    scope,
+    totalNew: results.reduce((s, r) => s + r.new, 0),
+    totalSuggestions: results.reduce((s, r) => s + r.suggestionsTriggered, 0),
+    vendorCount: results.length,
+    errorCount: results.filter(r => r.error !== null).length,
+    results,
+  };
+  collectionLog.unshift(entry);
+  if (collectionLog.length > COLLECTION_LOG_MAX) collectionLog.length = COLLECTION_LOG_MAX;
+}
 
 export function registerAdminRoutes(app: Express): void {
 
@@ -591,6 +621,10 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/admin/vendor-signals/collect-log', requireAdmin, (_req, res) => {
+    res.json(collectionLog);
+  });
+
   app.post('/api/admin/vendor-signals/collect', requireAdmin, async (req, res) => {
     const COLLECT_TIMEOUT_MS = 60_000;
 
@@ -599,13 +633,18 @@ export function registerAdminRoutes(app: Express): void {
       const { collectSignalsForVendor, collectSignalsForMarket, collectSignalsForAllVendors } = await import('../signals/orchestrator');
       const { storage: st } = await import('../storage');
 
+      let scope = 'all vendors';
       const collectPromise = (async () => {
         if (vendorId) {
           const vendor = await st.getVendorById(vendorId);
           if (!vendor) throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
+          scope = `vendor: ${vendor.name}`;
           return [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website)];
         }
-        if (marketId) return collectSignalsForMarket(marketId);
+        if (marketId) {
+          scope = `market: ${marketId}`;
+          return collectSignalsForMarket(marketId);
+        }
         return collectSignalsForAllVendors();
       })();
 
@@ -614,6 +653,7 @@ export function registerAdminRoutes(app: Express): void {
       );
 
       const results = await Promise.race([collectPromise, timeoutPromise]);
+      pushCollectionLog(scope, results);
       const totalNew = results.reduce((s, r) => s + r.new, 0);
       const totalSuggestions = results.reduce((s, r) => s + r.suggestionsTriggered, 0);
       res.json({ results, summary: { totalNew, totalSuggestions } });

@@ -127,13 +127,9 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
 
   if (compact) {
     return (
-      <div className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
-        <SourceBadge source={signal.sourceType} />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{signal.title}</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(signal.collectedAt)}</p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+      <div className="py-2 space-y-1.5 border-b border-gray-100 last:border-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <SourceBadge source={signal.sourceType} />
           <SentimentChip sentiment={signal.sentiment} />
           <ImpactBadge impact={signal.impactLabel} />
           {signal.fedIntoSuggestion && (
@@ -141,12 +137,19 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
               <Zap className="h-2.5 w-2.5" />
             </span>
           )}
-          {signal.url && (
-            <a href={signal.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
+          <span className="ml-auto text-[11px] text-gray-400 shrink-0">{relativeTime(signal.collectedAt)}</span>
         </div>
+        <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{signal.title}</p>
+        {excerpt && (
+          <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{excerpt}</p>
+        )}
+        {signal.url && (
+          <a href={signal.url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800">
+            <ExternalLink className="h-3 w-3" />
+            View source
+          </a>
+        )}
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -29,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 
@@ -52,6 +53,17 @@ interface CollectResult {
 interface CollectResponse {
   results: CollectResult[];
   summary: { totalNew: number; totalSuggestions: number };
+}
+
+interface CollectionLogEntry {
+  id: string;
+  triggeredAt: string;
+  scope: string;
+  totalNew: number;
+  totalSuggestions: number;
+  vendorCount: number;
+  errorCount: number;
+  results: CollectResult[];
 }
 
 const SOURCE_TYPES = [
@@ -134,6 +146,11 @@ export function SignalFeedAdmin() {
     onError: (err: any) => {
       toast({ title: "Bulk delete failed", description: err.message, variant: "destructive" });
     },
+  });
+
+  const { data: collectLog = [] } = useQuery<CollectionLogEntry[]>({
+    queryKey: ["/api/admin/vendor-signals/collect-log"],
+    refetchInterval: 30_000,
   });
 
   const signals = page?.data ?? [];
@@ -366,6 +383,77 @@ export function SignalFeedAdmin() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Collection History */}
+      {collectLog.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">Collection History</h3>
+          <p className="text-xs text-gray-400">Last {collectLog.length} manual collection run(s) this session. Resets on server restart.</p>
+          <div className="space-y-1.5">
+            {collectLog.map(entry => (
+              <Collapsible key={entry.id}>
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-left hover:bg-gray-50 transition-colors">
+                    {entry.errorCount === 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-800 truncate">{entry.scope}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {new Date(entry.triggeredAt).toLocaleString()} · {entry.vendorCount} vendor(s)
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs font-semibold text-cyan-600">+{entry.totalNew} new</span>
+                      {entry.totalSuggestions > 0 && (
+                        <span className="text-xs font-semibold text-violet-600">{entry.totalSuggestions} suggestions</span>
+                      )}
+                      {entry.errorCount > 0 && (
+                        <span className="text-xs font-semibold text-amber-600">{entry.errorCount} errors</span>
+                      )}
+                      <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-7 mt-1 rounded-md border border-gray-100 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="text-left px-3 py-1.5 text-gray-500 font-medium">Vendor</th>
+                          <th className="text-center px-2 py-1.5 text-gray-500 font-medium">Collected</th>
+                          <th className="text-center px-2 py-1.5 text-gray-500 font-medium">New</th>
+                          <th className="text-center px-2 py-1.5 text-gray-500 font-medium">Suggestions</th>
+                          <th className="text-left px-2 py-1.5 text-gray-500 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entry.results.map(r => (
+                          <tr key={r.vendorId} className="border-b border-gray-50 last:border-0">
+                            <td className="px-3 py-1.5 font-medium text-gray-800">{r.vendorName}</td>
+                            <td className="px-2 py-1.5 text-center text-gray-600">{r.collected}</td>
+                            <td className="px-2 py-1.5 text-center font-semibold text-cyan-600">{r.new}</td>
+                            <td className="px-2 py-1.5 text-center text-violet-600">{r.suggestionsTriggered}</td>
+                            <td className="px-2 py-1.5">
+                              {r.error ? (
+                                <span className="text-amber-600 text-[11px]" title={r.error}>⚠ {r.error.slice(0, 40)}</span>
+                              ) : (
+                                <span className="text-green-600 text-[11px]">OK</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
