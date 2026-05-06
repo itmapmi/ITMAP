@@ -449,71 +449,8 @@ Return ONLY valid JSON with no markdown fences:
 
   let suggestions = parsed.suggestions ?? [];
 
-  // Guarantee: HIGH/MEDIUM signals produce at least one suggestion so that
-  // fed_into_suggestion=true always co-occurs with a non-null ai_suggestion_id.
-  // Invariant: fed_into_suggestion=true ⟺ ai_suggestion_id IS NOT NULL.
-  //
-  // Fallback path: when the LLM returns no suggestions, synthesise an
-  // awareness suggestion from the first available criterion or feature so the
-  // signal is always linked to a pending admin-review item.
   if (!suggestions.length) {
-    const delta = signal.sentiment === 'negative' ? -0.3
-                : signal.sentiment === 'positive'  ? 0.3
-                : -0.2;
-
-    if (scores.length > 0) {
-      // Prefer a criterion-based fallback (has a numeric score to nudge)
-      const first = scores[0];
-      const currentScore = parseFloat(first.score ?? '5');
-      const suggestedScore = parseFloat(
-        Math.max(0, Math.min(10, currentScore + delta)).toFixed(1)
-      );
-      if (currentScore !== suggestedScore) {
-        const updatedNotes = first.notes
-          ? `${first.notes} Signal alert (${signal.impactLabel}): ${signal.title}.`
-          : `Signal alert (${signal.impactLabel}): ${signal.title}.`;
-        suggestions = [{
-          type: 'criterion_score',
-          subject_id: first.criterionId,
-          current_value: currentScore,
-          suggested_value: suggestedScore,
-          current_commentary: first.notes,
-          suggested_commentary: updatedNotes,
-          reasoning: `${signal.impactLabel} impact ${signal.sentiment} signal from ${sourceLabel} triggered this awareness suggestion for admin review. No specific criterion change was identified by the AI, but the signal warrants attention.`,
-          confidence: 'MEDIUM',
-          article_ids: [],
-        }];
-        console.log(`[Suggestions] ${vendorRow.name}: synthesised criterion fallback for ${signal.impactLabel} signal`);
-      }
-    } else if (featureRows.length > 0) {
-      // Fallback via feature support — nudge by 1 level based on sentiment
-      const first = featureRows[0];
-      const currentLevel = first.supportLevel;
-      const suggestedLevel = signal.sentiment === 'negative'
-        ? Math.max(0, currentLevel - 1)
-        : Math.min(4, currentLevel + 1);
-      if (currentLevel !== suggestedLevel) {
-        const updatedComments = first.comments
-          ? `${first.comments} Signal alert (${signal.impactLabel}): ${signal.title}.`
-          : `Signal alert (${signal.impactLabel}): ${signal.title}.`;
-        suggestions = [{
-          type: 'feature_support',
-          subject_id: first.featureId,
-          current_value: currentLevel,
-          suggested_value: suggestedLevel,
-          current_commentary: first.comments,
-          suggested_commentary: updatedComments,
-          reasoning: `${signal.impactLabel} impact ${signal.sentiment} signal from ${sourceLabel} triggered this awareness suggestion for admin review.`,
-          confidence: 'MEDIUM',
-          article_ids: [],
-        }];
-        console.log(`[Suggestions] ${vendorRow.name}: synthesised feature fallback for ${signal.impactLabel} signal`);
-      }
-    }
-  }
-
-  if (!suggestions.length) {
-    console.log(`[Suggestions] ${vendorRow.name}: no changes warranted by signal "${signal.title.slice(0, 60)}"`);
+    console.log(`[Suggestions] ${vendorRow.name}: no evidence-backed changes for signal "${signal.title.slice(0, 60)}"`);
     return null;
   }
 

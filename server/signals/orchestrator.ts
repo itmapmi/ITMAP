@@ -118,10 +118,10 @@ export async function collectSignalsForVendor(
       newCount++;
 
       // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
-      // Invariant: fed_into_suggestion=true ⟺ ai_suggestion_id IS NOT NULL.
-      // updateVendorSignalSuggestionLink sets both fields atomically — only called
-      // when a suggestion is actually created. For vendors with no evaluation data
-      // configured, the generator returns null and the signal remains un-linked.
+      // Semantics mirror generateSuggestionsForVendorById: a suggestion is only
+      // created when the LLM finds clear evidence for a score/feature change.
+      // fed_into_suggestion + ai_suggestion_id are set together via
+      // updateVendorSignalSuggestionLink — null means no evidence found, not an error.
       if (
         SUGGESTION_SOURCES.has(raw.sourceType) &&
         (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
