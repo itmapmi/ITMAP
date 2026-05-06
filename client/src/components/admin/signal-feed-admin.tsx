@@ -302,10 +302,11 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
             size="sm"
             className="h-8"
             asChild
+            title={page ? `Export all ${page.total.toLocaleString()} matching signals to CSV` : "Export signals to CSV"}
           >
             <a href={csvUrl} download="vendor-signals.csv">
               <Download className="h-3.5 w-3.5 mr-1" />
-              Export CSV
+              {page ? `Export ${page.total.toLocaleString()} signals` : "Export CSV"}
             </a>
           </Button>
           {page && (
