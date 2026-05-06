@@ -228,6 +228,12 @@ export async function runStartupMigrations(): Promise<void> {
       END $$
     `);
 
+    // 16. Add missing created_at column to market_builder_job_stage_llm (omitted in migration 14)
+    await client.query(`
+      ALTER TABLE market_builder_job_stage_llm
+        ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now()
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
