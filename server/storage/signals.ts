@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { vendorSignals, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
-import { eq, and, desc, inArray, isNull, or } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs';
 

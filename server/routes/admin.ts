@@ -579,8 +579,10 @@ export function registerAdminRoutes(app: Express): void {
         rawSource && (VALID_SOURCE_TYPES as readonly string[]).includes(rawSource)
           ? (rawSource as ValidSource)
           : undefined;
-      const limit = req.query.limit ? Math.min(parseInt(req.query.limit as string, 10), 200) : 50;
-      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      const parsedOffset = parseInt(req.query.offset as string, 10);
+      const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+      const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
       const signals = await getVendorSignals({ vendorId, marketId, sourceType, limit, offset });
       res.json(signals);

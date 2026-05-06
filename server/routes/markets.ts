@@ -590,7 +590,8 @@ export function registerMarketRoutes(app: Express): void {
       }
       const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
       const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 15;
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 15;
 
       const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs'] as const;
       type ValidSource = typeof VALID_SOURCE_TYPES[number];

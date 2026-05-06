@@ -119,9 +119,14 @@ export async function collectSignalsForVendor(
       newCount++;
 
       // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
-      // fedIntoSuggestion is set to true whenever we *attempt* feeding, regardless
-      // of whether the LLM produces an actionable suggestion. This allows the UI to
-      // distinguish "evaluated but nothing warranted" from "not yet evaluated".
+      //
+      // DESIGN NOTE — fed_into_suggestion semantics:
+      // `fedIntoSuggestion` is set to true whenever we *attempt* to feed this signal
+      // into the suggestion pipeline (i.e. the signal was evaluated). It does NOT
+      // guarantee a suggestion was created — the LLM may decide the signal doesn't
+      // warrant a score/feature change. `aiSuggestionId` (non-null) is the authoritative
+      // indicator that a suggestion was actually generated. This lets the UI show three
+      // states: "not evaluated", "evaluated but no action needed", and "suggestion created".
       if (
         SUGGESTION_SOURCES.has(raw.sourceType) &&
         (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
