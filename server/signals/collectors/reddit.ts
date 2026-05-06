@@ -3,7 +3,7 @@
  * No Reddit OAuth required for MVP.
  */
 
-import OpenAI from 'openai';
+import { getResponsesClient, extractResponseText } from '../webSearchClient';
 
 export interface RedditRawSignal {
   title: string;
@@ -11,17 +11,6 @@ export interface RedditRawSignal {
   content: string;
   signalDate: Date;
   rawData: Record<string, unknown>;
-}
-
-let _openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    _openai = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    });
-  }
-  return _openai;
 }
 
 interface RedditPost {
@@ -35,6 +24,12 @@ interface RedditPost {
 }
 
 export async function collectRedditSignals(vendorName: string): Promise<RedditRawSignal[]> {
+  const responseApi = getResponsesClient();
+  if (!responseApi) {
+    console.warn('[Reddit] Responses API not available');
+    return [];
+  }
+
   const prompt = `Search Reddit for recent posts and threads about "${vendorName}" from IT practitioner subreddits (r/sysadmin, r/devops, r/networking, r/aws, r/azure, r/googlecloud, r/selfhosted, r/storage, r/DataHoarder, r/kubernetes, r/homelab and similar).
 
 Focus on posts from the last 30 days where practitioners share real experiences, issues, praises, or comparisons involving ${vendorName}.
@@ -57,31 +52,13 @@ Return ONLY valid JSON with no markdown fences:
 Return up to 10 posts. If no relevant posts exist in the last 30 days, return {"posts": []}.`;
 
   try {
-    const responseApi = (getOpenAI() as any).responses;
-    if (!responseApi) {
-      console.warn('[Reddit] Responses API not available');
-      return [];
-    }
-
     const response = await responseApi.create({
       model: 'gpt-4o-mini',
       tools: [{ type: 'web_search_preview' }],
       input: prompt,
     });
 
-    let rawText = '';
-    if (typeof response.output_text === 'string') {
-      rawText = response.output_text;
-    } else if (Array.isArray(response.output)) {
-      for (const item of response.output) {
-        if (item.type === 'message' && Array.isArray(item.content)) {
-          for (const c of item.content) {
-            if (c.type === 'output_text' || c.type === 'text') rawText += c.text ?? '';
-          }
-        }
-      }
-    }
-
+    const rawText = extractResponseText(response);
     if (!rawText.trim()) return [];
 
     const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();

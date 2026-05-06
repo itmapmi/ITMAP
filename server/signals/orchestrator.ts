@@ -15,6 +15,7 @@ import { classifySignal } from './classifier';
 import {
   insertVendorSignal,
   getVendorSignalByUrl,
+  markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
 } from '../storage/signals';
 import { generateSuggestionsFromSignal } from '../news/suggestions/generator';
@@ -118,14 +119,17 @@ export async function collectSignalsForVendor(
       newCount++;
 
       // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
-      // `fedIntoSuggestion` is set true only when a suggestion is actually created
-      // (ai_suggestion_id is the authoritative indicator). For vendors without
-      // scores/features configured, the generator gracefully returns null.
+      // Every qualifying signal is marked fed_into_suggestion=true (attempted).
+      // ai_suggestion_id is additionally set when a suggestion is actually created
+      // (for vendors with scores configured; null is acceptable for unconfigured vendors).
       if (
         SUGGESTION_SOURCES.has(raw.sourceType) &&
         (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
       ) {
         try {
+          // Always mark as attempted so the field is reliable for all qualifying signals
+          await markVendorSignalFeedAttempted(signal.id);
+
           const suggestionId = await generateSuggestionsFromSignal(vendorId, {
             signalId: signal.id,
             sourceType: raw.sourceType,
@@ -138,7 +142,7 @@ export async function collectSignalsForVendor(
           });
 
           if (suggestionId) {
-            // Mark signal as fed AND store the linked suggestion ID
+            // Also store the linked suggestion ID (re-confirms fedIntoSuggestion)
             await updateVendorSignalSuggestionLink(signal.id, suggestionId);
             suggestionsTriggered++;
           }
