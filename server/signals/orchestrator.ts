@@ -15,6 +15,7 @@ import { classifySignal } from './classifier';
 import {
   insertVendorSignal,
   getVendorSignalByUrl,
+  markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
 } from '../storage/signals';
 import { generateSuggestionsFromSignal } from '../news/suggestions/generator';
@@ -118,15 +119,22 @@ export async function collectSignalsForVendor(
       newCount++;
 
       // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
-      // Semantics mirror generateSuggestionsForVendorById: a suggestion is only
-      // created when the LLM finds clear evidence for a score/feature change.
-      // fed_into_suggestion + ai_suggestion_id are set together via
-      // updateVendorSignalSuggestionLink — null means no evidence found, not an error.
+      //
+      // Three observable states for a qualifying signal row:
+      //   fed=false, suggestionId=null  → not yet evaluated (LOW or non-qualifying source)
+      //   fed=true,  suggestionId=null  → evaluated; LLM found no evidence-backed change
+      //   fed=true,  suggestionId=set   → evaluated; suggestion created and linked
+      //
+      // markVendorSignalFeedAttempted fires first so every HIGH/MEDIUM signal
+      // records that it entered the suggestion pipeline, regardless of outcome.
       if (
         SUGGESTION_SOURCES.has(raw.sourceType) &&
         (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
       ) {
         try {
+          // Always record that this signal was submitted to the suggestion pipeline
+          await markVendorSignalFeedAttempted(signal.id);
+
           const suggestionId = await generateSuggestionsFromSignal(vendorId, {
             signalId: signal.id,
             sourceType: raw.sourceType,
@@ -139,7 +147,7 @@ export async function collectSignalsForVendor(
           });
 
           if (suggestionId) {
-            // Also store the linked suggestion ID (re-confirms fedIntoSuggestion)
+            // Upgrade to full linkage: store the created suggestion ID
             await updateVendorSignalSuggestionLink(signal.id, suggestionId);
             suggestionsTriggered++;
           }
