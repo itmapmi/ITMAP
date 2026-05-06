@@ -144,7 +144,46 @@ export async function runStartupMigrations(): Promise<void> {
       WHERE url IS NOT NULL
     `);
 
-    // 11. Fix any anthropic jobs that have invalid/deprecated model IDs
+    // 11. Pre-create drizzle-named unique constraints so db:push never shows interactive prompts.
+    //     The DB may have old _key-named constraints from before drizzle tracked them;
+    //     we add the _unique-named ones drizzle expects, idempotently.
+    const uniqueConstraints: Array<{ table: string; column: string; constraint: string }> = [
+      { table: 'market_builder_llm_settings', column: 'provider',  constraint: 'market_builder_llm_settings_provider_unique' },
+      { table: 'external_api_keys',           column: 'key_hash',  constraint: 'external_api_keys_key_hash_unique' },
+      { table: 'users',                       column: 'email',     constraint: 'users_email_unique' },
+      { table: 'users',                       column: 'google_id', constraint: 'users_google_id_unique' },
+      { table: 'users',                       column: 'linkedin_id', constraint: 'users_linkedin_id_unique' },
+    ];
+    for (const { table, column, constraint } of uniqueConstraints) {
+      await client.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = '${constraint}'
+          ) THEN
+            ALTER TABLE ${table} ADD CONSTRAINT ${constraint} UNIQUE (${column});
+          END IF;
+        END $$
+      `);
+    }
+
+    // 12. Cast chat_messages.data_context from text → jsonb (schema expects jsonb)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'chat_messages'
+            AND column_name = 'data_context'
+            AND data_type = 'text'
+        ) THEN
+          ALTER TABLE chat_messages
+            ALTER COLUMN data_context TYPE jsonb USING data_context::jsonb;
+        END IF;
+      END $$
+    `);
+
+    // 13. Fix any anthropic jobs that have invalid/deprecated model IDs
     await client.query(`
       UPDATE market_builder_jobs
       SET llm_model = 'claude-sonnet-4-6'
