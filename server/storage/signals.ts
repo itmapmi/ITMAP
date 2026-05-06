@@ -118,16 +118,35 @@ export async function deleteVendorSignal(id: string): Promise<void> {
 }
 
 /**
- * Return signal counts per vendor for the last `days` days (default 30).
+ * Return signal counts per vendor for the last `days` days (default 30),
+ * plus the most recent collectedAt date across ALL time for each vendor.
  */
-export async function countSignalsPerVendor(days = 30): Promise<{ vendorId: string; count: number }[]> {
+export async function countSignalsPerVendor(
+  days = 30
+): Promise<{ vendorId: string; count: number; lastSignalAt: string | null }[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  const rows = await db
+
+  const windowCounts = await db
     .select({ vendorId: vendorSignals.vendorId, count: count() })
     .from(vendorSignals)
     .where(gte(vendorSignals.collectedAt, since))
     .groupBy(vendorSignals.vendorId);
-  return rows.map(r => ({ vendorId: r.vendorId, count: Number(r.count) }));
+
+  const latestDates = await db
+    .select({
+      vendorId: vendorSignals.vendorId,
+      lastSignalAt: sql<string>`MAX(${vendorSignals.collectedAt})`.as('last_signal_at'),
+    })
+    .from(vendorSignals)
+    .groupBy(vendorSignals.vendorId);
+
+  const windowMap = new Map(windowCounts.map(r => [r.vendorId, Number(r.count)]));
+
+  return latestDates.map(r => ({
+    vendorId: r.vendorId,
+    count: windowMap.get(r.vendorId) ?? 0,
+    lastSignalAt: r.lastSignalAt ?? null,
+  }));
 }
 
 /**

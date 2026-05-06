@@ -32,7 +32,7 @@ interface HealthCheckResponse {
 }
 
 interface VendorSignalCountsResponse {
-  counts: { vendorId: string; count: number }[];
+  counts: { vendorId: string; count: number; lastSignalAt: string | null }[];
   days: number;
 }
 
@@ -82,10 +82,27 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
     staleTime: 1000 * 60 * 5,
   });
 
+  const signalCountMap = signalCounts
+    ? new Map(signalCounts.counts.map(c => [c.vendorId, c]))
+    : null;
+
   const getSignalCount = (vendorId: string): number | undefined => {
-    if (!signalCounts) return undefined;
-    const entry = signalCounts.counts.find(c => c.vendorId === vendorId);
-    return entry?.count ?? 0;
+    if (!signalCountMap) return undefined;
+    return signalCountMap.get(vendorId)?.count ?? 0;
+  };
+
+  const getSignalLastAt = (vendorId: string): string | null => {
+    if (!signalCountMap) return null;
+    return signalCountMap.get(vendorId)?.lastSignalAt ?? null;
+  };
+
+  const formatDaysAgo = (isoDate: string | null): string | null => {
+    if (!isoDate) return null;
+    const diffMs = Date.now() - new Date(isoDate).getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'today';
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
   };
 
   const runHealthCheckMutation = useMutation({
@@ -908,27 +925,43 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                     );
                                     const cnt = getSignalCount(vendor.id);
                                     if (cnt === undefined) return null;
+                                    const lastAt = getSignalLastAt(vendor.id);
+                                    const daysAgo = formatDaysAgo(lastAt);
                                     if (cnt === 0) return (
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigateToSignals?.(vendor.id)}
-                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
-                                        title="No signals in last 30 days — click to view Signal Feed"
-                                      >
-                                        <Zap className="h-3 w-3" />
-                                        No signals
-                                      </button>
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => onNavigateToSignals?.(vendor.id)}
+                                          className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                          title="No signals in last 30 days — click to view Signal Feed"
+                                        >
+                                          <Zap className="h-3 w-3" />
+                                          No signals
+                                        </button>
+                                        {daysAgo && (
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 pl-1">
+                                            last: {daysAgo}
+                                          </span>
+                                        )}
+                                      </div>
                                     );
                                     return (
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigateToSignals?.(vendor.id)}
-                                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
-                                        title={`${cnt} signals in last 30 days — click to view Signal Feed`}
-                                      >
-                                        <Zap className="h-3 w-3" />
-                                        {cnt} signal{cnt !== 1 ? 's' : ''}
-                                      </button>
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => onNavigateToSignals?.(vendor.id)}
+                                          className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                          title={`${cnt} signals in last 30 days — click to view Signal Feed`}
+                                        >
+                                          <Zap className="h-3 w-3" />
+                                          {cnt} signal{cnt !== 1 ? 's' : ''}
+                                        </button>
+                                        {daysAgo && (
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 pl-1">
+                                            last: {daysAgo}
+                                          </span>
+                                        )}
+                                      </div>
                                     );
                                   })()}
                                 </div>
@@ -1102,27 +1135,43 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                     );
                                     const cnt = getSignalCount(vendor.id);
                                     if (cnt === undefined) return null;
+                                    const lastAt = getSignalLastAt(vendor.id);
+                                    const daysAgo = formatDaysAgo(lastAt);
                                     if (cnt === 0) return (
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigateToSignals?.(vendor.id)}
-                                        className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
-                                        title="No signals in last 30 days — click to view Signal Feed"
-                                      >
-                                        <Zap className="h-3 w-3" />
-                                        No signals
-                                      </button>
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => onNavigateToSignals?.(vendor.id)}
+                                          className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                          title="No signals in last 30 days — click to view Signal Feed"
+                                        >
+                                          <Zap className="h-3 w-3" />
+                                          No signals
+                                        </button>
+                                        {daysAgo && (
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 pl-1">
+                                            last: {daysAgo}
+                                          </span>
+                                        )}
+                                      </div>
                                     );
                                     return (
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigateToSignals?.(vendor.id)}
-                                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
-                                        title={`${cnt} signals in last 30 days — click to view Signal Feed`}
-                                      >
-                                        <Zap className="h-3 w-3" />
-                                        {cnt} signal{cnt !== 1 ? 's' : ''}
-                                      </button>
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => onNavigateToSignals?.(vendor.id)}
+                                          className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium hover:opacity-80 transition-opacity"
+                                          title={`${cnt} signals in last 30 days — click to view Signal Feed`}
+                                        >
+                                          <Zap className="h-3 w-3" />
+                                          {cnt} signal{cnt !== 1 ? 's' : ''}
+                                        </button>
+                                        {daysAgo && (
+                                          <span className="text-[10px] text-gray-400 dark:text-gray-500 pl-1">
+                                            last: {daysAgo}
+                                          </span>
+                                        )}
+                                      </div>
                                     );
                                   })()}
                                 </div>
