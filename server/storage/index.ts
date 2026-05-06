@@ -186,6 +186,11 @@ export interface IStorage {
   createMarketBuilderSource(data: import("@shared/schema").InsertMarketBuilderSource): Promise<import("@shared/schema").MarketBuilderSource>;
   updateMarketBuilderSourceContent(id: string, content: string): Promise<void>;
   deleteMarketBuilderSource(id: string): Promise<void>;
+  // Market Builder — Per-stage LLM overrides
+  getJobStageLlm(jobId: string, stageNum: number): Promise<import("@shared/schema").MarketBuilderJobStageLlm | undefined>;
+  listJobStageLlms(jobId: string): Promise<import("@shared/schema").MarketBuilderJobStageLlm[]>;
+  upsertJobStageLlm(jobId: string, stageNum: number, provider: string, model: string): Promise<import("@shared/schema").MarketBuilderJobStageLlm>;
+  deleteJobStageLlm(jobId: string, stageNum: number): Promise<void>;
 
   // Prompt Repository
   listPrompts(filters?: { stage?: import("./prompts").PromptStage; promptType?: import("./prompts").PromptType }): Promise<PromptRepository[]>;

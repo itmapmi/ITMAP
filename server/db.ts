@@ -196,6 +196,38 @@ export async function runStartupMigrations(): Promise<void> {
         )
     `);
 
+    // 14. Per-stage LLM overrides table (stage-llm picker feature)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS market_builder_job_stage_llm (
+        id         varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        job_id     varchar NOT NULL REFERENCES market_builder_jobs(id) ON DELETE CASCADE,
+        stage_num  integer NOT NULL,
+        provider   varchar NOT NULL,
+        model      varchar NOT NULL,
+        CONSTRAINT market_builder_job_stage_llm_unique UNIQUE (job_id, stage_num)
+      )
+    `);
+
+    // 15. Remap market_builder_stages stage numbers from 6-stage to 9-stage pipeline.
+    // Old: 2=VendorEval, 3=ProductFeatures, 4=ProductScoring, 5=Ecosystem, 6=EcoScoring
+    // New: 3=VendorCommentary, 4=ProductFeatures, 6=ProductCommentary, 7=Ecosystem, 9=EcoCommentary
+    // Remap in descending order to avoid collisions: 6→9, 5→7, 4→6, 3→4, 2→3
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Only remap if the old 6-stage data still exists (no stage 7,8,9 yet)
+        IF NOT EXISTS (
+          SELECT 1 FROM market_builder_stages WHERE stage IN (7,8,9) LIMIT 1
+        ) THEN
+          UPDATE market_builder_stages SET stage = 9  WHERE stage = 6;
+          UPDATE market_builder_stages SET stage = 7  WHERE stage = 5;
+          UPDATE market_builder_stages SET stage = 6  WHERE stage = 4;
+          UPDATE market_builder_stages SET stage = 4  WHERE stage = 3;
+          UPDATE market_builder_stages SET stage = 3  WHERE stage = 2;
+        END IF;
+      END $$
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

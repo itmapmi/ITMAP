@@ -1,15 +1,10 @@
 /**
- * Stage 4 — Product Feature Scoring (TWO-CALL pattern + per-feature/category overrides)
+ * Stage 5 — Product Feature Scoring (Harvey Ball 0–4 scores only, no commentary)
+ * Stage 6 — Product Feature Commentary (100–250 word commentary per vendor × feature)
  *
- * For each vendor:
- *   1. Group features by their (scoringPromptId, commentaryPromptId) — features
- *      sharing both prompts batch together. Per-feature override beats per-category.
- *   2. For each group, batch in chunks of 10:
- *        a. Scoring call → Harvey Ball score per feature
- *        b. Commentary call → 100–250 word commentary using assigned scores
- *
- * When no overrides exist, all features share the system defaults → behaviour
- * matches the previous one-call batching (just doubled API calls).
+ * Split from the original combined runStage4Full into two separate public exports:
+ *   runStage4Scoring    → saves {support:[{…score only, comments:"", sources:[]}]}
+ *   runStage4Commentary → loads scoring result, adds commentary → full Stage4Result
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
@@ -28,15 +23,14 @@ export interface Stage4Result {
   support: Stage4SupportRecord[];
 }
 
-export interface Stage4Hooks {
-  // Returns the scoring system prompt to use for this feature
-  resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
-  // Returns the commentary system prompt to use for this feature
-  resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
-  // Returns the LLM config for scoring / commentary calls (per-stage override)
-  resolveScoringLlm?: () => Promise<LLMConfig>;
-  resolveCommentaryLlm?: () => Promise<LLMConfig>;
-  onBatchComplete?: (done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>;
+export interface Stage4ScoringHooks {
+  resolveScoringPrompt?: (categoryName: string, featureName: string) => Promise<string>;
+  onBatchComplete?: (done: number, total: number, vendorName: string, featureRange: string) => Promise<void>;
+}
+
+export interface Stage4CommentaryHooks {
+  resolveCommentaryPrompt?: (categoryName: string, featureName: string) => Promise<string>;
+  onBatchComplete?: (done: number, total: number, vendorName: string, featureRange: string) => Promise<void>;
 }
 
 interface FeatureRow {
@@ -47,7 +41,7 @@ interface FeatureRow {
 
 const FEATURE_BATCH = 10;
 
-// ── Per-batch LLM calls ───────────────────────────────────────────────────
+// ── Per-batch scoring call (scores only) ─────────────────────────────────
 
 async function scoreFeatureBatch(
   marketName: string,
@@ -90,6 +84,8 @@ Respond with ONLY a JSON object:
   }
   return [];
 }
+
+// ── Per-batch commentary call (uses pre-assigned scores) ──────────────────
 
 async function commentFeatureBatch(
   marketName: string,
@@ -135,56 +131,51 @@ Respond with ONLY a JSON object:
   return [];
 }
 
-// ── Public entry point ───────────────────────────────────────────────────
+// Helper: build feature groups keyed by a single prompt string
+function buildGroups(
+  allFeatures: FeatureRow[],
+  promptMap: Map<string, string>,
+): Array<{ prompt: string; features: FeatureRow[] }> {
+  const groups: Array<{ prompt: string; features: FeatureRow[] }> = [];
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = promptMap.get(key) ?? "";
+    let g = groups.find(x => x.prompt === p);
+    if (!g) { g = { prompt: p, features: [] }; groups.push(g); }
+    g.features.push(f);
+  }
+  return groups;
+}
 
-export async function runStage4Full(
+// ── Stage 5 public export: scoring only ──────────────────────────────────
+
+export async function runStage4Scoring(
   marketName: string,
   stage1: Stage1Result,
   stage3: { categories: Stage3Category[] },
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  hooksOrLegacy?: Stage4Hooks | ((done: number, total: number, vendorNames: string, featureRange: string) => Promise<void>),
+  hooks?: Stage4ScoringHooks,
 ): Promise<Stage4Result> {
-  // Backwards-compat: if a plain progress fn was passed, wrap it as hooks with system defaults
-  const hooks: Stage4Hooks = typeof hooksOrLegacy === "function" || !hooksOrLegacy
-    ? {
-        resolveScoringPrompt: async () => (await defaultPrompt("scoring")),
-        resolveCommentaryPrompt: async () => (await defaultPrompt("commentary")),
-        onBatchComplete: typeof hooksOrLegacy === "function" ? hooksOrLegacy : undefined,
-      }
-    : hooksOrLegacy;
-
-  // Flatten features
   const allFeatures: FeatureRow[] = stage3.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
   );
 
-  // Pre-resolve prompts for every feature so we can group by prompt content
-  const featurePrompts = await Promise.all(
-    allFeatures.map(async f => ({
-      feature: f,
-      scoring: await hooks.resolveScoringPrompt(f.categoryName, f.featureName),
-      commentary: await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName),
-    }))
-  );
-
-  // Group by (scoring prompt content, commentary prompt content)
-  type Group = { scoring: string; commentary: string; features: FeatureRow[] };
-  const groups: Group[] = [];
-  for (const fp of featurePrompts) {
-    let g = groups.find(x => x.scoring === fp.scoring && x.commentary === fp.commentary);
-    if (!g) { g = { scoring: fp.scoring, commentary: fp.commentary, features: [] }; groups.push(g); }
-    g.features.push(fp.feature);
+  // Resolve scoring prompts per feature
+  const promptMap = new Map<string, string>();
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = hooks?.resolveScoringPrompt
+      ? await hooks.resolveScoringPrompt(f.categoryName, f.featureName)
+      : await defaultPrompt("scoring");
+    promptMap.set(key, p);
   }
 
-  // Total batches across all vendors and groups (for progress)
+  const groups = buildGroups(allFeatures, promptMap);
+
   let totalBatches = 0;
   for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
   totalBatches *= stage1.vendors.length;
-
-  // Resolve LLM configs once per stage run
-  const scoringLlm = hooks.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
-  const commentaryLlm = hooks.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
 
   let done = 0;
   const allSupport: Stage4SupportRecord[] = [];
@@ -195,35 +186,110 @@ export async function runStage4Full(
         const chunk = g.features.slice(i, i + FEATURE_BATCH);
 
         const scores = await scoreFeatureBatch(
-          marketName, vendor, chunk, g.scoring, scoringLlm, sourceContext
-        );
-        const commentary = await commentFeatureBatch(
-          marketName, vendor, chunk, scores, g.commentary, commentaryLlm, sourceContext
+          marketName, vendor, chunk, g.prompt, llmConfig, sourceContext
         );
 
         for (const f of chunk) {
           const s = scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
-          const c = commentary.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
           const lvl = Math.max(0, Math.min(4, s?.supportLevel ?? 0)) as 0 | 1 | 2 | 3 | 4;
           allSupport.push({
             vendorName: vendor.name,
             categoryName: f.categoryName,
             featureName: f.featureName,
             supportLevel: lvl,
-            comments: c?.comments ?? "",
-            sources: c?.sources ?? [],
+            comments: "",
+            sources: [],
           });
         }
 
         done++;
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
-        await hooks.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
+        await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
       }
     }
   }
 
   return { support: allSupport };
+}
+
+// ── Stage 6 public export: commentary only (requires stage 5 scoring result) ──
+
+export async function runStage4Commentary(
+  marketName: string,
+  stage1: Stage1Result,
+  stage3: { categories: Stage3Category[] },
+  scoringResult: Stage4Result,
+  llmConfig: LLMConfig,
+  sourceContext: string = "",
+  hooks?: Stage4CommentaryHooks,
+): Promise<Stage4Result> {
+  const allFeatures: FeatureRow[] = stage3.categories.flatMap(cat =>
+    cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
+  );
+
+  // Resolve commentary prompts per feature
+  const promptMap = new Map<string, string>();
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = hooks?.resolveCommentaryPrompt
+      ? await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName)
+      : await defaultPrompt("commentary");
+    promptMap.set(key, p);
+  }
+
+  const groups = buildGroups(allFeatures, promptMap);
+
+  let totalBatches = 0;
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  totalBatches *= stage1.vendors.length;
+
+  let done = 0;
+  const updatedSupport: Stage4SupportRecord[] = [...scoringResult.support];
+
+  for (const vendor of stage1.vendors) {
+    for (const g of groups) {
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+
+        // Look up pre-assigned scores from the scoring result
+        const scores = chunk.map(f => {
+          const rec = scoringResult.support.find(
+            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
+          );
+          return { featureName: f.featureName, categoryName: f.categoryName, supportLevel: rec?.supportLevel ?? 0 };
+        });
+
+        const commentary = await commentFeatureBatch(
+          marketName, vendor, chunk, scores, g.prompt, llmConfig, sourceContext
+        );
+
+        for (const f of chunk) {
+          const c = commentary.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
+          const idx = updatedSupport.findIndex(
+            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
+          );
+          if (idx !== -1 && c) {
+            updatedSupport[idx] = { ...updatedSupport[idx], comments: c.comments ?? "", sources: c.sources ?? [] };
+          } else if (idx === -1) {
+            // Row missing from scoring result — add it
+            const lvl = (scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName)?.supportLevel ?? 0) as 0|1|2|3|4;
+            updatedSupport.push({
+              vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
+              supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
+            });
+          }
+        }
+
+        done++;
+        const featStart = i + 1;
+        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
+      }
+    }
+  }
+
+  return { support: updatedSupport };
 }
 
 async function defaultPrompt(type: "scoring" | "commentary"): Promise<string> {

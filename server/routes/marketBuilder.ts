@@ -130,8 +130,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
   app.get("/api/admin/market-builder/jobs/:id/stream", requireAdmin, async (req, res) => {
     try {
       const stageNum = parseInt(req.query.stage as string, 10);
-      if (!stageNum || stageNum < 1 || stageNum > 6) {
-        res.status(400).json({ error: "?stage=1..6 is required" });
+      if (!stageNum || stageNum < 1 || stageNum > 9) {
+        res.status(400).json({ error: "?stage=1..9 is required" });
         return;
       }
 
@@ -195,12 +195,62 @@ export function registerMarketBuilderRoutes(app: Express): void {
     try {
       const job = await storage.getMarketBuilderJobWithStages(req.params.id);
       if (!job) return res.status(404).json({ error: "Job not found" });
-      const allDone = [1,2,3,4,5,6].every(n =>
+      const allDone = [1,2,3,4,5,6,7,8,9].every(n =>
         job.stages.find(s => s.stage === n)?.status === "completed"
       );
       if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
       const updated = await storage.updateMarketBuilderJob(job.id, { status: "completed" });
       res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Per-stage LLM overrides (admin) ──────────────────────────────────────
+
+  app.get("/api/admin/market-builder/jobs/:id/stage-llm", requireAdmin, async (req, res) => {
+    try { res.json(await storage.listJobStageLlms(req.params.id)); }
+    catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/admin/market-builder/jobs/:id/stage-llm/:stageNum", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      const row = await storage.getJobStageLlm(req.params.id, stageNum);
+      if (!row) return res.status(404).json(null);
+      res.json({ provider: row.provider, model: row.model });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/admin/market-builder/jobs/:id/stage-llm/:stageNum", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      const { provider, model } = req.body ?? {};
+      if (!provider || !model) return res.status(400).json({ error: "provider and model are required" });
+      const row = await storage.upsertJobStageLlm(req.params.id, stageNum, provider, model);
+      res.json({ provider: row.provider, model: row.model });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.delete("/api/admin/market-builder/jobs/:id/stage-llm/:stageNum", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      await storage.deleteJobStageLlm(req.params.id, stageNum);
+      res.status(204).end();
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/admin/market-builder/jobs/:id/stage-llm", requireAdmin, async (req, res) => {
+    try {
+      const { stageNum, provider, model } = req.body ?? {};
+      if (!stageNum) return res.status(400).json({ error: "stageNum is required" });
+      if (provider && model) {
+        await storage.upsertJobStageLlm(req.params.id, stageNum, provider, model);
+      } else {
+        await storage.deleteJobStageLlm(req.params.id, stageNum);
+      }
+      res.json(await storage.listJobStageLlms(req.params.id));
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
@@ -327,11 +377,11 @@ export function registerMarketBuilderRoutes(app: Express): void {
     try {
 
       const stage1 = job.stages.find(s => s.stage === 1)?.result as any;
-      const stage2 = job.stages.find(s => s.stage === 2)?.result as any;
-      const stage3 = job.stages.find(s => s.stage === 3)?.result as any;
-      const stage4 = job.stages.find(s => s.stage === 4)?.result as any;
-      const stage5 = job.stages.find(s => s.stage === 5)?.result as any;
-      const stage6 = job.stages.find(s => s.stage === 6)?.result as any;
+      const stage2 = job.stages.find(s => s.stage === 3)?.result as any; // vendor commentary (was stage 2)
+      const stage3 = job.stages.find(s => s.stage === 4)?.result as any; // product feature list (was stage 3)
+      const stage4 = job.stages.find(s => s.stage === 6)?.result as any; // product commentary (was stage 4)
+      const stage5 = job.stages.find(s => s.stage === 7)?.result as any; // ecosystem list (was stage 5)
+      const stage6 = job.stages.find(s => s.stage === 9)?.result as any; // ecosystem commentary (was stage 6)
 
       if (!stage1 || !stage2 || !stage3 || !stage4 || !stage5 || !stage6) {
         return { ok: false, status: 400, error: "One or more stages are missing results" };
@@ -674,8 +724,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
   app.get("/api/market-builder/jobs/:id/stream", requireAuth, requireJobOwner, async (req, res) => {
     try {
       const stageNum = parseInt(req.query.stage as string, 10);
-      if (!stageNum || stageNum < 1 || stageNum > 6) {
-        res.status(400).json({ error: "?stage=1..6 is required" });
+      if (!stageNum || stageNum < 1 || stageNum > 9) {
+        res.status(400).json({ error: "?stage=1..9 is required" });
         return;
       }
       const job = (req as any).job;
@@ -787,12 +837,61 @@ export function registerMarketBuilderRoutes(app: Express): void {
     try {
       const job = await storage.getMarketBuilderJobWithStages(req.params.id);
       if (!job) return res.status(404).json({ error: "Job not found" });
-      const allDone = [1, 2, 3, 4, 5, 6].every(n =>
+      const allDone = [1, 2, 3, 4, 5, 6, 7, 8, 9].every(n =>
         job.stages.find(s => s.stage === n)?.status === "completed"
       );
       if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
       const updated = await storage.updateMarketBuilderJob(job.id, { status: "completed" });
       res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Per-stage LLM overrides (end-user)
+  app.get("/api/market-builder/jobs/:id/stage-llm", requireAuth, requireJobOwner, async (req, res) => {
+    try { res.json(await storage.listJobStageLlms(req.params.id)); }
+    catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/market-builder/jobs/:id/stage-llm/:stageNum", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      const row = await storage.getJobStageLlm(req.params.id, stageNum);
+      if (!row) return res.status(404).json(null);
+      res.json({ provider: row.provider, model: row.model });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/market-builder/jobs/:id/stage-llm/:stageNum", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      const { provider, model } = req.body ?? {};
+      if (!provider || !model) return res.status(400).json({ error: "provider and model are required" });
+      const row = await storage.upsertJobStageLlm(req.params.id, stageNum, provider, model);
+      res.json({ provider: row.provider, model: row.model });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.delete("/api/market-builder/jobs/:id/stage-llm/:stageNum", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (isNaN(stageNum)) return res.status(400).json({ error: "Invalid stageNum" });
+      await storage.deleteJobStageLlm(req.params.id, stageNum);
+      res.status(204).end();
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put("/api/market-builder/jobs/:id/stage-llm", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const { stageNum, provider, model } = req.body ?? {};
+      if (!stageNum) return res.status(400).json({ error: "stageNum is required" });
+      if (provider && model) {
+        await storage.upsertJobStageLlm(req.params.id, stageNum, provider, model);
+      } else {
+        await storage.deleteJobStageLlm(req.params.id, stageNum);
+      }
+      res.json(await storage.listJobStageLlms(req.params.id));
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 

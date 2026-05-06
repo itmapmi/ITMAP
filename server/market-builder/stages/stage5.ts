@@ -1,9 +1,11 @@
 /**
- * Stage 5A — Define ecosystem categories + integration points (single call)
- * Stage 6  — Score vendors × ecosystem integrations (TWO-CALL pattern)
+ * Stage 7  — Define ecosystem categories + integration points (single call)
+ * Stage 8  — Score vendors × ecosystem integrations (Harvey Ball 0–4 scores only)
+ * Stage 9  — Ecosystem Commentary (100–250 word commentary per vendor × integration)
  *
- * Stage 6 batches features sharing the same (scoring, commentary) prompts
- * together. Per-feature override beats per-category override.
+ * runStage5A     → stage 7 (list only)
+ * runStage8Scoring   → stage 8 (scores only, no commentary)
+ * runStage9Commentary → stage 9 (loads stage 8 result, adds commentary)
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
@@ -29,22 +31,20 @@ export interface Stage5Result {
   support: Stage5SupportRecord[];
 }
 
-export interface Stage5AResult { categories: Stage5Category[]; }
-
-export interface Stage6Hooks {
-  resolveScoringPrompt: (categoryName: string, featureName: string) => Promise<string>;
-  resolveCommentaryPrompt: (categoryName: string, featureName: string) => Promise<string>;
-  resolveScoringLlm?: () => Promise<LLMConfig>;
-  resolveCommentaryLlm?: () => Promise<LLMConfig>;
-  onProgress?: (msg: string) => Promise<void>;
+// Intermediate result saved at stage 8 (scores only)
+export interface Stage8ScoringResult {
+  categories: Stage5Category[];
+  support: Array<Omit<Stage5SupportRecord, "comments" | "sources"> & { comments: string; sources: string[] }>;
 }
+
+export interface Stage5AResult { categories: Stage5Category[]; }
 
 const DEFINE_SYSTEM_PROMPT = `You are a senior technology market research analyst specialising in technology ecosystems and ISV integrations.
 Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
 
 const FEATURE_BATCH = 10;
 
-// ── Stage 5A — define ecosystem ───────────────────────────────────────────
+// ── Stage 7 — define ecosystem ────────────────────────────────────────────
 
 async function defineEcosystem(
   marketName: string,
@@ -85,11 +85,11 @@ export async function runStage5A(
   sourceContext: string = "",
 ): Promise<Stage5AResult> {
   const categories = await defineEcosystem(marketName, stage1, llmConfig, sourceContext);
-  if (categories.length === 0) throw new Error("Stage 5: no ecosystem categories defined");
+  if (categories.length === 0) throw new Error("Stage 7: no ecosystem categories defined");
   return { categories };
 }
 
-// ── Stage 6 — score vendors × integrations ────────────────────────────────
+// ── Internal batch helpers ────────────────────────────────────────────────
 
 interface FeatureRow { categoryName: string; featureName: string; featureDescription: string; }
 
@@ -170,50 +170,52 @@ Respond with ONLY a JSON object:
   return [];
 }
 
-export async function runStage6(
+function buildGroups(
+  allFeatures: FeatureRow[],
+  promptMap: Map<string, string>,
+): Array<{ prompt: string; features: FeatureRow[] }> {
+  const groups: Array<{ prompt: string; features: FeatureRow[] }> = [];
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = promptMap.get(key) ?? "";
+    let g = groups.find(x => x.prompt === p);
+    if (!g) { g = { prompt: p, features: [] }; groups.push(g); }
+    g.features.push(f);
+  }
+  return groups;
+}
+
+// ── Stage 8 public export: scoring only ──────────────────────────────────
+
+export async function runStage8Scoring(
   marketName: string,
   stage1: Stage1Result,
-  stage5A: Stage5AResult,
+  stage7Result: Stage5AResult,
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  hooksOrLegacy?: Stage6Hooks | ((msg: string) => Promise<void>),
-): Promise<Stage5Result> {
-  const hooks: Stage6Hooks = typeof hooksOrLegacy === "function" || !hooksOrLegacy
-    ? {
-        resolveScoringPrompt: async () => (await defaultPrompt("scoring")),
-        resolveCommentaryPrompt: async () => (await defaultPrompt("commentary")),
-        onProgress: typeof hooksOrLegacy === "function" ? hooksOrLegacy : undefined,
-      }
-    : hooksOrLegacy;
-
-  const allFeatures: FeatureRow[] = stage5A.categories.flatMap(cat =>
+  hooks?: {
+    resolveScoringPrompt?: (categoryName: string, featureName: string) => Promise<string>;
+    onProgress?: (msg: string) => Promise<void>;
+  },
+): Promise<Stage8ScoringResult> {
+  const allFeatures: FeatureRow[] = stage7Result.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
   );
 
-  // Resolve prompts per feature, then group
-  const featurePrompts = await Promise.all(
-    allFeatures.map(async f => ({
-      feature: f,
-      scoring: await hooks.resolveScoringPrompt(f.categoryName, f.featureName),
-      commentary: await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName),
-    }))
-  );
-
-  type Group = { scoring: string; commentary: string; features: FeatureRow[] };
-  const groups: Group[] = [];
-  for (const fp of featurePrompts) {
-    let g = groups.find(x => x.scoring === fp.scoring && x.commentary === fp.commentary);
-    if (!g) { g = { scoring: fp.scoring, commentary: fp.commentary, features: [] }; groups.push(g); }
-    g.features.push(fp.feature);
+  const promptMap = new Map<string, string>();
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = hooks?.resolveScoringPrompt
+      ? await hooks.resolveScoringPrompt(f.categoryName, f.featureName)
+      : await defaultPrompt("scoring");
+    promptMap.set(key, p);
   }
+
+  const groups = buildGroups(allFeatures, promptMap);
 
   let totalBatches = 0;
   for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
   totalBatches *= stage1.vendors.length;
-
-  // Resolve LLM configs once per stage run
-  const scoringLlm = hooks.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
-  const commentaryLlm = hooks.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
 
   let done = 0;
   const allSupport: Stage5SupportRecord[] = [];
@@ -224,26 +226,22 @@ export async function runStage6(
         const chunk = g.features.slice(i, i + FEATURE_BATCH);
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
-        await hooks.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${scoringLlm.provider}/${scoringLlm.model})`);
+        await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
 
         const scores = await scoreEcosystemBatch(
-          marketName, vendor, chunk, g.scoring, scoringLlm, sourceContext
-        );
-        const commentary = await commentEcosystemBatch(
-          marketName, vendor, chunk, scores, g.commentary, commentaryLlm, sourceContext
+          marketName, vendor, chunk, g.prompt, llmConfig, sourceContext
         );
 
         for (const f of chunk) {
           const s = scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
-          const c = commentary.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
           const lvl = Math.max(0, Math.min(4, s?.supportLevel ?? 0)) as 0 | 1 | 2 | 3 | 4;
           allSupport.push({
             vendorName: vendor.name,
             categoryName: f.categoryName,
             featureName: f.featureName,
             supportLevel: lvl,
-            comments: c?.comments ?? "",
-            sources: c?.sources ?? [],
+            comments: "",
+            sources: [],
           });
         }
         done++;
@@ -251,8 +249,86 @@ export async function runStage6(
     }
   }
 
-  if (allSupport.length === 0) throw new Error("Stage 6: no ecosystem scores generated");
-  return { categories: stage5A.categories, support: allSupport };
+  return { categories: stage7Result.categories, support: allSupport };
+}
+
+// ── Stage 9 public export: commentary only (requires stage 8 scoring result) ──
+
+export async function runStage9Commentary(
+  marketName: string,
+  stage1: Stage1Result,
+  stage7Result: Stage5AResult,
+  stage8Result: Stage8ScoringResult,
+  llmConfig: LLMConfig,
+  sourceContext: string = "",
+  hooks?: {
+    resolveCommentaryPrompt?: (categoryName: string, featureName: string) => Promise<string>;
+    onProgress?: (msg: string) => Promise<void>;
+  },
+): Promise<Stage5Result> {
+  const allFeatures: FeatureRow[] = stage7Result.categories.flatMap(cat =>
+    cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
+  );
+
+  const promptMap = new Map<string, string>();
+  for (const f of allFeatures) {
+    const key = `${f.categoryName}::${f.featureName}`;
+    const p = hooks?.resolveCommentaryPrompt
+      ? await hooks.resolveCommentaryPrompt(f.categoryName, f.featureName)
+      : await defaultPrompt("commentary");
+    promptMap.set(key, p);
+  }
+
+  const groups = buildGroups(allFeatures, promptMap);
+
+  let totalBatches = 0;
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  totalBatches *= stage1.vendors.length;
+
+  let done = 0;
+  const updatedSupport: Stage5SupportRecord[] = stage8Result.support.map(s => ({ ...s }));
+
+  for (const vendor of stage1.vendors) {
+    for (const g of groups) {
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+        const featStart = i + 1;
+        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Commentary: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
+
+        const scores = chunk.map(f => {
+          const rec = stage8Result.support.find(
+            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
+          );
+          return { categoryName: f.categoryName, featureName: f.featureName, supportLevel: rec?.supportLevel ?? 0 };
+        });
+
+        const commentary = await commentEcosystemBatch(
+          marketName, vendor, chunk, scores, g.prompt, llmConfig, sourceContext
+        );
+
+        for (const f of chunk) {
+          const c = commentary.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
+          const idx = updatedSupport.findIndex(
+            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
+          );
+          if (idx !== -1 && c) {
+            updatedSupport[idx] = { ...updatedSupport[idx], comments: c.comments ?? "", sources: c.sources ?? [] };
+          } else if (idx === -1) {
+            const lvl = (scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName)?.supportLevel ?? 0) as 0|1|2|3|4;
+            updatedSupport.push({
+              vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
+              supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
+            });
+          }
+        }
+        done++;
+      }
+    }
+  }
+
+  if (updatedSupport.length === 0) throw new Error("Stage 9: no ecosystem commentary generated");
+  return { categories: stage7Result.categories, support: updatedSupport };
 }
 
 async function defaultPrompt(type: "scoring" | "commentary"): Promise<string> {

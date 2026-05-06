@@ -5,10 +5,12 @@ import {
   marketBuilderStages,
   marketBuilderLlmSettings,
   marketBuilderSources,
+  marketBuilderJobStageLlm,
   type MarketBuilderJob,
   type MarketBuilderStage,
   type MarketBuilderLlmSettings,
   type MarketBuilderSource,
+  type MarketBuilderJobStageLlm,
   type InsertMarketBuilderJob,
   type InsertMarketBuilderSource,
 } from "@shared/schema";
@@ -333,4 +335,58 @@ export async function updateMarketBuilderSourceContent(
 
 export async function deleteMarketBuilderSource(id: string): Promise<void> {
   await db.delete(marketBuilderSources).where(eq(marketBuilderSources.id, id));
+}
+
+// ── Per-stage LLM overrides ───────────────────────────────────────────────
+
+export async function getJobStageLlm(
+  jobId: string,
+  stageNum: number,
+): Promise<MarketBuilderJobStageLlm | undefined> {
+  const [row] = await db
+    .select()
+    .from(marketBuilderJobStageLlm)
+    .where(and(
+      eq(marketBuilderJobStageLlm.jobId, jobId),
+      eq(marketBuilderJobStageLlm.stageNum, stageNum),
+    ));
+  return row;
+}
+
+export async function listJobStageLlms(jobId: string): Promise<MarketBuilderJobStageLlm[]> {
+  return db
+    .select()
+    .from(marketBuilderJobStageLlm)
+    .where(eq(marketBuilderJobStageLlm.jobId, jobId));
+}
+
+export async function upsertJobStageLlm(
+  jobId: string,
+  stageNum: number,
+  provider: string,
+  model: string,
+): Promise<MarketBuilderJobStageLlm> {
+  const existing = await getJobStageLlm(jobId, stageNum);
+  if (existing) {
+    const [updated] = await db
+      .update(marketBuilderJobStageLlm)
+      .set({ provider, model })
+      .where(eq(marketBuilderJobStageLlm.id, existing.id))
+      .returning();
+    return updated;
+  }
+  const [created] = await db
+    .insert(marketBuilderJobStageLlm)
+    .values({ jobId, stageNum, provider, model })
+    .returning();
+  return created;
+}
+
+export async function deleteJobStageLlm(jobId: string, stageNum: number): Promise<void> {
+  await db
+    .delete(marketBuilderJobStageLlm)
+    .where(and(
+      eq(marketBuilderJobStageLlm.jobId, jobId),
+      eq(marketBuilderJobStageLlm.stageNum, stageNum),
+    ));
 }

@@ -4,11 +4,11 @@ import type { MarketBuilderJob } from "@shared/schema";
 import type { LLMConfig } from "./llm";
 import { buildSourceContext } from "./sources";
 import { runStage1 } from "./stages/stage1";
-import { runStage2 } from "./stages/stage2";
+import { runStage2Scoring, runStage2Commentary } from "./stages/stage2";
 import { runStage3 } from "./stages/stage3";
-import { runStage4Full } from "./stages/stage4";
-import { runStage5A, runStage6 } from "./stages/stage5";
-import { resolvePromptContent, resolveLlmConfig } from "./prompts";
+import { runStage4Scoring, runStage4Commentary } from "./stages/stage4";
+import { runStage5A, runStage8Scoring, runStage9Commentary } from "./stages/stage5";
+import { resolvePromptContent } from "./prompts";
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -27,27 +27,16 @@ export function sendEvent(res: Response, event: Record<string, unknown>): void {
 
 // ── Progress: send SSE AND persist to DB for reconnect resilience ─────────
 
-function makeProgress(
-  res: Response,
-  jobId: string,
-  stageNum: number
-) {
+function makeProgress(res: Response, jobId: string, stageNum: number) {
   return async (message: string): Promise<void> => {
     sendEvent(res, { type: "stage_progress", stage: stageNum, message });
-    // Fire-and-forget persist — don't let a DB write failure abort the LLM work
     storage.appendStageProgress(jobId, stageNum, message).catch(e =>
       console.error("[MarketBuilder] Progress persist error:", e)
     );
   };
 }
 
-// ── Build LLM config from job ─────────────────────────────────────────────
-//
-// Key-resolution rules:
-//  - Admin jobs: use the global marketBuilderLlmSettings entry (the platform's key)
-//  - End-user jobs: use the user's own BYO key from userLlmApiKeys
-// If a required key is missing we throw a typed error so the route can
-// surface a 412 with an actionable message ("add your <provider> key in Settings").
+// ── LLM config from job ───────────────────────────────────────────────────
 
 export class MissingLlmKeyError extends Error {
   constructor(public readonly provider: string, public readonly forUser: boolean) {
@@ -78,15 +67,31 @@ export async function buildLLMConfig(job: MarketBuilderJob): Promise<LLMConfig> 
   const apiKey = await resolveJobOwnerKey(job, provider);
   const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
   const forUser = !!owner && owner.role !== "admin";
-  // BYO-key policy:
-  //   - End users MUST supply their own key for every provider (including
-  //     OpenAI) — the platform's Replit AI Integration fallback is admin-only.
-  //   - Admin jobs may run on the OpenAI integration fallback when no
-  //     marketBuilderLlmSettings key is set, so we only pre-throw for non-openai.
   if (!apiKey && (forUser || provider !== "openai")) {
     throw new MissingLlmKeyError(provider, forUser);
   }
   return { provider, model, apiKey };
+}
+
+// ── Per-stage LLM override ────────────────────────────────────────────────
+//
+// Each stage can override the job-level LLM via the stage-llm table.
+// Falls back to the job-level config if no override exists.
+
+async function resolveStageJobLlm(
+  job: MarketBuilderJob,
+  stageNum: number,
+  fallback: LLMConfig,
+  forUser: boolean,
+): Promise<LLMConfig> {
+  const override = await storage.getJobStageLlm(job.id, stageNum);
+  if (!override?.provider || !override?.model) return fallback;
+  const provider = override.provider as LLMConfig["provider"];
+  const apiKey = await resolveJobOwnerKey(job, provider);
+  if (!apiKey && (forUser || provider !== "openai")) {
+    throw new MissingLlmKeyError(provider, forUser);
+  }
+  return { provider, model: override.model, apiKey };
 }
 
 // ── Load a completed stage result ─────────────────────────────────────────
@@ -101,15 +106,17 @@ async function loadStageResult(jobId: string, stage: number): Promise<any> {
   return row.result;
 }
 
-// ── Run exactly ONE stage ─────────────────────────────────────────────────
+// ── Run exactly ONE stage (9-stage pipeline) ──────────────────────────────
 //
-// Stage pipeline (maps to frontend data model):
-//
-//  1  Vendors            → vendors table
-//  2  Vendor Evaluation  → marketCriteriaWeights + vendorScores (predefined criteria)
-//  3  Product Features   → featureCategories (isEcosystem=false) + features
-//  4  Product Scoring    → vendorFeatureSupport for product features
-//  5  Ecosystem          → featureCategories (isEcosystem=true) + features + support
+//  1  Vendor List          → identify vendors in the market
+//  2  Vendor Scoring       → numeric 0–10 scores per vendor × criterion (no commentary)
+//  3  Vendor Commentary    → 100–250 word commentary per vendor × criterion (uses stage 2)
+//  4  Product Feature List → define product capability categories + features
+//  5  Product Feature Scoring   → Harvey Ball 0–4 per vendor × feature (no commentary)
+//  6  Product Feature Commentary → commentary per vendor × feature (uses stage 5)
+//  7  Ecosystem List       → define ISV ecosystem categories + integration points
+//  8  Ecosystem Scoring    → Harvey Ball 0–4 per vendor × integration (no commentary)
+//  9  Ecosystem Commentary → commentary per vendor × integration (uses stage 8)
 
 export async function runSingleStage(
   res: Response,
@@ -118,13 +125,12 @@ export async function runSingleStage(
 ): Promise<void> {
   const { id: jobId, inputName, inputDescription, inputCategory, inputContext } = job;
 
-  const llmConfig = await buildLLMConfig(job);
+  const jobLlmConfig = await buildLLMConfig(job);
   const _owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
   const forUser = !!_owner && _owner.role !== "admin";
   const allSources = await storage.listMarketBuilderSources(jobId);
   const sourceContext = buildSourceContext(allSources, stageNum);
 
-  // Clear old progress log and start fresh for this run
   await storage.clearStageProgress(jobId, stageNum);
 
   const progress = makeProgress(res, jobId, stageNum);
@@ -156,13 +162,16 @@ export async function runSingleStage(
     await markRunning();
     sendEvent(res, { type: "stage_start", stage: stageNum });
 
+    // Resolve this stage's LLM (may be overridden via stage-llm table)
+    const llmConfig = await resolveStageJobLlm(job, stageNum, jobLlmConfig, forUser);
+
     let result: any;
 
     switch (stageNum) {
 
-      // ── Stage 1: Identify vendors ───────────────────────────────────────
+      // ── Stage 1: Identify vendors ─────────────────────────────────────
       case 1: {
-        await progress(`Identifying vendors in the "${inputName}" market…`);
+        await progress(`Identifying vendors in the "${inputName}" market (${llmConfig.provider}/${llmConfig.model})…`);
         result = await runStage1(
           { name: inputName, description: inputDescription, category: inputCategory, context: inputContext },
           llmConfig,
@@ -172,7 +181,7 @@ export async function runSingleStage(
         break;
       }
 
-      // ── Stage 2: Vendor Evaluation (predefined criteria) ────────────────
+      // ── Stage 2: Vendor Scoring (numeric only) ────────────────────────
       case 2: {
         const stage1 = await loadStageResult(jobId, 1);
         const allCriteria = await storage.getAllCriteria();
@@ -188,85 +197,126 @@ export async function runSingleStage(
         await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors: ${vendorNames}`);
         await progress(`Execution criteria: ${execCriteria}`);
         await progress(`Viability criteria: ${viabCriteria}`);
-        await progress(`Calling AI — two-call pattern (scoring → commentary) per criterion…`);
-        result = await runStage2(inputName, stage1, allCriteria, llmConfig, sourceContext, {
+        await progress(`Calling AI — generating criterion weights + numeric scores (no commentary yet)…`);
+        result = await runStage2Scoring(inputName, stage1, allCriteria, llmConfig, sourceContext, {
           resolveScoringPrompt: (criterionName) =>
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "scoring", criterionName }),
-          resolveCommentaryPrompt: (criterionName) =>
-            resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
-          resolveScoringLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
-          resolveCommentaryLlm: () => resolveLlmConfig(jobId, "vendor_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
           onProgress: progress,
         });
-        await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion scores`);
+        await progress(`✓ Generated ${result.scores?.length ?? 0} vendor × criterion numeric scores`);
         break;
       }
 
-      // ── Stage 3: Product feature matrix ────────────────────────────────
+      // ── Stage 3: Vendor Commentary (100–250 words per vendor × criterion) ─
       case 3: {
         const stage1 = await loadStageResult(jobId, 1);
-        await progress(`Building product feature matrix for "${inputName}"…`);
-        await progress(`Calling AI — defining product categories and features…`);
+        const stage2 = await loadStageResult(jobId, 2);
+        const allCriteria = await storage.getAllCriteria();
+        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors × ${allCriteria.length} criteria (${llmConfig.provider}/${llmConfig.model})…`);
+        result = await runStage2Commentary(inputName, stage1, allCriteria, stage2, llmConfig, sourceContext, {
+          resolveCommentaryPrompt: (criterionName) =>
+            resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
+          onProgress: progress,
+        });
+        await progress(`✓ Generated commentary for ${result.scores?.length ?? 0} vendor × criterion combinations`);
+        break;
+      }
+
+      // ── Stage 4: Product feature categories + features ────────────────
+      case 4: {
+        const stage1 = await loadStageResult(jobId, 1);
+        await progress(`Building product feature matrix for "${inputName}" (${llmConfig.provider}/${llmConfig.model})…`);
         result = await runStage3(inputName, stage1, llmConfig, sourceContext);
         const totalFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
         await progress(`✓ Built ${result.categories?.length ?? 0} categories with ${totalFeatures} features`);
         break;
       }
 
-      // ── Stage 4: Product feature scoring (Harvey Ball) ──────────────────
-      case 4: {
+      // ── Stage 5: Product feature scoring (Harvey Ball, no commentary) ──
+      case 5: {
         const stage1 = await loadStageResult(jobId, 1);
-        const stage3 = await loadStageResult(jobId, 3);
-        const totalFeatures = (stage3.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
-        result = await runStage4Full(
-          inputName, stage1, stage3, llmConfig, sourceContext,
+        const stage4 = await loadStageResult(jobId, 4);
+        const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features (numeric scores only)…`);
+        result = await runStage4Scoring(
+          inputName, stage1, stage4, llmConfig, sourceContext,
           {
             resolveScoringPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
-            resolveCommentaryPrompt: (categoryName, featureName) =>
-              resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "product_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "product_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
-            onBatchComplete: async (done, total, vendorNames, featureRange) => {
-              await progress(`Batch ${done}/${total} — Scoring: ${vendorNames} | Features ${featureRange}`);
+            onBatchComplete: async (done, total, vendorName, featureRange) => {
+              await progress(`Batch ${done}/${total} — Scoring: ${vendorName} | Features ${featureRange}`);
             },
           }
         );
-        await progress(`✓ Generated ${result.support?.length ?? 0} product support scores`);
+        await progress(`✓ Generated ${result.support?.length ?? 0} product Harvey Ball scores`);
         break;
       }
 
-      // ── Stage 5: Ecosystem — define categories + integration points ────
-      case 5: {
+      // ── Stage 6: Product feature commentary ───────────────────────────
+      case 6: {
         const stage1 = await loadStageResult(jobId, 1);
-        await progress(`Defining ecosystem integration categories for "${inputName}"…`);
-        await progress(`Calling AI — building ecosystem taxonomy…`);
+        const stage4 = await loadStageResult(jobId, 4);
+        const stage5 = await loadStageResult(jobId, 5);
+        const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
+        result = await runStage4Commentary(
+          inputName, stage1, stage4, stage5, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
+            onBatchComplete: async (done, total, vendorName, featureRange) => {
+              await progress(`Batch ${done}/${total} — Commentary: ${vendorName} | Features ${featureRange}`);
+            },
+          }
+        );
+        await progress(`✓ Generated commentary for ${result.support?.length ?? 0} product feature scores`);
+        break;
+      }
+
+      // ── Stage 7: Ecosystem categories + integration points ────────────
+      case 7: {
+        const stage1 = await loadStageResult(jobId, 1);
+        await progress(`Defining ecosystem integration categories for "${inputName}" (${llmConfig.provider}/${llmConfig.model})…`);
         result = await runStage5A(inputName, stage1, llmConfig, sourceContext);
         const totalEcoFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
         await progress(`✓ Defined ${result.categories?.length ?? 0} ecosystem categories with ${totalEcoFeatures} integration points`);
         break;
       }
 
-      // ── Stage 6: Ecosystem Scoring — Harvey Ball per vendor × feature ──
-      case 6: {
+      // ── Stage 8: Ecosystem scoring (Harvey Ball, no commentary) ───────
+      case 8: {
         const stage1 = await loadStageResult(jobId, 1);
-        const stage5A = await loadStageResult(jobId, 5);
-        const totalEcoFeatures = (stage5A.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
-        result = await runStage6(
-          inputName, stage1, stage5A, llmConfig, sourceContext,
+        const stage7 = await loadStageResult(jobId, 7);
+        const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations (numeric scores only)…`);
+        result = await runStage8Scoring(
+          inputName, stage1, stage7, llmConfig, sourceContext,
           {
             resolveScoringPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
-            resolveCommentaryPrompt: (categoryName, featureName) =>
-              resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
-            resolveScoringLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "scoring", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
-            resolveCommentaryLlm: () => resolveLlmConfig(jobId, "ecosystem_evaluation", "commentary", llmConfig, p => resolveJobOwnerKey(job, p), forUser),
             onProgress: async (msg: string) => { await progress(msg); },
           }
         );
-        await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem integration scores`);
+        await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem Harvey Ball scores`);
+        break;
+      }
+
+      // ── Stage 9: Ecosystem commentary ─────────────────────────────────
+      case 9: {
+        const stage1 = await loadStageResult(jobId, 1);
+        const stage7 = await loadStageResult(jobId, 7);
+        const stage8 = await loadStageResult(jobId, 8);
+        const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
+        result = await runStage9Commentary(
+          inputName, stage1, stage7, stage8, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (categoryName, featureName) =>
+              resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
+            onProgress: async (msg: string) => { await progress(msg); },
+          }
+        );
+        await progress(`✓ Generated commentary for ${result.support?.length ?? 0} ecosystem integration scores`);
         break;
       }
 
@@ -276,20 +326,23 @@ export async function runSingleStage(
 
     await markComplete(result);
 
-    // Check if all 5 stages are now done and mark job completed
+    // Check if all 9 stages are now done and mark job completed
     const allStages = await storage.getMarketBuilderStages(jobId);
-    const allDone = [1,2,3,4,5,6].every(n => allStages.find(s => s.stage === n)?.status === "completed");
+    const allDone = [1,2,3,4,5,6,7,8,9].every(n => allStages.find(s => s.stage === n)?.status === "completed");
     if (allDone) {
       await storage.updateMarketBuilderJob(jobId, { status: "completed" });
     }
 
     const summary =
       stageNum === 1 ? `Found ${result.vendors?.length ?? 0} vendors` :
-      stageNum === 2 ? `Scored ${result.scores?.length ?? 0} vendor × criterion combinations` :
-      stageNum === 3 ? `Built ${result.categories?.length ?? 0} product categories` :
-      stageNum === 4 ? `Generated ${result.support?.length ?? 0} product support records` :
-      stageNum === 5 ? `Defined ${result.categories?.length ?? 0} ecosystem categories` :
-      `Generated ${result.support?.length ?? 0} ecosystem integration scores`;
+      stageNum === 2 ? `Scored ${result.scores?.length ?? 0} vendor × criterion combinations (numeric)` :
+      stageNum === 3 ? `Commentary for ${result.scores?.length ?? 0} vendor × criterion combinations` :
+      stageNum === 4 ? `Built ${result.categories?.length ?? 0} product categories` :
+      stageNum === 5 ? `Generated ${result.support?.length ?? 0} product Harvey Ball scores` :
+      stageNum === 6 ? `Commentary for ${result.support?.length ?? 0} product feature scores` :
+      stageNum === 7 ? `Defined ${result.categories?.length ?? 0} ecosystem categories` :
+      stageNum === 8 ? `Generated ${result.support?.length ?? 0} ecosystem Harvey Ball scores` :
+      `Commentary for ${result.support?.length ?? 0} ecosystem integration scores`;
 
     sendEvent(res, { type: "stage_complete", stage: stageNum, result, summary });
 

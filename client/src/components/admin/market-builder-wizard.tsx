@@ -16,12 +16,11 @@ import {
   ChevronRight, ChevronLeft, RefreshCw, Trash2, RotateCcw,
   ExternalLink, Eye, EyeOff, Building2, BarChart3, Grid3X3, Layers, Save,
   Plus, X, Globe, PencilLine, PlayCircle, FileSearch, Clock, Zap,
-  ArrowRight, MoreHorizontal, FolderOpen,
+  ArrowRight, MoreHorizontal, FolderOpen, Cpu, ChevronDown,
 } from "lucide-react";
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
 import { PromptSelector } from "./market-builder-prompt-selector";
-import { LlmSelectorPanel } from "./market-builder-llm-selector-panel";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -52,11 +51,14 @@ type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
   { num: 1, label: "Vendors",             icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "Top 15 vendors with names, product descriptions, websites, and newsroom URLs — plus a 'Next 10' suggestions list to optionally include." },
-  { num: 2, label: "Vendor Evaluation",   icon: BarChart3,  desc: "AI scores vendors against predefined Execution & Viability criteria — driving the quadrant chart.", what: "Market-specific criterion weights and a 0–10 score per vendor × criterion with commentary." },
-  { num: 3, label: "Product Features",    icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
-  { num: 4, label: "Product Scoring",     icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × product feature, with commentary." },
-  { num: 5, label: "Ecosystem",           icon: Layers,     desc: "AI defines ISV/partner ecosystem integration categories and individual integration points.", what: "5–8 ecosystem categories with individual integration features — the framework that Stage 6 scores." },
-  { num: 6, label: "Ecosystem Scoring",   icon: BarChart3,  desc: "AI rates each vendor's ecosystem integrations using the Harvey Ball scale (0–4).", what: "Harvey Ball support levels (0–4) for every vendor × ecosystem integration, with 100–250 word commentary." },
+  { num: 2, label: "Vendor Scores",       icon: BarChart3,  desc: "AI assigns numeric 0–10 scores per vendor × criterion (no commentary yet).", what: "Market-specific criterion weights and a 0–10 numeric score for every vendor × criterion." },
+  { num: 3, label: "Vendor Commentary",   icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × criterion score.", what: "Evidence-based commentary and source citations for every vendor × criterion combination." },
+  { num: 4, label: "Product Features",    icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
+  { num: 5, label: "Product Scoring",     icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4) — scores only, no commentary.", what: "Harvey Ball support levels (0–4) for every vendor × product feature." },
+  { num: 6, label: "Product Commentary",  icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × product feature score.", what: "Evidence-based commentary and source citations for every vendor × product feature." },
+  { num: 7, label: "Ecosystem",           icon: Layers,     desc: "AI defines ISV/partner ecosystem integration categories and individual integration points.", what: "4–6 ecosystem categories with 6–10 integration points each (30–45 integrations total)." },
+  { num: 8, label: "Ecosystem Scoring",   icon: BarChart3,  desc: "AI rates each vendor's ecosystem integrations using the Harvey Ball scale (0–4) — scores only.", what: "Harvey Ball support levels (0–4) for every vendor × ecosystem integration." },
+  { num: 9, label: "Ecosystem Commentary",icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × ecosystem integration score.", what: "Evidence-based commentary and source citations for every vendor × ecosystem integration." },
 ];
 
 const CATEGORIES = [
@@ -73,18 +75,18 @@ const CATEGORIES = [
 
 function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
   return (
-    <div className="flex items-center gap-1.5">
-      {[1,2,3,4,5,6].map(n => {
+    <div className="flex items-center gap-1">
+      {[1,2,3,4,5,6,7,8,9].map(n => {
         const s = stageSummary[n];
         return (
-          <div key={n} className="flex items-center gap-1">
-            <div title={`Stage ${n}: ${s ?? "not started"}`} className={`h-2.5 w-2.5 rounded-full transition-all ${
+          <div key={n} className="flex items-center gap-0.5">
+            <div title={`Stage ${n}: ${s ?? "not started"}`} className={`h-2 w-2 rounded-full transition-all ${
               s === "completed" ? "bg-green-500" :
               s === "running"   ? "bg-blue-500 animate-pulse" :
               s === "failed"    ? "bg-red-400" :
                                   "bg-gray-200"
             }`} />
-            {n < 6 && <div className={`h-px w-3 ${s === "completed" ? "bg-green-300" : "bg-gray-200"}`} />}
+            {n < 9 && <div className={`h-px w-2 ${s === "completed" ? "bg-green-300" : "bg-gray-200"}`} />}
           </div>
         );
       })}
@@ -247,8 +249,8 @@ function Stage1Editor({ result, onChange }: { result: any; onChange: (r: any) =>
 
 const AUTO_COMPUTED_CRITERIA = new Set(["Product Capabilities", "ISV Ecosystem"]);
 const AUTO_COMPUTED_LABELS: Record<string, string> = {
-  "Product Capabilities": "Auto-computed from Stages 3–4",
-  "ISV Ecosystem":        "Auto-computed from Stages 5–6",
+  "Product Capabilities": "Auto-computed from Stages 5–6",
+  "ISV Ecosystem":        "Auto-computed from Stages 8–9",
 };
 
 function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
@@ -601,6 +603,278 @@ function Stage6Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
+// ── Per-stage LLM picker ──────────────────────────────────────────────────
+
+const PROVIDER_MODELS: Record<string, string[]> = {
+  openai:      ["gpt-4.1-mini", "gpt-4.1", "gpt-4o", "gpt-4o-mini", "o3-mini"],
+  anthropic:   ["claude-3-5-haiku-20241022", "claude-3-7-sonnet-20250219", "claude-sonnet-4-5", "claude-haiku-4-5-20251001"],
+  perplexity:  ["llama-3.1-sonar-small-128k-online", "llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-huge-128k-online"],
+};
+
+function StageLlmPicker({ jobId, stageNum, defaultProvider, defaultModel, apiBase }: {
+  jobId: string; stageNum: number; defaultProvider: string; defaultModel: string; apiBase: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: existing, refetch } = useQuery<{ provider: string; model: string } | null>({
+    queryKey: [`${apiBase}/jobs/${jobId}/stage-llm/${stageNum}`],
+    queryFn: () =>
+      fetch(`${apiBase}/jobs/${jobId}/stage-llm/${stageNum}`)
+        .then(r => r.ok ? r.json() : null),
+    staleTime: 30_000,
+  });
+
+  const [selProvider, setSelProvider] = useState(defaultProvider);
+  const [selModel, setSelModel]       = useState(defaultModel);
+
+  useEffect(() => {
+    if (existing) { setSelProvider(existing.provider); setSelModel(existing.model); }
+    else           { setSelProvider(defaultProvider);   setSelModel(defaultModel); }
+  }, [existing, defaultProvider, defaultModel]);
+
+  const save = useMutation({
+    mutationFn: () => apiRequest(`${apiBase}/jobs/${jobId}/stage-llm/${stageNum}`, "PUT", { provider: selProvider, model: selModel }).then(r => r.json()),
+    onSuccess: () => { refetch(); setOpen(false); },
+  });
+  const clear = useMutation({
+    mutationFn: () => apiRequest(`${apiBase}/jobs/${jobId}/stage-llm/${stageNum}`, "DELETE"),
+    onSuccess: () => { refetch(); setOpen(false); setSelProvider(defaultProvider); setSelModel(defaultModel); },
+  });
+
+  const isOverridden = !!existing;
+  const displayProvider = isOverridden ? existing!.provider : defaultProvider;
+  const displayModel    = isOverridden ? existing!.model    : defaultModel;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Cpu className="h-3.5 w-3.5 text-gray-500" />
+          <span className="text-xs font-semibold text-gray-700">Stage {stageNum} LLM</span>
+          {isOverridden
+            ? <Badge variant="outline" className="text-xs py-0 border-violet-300 text-violet-700 bg-violet-50">Custom</Badge>
+            : <Badge variant="outline" className="text-xs py-0 text-gray-400">Job default</Badge>
+          }
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500 font-mono">{displayProvider}/{displayModel}</span>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setOpen(o => !o)}>
+            <ChevronDown className="h-3 w-3" />{open ? "Close" : "Change"}
+          </Button>
+        </div>
+      </div>
+      {open && (
+        <div className="pt-2 border-t space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Provider</Label>
+              <Select value={selProvider} onValueChange={p => { setSelProvider(p); setSelModel(PROVIDER_MODELS[p]?.[0] ?? ""); }}>
+                <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectContent>{Object.keys(PROVIDER_MODELS).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Model</Label>
+              <Select value={selModel} onValueChange={setSelModel}>
+                <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectContent>{(PROVIDER_MODELS[selProvider] ?? []).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-xs" onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}Save Override
+            </Button>
+            {isOverridden && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500" onClick={() => clear.mutate()} disabled={clear.isPending}>
+                Reset to default
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Stage 2: Scoring-only editor (numeric, no commentary) ─────────────────
+
+function Stage2ScoringEditor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+  const weights: any[] = result?.criteriaWeights ?? [];
+  const scores: any[] = result?.scores ?? [];
+  const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
+  const [editScore, setEditScore] = useState("");
+
+  const updateWeight = (criterionName: string, weight: number) =>
+    onChange({ ...result, criteriaWeights: weights.map((w: any) => w.criterionName === criterionName ? { ...w, weight } : w) });
+
+  const getScore = (v: string, c: string) => scores.find((s: any) => s.vendorName === v && s.criterionName === c);
+  const saveScore = () => {
+    if (!selected) return;
+    onChange({ ...result, scores: scores.map((s: any) => s.vendorName === selected.v && s.criterionName === selected.c ? { ...s, score: parseFloat(editScore) || s.score } : s) });
+    setSelected(null);
+  };
+
+  const vendors = [...new Set<string>(scores.map((s: any) => s.vendorName))];
+  const scoreCellColor = (s: number) => s >= 8 ? "bg-green-100 text-green-800" : s >= 6 ? "bg-blue-100 text-blue-800" : s >= 4 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+
+  return (
+    <div className="space-y-5">
+      {["execution", "viability"].map(axis => {
+        const axisCriteria = weights.filter((w: any) => w.criterionCategory === axis);
+        if (!axisCriteria.length) return null;
+        return (
+          <div key={axis}>
+            <p className="text-sm font-semibold capitalize text-gray-700 mb-2">{axis} Axis — Criteria</p>
+            <div className="space-y-2">
+              {axisCriteria.map((w: any) => (
+                <div key={w.criterionName} className="rounded-lg border bg-white p-3 flex items-center gap-3">
+                  <p className="text-xs font-semibold text-gray-800 flex-1">{w.criterionName}</p>
+                  {AUTO_COMPUTED_CRITERIA.has(w.criterionName)
+                    ? <span className="text-xs text-amber-500 border border-amber-200 rounded px-2 py-0.5 bg-amber-50 cursor-default">auto</span>
+                    : <>
+                        <Label className="text-xs text-gray-400 shrink-0">Weight</Label>
+                        <Input type="number" min={1} max={100} value={w.weight}
+                          onChange={e => updateWeight(w.criterionName, parseInt(e.target.value) || 1)}
+                          className="h-7 text-xs w-14 text-center" />
+                      </>
+                  }
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {selected && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+          <p className="text-xs font-semibold text-blue-800">{selected.v} × {selected.c}</p>
+          <div className="flex items-center gap-3">
+            <Label className="text-xs">Score (0–10)</Label>
+            <Input type="number" min={0} max={10} step={0.1} value={editScore} onChange={e => setEditScore(e.target.value)} className="h-7 text-xs text-center w-24" />
+          </div>
+          <p className="text-xs text-gray-500">Commentary will be written in Stage 3.</p>
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-800">
+          <strong>Product Capabilities</strong> and <strong>ISV Ecosystem</strong> scores are locked —
+          auto-computed from Harvey Ball data at publish time.
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold text-gray-700 mb-2">Vendor Scores (0–10)</p>
+        <div className="overflow-x-auto rounded-lg border text-xs">
+          <table className="w-full">
+            <thead><tr className="bg-gray-50 border-b">
+              <th className="text-left p-2 text-gray-600 w-32">Vendor</th>
+              {weights.map((w: any) => (
+                <th key={w.criterionName} className={`p-2 text-center whitespace-nowrap max-w-20 truncate ${AUTO_COMPUTED_CRITERIA.has(w.criterionName) ? "text-amber-600" : "text-gray-600"}`}>
+                  {w.criterionName}
+                  {AUTO_COMPUTED_CRITERIA.has(w.criterionName) && <Lock className="inline h-2.5 w-2.5 ml-0.5 mb-0.5" />}
+                </th>
+              ))}
+            </tr></thead>
+            <tbody>{vendors.map(v => (
+              <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
+                <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+                {weights.map((w: any) => {
+                  const s = getScore(v, w.criterionName);
+                  const isLocked = AUTO_COMPUTED_CRITERIA.has(w.criterionName);
+                  if (isLocked) return <td key={w.criterionName} className="p-1 text-center"><span className="rounded px-2 py-0.5 text-xs font-mono font-semibold bg-amber-50 text-amber-500 border border-amber-200">auto</span></td>;
+                  return (
+                    <td key={w.criterionName} className="p-1 text-center">
+                      <button onClick={() => { setSelected({ v, c: w.criterionName }); setEditScore(s?.score?.toString() ?? ""); }}
+                        className={`rounded px-2 py-0.5 text-xs font-mono font-semibold hover:ring-2 hover:ring-blue-300 ${scoreCellColor(s?.score ?? 0)}`}>
+                        {s?.score?.toFixed(1) ?? "–"}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Click any unlocked score to edit. Commentary is added separately in Stage 3.</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Harvey Ball scores-only grid (no commentary edit) ────────────────────
+
+function HarveyBallScoreOnlyGrid({ support, onChange, label }: { support: any[]; onChange: (s: any[]) => void; label?: string }) {
+  const vendors  = [...new Set<string>(support.map((s: any) => s.vendorName))];
+  const features = [...new Set<string>(support.map((s: any) => s.featureName))];
+  const PAGE_SIZE = 22;
+  const [page, setPage] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(features.length / PAGE_SIZE));
+  const pageStart  = page * PAGE_SIZE;
+  const pageFeatures = features.slice(pageStart, pageStart + PAGE_SIZE);
+  const HARVEY  = ["✕ None", "◔ Limited", "◑ Partial", "◕ Good", "● Full"];
+  const lcolor  = (l: number) => ["text-gray-300","text-red-400","text-yellow-500","text-blue-500","text-green-600"][l] ?? "";
+  const get = (v: string, f: string) => support.find((s: any) => s.vendorName === v && s.featureName === f);
+
+  const cycle = (v: string, f: string) => {
+    const cur = get(v, f)?.supportLevel ?? 0;
+    const next = (cur + 1) % 5;
+    onChange(support.map(s => s.vendorName === v && s.featureName === f ? { ...s, supportLevel: next } : s));
+  };
+
+  return (
+    <div className="space-y-3">
+      {label && <p className="text-sm font-semibold text-gray-700">{label}</p>}
+      <div className="overflow-x-auto rounded-lg border max-h-72">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-gray-50">
+            <tr className="border-b">
+              <th className="text-left p-2 text-gray-600 w-28">Vendor</th>
+              {pageFeatures.map(f => <th key={f} className="p-1.5 text-gray-600 text-center whitespace-nowrap max-w-16 truncate" title={f}>{f.slice(0, 12)}</th>)}
+            </tr>
+          </thead>
+          <tbody>{vendors.map(v => (
+            <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
+              <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+              {pageFeatures.map(f => {
+                const s = get(v, f);
+                return (
+                  <td key={f} className="p-1 text-center">
+                    <button
+                      onClick={() => cycle(v, f)}
+                      className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel ?? 0)}`}
+                      title={`Click to cycle: ${HARVEY[s?.supportLevel ?? 0]}`}
+                    >
+                      {HARVEY[s?.supportLevel ?? 0]?.split(" ")[0] ?? "✕"}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400">Click any Harvey Ball to cycle the score. Commentary added in the next stage.</p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-xs">
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>← Prev</Button>
+            <span className="text-gray-600 font-medium">
+              Features {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, features.length)} of {features.length}
+            </span>
+            <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Next →</Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Sources-only notice ───────────────────────────────────────────────────
 
 function SourcesOnlyNotice() {
@@ -627,8 +901,8 @@ function PublishPanel({ job, stageResults, onPublished, apiBase, mode }: {
   // End-user markets are always private — the visibility toggle only makes
   // sense for admin-published public markets.
   const [isVisible, setIsVisible] = useState(false);
-  const s1 = stageResults[1]; const s2 = stageResults[2]; const s3 = stageResults[3]; const s4 = stageResults[4];
-  const s5 = stageResults[5]; const s6 = stageResults[6];
+  const s1 = stageResults[1]; const s2 = stageResults[3]; const s3 = stageResults[4]; const s4 = stageResults[6];
+  const s5 = stageResults[7]; const s6 = stageResults[9];
   const productFeatures = s3?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const ecoFeatures = s5?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const publish = useMutation({
@@ -703,11 +977,14 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase }: {
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
         {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 2 && <Stage2Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 3 && <Stage3Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 4 && <Stage4Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 5 && <Stage5Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 6 && <Stage6Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} />}
+        {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 4 && <Stage3Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 5 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Product Feature Scores (Harvey Ball)" />}
+        {stageNum === 6 && <Stage4Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 7 && <Stage5Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 8 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Ecosystem Integration Scores (Harvey Ball)" />}
+        {stageNum === 9 && <Stage6Editor result={localResult} onChange={handleChange} />}
       </div>
     </div>
   );
@@ -726,14 +1003,14 @@ function statusColor(s: string) {
 }
 
 function stagesCompletedCount(summary: Record<number, string>) {
-  return [1,2,3,4,5].filter(n => summary[n] === "completed").length;
+  return [1,2,3,4,5,6,7,8,9].filter(n => summary[n] === "completed").length;
 }
 
 function nextPendingStage(summary: Record<number, string>): number {
-  for (let n = 1; n <= 5; n++) {
+  for (let n = 1; n <= 9; n++) {
     if (summary[n] !== "completed") return n;
   }
-  return 6; // all done
+  return 10; // all done
 }
 
 function ProjectCard({ job, onResume, onDelete }: {
@@ -753,8 +1030,8 @@ function ProjectCard({ job, onResume, onDelete }: {
       {/* Progress bar along the top */}
       <div className="h-1 bg-gray-100">
         <div
-          className={`h-full transition-all ${isPublished ? "bg-blue-500" : done === 5 ? "bg-green-500" : isFailed ? "bg-red-400" : "bg-amber-400"}`}
-          style={{ width: `${(done / 5) * 100}%` }}
+          className={`h-full transition-all ${isPublished ? "bg-blue-500" : done === 9 ? "bg-green-500" : isFailed ? "bg-red-400" : "bg-amber-400"}`}
+          style={{ width: `${(done / 9) * 100}%` }}
         />
       </div>
 
@@ -772,7 +1049,7 @@ function ProjectCard({ job, onResume, onDelete }: {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400 font-medium">Stage progress</p>
-            <p className="text-xs text-gray-500 font-semibold">{done}/5 complete</p>
+            <p className="text-xs text-gray-500 font-semibold">{done}/9 complete</p>
           </div>
           <StageDots stageSummary={summary} />
           <div className="flex gap-2 text-xs text-gray-400">
@@ -801,7 +1078,7 @@ function ProjectCard({ job, onResume, onDelete }: {
             </Button>
             {!isPublished && (
               <Button size="sm" className="h-7 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={() => onResume(job)}>
-                {done === 5 ? <><CheckCircle2 className="h-3.5 w-3.5" />Publish</> : <><ArrowRight className="h-3.5 w-3.5" />Continue — Stage {next}</>}
+                {done === 9 ? <><CheckCircle2 className="h-3.5 w-3.5" />Publish</> : <><ArrowRight className="h-3.5 w-3.5" />Continue — Stage {next}</>}
               </Button>
             )}
           </div>
@@ -845,7 +1122,7 @@ function SetupForm({ onBack, onCreate, mode = "admin" }: {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-gray-900">New Market</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Describe the technology market. AI will generate all data across 5 stages — you approve each one.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Describe the technology market. AI will generate all data across 9 stages — you approve each one.</p>
         </div>
         <LLMSelector provider={provider} model={model} onProviderChange={setProvider} onModelChange={setModel} mode={mode} />
       </div>
@@ -1029,9 +1306,9 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   // ── Approve stage and advance ─────────────────────────────────────────
 
   const approveStage = async (stageNum: number) => {
-    if (stageNum === 6) {
+    if (stageNum === 9) {
       await completeJob.mutateAsync(activeJob!.id);
-      setActiveStage(7);
+      setActiveStage(10);
     } else {
       setActiveStage(stageNum + 1);
       // Only initialise the next stage as "ready" if it hasn't already been run.
@@ -1085,12 +1362,12 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
     setStageResults(results);
 
     if (job.status === "completed" || job.status === "published") {
-      setActiveStage(7);
+      setActiveStage(10);
     } else if (runningStage !== null) {
       // A stage was running when we left — jump straight to it; polling will resume
       setActiveStage(runningStage);
     } else {
-      const nextStage = Math.min(highestDone + 1, 6);
+      const nextStage = Math.min(highestDone + 1, 9);
       setActiveStage(nextStage);
       if (!phases[nextStage]) phases[nextStage] = "ready";
     }
@@ -1107,8 +1384,8 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
           else if (s.status === "failed") p2[s.stage] = "failed";
         });
         setStageResults(r2);
-        const next2 = Math.min(hd2 + 1, 6);
-        if (!p2[next2] && hd2 < 6) p2[next2] = "ready";
+        const next2 = Math.min(hd2 + 1, 9);
+        if (!p2[next2] && hd2 < 9) p2[next2] = "ready";
         setStagePhases(p2);
         if (job.status !== "completed" && job.status !== "published") setActiveStage(next2);
       }).catch(() => {});
@@ -1163,7 +1440,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
               <Wand2 className="h-6 w-6 text-blue-600" />AI Market Builder
               <Badge variant="outline" className="text-blue-700 border-blue-300 bg-blue-50 text-xs">Beta</Badge>
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">AI-powered market research — 5 stages, each waiting for your review and approval.</p>
+            <p className="text-sm text-gray-500 mt-0.5">AI-powered market research — 9 stages, each waiting for your review and approval.</p>
           </div>
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setView("new-setup")}>
             <Plus className="h-4 w-4" />New Market
@@ -1178,7 +1455,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">No markets built yet</h3>
-              <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">Describe a technology market and AI will generate vendors, criteria, features, and scores across 5 approval stages.</p>
+              <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">Describe a technology market and AI will generate vendors, criteria, features, and scores across 9 approval stages.</p>
             </div>
             <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => setView("new-setup")}>
               <Sparkles className="h-4 w-4" />Start Building Your First Market
@@ -1268,8 +1545,8 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
         />
       </div>
 
-      {/* Publish panel (stage 7) */}
-      {activeStage === 7 && (
+      {/* Publish panel (stage 10 = all 9 stages done) */}
+      {activeStage === 10 && (
         <PublishPanel
           job={activeJob!}
           stageResults={stageResults}
@@ -1284,13 +1561,13 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
         />
       )}
 
-      {/* Active stage panel (stages 1–6) */}
-      {activeStage <= 6 && currentMeta && (
+      {/* Active stage panel (stages 1–9) */}
+      {activeStage <= 9 && currentMeta && (
         <div className="rounded-xl border bg-white">
           <div className="border-b px-6 py-4 flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Stage {activeStage} of 6</span>
+                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Stage {activeStage} of 9</span>
                 {currentPhase === "running" && <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 gap-1 text-xs py-0"><Loader2 className="h-3 w-3 animate-spin"/>Running</Badge>}
                 {currentPhase === "done" && <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 text-xs py-0">Complete</Badge>}
                 {currentPhase === "failed" && <Badge variant="outline" className="text-red-700 border-red-300 bg-red-50 text-xs py-0">Failed</Badge>}
@@ -1319,7 +1596,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4 space-y-4">
                     <div>
                       <p className="text-sm font-semibold text-blue-900">Scoring criteria</p>
-                      <p className="text-xs text-blue-700 mt-0.5">The AI will score every vendor against each of the following criteria with a 0–10 score and 100–250 word commentary.</p>
+                      <p className="text-xs text-blue-700 mt-0.5">The AI will assign a 0–10 numeric score for every vendor × criterion. Commentary is written separately in Stage 3.</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {(["execution", "viability"] as const).map(axis => {
@@ -1350,60 +1627,42 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                 <SourcesOnlyNotice />
                 <SourcesPanel jobId={activeJob!.id} currentStage={activeStage} apiBase={apiBase} />
 
-                {/* Per-stage LLM model + prompt customization (stages 2 / 4 / 6) */}
-                {activeStage === 2 && (
-                  <>
-                    <LlmSelectorPanel
-                      jobId={activeJob!.id}
-                      stageKind="vendor_evaluation"
-                      defaultProvider={activeJob!.llmProvider}
-                      defaultModel={activeJob!.llmModel}
-                      apiBase={apiBase}
-                    />
-                    <PromptSelector
-                      jobId={activeJob!.id}
-                      stageKind="vendor_evaluation"
-                      criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
-                      apiBase={apiBase}
-                      promptsBase={promptsBase} mode={mode}
-                    />
-                  </>
-                )}
-                {activeStage === 4 && (
-                  <>
-                    <LlmSelectorPanel
-                      jobId={activeJob!.id}
-                      stageKind="product_evaluation"
-                      defaultProvider={activeJob!.llmProvider}
-                      defaultModel={activeJob!.llmModel}
-                      apiBase={apiBase}
-                    />
-                    <PromptSelector
-                      jobId={activeJob!.id}
-                      stageKind="product_evaluation"
-                      categories={(stageResults[3]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
-                      apiBase={apiBase}
-                      promptsBase={promptsBase} mode={mode}
-                    />
-                  </>
+                {/* Per-stage LLM selector — shown on every stage */}
+                <StageLlmPicker
+                  jobId={activeJob!.id}
+                  stageNum={activeStage}
+                  defaultProvider={activeJob!.llmProvider}
+                  defaultModel={activeJob!.llmModel}
+                  apiBase={apiBase}
+                />
+
+                {/* Prompt customization — commentary stages only */}
+                {activeStage === 3 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="vendor_evaluation"
+                    criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
                 )}
                 {activeStage === 6 && (
-                  <>
-                    <LlmSelectorPanel
-                      jobId={activeJob!.id}
-                      stageKind="ecosystem_evaluation"
-                      defaultProvider={activeJob!.llmProvider}
-                      defaultModel={activeJob!.llmModel}
-                      apiBase={apiBase}
-                    />
-                    <PromptSelector
-                      jobId={activeJob!.id}
-                      stageKind="ecosystem_evaluation"
-                      categories={(stageResults[5]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
-                      apiBase={apiBase}
-                      promptsBase={promptsBase} mode={mode}
-                    />
-                  </>
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="product_evaluation"
+                    categories={(stageResults[4]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
+                )}
+                {activeStage === 9 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="ecosystem_evaluation"
+                    categories={(stageResults[7]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
                 )}
 
                 <div className="flex items-center justify-between pt-2">
@@ -1503,7 +1762,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                 disabled={completeJob.isPending}
               >
                 {completeJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {activeStage < 6 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
+                {activeStage < 9 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
               </Button>
             </div>
           )}

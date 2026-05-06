@@ -1,14 +1,10 @@
 /**
- * Stage 2 — Vendor Evaluation Scores (TWO-CALL pattern)
+ * Stage 2 — Vendor Scoring (numeric scores only)
+ * Stage 3 — Vendor Commentary (100–250 word commentary per vendor × criterion)
  *
- * 1. ONE up-front call generates per-criterion weight + scoringRationale.
- * 2. PER CRITERION: scoring call → numeric scores for every vendor.
- * 3. PER CRITERION: commentary call → 100–250 word commentary using the
- *    score from step 2 as input.
- *
- * Per-criterion prompt overrides (scoring + commentary) are applied at
- * step 2 and step 3 via the resolveScoringPrompt / resolveCommentaryPrompt
- * callbacks supplied by the runner.
+ * Split from the original combined runStage2 into two separate public exports:
+ *   runStage2Scoring  → saves {criteriaWeights, scores:[{…score only}]}
+ *   runStage2Commentary → loads scoring result, writes {criteriaWeights, scores:[{…+commentary+sources}]}
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
 import type { Stage1Result } from "./stage1";
@@ -36,16 +32,25 @@ export interface Stage2Score {
   sources: string[];
 }
 
+// Scoring-only result saved at stage 2 (no commentary yet)
+export interface Stage2ScoringResult {
+  criteriaWeights: Stage2CriterionWeight[];
+  scores: Array<{ vendorName: string; criterionName: string; score: number }>;
+}
+
+// Full result with commentary saved at stage 3
 export interface Stage2Result {
   criteriaWeights: Stage2CriterionWeight[];
   scores: Stage2Score[];
 }
 
-export interface Stage2Hooks {
-  resolveScoringPrompt: (criterionName: string) => Promise<string>;
-  resolveCommentaryPrompt: (criterionName: string) => Promise<string>;
-  resolveScoringLlm?: () => Promise<LLMConfig>;
-  resolveCommentaryLlm?: () => Promise<LLMConfig>;
+export interface Stage2ScoringHooks {
+  resolveScoringPrompt?: (criterionName: string) => Promise<string>;
+  onProgress?: (msg: string) => Promise<void>;
+}
+
+export interface Stage2CommentaryHooks {
+  resolveCommentaryPrompt?: (criterionName: string) => Promise<string>;
   onProgress?: (msg: string) => Promise<void>;
 }
 
@@ -101,26 +106,16 @@ Respond with ONLY a JSON object:
 }
 
 // ── Vendor name fuzzy matcher ─────────────────────────────────────────────
-//
-// The LLM sometimes returns names with slight differences (casing, whitespace,
-// abbreviated parenthetical, etc.). Exact match is tried first; falls back to
-// case-insensitive then partial containment so a mismatch never silently
-// produces score=0 / commentary="".
 
 function matchByVendorName<T extends { vendorName: string }>(
   list: T[],
   name: string,
 ): T | undefined {
-  // 1. Exact match
   const exact = list.find(x => x.vendorName === name);
   if (exact) return exact;
-
-  // 2. Case-insensitive + trim
   const lower = name.trim().toLowerCase();
   const ci = list.find(x => x.vendorName.trim().toLowerCase() === lower);
   if (ci) return ci;
-
-  // 3. Partial — one name contains the other (handles "HPE" ↔ "Hewlett Packard Enterprise (HPE)")
   return list.find(x => {
     const xl = x.vendorName.trim().toLowerCase();
     return xl.includes(lower) || lower.includes(xl);
@@ -169,11 +164,8 @@ Respond with ONLY a JSON object:
   if (result.scores.length === 0) {
     throw new Error(`Stage 2 scoring: LLM returned empty scores array for "${criterion.name}"`);
   }
-
-  // Log returned names so mismatches are visible in server logs
   const returnedNames = result.scores.map(s => s.vendorName).join(", ");
   console.log(`[Stage2] Scoring "${criterion.name}": LLM returned ${result.scores.length}/${vendorNames.length} vendors: ${returnedNames}`);
-
   return result.scores;
 }
 
@@ -189,8 +181,6 @@ async function commentCriterion(
   llmConfig: LLMConfig,
   sourceContext: string,
 ): Promise<Array<{ vendorName: string; commentary: string; sources: string[] }>> {
-  // Use fuzzy matching here too so commentary prompt has correct scores even
-  // if the scoring LLM returned slightly different vendor names
   const vendorBlock = stage1.vendors.map(v => {
     const s = matchByVendorName(scores, v.name)?.score ?? 0;
     return `- ${v.name} (${v.product}) — assigned score: ${s.toFixed(1)}/10\n  ${v.description}`;
@@ -226,11 +216,8 @@ Respond with ONLY a JSON object:
   if (result.commentary.length === 0) {
     throw new Error(`Stage 2 commentary: LLM returned empty commentary array for "${criterion.name}"`);
   }
-
-  // Log returned names
   const returnedNames = result.commentary.map(c => c.vendorName).join(", ");
   console.log(`[Stage2] Commentary "${criterion.name}": LLM returned ${result.commentary.length}/${vendorNames.length} vendors: ${returnedNames}`);
-
   return result.commentary;
 }
 
@@ -238,34 +225,76 @@ Respond with ONLY a JSON object:
 
 const AUTO_COMPUTED = new Set(["Product Capabilities", "ISV Ecosystem"]);
 const PLACEHOLDERS: Record<string, string> = {
-  "Product Capabilities": "Score auto-computed from Product Evaluation Harvey Ball data (Stages 3–4).",
-  "ISV Ecosystem":        "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 5–6).",
+  "Product Capabilities": "Score auto-computed from Product Evaluation Harvey Ball data (Stages 5–6).",
+  "ISV Ecosystem":        "Score auto-computed from ISV Ecosystem Harvey Ball data (Stages 8–9).",
 };
 
-// ── Public entry point ───────────────────────────────────────────────────
+// ── Stage 2 public export: scoring only ──────────────────────────────────
 
-export async function runStage2(
+export async function runStage2Scoring(
   marketName: string,
   stage1: Stage1Result,
   predefinedCriteria: PredefinedCriterion[],
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  hooks?: Stage2Hooks,
-): Promise<Stage2Result> {
+  hooks?: Stage2ScoringHooks,
+): Promise<Stage2ScoringResult> {
   const progress = hooks?.onProgress ?? (async () => {});
 
-  // Step 1 — weights for all criteria
   await progress("Computing market-specific criterion weights and rationale…");
   const criteriaWeights = await generateWeights(
     marketName, stage1, predefinedCriteria, llmConfig, sourceContext
   );
 
-  // Steps 2 + 3 — per criterion (skipping auto-computed ones)
-  const allScores: Stage2Score[] = [];
+  const scores: Array<{ vendorName: string; criterionName: string; score: number }> = [];
 
   for (const criterion of predefinedCriteria) {
     if (AUTO_COMPUTED.has(criterion.name)) {
-      // Emit placeholder rows for every vendor
+      for (const v of stage1.vendors) {
+        scores.push({ vendorName: v.name, criterionName: criterion.name, score: 0 });
+      }
+      continue;
+    }
+
+    const rationale = criteriaWeights.find(w => w.criterionId === criterion.id)?.scoringRationale
+      ?? `Evaluates ${criterion.name} for the ${marketName} market.`;
+
+    const scoringPrompt = hooks?.resolveScoringPrompt
+      ? await hooks.resolveScoringPrompt(criterion.name)
+      : await defaultScoringPrompt();
+
+    await progress(`Scoring "${criterion.name}" across ${stage1.vendors.length} vendors (${llmConfig.provider}/${llmConfig.model})…`);
+    const raw = await scoreCriterion(
+      marketName, stage1, criterion, rationale, scoringPrompt, llmConfig, sourceContext
+    );
+
+    for (const v of stage1.vendors) {
+      const s = matchByVendorName(raw, v.name);
+      if (!s) console.warn(`[Stage2Scoring] No score match for vendor "${v.name}" in criterion "${criterion.name}"`);
+      scores.push({ vendorName: v.name, criterionName: criterion.name, score: s?.score ?? 0 });
+    }
+  }
+
+  return { criteriaWeights, scores };
+}
+
+// ── Stage 3 public export: commentary only (requires stage 2 scoring result) ──
+
+export async function runStage2Commentary(
+  marketName: string,
+  stage1: Stage1Result,
+  predefinedCriteria: PredefinedCriterion[],
+  scoringResult: Stage2ScoringResult,
+  llmConfig: LLMConfig,
+  sourceContext: string = "",
+  hooks?: Stage2CommentaryHooks,
+): Promise<Stage2Result> {
+  const progress = hooks?.onProgress ?? (async () => {});
+  const allScores: Stage2Score[] = [];
+
+  for (const criterion of predefinedCriteria) {
+    // Auto-computed criteria: carry forward with placeholder commentary
+    if (AUTO_COMPUTED.has(criterion.name)) {
       for (const v of stage1.vendors) {
         allScores.push({
           vendorName: v.name,
@@ -278,50 +307,41 @@ export async function runStage2(
       continue;
     }
 
-    const rationale = criteriaWeights.find(w => w.criterionId === criterion.id)?.scoringRationale
+    const rationale = scoringResult.criteriaWeights.find(w => w.criterionName === criterion.name)?.scoringRationale
       ?? `Evaluates ${criterion.name} for the ${marketName} market.`;
 
-    const scoringPrompt = hooks
-      ? await hooks.resolveScoringPrompt(criterion.name)
-      : await defaultScoringPrompt();
-    const commentaryPrompt = hooks
+    // Extract scores for this criterion from the stage 2 result
+    const criterionScores = scoringResult.scores
+      .filter(s => s.criterionName === criterion.name)
+      .map(s => ({ vendorName: s.vendorName, score: s.score }));
+
+    const commentaryPrompt = hooks?.resolveCommentaryPrompt
       ? await hooks.resolveCommentaryPrompt(criterion.name)
       : await defaultCommentaryPrompt();
 
-    const scoringLlm = hooks?.resolveScoringLlm ? await hooks.resolveScoringLlm() : llmConfig;
-    const commentaryLlm = hooks?.resolveCommentaryLlm ? await hooks.resolveCommentaryLlm() : llmConfig;
-
-    await progress(`Scoring "${criterion.name}" across ${stage1.vendors.length} vendors (using ${scoringLlm.provider}/${scoringLlm.model})…`);
-    const scores = await scoreCriterion(
-      marketName, stage1, criterion, rationale, scoringPrompt, scoringLlm, sourceContext
-    );
-
-    await progress(`Writing commentary for "${criterion.name}" (using ${commentaryLlm.provider}/${commentaryLlm.model})…`);
+    await progress(`Writing commentary for "${criterion.name}" across ${stage1.vendors.length} vendors (${llmConfig.provider}/${llmConfig.model})…`);
     const commentary = await commentCriterion(
-      marketName, stage1, criterion, rationale, scores, commentaryPrompt, commentaryLlm, sourceContext
+      marketName, stage1, criterion, rationale, criterionScores, commentaryPrompt, llmConfig, sourceContext
     );
 
-    // Merge scores + commentary — use fuzzy matcher so slight name differences
-    // (casing, whitespace, abbreviation) never silently produce score=0 / commentary=""
     for (const v of stage1.vendors) {
-      const s = matchByVendorName(scores, v.name);
+      const s = criterionScores.find(x => x.vendorName === v.name || matchByVendorName(criterionScores.map(cs => ({ vendorName: cs.vendorName })), v.name));
       const c = matchByVendorName(commentary, v.name);
-      if (!s) console.warn(`[Stage2] No score match for vendor "${v.name}" in criterion "${criterion.name}"`);
-      if (!c) console.warn(`[Stage2] No commentary match for vendor "${v.name}" in criterion "${criterion.name}"`);
+      if (!c) console.warn(`[Stage2Commentary] No commentary match for vendor "${v.name}" in criterion "${criterion.name}"`);
       allScores.push({
         vendorName: v.name,
         criterionName: criterion.name,
-        score: s?.score ?? 0,
+        score: matchByVendorName(criterionScores, v.name)?.score ?? 0,
         commentary: c?.commentary ?? "",
         sources: c?.sources ?? [],
       });
     }
   }
 
-  return { criteriaWeights, scores: allScores };
+  return { criteriaWeights: scoringResult.criteriaWeights, scores: allScores };
 }
 
-// Lazy fallbacks for direct callers that don't pass hooks (e.g. tests)
+// Lazy fallbacks for callers that don't pass hooks
 async function defaultScoringPrompt(): Promise<string> {
   const { storage } = await import("../../storage");
   const p = await storage.getSystemDefaultPrompt("vendor_evaluation", "scoring");

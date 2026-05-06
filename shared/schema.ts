@@ -895,6 +895,25 @@ export const insertMarketBuilderLlmSelectionSchema = createInsertSchema(marketBu
 export type MarketBuilderLlmSelection = typeof marketBuilderLlmSelections.$inferSelect;
 export type InsertMarketBuilderLlmSelection = z.infer<typeof insertMarketBuilderLlmSelectionSchema>;
 
+// Per-job, per-stage LLM override. One row per stage that has been customised.
+// Missing row = fall back to the job's llmProvider / llmModel.
+export const marketBuilderJobStageLlm = pgTable("market_builder_job_stage_llm", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => marketBuilderJobs.id, { onDelete: "cascade" }),
+  stageNum: integer("stage_num").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertMarketBuilderJobStageLlmSchema = createInsertSchema(marketBuilderJobStageLlm).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type MarketBuilderJobStageLlm = typeof marketBuilderJobStageLlm.$inferSelect;
+export type InsertMarketBuilderJobStageLlm = z.infer<typeof insertMarketBuilderJobStageLlmSchema>;
+
 // ── Vendor Signals — unified multi-source intelligence feed ──────────────
 // One row per discrete signal collected from HN, Reddit, GitHub, or Layoffs.fyi.
 // HN and Layoffs HIGH/MEDIUM signals auto-generate AI suggestions; Reddit and
