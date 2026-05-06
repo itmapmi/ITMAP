@@ -1,0 +1,215 @@
+import { ExternalLink, Zap, Briefcase } from "lucide-react";
+import { SiYcombinator, SiReddit, SiGithub } from "react-icons/si";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export interface SignalData {
+  id: string;
+  vendorId: string;
+  marketId: string;
+  sourceType: string;
+  title: string;
+  content: string | null;
+  url: string | null;
+  sentiment: string | null;
+  sentimentScore: string | null;
+  impactLabel: string | null;
+  fedIntoSuggestion: boolean;
+  aiSuggestionId: string | null;
+  signalDate: string | null;
+  collectedAt: string | null;
+  rawData: any;
+  vendorName: string;
+  marketName: string;
+}
+
+interface SignalCardProps {
+  signal: SignalData;
+  compact?: boolean;
+  showVendor?: boolean;
+  onCreateSuggestion?: (signal: SignalData) => void;
+  onDelete?: (id: string) => void;
+}
+
+function relativeTime(date: string | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const diff = Date.now() - d.getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function SourceBadge({ source }: { source: string }) {
+  switch (source) {
+    case "hackernews":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+          <SiYcombinator className="h-3 w-3" />
+          HN
+        </span>
+      );
+    case "reddit":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700 border border-red-200">
+          <SiReddit className="h-3 w-3" />
+          Reddit
+        </span>
+      );
+    case "github":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+          <SiGithub className="h-3 w-3" />
+          GitHub
+        </span>
+      );
+    case "layoffs":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+          <Briefcase className="h-3 w-3" />
+          Layoffs
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+          {source}
+        </span>
+      );
+  }
+}
+
+function SentimentChip({ sentiment }: { sentiment: string | null }) {
+  if (!sentiment) return null;
+  const s = sentiment.toUpperCase();
+  const cls =
+    s === "POSITIVE"
+      ? "bg-green-100 text-green-700 border-green-200"
+      : s === "NEGATIVE"
+      ? "bg-red-100 text-red-700 border-red-200"
+      : "bg-gray-100 text-gray-600 border-gray-200";
+  return (
+    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border", cls)}>
+      {s.charAt(0) + s.slice(1).toLowerCase()}
+    </span>
+  );
+}
+
+function ImpactBadge({ impact }: { impact: string | null }) {
+  if (!impact) return null;
+  const i = impact.toUpperCase();
+  const cls =
+    i === "HIGH"
+      ? "bg-red-100 text-red-700 border-red-200"
+      : i === "MEDIUM"
+      ? "bg-amber-100 text-amber-700 border-amber-200"
+      : "bg-slate-100 text-slate-500 border-slate-200";
+  return (
+    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border", cls)}>
+      {i}
+    </span>
+  );
+}
+
+export function SignalCard({ signal, compact = false, showVendor = false, onCreateSuggestion, onDelete }: SignalCardProps) {
+  const excerpt = signal.content
+    ? signal.content.length > 160
+      ? signal.content.slice(0, 160) + "…"
+      : signal.content
+    : null;
+
+  if (compact) {
+    return (
+      <div className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
+        <SourceBadge source={signal.sourceType} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{signal.title}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{relativeTime(signal.collectedAt)}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <SentimentChip sentiment={signal.sentiment} />
+          <ImpactBadge impact={signal.impactLabel} />
+          {signal.fedIntoSuggestion && (
+            <span title="Influenced scoring" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 text-[10px] font-semibold border border-cyan-200">
+              <Zap className="h-2.5 w-2.5" />
+            </span>
+          )}
+          {signal.url && (
+            <a href={signal.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-2.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <SourceBadge source={signal.sourceType} />
+        <SentimentChip sentiment={signal.sentiment} />
+        <ImpactBadge impact={signal.impactLabel} />
+        {signal.fedIntoSuggestion && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-100 text-cyan-700 border border-cyan-200">
+            <Zap className="h-2.5 w-2.5" />
+            Influenced scoring
+          </span>
+        )}
+        <span className="ml-auto text-[11px] text-gray-400">{relativeTime(signal.collectedAt)}</span>
+      </div>
+
+      <div>
+        {showVendor && (
+          <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">{signal.vendorName}</p>
+        )}
+        <p className="text-sm font-semibold text-gray-900 leading-snug">{signal.title}</p>
+        {excerpt && (
+          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{excerpt}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 pt-0.5">
+        {signal.url && (
+          <a
+            href={signal.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View source
+          </a>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          {onCreateSuggestion && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] px-2 gap-1"
+              onClick={() => onCreateSuggestion(signal)}
+            >
+              Create Suggestion
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-[11px] px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={() => onDelete(signal.id)}
+            >
+              Delete
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

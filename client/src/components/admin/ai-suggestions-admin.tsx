@@ -25,7 +25,25 @@ import {
   Layers,
   Pencil,
   Network,
+  Radio,
 } from "lucide-react";
+import { SignalCard, type SignalData } from "@/components/signal-card";
+import type { Vendor, Market } from "@shared/schema";
+
+interface VendorSignalsPage {
+  data: SignalData[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+const SIGNAL_SOURCE_TYPES = [
+  { value: "all", label: "All Sources" },
+  { value: "hackernews", label: "Hacker News" },
+  { value: "reddit", label: "Reddit" },
+  { value: "github", label: "GitHub" },
+  { value: "layoffs", label: "Layoffs" },
+] as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -495,10 +513,128 @@ function VendorGroup({
   );
 }
 
+// ─── Signals sub-panel ────────────────────────────────────────────────────
+
+function SignalsPanel() {
+  const { toast } = useToast();
+  const [vendorFilter, setVendorFilter] = useState("all");
+  const [marketFilter, setMarketFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [createSignal, setCreateSignal] = useState<SignalData | null>(null);
+
+  const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
+  const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+
+  const signalsUrl = `/api/admin/vendor-signals?limit=50${
+    vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""
+  }${marketFilter !== "all" ? `&marketId=${marketFilter}` : ""}${
+    sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
+  }`;
+
+  const { data: page, isLoading } = useQuery<VendorSignalsPage>({
+    queryKey: [signalsUrl],
+  });
+
+  const signals = page?.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-center">
+        <Select value={marketFilter} onValueChange={setMarketFilter}>
+          <SelectTrigger className="w-40 h-8 text-sm">
+            <SelectValue placeholder="All markets" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All markets</SelectItem>
+            {markets.map(m => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.name.replace(/^ITMAP for /i, "")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={vendorFilter} onValueChange={setVendorFilter}>
+          <SelectTrigger className="w-40 h-8 text-sm">
+            <SelectValue placeholder="All vendors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All vendors</SelectItem>
+            {vendors.map(v => (
+              <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-36 h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SIGNAL_SOURCE_TYPES.map(s => (
+              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {page && (
+          <span className="text-xs text-gray-400 ml-auto">{page.total} total</span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-10 text-gray-400 text-sm">Loading signals…</div>
+      ) : signals.length === 0 ? (
+        <div className="text-center py-10 text-gray-400 text-sm">
+          No signals found. Signals are collected every 12 hours or can be triggered via Signal Feed.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {signals.map(s => (
+            <SignalCard
+              key={s.id}
+              signal={s}
+              showVendor
+              onCreateSuggestion={setCreateSignal}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create Suggestion pre-fill notice */}
+      {createSignal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 space-y-4">
+            <h3 className="font-semibold text-gray-900">Create Suggestion from Signal</h3>
+            <p className="text-sm text-gray-600">
+              This will open the AI Suggestions workflow pre-noted with this signal's context. The suggestion will be pre-filled with:
+            </p>
+            <div className="rounded-lg bg-gray-50 border p-3 text-xs space-y-1">
+              <p><span className="font-medium">Vendor:</span> {createSignal.vendorName}</p>
+              <p><span className="font-medium">Sentiment:</span> {createSignal.sentiment}</p>
+              <p><span className="font-medium">Impact:</span> {createSignal.impactLabel}</p>
+              <p className="text-gray-500 line-clamp-2"><span className="font-medium">Content:</span> {createSignal.content}</p>
+            </div>
+            <p className="text-xs text-gray-500">
+              To create a suggestion, use the Pending tab and approve/edit an AI-generated suggestion, or use the API directly. Manual signal-to-suggestion promotion is currently done via the admin approval flow.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" onClick={() => setCreateSignal(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────
 
 export function AiSuggestionsAdmin() {
   const { toast } = useToast();
+  const [mainTab, setMainTab] = useState("suggestions");
   const [tab, setTab] = useState("pending");
 
   const { data: suggestions = [], isLoading } = useQuery<AiSuggestion[]>({
@@ -562,82 +698,113 @@ export function AiSuggestionsAdmin() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">AI Market Suggestions</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            After each news scrape, the AI proposes commentary changes for admin review.
-            Select the evaluation type and criteria to update, enter the new score, and approve.
-          </p>
-        </div>
-        {pendingCount > 0 && (
-          <Badge className="bg-amber-500 text-white text-sm px-3 py-1 shrink-0">
-            {pendingCount} pending
-          </Badge>
-        )}
-      </div>
-
-      {/* Info banner */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 space-y-1">
-        <p className="font-semibold">How this works</p>
-        <ul className="list-disc list-inside space-y-0.5 text-blue-700 text-xs">
-          <li>Suggestions are generated automatically after the daily news scrape (7 AM UTC).</li>
-          <li>The AI proposes commentary only — you decide which criteria/feature to update and what score to assign.</li>
-          <li>Use the dropdowns to select Vendor Evaluation, Product Evaluation, or Ecosystem Evaluation, then pick the category and criteria.</li>
-          <li>Enter a new score and edit the commentary before approving — changes apply immediately.</li>
-          <li>Rejecting discards the suggestion with no changes to live data.</li>
-        </ul>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={mainTab} onValueChange={setMainTab}>
         <TabsList>
-          <TabsTrigger value="pending" className="gap-2">
-            Pending
+          <TabsTrigger value="suggestions" className="gap-2">
+            Suggestions
             {pendingCount > 0 && (
               <span className="rounded-full bg-amber-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center">
                 {pendingCount}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="signals" className="gap-1.5">
+            <Radio className="h-3.5 w-3.5" />
+            All Signals
+          </TabsTrigger>
         </TabsList>
 
-        {["pending", "approved", "rejected", "all"].map(tabVal => (
-          <TabsContent key={tabVal} value={tabVal} className="mt-6">
-            {isLoading ? (
-              <div className="text-center py-12 text-gray-500">Loading suggestions…</div>
-            ) : Object.keys(grouped).length === 0 ? (
-              <div className="text-center py-12">
-                <Lightbulb className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">
-                  {tabVal === "pending"
-                    ? "No pending suggestions. They appear here after the next news scrape."
-                    : `No ${tabVal} suggestions.`}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {Object.entries(grouped).map(([vendorId, vendorSuggestions]) => (
-                  <VendorGroup
-                    key={vendorId}
-                    vendorName={vendorSuggestions[0].vendorName}
-                    marketName={vendorSuggestions[0].marketName}
-                    suggestions={vendorSuggestions}
-                    onApprove={(id, value, commentary, overrideSubjectId, overrideEvalType) =>
-                      approveMutation.mutate({ id, value, commentary, overrideSubjectId, overrideEvalType })
-                    }
-                    onReject={id => rejectMutation.mutate(id)}
-                    mutating={mutating}
-                  />
-                ))}
-              </div>
+        <TabsContent value="suggestions" className="mt-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">AI Market Suggestions</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                After each news scrape, the AI proposes commentary changes for admin review.
+                Select the evaluation type and criteria to update, enter the new score, and approve.
+              </p>
+            </div>
+            {pendingCount > 0 && (
+              <Badge className="bg-amber-500 text-white text-sm px-3 py-1 shrink-0">
+                {pendingCount} pending
+              </Badge>
             )}
-          </TabsContent>
-        ))}
+          </div>
+
+          {/* Info banner */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 space-y-1">
+            <p className="font-semibold">How this works</p>
+            <ul className="list-disc list-inside space-y-0.5 text-blue-700 text-xs">
+              <li>Suggestions are generated automatically after the daily news scrape (7 AM UTC).</li>
+              <li>The AI proposes commentary only — you decide which criteria/feature to update and what score to assign.</li>
+              <li>Use the dropdowns to select Vendor Evaluation, Product Evaluation, or Ecosystem Evaluation, then pick the category and criteria.</li>
+              <li>Enter a new score and edit the commentary before approving — changes apply immediately.</li>
+              <li>Rejecting discards the suggestion with no changes to live data.</li>
+            </ul>
+          </div>
+
+          {/* Status tabs */}
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList>
+              <TabsTrigger value="pending" className="gap-2">
+                Pending
+                {pendingCount > 0 && (
+                  <span className="rounded-full bg-amber-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                    {pendingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approved</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+            </TabsList>
+
+            {["pending", "approved", "rejected", "all"].map(tabVal => (
+              <TabsContent key={tabVal} value={tabVal} className="mt-6">
+                {isLoading ? (
+                  <div className="text-center py-12 text-gray-500">Loading suggestions…</div>
+                ) : Object.keys(grouped).length === 0 ? (
+                  <div className="text-center py-12">
+                    <Lightbulb className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">
+                      {tabVal === "pending"
+                        ? "No pending suggestions. They appear here after the next news scrape."
+                        : `No ${tabVal} suggestions.`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {Object.entries(grouped).map(([vendorId, vendorSuggestions]) => (
+                      <VendorGroup
+                        key={vendorId}
+                        vendorName={vendorSuggestions[0].vendorName}
+                        marketName={vendorSuggestions[0].marketName}
+                        suggestions={vendorSuggestions}
+                        onApprove={(id, value, commentary, overrideSubjectId, overrideEvalType) =>
+                          approveMutation.mutate({ id, value, commentary, overrideSubjectId, overrideEvalType })
+                        }
+                        onReject={id => rejectMutation.mutate(id)}
+                        mutating={mutating}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="signals" className="mt-6">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">All Signals</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Browse every collected signal regardless of whether it generated a suggestion. Use "Create Suggestion" to manually promote any signal.
+              </p>
+            </div>
+            <SignalsPanel />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );

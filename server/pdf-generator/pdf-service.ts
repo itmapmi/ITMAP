@@ -371,6 +371,64 @@ export class PDFService {
     return content;
   }
 
+  generateIntelligenceFeedContent(vendors: any[], signalsByVendor: Record<string, any[]>): string {
+    const vendorsWithSignals = vendors.filter(v => (signalsByVendor[v.id] ?? []).length > 0);
+
+    if (vendorsWithSignals.length === 0) {
+      return '';
+    }
+
+    const sourceLabel: Record<string, string> = {
+      hackernews: 'HN',
+      reddit: 'Reddit',
+      github: 'GitHub',
+      layoffs: 'Layoffs',
+    };
+
+    let content = `
+      <div class="content-section">
+        <h2 class="section-title">Intelligence Feed</h2>
+        <p class="section-description">
+          Real-time signals collected from Hacker News, Reddit, GitHub, and Layoffs.fyi that
+          inform vendor scoring and market intelligence. Signals marked ⚡ influenced scoring updates.
+        </p>
+      </div>
+    `;
+
+    vendorsWithSignals.forEach(vendor => {
+      const signals: any[] = signalsByVendor[vendor.id] ?? [];
+      content += `
+        <div class="content-section">
+          <h3 class="section-subtitle">${this.escapeHtml(vendor.name)}</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%;">Source</th>
+                <th style="width: 18%;">Date</th>
+                <th style="width: 44%;">Title</th>
+                <th style="width: 14%; text-align: center;">Sentiment</th>
+                <th style="width: 14%; text-align: center;">Influenced</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${signals.slice(0, 20).map(s => `
+                <tr>
+                  <td><strong>${this.escapeHtml(sourceLabel[s.sourceType] ?? s.sourceType)}</strong></td>
+                  <td>${s.signalDate ? new Date(s.signalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (s.collectedAt ? new Date(s.collectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—')}</td>
+                  <td>${this.escapeHtml(s.title ?? '')}</td>
+                  <td style="text-align: center;">${s.sentiment ? this.escapeHtml(s.sentiment.charAt(0) + s.sentiment.slice(1).toLowerCase()) : '—'}</td>
+                  <td style="text-align: center;">${s.fedIntoSuggestion ? '⚡' : '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    return content;
+  }
+
   generateFullReportContent(
     market: Market,
     vendors: any[],
@@ -379,7 +437,8 @@ export class PDFService {
     categories: any[],
     supportData: any[],
     ecosystemFeatures: any[],
-    ecosystemSupport: any[]
+    ecosystemSupport: any[],
+    signalsByVendor?: Record<string, any[]>
   ): string {
     let content = '';
 
@@ -399,6 +458,12 @@ export class PDFService {
     const ecosystemContent = this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
     console.log('[PDF] Ecosystem content length:', ecosystemContent.length);
     content += ecosystemContent;
+
+    if (signalsByVendor) {
+      console.log('[PDF] Generating intelligence feed content...');
+      const intelligenceContent = this.generateIntelligenceFeedContent(vendors, signalsByVendor);
+      content += intelligenceContent;
+    }
 
     console.log('[PDF] Total content length:', content.length);
     return content;

@@ -17,6 +17,7 @@ import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
+import { SignalFeedAdmin } from "@/components/admin/signal-feed-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight } from "lucide-react";
@@ -116,6 +117,7 @@ export default function Admin() {
               AI Suggestions
               <PendingBadge />
             </TabsTrigger>
+            <TabsTrigger value="signal-feed">Signal Feed</TabsTrigger>
             <TabsTrigger value="criteria-management">Criteria</TabsTrigger>
             <TabsTrigger value="feature-management">Features</TabsTrigger>
             <TabsTrigger value="support-matrix">Product Eval</TabsTrigger>
@@ -153,6 +155,10 @@ export default function Admin() {
 
           <TabsContent value="ai-suggestions" className="mt-6">
             <AiSuggestionsAdmin />
+          </TabsContent>
+
+          <TabsContent value="signal-feed" className="mt-6">
+            <SignalFeedAdmin />
           </TabsContent>
 
           <TabsContent value="criteria-management" className="mt-6">
