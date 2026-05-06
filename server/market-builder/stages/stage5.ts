@@ -42,7 +42,8 @@ export interface Stage5AResult { categories: Stage5Category[]; }
 const DEFINE_SYSTEM_PROMPT = `You are a senior technology market research analyst specialising in technology ecosystems and ISV integrations.
 Always respond with valid JSON only — no markdown, no explanation outside the JSON object.`;
 
-const FEATURE_BATCH = 10;
+const FEATURE_BATCH_SCORING = 10;
+const FEATURE_BATCH_COMMENTARY = 5;
 
 // ── Stage 7 — define ecosystem ────────────────────────────────────────────
 
@@ -229,7 +230,7 @@ export async function runStage8Scoring(
   const groups = buildGroups(allFeatures, promptMap);
 
   let totalBatches = 0;
-  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH_SCORING);
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
@@ -237,10 +238,10 @@ export async function runStage8Scoring(
 
   for (const vendor of stage1.vendors) {
     for (const g of groups) {
-      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
-        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH_SCORING) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH_SCORING);
         const featStart = i + 1;
-        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        const featEnd = Math.min(i + FEATURE_BATCH_SCORING, g.features.length);
         await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
 
         const scores = await scoreEcosystemBatch(
@@ -297,7 +298,7 @@ export async function runStage9Commentary(
   const groups = buildGroups(allFeatures, promptMap);
 
   let totalBatches = 0;
-  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY);
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
@@ -305,10 +306,10 @@ export async function runStage9Commentary(
 
   for (const vendor of stage1.vendors) {
     for (const g of groups) {
-      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
-        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
         const featStart = i + 1;
-        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        const featEnd = Math.min(i + FEATURE_BATCH_COMMENTARY, g.features.length);
         await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Commentary: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
 
         const scores = chunk.map(f => {

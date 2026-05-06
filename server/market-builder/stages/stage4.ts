@@ -39,7 +39,8 @@ interface FeatureRow {
   featureDescription: string;
 }
 
-const FEATURE_BATCH = 10;
+const FEATURE_BATCH_SCORING = 10;
+const FEATURE_BATCH_COMMENTARY = 5;
 
 // ── Per-batch scoring call (scores only) ─────────────────────────────────
 
@@ -190,7 +191,7 @@ export async function runStage4Scoring(
   const groups = buildGroups(allFeatures, promptMap);
 
   let totalBatches = 0;
-  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH_SCORING);
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
@@ -198,8 +199,8 @@ export async function runStage4Scoring(
 
   for (const vendor of stage1.vendors) {
     for (const g of groups) {
-      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
-        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH_SCORING) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH_SCORING);
 
         const scores = await scoreFeatureBatch(
           marketName, vendor, chunk, g.prompt, llmConfig, sourceContext
@@ -220,7 +221,7 @@ export async function runStage4Scoring(
 
         done++;
         const featStart = i + 1;
-        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        const featEnd = Math.min(i + FEATURE_BATCH_SCORING, g.features.length);
         await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
       }
     }
@@ -257,7 +258,7 @@ export async function runStage4Commentary(
   const groups = buildGroups(allFeatures, promptMap);
 
   let totalBatches = 0;
-  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH);
+  for (const g of groups) totalBatches += Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY);
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
@@ -265,8 +266,8 @@ export async function runStage4Commentary(
 
   for (const vendor of stage1.vendors) {
     for (const g of groups) {
-      for (let i = 0; i < g.features.length; i += FEATURE_BATCH) {
-        const chunk = g.features.slice(i, i + FEATURE_BATCH);
+      for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
+        const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
 
         // Look up pre-assigned scores from the scoring result
         const scores = chunk.map(f => {
@@ -299,7 +300,7 @@ export async function runStage4Commentary(
 
         done++;
         const featStart = i + 1;
-        const featEnd = Math.min(i + FEATURE_BATCH, g.features.length);
+        const featEnd = Math.min(i + FEATURE_BATCH_COMMENTARY, g.features.length);
         await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
       }
     }
