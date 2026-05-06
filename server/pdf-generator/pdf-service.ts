@@ -96,8 +96,28 @@ export class PDFService {
         },
         displayHeaderFooter: true,
         headerTemplate: `
-          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0; display: flex; justify-content: flex-end; align-items: center;">
-            <img src="${logoData}" style="height: 45px; width: auto; margin-top: 5px;" />
+          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0; display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
+            <svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="hsg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0EA5E9" />
+                  <stop offset="100%" stop-color="#7C3AED" />
+                </linearGradient>
+                <linearGradient id="hsg2" x1="36" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.4" />
+                  <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.4" />
+                </linearGradient>
+              </defs>
+              <circle cx="18" cy="18" r="16" stroke="url(#hsg2)" stroke-width="1.5" />
+              <circle cx="18" cy="18" r="10" stroke="url(#hsg1)" stroke-width="2" />
+              <circle cx="18" cy="18" r="4.5" fill="url(#hsg1)" />
+              <circle cx="18" cy="18" r="2" fill="white" />
+              <line x1="18" y1="2" x2="18" y2="7" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
+              <line x1="18" y1="29" x2="18" y2="34" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
+              <line x1="2" y1="18" x2="7" y2="18" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
+              <line x1="29" y1="18" x2="34" y2="18" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <span style="font-size: 13px; font-weight: 700; color: #1a202c; margin-top: 5px;">spectio<span style="color: #0EA5E9;">.ai</span></span>
           </div>
         `,
         footerTemplate: `
@@ -160,7 +180,7 @@ export class PDFService {
                   <tr>
                     <td><strong>${this.escapeHtml(score.criteria.name)}</strong></td>
                     <td style="text-align: center;">
-                      <span style="font-size: 16px; font-weight: 600; color: #1890ff;">${score.score}/10</span>
+                      <span style="font-size: 16px; font-weight: 600; color: #0EA5E9;">${score.score}/10</span>
                     </td>
                     <td>${score.notes ? this.escapeHtml(score.notes) : '<em style="color: #a0aec0;">No commentary available</em>'}</td>
                   </tr>
@@ -184,7 +204,7 @@ export class PDFService {
                   <tr>
                     <td><strong>${this.escapeHtml(score.criteria.name)}</strong></td>
                     <td style="text-align: center;">
-                      <span style="font-size: 16px; font-weight: 600; color: #1890ff;">${score.score}/10</span>
+                      <span style="font-size: 16px; font-weight: 600; color: #0EA5E9;">${score.score}/10</span>
                     </td>
                     <td>${score.notes ? this.escapeHtml(score.notes) : '<em style="color: #a0aec0;">No commentary available</em>'}</td>
                   </tr>

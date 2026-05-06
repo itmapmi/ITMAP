@@ -34,9 +34,18 @@
     }
 
     .cover-logo {
-      width: 180px;
-      height: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
       margin-bottom: 50px;
+    }
+
+    .cover-logo-wordmark {
+      font-size: 38px;
+      font-weight: 700;
+      color: #1a202c;
+      letter-spacing: -0.5px;
     }
 
     .cover-title {
@@ -63,7 +72,7 @@
     .cover-divider {
       width: 80px;
       height: 3px;
-      background: #1890ff;
+      background: #0EA5E9;
       margin: 25px auto;
     }
 
@@ -79,7 +88,7 @@
       color: #1a202c;
       margin: 30px 0 20px;
       padding-bottom: 8px;
-      border-bottom: 2px solid #1890ff;
+      border-bottom: 2px solid #0EA5E9;
     }
 
     .section-subtitle {
@@ -106,7 +115,7 @@
     }
 
     thead {
-      background: #1890ff;
+      background: #0EA5E9;
       color: white;
       display: table-header-group; /* Ensures headers repeat on each page */
     }
@@ -115,7 +124,7 @@
       padding: 10px 8px;
       text-align: left;
       font-weight: 600;
-      border: 1px solid #1890ff;
+      border: 1px solid #0EA5E9;
       font-size: 11px;
       word-wrap: break-word; /* Wrap long words */
       overflow-wrap: break-word;
@@ -188,7 +197,7 @@
     .score-value {
       font-size: 20px;
       font-weight: 700;
-      color: #1890ff;
+      color: #0EA5E9;
     }
 
     /* Support Badge */
@@ -229,7 +238,7 @@
     .executive-summary {
       background: #edf2f7;
       padding: 20px;
-      border-left: 4px solid #1890ff;
+      border-left: 4px solid #0EA5E9;
       margin: 25px 0;
       border-radius: 3px;
     }
@@ -251,7 +260,7 @@
     .page-header {
       margin-bottom: 30px;
       padding-bottom: 15px;
-      border-bottom: 2px solid #1890ff;
+      border-bottom: 2px solid #0EA5E9;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -281,7 +290,29 @@
 <body>
   <!-- Cover Page -->
   <div class="cover-page">
-    <img src="{{logoPath}}" alt="ITMAP Logo" class="cover-logo">
+    <div class="cover-logo">
+      <svg width="80" height="80" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="csg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0EA5E9" />
+            <stop offset="100%" stop-color="#7C3AED" />
+          </linearGradient>
+          <linearGradient id="csg2" x1="36" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.4" />
+            <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.4" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="16" stroke="url(#csg2)" stroke-width="1.5" />
+        <circle cx="18" cy="18" r="10" stroke="url(#csg1)" stroke-width="2" />
+        <circle cx="18" cy="18" r="4.5" fill="url(#csg1)" />
+        <circle cx="18" cy="18" r="2" fill="white" />
+        <line x1="18" y1="2" x2="18" y2="7" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="18" y1="29" x2="18" y2="34" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="2" y1="18" x2="7" y2="18" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="29" y1="18" x2="34" y2="18" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+      <div class="cover-logo-wordmark">spectio<span style="color: #0EA5E9;">.ai</span></div>
+    </div>
     <h1 class="cover-title">{{reportTitle}}</h1>
     <p class="cover-subtitle">{{marketName}}</p>
     <div class="cover-divider"></div>
