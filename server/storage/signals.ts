@@ -77,6 +77,34 @@ export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Prom
   return { data: rows as VendorSignalWithContext[], total, limit, offset };
 }
 
+export async function getVendorSignalById(id: string): Promise<VendorSignalWithContext | undefined> {
+  const [row] = await db
+    .select({
+      id: vendorSignals.id,
+      vendorId: vendorSignals.vendorId,
+      marketId: vendorSignals.marketId,
+      sourceType: vendorSignals.sourceType,
+      title: vendorSignals.title,
+      content: vendorSignals.content,
+      url: vendorSignals.url,
+      sentiment: vendorSignals.sentiment,
+      sentimentScore: vendorSignals.sentimentScore,
+      impactLabel: vendorSignals.impactLabel,
+      fedIntoSuggestion: vendorSignals.fedIntoSuggestion,
+      aiSuggestionId: vendorSignals.aiSuggestionId,
+      signalDate: vendorSignals.signalDate,
+      collectedAt: vendorSignals.collectedAt,
+      rawData: vendorSignals.rawData,
+      vendorName: vendors.name,
+      marketName: markets.name,
+    })
+    .from(vendorSignals)
+    .innerJoin(vendors, eq(vendorSignals.vendorId, vendors.id))
+    .innerJoin(markets, eq(vendorSignals.marketId, markets.id))
+    .where(eq(vendorSignals.id, id));
+  return row as VendorSignalWithContext | undefined;
+}
+
 export async function getVendorSignalByUrl(url: string, vendorId: string): Promise<VendorSignal | undefined> {
   const [row] = await db
     .select()

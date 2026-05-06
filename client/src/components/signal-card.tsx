@@ -1,4 +1,4 @@
-import { ExternalLink, Zap, Briefcase } from "lucide-react";
+import { ExternalLink, Zap, Briefcase, Code2 } from "lucide-react";
 import { SiYcombinator, SiReddit, SiGithub } from "react-icons/si";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ interface SignalCardProps {
   showVendor?: boolean;
   onCreateSuggestion?: (signal: SignalData) => void;
   onDelete?: (id: string) => void;
+  onViewRaw?: (signal: SignalData) => void;
 }
 
 function relativeTime(date: string | null | undefined): string {
@@ -117,7 +118,7 @@ function ImpactBadge({ impact }: { impact: string | null }) {
   );
 }
 
-export function SignalCard({ signal, compact = false, showVendor = false, onCreateSuggestion, onDelete }: SignalCardProps) {
+export function SignalCard({ signal, compact = false, showVendor = false, onCreateSuggestion, onDelete, onViewRaw }: SignalCardProps) {
   const excerpt = signal.content
     ? signal.content.length > 160
       ? signal.content.slice(0, 160) + "…"
@@ -188,6 +189,17 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
           </a>
         )}
         <div className="ml-auto flex items-center gap-1.5">
+          {onViewRaw && signal.rawData && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-[11px] px-2 text-gray-500 hover:text-gray-700"
+              onClick={() => onViewRaw(signal)}
+            >
+              <Code2 className="h-3 w-3 mr-1" />
+              Raw
+            </Button>
+          )}
           {onCreateSuggestion && (
             <Button
               size="sm"

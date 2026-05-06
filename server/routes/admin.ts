@@ -624,6 +624,54 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.post('/api/admin/vendor-signals/:id/promote', requireAdmin, async (req, res) => {
+    try {
+      const { getVendorSignalById, updateVendorSignalSuggestionLink } = await import('../storage/signals');
+      const { createAiSuggestion } = await import('../storage/admin');
+
+      const signal = await getVendorSignalById(req.params.id);
+      if (!signal) return res.status(404).json({ error: 'Signal not found' });
+
+      const {
+        evalType = 'vendor_evaluation',
+        subjectId,
+        subjectName,
+        subjectCategory,
+        value,
+        commentary,
+      } = req.body ?? {};
+
+      if (!subjectId || !subjectName) {
+        return res.status(400).json({ error: 'subjectId and subjectName are required' });
+      }
+
+      const suggestionType = evalType === 'vendor_evaluation' ? 'criterion_score' : 'feature_support';
+
+      const suggestion = await createAiSuggestion({
+        vendorId: signal.vendorId,
+        marketId: signal.marketId,
+        status: 'pending',
+        suggestionType,
+        subjectId,
+        subjectName,
+        subjectCategory: subjectCategory ?? null,
+        currentValue: null,
+        suggestedValue: value != null ? String(value) : null,
+        currentCommentary: null,
+        suggestedCommentary: commentary ?? null,
+        reasoning: `Manually promoted from ${signal.sourceType} signal: "${signal.title}"${signal.content ? `\n\n${signal.content.slice(0, 500)}` : ''}`,
+        confidence: signal.impactLabel === 'HIGH' ? 'HIGH' : 'MEDIUM',
+        triggeredByArticleIds: null,
+      });
+
+      await updateVendorSignalSuggestionLink(signal.id, suggestion.id);
+
+      res.json({ suggestion });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.delete('/api/admin/vendor-signals/:id', requireAdmin, async (req, res) => {
     try {
       const { deleteVendorSignal } = await import('../storage/signals');

@@ -38,6 +38,11 @@ interface CollectResult {
   error: string | null;
 }
 
+interface CollectResponse {
+  results: CollectResult[];
+  summary: { totalNew: number; totalSuggestions: number };
+}
+
 const SOURCE_TYPES = [
   { value: "all", label: "All Sources" },
   { value: "hackernews", label: "Hacker News" },
@@ -72,15 +77,14 @@ export function SignalFeedAdmin() {
       const body: Record<string, string> = {};
       if (vendorFilter !== "all") body.vendorId = vendorFilter;
       if (marketFilter !== "all") body.marketId = marketFilter;
-      return apiRequestJson<CollectResult[]>("/api/admin/vendor-signals/collect", "POST", Object.keys(body).length ? body : undefined);
+      return apiRequestJson<CollectResponse>("/api/admin/vendor-signals/collect", "POST", Object.keys(body).length ? body : undefined);
     },
     onSuccess: (data) => {
-      setCollectResults(data);
+      setCollectResults(data.results);
       queryClient.invalidateQueries({
         predicate: (q) => (q.queryKey[0] as string).includes("/api/admin/vendor-signals"),
       });
-      const totalNew = data.reduce((s, r) => s + r.new, 0);
-      toast({ title: "Collection complete", description: `${totalNew} new signal(s) collected.` });
+      toast({ title: "Collection complete", description: `${data.summary.totalNew} new signal(s) collected.` });
     },
     onError: (err: any) => {
       toast({ title: "Collection failed", description: err.message, variant: "destructive" });
@@ -233,7 +237,7 @@ export function SignalFeedAdmin() {
                 signal={signal}
                 showVendor
                 onDelete={(id) => deleteMutation.mutate(id)}
-                onCreateSuggestion={undefined}
+                onViewRaw={(s) => setRawDataSignal(s)}
               />
             ))}
           </div>

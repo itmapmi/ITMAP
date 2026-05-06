@@ -3,10 +3,26 @@ import {
   type AdminAlertSettings, type InsertAdminAlertSettings,
   type ExternalApiKey, type ExternalChatSession, type ExternalChatMessage,
   aiSuggestions, adminAlertSettings, externalApiKeys, externalChatSessions, externalChatMessages,
-  vendors, markets,
+  vendors, markets, vendorSignals,
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, desc, and, sql } from "drizzle-orm";
+
+export interface AiSuggestionWithContext extends AiSuggestion {
+  vendorName: string;
+  marketName: string;
+  sourceSignal?: {
+    id: string;
+    sourceType: string;
+    title: string | null;
+    content: string | null;
+    url: string | null;
+    sentiment: string | null;
+    impactLabel: string | null;
+    collectedAt: Date | null;
+    fedIntoSuggestion: boolean;
+  } | null;
+}
 
 // ── Alert Settings ─────────────────────────────────────────────────────────
 
@@ -42,16 +58,26 @@ export async function createAiSuggestion(data: InsertAiSuggestion): Promise<AiSu
 
 export async function getAiSuggestions(
   filters?: { status?: string; vendorId?: string; marketId?: string }
-): Promise<(AiSuggestion & { vendorName: string; marketName: string })[]> {
+): Promise<AiSuggestionWithContext[]> {
   const rows = await db
     .select({
       suggestion: aiSuggestions,
       vendorName: vendors.name,
       marketName: markets.name,
+      signalId: vendorSignals.id,
+      signalSourceType: vendorSignals.sourceType,
+      signalTitle: vendorSignals.title,
+      signalContent: vendorSignals.content,
+      signalUrl: vendorSignals.url,
+      signalSentiment: vendorSignals.sentiment,
+      signalImpactLabel: vendorSignals.impactLabel,
+      signalCollectedAt: vendorSignals.collectedAt,
+      signalFedIntoSuggestion: vendorSignals.fedIntoSuggestion,
     })
     .from(aiSuggestions)
     .innerJoin(vendors, eq(aiSuggestions.vendorId, vendors.id))
     .innerJoin(markets, eq(aiSuggestions.marketId, markets.id))
+    .leftJoin(vendorSignals, eq(vendorSignals.aiSuggestionId, aiSuggestions.id))
     .where(
       and(
         filters?.status ? eq(aiSuggestions.status, filters.status) : undefined,
@@ -61,7 +87,22 @@ export async function getAiSuggestions(
     )
     .orderBy(desc(aiSuggestions.createdAt));
 
-  return rows.map(r => ({ ...r.suggestion, vendorName: r.vendorName, marketName: r.marketName }));
+  return rows.map(r => ({
+    ...r.suggestion,
+    vendorName: r.vendorName,
+    marketName: r.marketName,
+    sourceSignal: r.signalId ? {
+      id: r.signalId,
+      sourceType: r.signalSourceType!,
+      title: r.signalTitle,
+      content: r.signalContent,
+      url: r.signalUrl,
+      sentiment: r.signalSentiment,
+      impactLabel: r.signalImpactLabel,
+      collectedAt: r.signalCollectedAt,
+      fedIntoSuggestion: r.signalFedIntoSuggestion ?? false,
+    } : null,
+  }));
 }
 
 export async function getAiSuggestionById(id: string): Promise<AiSuggestion | undefined> {

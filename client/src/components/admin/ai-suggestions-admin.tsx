@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import {
   Pencil,
   Network,
   Radio,
+  ExternalLink,
 } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
@@ -49,6 +50,18 @@ const SIGNAL_SOURCE_TYPES = [
 
 type EvalType = "vendor_evaluation" | "product_evaluation" | "ecosystem_evaluation";
 
+interface SourceSignal {
+  id: string;
+  sourceType: string;
+  title: string | null;
+  content: string | null;
+  url: string | null;
+  sentiment: string | null;
+  impactLabel: string | null;
+  collectedAt: string | null;
+  fedIntoSuggestion: boolean;
+}
+
 interface AiSuggestion {
   id: string;
   vendorId: string;
@@ -69,6 +82,7 @@ interface AiSuggestion {
   triggeredByArticleIds: string[] | null;
   createdAt: string;
   reviewedAt: string | null;
+  sourceSignal?: SourceSignal | null;
 }
 
 interface Criteria {
@@ -277,6 +291,61 @@ function SuggestionCard({
           <p className="text-xs font-semibold text-gray-600 mb-1">AI Reasoning</p>
           <p className="text-xs text-gray-700 leading-relaxed">{s.reasoning}</p>
         </div>
+
+        {/* Source Signal — shown when a signal triggered this suggestion */}
+        {s.sourceSignal && (
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1 hover:text-gray-700 list-none">
+              <Radio className="h-3 w-3 text-cyan-500" />
+              Source signal
+              <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
+              <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
+            </summary>
+            <div className="mt-2 rounded border border-cyan-100 bg-cyan-50/40 p-2.5 space-y-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                  s.sourceSignal.sourceType === "hackernews" ? "bg-orange-100 text-orange-700 border-orange-200" :
+                  s.sourceSignal.sourceType === "reddit" ? "bg-red-100 text-red-700 border-red-200" :
+                  s.sourceSignal.sourceType === "github" ? "bg-gray-100 text-gray-700 border-gray-200" :
+                  "bg-amber-100 text-amber-700 border-amber-200"
+                }`}>
+                  {s.sourceSignal.sourceType === "hackernews" ? "HN" :
+                   s.sourceSignal.sourceType.charAt(0).toUpperCase() + s.sourceSignal.sourceType.slice(1)}
+                </span>
+                {s.sourceSignal.sentiment && (
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                    s.sourceSignal.sentiment.toUpperCase() === "POSITIVE" ? "bg-green-100 text-green-700 border-green-200" :
+                    s.sourceSignal.sentiment.toUpperCase() === "NEGATIVE" ? "bg-red-100 text-red-700 border-red-200" :
+                    "bg-gray-100 text-gray-600 border-gray-200"
+                  }`}>
+                    {s.sourceSignal.sentiment.charAt(0).toUpperCase() + s.sourceSignal.sentiment.slice(1).toLowerCase()}
+                  </span>
+                )}
+                {s.sourceSignal.impactLabel && (
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                    s.sourceSignal.impactLabel.toUpperCase() === "HIGH" ? "bg-red-100 text-red-700 border-red-200" :
+                    s.sourceSignal.impactLabel.toUpperCase() === "MEDIUM" ? "bg-amber-100 text-amber-700 border-amber-200" :
+                    "bg-slate-100 text-slate-500 border-slate-200"
+                  }`}>
+                    {s.sourceSignal.impactLabel.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              {s.sourceSignal.title && (
+                <p className="text-xs font-medium text-gray-800 leading-snug">{s.sourceSignal.title}</p>
+              )}
+              {s.sourceSignal.content && (
+                <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-3">{s.sourceSignal.content}</p>
+              )}
+              {s.sourceSignal.url && (
+                <a href={s.sourceSignal.url} target="_blank" rel="noopener noreferrer"
+                   className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800">
+                  <ExternalLink className="h-3 w-3" /> View source
+                </a>
+              )}
+            </div>
+          </details>
+        )}
 
         {/* ── Review & edit section (pending only) ── */}
         {isPending && (
@@ -513,14 +582,246 @@ function VendorGroup({
   );
 }
 
+// ─── Promote Signal Modal ─────────────────────────────────────────────────
+
+function PromoteSignalModal({
+  signal,
+  onClose,
+  onPromoted,
+}: {
+  signal: SignalData;
+  onClose: () => void;
+  onPromoted: () => void;
+}) {
+  const { toast } = useToast();
+  const [evalType, setEvalType] = useState<EvalType>("vendor_evaluation");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [selectedSubjectName, setSelectedSubjectName] = useState("");
+  const [selectedSubjectCategory, setSelectedSubjectCategory] = useState<string | null>(null);
+  const [value, setValue] = useState("");
+  const [commentary, setCommentary] = useState(
+    [signal.title, signal.content].filter(Boolean).join("\n\n").slice(0, 800)
+  );
+
+  const { data: allCriteria = [] } = useQuery<Criteria[]>({ queryKey: ["/api/criteria"] });
+  const { data: featureCatData = [] } = useQuery<FeatureCategoryWithFeatures[]>({
+    queryKey: ["/api/markets", signal.marketId, "feature-categories"],
+  });
+
+  const criteriaByCategory = allCriteria.reduce<Record<string, Criteria[]>>((acc, c) => {
+    if (!acc[c.category]) acc[c.category] = [];
+    acc[c.category].push(c);
+    return acc;
+  }, {});
+
+  const productCats = featureCatData.filter(c => !c.isEcosystem);
+  const ecosystemCats = featureCatData.filter(c => c.isEcosystem);
+  const activeCats = evalType === "product_evaluation" ? productCats : ecosystemCats;
+  const selectedCat = activeCats.find(c => c.id === selectedCategoryId);
+
+  const handleEvalTypeChange = (v: EvalType) => {
+    setEvalType(v);
+    setSelectedCategoryId("");
+    setSelectedSubjectId("");
+    setSelectedSubjectName("");
+    setSelectedSubjectCategory(null);
+    setValue("");
+  };
+
+  const promoteMutation = useMutation({
+    mutationFn: () =>
+      apiRequestJson<{ suggestion: AiSuggestion }>(`/api/admin/vendor-signals/${signal.id}/promote`, "POST", {
+        evalType,
+        subjectId: selectedSubjectId,
+        subjectName: selectedSubjectName,
+        subjectCategory: selectedSubjectCategory,
+        value: value !== "" ? parseFloat(value) : undefined,
+        commentary,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions/count"] });
+      toast({ title: "Suggestion created", description: "The signal has been promoted to a pending suggestion." });
+      onPromoted();
+    },
+    onError: (err: any) =>
+      toast({ title: "Promote failed", description: err.message, variant: "destructive" }),
+  });
+
+  const canSubmit = !!selectedSubjectId && value !== "" && !isNaN(parseFloat(value));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b space-y-1">
+          <h3 className="font-semibold text-gray-900">Promote Signal to Suggestion</h3>
+          <p className="text-xs text-gray-500">
+            Creates a pending suggestion from this signal. Fill in which criteria/feature to target and the proposed score.
+          </p>
+        </div>
+
+        {/* Signal context */}
+        <div className="px-5 pt-4 pb-2 rounded bg-gray-50 mx-5 mt-4 border text-xs space-y-1">
+          <p className="font-semibold text-gray-700">Signal from {signal.vendorName}</p>
+          <p className="text-gray-500 line-clamp-3">{signal.title}</p>
+          <div className="flex gap-1.5 mt-1">
+            {signal.sentiment && <span className="px-1.5 py-0.5 rounded border text-[10px] bg-gray-100 text-gray-600 border-gray-200">{signal.sentiment}</span>}
+            {signal.impactLabel && <span className="px-1.5 py-0.5 rounded border text-[10px] bg-amber-50 text-amber-700 border-amber-200">{signal.impactLabel}</span>}
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Eval type */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-600">Evaluation Type</Label>
+            <Select value={evalType} onValueChange={(v) => handleEvalTypeChange(v as EvalType)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVAL_TYPE_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Vendor Evaluation → criteria */}
+          {evalType === "vendor_evaluation" && (
+            <div className="space-y-1">
+              <Label className="text-xs text-gray-600">Criteria</Label>
+              <Select
+                value={selectedSubjectId}
+                onValueChange={(v) => {
+                  const c = allCriteria.find(c => c.id === v);
+                  setSelectedSubjectId(v);
+                  setSelectedSubjectName(c?.name ?? "");
+                  setSelectedSubjectCategory(c?.category ?? null);
+                }}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select criteria…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(criteriaByCategory).map(([cat, items]) => (
+                    <div key={cat}>
+                      <div className="px-2 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{cat}</div>
+                      {items.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Product / Ecosystem → category + feature */}
+          {(evalType === "product_evaluation" || evalType === "ecosystem_evaluation") && (
+            <>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">Category</Label>
+                <Select value={selectedCategoryId} onValueChange={(v) => {
+                  setSelectedCategoryId(v);
+                  setSelectedSubjectId("");
+                  setSelectedSubjectName("");
+                  setSelectedSubjectCategory(null);
+                }}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select category…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeCats.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedCategoryId && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Feature</Label>
+                  <Select
+                    value={selectedSubjectId}
+                    onValueChange={(v) => {
+                      const f = selectedCat?.features.find(f => f.id === v);
+                      setSelectedSubjectId(v);
+                      setSelectedSubjectName(f?.name ?? "");
+                      setSelectedSubjectCategory(selectedCat?.name ?? null);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select feature…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(selectedCat?.features ?? []).map(f => (
+                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Score */}
+          {selectedSubjectId && (
+            <div className="space-y-1">
+              <Label className="text-xs text-gray-600">
+                {evalType === "vendor_evaluation" ? "Proposed Score (0–10)" : "Proposed Support Level"}
+              </Label>
+              {evalType === "vendor_evaluation" ? (
+                <Input type="number" min={0} max={10} step={0.1} value={value} onChange={e => setValue(e.target.value)} placeholder="e.g. 7.5" className="w-32 h-8 text-sm" />
+              ) : (
+                <Select value={value} onValueChange={setValue}>
+                  <SelectTrigger className="w-56 h-8 text-sm"><SelectValue placeholder="Select level…" /></SelectTrigger>
+                  <SelectContent>
+                    {HARVEY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {/* Commentary */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-600">Commentary (pre-seeded from signal)</Label>
+            <Textarea value={commentary} onChange={e => setCommentary(e.target.value)} rows={4} className="text-xs resize-y" />
+          </div>
+
+          <div className="flex gap-2 justify-end pt-1">
+            <Button size="sm" variant="outline" onClick={onClose} disabled={promoteMutation.isPending}>Cancel</Button>
+            <Button
+              size="sm"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              onClick={() => promoteMutation.mutate()}
+              disabled={!canSubmit || promoteMutation.isPending}
+            >
+              {promoteMutation.isPending ? "Creating…" : "Create Pending Suggestion"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Signals sub-panel ────────────────────────────────────────────────────
 
-function SignalsPanel() {
-  const { toast } = useToast();
+const SIGNAL_SENTIMENTS = [
+  { value: "all", label: "All Sentiments" },
+  { value: "POSITIVE", label: "Positive" },
+  { value: "NEGATIVE", label: "Negative" },
+  { value: "NEUTRAL", label: "Neutral" },
+  { value: "MIXED", label: "Mixed" },
+] as const;
+
+function SignalsPanel({ onSwitchToSuggestions }: { onSwitchToSuggestions?: () => void }) {
   const [vendorFilter, setVendorFilter] = useState("all");
   const [marketFilter, setMarketFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [createSignal, setCreateSignal] = useState<SignalData | null>(null);
+  const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [promoteSignal, setPromoteSignal] = useState<SignalData | null>(null);
 
   const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
@@ -535,50 +836,48 @@ function SignalsPanel() {
     queryKey: [signalsUrl],
   });
 
-  const signals = page?.data ?? [];
+  // Sentiment filter is client-side (not yet a backend param)
+  const signals = (page?.data ?? []).filter(
+    s => sentimentFilter === "all" || (s.sentiment ?? "").toUpperCase() === sentimentFilter
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={marketFilter} onValueChange={setMarketFilter}>
-          <SelectTrigger className="w-40 h-8 text-sm">
-            <SelectValue placeholder="All markets" />
-          </SelectTrigger>
+          <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="All markets" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All markets</SelectItem>
             {markets.map(m => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.name.replace(/^ITMAP for /i, "")}
-              </SelectItem>
+              <SelectItem key={m.id} value={m.id}>{m.name.replace(/^ITMAP for /i, "")}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Select value={vendorFilter} onValueChange={setVendorFilter}>
-          <SelectTrigger className="w-40 h-8 text-sm">
-            <SelectValue placeholder="All vendors" />
-          </SelectTrigger>
+          <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="All vendors" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All vendors</SelectItem>
-            {vendors.map(v => (
-              <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-            ))}
+            {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
           </SelectContent>
         </Select>
 
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-36 h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-32 h-8 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {SIGNAL_SOURCE_TYPES.map(s => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-            ))}
+            {SIGNAL_SOURCE_TYPES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+          <SelectTrigger className="w-32 h-8 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {SIGNAL_SENTIMENTS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
 
         {page && (
-          <span className="text-xs text-gray-400 ml-auto">{page.total} total</span>
+          <span className="text-xs text-gray-400 ml-auto">{signals.length} of {page.total}</span>
         )}
       </div>
 
@@ -595,36 +894,21 @@ function SignalsPanel() {
               key={s.id}
               signal={s}
               showVendor
-              onCreateSuggestion={setCreateSignal}
+              onCreateSuggestion={setPromoteSignal}
             />
           ))}
         </div>
       )}
 
-      {/* Create Suggestion pre-fill notice */}
-      {createSignal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 space-y-4">
-            <h3 className="font-semibold text-gray-900">Create Suggestion from Signal</h3>
-            <p className="text-sm text-gray-600">
-              This will open the AI Suggestions workflow pre-noted with this signal's context. The suggestion will be pre-filled with:
-            </p>
-            <div className="rounded-lg bg-gray-50 border p-3 text-xs space-y-1">
-              <p><span className="font-medium">Vendor:</span> {createSignal.vendorName}</p>
-              <p><span className="font-medium">Sentiment:</span> {createSignal.sentiment}</p>
-              <p><span className="font-medium">Impact:</span> {createSignal.impactLabel}</p>
-              <p className="text-gray-500 line-clamp-2"><span className="font-medium">Content:</span> {createSignal.content}</p>
-            </div>
-            <p className="text-xs text-gray-500">
-              To create a suggestion, use the Pending tab and approve/edit an AI-generated suggestion, or use the API directly. Manual signal-to-suggestion promotion is currently done via the admin approval flow.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="outline" onClick={() => setCreateSignal(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
+      {promoteSignal && (
+        <PromoteSignalModal
+          signal={promoteSignal}
+          onClose={() => setPromoteSignal(null)}
+          onPromoted={() => {
+            setPromoteSignal(null);
+            onSwitchToSuggestions?.();
+          }}
+        />
       )}
     </div>
   );
@@ -799,10 +1083,15 @@ export function AiSuggestionsAdmin() {
             <div>
               <h2 className="text-xl font-bold text-gray-900">All Signals</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Browse every collected signal regardless of whether it generated a suggestion. Use "Create Suggestion" to manually promote any signal.
+                Browse every collected signal regardless of whether it generated a suggestion. Use "Create Suggestion" to manually promote any signal to a pending suggestion.
               </p>
             </div>
-            <SignalsPanel />
+            <SignalsPanel
+              onSwitchToSuggestions={() => {
+                setMainTab("suggestions");
+                setTab("pending");
+              }}
+            />
           </div>
         </TabsContent>
       </Tabs>
