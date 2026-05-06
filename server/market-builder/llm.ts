@@ -100,24 +100,24 @@ async function callOpenAI<T>(
       : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   });
 
+  // Reasoning models (o-series) use max_completion_tokens and don't support response_format
+  const isReasoning = /^o\d/.test(config.model);
   const response = await client.chat.completions.create({
     model: config.model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.2,
-    max_tokens: 16384,
+    ...(isReasoning ? { max_completion_tokens: 32768 } : { response_format: { type: "json_object" }, temperature: 0.2, max_tokens: 32768 }),
   });
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("OpenAI returned an empty response");
   const finishReason = response.choices[0]?.finish_reason;
   if (finishReason === "length") {
-    console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}. Consider reducing vendor/feature count.`);
+    console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}.`);
   }
-  return JSON.parse(content) as T;
+  return extractJSON<T>(content);
 }
 
 // ── Anthropic ─────────────────────────────────────────────────────────────
@@ -169,9 +169,14 @@ async function callPerplexity<T>(
       { role: "user", content: userPrompt },
     ],
     temperature: 0.2,
+    max_tokens: 8000,
   });
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("Perplexity returned an empty response");
+  const finishReason = response.choices[0]?.finish_reason;
+  if (finishReason === "length") {
+    console.warn(`[LLM] Perplexity response truncated (finish_reason=length) for model ${config.model}.`);
+  }
   return extractJSON<T>(content);
 }
