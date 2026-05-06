@@ -174,6 +174,80 @@ Respond with ONLY a JSON object:
 }
 
 // ── Step 3: per-criterion commentary (uses scores from step 2) ────────────
+// Vendors are processed in batches of VENDOR_COMMENTARY_BATCH to keep each
+// LLM call focused. Batches run in parallel for speed.
+
+const VENDOR_COMMENTARY_BATCH = 5;
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+async function commentVendorBatch(
+  marketName: string,
+  vendors: Stage1Result["vendors"],
+  criterion: PredefinedCriterion,
+  rationale: string,
+  scores: Array<{ vendorName: string; score: number }>,
+  systemPrompt: string,
+  llmConfig: LLMConfig,
+  sourceContext: string,
+): Promise<Array<{ vendorName: string; commentary: string; sources: string[] }>> {
+  const vendorBlock = vendors.map(v => {
+    const s = matchByVendorName(scores, v.name)?.score ?? 0;
+    return `- ${v.name} (${v.product}) — assigned score: ${s.toFixed(1)}/10\n  ${v.description}`;
+  }).join("\n");
+
+  const userPrompt = `
+Market: ${marketName}
+Criterion: ${criterion.name} (${criterion.category} axis)
+Criterion description: ${criterion.description}
+Scoring rationale: ${rationale}
+
+Vendors and their pre-assigned scores (use EXACT vendor names in your response):
+${vendorBlock}
+${sourceContext}
+
+For EACH vendor above, write a detailed, evidence-based commentary that:
+- Is MINIMUM 120 words and MAXIMUM 250 words (count carefully — do not truncate)
+- Justifies and contextualises the assigned score with specific evidence
+- Names actual product capabilities, known limitations, version details, or real customer feedback
+- Is balanced: acknowledge both strengths and weaknesses regardless of the score
+- Contains NO inline citation markers — all sources go in the sources array
+- Cites 2–5 independent sources (no Gartner, G2, TrustRadius, Forrester, IDC)
+
+You MUST include all ${vendors.length} vendor(s) listed above.
+
+Respond with ONLY a JSON object:
+{
+  "commentary": [
+    { "vendorName": "<exact vendor name>", "commentary": "<120-250 words, no inline refs>", "sources": ["<Source Name — URL or description>"] }
+  ]
+}`;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callLLMForJSON<{ commentary: Array<{ vendorName: string; commentary: string; sources: string[] }> }>(
+      llmConfig, systemPrompt, userPrompt
+    );
+    if (!Array.isArray(result.commentary)) {
+      if (attempt === 2) throw new Error(`Stage 3 commentary: LLM returned non-array for "${criterion.name}"`);
+      continue;
+    }
+    // Validate word counts — warn if any are under the minimum
+    for (const c of result.commentary) {
+      const wc = countWords(c.commentary ?? "");
+      if (wc < 100) {
+        console.warn(`[Stage3] Short commentary for "${c.vendorName}" / "${criterion.name}": ${wc} words (min 100)`);
+      }
+    }
+    if (result.commentary.length >= vendors.length) return result.commentary;
+    if (attempt === 2) {
+      console.warn(`[Stage3] Commentary batch "${criterion.name}": expected ${vendors.length}, got ${result.commentary.length} — accepting partial`);
+      return result.commentary;
+    }
+  }
+  return [];
+}
 
 async function commentCriterion(
   marketName: string,
@@ -185,44 +259,24 @@ async function commentCriterion(
   llmConfig: LLMConfig,
   sourceContext: string,
 ): Promise<Array<{ vendorName: string; commentary: string; sources: string[] }>> {
-  const vendorBlock = stage1.vendors.map(v => {
-    const s = matchByVendorName(scores, v.name)?.score ?? 0;
-    return `- ${v.name} (${v.product}) — assigned score: ${s.toFixed(1)}/10\n  ${v.description}`;
-  }).join("\n");
-
   const vendorNames = stage1.vendors.map(v => v.name);
 
-  const userPrompt = `
-Market: ${marketName}
-Criterion: ${criterion.name} (${criterion.category} axis)
-Criterion description: ${criterion.description}
-Scoring rationale: ${rationale}
+  // Split into batches of VENDOR_COMMENTARY_BATCH, run all batches in parallel
+  const batches: Stage1Result["vendors"][] = [];
+  for (let i = 0; i < stage1.vendors.length; i += VENDOR_COMMENTARY_BATCH) {
+    batches.push(stage1.vendors.slice(i, i + VENDOR_COMMENTARY_BATCH));
+  }
 
-Vendors and their pre-assigned scores on this criterion (use these EXACT names in your response):
-${vendorBlock}
-${sourceContext}
-
-For each vendor, write a balanced 100–250 word commentary that justifies and contextualises the assigned score. Do NOT change the score. Cite 2–5 sources at the bottom of each commentary. You MUST include all ${vendorNames.length} vendors.
-
-Respond with ONLY a JSON object:
-{
-  "commentary": [
-    { "vendorName": "<exact vendor name from the list above>", "commentary": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
-  ]
-}`;
-
-  const result = await callLLMForJSON<{ commentary: Array<{ vendorName: string; commentary: string; sources: string[] }> }>(
-    llmConfig, systemPrompt, userPrompt
+  const batchResults = await Promise.all(
+    batches.map(batch =>
+      commentVendorBatch(marketName, batch, criterion, rationale, scores, systemPrompt, llmConfig, sourceContext)
+    )
   );
-  if (!Array.isArray(result.commentary)) {
-    throw new Error(`Stage 2 commentary: LLM returned non-array for "${criterion.name}". Got: ${JSON.stringify(result).slice(0, 200)}`);
-  }
-  if (result.commentary.length === 0) {
-    throw new Error(`Stage 2 commentary: LLM returned empty commentary array for "${criterion.name}"`);
-  }
-  const returnedNames = result.commentary.map(c => c.vendorName).join(", ");
-  console.log(`[Stage2] Commentary "${criterion.name}": LLM returned ${result.commentary.length}/${vendorNames.length} vendors: ${returnedNames}`);
-  return result.commentary;
+
+  const allCommentary = batchResults.flat();
+  const returnedNames = allCommentary.map(c => c.vendorName).join(", ");
+  console.log(`[Stage3] Commentary "${criterion.name}": ${allCommentary.length}/${vendorNames.length} vendors across ${batches.length} batch(es): ${returnedNames}`);
+  return allCommentary;
 }
 
 // ── Auto-computed criteria — never sent to LLM ────────────────────────────

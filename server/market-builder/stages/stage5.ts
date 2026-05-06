@@ -130,6 +130,10 @@ Respond with ONLY a JSON object:
   return [];
 }
 
+function countWords5(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 async function commentEcosystemBatch(
   marketName: string,
   vendor: Stage1Vendor,
@@ -150,21 +154,32 @@ Vendor: ${vendor.name} (${vendor.product})
 Vendor description: ${vendor.description}
 ${sourceContext}
 
-For each integration, write a 100–250 word balanced commentary that justifies the assigned Harvey Ball score. Do NOT change the score.
+For each of the following integrations, write a detailed, evidence-based commentary that:
+- Is MINIMUM 120 words and MAXIMUM 250 words (count carefully — do not truncate)
+- Justifies the assigned Harvey Ball score with specific evidence
+- References official certification status, API/SDK availability, version requirements, supported connectors
+- Is balanced: acknowledge both genuine strengths AND real limitations regardless of score
+- Contains NO inline citation markers — all sources go in the sources array
 
 ${featureBlock}
 
 Respond with ONLY a JSON object:
 {
   "commentary": [
-    { "categoryName": "<exact category>", "featureName": "<exact integration>", "comments": "<100-250 words>", "sources": ["<source 1>", "<source 2>"] }
+    { "categoryName": "<exact category>", "featureName": "<exact integration>", "comments": "<120-250 words, no inline refs>", "sources": ["<Source Name — URL or description>"] }
   ]
 }`;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const result = await callLLMForJSON<{ commentary: Array<{ categoryName: string; featureName: string; comments: string; sources: string[] }> }>(
       llmConfig, systemPrompt, userPrompt
     );
-    if (Array.isArray(result.commentary) && result.commentary.length >= features.length * 0.85) return result.commentary;
+    if (Array.isArray(result.commentary)) {
+      for (const c of result.commentary) {
+        const wc = countWords5(c.comments ?? "");
+        if (wc < 100) console.warn(`[Stage9] Short commentary for "${vendor.name}" / "${c.featureName}": ${wc} words (min 100)`);
+      }
+      if (result.commentary.length >= features.length * 0.85) return result.commentary;
+    }
     if (attempt === 2) return result.commentary ?? [];
   }
   return [];

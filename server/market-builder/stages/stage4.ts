@@ -87,6 +87,10 @@ Respond with ONLY a JSON object:
 
 // ── Per-batch commentary call (uses pre-assigned scores) ──────────────────
 
+function countWords4(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 async function commentFeatureBatch(
   marketName: string,
   vendor: Stage1Vendor,
@@ -107,14 +111,19 @@ Vendor: ${vendor.name} (${vendor.product})
 Vendor description: ${vendor.description}
 ${sourceContext}
 
-For each of the following features, write a 100–250 word balanced commentary that justifies the assigned Harvey Ball score. Do NOT change the score.
+For each of the following features, write a detailed, evidence-based commentary that:
+- Is MINIMUM 120 words and MAXIMUM 250 words (count carefully — do not truncate)
+- Justifies the assigned Harvey Ball score with specific product evidence
+- Names actual feature names, version capabilities, known bugs or limitations, API details
+- Is balanced: acknowledge both strengths and real limitations regardless of score
+- Contains NO inline citation markers — all sources go in the sources array
 
 ${featureBlock}
 
 Respond with ONLY a JSON object:
 {
   "commentary": [
-    { "categoryName": "<exact category name>", "featureName": "<exact feature name>", "comments": "<100-250 words, no inline refs>", "sources": ["<source 1>", "<source 2>"] }
+    { "categoryName": "<exact category name>", "featureName": "<exact feature name>", "comments": "<120-250 words, no inline refs>", "sources": ["<Source Name — URL or description>"] }
   ]
 }`;
 
@@ -122,9 +131,16 @@ Respond with ONLY a JSON object:
     const result = await callLLMForJSON<{ commentary: Array<{ featureName: string; categoryName: string; comments: string; sources: string[] }> }>(
       llmConfig, systemPrompt, userPrompt
     );
-    if (Array.isArray(result.commentary) && result.commentary.length >= features.length * 0.85) return result.commentary;
+    if (Array.isArray(result.commentary)) {
+      // Validate word counts
+      for (const c of result.commentary) {
+        const wc = countWords4(c.comments ?? "");
+        if (wc < 100) console.warn(`[Stage6] Short commentary for "${vendor.name}" / "${c.featureName}": ${wc} words (min 100)`);
+      }
+      if (result.commentary.length >= features.length * 0.85) return result.commentary;
+    }
     if (attempt === 2) {
-      console.warn(`[Stage4] Commentary batch (${vendor.name}): expected ${features.length}, got ${result.commentary?.length ?? 0} — accepting partial`);
+      console.warn(`[Stage6] Commentary batch (${vendor.name}): expected ${features.length}, got ${result.commentary?.length ?? 0} — accepting partial`);
       return result.commentary ?? [];
     }
   }
