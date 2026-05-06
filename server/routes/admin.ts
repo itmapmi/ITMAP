@@ -563,6 +563,60 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // ── Vendor Signals ────────────────────────────────────────────────────────
+
+  app.get('/api/admin/vendor-signals', requireAdmin, async (req, res) => {
+    try {
+      const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
+      const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
+      const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+
+      const { getVendorSignals } = await import('../storage/signals');
+      const signals = await getVendorSignals({ vendorId, marketId, sourceType: sourceType as any, limit, offset });
+      res.json(signals);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/admin/vendor-signals/collect', requireAdmin, async (req, res) => {
+    try {
+      const { vendorId, marketId } = req.body ?? {};
+      const { collectSignalsForVendor, collectSignalsForMarket, collectSignalsForAllVendors } = await import('../signals/orchestrator');
+
+      let results;
+      if (vendorId) {
+        const { storage } = await import('../storage');
+        const vendor = await storage.getVendorById(vendorId);
+        if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+        results = [await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId)];
+      } else if (marketId) {
+        results = await collectSignalsForMarket(marketId);
+      } else {
+        results = await collectSignalsForAllVendors();
+      }
+
+      const totalNew = results.reduce((s: number, r: any) => s + r.new, 0);
+      const totalSuggestions = results.reduce((s: number, r: any) => s + r.suggestionsTriggered, 0);
+      res.json({ results, summary: { totalNew, totalSuggestions } });
+    } catch (err: any) {
+      console.error('[Admin] Signal collection error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/admin/vendor-signals/:id', requireAdmin, async (req, res) => {
+    try {
+      const { deleteVendorSignal } = await import('../storage/signals');
+      await deleteVendorSignal(req.params.id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/admin/ai-suggestions/:id/reject', requireAdmin, async (req, res) => {
     try {
       const suggestion = await storage.getAiSuggestionById(req.params.id);

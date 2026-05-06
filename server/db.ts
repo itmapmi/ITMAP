@@ -116,7 +116,28 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS is_ecosystem boolean NOT NULL DEFAULT false
     `);
 
-    // 9. Fix any anthropic jobs that have invalid/deprecated model IDs
+    // 9. vendor_signals — unified multi-source intelligence feed
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vendor_signals (
+        id                varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vendor_id         varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        market_id         varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        source_type       text NOT NULL,
+        title             text NOT NULL,
+        content           text,
+        url               text,
+        sentiment         text,
+        sentiment_score   decimal(4,3),
+        impact_label      text,
+        fed_into_suggestion boolean NOT NULL DEFAULT false,
+        ai_suggestion_id  varchar REFERENCES ai_suggestions(id) ON DELETE SET NULL,
+        signal_date       timestamp,
+        collected_at      timestamp DEFAULT now(),
+        raw_data          jsonb
+      )
+    `);
+
+    // 10. Fix any anthropic jobs that have invalid/deprecated model IDs
     await client.query(`
       UPDATE market_builder_jobs
       SET llm_model = 'claude-3-7-sonnet-20250219'

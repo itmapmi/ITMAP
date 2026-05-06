@@ -895,6 +895,62 @@ export const insertMarketBuilderLlmSelectionSchema = createInsertSchema(marketBu
 export type MarketBuilderLlmSelection = typeof marketBuilderLlmSelections.$inferSelect;
 export type InsertMarketBuilderLlmSelection = z.infer<typeof insertMarketBuilderLlmSelectionSchema>;
 
+// ── Vendor Signals — unified multi-source intelligence feed ──────────────
+// One row per discrete signal collected from HN, Reddit, GitHub, or Layoffs.fyi.
+// HN and Layoffs HIGH/MEDIUM signals auto-generate AI suggestions; Reddit and
+// GitHub are stored for display / transparency only.
+
+export const vendorSignals = pgTable("vendor_signals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+
+  // Source: hackernews | reddit | github | layoffs
+  sourceType: text("source_type").notNull(),
+
+  title: text("title").notNull(),
+  content: text("content"),          // excerpt / summary
+  url: text("url"),                  // link to original; used for dedup
+
+  // Classifier output
+  sentiment: text("sentiment"),      // positive | negative | neutral | mixed
+  sentimentScore: decimal("sentiment_score", { precision: 4, scale: 3 }),
+  impactLabel: text("impact_label"), // HIGH | MEDIUM | LOW
+
+  // Did this signal trigger an AI suggestion?
+  fedIntoSuggestion: boolean("fed_into_suggestion").notNull().default(false),
+  aiSuggestionId: varchar("ai_suggestion_id").references(() => aiSuggestions.id, { onDelete: "set null" }),
+
+  signalDate: timestamp("signal_date"),
+  collectedAt: timestamp("collected_at").default(sql`now()`),
+
+  // Source-specific metadata (HN upvotes, Reddit score, GitHub stats, etc.)
+  rawData: jsonb("raw_data"),
+});
+
+export const vendorSignalsRelations = relations(vendorSignals, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [vendorSignals.vendorId],
+    references: [vendors.id],
+  }),
+  market: one(markets, {
+    fields: [vendorSignals.marketId],
+    references: [markets.id],
+  }),
+  aiSuggestion: one(aiSuggestions, {
+    fields: [vendorSignals.aiSuggestionId],
+    references: [aiSuggestions.id],
+  }),
+}));
+
+export const insertVendorSignalSchema = createInsertSchema(vendorSignals).omit({
+  id: true,
+  collectedAt: true,
+});
+
+export type InsertVendorSignal = z.infer<typeof insertVendorSignalSchema>;
+export type VendorSignal = typeof vendorSignals.$inferSelect;
+
 // ── User BYO LLM API Keys ────────────────────────────────────────────────
 // Stores per-user API keys for end-user Market Builder runs. The platform
 // does not pay for end-user LLM usage, so each end user must supply their

@@ -167,6 +167,24 @@ export class CronJobManager {
 
     this.jobs.set('newPlayersDiscovery', newPlayersDiscoveryJob);
 
+    // Signal collection every 12 hours — 8:00 AM and 8:00 PM UTC
+    const signalCollectionJob = cron.schedule('0 8,20 * * *', async () => {
+      console.log('[Cron] Starting vendor signal collection...');
+      try {
+        const { collectSignalsForAllVendors } = await import('./signals/orchestrator');
+        const results = await collectSignalsForAllVendors();
+        const totalNew = results.reduce((s, r) => s + r.new, 0);
+        const totalSuggestions = results.reduce((s, r) => s + r.suggestionsTriggered, 0);
+        console.log(`[Cron] Signal collection done: ${totalNew} new signals, ${totalSuggestions} suggestions triggered`);
+        this.lastRun.set('signalCollection', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in signal collection:', error);
+        this.lastRun.set('signalCollection', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+
+    this.jobs.set('signalCollection', signalCollectionJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 
@@ -279,6 +297,12 @@ export class CronJobManager {
       running: this.jobs.has('newPlayersDiscovery'),
       nextRun: 'Monthly on the 1st at 5:00 AM UTC',
       lastRun: this.lastRun.get('newPlayersDiscovery')
+    };
+
+    status['signalCollection'] = {
+      running: this.jobs.has('signalCollection'),
+      nextRun: 'Every 12 hours (8:00 AM and 8:00 PM UTC)',
+      lastRun: this.lastRun.get('signalCollection')
     };
 
     return status;

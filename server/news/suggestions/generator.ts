@@ -323,6 +323,181 @@ If no changes are warranted: {"suggestions": []}`;
   console.log(`[Suggestions] ${vendorName}: saved ${savedCount} suggestion(s)`);
 }
 
+// ─── Signal-driven suggestion generator ───────────────────────────────────
+
+export interface SignalContext {
+  signalId: string;
+  sourceType: string;
+  title: string;
+  content: string | null | undefined;
+  sentiment: string;
+  impactLabel: string;
+  signalDate: Date;
+  url: string | null | undefined;
+}
+
+/**
+ * Generate an AI suggestion from a single vendor signal (HN / Layoffs).
+ * Returns the suggestion ID if one was created, or null if skipped.
+ */
+export async function generateSuggestionsFromSignal(
+  vendorId: string,
+  signal: SignalContext
+): Promise<string | null> {
+  const [vendorRow] = await db
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId })
+    .from(vendors)
+    .where(eq(vendors.id, vendorId));
+
+  if (!vendorRow) return null;
+
+  const [marketRow] = await db
+    .select({ name: markets.name })
+    .from(markets)
+    .where(eq(markets.id, vendorRow.marketId));
+
+  const marketName = marketRow?.name ?? 'Unknown Market';
+  const { scores, featureRows } = await buildVendorContext(vendorId);
+
+  if (!scores.length && !featureRows.length) {
+    console.log(`[Suggestions] ${vendorRow.name}: no scores/features configured — skipping signal`);
+    return null;
+  }
+
+  const sourceLabel = signal.sourceType === 'hackernews' ? 'Hacker News' : 'Layoffs.fyi';
+  const excerpt = signal.content ? signal.content.slice(0, 600) : '';
+
+  const prompt = `You are a senior technology market analyst updating enterprise market research data based on a new intelligence signal.
+
+VENDOR: ${vendorRow.name}
+MARKET: ${marketName}
+
+══════════════════════════════
+SIGNAL (from ${sourceLabel})
+══════════════════════════════
+Title: ${signal.title}
+Sentiment: ${signal.sentiment} | Impact: ${signal.impactLabel}
+Date: ${signal.signalDate.toISOString().split('T')[0]}
+${signal.url ? `Source: ${signal.url}` : ''}
+${excerpt ? `Excerpt: ${excerpt}` : ''}
+
+══════════════════════════════
+CURRENT VENDOR EVALUATION SCORES (0-10 scale)
+══════════════════════════════
+${formatScoresSection(scores)}
+
+══════════════════════════════
+CURRENT FEATURE SUPPORT LEVELS (Harvey Ball 0-4 scale)
+0=Not Supported, 1=Limited (25%), 2=Partial (50%), 3=Good (75%), 4=Full (100%)
+══════════════════════════════
+${formatFeaturesSection(featureRows)}
+
+══════════════════════════════
+YOUR TASK
+══════════════════════════════
+Based ONLY on the signal above, identify ONE specific data point that should change — if any.
+
+STRICT RULES:
+1. CRITERION SCORES: Only suggest changes for HIGH-impact signals with clear, direct business implications on that specific criterion.
+2. FEATURE SUPPORT: Only suggest changes when the signal describes a concrete new capability launch, upgrade, or deprecation.
+3. COMMENTARY: Provide the COMPLETE updated text — integrate the signal as a concise addendum (1-3 sentences max).
+4. Never suggest a score change without also providing updated commentary.
+5. If no score or feature is clearly affected, return {"suggestions": []}.
+6. Score changes should be modest (0.3-1.0 for criteria, 1 level for features).
+
+Return ONLY valid JSON with no markdown fences:
+{
+  "suggestions": [
+    {
+      "type": "criterion_score",
+      "subject_id": "<exact criterion_id from the list above>",
+      "current_value": 7.5,
+      "suggested_value": 7.0,
+      "current_commentary": "<copy of current notes, or null if none>",
+      "suggested_commentary": "<complete updated notes text>",
+      "reasoning": "<specific explanation citing the signal and why it warrants this change>",
+      "confidence": "MEDIUM"
+    }
+  ]
+}`;
+
+  let rawText = '';
+  try {
+    const response = await getOpenAI().chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      max_tokens: 2000,
+    });
+    rawText = response.choices[0]?.message?.content ?? '';
+  } catch (err: any) {
+    console.error(`[Suggestions] Signal OpenAI call failed for ${vendorRow.name}: ${err.message}`);
+    return null;
+  }
+
+  const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) return null;
+
+  let parsed: { suggestions?: RawSuggestion[] };
+  try {
+    parsed = JSON.parse(cleaned.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+
+  const suggestions = parsed.suggestions ?? [];
+  if (!suggestions.length) {
+    console.log(`[Suggestions] ${vendorRow.name}: no changes warranted by signal "${signal.title.slice(0, 60)}"`);
+    return null;
+  }
+
+  const s = suggestions[0];
+  if (!s.subject_id || s.current_value === s.suggested_value) return null;
+  if (s.type !== 'criterion_score' && s.type !== 'feature_support') return null;
+
+  const isDuplicate = await storage.hasPendingDuplicateSuggestion(vendorId, s.subject_id);
+  if (isDuplicate) {
+    console.log(`[Suggestions] Skipping duplicate pending for ${vendorRow.name} / ${s.subject_id}`);
+    return null;
+  }
+
+  let subjectName = s.subject_id;
+  let subjectCategory: string | null = null;
+  if (s.type === 'criterion_score') {
+    const match = scores.find(sc => sc.criterionId === s.subject_id);
+    if (!match) return null;
+    subjectName = match.name;
+    subjectCategory = match.category;
+  } else {
+    const match = featureRows.find(f => f.featureId === s.subject_id);
+    if (!match) return null;
+    subjectName = match.featureName;
+    subjectCategory = match.categoryName;
+  }
+
+  const created = await storage.createAiSuggestion({
+    vendorId,
+    marketId: vendorRow.marketId,
+    status: 'pending',
+    suggestionType: s.type,
+    subjectId: s.subject_id,
+    subjectName,
+    subjectCategory,
+    currentValue: s.current_value != null ? String(s.current_value) : null,
+    suggestedValue: s.suggested_value != null ? String(s.suggested_value) : null,
+    currentCommentary: s.current_commentary ?? null,
+    suggestedCommentary: s.suggested_commentary ?? null,
+    reasoning: s.reasoning,
+    confidence: s.confidence === 'HIGH' ? 'HIGH' : 'MEDIUM',
+    triggeredByArticleIds: [],
+  });
+
+  console.log(`[Suggestions] ${vendorRow.name}: created suggestion ${created.id} from signal "${signal.title.slice(0, 60)}"`);
+  return created.id;
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────
 
 export interface SuggestionGenerationResult {

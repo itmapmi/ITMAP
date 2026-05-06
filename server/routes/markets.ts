@@ -581,6 +581,31 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // ── Vendor Signals (market-scoped, auth-gated) ────────────────────────────
+
+  app.get("/api/markets/:marketId/vendor-signals", requireMarketAccess, async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
+      const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 15;
+
+      const { getVendorSignals } = await import('../storage/signals');
+      const signals = await getVendorSignals({
+        vendorId,
+        marketId: req.params.marketId,
+        sourceType: sourceType as any,
+        limit,
+      });
+      res.json(signals);
+    } catch (error) {
+      console.error("Error fetching vendor signals:", error);
+      res.status(500).json({ error: "Failed to fetch vendor signals" });
+    }
+  });
+
   // ── Research Reports (market-scoped listing) ───────────────────────────────
 
   app.get("/api/markets/:marketId/reports", requireMarketAccess, async (req, res) => {

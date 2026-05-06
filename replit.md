@@ -41,7 +41,8 @@ Preferred communication style: Simple, everyday language.
 - **Database**: Replit managed PostgreSQL (DATABASE_URL env var) — 27 tables migrated from NeonDB
 - **File Uploads**: Google Cloud Storage and Uppy
 - **Development**: TSX
-- **Cron jobs**: 7 running (news ingestion, weekly backup, health check, user logs cleanup, news cleanup, newsroom health, new players discovery)
+- **Cron jobs**: 8 running (news ingestion, weekly backup, health check, user logs cleanup, news cleanup, newsroom health, new players discovery, signal collection)
+- **Vendor Signal Pipeline**: Multi-source intelligence collector (`server/signals/`) — HN (Algolia API), Reddit (OpenAI web_search), Layoffs.fyi (web_search), GitHub (public REST API). GPT-4o-mini classifies each signal (sentiment, score, impact). HN/Layoffs HIGH+MEDIUM signals feed into AI suggestion pipeline. Schema: `vendor_signals` table. Storage: `server/storage/signals.ts`. Admin APIs: `GET/POST/DELETE /api/admin/vendor-signals`.
 
 ### Key Pages (Public — Dark Premium Design)
 - `/` — Home (`client/src/pages/home.tsx`): Hero, stats, live market cards, features, news preview, footer

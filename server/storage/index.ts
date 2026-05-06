@@ -34,6 +34,7 @@ export * from "./admin";
 export * from "./marketBuilder";
 export * from "./prompts";
 export * from "./userLlmKeys";
+export * from "./signals";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
