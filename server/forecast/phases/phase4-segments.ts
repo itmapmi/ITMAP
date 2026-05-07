@@ -89,12 +89,16 @@ export function validateSegmentTree(segments: SegmentInput[]): SegmentValidation
     return false;
   }
 
-  for (const root of (childrenMap.get(rootKey) ?? [])) {
-    if (dfs(root)) {
-      return {
-        code: "CYCLE",
-        detail: `Cycle detected in segment tree. Fix segment parentage before building.`,
-      };
+  // Traverse ALL nodes — not just roots — so disconnected cycles (all nodes
+  // have parents that form a cycle with no root) are also detected.
+  for (const segment of segments) {
+    if (!visited.has(segment.id)) {
+      if (dfs(segment.id)) {
+        return {
+          code: "CYCLE",
+          detail: `Cycle detected in segment tree (disconnected component containing "${segment.name}"). Fix segment parentage before building.`,
+        };
+      }
     }
   }
 

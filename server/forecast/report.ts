@@ -474,43 +474,112 @@ function genSection8Register(forecast: ForecastFull): string {
 
 // ── QC passes ─────────────────────────────────────────────────────────────────
 
+/**
+ * Internal consistency — hard gate (called in phase4.ts before report).
+ *
+ * Checks:
+ * 1. Scenario ordering: bull ≥ base (within tolerance), bear ≤ bull, bear ≥ 0.
+ * 2. Compounding path sanity: every year-over-year growth in the base path
+ *    must be within [−50%, +200%] — catches engine arithmetic bugs early.
+ */
 export function qcInternalConsistency(engine: EngineOutput, tolerancePct = 0.1): boolean {
-  const horizonYear = Math.max(...Object.keys(engine.baseScenario.totalForecastPath).map(Number));
+  const years = Object.keys(engine.baseScenario.totalForecastPath)
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (years.length === 0) return false;
+  const horizonYear = years[years.length - 1];
   const baseTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
   const bullTotal = engine.bullScenario.totalForecastPath[horizonYear] ?? 0;
   const bearTotal = engine.bearScenario.totalForecastPath[horizonYear] ?? 0;
-  return (
-    bullTotal >= baseTotal * (1 - tolerancePct) &&
-    bearTotal <= bullTotal * (1 + tolerancePct) &&
-    bearTotal >= 0
-  );
+
+  // Scenario ordering
+  if (!(bullTotal >= baseTotal * (1 - tolerancePct))) return false;
+  if (!(bearTotal <= bullTotal * (1 + tolerancePct))) return false;
+  if (!(bearTotal >= 0)) return false;
+
+  // Compounding path validation: year-over-year growth must be plausible
+  for (let i = 0; i < years.length - 1; i++) {
+    const bv  = engine.baseScenario.totalForecastPath[years[i]]     ?? 0;
+    const bvn = engine.baseScenario.totalForecastPath[years[i + 1]] ?? 0;
+    if (bvn <= 0) return false; // path values must be positive
+    if (bv > 0) {
+      const g = (bvn - bv) / bv;
+      if (g < -0.5 || g > 2.0) return false; // >200% or <−50% annual growth = implausible
+    }
+  }
+  return true;
 }
 
-export function qcSchemaCompleteness(forecast: ForecastFull): boolean {
+/**
+ * Schema completeness — hard gate checked before report generation.
+ *
+ * When `sections` is provided (post-generation), also runs traceability
+ * validation: every assumption ID tag [xxxxxxxx] in LLM prose sections 1-6
+ * must reference a real DB assumption UUID prefix.
+ */
+export function qcSchemaCompleteness(forecast: ForecastFull, sections?: ReportSection[]): boolean {
   if (!forecast.title) return false;
   if (forecast.baseYear == null) return false;
   if (forecast.forecastHorizonYears == null) return false;
-  return forecast.assumptions.every(
-    a => a.description && (a.value != null || a.currentValue != null)
-  );
+  if (!forecast.assumptions.every(a => a.description && (a.value != null || a.currentValue != null))) {
+    return false;
+  }
+
+  // Traceability: every assumption ID tag referenced in prose must exist in DB
+  if (sections && sections.length > 0) {
+    const validPrefixes = new Set(forecast.assumptions.map(a => a.id.slice(0, 8)));
+    for (const s of sections.filter(s => s.id >= 1 && s.id <= 6)) {
+      for (const tag of (s.content.match(/\[([a-z0-9]{8})\]/g) ?? [])) {
+        if (!validPrefixes.has(tag.slice(1, 9))) return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Traceability check — run against generated sections.
+ * Returns which sections contain assumption ID tags that don't match any
+ * real assumption UUID prefix, so the retry can target exactly those sections.
+ */
+function qcTraceabilityCheck(
+  sections: ReportSection[],
+  assumptions: ForecastAssumption[]
+): { passed: boolean; failingSections: number[]; badTags: string[] } {
+  const validPrefixes = new Set(assumptions.map(a => a.id.slice(0, 8)));
+  const failingSections: number[] = [];
+  const badTags: string[] = [];
+
+  for (const s of sections.filter(s => s.id >= 1 && s.id <= 6)) {
+    let sectionFailed = false;
+    for (const tag of (s.content.match(/\[([a-z0-9]{8})\]/g) ?? [])) {
+      const prefix = tag.slice(1, 9);
+      if (!validPrefixes.has(prefix)) {
+        if (!badTags.includes(tag)) badTags.push(tag);
+        sectionFailed = true;
+      }
+    }
+    if (sectionFailed) failingSections.push(s.id);
+  }
+  return { passed: badTags.length === 0, failingSections, badTags };
 }
 
 /**
  * Narrative coherence QC — blocking gate.
  *
- * Checks two things:
- * 1. No explicit numerical contradictions between section excerpts.
- * 2. The top-ranked assumption (highest sensitivity) is mentioned in the
- *    executive summary or drivers section (traceability coverage check).
+ * Checks:
+ * 1. No explicit numerical contradictions between sections.
+ * 2. Top-ranked assumption is mentioned in section 1 or 4.
  *
- * Returns { coherent: boolean, issue?: string }.
+ * Returns which specific sections the LLM deems incoherent so the retry
+ * regenerates only those sections rather than blindly retrying 1+4.
  */
 async function qcNarrativeCoherence(
   client: OpenAI,
   sections: ReportSection[],
   topDriverId: string | null,
   topDriverDesc: string | null
-): Promise<{ coherent: boolean; issue?: string }> {
+): Promise<{ coherent: boolean; issue?: string; failingSections: number[] }> {
   const combined = sections
     .filter(s => s.id <= 6)
     .map(s => `## Section ${s.id}: ${s.title}\n${s.content.slice(0, 500)}`)
@@ -518,17 +587,17 @@ async function qcNarrativeCoherence(
 
   const coverageCheck =
     topDriverId && topDriverDesc
-      ? `\nAlso verify that the top-ranked driver "${topDriverDesc}" (ID: ${topDriverId}) is explicitly mentioned in section 1 or section 4. If not, set coherent to false with issue "top driver not mentioned".`
+      ? `\nAlso verify that the top-ranked driver "${topDriverDesc}" (ID: ${topDriverId}) is explicitly mentioned in section 1 or section 4. If it is missing, set coherent to false with issue "top driver not mentioned" and include 1 and 4 in failingSections.`
       : "";
 
   const resp = await client.chat.completions.create({
     model: "gpt-4o-mini",
-    max_tokens: 150,
+    max_tokens: 200,
     temperature: 0,
     messages: [
       {
         role: "system",
-        content: `You are a QC reviewer. Check the following report excerpts for: (a) explicit numerical contradictions (different values for the same metric), (b) internal logical inconsistencies.${coverageCheck}\nReply ONLY with valid JSON: { "coherent": true } or { "coherent": false, "issue": "brief description" }`,
+        content: `You are a QC reviewer. Check the following report excerpts for: (a) explicit numerical contradictions (different values for the same metric in different sections), (b) internal logical inconsistencies.${coverageCheck}\nReply ONLY with valid JSON: { "coherent": true } or { "coherent": false, "issue": "brief description", "failingSections": [1, 4] } where failingSections is the list of section IDs that need regeneration.`,
       },
       { role: "user", content: combined },
     ],
@@ -536,13 +605,22 @@ async function qcNarrativeCoherence(
 
   try {
     const text = resp.choices[0]?.message?.content ?? "{}";
-    const json = JSON.parse(text.replace(/```json|```/g, "").trim()) as { coherent?: boolean; issue?: string };
+    const json = JSON.parse(text.replace(/```json|```/g, "").trim()) as {
+      coherent?: boolean;
+      issue?: string;
+      failingSections?: unknown;
+    };
     if (json.coherent === false) {
-      return { coherent: false, issue: json.issue ?? "Narrative QC found issues" };
+      const raw = json.failingSections;
+      const failingSections =
+        Array.isArray(raw) && raw.length > 0
+          ? (raw as unknown[]).filter((x): x is number => typeof x === "number")
+          : [1, 4]; // fallback to most-likely culprits
+      return { coherent: false, issue: json.issue ?? "Narrative QC found issues", failingSections };
     }
-    return { coherent: true };
+    return { coherent: true, failingSections: [] };
   } catch {
-    return { coherent: true }; // parse error → treat as pass
+    return { coherent: true, failingSections: [] }; // parse error → treat as pass
   }
 }
 
@@ -570,13 +648,12 @@ export async function generateReport(
       ? Math.round(((Math.pow(baseTotal / baseStart, 1 / horizonYears) - 1) * 100) * 100) / 100
       : 0;
 
-  // Identify top-ranked driver (highest sensitivity) for QC coverage check
   const sortedAssumptions = [...forecast.assumptions].sort(
     (a, b) => (a.sensitivityRank ?? 999) - (b.sensitivityRank ?? 999)
   );
   const topDriver = sortedAssumptions[0] ?? null;
-
-  const sections: ReportSection[] = [];
+  const topDriverIdShort = topDriver ? topDriver.id.slice(0, 8) : null;
+  const topDriverDesc = topDriver?.description ?? null;
 
   const SECTION_META = [
     { id: 1, title: "Executive Summary" },
@@ -589,52 +666,70 @@ export async function generateReport(
     { id: 8, title: "Sources & Assumptions Register" },
   ];
 
+  // Build a generator map so any section can be (re)generated by ID
+  type GenFn = () => Promise<string> | string;
+  const generators = new Map<number, GenFn>([
+    [1, () => genSection1ExecSummary(client, forecast, engine, horizonYear, currency)],
+    [2, () => genSection2MarketDefMethodology(client, forecast)],
+    [3, () => genSection3MarketSizing(client, forecast, engine, currency)],
+    [4, () => genSection4Drivers(client, forecast)],
+    [5, () => genSection5BaseScenario(client, forecast, engine, horizonYear, currency)],
+    [6, () => genSection6BullBear(client, forecast, engine, horizonYear, currency)],
+    [7, () => genSection7Sensitivity(forecast, engine, currency)],
+    [8, () => genSection8Register(forecast)],
+  ]);
+
+  // ── Generate all sections ──────────────────────────────────────────────────
+  const sections: ReportSection[] = [];
   for (const meta of SECTION_META) {
     onProgress(meta.id, meta.title);
-
-    let content = "";
-
-    switch (meta.id) {
-      case 1: content = await genSection1ExecSummary(client, forecast, engine, horizonYear, currency); break;
-      case 2: content = await genSection2MarketDefMethodology(client, forecast); break;
-      case 3: content = await genSection3MarketSizing(client, forecast, engine, currency); break;
-      case 4: content = await genSection4Drivers(client, forecast); break;
-      case 5: content = await genSection5BaseScenario(client, forecast, engine, horizonYear, currency); break;
-      case 6: content = await genSection6BullBear(client, forecast, engine, horizonYear, currency); break;
-      case 7: content = genSection7Sensitivity(forecast, engine, currency); break;
-      case 8: content = genSection8Register(forecast); break;
-    }
-
+    const gen = generators.get(meta.id)!;
+    const content = await gen();
     sections.push({ id: meta.id, title: meta.title, content });
   }
 
-  // ── QC Pass 3: Narrative coherence — blocking gate with retry ─────────────
-  onProgress(0, "Running narrative QC…");
-  const topDriverIdShort = topDriver ? topDriver.id.slice(0, 8) : null;
-  const topDriverDesc = topDriver?.description ?? null;
+  // ── QC: traceability + narrative coherence — blocking gates with retry ─────
+  onProgress(0, "Running QC checks…");
 
-  let qcResult = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
+  const traceResult = qcTraceabilityCheck(sections, forecast.assumptions);
+  const ncResult = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-  if (!qcResult.coherent) {
-    // Retry: regenerate only sections 1 and 4 (exec summary + drivers — most likely culprits)
-    onProgress(1, "Regenerating Executive Summary (QC retry)…");
-    const newS1 = await genSection1ExecSummary(client, forecast, engine, horizonYear, currency);
-    const s1Idx = sections.findIndex(s => s.id === 1);
-    if (s1Idx >= 0) sections[s1Idx] = { id: 1, title: "Executive Summary", content: newS1 };
+  const qcFailed = !traceResult.passed || !ncResult.coherent;
 
-    onProgress(4, "Regenerating Drivers section (QC retry)…");
-    const newS4 = await genSection4Drivers(client, forecast);
-    const s4Idx = sections.findIndex(s => s.id === 4);
-    if (s4Idx >= 0) sections[s4Idx] = { id: 4, title: "Growth Drivers & Risk Factors", content: newS4 };
+  if (qcFailed) {
+    // Collect the exact failing sections from all QC passes — no blind retry
+    const failingIds = [...new Set([...traceResult.failingSections, ...ncResult.failingSections])];
 
-    // Second QC pass after regeneration
-    qcResult = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
+    onProgress(0, `QC retry — regenerating section(s) ${failingIds.join(", ")}…`);
+    for (const id of failingIds) {
+      const meta = SECTION_META.find(m => m.id === id);
+      if (!meta) continue;
+      onProgress(id, `Regenerating Section ${id}: ${meta.title} (QC retry)…`);
+      const gen = generators.get(id);
+      if (!gen) continue;
+      const newContent = await gen();
+      const idx = sections.findIndex(s => s.id === id);
+      if (idx >= 0) sections[idx] = { id, title: meta.title, content: newContent };
+    }
 
-    if (!qcResult.coherent) {
-      // Hard stop — surface actionable error
+    // Re-run both QC checks against the regenerated sections
+    const traceResult2 = qcTraceabilityCheck(sections, forecast.assumptions);
+    const ncResult2 = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
+
+    if (!traceResult2.passed || !ncResult2.coherent) {
+      const issues: string[] = [];
+      if (!traceResult2.passed) {
+        issues.push(
+          `Traceability: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
+          `in sections ${traceResult2.failingSections.join(", ")}`
+        );
+      }
+      if (!ncResult2.coherent) {
+        issues.push(`Narrative coherence: ${ncResult2.issue ?? "contradictions found"}`);
+      }
       throw new Error(
-        `Build blocked — narrative coherence QC failed after retry: ${qcResult.issue ?? "Sections contain contradictions or top driver not mentioned"}. ` +
-        `Review sections 1 and 4 and retry.`
+        `Build blocked — QC failed after targeted retry: ${issues.join("; ")}. ` +
+        `Review the failing sections and re-run the build.`
       );
     }
   }
@@ -644,7 +739,7 @@ export async function generateReport(
     engineSummary: { baseTotal, bullTotal, bearTotal, horizonYear, baseCagr },
     qcStatus: {
       internalConsistency: qcInternalConsistency(engine),
-      schemaCompleteness: qcSchemaCompleteness(forecast),
+      schemaCompleteness: qcSchemaCompleteness(forecast, sections), // includes traceability
       narrativeCoherence: true, // reaches here only if passed
     },
     generatedAt: new Date().toISOString(),

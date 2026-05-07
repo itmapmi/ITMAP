@@ -173,9 +173,12 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Match **bold**, *italic*, and assumption ID tags — now supports both
-  // old [A-001] format and new [a-z0-9]{8} UUID-prefix format
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\])/g);
+  // Match (in order): **bold**, *italic*, assumption ID tags [a-z0-9]{4,16},
+  // currency figures like $15.2B, and percentage values like +12.5%
+  // Currency figures and percentages get a dotted underline as traceable-figure hooks.
+  const parts = text.split(
+    /(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\]|\$[\d,]+\.?\d*[BMTK]?|[+-]?\d+\.?\d*%)/g
+  );
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
@@ -184,21 +187,47 @@ function renderInline(text: string): React.ReactNode {
       return <em key={i} className="text-slate-200 italic">{part.slice(1, -1)}</em>;
     }
     if (/^\[[A-Za-z0-9-]{4,16}\]$/.test(part)) {
-      return <code key={i} className="bg-cyan-950/50 text-cyan-400 px-1.5 py-0.5 rounded text-xs font-mono">{part}</code>;
+      return (
+        <code key={i} className="bg-cyan-950/50 text-cyan-400 px-1.5 py-0.5 rounded text-xs font-mono cursor-help" title="Assumption reference — see Section 8 register">
+          {part}
+        </code>
+      );
+    }
+    // Traceable figures: currency amounts ($15.2B) and percentages (+12.5%)
+    // Dotted underline signals these numbers are cross-referenceable to engine output.
+    if (/^\$[\d,]+\.?\d*[BMTK]?$/.test(part) || /^[+-]?\d+\.?\d*%$/.test(part)) {
+      return (
+        <span
+          key={i}
+          className="underline decoration-dotted decoration-cyan-400/50 text-cyan-100 cursor-help"
+          title="Traceable figure — cross-reference against engine output in the scenario table"
+        >
+          {part}
+        </span>
+      );
     }
     return <span key={i}>{part}</span>;
   });
 }
 
-// ── Section card ───────────────────────────────────────────────────────────
+// ── Section card (controlled — parent owns open/close state) ──────────────
 
-function SectionCard({ section }: { section: ReportSection }) {
-  const [expanded, setExpanded] = useState(section.id <= 2);
-
+function SectionCard({
+  section,
+  isOpen,
+  onToggle,
+}: {
+  section: ReportSection;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="bg-slate-900 border border-white/5 rounded-xl overflow-hidden">
+    <div
+      id={`section-${section.id}`}
+      className="bg-slate-900 border border-white/5 rounded-xl overflow-hidden scroll-mt-20"
+    >
       <button
-        onClick={() => setExpanded(e => !e)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -207,12 +236,12 @@ function SectionCard({ section }: { section: ReportSection }) {
           </span>
           <span className="text-sm font-semibold text-white">{section.title}</span>
         </div>
-        {expanded
+        {isOpen
           ? <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
           : <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
         }
       </button>
-      {expanded && (
+      {isOpen && (
         <div className="px-6 pb-6 border-t border-white/5">
           <div className="pt-4">
             <MarkdownContent content={section.content} />
@@ -311,6 +340,23 @@ function QcBadge({ label, passed }: { label: string; passed: boolean }) {
 export function ForecastReportContent({ id }: { id: string }) {
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
+  const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(new Set([1, 2]));
+
+  function toggleSection(sectionId: number) {
+    setOpenSectionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }
+
+  function navigateToSection(sectionId: number) {
+    setOpenSectionIds(prev => new Set([...prev, sectionId]));
+    setTimeout(() => {
+      document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }
 
   const { data, isLoading, error } = useQuery<ReportData>({
     queryKey: ["/api/forecast-builder/forecasts", id, "report-data"],
@@ -500,12 +546,51 @@ export function ForecastReportContent({ id }: { id: string }) {
         )}
       </div>
 
-      {/* Report sections */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
-        {rpt.sections.map(section => (
-          <SectionCard key={section.id} section={section} />
-        ))}
+      {/* Report sections — two-column: sticky sidebar nav + section cards */}
+      <div className="flex gap-6 items-start">
+        {/* Sticky section navigator — hidden on small screens */}
+        <aside className="hidden xl:block w-52 shrink-0">
+          <div className="sticky top-8">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 font-medium px-2">Sections</p>
+            <nav className="space-y-0.5">
+              {rpt.sections.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => navigateToSection(s.id)}
+                  className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.04] transition-colors group"
+                >
+                  <span className={`h-5 w-5 rounded-md flex items-center justify-center text-xs font-mono shrink-0 transition-colors ${
+                    openSectionIds.has(s.id)
+                      ? "bg-cyan-950/60 text-cyan-400 border border-cyan-500/20"
+                      : "bg-slate-800/80 text-slate-500 border border-white/5 group-hover:text-slate-300 group-hover:bg-slate-700/60"
+                  }`}>
+                    {s.id}
+                  </span>
+                  <span className={`text-xs leading-tight truncate transition-colors ${
+                    openSectionIds.has(s.id)
+                      ? "text-slate-200"
+                      : "text-slate-400 group-hover:text-slate-200"
+                  }`}>
+                    {s.title}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Section cards */}
+        <div className="flex-1 min-w-0 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
+          {rpt.sections.map(section => (
+            <SectionCard
+              key={section.id}
+              section={section}
+              isOpen={openSectionIds.has(section.id)}
+              onToggle={() => toggleSection(section.id)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Footer */}
