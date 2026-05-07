@@ -54,6 +54,7 @@ type ForecastRow = {
   confidenceBand: string | null;
   createdAt: string;
   updatedAt: string;
+  overrideCount: number;
 };
 
 const STATUS_CONFIG: Record<ForecastStatus, { label: string; cls: string; Icon: any }> = {
@@ -199,6 +200,9 @@ export default function ForecastBuilderPage() {
                       {forecast.confidenceBand && (
                         <span className="text-xs text-slate-500 capitalize">{forecast.confidenceBand}</span>
                       )}
+                      <span className="text-[10px] text-slate-600 bg-slate-800/60 border border-white/5 px-1.5 py-0.5 rounded font-mono">
+                        v{forecast.overrideCount + 1}
+                      </span>
                     </div>
                     <h3 className="text-base font-semibold text-white truncate mb-1">
                       {forecast.title}

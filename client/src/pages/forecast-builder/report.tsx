@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -170,7 +170,10 @@ function fmtPct(n: number): string {
 
 // ── Markdown renderer ─────────────────────────────────────────────────────
 
-type PanelView = { type: "assumption"; shortId: string } | { type: "global" } | null;
+type PanelView =
+  | { type: "assumption"; shortId: string }
+  | { type: "global"; highlightTopN?: number }
+  | null;
 
 function renderInline(
   text: string,
@@ -441,6 +444,170 @@ function QcBadge({ label, passed }: { label: string; passed: boolean }) {
   );
 }
 
+// ── Forecast-level targeted re-debate control ──────────────────────────────
+
+function ReDebateControl({
+  forecastId,
+  cruxes,
+  assumptions,
+  queryKey,
+}: {
+  forecastId: string;
+  cruxes: ForecastCrux[];
+  assumptions: ForecastAssumption[];
+  queryKey: string[];
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<string[]>([]);
+  const esRef = useRef<EventSource | null>(null);
+
+  const contestedCruxes = cruxes.filter(c => c.contestedAssumptionId);
+
+  function toggle(assumptionId: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(assumptionId)) next.delete(assumptionId);
+      else if (next.size < 5) next.add(assumptionId);
+      return next;
+    });
+  }
+
+  function run() {
+    if (!selected.size || running) return;
+    setRunning(true);
+    setProgress([]);
+
+    fetch(`/api/forecast-builder/forecasts/${forecastId}/re-debate`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assumptionIds: [...selected] }),
+    }).then(res => {
+      if (!res.body) throw new Error("No stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      function read() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            setRunning(false);
+            queryClient.invalidateQueries({ queryKey });
+            toast({ title: "Re-debate complete", description: "Crux values have been refreshed." });
+            return;
+          }
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const ev = JSON.parse(line.slice(6));
+              if (ev.type === "crux_resolved") {
+                setProgress(p => [...p, `✓ ${ev.assumptionId?.slice(0, 8) ?? ""}  resolved`]);
+              } else if (ev.type === "error") {
+                setProgress(p => [...p, `✗ ${ev.message}`]);
+              }
+            } catch { /* ignore */ }
+          }
+          read();
+        }).catch(() => setRunning(false));
+      }
+      read();
+    }).catch(err => {
+      setRunning(false);
+      toast({ title: "Re-debate failed", description: err.message, variant: "destructive" });
+    });
+  }
+
+  useEffect(() => {
+    return () => { esRef.current?.close(); };
+  }, []);
+
+  if (!contestedCruxes.length) return null;
+
+  return (
+    <div className="mt-4 pt-4 border-t border-white/5">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 text-xs text-slate-400 hover:text-cyan-300 transition-colors"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${running ? "animate-spin text-cyan-400" : ""}`} />
+        <span>Refresh debates</span>
+        <span className="text-slate-600">({contestedCruxes.length} crux{contestedCruxes.length !== 1 ? "es" : ""})</span>
+        {open ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[10px] text-slate-500">Select up to 5 cruxes to re-debate with fresh AI context. Current values will be updated.</p>
+          <div className="space-y-1">
+            {contestedCruxes.map(crux => {
+              const assumption = assumptions.find(a => a.id === crux.contestedAssumptionId);
+              if (!assumption) return null;
+              const isSelected = selected.has(assumption.id);
+              const isResolved = crux.resolutionStatus === "resolved";
+              return (
+                <label
+                  key={crux.id}
+                  className={`flex items-start gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+                    isSelected ? "bg-cyan-950/20 border border-cyan-500/20" : "hover:bg-white/[0.03] border border-transparent"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggle(assumption.id)}
+                    disabled={running || (!isSelected && selected.size >= 5)}
+                    className="mt-0.5 accent-cyan-500 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs text-white truncate">{assumption.description}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      {assumption.currentValue ?? assumption.value ?? "—"} {assumption.unit ?? ""} ·{" "}
+                      <span className={isResolved ? "text-emerald-400" : "text-amber-400"}>
+                        {isResolved ? "resolved" : crux.resolutionStatus.replace(/_/g, " ")}
+                      </span>
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          {progress.length > 0 && (
+            <div className="bg-slate-800/60 rounded-lg px-3 py-2 space-y-0.5 max-h-24 overflow-y-auto">
+              {progress.map((msg, i) => (
+                <p key={i} className="text-[10px] font-mono text-slate-400">{msg}</p>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              disabled={!selected.size || running}
+              onClick={run}
+              className="text-xs bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 h-7 px-3"
+            >
+              {running ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Re-debating…</> : <>Re-debate {selected.size ? `(${selected.size})` : ""}</>}
+            </Button>
+            {selected.size > 0 && !running && (
+              <button onClick={() => setSelected(new Set())} className="text-[10px] text-slate-500 hover:text-white transition-colors">
+                Clear selection
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Audit log event label ──────────────────────────────────────────────────
 
 function eventLabel(eventType: string): { label: string; color: string; Icon: React.ElementType } {
@@ -555,7 +722,7 @@ export function ForecastReportContent({ id }: { id: string }) {
   }, []);
 
   const handleNumberClick = useCallback(() => {
-    setPanelView({ type: "global" });
+    setPanelView({ type: "global", highlightTopN: 3 });
   }, []);
 
   const { data, isLoading, error } = useQuery<ReportData>({
@@ -681,6 +848,7 @@ export function ForecastReportContent({ id }: { id: string }) {
           queryKey={reportQueryKey}
           onClose={() => setPanelView(null)}
           onAssumptionSelect={(shortId) => setPanelView({ type: "assumption", shortId })}
+          highlightTopN={panelView.type === "global" ? panelView.highlightTopN : undefined}
         />
       )}
 
@@ -698,11 +866,39 @@ export function ForecastReportContent({ id }: { id: string }) {
             <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] text-slate-600 bg-slate-800/60 border border-white/5 px-1.5 py-1 rounded font-mono">
+              v{userOverrideCount + 1}
+            </span>
             {userOverrideCount > 0 && (
               <span className="text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-2 py-1 rounded-full">
                 {userOverrideCount} override{userOverrideCount > 1 ? "s" : ""} active
               </span>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1"
+              onClick={() => {
+                const a = document.createElement("a");
+                a.href = `/api/forecast-builder/forecasts/${id}/diary.json`;
+                a.download = "";
+                a.click();
+              }}
+              title="Download full audit diary as JSON"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Diary
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1"
+              onClick={() => setPanelView({ type: "global" })}
+              title="Open forecast composition panel"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Audit
+            </Button>
             <Button
               onClick={handleExportPdf}
               disabled={exporting}
@@ -782,6 +978,14 @@ export function ForecastReportContent({ id }: { id: string }) {
             <QcBadge label="Schema completeness" passed={rpt.qcStatus.schemaCompleteness} />
             <QcBadge label="Narrative coherence" passed={rpt.qcStatus.narrativeCoherence} />
           </div>
+
+          {/* Forecast-level re-debate control */}
+          <ReDebateControl
+            forecastId={id}
+            cruxes={cruxes as ForecastCrux[]}
+            assumptions={assumptions as ForecastAssumption[]}
+            queryKey={reportQueryKey}
+          />
         </div>
 
         {/* Two-column: scenarios + top assumptions */}

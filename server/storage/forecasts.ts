@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   forecasts,
@@ -335,4 +335,22 @@ export async function getForecastAuditLog(forecastId: string): Promise<ForecastA
 export async function appendForecastAuditEntry(data: InsertForecastAuditLog): Promise<ForecastAuditLog> {
   const [row] = await db.insert(forecastAuditLog).values(data).returning();
   return row;
+}
+
+export async function getOverrideCountsForForecasts(forecastIds: string[]): Promise<Record<string, number>> {
+  if (!forecastIds.length) return {};
+  const rows = await db
+    .select({
+      forecastId: forecastAssumptions.forecastId,
+      cnt: sql<number>`count(*)::int`,
+    })
+    .from(forecastAssumptions)
+    .where(
+      and(
+        inArray(forecastAssumptions.forecastId, forecastIds),
+        eq(forecastAssumptions.currentValueSource, "user_override")
+      )
+    )
+    .groupBy(forecastAssumptions.forecastId);
+  return Object.fromEntries(rows.map(r => [r.forecastId, Number(r.cnt ?? 0)]));
 }

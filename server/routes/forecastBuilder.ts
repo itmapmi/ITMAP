@@ -19,6 +19,7 @@ import {
   createForecastSource,
   getForecastSource,
   deleteForecastSource,
+  getOverrideCountsForForecasts,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
@@ -112,7 +113,8 @@ export function registerForecastBuilderRoutes(app: Express): void {
       const rows = user?.role === "admin"
         ? await listForecasts()
         : await listForecastsForUser(user.id);
-      res.json(rows);
+      const overrideCounts = await getOverrideCountsForForecasts(rows.map(r => r.id));
+      res.json(rows.map(r => ({ ...r, overrideCount: overrideCounts[r.id] ?? 0 })));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -178,7 +180,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
   // ── Admin: list all forecasts ───────────────────────────────────────────
   app.get("/api/admin/forecast-builder/forecasts", requireAdmin, async (_req: Request, res: Response) => {
     try {
-      res.json(await listForecasts());
+      const rows = await listForecasts();
+      const overrideCounts = await getOverrideCountsForForecasts(rows.map(r => r.id));
+      res.json(rows.map(r => ({ ...r, overrideCount: overrideCounts[r.id] ?? 0 })));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -709,6 +713,27 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
+  // ── Diary export — full audit log as a downloadable JSON artifact ────────
+  app.get("/api/forecast-builder/forecasts/:id/diary.json", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+      const full = await getForecastFull(req.params.id);
+      if (!full) return res.status(404).json({ error: "Forecast not found" });
+      const safeTitle = (full.title ?? "forecast").replace(/[^a-z0-9_-]/gi, "_").slice(0, 60);
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeTitle}_diary.json"`);
+      res.json({
+        forecastId: full.id,
+        title: full.title,
+        exportedAt: new Date().toISOString(),
+        events: full.auditLog,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Phase 5: Assumption override + engine recalculation ─────────────────
   //
   // PATCH /api/forecast-builder/forecasts/:id/assumptions/:assumptionId
@@ -857,6 +882,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
         const sourceRow = await getForecastSource(req.params.sourceId);
         if (!sourceRow) return res.status(404).json({ error: "Source not found" });
         if (sourceRow.forecastId !== req.params.id) return res.status(403).json({ error: "Forbidden" });
+        if (sourceRow.sourceType !== "user_provided") {
+          return res.status(403).json({ error: "Only user-provided sources can be removed to preserve audit trail integrity." });
+        }
 
         await deleteForecastSource(req.params.sourceId);
 

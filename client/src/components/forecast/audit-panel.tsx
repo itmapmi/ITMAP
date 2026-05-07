@@ -94,6 +94,7 @@ interface AuditPanelProps {
   queryKey: string[];
   onClose: () => void;
   onAssumptionSelect?: (shortId: string) => void;
+  highlightTopN?: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -750,29 +751,36 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
 // ── Global Overview tab ─────────────────────────────────────────────────────
 
-function GlobalOverviewTab({ assumptions, onAssumptionSelect }: {
-  assumptions: AuditAssumption[]; onAssumptionSelect?: (shortId: string) => void;
+function GlobalOverviewTab({ assumptions, onAssumptionSelect, highlightTopN }: {
+  assumptions: AuditAssumption[];
+  onAssumptionSelect?: (shortId: string) => void;
+  highlightTopN?: number;
 }) {
   const sorted = [...assumptions]
     .filter(a => a.sensitivityRank != null)
     .sort((a, b) => (a.sensitivityRank ?? 99) - (b.sensitivityRank ?? 99));
   const unranked = assumptions.filter(a => a.sensitivityRank == null);
 
-  function AssumptionRow({ a, rank }: { a: AuditAssumption; rank?: number }) {
+  function AssumptionRow({ a, rank, isLikelyDriver }: { a: AuditAssumption; rank?: number; isLikelyDriver?: boolean }) {
     const isOverride = a.currentValueSource === "user_override";
     return (
       <button
         key={a.id}
-        className="w-full flex items-center gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group"
+        className={`w-full flex items-center gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group ${isLikelyDriver ? "ring-1 ring-cyan-500/20 bg-cyan-950/10" : ""}`}
         onClick={() => onAssumptionSelect?.(a.id.slice(0, 8))}
         title="Open assumption detail"
       >
-        <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0">
+        <span className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-mono shrink-0 ${
+          isLikelyDriver
+            ? "bg-cyan-950/60 border border-cyan-500/30 text-cyan-300"
+            : "bg-violet-950/60 border border-violet-500/20 text-violet-300"
+        }`}>
           {rank ?? "—"}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <p className="text-xs text-white font-medium truncate group-hover:text-cyan-200 transition-colors">{a.description}</p>
+            {isLikelyDriver && <span className="shrink-0 text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-500/20 px-1 py-0.5 rounded">likely driver</span>}
             {isOverride && <span className="shrink-0 text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-1 py-0.5 rounded">override</span>}
           </div>
           <p className="text-xs text-slate-500">{a.currentValue ?? a.value} {a.unit ?? ""}</p>
@@ -784,14 +792,27 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect }: {
 
   return (
     <div className="space-y-4">
-      <p className="text-[10px] text-slate-500">
-        These assumptions compose the forecast engine. Click any to inspect, override, or challenge.
-      </p>
+      {highlightTopN ? (
+        <p className="text-[10px] text-cyan-400/80 bg-cyan-950/20 border border-cyan-500/10 rounded-lg px-2.5 py-2">
+          Top {highlightTopN} assumptions by sensitivity rank are the most likely drivers of this figure. Click any to inspect.
+        </p>
+      ) : (
+        <p className="text-[10px] text-slate-500">
+          These assumptions compose the forecast engine. Click any to inspect, override, or challenge.
+        </p>
+      )}
       {sorted.length > 0 && (
         <div>
           <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-medium">By sensitivity rank</p>
           <div className="space-y-0.5">
-            {sorted.map((a, i) => <AssumptionRow key={a.id} a={a} rank={a.sensitivityRank ?? i + 1} />)}
+            {sorted.map((a, i) => (
+              <AssumptionRow
+                key={a.id}
+                a={a}
+                rank={a.sensitivityRank ?? i + 1}
+                isLikelyDriver={highlightTopN != null && (a.sensitivityRank ?? (i + 1)) <= highlightTopN}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -875,6 +896,7 @@ type GlobalTabId = (typeof GLOBAL_TABS)[number]["id"];
 export function AuditPanel({
   forecastId, mode = "assumption", assumption, allAssumptions = [], cruxes,
   sources, segments, auditLog = [], queryKey, onClose, onAssumptionSelect,
+  highlightTopN,
 }: AuditPanelProps) {
   const [assumptionTab, setAssumptionTab] = useState<AssumptionTabId>("composition");
   const [globalTab, setGlobalTab] = useState<GlobalTabId>("overview");
@@ -967,7 +989,7 @@ export function AuditPanel({
           </>
         ) : mode === "global" ? (
           <>
-            {globalTab === "overview" && <GlobalOverviewTab assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} />}
+            {globalTab === "overview" && <GlobalOverviewTab assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} highlightTopN={highlightTopN} />}
             {globalTab === "sources" && <SourcesTab forecastId={forecastId} assumptionId={null} sources={sources} queryKey={queryKey} />}
             {globalTab === "diary" && <DiaryTab auditLog={auditLog} />}
           </>
