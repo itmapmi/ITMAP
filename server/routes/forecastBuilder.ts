@@ -13,6 +13,7 @@ import {
   getForecastBoundary,
   upsertForecastBrief,
   getForecastBrief,
+  clearForecastBrief,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
@@ -282,12 +283,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
         userEdits: edits ? (edits as Record<string, unknown>) : null,
       });
 
-      const forecastPatch: Record<string, unknown> = { status: "boundary_confirmed" };
-      if (edits?.baseYear) forecastPatch.baseYear = edits.baseYear;
-      if (edits?.forecastHorizonYears) forecastPatch.forecastHorizonYears = edits.forecastHorizonYears;
+      const forecastPatch: Parameters<typeof updateForecast>[1] = { status: "boundary_confirmed" };
+      if (edits?.baseYear !== undefined) forecastPatch.baseYear = edits.baseYear;
+      if (edits?.forecastHorizonYears !== undefined) forecastPatch.forecastHorizonYears = edits.forecastHorizonYears;
       if (edits?.currency) forecastPatch.currency = edits.currency;
 
-      await updateForecast(req.params.id, forecastPatch as Parameters<typeof updateForecast>[1]);
+      await updateForecast(req.params.id, forecastPatch);
 
       await writeAuditEntry(req.params.id, "boundary_confirmed", user.id, {
         hadEdits: !!edits && Object.keys(edits).length > 0,
@@ -427,9 +428,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
         interviewTranscript: assembled.interviewTranscript,
       });
 
-      const forecastPatch: Record<string, unknown> = { status: "brief_complete" };
+      const forecastPatch: Parameters<typeof updateForecast>[1] = { status: "brief_complete" };
       if (assembled.confidenceLevel) forecastPatch.confidenceBand = assembled.confidenceLevel;
-      await updateForecast(req.params.id, forecastPatch as Parameters<typeof updateForecast>[1]);
+      await updateForecast(req.params.id, forecastPatch);
 
       await writeAuditEntry(req.params.id, "brief_completed", user.id, {
         mode: body.mode,
@@ -454,7 +455,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
         return res.status(400).json({ error: "Nothing to reset — brief is not complete" });
       }
 
-      await updateForecast(req.params.id, { status: "boundary_confirmed" } as any);
+      // Clear the stale brief so downstream clients never see inconsistent data
+      await clearForecastBrief(req.params.id);
+      await updateForecast(req.params.id, { status: "boundary_confirmed" });
       await writeAuditEntry(req.params.id, "re_debate_triggered", user.id, { action: "brief_reset" });
       res.json({ status: "boundary_confirmed" });
     } catch (err: any) {
@@ -481,15 +484,17 @@ export function registerForecastBuilderRoutes(app: Express): void {
         return res.status(400).json({ error: "Brief must be complete before starting the debate" });
       }
 
-      // Write the audit entry — this is the canonical record that the debate was requested
+      // Advance status so the wizard can transition past the review screen
+      await updateForecast(req.params.id, { status: "debate_complete" });
+
+      // Write the audit entry as the canonical record that debate was initiated
       await writeAuditEntry(req.params.id, "debate_started", user.id, {
         queuedAt: new Date().toISOString(),
         note: "Full multi-LLM debate engine queued — Phase 3",
       });
 
-      // Return 202 Accepted: the debate has been queued but not completed
       res.status(202).json({
-        status: "queued",
+        status: "debate_complete",
         message: "Debate queued. The multi-LLM debate engine will be available in the next release.",
       });
     } catch (err: any) {

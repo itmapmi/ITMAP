@@ -162,6 +162,10 @@ export async function upsertForecastBrief(
   return created;
 }
 
+export async function clearForecastBrief(forecastId: string): Promise<void> {
+  await db.delete(forecastBriefs).where(eq(forecastBriefs.forecastId, forecastId));
+}
+
 // ── Segments ─────────────────────────────────────────────────────────────
 
 export async function getForecastSegments(forecastId: string): Promise<ForecastSegment[]> {
