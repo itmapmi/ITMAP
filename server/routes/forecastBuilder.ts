@@ -14,9 +14,14 @@ import {
   getForecastBrief,
   upsertForecastBrief,
   clearForecastBrief,
+  getForecastAssumptions,
+  updateForecastAssumption,
+  createForecastSource,
+  deleteForecastSource,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
+import { rebuildAndPersistEngine } from "../forecast/recalculate";
 import { extractBoundary, type ExtractedBoundary } from "../forecast/phases/phase1";
 import {
   getNextQuestion,
@@ -693,14 +698,431 @@ export function registerForecastBuilderRoutes(app: Express): void {
         assumptions: full.assumptions,
         cruxes: full.cruxes,
         sources: full.sources,
+        segments: full.segments,
         boundary: full.boundary,
         brief: full.brief,
-        auditLog: full.auditLog.slice(-20),
+        auditLog: full.auditLog.slice(-50),
       });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // ── Phase 5: Assumption override + engine recalculation ─────────────────
+  //
+  // PATCH /api/forecast-builder/forecasts/:id/assumptions/:assumptionId
+  // Body: { newValue: number, reason?: string }
+  //
+  // Stores the new value in currentValue, appends to editHistory, marks
+  // currentValueSource = "user_override", then re-runs the deterministic
+  // engine and persists updated forecastPaths to every segment and scenario.
+  app.patch(
+    "/api/forecast-builder/forecasts/:id/assumptions/:assumptionId",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const guard = await guardForecastAccess(req, res, req.params.id);
+        if (!guard.ok) return;
+
+        const bodySchema = z.object({
+          newValue: z.number().finite(),
+          reason: z.string().max(500).optional(),
+        });
+        const body = bodySchema.safeParse(req.body);
+        if (!body.success) {
+          return res.status(400).json({ error: "Invalid body", details: body.error.flatten() });
+        }
+
+        const assumptions = await getForecastAssumptions(req.params.id);
+        const assumption = assumptions.find(a => a.id === req.params.assumptionId);
+        if (!assumption) return res.status(404).json({ error: "Assumption not found" });
+
+        const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
+        const oldValue = assumption.currentValue ?? assumption.value ?? null;
+        const newValueStr = body.data.newValue.toString();
+
+        const existingHistory = (assumption.editHistory ?? []) as {
+          timestamp: string; actor: string; oldValue: string | null; newValue: string | null; reason?: string;
+        }[];
+
+        const newHistory = [
+          ...existingHistory,
+          {
+            timestamp: new Date().toISOString(),
+            actor,
+            oldValue,
+            newValue: newValueStr,
+            reason: body.data.reason,
+          },
+        ];
+
+        await updateForecastAssumption(req.params.assumptionId, {
+          currentValue: newValueStr,
+          currentValueSource: "user_override",
+          editHistory: newHistory,
+        });
+
+        // Re-run the deterministic engine with the updated assumption value
+        const engineResult = await rebuildAndPersistEngine(req.params.id);
+
+        await writeAuditEntry(
+          req.params.id,
+          "assumption_overridden",
+          actor,
+          {
+            assumptionId: req.params.assumptionId,
+            description: assumption.description,
+            oldValue,
+            newValue: newValueStr,
+            reason: body.data.reason ?? null,
+            engineResult,
+          }
+        );
+
+        res.json({
+          ok: true,
+          assumptionId: req.params.assumptionId,
+          newValue: newValueStr,
+          engineResult,
+        });
+      } catch (err: any) {
+        console.error("[AssumptionOverride]", err);
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // ── Phase 5: Add user-provided source ────────────────────────────────────
+  app.post(
+    "/api/forecast-builder/forecasts/:id/sources",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const guard = await guardForecastAccess(req, res, req.params.id);
+        if (!guard.ok) return;
+
+        const bodySchema = z.object({
+          url: z.string().url().optional().or(z.literal("")),
+          title: z.string().max(500).optional(),
+          reliabilityTier: z.number().int().min(1).max(3).default(2),
+          verbatimQuote: z.string().max(2000).optional(),
+          sourceType: z.string().max(100).default("user_provided"),
+        });
+        const body = bodySchema.safeParse(req.body);
+        if (!body.success) {
+          return res.status(400).json({ error: "Invalid body", details: body.error.flatten() });
+        }
+
+        if (!body.data.url && !body.data.title) {
+          return res.status(400).json({ error: "At least one of url or title is required" });
+        }
+
+        const source = await createForecastSource({
+          forecastId: req.params.id,
+          sourceType: body.data.sourceType,
+          url: body.data.url || null,
+          title: body.data.title ?? null,
+          reliabilityTier: body.data.reliabilityTier,
+          verbatimQuote: body.data.verbatimQuote ?? null,
+          accessedDate: null,
+        });
+
+        const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
+        await writeAuditEntry(req.params.id, "source_added", actor, {
+          sourceId: source.id,
+          title: body.data.title ?? null,
+          url: body.data.url ?? null,
+          reliabilityTier: body.data.reliabilityTier,
+        });
+
+        res.status(201).json(source);
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // ── Phase 5: Remove a user-provided source ────────────────────────────────
+  app.delete(
+    "/api/forecast-builder/forecasts/:id/sources/:sourceId",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const guard = await guardForecastAccess(req, res, req.params.id);
+        if (!guard.ok) return;
+
+        await deleteForecastSource(req.params.sourceId);
+
+        const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
+        await writeAuditEntry(req.params.id, "source_removed", actor, {
+          sourceId: req.params.sourceId,
+        });
+
+        res.status(204).end();
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  // ── Phase 5: Challenge mode (SSE) ─────────────────────────────────────────
+  //
+  // POST /api/forecast-builder/forecasts/:id/challenge
+  // Body: { assumptionIds: string[] }
+  //
+  // Runs a lightweight AI adversarial challenge against the provided assumptions.
+  // Does NOT persist any changes — streams structured results for user to accept
+  // (via the assumption override endpoint) or dismiss.
+  app.post(
+    "/api/forecast-builder/forecasts/:id/challenge",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
+      const bodySchema = z.object({ assumptionIds: z.array(z.string()).min(1).max(5) });
+      const body = bodySchema.safeParse(req.body);
+      if (!body.success) return res.status(400).json({ error: "Invalid body" });
+
+      const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      if (!openaiKey) return res.status(503).json({ error: "OpenAI API key not configured" });
+
+      initSSE(res);
+      let clientGone = false;
+      req.on("close", () => { clientGone = true; });
+
+      (async () => {
+        try {
+          const full = await getForecastFull(req.params.id);
+          if (!full) throw new Error("Forecast not found");
+
+          const { default: OpenAI } = await import("openai");
+          const oai = new OpenAI({
+            apiKey: openaiKey,
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+          });
+
+          for (const assumptionId of body.data.assumptionIds) {
+            if (clientGone) break;
+            const assumption = full.assumptions.find(a => a.id === assumptionId);
+            if (!assumption) continue;
+
+            const currentVal = Number(assumption.currentValue ?? assumption.value ?? 0);
+            sendSSEEvent(res, { type: "progress", message: `Challenging: ${assumption.description}` });
+
+            const prompt = `You are a rigorous market research analyst challenging a forecast assumption.
+
+Assumption: "${assumption.description}"
+Current value: ${currentVal} ${assumption.unit ?? ""}
+Forecast: "${full.title}"
+Base year: ${full.baseYear}, Horizon: ${full.forecastHorizonYears} years
+
+Challenge this assumption with real-world evidence. Consider:
+1. What would need to be true for this value to be 20% lower?
+2. What would need to be true for this value to be 20% higher?
+3. Based on your analysis, what is a better-supported point estimate?
+
+Respond with JSON only:
+{
+  "challengeLower": { "scenario": "string (max 200 chars)", "value": number, "confidence": "low|medium|high" },
+  "challengeHigher": { "scenario": "string (max 200 chars)", "value": number, "confidence": "low|medium|high" },
+  "proposedValue": number,
+  "proposedRationale": "string (max 300 chars)",
+  "evidenceSources": ["string", ...]
+}`;
+
+            try {
+              const response = await oai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                max_tokens: 600,
+              });
+
+              const text = response.choices[0]?.message?.content ?? "{}";
+              let parsed: Record<string, unknown> = {};
+              try { parsed = JSON.parse(text); } catch { /* ignore */ }
+
+              sendSSEEvent(res, {
+                type: "challenge_result",
+                assumptionId,
+                description: assumption.description,
+                currentValue: currentVal,
+                unit: assumption.unit ?? "",
+                result: parsed,
+              });
+            } catch (err: any) {
+              sendSSEEvent(res, { type: "progress", message: `Challenge failed for ${assumptionId}: ${err.message}` });
+            }
+          }
+
+          const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
+          await writeAuditEntry(req.params.id, "challenge_triggered", actor, {
+            assumptionIds: body.data.assumptionIds,
+          });
+
+          sendSSEEvent(res, { type: "complete", message: "Challenge analysis complete" });
+        } catch (err: any) {
+          if (!clientGone && !res.writableEnded) {
+            sendSSEEvent(res, { type: "error", message: err.message });
+          }
+        } finally {
+          if (!res.writableEnded) res.end();
+        }
+      })();
+    }
+  );
+
+  // ── Phase 5: Re-debate (SSE) ──────────────────────────────────────────────
+  //
+  // POST /api/forecast-builder/forecasts/:id/re-debate
+  // Body: { assumptionIds: string[] }
+  //
+  // Runs a targeted resolution pass on the cruxes for the given assumptions,
+  // updates assumption currentValues, persists to DB, then re-runs the engine.
+  // Streams progress events; on complete includes the new engine summary.
+  app.post(
+    "/api/forecast-builder/forecasts/:id/re-debate",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
+      const bodySchema = z.object({ assumptionIds: z.array(z.string()).min(1).max(5) });
+      const body = bodySchema.safeParse(req.body);
+      if (!body.success) return res.status(400).json({ error: "Invalid body" });
+
+      const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      if (!openaiKey) return res.status(503).json({ error: "OpenAI API key not configured" });
+
+      initSSE(res);
+      let clientGone = false;
+      req.on("close", () => { clientGone = true; });
+
+      (async () => {
+        try {
+          const full = await getForecastFull(req.params.id);
+          if (!full) throw new Error("Forecast not found");
+
+          const { default: OpenAI } = await import("openai");
+          const oai = new OpenAI({
+            apiKey: openaiKey,
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+          });
+
+          const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
+          let updatedCount = 0;
+
+          for (const assumptionId of body.data.assumptionIds) {
+            if (clientGone) break;
+
+            const assumption = full.assumptions.find(a => a.id === assumptionId);
+            if (!assumption) continue;
+
+            const crux = full.cruxes.find(c => c.contestedAssumptionId === assumptionId);
+            const currentVal = Number(assumption.currentValue ?? assumption.value ?? 0);
+
+            sendSSEEvent(res, { type: "progress", message: `Re-debating: ${assumption.description}` });
+
+            const positionsSummary = crux?.positions?.length
+              ? crux.positions.map((p: { model: string; value: string; reasoning: string }) => `${p.model}: ${p.value} — ${p.reasoning}`).join("\n")
+              : `Single estimate: ${currentVal} ${assumption.unit ?? ""}`;
+
+            const prompt = `You are a senior analyst resolving a contested forecast assumption via fresh research.
+
+Assumption: "${assumption.description}"
+Current value: ${currentVal} ${assumption.unit ?? ""}
+Forecast market: "${full.title}"
+Base year: ${full.baseYear}
+
+Existing analyst positions:
+${positionsSummary}
+
+Review the evidence and propose the best point estimate for this assumption.
+Consider recent market data, industry reports, and macro trends.
+
+Respond with JSON only:
+{
+  "resolvedValue": number,
+  "confidence": "low|medium|high",
+  "reasoning": "string (max 300 chars)",
+  "resolutionPath": "string (max 200 chars)"
+}`;
+
+            try {
+              const response = await oai.chat.completions.create({
+                model: "gpt-4o-mini",
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                max_tokens: 400,
+              });
+
+              const text = response.choices[0]?.message?.content ?? "{}";
+              let parsed: { resolvedValue?: number; confidence?: string; reasoning?: string; resolutionPath?: string } = {};
+              try { parsed = JSON.parse(text); } catch { /* ignore */ }
+
+              if (parsed.resolvedValue != null && isFinite(parsed.resolvedValue)) {
+                const oldValue = assumption.currentValue ?? assumption.value ?? null;
+                const newValueStr = parsed.resolvedValue.toString();
+
+                const existingHistory = (assumption.editHistory ?? []) as {
+                  timestamp: string; actor: string; oldValue: string | null; newValue: string | null; reason?: string;
+                }[];
+
+                await updateForecastAssumption(assumptionId, {
+                  currentValue: newValueStr,
+                  currentValueSource: "debate_consensus",
+                  editHistory: [
+                    ...existingHistory,
+                    {
+                      timestamp: new Date().toISOString(),
+                      actor: `re-debate (${actor})`,
+                      oldValue,
+                      newValue: newValueStr,
+                      reason: parsed.reasoning ?? "Re-debate resolution",
+                    },
+                  ],
+                });
+
+                updatedCount++;
+                sendSSEEvent(res, {
+                  type: "crux_resolved",
+                  assumptionId,
+                  description: assumption.description,
+                  oldValue: currentVal,
+                  newValue: parsed.resolvedValue,
+                  reasoning: parsed.reasoning ?? "",
+                });
+              }
+            } catch (err: any) {
+              sendSSEEvent(res, { type: "progress", message: `Resolution failed for ${assumptionId}: ${err.message}` });
+            }
+          }
+
+          if (updatedCount > 0) {
+            sendSSEEvent(res, { type: "progress", message: "Recalculating engine…" });
+            const engineResult = await rebuildAndPersistEngine(req.params.id);
+
+            await writeAuditEntry(req.params.id, "re_debate_triggered", actor, {
+              assumptionIds: body.data.assumptionIds,
+              updatedCount,
+              engineResult,
+            });
+
+            sendSSEEvent(res, { type: "complete", message: `Re-debate complete. ${updatedCount} assumption(s) updated.`, engineResult });
+          } else {
+            sendSSEEvent(res, { type: "complete", message: "Re-debate complete. No values changed." });
+          }
+        } catch (err: any) {
+          if (!clientGone && !res.writableEnded) {
+            sendSSEEvent(res, { type: "error", message: err.message });
+          }
+        } finally {
+          if (!res.writableEnded) res.end();
+        }
+      })();
+    }
+  );
 
   // ── Phase 4: Export forecast report as PDF ──────────────────────────────
   app.post("/api/forecast-builder/forecasts/:id/export-pdf", requireAuth, async (req: Request, res: Response) => {
