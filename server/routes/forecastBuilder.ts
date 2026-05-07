@@ -47,6 +47,9 @@ const interviewBodySchema = z.object({
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
+// Typed intersection for the optional flush() method added by compression middleware
+type FlushableResponse = Response & { flush?: () => void };
+
 function initSSE(res: Response): void {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -58,7 +61,7 @@ function initSSE(res: Response): void {
 function sendSSEEvent(res: Response, event: Record<string, unknown>): void {
   if (!res.writableEnded) {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
-    if (typeof (res as any).flush === "function") (res as any).flush();
+    (res as FlushableResponse).flush?.();
   }
 }
 
@@ -187,10 +190,15 @@ export function registerForecastBuilderRoutes(app: Express): void {
 
       // Check extraction attempt count stored inside proposedBySystem._extractionCount
       const existing = await getForecastBoundary(req.params.id);
-      const prevCount: number =
-        typeof (existing?.proposedBySystem as any)?._extractionCount === "number"
-          ? (existing!.proposedBySystem as any)._extractionCount
-          : 0;
+      // Typed narrowing to safely read _extractionCount from the JSONB payload
+      const prevCount: number = (() => {
+        const ps = existing?.proposedBySystem;
+        if (ps !== null && typeof ps === "object" && "_extractionCount" in ps) {
+          const v = (ps as Record<string, unknown>)._extractionCount;
+          if (typeof v === "number") return v;
+        }
+        return 0;
+      })();
 
       if (prevCount >= 2) {
         return res.status(409).json({

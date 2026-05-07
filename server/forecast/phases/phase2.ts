@@ -47,6 +47,7 @@ export interface InterviewQuestion {
 }
 
 const MAX_QUESTIONS_FULL = 12;
+const MIN_QUESTIONS_FULL = 8;   // full mode must ask at least this many before allowing early done
 const MAX_QUESTIONS_EXPRESS = 5;
 
 const QUESTION_BANK: QuestionTemplate[] = [
@@ -358,8 +359,15 @@ export async function getNextQuestion(
     nextId = eligible[0].id;
   }
 
-  // LLM signalled interview is complete
-  if (nextId === "DONE") return null;
+  // LLM signalled interview is complete — honour only after minimum floor
+  if (nextId === "DONE") {
+    if (mode === "full" && answers.length < MIN_QUESTIONS_FULL) {
+      // Below floor: override the done signal and continue with next eligible question
+      nextId = eligible[0].id;
+    } else {
+      return null;
+    }
+  }
 
   const next = eligible.find((q) => q.id === nextId) ?? eligible[0];
 

@@ -87,7 +87,7 @@ interface ForecastFull {
   brief: DBBrief | null;
 }
 
-type QuestionCluster = "purpose" | "methodology" | "drivers" | "output";
+type QuestionCluster = "boundary" | "purpose" | "methodology" | "drivers" | "output";
 
 interface InterviewQuestion {
   questionId: string;
@@ -141,8 +141,8 @@ async function streamInterviewNext(
   }
 
   if (!response.ok) {
-    const errBody = await response.json().catch(() => ({ error: "Request failed" }));
-    handlers.onError((errBody as any).error ?? "Request failed");
+    const errBody = await response.json().catch(() => ({ error: "Request failed" })) as Record<string, unknown>;
+    handlers.onError(typeof errBody.error === "string" ? errBody.error : "Request failed");
     return;
   }
 
@@ -684,6 +684,7 @@ function InterviewStep({
   }
 
   const CLUSTER_LABELS: Record<QuestionCluster, string> = {
+    boundary: "Scope validation",
     purpose: "Strategic context",
     methodology: "Methodology",
     drivers: "Market dynamics",
