@@ -28,6 +28,7 @@ export type ForecastEventType =
   // Phase 3 sub-phase provenance events
   | "draft_generated"
   | "critique_completed"
+  | "objection_raised"
   | "crux_resolution_calls"
   | "crux_validation"
   | "calculation_run"

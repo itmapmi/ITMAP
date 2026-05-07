@@ -174,7 +174,21 @@ export async function runDebate(
       });
     }
 
-    // Per-role critique audit entries
+    // Per-objection audit entries (first-class — each critique is inspectable)
+    for (const obj of objections) {
+      await writeAuditEntry(forecastId, "objection_raised", "system", {
+        assumptionId: obj.assumptionId,
+        assumptionName: obj.assumptionName,
+        draftModel: obj.draftModel,
+        severity: obj.severity,
+        objection: obj.objection,
+        suggestedValue: obj.suggestedValue,
+        suggestedUnit: obj.suggestedUnit,
+        evidenceRequired: obj.evidenceRequired,
+      }).catch(() => {});
+    }
+
+    // Per-role summary audit entries
     for (const [role, count] of Object.entries(result.rolesSummary)) {
       await writeAuditEntry(forecastId, "critique_completed", "system", {
         role,
