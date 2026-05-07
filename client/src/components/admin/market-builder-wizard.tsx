@@ -50,15 +50,15 @@ type StagePhase = "ready" | "running" | "done" | "failed";
 type WizardView = "dashboard" | "new-setup" | "stages" | "published";
 
 const STAGE_META = [
-  { num: 1, label: "Vendors",             icon: Building2, desc: "AI identifies key vendors and products in this market.", what: "Top 15 vendors with names, product descriptions, websites, and newsroom URLs — plus a 'Next 10' suggestions list to optionally include." },
-  { num: 2, label: "Vendor Scores",       icon: BarChart3,  desc: "AI assigns numeric 0–10 scores per vendor × criterion (no commentary yet).", what: "Market-specific criterion weights and a 0–10 numeric score for every vendor × criterion." },
-  { num: 3, label: "Vendor Commentary",   icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × criterion score.", what: "Evidence-based commentary and source citations for every vendor × criterion combination." },
-  { num: 4, label: "Product Features",    icon: Grid3X3,    desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
-  { num: 5, label: "Product Scoring",     icon: BarChart3,  desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4) — scores only, no commentary.", what: "Harvey Ball support levels (0–4) for every vendor × product feature." },
-  { num: 6, label: "Product Commentary",  icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × product feature score.", what: "Evidence-based commentary and source citations for every vendor × product feature." },
-  { num: 7, label: "Ecosystem",           icon: Layers,     desc: "AI defines ISV/partner ecosystem integration categories and individual integration points.", what: "4–6 ecosystem categories with 6–10 integration points each (30–45 integrations total)." },
-  { num: 8, label: "Ecosystem Scoring",   icon: BarChart3,  desc: "AI rates each vendor's ecosystem integrations using the Harvey Ball scale (0–4) — scores only.", what: "Harvey Ball support levels (0–4) for every vendor × ecosystem integration." },
-  { num: 9, label: "Ecosystem Commentary",icon: BarChart3,  desc: "AI writes 100–250 word commentary for each vendor × ecosystem integration score.", what: "Evidence-based commentary and source citations for every vendor × ecosystem integration." },
+  { num: 1, label: "Vendors",             icon: Building2, eta: "~1 min",    desc: "AI identifies key vendors and products in this market.", what: "Top 15 vendors with names, product descriptions, websites, and newsroom URLs — plus a 'Next 10' suggestions list to optionally include." },
+  { num: 2, label: "Vendor Scores",       icon: BarChart3,  eta: "3–5 min",  desc: "AI assigns numeric 0–10 scores per vendor × criterion (no commentary yet).", what: "Market-specific criterion weights and a 0–10 numeric score for every vendor × criterion." },
+  { num: 3, label: "Vendor Commentary",   icon: BarChart3,  eta: "5–8 min",  desc: "AI writes 100–250 word commentary for each vendor × criterion score.", what: "Evidence-based commentary and source citations for every vendor × criterion combination." },
+  { num: 4, label: "Product Features",    icon: Grid3X3,    eta: "~1 min",   desc: "AI defines technical product capability categories and features for this market.", what: "5–8 product capability categories with 5–12 features each (50–80 features total)." },
+  { num: 5, label: "Product Scoring",     icon: BarChart3,  eta: "8–12 min", desc: "AI rates each vendor's product capabilities using the Harvey Ball scale (0–4) — scores only, no commentary.", what: "Harvey Ball support levels (0–4) for every vendor × product feature." },
+  { num: 6, label: "Product Commentary",  icon: BarChart3,  eta: "15–25 min",desc: "AI writes 100–250 word commentary for each vendor × product feature score.", what: "Evidence-based commentary and source citations for every vendor × product feature." },
+  { num: 7, label: "Ecosystem",           icon: Layers,     eta: "~1 min",   desc: "AI defines ISV/partner ecosystem integration categories and individual integration points.", what: "4–6 ecosystem categories with 6–10 integration points each (30–45 integrations total)." },
+  { num: 8, label: "Ecosystem Scoring",   icon: BarChart3,  eta: "5–8 min",  desc: "AI rates each vendor's ecosystem integrations using the Harvey Ball scale (0–4) — scores only.", what: "Harvey Ball support levels (0–4) for every vendor × ecosystem integration." },
+  { num: 9, label: "Ecosystem Commentary",icon: BarChart3,  eta: "8–15 min", desc: "AI writes 100–250 word commentary for each vendor × ecosystem integration score.", what: "Evidence-based commentary and source citations for every vendor × ecosystem integration." },
 ];
 
 const CATEGORIES = [
@@ -164,6 +164,7 @@ function StepTracker({ activeStage, stagePhases, onStepClick }: {
           <div key={s.num} className="flex items-center flex-1 min-w-0">
             <button
               onClick={() => isDone && onStepClick(s.num)}
+              title={`${s.label} — est. ${s.eta}`}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-lg flex-1 min-w-0 text-left transition-all ${
                 isActive  ? "bg-blue-50 border-2 border-blue-300" :
                 isDone    ? "hover:bg-gray-50 cursor-pointer border border-transparent" :
@@ -1625,6 +1626,10 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
               </div>
               <h2 className="text-lg font-bold text-gray-900">{currentMeta.label}</h2>
               <p className="text-sm text-gray-500 mt-0.5">{currentMeta.desc}</p>
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                <Clock className="h-3 w-3 shrink-0" />
+                Estimated run time: <span className="font-medium text-gray-500">{currentMeta.eta}</span>
+              </p>
             </div>
             {currentPhase === "done" && (
               <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => runStage(activeJob!.id, activeStage)}>
