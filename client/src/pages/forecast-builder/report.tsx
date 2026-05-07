@@ -260,13 +260,23 @@ function MarkdownContent({
   onTagClick?: (id: string) => void;
   onNumberClick?: (nearbyIds: string[]) => void;
 }) {
-  // Extract assumption tag IDs referenced anywhere in this section's content
-  const nearbyIds = [...content.matchAll(/\[([A-Za-z0-9-]{4,16})\]/g)].map(m => m[1]);
-  const boundOnNumberClick = onNumberClick ? () => onNumberClick(nearbyIds) : undefined;
+  // Extract per-line assumption tag IDs for deterministic per-number linkage.
+  // Numbers on a given line are linked to [id] tags found on the same line.
+  // Fall back to section-wide IDs only if no line-level tags exist.
+  const sectionIds = [...content.matchAll(/\[([A-Za-z0-9-]{4,16})\]/g)].map(m => m[1]);
   const lines = content.split("\n");
   const elements: React.ReactElement[] = [];
   let key = 0;
   let i = 0;
+
+  // Returns a click handler where numbers on `line` are linked to assumption IDs
+  // found on that same line; falls back to section-wide IDs.
+  function lineNumberClick(line: string): (() => void) | undefined {
+    if (!onNumberClick) return undefined;
+    const lineIds = [...line.matchAll(/\[([A-Za-z0-9-]{4,16})\]/g)].map(m => m[1]);
+    const ids = lineIds.length > 0 ? lineIds : sectionIds;
+    return () => onNumberClick(ids);
+  }
 
   while (i < lines.length) {
     const line = lines[i];
@@ -304,11 +314,14 @@ function MarkdownContent({
             <tbody>
               {bodyRows.map((row, ri) => (
                 <tr key={ri} className="border-b border-white/5 hover:bg-white/[0.02]">
-                  {row.split("|").slice(1, -1).map((c, ci) => (
-                    <td key={ci} className="border border-white/10 px-3 py-1.5 text-slate-300">
-                      {renderInline(c.trim(), onTagClick, boundOnNumberClick)}
-                    </td>
-                  ))}
+                  {row.split("|").slice(1, -1).map((c, ci) => {
+                    const cell = c.trim();
+                    return (
+                      <td key={ci} className="border border-white/10 px-3 py-1.5 text-slate-300">
+                        {renderInline(cell, onTagClick, lineNumberClick(cell))}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -321,7 +334,7 @@ function MarkdownContent({
     if (line.startsWith("> ")) {
       elements.push(
         <blockquote key={key++} className="border-l-2 border-slate-600 pl-4 text-sm text-slate-400 italic my-3">
-          {renderInline(line.slice(2), onTagClick, boundOnNumberClick)}
+          {renderInline(line.slice(2), onTagClick, lineNumberClick(line))}
         </blockquote>
       );
       i++; continue;
@@ -329,7 +342,7 @@ function MarkdownContent({
 
     elements.push(
       <p key={key++} className="text-sm text-slate-300 leading-7 mb-3">
-        {renderInline(line, onTagClick, boundOnNumberClick)}
+        {renderInline(line, onTagClick, lineNumberClick(line))}
       </p>
     );
     i++;
@@ -387,11 +400,13 @@ function ScenarioTable({
   baseYear,
   horizonYears,
   currency,
+  onNumberClick,
 }: {
   scenarios: ForecastScenario[];
   baseYear: number;
   horizonYears: number;
   currency: string;
+  onNumberClick?: () => void;
 }) {
   const base = scenarios.find(s => s.name === "base");
   const bull = scenarios.find(s => s.name === "bull");
@@ -434,11 +449,39 @@ function ScenarioTable({
                       className="h-1.5 rounded bg-cyan-500/40"
                       style={{ width: `${barWidth}px`, minWidth: "4px", maxWidth: "120px" }}
                     />
-                    <span className="text-white font-medium">{fmt(bv, currency)}</span>
+                    {onNumberClick ? (
+                      <span
+                        className="text-white font-medium underline decoration-dotted decoration-cyan-400/50 cursor-pointer hover:text-cyan-300 transition-colors"
+                        title="Click to explore assumptions driving this figure"
+                        onClick={onNumberClick}
+                      >{fmt(bv, currency)}</span>
+                    ) : (
+                      <span className="text-white font-medium">{fmt(bv, currency)}</span>
+                    )}
                   </div>
                 </td>
-                {bull && <td className="py-2 px-4 text-emerald-300">{fmt(buv, currency)}</td>}
-                {bear && <td className="py-2 px-4 text-red-300">{fmt(bev, currency)}</td>}
+                {bull && (
+                  <td className="py-2 px-4 text-emerald-300">
+                    {onNumberClick ? (
+                      <span
+                        className="underline decoration-dotted decoration-emerald-400/50 cursor-pointer hover:text-emerald-200 transition-colors"
+                        title="Click to explore assumptions driving this figure"
+                        onClick={onNumberClick}
+                      >{fmt(buv, currency)}</span>
+                    ) : fmt(buv, currency)}
+                  </td>
+                )}
+                {bear && (
+                  <td className="py-2 px-4 text-red-300">
+                    {onNumberClick ? (
+                      <span
+                        className="underline decoration-dotted decoration-red-400/50 cursor-pointer hover:text-red-200 transition-colors"
+                        title="Click to explore assumptions driving this figure"
+                        onClick={onNumberClick}
+                      >{fmt(bev, currency)}</span>
+                    ) : fmt(bev, currency)}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -968,34 +1011,56 @@ export function ForecastReportContent({ id }: { id: string }) {
             </div>
           </div>
 
-          {/* Scenario cards */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-slate-800/60 border border-cyan-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <Target className="h-3 w-3" /> Base {rpt.engineSummary.horizonYear}
+          {/* Scenario cards — numbers are linked to top assumptions by sensitivity rank */}
+          {(() => {
+            const topIds = topAssumptions.map(a => a.id.slice(0, 8));
+            const onCardNumberClick = () => setPanelView({
+              type: "global",
+              nearbyAssumptionIds: topIds.length > 0 ? topIds : undefined,
+              highlightTopN: topIds.length === 0 ? 3 : undefined,
+            });
+            return (
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-slate-800/60 border border-cyan-500/10 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <Target className="h-3 w-3" /> Base {rpt.engineSummary.horizonYear}
+                  </div>
+                  <button
+                    className="text-2xl font-bold text-white underline decoration-dotted decoration-cyan-400/50 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+                    title="Click to explore assumptions driving this figure"
+                    onClick={onCardNumberClick}
+                  >{fmt(rpt.engineSummary.baseTotal, currency)}</button>
+                  <div className="text-xs text-cyan-400 mt-1">{fmtPct(rpt.engineSummary.baseCagr)} CAGR</div>
+                </div>
+                <div className="bg-slate-800/60 border border-emerald-500/10 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-emerald-400" /> Bull {rpt.engineSummary.horizonYear}
+                  </div>
+                  <button
+                    className="text-2xl font-bold text-emerald-300 underline decoration-dotted decoration-emerald-400/50 hover:text-emerald-100 transition-colors cursor-pointer text-left"
+                    title="Click to explore assumptions driving this figure"
+                    onClick={onCardNumberClick}
+                  >{fmt(rpt.engineSummary.bullTotal, currency)}</button>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {fmtPct(((rpt.engineSummary.bullTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
+                  </div>
+                </div>
+                <div className="bg-slate-800/60 border border-red-500/10 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-red-400" /> Bear {rpt.engineSummary.horizonYear}
+                  </div>
+                  <button
+                    className="text-2xl font-bold text-red-300 underline decoration-dotted decoration-red-400/50 hover:text-red-100 transition-colors cursor-pointer text-left"
+                    title="Click to explore assumptions driving this figure"
+                    onClick={onCardNumberClick}
+                  >{fmt(rpt.engineSummary.bearTotal, currency)}</button>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {fmtPct(((rpt.engineSummary.bearTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
+                  </div>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-white">{fmt(rpt.engineSummary.baseTotal, currency)}</div>
-              <div className="text-xs text-cyan-400 mt-1">{fmtPct(rpt.engineSummary.baseCagr)} CAGR</div>
-            </div>
-            <div className="bg-slate-800/60 border border-emerald-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-400" /> Bull {rpt.engineSummary.horizonYear}
-              </div>
-              <div className="text-2xl font-bold text-emerald-300">{fmt(rpt.engineSummary.bullTotal, currency)}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {fmtPct(((rpt.engineSummary.bullTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
-              </div>
-            </div>
-            <div className="bg-slate-800/60 border border-red-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-red-400" /> Bear {rpt.engineSummary.horizonYear}
-              </div>
-              <div className="text-2xl font-bold text-red-300">{fmt(rpt.engineSummary.bearTotal, currency)}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {fmtPct(((rpt.engineSummary.bearTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* QC badges */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -1021,7 +1086,13 @@ export function ForecastReportContent({ id }: { id: string }) {
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-cyan-400" /> Year-by-Year Forecast
               </h3>
-              <ScenarioTable scenarios={scenarios} baseYear={baseYear} horizonYears={horizonYears} currency={currency} />
+              <ScenarioTable
+                scenarios={scenarios}
+                baseYear={baseYear}
+                horizonYears={horizonYears}
+                currency={currency}
+                onNumberClick={() => handleNumberClick(topAssumptions.map(a => a.id.slice(0, 8)))}
+              />
             </div>
           )}
           {topAssumptions.length > 0 && (

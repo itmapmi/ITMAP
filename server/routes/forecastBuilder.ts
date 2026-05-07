@@ -980,9 +980,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
         const timeout = setTimeout(() => controller.abort(), 5000);
         let title: string | null = null;
         try {
+          // Disable automatic redirect following: a redirect to an internal IP
+          // would bypass the SSRF check above (we only checked the initial hostname).
           const pageRes = await fetch(rawUrl, {
             signal: controller.signal,
             headers: { "User-Agent": "spectio-bot/1.0" },
+            redirect: "error",
           });
           clearTimeout(timeout);
           const html = await pageRes.text();
@@ -1193,11 +1196,19 @@ export function registerForecastBuilderRoutes(app: Express): void {
             await writeAuditEntry(req.params.id, "re_debate_triggered", actor, {
               assumptionIds: body.data.assumptionIds,
               updatedCount,
+              outcome: "converged",
               engineResult,
             });
 
             sendSSEEvent(res, { type: "complete", message: `Re-debate complete. ${updatedCount} assumption(s) updated.`, engineResult });
           } else {
+            // Always write an audit event so every re-debate attempt appears in the diary,
+            // whether resolvers converged, diverged, or found no delta to apply.
+            await writeAuditEntry(req.params.id, "re_debate_triggered", actor, {
+              assumptionIds: body.data.assumptionIds,
+              updatedCount: 0,
+              outcome: "no_change",
+            });
             sendSSEEvent(res, { type: "complete", message: "Re-debate complete. No values changed." });
           }
         } catch (err: any) {
