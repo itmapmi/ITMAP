@@ -158,6 +158,9 @@ interface DebateSummaryData {
   scenariosSaved: number;
   usedFallback: boolean;
   models: string[];
+  failedRoles: string[];
+  /** "decision-grade" | "directional" | "exploratory" */
+  confidenceBand: string;
 }
 
 type QuestionCluster = "boundary" | "purpose" | "methodology" | "drivers" | "output";
@@ -1372,6 +1375,37 @@ function DebateResultsStep({
           <p className="text-xs text-slate-500 mt-1">Assumptions saved</p>
         </div>
       </div>
+
+      {/* Confidence band */}
+      {summary?.confidenceBand && (
+        <div className={`mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium ${
+          summary.confidenceBand === "decision-grade"
+            ? "bg-emerald-950/30 border-emerald-500/20 text-emerald-300"
+            : summary.confidenceBand === "directional"
+            ? "bg-cyan-950/30 border-cyan-500/20 text-cyan-300"
+            : "bg-slate-800/40 border-white/5 text-slate-400"
+        }`}>
+          {summary.confidenceBand === "decision-grade" && <ShieldCheck className="h-4 w-4 shrink-0" />}
+          {summary.confidenceBand === "directional" && <Activity className="h-4 w-4 shrink-0" />}
+          {summary.confidenceBand === "exploratory" && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />}
+          <div>
+            <span className="capitalize">{summary.confidenceBand.replace("-", " ")}</span>
+            <span className="ml-2 font-normal text-xs opacity-70">
+              {summary.confidenceBand === "decision-grade" && "≥60% of cruxes resolved with validated consensus — suitable for investment decisions"}
+              {summary.confidenceBand === "directional" && "Some cruxes resolved but below decision-grade threshold — suitable for directional planning"}
+              {summary.confidenceBand === "exploratory" && "No cruxes resolved — treat as exploratory only, requires further analysis"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Failed roles warning */}
+      {summary?.failedRoles && summary.failedRoles.length > 0 && (
+        <div className="mb-4 bg-amber-950/20 border border-amber-500/15 rounded-xl px-4 py-3 text-xs text-amber-300/80">
+          <AlertTriangle className="h-3.5 w-3.5 inline mr-1.5 text-amber-400" />
+          Critique roles that failed after retries: <span className="font-medium">{summary.failedRoles.join(", ")}</span>. Debate coverage may be reduced.
+        </div>
+      )}
 
       {/* Models used */}
       {summary?.models && (

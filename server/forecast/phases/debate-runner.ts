@@ -44,6 +44,8 @@ function sendEvent(res: Response, event: Record<string, unknown>): void {
 
 // ── Debate summary type ────────────────────────────────────────────────────
 
+export type ConfidenceBand = "decision-grade" | "directional" | "exploratory";
+
 export interface DebateSummary {
   totalCruxes: number;
   resolved: number;
@@ -54,6 +56,24 @@ export interface DebateSummary {
   scenariosSaved: number;
   usedFallback: boolean;
   models: string[];
+  failedRoles: string[];
+  /** Confidence band for the debate output:
+   *  - "decision-grade": ≥ 60% of cruxes resolved with genuine consensus
+   *  - "directional":    some cruxes resolved but below decision-grade threshold
+   *  - "exploratory":    no cruxes resolved
+   */
+  confidenceBand: ConfidenceBand;
+}
+
+function computeConfidenceBand(
+  totalCruxes: number,
+  resolved: number,
+  consensusValidated: number
+): ConfidenceBand {
+  if (totalCruxes === 0 || resolved === 0) return "exploratory";
+  const validatedRatio = totalCruxes > 0 ? consensusValidated / totalCruxes : 0;
+  if (validatedRatio >= 0.6) return "decision-grade";
+  return "directional";
 }
 
 // ── Main orchestrator ──────────────────────────────────────────────────────
@@ -135,15 +155,31 @@ export async function runDebate(
   send({ type: "phase_start", phase: 2, label: "Role critiques" });
   progress(2, "Launching 4 parallel role critiques: Bear, Bull, Methodologist, Historian…");
 
+  let phase2FailedRoles: string[] = [];
   try {
     const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey);
     objections = result.objections;
+    phase2FailedRoles = result.failedRoles;
+
+    // Emit explicit warnings for any role that failed after retries
+    if (phase2FailedRoles.length > 0) {
+      for (const role of phase2FailedRoles) {
+        progress(2, `Warning: ${role} role failed after retries — critiques from this role are omitted`);
+      }
+      send({
+        type: "phase_warning",
+        phase: 2,
+        message: `${phase2FailedRoles.length} role(s) failed: ${phase2FailedRoles.join(", ")}. Debate may have reduced coverage.`,
+        failedRoles: phase2FailedRoles,
+      });
+    }
 
     // Per-role critique audit entries
     for (const [role, count] of Object.entries(result.rolesSummary)) {
       await writeAuditEntry(forecastId, "critique_completed", "system", {
         role,
         objectionsRaised: count,
+        failed: phase2FailedRoles.includes(role),
         critical: objections.filter(o => o.severity === "critical" && o.draftModel?.includes(role.toLowerCase())).length,
       }).catch(() => {});
     }
@@ -151,6 +187,7 @@ export async function runDebate(
     await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
       phase: 2,
       totalObjections: objections.length,
+      failedRoles: phase2FailedRoles,
       bySeverity: {
         critical: objections.filter(o => o.severity === "critical").length,
         significant: objections.filter(o => o.severity === "significant").length,
@@ -481,23 +518,30 @@ export async function runDebate(
     }
   }
 
-  // Step 4: Mark forecast as debate_complete
-  await updateForecast(forecastId, { status: "debate_complete" });
+  // Step 4: Compute confidence band and mark forecast as debate_complete
+  const resolvedCount = validatedCruxes.filter(c => c.resolution === "resolved").length;
+  const consensusValidatedCount = validatedCruxes.filter(c => c.consensusValidated).length;
+  const confidenceBand = computeConfidenceBand(validatedCruxes.length, resolvedCount, consensusValidatedCount);
+
+  await updateForecast(forecastId, { status: "debate_complete", confidenceBand });
   await writeAuditEntry(forecastId, "debate_phase_completed", userId, {
     phase: "all",
     totalCruxes: validatedCruxes.length,
-    resolved: validatedCruxes.filter(c => c.resolution === "resolved").length,
+    resolved: resolvedCount,
     unresolved: validatedCruxes.filter(c => c.resolution === "unresolved").length,
+    consensusValidated: consensusValidatedCount,
+    confidenceBand,
+    failedRoles: phase2FailedRoles,
     assumptionsSaved,
     scenariosSaved,
   });
 
   const summary: DebateSummary = {
     totalCruxes: validatedCruxes.length,
-    resolved: validatedCruxes.filter(c => c.resolution === "resolved").length,
+    resolved: resolvedCount,
     unresolved: validatedCruxes.filter(c => c.resolution === "unresolved").length,
     scenarioVariable: validatedCruxes.filter(c => c.resolution === "scenario_variable").length,
-    consensusValidated: validatedCruxes.filter(c => c.consensusValidated).length,
+    consensusValidated: consensusValidatedCount,
     assumptionsSaved,
     scenariosSaved,
     usedFallback: !anthropicKey,
@@ -505,6 +549,8 @@ export async function runDebate(
       "gpt-4o",
       anthropicKey ? "claude-sonnet-4-5" : "gpt-4o (alt persona)",
     ],
+    failedRoles: phase2FailedRoles,
+    confidenceBand,
   };
 
   send({ type: "debate_complete", summary });

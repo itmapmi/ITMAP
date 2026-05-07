@@ -48,12 +48,24 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   throw lastError;
 }
 
-function extractArray(text: string): unknown[] {
-  try { const v = JSON.parse(text); return Array.isArray(v) ? v : []; } catch {}
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) { try { const v = JSON.parse(fence[1]); return Array.isArray(v) ? v : []; } catch {} }
-  const arr = text.match(/\[[\s\S]*\]/);
-  if (arr) { try { const v = JSON.parse(arr[0]); return Array.isArray(v) ? v : []; } catch {} }
+// Strict JSON parse — strips markdown code fence only.
+// No permissive regex salvage. Failures propagate so withRetry retries the call.
+function strictParseJson(text: string): unknown {
+  try { return JSON.parse(text); } catch {}
+  const fence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/m);
+  if (fence) { try { return JSON.parse(fence[1].trim()); } catch {} }
+  throw new Error("Role critic response was not valid JSON");
+}
+
+// Extract objection array from the parsed JSON without `as any` casts.
+// Models are instructed to return an array, but may wrap it in an object.
+function extractObjectionArray(parsed: unknown): unknown[] {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed !== null && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.objections)) return obj.objections;
+    if (Array.isArray(obj.critiques)) return obj.critiques;
+  }
   return [];
 }
 
@@ -83,7 +95,8 @@ async function callRoleOpenAI(
 ): Promise<Objection[]> {
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
 
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}`;
+  // Ask model to wrap the array in an object so json_object mode works reliably
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
@@ -97,13 +110,21 @@ async function callRoleOpenAI(
   });
 
   const content = response.choices[0]?.message?.content;
-  if (!content) return [];
+  if (!content) throw new Error(`OpenAI ${role} role returned empty response`);
 
-  // Response may be { objections: [...] } or directly [...]
-  let raw: unknown;
-  try { raw = JSON.parse(content); } catch { return []; }
-  const arr = Array.isArray(raw) ? raw : (raw as any)?.objections ?? (raw as any)?.critiques ?? [];
-  return ObjectionArraySchema.parse(Array.isArray(arr) ? arr : []);
+  const parsed = strictParseJson(content);
+  const arr = extractObjectionArray(parsed);
+  // Validate strictly — invalid entries are skipped with a warning, not salvaged
+  const valid: Objection[] = [];
+  for (const item of arr) {
+    const result = ObjectionSchema.safeParse(item);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      console.warn(`[Phase3-2] Skipping invalid objection from ${role} role:`, result.error.issues[0]?.message);
+    }
+  }
+  return valid;
 }
 
 // ── Anthropic role call ────────────────────────────────────────────────────
@@ -117,24 +138,34 @@ async function callRoleAnthropic(
 ): Promise<Objection[]> {
   const client = new Anthropic({ apiKey: anthropicKey });
 
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nRespond with ONLY a JSON array of objection objects. No markdown, no explanation.`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 2048,
-    system: systemPrompt + "\n\nRespond with ONLY a valid JSON array of objection objects.",
+    system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON array of objection objects — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });
 
   const block = response.content[0];
   const text = block.type === "text" ? block.text : "";
-  if (!text) return [];
+  if (!text) throw new Error(`Anthropic ${role} role returned empty response`);
 
-  const arr = extractArray(text);
-  return ObjectionArraySchema.parse(arr);
+  const parsed = strictParseJson(text);
+  const arr = extractObjectionArray(parsed);
+  const valid: Objection[] = [];
+  for (const item of arr) {
+    const result = ObjectionSchema.safeParse(item);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      console.warn(`[Phase3-2] Skipping invalid objection from Anthropic ${role}:`, result.error.issues[0]?.message);
+    }
+  }
+  return valid;
 }
 
-// ── Fallback: OpenAI for bull/historian roles ──────────────────────────────
+// ── OpenAI fallback for bull/historian roles (no Anthropic key) ────────────
 
 async function callRoleOpenAIFallback(
   role: "bull" | "historian",
@@ -159,11 +190,41 @@ async function callRoleOpenAIFallback(
   });
 
   const content = response.choices[0]?.message?.content;
-  if (!content) return [];
-  let raw: unknown;
-  try { raw = JSON.parse(content); } catch { return []; }
-  const arr = Array.isArray(raw) ? raw : (raw as any)?.objections ?? [];
-  return ObjectionArraySchema.parse(Array.isArray(arr) ? arr : []);
+  if (!content) throw new Error(`OpenAI fallback ${role} role returned empty response`);
+
+  const parsed = strictParseJson(content);
+  const arr = extractObjectionArray(parsed);
+  const valid: Objection[] = [];
+  for (const item of arr) {
+    const result = ObjectionSchema.safeParse(item);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      console.warn(`[Phase3-2] Skipping invalid objection from fallback ${role}:`, result.error.issues[0]?.message);
+    }
+  }
+  return valid;
+}
+
+// ── Role result type with explicit failure tracking ────────────────────────
+
+interface RoleResult {
+  objections: Objection[];
+  failed: boolean;
+  errorMessage?: string;
+}
+
+async function runRoleWithResult(
+  roleName: string,
+  fn: () => Promise<Objection[]>
+): Promise<RoleResult> {
+  try {
+    const objections = await withRetry(fn, 3);
+    return { objections, failed: false };
+  } catch (err: any) {
+    console.warn(`[Phase3-2] Role "${roleName}" failed after retries: ${err.message}`);
+    return { objections: [], failed: true, errorMessage: err.message };
+  }
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -171,6 +232,7 @@ async function callRoleOpenAIFallback(
 export interface Phase32Result {
   objections: Objection[];
   rolesSummary: Record<string, number>;
+  failedRoles: string[];
 }
 
 export async function runPhase32(
@@ -184,35 +246,49 @@ export async function runPhase32(
   const contextStr = buildContextString(context);
   const draftsStr = buildDraftsContext(analystA, analystB);
 
-  const [bearObjns, bullObjns, methodObjns, histObjns] = await Promise.all([
-    withRetry(() => callRoleOpenAI("bear", SYSTEM_ROLE_BEAR, contextStr, draftsStr, openaiKey, openaiBaseUrl)).catch(() => [] as Objection[]),
-    anthropicKey
-      ? withRetry(() => callRoleAnthropic("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, anthropicKey)).catch(() =>
-          withRetry(() => callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl))
-        )
-      : withRetry(() => callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl)).catch(() => [] as Objection[]),
-    withRetry(() => callRoleOpenAI("methodologist", SYSTEM_ROLE_METHODOLOGIST, contextStr, draftsStr, openaiKey, openaiBaseUrl)).catch(() => [] as Objection[]),
-    anthropicKey
-      ? withRetry(() => callRoleAnthropic("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, anthropicKey)).catch(() =>
-          withRetry(() => callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl))
-        )
-      : withRetry(() => callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl)).catch(() => [] as Objection[]),
+  const [bearResult, bullResult, methodResult, histResult] = await Promise.all([
+    runRoleWithResult("bear", () =>
+      callRoleOpenAI("bear", SYSTEM_ROLE_BEAR, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+    ),
+    runRoleWithResult("bull", () =>
+      anthropicKey
+        ? callRoleAnthropic("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, anthropicKey)
+            .catch(() => callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl))
+        : callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+    ),
+    runRoleWithResult("methodologist", () =>
+      callRoleOpenAI("methodologist", SYSTEM_ROLE_METHODOLOGIST, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+    ),
+    runRoleWithResult("historian", () =>
+      anthropicKey
+        ? callRoleAnthropic("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, anthropicKey)
+            .catch(() => callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl))
+        : callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+    ),
   ]);
 
-  const allObjections = [
-    ...bearObjns.map(o => ({ ...o, role: "bear" as const })),
-    ...bullObjns.map(o => ({ ...o, role: "bull" as const })),
-    ...methodObjns.map(o => ({ ...o, role: "methodologist" as const })),
-    ...histObjns.map(o => ({ ...o, role: "historian" as const })),
+  const failedRoles = [
+    bearResult.failed ? "bear" : null,
+    bullResult.failed ? "bull" : null,
+    methodResult.failed ? "methodologist" : null,
+    histResult.failed ? "historian" : null,
+  ].filter((r): r is string => r !== null);
+
+  const allObjections: Objection[] = [
+    ...bearResult.objections,
+    ...bullResult.objections,
+    ...methodResult.objections,
+    ...histResult.objections,
   ];
 
   return {
     objections: allObjections,
     rolesSummary: {
-      bear: bearObjns.length,
-      bull: bullObjns.length,
-      methodologist: methodObjns.length,
-      historian: histObjns.length,
+      bear: bearResult.objections.length,
+      bull: bullResult.objections.length,
+      methodologist: methodResult.objections.length,
+      historian: histResult.objections.length,
     },
+    failedRoles,
   };
 }

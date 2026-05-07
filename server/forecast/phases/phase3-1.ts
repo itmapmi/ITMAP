@@ -33,8 +33,24 @@ export const DraftSourceSchema = z.object({
   type: z.string().default("public"),
 });
 
+// Declared external estimate that the analyst must surface and then set aside.
+// Required by the anti-anchoring protocol — null fields mean "none known".
+export const ExternalEstimateSchema = z.object({
+  source: z.string().default("none known"),
+  value: z.number().nullable().default(null),
+  unit: z.string().nullable().default(null),
+  why_setting_aside: z.string().default("Deriving independently per anti-anchoring rule"),
+});
+
 export const ForecastDraftSchema = z.object({
   modelLabel: z.string().default("unknown"),
+  // Declared external estimate the analyst is aware of but must set aside.
+  external_estimate: ExternalEstimateSchema.optional().default({
+    source: "none known",
+    value: null,
+    unit: null,
+    why_setting_aside: "Deriving independently per anti-anchoring rule",
+  }),
   marketSizeBaseYear: z.number(),
   methodology: z.string().default(""),
   segments: z.array(DraftSegmentSchema).min(1),

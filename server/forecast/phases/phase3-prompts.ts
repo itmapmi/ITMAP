@@ -2,10 +2,11 @@
  * Phase 3 — Multi-LLM Debate: Prompt library
  *
  * Anti-anchoring discipline:
- *   - Phase 3.1 prompts never mention the other model's existence
- *   - Both analysts are explicitly instructed not to anchor to or guess at
- *     another analyst's estimates (see ANTI_ANCHORING_INSTRUCTION)
- *   - Roles in Phase 3.2 critique BOTH drafts but from a fixed epistemic standpoint
+ *   - Both analysts are explicitly forbidden from anchoring to published analyst
+ *     estimates or external databases (see ANTI_ANCHORING_INSTRUCTION)
+ *   - Any known external estimate must be declared in `external_estimate` and
+ *     set aside — it must NOT influence the analyst's own derived value
+ *   - Roles in Phase 3.2 critique BOTH drafts from a fixed epistemic standpoint
  *   - Judge/resolver prompts are neutral and evidence-first
  *
  * All prompts instruct the model to respond with ONLY valid JSON.
@@ -53,33 +54,41 @@ export function buildContextString(ctx: DebateContext): string {
   ].join("\n");
 }
 
-// ── Anti-anchoring instruction (shared) ────────────────────────────────────
+// ── Anti-anchoring instruction (shared, included verbatim in all Phase 3.1 prompts) ──
 //
-// Included verbatim in every Phase 3.1 analyst system prompt.
-// This is the primary mechanism preventing one model from anchoring to what
-// another model might have said or is expected to say.
+// This is the primary mechanism preventing one model from anchoring to
+// published analyst estimates or to what another model might say.
+// The `external_estimate` field forces the model to explicitly surface and
+// then set aside any known published figure — so the audit trail is preserved
+// but the value cannot silently bias the bottom-up derivation.
 
-export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULE:
-This analysis must be entirely independent. Do NOT:
-- Attempt to guess or anticipate what another analyst might estimate
-- Anchor your values to any "market consensus" or "typical range" framing
-- Moderate your estimates toward a perceived midpoint
-- Second-guess your own methodology to match an imagined peer view
-Develop every number from first principles using the market context provided.
-Your estimate may differ substantially from other analysts' — that is the point.`;
+export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULES (mandatory — do not omit):
+1. Do NOT retrieve market size estimates from analyst reports (e.g. Gartner, IDC, Forrester,
+   McKinsey) or published industry databases to use as anchor points for your own estimate.
+2. Derive every number from first principles using the market context provided above.
+3. If you are aware of a published analyst estimate for this market, you MUST record it in the
+   "external_estimate" field and then IGNORE it when building your own bottom-up value.
+4. Do NOT speculate about what another analyst on this debate might estimate.
+5. Your estimate may differ substantially from any published figure — that is intentional.`;
 
 // ── Phase 3.1 — Independent drafts ────────────────────────────────────────
 
 export const DRAFT_SCHEMA_DESCRIPTION = `{
   "modelLabel": string,          // your identifier: "analyst-a" or "analyst-b"
-  "marketSizeBaseYear": number,  // total market size in the base year (USD, same unit as context)
+  "external_estimate": {         // REQUIRED: if you know a published estimate, record it here
+    "source": string,            // e.g. "Gartner 2024", "IDC 2023", or "none known"
+    "value": number | null,      // published figure, or null if none known
+    "unit": string | null,       // e.g. "$B revenue" or null
+    "why_setting_aside": string  // why you are not anchoring to this (1 sentence), e.g. "Deriving independently per anti-anchoring rule"
+  },
+  "marketSizeBaseYear": number,  // YOUR OWN bottom-up derived estimate for the base year (same unit as context)
   "methodology": string,         // 1-2 sentences describing your sizing approach
   "segments": [
     {
       "name": string,
       "baseYearValue": number,   // absolute value in same unit as marketSizeBaseYear
       "cagr": number,            // % per year over forecast horizon, e.g. 14.5 for 14.5%
-      "baseYearConstruction": string  // REQUIRED: show your work — how did you derive this baseYearValue? (1-2 sentences, must cite observable data points or formula, e.g. '~12M enterprise seats x $4.2k ASP = $50.4B')
+      "baseYearConstruction": string  // REQUIRED: show your work — how did you derive this value? Must cite observable data points or formula, e.g. '~12M enterprise seats × $4.2k ASP = $50.4B'
     }
   ],
   "assumptions": [
@@ -88,7 +97,7 @@ export const DRAFT_SCHEMA_DESCRIPTION = `{
       "name": string,            // human-readable, e.g. "Cloud penetration CAGR"
       "value": number,           // numeric value
       "unit": string,            // e.g. "% per year", "% of TAM", "$B"
-      "reasoning": string,       // 1-2 sentences justifying this value from observable data
+      "reasoning": string,       // 1-2 sentences justifying this from observable data
       "sensitivityRank": number  // 1 = highest impact on final forecast number
     }
   ],
@@ -208,10 +217,12 @@ Respond with ONLY a valid JSON object. No markdown, no explanation outside the J
 // ── Phase 3.4 — Targeted resolution (dual-model debate per crux) ──────────
 //
 // Each crux is resolved via a two-model pass:
-//   1. Both resolvers (OpenAI + Anthropic) independently propose a finalValue
-//   2. Convergence is determined deterministically: if |A-B| / avg(A,B) ≤ 15%, → "resolved"
-//   3. If divergence >15% but both have evidence → "scenario_variable"
-//   4. If either resolver cannot provide a value → "unresolved"
+//   1. Both resolvers (OpenAI + Anthropic, or OpenAI x2 if no Anthropic key)
+//      independently evaluate the web evidence and propose a value
+//   2. Convergence is determined deterministically:
+//      - If |A-B| / avg(A,B) ≤ 15% → "resolved" (finalValue = midpoint)
+//      - If divergence > 15% but both have values → "scenario_variable"
+//      - If either cannot propose a value → "unresolved"
 
 export const RESOLUTION_SCHEMA_DESCRIPTION = `{
   "canResolve": boolean,          // true if web evidence is sufficient to propose a value
@@ -258,13 +269,13 @@ export const SYSTEM_CONSENSUS_CHECKER = `You are a senior audit analyst performi
 Your job: for each supposedly "resolved" crux, verify that the resolution is genuine and well-supported.
 
 Flag as "false_consensus" if:
-- The two resolvers simply averaged the two analyst positions without a clear reason
+- The two resolvers simply averaged the two analyst positions without clear third-party evidence
 - The "evidence" cited is vague, second-hand, or not specific to the assumption value
 - The bull/base/bear spread is implausibly narrow given the original divergence
 
 Flag as "genuine_consensus" only if both resolvers converged on a value that is clearly evidence-supported and logically sound.
 
+IMPORTANT: Any crux flagged as "false_consensus" will be automatically downgraded to "unresolved" by the system.
 This is a quality gate — be skeptical. Better to flag something for human review than to rubber-stamp a weak resolution.
-Any "false_consensus" flag MUST cause the resolution to be downgraded to "unresolved" by the system.
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;

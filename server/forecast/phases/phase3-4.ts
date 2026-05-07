@@ -24,6 +24,51 @@ import {
 import type { IdentifiedCrux } from "./phase3-3";
 import type { Objection } from "./phase3-2";
 
+// ── Typed wrapper for OpenAI Responses API (web_search_preview) ────────────
+//
+// The SDK doesn't export TypeScript types for the Responses API endpoint, so
+// we access it via bracket notation (same pattern as webSearchClient.ts) and
+// narrow the type explicitly here — no `as any` at call sites.
+
+interface ResponsesApiOutputItem {
+  type: string;
+  content?: Array<{ type: string; text?: string }>;
+}
+
+interface ResponsesApiResult {
+  output_text?: string;
+  output?: ResponsesApiOutputItem[];
+}
+
+interface ResponsesApiClient {
+  create(params: {
+    model: string;
+    tools: Array<{ type: string }>;
+    input: string;
+  }): Promise<ResponsesApiResult>;
+}
+
+function getResponsesClientForKey(apiKey: string, baseURL?: string): ResponsesApiClient | null {
+  const client = new OpenAI({ apiKey, baseURL });
+  const api = (client as Record<string, unknown>)["responses"];
+  if (!api || typeof (api as ResponsesApiClient).create !== "function") return null;
+  return api as ResponsesApiClient;
+}
+
+function extractResponseText(response: ResponsesApiResult): string {
+  if (typeof response.output_text === "string") return response.output_text;
+  if (!Array.isArray(response.output)) return "";
+  let text = "";
+  for (const item of response.output) {
+    if (item.type === "message" && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (c.type === "output_text" || c.type === "text") text += c.text ?? "";
+      }
+    }
+  }
+  return text;
+}
+
 // ── Tolerance constant ─────────────────────────────────────────────────────
 
 const CONVERGENCE_TOLERANCE = 0.15; // 15% relative divergence threshold
@@ -178,8 +223,7 @@ async function webSearchForCrux(
   openaiBaseUrl: string | undefined
 ): Promise<string[]> {
   try {
-    const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl }) as any;
-    const responseApi = client.responses;
+    const responseApi = getResponsesClientForKey(openaiKey, openaiBaseUrl);
     if (!responseApi) return [];
 
     const query = `Market size data for ${marketTitle}: ${crux.assumptionName} — looking for ${crux.evidenceRequired}. Find analyst reports, industry data, or official statistics.`;
@@ -190,25 +234,13 @@ async function webSearchForCrux(
       input: query,
     });
 
-    let rawText = "";
-    if (typeof response.output_text === "string") {
-      rawText = response.output_text;
-    } else if (Array.isArray(response.output)) {
-      for (const item of response.output) {
-        if (item.type === "message" && Array.isArray(item.content)) {
-          for (const c of item.content) {
-            if (c.type === "output_text" || c.type === "text") rawText += c.text ?? "";
-          }
-        }
-      }
-    }
-
+    const rawText = extractResponseText(response);
     if (!rawText.trim()) return [];
 
     const sentences = rawText
       .split(/[.!?]\s+/)
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 40 && s.length < 300)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 40 && s.length < 300)
       .slice(0, 5);
     return sentences;
   } catch (err: any) {
