@@ -985,8 +985,7 @@ export function ForecastReportContent({ id }: { id: string }) {
           <div className="bg-amber-950/20 border border-amber-500/20 rounded-lg px-4 py-2.5 mb-5 flex items-center gap-2.5">
             <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
             <p className="text-xs text-amber-300">
-              {userOverrideCount} assumption{userOverrideCount > 1 ? "s have" : " has"} been overridden — the scenario table reflects the updated engine values.{" "}
-              <span className="text-amber-500">Report prose retains original AI-generated text; rebuild to refresh the narrative.</span>
+              {userOverrideCount} assumption{userOverrideCount > 1 ? "s have" : " has"} been overridden — all scenario numbers and the year-by-year table reflect the updated engine values.
             </p>
           </div>
         )}

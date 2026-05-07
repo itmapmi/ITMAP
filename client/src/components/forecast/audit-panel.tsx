@@ -910,7 +910,7 @@ function GlobalOverviewTab({ forecastId, assumptions, onAssumptionSelect, nearby
     nearbyAssumptionIds.some(id => a.id.startsWith(id) || a.id.slice(0, id.length) === id);
 
   // Inline challenge runner — pre-selects top referenced assumptions
-  type ChallengeEvt = { type: string; message?: string; assumptionId?: string; description?: string; result?: Record<string, unknown> };
+  type ChallengeEvt = { type: string; message?: string; assumptionId?: string; description?: string; result?: ChallengeResult };
   const [challengeStatus, setChallengeStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [challengeLog, setChallengeLog] = useState<string[]>([]);
   const [challengeResults, setChallengeResults] = useState<ChallengeEvt[]>([]);
@@ -1033,7 +1033,7 @@ function GlobalOverviewTab({ forecastId, assumptions, onAssumptionSelect, nearby
           {challengeResults.length > 0 && (
             <div className="space-y-2 border-t border-violet-500/10 pt-2">
               {challengeResults.map((r, i) => {
-                const res = r.result as any;
+                const res: ChallengeResult | undefined = r.result;
                 return (
                   <div key={i} className="text-[10px] space-y-0.5">
                     <p className="text-violet-300 font-medium truncate">{r.description}</p>
@@ -1047,7 +1047,7 @@ function GlobalOverviewTab({ forecastId, assumptions, onAssumptionSelect, nearby
                     {res?.resolution === "unresolved" && (
                       <p className="text-slate-500">No resolution — insufficient evidence</p>
                     )}
-                    {res?.webEvidence?.length > 0 && (
+                    {res?.webEvidence && res.webEvidence.length > 0 && (
                       <p className="text-slate-600 italic truncate">Evidence: {res.webEvidence[0]}</p>
                     )}
                   </div>

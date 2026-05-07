@@ -708,7 +708,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         segments: full.segments,
         boundary: full.boundary,
         brief: full.brief,
-        auditLog: full.auditLog.slice(-50),
+        auditLog: full.auditLog,
       });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
