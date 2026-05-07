@@ -24,7 +24,9 @@ export const DraftSegmentSchema = z.object({
   name: z.string().min(1),
   baseYearValue: z.number(),
   cagr: z.number(),
-  baseYearConstruction: z.string().default(""),
+  // Required — model must show derivation (e.g. "seats × ASP = value").
+  // No default: omitting triggers Zod failure → withRetry retries the call.
+  baseYearConstruction: z.string().min(1, "baseYearConstruction is required and must show derivation"),
 });
 
 export const DraftSourceSchema = z.object({
@@ -33,26 +35,23 @@ export const DraftSourceSchema = z.object({
   type: z.string().default("public"),
 });
 
-// Declared external estimate that the analyst must surface and then set aside.
-// Required by the anti-anchoring protocol — null fields mean "none known".
+// Anti-anchoring protocol: model must declare any known external estimate
+// and explicitly state why it is being set aside.
+// All fields are required — no silent defaults — so omission triggers retry.
 export const ExternalEstimateSchema = z.object({
-  source: z.string().default("none known"),
-  value: z.number().nullable().default(null),
-  unit: z.string().nullable().default(null),
-  why_setting_aside: z.string().default("Deriving independently per anti-anchoring rule"),
+  source: z.string().min(1, "external_estimate.source is required (use 'none known' if unaware)"),
+  value: z.number().nullable(),
+  unit: z.string().nullable(),
+  why_setting_aside: z.string().min(1, "external_estimate.why_setting_aside is required"),
 });
 
 export const ForecastDraftSchema = z.object({
   modelLabel: z.string().default("unknown"),
-  // Declared external estimate the analyst is aware of but must set aside.
-  external_estimate: ExternalEstimateSchema.optional().default({
-    source: "none known",
-    value: null,
-    unit: null,
-    why_setting_aside: "Deriving independently per anti-anchoring rule",
-  }),
+  // Required — model must surface any known external estimate and set it aside.
+  // No silent default: omission propagates as a Zod error → withRetry retries.
+  external_estimate: ExternalEstimateSchema,
   marketSizeBaseYear: z.number(),
-  methodology: z.string().default(""),
+  methodology: z.string().min(1, "methodology is required"),
   segments: z.array(DraftSegmentSchema).min(1),
   assumptions: z.array(DraftAssumptionSchema).min(1),
   anticipatedCruxes: z.array(z.string()).default([]),

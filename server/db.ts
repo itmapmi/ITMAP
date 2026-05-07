@@ -234,6 +234,13 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now()
     `);
 
+    // 17. Add scenario_values JSONB column to forecast_cruxes (Phase 3 debate)
+    //     Stores deterministic bull/base/bear/final values from Phase 3.4 resolver.
+    await client.query(`
+      ALTER TABLE forecast_cruxes
+        ADD COLUMN IF NOT EXISTS scenario_values jsonb
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
