@@ -90,11 +90,13 @@ export async function rebuildAndPersistEngine(
   const horizonYears = brief.horizonYears;
   const endYear = baseYear + horizonYears;
 
-  // Persist segment forecastPaths (leaf segments only — parents are aggregated by engine)
+  // Persist segment forecastPaths — skip synthesised segments that have no DB row
+  const dbSegmentIds = new Set(full.segments.map(s => s.id));
   for (const sf of engine.baseScenario.segmentForecasts) {
+    if (!dbSegmentIds.has(sf.segmentId)) continue;
     await updateForecastSegment(sf.segmentId, {
       forecastPath: sf.forecastPath as unknown as Record<string, number>,
-    }).catch(() => {});
+    });
   }
 
   // Persist scenario forecastPaths (create rows if missing)
@@ -127,10 +129,12 @@ export async function rebuildAndPersistEngine(
       Math.abs(b.delta_plus_25pct - b.delta_minus_25pct) -
       Math.abs(a.delta_plus_25pct - a.delta_minus_25pct)
   );
+  const dbAssumptionIds = new Set(full.assumptions.map(a => a.id));
   for (let i = 0; i < ranked.length; i++) {
+    if (!dbAssumptionIds.has(ranked[i].assumptionId)) continue;
     await updateForecastAssumption(ranked[i].assumptionId, {
       sensitivityRank: i + 1,
-    }).catch(() => {});
+    });
   }
 
   const baseTotal = engine.baseScenario.totalForecastPath[endYear] ?? 0;

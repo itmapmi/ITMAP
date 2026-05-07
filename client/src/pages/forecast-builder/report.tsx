@@ -108,6 +108,7 @@ interface ForecastCrux {
 
 interface ForecastSource {
   id: string;
+  assumptionId: string | null;
   sourceType: string;
   url: string | null;
   title: string | null;
@@ -169,9 +170,12 @@ function fmtPct(n: number): string {
 
 // ── Markdown renderer ─────────────────────────────────────────────────────
 
+type PanelView = { type: "assumption"; shortId: string } | { type: "global" } | null;
+
 function renderInline(
   text: string,
-  onTagClick?: (assumptionShortId: string) => void
+  onTagClick?: (assumptionShortId: string) => void,
+  onNumberClick?: () => void,
 ): React.ReactNode {
   const parts = text.split(
     /(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\]|\$[\d,]+\.?\d*[BMTK]?|[+-]?\d+\.?\d*%)/g
@@ -184,7 +188,6 @@ function renderInline(
       return <em key={i} className="text-slate-200 italic">{part.slice(1, -1)}</em>;
     }
     if (/^\[[A-Za-z0-9-]{4,16}\]$/.test(part)) {
-      // Strip the brackets to get the raw ID fragment
       const rawId = part.slice(1, -1);
       if (onTagClick) {
         return (
@@ -199,17 +202,29 @@ function renderInline(
         );
       }
       return (
-        <code key={i} className="bg-cyan-950/50 text-cyan-400 px-1.5 py-0.5 rounded text-xs font-mono cursor-help" title="Assumption reference — see Section 8 register">
+        <code key={i} className="bg-cyan-950/50 text-cyan-400 px-1.5 py-0.5 rounded text-xs font-mono cursor-help" title="Assumption reference">
           {part}
         </code>
       );
     }
     if (/^\$[\d,]+\.?\d*[BMTK]?$/.test(part) || /^[+-]?\d+\.?\d*%$/.test(part)) {
+      if (onNumberClick) {
+        return (
+          <span
+            key={i}
+            onClick={onNumberClick}
+            className="underline decoration-dotted decoration-cyan-400/50 text-cyan-100 cursor-pointer hover:text-cyan-300 transition-colors"
+            title="Click to explore assumptions driving this figure"
+          >
+            {part}
+          </span>
+        );
+      }
       return (
         <span
           key={i}
           className="underline decoration-dotted decoration-cyan-400/50 text-cyan-100 cursor-help"
-          title="Traceable figure — cross-reference against engine output in the scenario table"
+          title="Traceable figure — cross-reference against engine output"
         >
           {part}
         </span>
@@ -222,9 +237,11 @@ function renderInline(
 function MarkdownContent({
   content,
   onTagClick,
+  onNumberClick,
 }: {
   content: string;
   onTagClick?: (id: string) => void;
+  onNumberClick?: () => void;
 }) {
   const lines = content.split("\n");
   const elements: React.ReactElement[] = [];
@@ -282,7 +299,7 @@ function MarkdownContent({
     if (line.startsWith("> ")) {
       elements.push(
         <blockquote key={key++} className="border-l-2 border-slate-600 pl-4 text-sm text-slate-400 italic my-3">
-          {renderInline(line.slice(2), onTagClick)}
+          {renderInline(line.slice(2), onTagClick, onNumberClick)}
         </blockquote>
       );
       i++; continue;
@@ -290,7 +307,7 @@ function MarkdownContent({
 
     elements.push(
       <p key={key++} className="text-sm text-slate-300 leading-7 mb-3">
-        {renderInline(line, onTagClick)}
+        {renderInline(line, onTagClick, onNumberClick)}
       </p>
     );
     i++;
@@ -302,15 +319,13 @@ function MarkdownContent({
 // ── Section card ──────────────────────────────────────────────────────────
 
 function SectionCard({
-  section,
-  isOpen,
-  onToggle,
-  onTagClick,
+  section, isOpen, onToggle, onTagClick, onNumberClick,
 }: {
   section: ReportSection;
   isOpen: boolean;
   onToggle: () => void;
   onTagClick?: (id: string) => void;
+  onNumberClick?: () => void;
 }) {
   return (
     <div
@@ -335,7 +350,7 @@ function SectionCard({
       {isOpen && (
         <div className="px-6 pb-6 border-t border-white/5">
           <div className="pt-4">
-            <MarkdownContent content={section.content} onTagClick={onTagClick} />
+            <MarkdownContent content={section.content} onTagClick={onTagClick} onNumberClick={onNumberClick} />
           </div>
         </div>
       )}
@@ -515,7 +530,7 @@ export function ForecastReportContent({ id }: { id: string }) {
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
   const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(new Set([1, 2]));
-  const [selectedAssumptionId, setSelectedAssumptionId] = useState<string | null>(null);
+  const [panelView, setPanelView] = useState<PanelView>(null);
 
   const reportQueryKey = ["/api/forecast-builder/forecasts", id, "report-data"];
 
@@ -535,9 +550,12 @@ export function ForecastReportContent({ id }: { id: string }) {
     }, 60);
   }
 
-  // Callback for clicking assumption ID tags in the report prose
   const handleTagClick = useCallback((rawId: string) => {
-    setSelectedAssumptionId(rawId);
+    setPanelView({ type: "assumption", shortId: rawId });
+  }, []);
+
+  const handleNumberClick = useCallback(() => {
+    setPanelView({ type: "global" });
   }, []);
 
   const { data, isLoading, error } = useQuery<ReportData>({
@@ -612,53 +630,62 @@ export function ForecastReportContent({ id }: { id: string }) {
     .sort((a, b) => (a.sensitivityRank ?? 99) - (b.sensitivityRank ?? 99))
     .slice(0, 5);
 
-  // Resolve the selected assumption by matching the short ID prefix
-  const selectedAssumption = selectedAssumptionId
-    ? assumptions.find(a => a.id.startsWith(selectedAssumptionId) || a.id.slice(0, 8) === selectedAssumptionId)
+  // Resolve per-assumption panel data when panelView is assumption mode
+  const panelAssumptionRaw = panelView?.type === "assumption"
+    ? assumptions.find(a => a.id.startsWith(panelView.shortId) || a.id.slice(0, 8) === panelView.shortId)
     : null;
 
-  // Build the AuditAssumption shape expected by the panel
-  const auditAssumption: AuditAssumption | null = selectedAssumption
+  const panelAssumption: AuditAssumption | undefined = panelAssumptionRaw
     ? {
-        id: selectedAssumption.id,
-        description: selectedAssumption.description,
-        value: selectedAssumption.value,
-        currentValue: selectedAssumption.currentValue,
-        originalAiValue: selectedAssumption.originalAiValue,
-        unit: selectedAssumption.unit,
-        currentValueSource: selectedAssumption.currentValueSource,
-        sensitivityRank: selectedAssumption.sensitivityRank,
-        proposedByModels: selectedAssumption.proposedByModels ?? [],
-        editHistory: selectedAssumption.editHistory ?? [],
+        id: panelAssumptionRaw.id,
+        description: panelAssumptionRaw.description,
+        value: panelAssumptionRaw.value,
+        currentValue: panelAssumptionRaw.currentValue,
+        originalAiValue: panelAssumptionRaw.originalAiValue,
+        unit: panelAssumptionRaw.unit,
+        currentValueSource: panelAssumptionRaw.currentValueSource,
+        sensitivityRank: panelAssumptionRaw.sensitivityRank,
+        proposedByModels: panelAssumptionRaw.proposedByModels ?? [],
+        editHistory: panelAssumptionRaw.editHistory ?? [],
       }
-    : null;
+    : undefined;
+
+  const allAuditAssumptions: AuditAssumption[] = assumptions.map(a => ({
+    id: a.id,
+    description: a.description,
+    value: a.value,
+    currentValue: a.currentValue,
+    originalAiValue: a.originalAiValue,
+    unit: a.unit,
+    currentValueSource: a.currentValueSource,
+    sensitivityRank: a.sensitivityRank,
+    proposedByModels: a.proposedByModels ?? [],
+    editHistory: a.editHistory ?? [],
+  }));
 
   const userOverrideCount = assumptions.filter(a => a.currentValueSource === "user_override").length;
 
   return (
     <>
-      {/* Audit panel overlay */}
-      {auditAssumption && (
+      {/* Persistent right-side panel — no backdrop, content shifts via margin */}
+      {panelView && (
         <AuditPanel
           forecastId={id}
-          assumption={auditAssumption}
+          mode={panelView.type === "global" ? "global" : "assumption"}
+          assumption={panelAssumption}
+          allAssumptions={allAuditAssumptions}
           cruxes={cruxes as AuditCrux[]}
           sources={sources as AuditSource[]}
           segments={segments as AuditSegment[]}
+          auditLog={auditLog as AuditLogEntry[]}
           queryKey={reportQueryKey}
-          onClose={() => setSelectedAssumptionId(null)}
+          onClose={() => setPanelView(null)}
+          onAssumptionSelect={(shortId) => setPanelView({ type: "assumption", shortId })}
         />
       )}
 
-      {/* Backdrop when panel is open */}
-      {auditAssumption && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40"
-          onClick={() => setSelectedAssumptionId(null)}
-        />
-      )}
-
-      <div className="max-w-5xl mx-auto">
+      {/* Main content — shifts right when panel is open, fully interactive */}
+      <div className={`max-w-5xl mx-auto transition-[margin] duration-300 ${panelView ? "mr-[26rem]" : ""}`}>
         {/* Header row */}
         <div className="flex items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -782,7 +809,7 @@ export function ForecastReportContent({ id }: { id: string }) {
                   return (
                     <button
                       key={a.id}
-                      onClick={() => setSelectedAssumptionId(shortId)}
+                      onClick={() => setPanelView({ type: "assumption", shortId })}
                       className="w-full flex items-start gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group"
                       title={`Open audit panel for [${shortId}]`}
                     >
@@ -846,7 +873,7 @@ export function ForecastReportContent({ id }: { id: string }) {
               </nav>
               <div className="mt-4 pt-4 border-t border-white/5 px-2">
                 <p className="text-[10px] text-slate-600">
-                  Click <code className="text-cyan-600">[xxxxxxxx]</code> tags in any section to inspect assumptions.
+                  Click <code className="text-cyan-600">[xxxxxxxx]</code> tags or any figure to explore assumptions.
                 </p>
               </div>
             </div>
@@ -862,6 +889,7 @@ export function ForecastReportContent({ id }: { id: string }) {
                 isOpen={openSectionIds.has(section.id)}
                 onToggle={() => toggleSection(section.id)}
                 onTagClick={handleTagClick}
+                onNumberClick={handleNumberClick}
               />
             ))}
           </div>

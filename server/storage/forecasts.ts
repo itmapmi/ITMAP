@@ -313,6 +313,11 @@ export async function updateForecastSource(
   return updated;
 }
 
+export async function getForecastSource(id: string): Promise<ForecastSource | null> {
+  const [row] = await db.select().from(forecastSources).where(eq(forecastSources.id, id));
+  return row ?? null;
+}
+
 export async function deleteForecastSource(id: string): Promise<void> {
   await db.delete(forecastSources).where(eq(forecastSources.id, id));
 }

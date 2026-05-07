@@ -212,6 +212,11 @@ export default function ForecastBuilderPage() {
                         </span>
                       )}
                       <span>Created {formatDate(forecast.createdAt)}</span>
+                      {forecast.updatedAt && forecast.updatedAt !== forecast.createdAt && (
+                        <span className="flex items-center gap-1 text-slate-600">
+                          Edited {formatDate(forecast.updatedAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
 

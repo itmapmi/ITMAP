@@ -17,6 +17,7 @@ import {
   getForecastAssumptions,
   updateForecastAssumption,
   createForecastSource,
+  getForecastSource,
   deleteForecastSource,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
@@ -807,6 +808,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
           reliabilityTier: z.number().int().min(1).max(3).default(2),
           verbatimQuote: z.string().max(2000).optional(),
           sourceType: z.string().max(100).default("user_provided"),
+          assumptionId: z.string().uuid().optional().nullable(),
         });
         const body = bodySchema.safeParse(req.body);
         if (!body.success) {
@@ -819,6 +821,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
 
         const source = await createForecastSource({
           forecastId: req.params.id,
+          assumptionId: body.data.assumptionId ?? null,
           sourceType: body.data.sourceType,
           url: body.data.url || null,
           title: body.data.title ?? null,
@@ -850,6 +853,10 @@ export function registerForecastBuilderRoutes(app: Express): void {
       try {
         const guard = await guardForecastAccess(req, res, req.params.id);
         if (!guard.ok) return;
+
+        const sourceRow = await getForecastSource(req.params.sourceId);
+        if (!sourceRow) return res.status(404).json({ error: "Source not found" });
+        if (sourceRow.forecastId !== req.params.id) return res.status(403).json({ error: "Forbidden" });
 
         await deleteForecastSource(req.params.sourceId);
 

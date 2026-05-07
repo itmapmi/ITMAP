@@ -1165,6 +1165,8 @@ export const forecastScenarios = pgTable("forecast_scenarios", {
 export const forecastSources = pgTable("forecast_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  // Optional link to a specific assumption this source supports
+  assumptionId: varchar("assumption_id"),
   // regulator | vendor_filing | government_stat | industry_association | analyst_report | user_provided
   sourceType: text("source_type").notNull(),
   url: text("url"),
