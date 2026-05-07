@@ -90,6 +90,25 @@ export async function runDebate(
     analystA = result.analystA;
     analystB = result.analystB;
 
+    // Per-model-call audit entries (granular provenance)
+    await writeAuditEntry(forecastId, "draft_generated", "system", {
+      model: "gpt-4o",
+      persona: "analyst-a",
+      marketSizeBaseYear: analystA.marketSizeBaseYear,
+      assumptionCount: analystA.assumptions.length,
+      segmentCount: analystA.segments.length,
+      anticipatedCruxes: analystA.anticipatedCruxes,
+    }).catch(() => {});
+    await writeAuditEntry(forecastId, "draft_generated", "system", {
+      model: result.usedFallback ? "gpt-4o-alt" : "claude-sonnet-4-5",
+      persona: "analyst-b",
+      marketSizeBaseYear: analystB.marketSizeBaseYear,
+      assumptionCount: analystB.assumptions.length,
+      segmentCount: analystB.segments.length,
+      anticipatedCruxes: analystB.anticipatedCruxes,
+      usedFallback: result.usedFallback,
+    }).catch(() => {});
+
     await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
       phase: 1,
       analystAMarketSize: analystA.marketSizeBaseYear,
@@ -119,6 +138,15 @@ export async function runDebate(
   try {
     const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey);
     objections = result.objections;
+
+    // Per-role critique audit entries
+    for (const [role, count] of Object.entries(result.rolesSummary)) {
+      await writeAuditEntry(forecastId, "critique_completed", "system", {
+        role,
+        objectionsRaised: count,
+        critical: objections.filter(o => o.severity === "critical" && o.draftModel?.includes(role.toLowerCase())).length,
+      }).catch(() => {});
+    }
 
     await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
       phase: 2,
@@ -192,22 +220,48 @@ export async function runDebate(
   // ── Phase 3.4: Targeted resolution ────────────────────────────────────
 
   send({ type: "phase_start", phase: 4, label: "Resolution" });
-  progress(4, `Resolving ${identifiedCruxes.length} cruxes with web search evidence…`);
+  progress(4, `Resolving ${identifiedCruxes.length} cruxes via dual-model debate (±15% convergence)…`);
+  progress(4, anthropicKey
+    ? "Resolver models: GPT-4o + Claude Sonnet (convergence threshold: 15%)"
+    : "Resolver models: GPT-4o × 2 personas (no Anthropic key — convergence threshold: 15%)"
+  );
 
   try {
     resolvedCruxes = await runPhase34(
       identifiedCruxes,
-      analystA,
-      analystB,
       objections,
       openaiKey,
       openaiBaseUrl,
+      anthropicKey,
       context.title,
       (crux, idx, total) => {
-        const statusLabel = crux.resolution === "resolved" ? "✓ resolved"
+        const statusLabel = crux.resolution === "resolved"
+          ? `✓ resolved (convergence: ${crux.resolverConvergencePct != null ? (crux.resolverConvergencePct * 100).toFixed(1) + "%" : "n/a"})`
           : crux.resolution === "scenario_variable" ? "↔ scenario variable"
           : "? unresolved";
         progress(4, `[${idx}/${total}] ${crux.assumptionName}: ${statusLabel}${crux.webSearchPerformed ? " (web evidence)" : ""}`);
+      },
+      // Per-call audit callback — logs both resolver outputs for full provenance
+      async (crux, resolverA, resolverB) => {
+        await writeAuditEntry(forecastId, "crux_resolution_calls", "system", {
+          assumptionId: crux.assumptionId,
+          assumptionName: crux.assumptionName,
+          resolverA: {
+            model: "gpt-4o",
+            canResolve: resolverA.canResolve,
+            proposedValue: resolverA.proposedValue,
+            proposedUnit: resolverA.proposedUnit,
+            evidenceCitedCount: resolverA.evidenceCited.length,
+          },
+          resolverB: {
+            model: anthropicKey ? "claude-sonnet-4-5" : "gpt-4o-alt",
+            canResolve: resolverB.canResolve,
+            proposedValue: resolverB.proposedValue,
+            proposedUnit: resolverB.proposedUnit,
+            evidenceCitedCount: resolverB.evidenceCited.length,
+          },
+          webSearchPerformed: crux.assumptionId !== undefined,
+        }).catch(() => {});
       }
     );
 
@@ -226,6 +280,9 @@ export async function runDebate(
       resolutionReasoning: `Resolution failed: ${err.message}`,
       evidenceCited: [],
       webSearchPerformed: false,
+      resolverAProposedValue: null,
+      resolverBProposedValue: null,
+      resolverConvergencePct: null,
     }));
     progress(4, `Warning: resolution partially failed — ${err.message}`);
     send({ type: "phase_complete", phase: 4, summary: "Resolution partially completed" });
@@ -239,8 +296,24 @@ export async function runDebate(
   try {
     validatedCruxes = await runPhase35(resolvedCruxes, openaiKey, openaiBaseUrl);
     const validated = validatedCruxes.filter(c => c.consensusValidated).length;
+    const downgraded = validatedCruxes.filter(c => c.validationFlag === "false_consensus").length;
+
+    // Per-validation-entry audit
+    for (const vc of validatedCruxes) {
+      await writeAuditEntry(forecastId, "crux_validation", "system", {
+        assumptionId: vc.assumptionId,
+        flag: vc.validationFlag,
+        consensusValidated: vc.consensusValidated,
+        effectiveResolution: vc.resolution,
+        note: vc.validationNote,
+      }).catch(() => {});
+    }
+
+    if (downgraded > 0) {
+      progress(5, `${downgraded} resolution(s) flagged as false_consensus and downgraded to "unresolved"`);
+    }
     progress(5, `${validated}/${validatedCruxes.length} resolutions passed consensus validation`);
-    send({ type: "phase_complete", phase: 5, summary: `${validated} of ${validatedCruxes.length} resolutions validated` });
+    send({ type: "phase_complete", phase: 5, summary: `${validated} of ${validatedCruxes.length} validated${downgraded > 0 ? ` (${downgraded} downgraded)` : ""}` });
   } catch (err: any) {
     console.error("[Debate] Phase 5 failed:", err);
     // Non-fatal — mark all as unvalidated

@@ -44,16 +44,16 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   throw lastError;
 }
 
-function extractObject(text: string): unknown {
+// Strict JSON parse — fence-strip only, no permissive regex salvage.
+// Failures propagate to withRetry which retries the LLM call.
+function strictParseJson(text: string): unknown {
   try { return JSON.parse(text); } catch {}
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) { try { return JSON.parse(fence[1]); } catch {} }
-  const obj = text.match(/\{[\s\S]*\}/);
-  if (obj) { try { return JSON.parse(obj[0]); } catch {} }
-  throw new Error("No valid JSON object found in judge response");
+  const fence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/m);
+  if (fence) { try { return JSON.parse(fence[1].trim()); } catch {} }
+  throw new Error("Judge response was not valid JSON");
 }
 
-// ── Judge call ─────────────────────────────────────────────────────────────
+// ── Judge call (gpt-4o-mini) ───────────────────────────────────────────────
 
 async function identifyCruxes(
   analystA: ForecastDraft,
@@ -94,7 +94,8 @@ Produce a JSON object matching this schema:\n${CRUX_SCHEMA_DESCRIPTION}
 Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely diverge AND where that divergence materially impacts the final forecast number.`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    // Per spec: crux identification judge must use gpt-4o-mini
+    model: "gpt-4o-mini",
     messages: [
       { role: "system", content: SYSTEM_JUDGE_CRUX },
       { role: "user", content: userPrompt },
@@ -107,43 +108,37 @@ Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely
   const content = response.choices[0]?.message?.content;
   if (!content) return [];
 
-  const raw = extractObject(content) as Record<string, unknown>;
-  const cruxList = Array.isArray(raw.cruxes) ? raw.cruxes : Array.isArray(raw) ? raw : [];
+  // Strict parse — if malformed, withRetry will retry the entire call
+  const raw = strictParseJson(content) as Record<string, unknown>;
+  const cruxList: unknown[] = Array.isArray(raw.cruxes)
+    ? raw.cruxes
+    : Array.isArray(raw)
+    ? raw as unknown[]
+    : [];
 
-  return cruxList
-    .map((c: unknown, idx: number) => {
-      const result = IdentifiedCruxSchema.safeParse(c);
-      if (result.success) return result.data;
-      // Attempt partial salvage
-      const p = c as Record<string, unknown>;
-      return IdentifiedCruxSchema.parse({
-        assumptionId: p.assumptionId ?? `crux_${idx + 1}`,
-        assumptionName: p.assumptionName ?? `Crux ${idx + 1}`,
-        analystAValue: Number(p.analystAValue ?? 0),
-        analystAUnit: p.analystAUnit ?? "",
-        analystAReasoning: p.analystAReasoning ?? "",
-        analystBValue: Number(p.analystBValue ?? 0),
-        analystBUnit: p.analystBUnit ?? "",
-        analystBReasoning: p.analystBReasoning ?? "",
-        divergencePct: Number(p.divergencePct ?? 0),
-        objectionSummary: p.objectionSummary ?? "",
-        evidenceRequired: p.evidenceRequired ?? "",
-        estimatedImpact: p.estimatedImpact ?? "medium",
-        rank: idx + 1,
-      });
-    })
-    .sort((a, b) => a.rank - b.rank);
+  // Validate each crux strictly — skip invalid entries rather than salvaging
+  const valid: IdentifiedCrux[] = [];
+  for (let idx = 0; idx < cruxList.length; idx++) {
+    const result = IdentifiedCruxSchema.safeParse(cruxList[idx]);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      console.warn(`[Phase3-3] Crux at index ${idx} failed validation, skipping:`, result.error.issues[0]?.message);
+    }
+  }
+
+  return valid.sort((a, b) => a.rank - b.rank);
 }
 
-// ── Synthesise cruxes from both drafts even if they share assumption IDs ──
+// ── Backfill analyst values from draft data ───────────────────────────────
 //
-// If the judge returns assumption IDs that don't exist in one draft, we fall
-// back to the best matching assumption by name similarity.
+// If the judge returns an assumption ID that matches a draft assumption,
+// use the draft's actual numeric values for accuracy.
 
 function findAssumptionValue(draft: ForecastDraft, assumptionId: string): { value: number; unit: string } | null {
   const exact = draft.assumptions.find(a => a.id === assumptionId);
   if (exact) return { value: exact.value, unit: exact.unit };
-  // Fuzzy: check if any assumption name contains the id (or vice-versa)
+  // Secondary: name-based fuzzy match for IDs that don't cross over exactly
   const fuzzy = draft.assumptions.find(a =>
     a.id.includes(assumptionId) || assumptionId.includes(a.id) ||
     a.name.toLowerCase().includes(assumptionId.replace(/_/g, " ").toLowerCase())

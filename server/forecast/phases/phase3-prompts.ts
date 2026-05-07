@@ -3,6 +3,8 @@
  *
  * Anti-anchoring discipline:
  *   - Phase 3.1 prompts never mention the other model's existence
+ *   - Both analysts are explicitly instructed not to anchor to or guess at
+ *     another analyst's estimates (see ANTI_ANCHORING_INSTRUCTION)
  *   - Roles in Phase 3.2 critique BOTH drafts but from a fixed epistemic standpoint
  *   - Judge/resolver prompts are neutral and evidence-first
  *
@@ -51,55 +53,70 @@ export function buildContextString(ctx: DebateContext): string {
   ].join("\n");
 }
 
+// ── Anti-anchoring instruction (shared) ────────────────────────────────────
+//
+// Included verbatim in every Phase 3.1 analyst system prompt.
+// This is the primary mechanism preventing one model from anchoring to what
+// another model might have said or is expected to say.
+
+export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULE:
+This analysis must be entirely independent. Do NOT:
+- Attempt to guess or anticipate what another analyst might estimate
+- Anchor your values to any "market consensus" or "typical range" framing
+- Moderate your estimates toward a perceived midpoint
+- Second-guess your own methodology to match an imagined peer view
+Develop every number from first principles using the market context provided.
+Your estimate may differ substantially from other analysts' — that is the point.`;
+
 // ── Phase 3.1 — Independent drafts ────────────────────────────────────────
 
 export const DRAFT_SCHEMA_DESCRIPTION = `{
   "modelLabel": string,          // your identifier: "analyst-a" or "analyst-b"
-  "marketSizeBaseYear": number,  // total market size in the base year (${currency} ${unit})
+  "marketSizeBaseYear": number,  // total market size in the base year (USD, same unit as context)
   "methodology": string,         // 1-2 sentences describing your sizing approach
   "segments": [
     {
       "name": string,
-      "baseYearValue": number,   // absolute value, same unit as marketSizeBaseYear
+      "baseYearValue": number,   // absolute value in same unit as marketSizeBaseYear
       "cagr": number,            // % per year over forecast horizon, e.g. 14.5 for 14.5%
-      "baseYearConstruction": string  // how you derived baseYearValue (1 sentence)
+      "baseYearConstruction": string  // REQUIRED: show your work — how did you derive this baseYearValue? (1-2 sentences, must cite observable data points or formula, e.g. '~12M enterprise seats x $4.2k ASP = $50.4B')
     }
   ],
   "assumptions": [
     {
-      "id": string,              // snake_case stable slug, e.g. "cloud_penetration_cagr"
+      "id": string,              // stable snake_case slug, e.g. "cloud_penetration_cagr"
       "name": string,            // human-readable, e.g. "Cloud penetration CAGR"
       "value": number,           // numeric value
       "unit": string,            // e.g. "% per year", "% of TAM", "$B"
-      "reasoning": string,       // 1-2 sentences justifying this value
-      "sensitivityRank": number  // 1 = highest impact on forecast outcome
+      "reasoning": string,       // 1-2 sentences justifying this value from observable data
+      "sensitivityRank": number  // 1 = highest impact on final forecast number
     }
   ],
-  "anticipatedCruxes": string[], // 2-4 assumptions you think will be most contested
+  "anticipatedCruxes": string[], // 2-4 assumption IDs you think will be most contested
   "sources": [
     { "title": string, "url": string | null, "type": string }
   ]
-}`.replace("${currency}", "USD").replace("${unit}", "unit");
+}`;
 
 export const SYSTEM_ANALYST_A = `You are a rigorous market research analyst using a methodical bottom-up approach.
 Your job: produce an independent, well-reasoned market size forecast.
 
-IMPORTANT: This is your own independent analysis. Do not speculate about what other analysts might estimate.
-Base your numbers on your knowledge of this market's structure, vendors, and publicly available data.
+${ANTI_ANCHORING_INSTRUCTION}
 
-Methodology preference: build from observable sub-segments and aggregate up.
+Methodology: build from observable sub-segments and aggregate up.
 Be conservative on growth assumptions — prefer triangulating from multiple data points.
+Every segment's baseYearConstruction MUST show your derivation explicitly (seats × ASP, or equivalent).
 
 Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
 
 export const SYSTEM_ANALYST_B = `You are a market research analyst with a demand-side, macro-driven perspective.
 Your job: produce an independent, well-reasoned market size forecast.
 
-IMPORTANT: This is your own independent analysis. Do not speculate about what other analysts might estimate.
-Base your numbers on your knowledge of macroeconomic trends, adoption curves, and market structure.
+${ANTI_ANCHORING_INSTRUCTION}
 
-Methodology preference: start from total addressable demand and apply penetration rates.
+Methodology: start from total addressable demand and apply penetration rates.
 Be willing to take a bolder stance on growth if the structural drivers justify it.
+Every segment's baseYearConstruction MUST show your derivation explicitly (TAM × penetration rate, or equivalent).
 
 Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
 
@@ -180,7 +197,7 @@ export const SYSTEM_JUDGE_CRUX = `You are a neutral senior analyst acting as JUD
 Your job: identify the key cruxes — the specific quantitative assumptions where the two analysts diverge most significantly.
 
 Rules:
-1. Focus only on numerical assumptions where divergence > 10% or where the difference materially changes the forecast
+1. Only identify cruxes where divergence > 10% or where the difference materially changes the forecast
 2. Rank by impact on the final forecast (not by magnitude of disagreement)
 3. Select the top 5 cruxes maximum (fewer is better if there are fewer genuine disagreements)
 4. For each crux, synthesize the objections from all 4 roles (bear/bull/methodologist/historian)
@@ -188,32 +205,39 @@ Rules:
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;
 
-// ── Phase 3.4 — Targeted resolution ───────────────────────────────────────
+// ── Phase 3.4 — Targeted resolution (dual-model debate per crux) ──────────
+//
+// Each crux is resolved via a two-model pass:
+//   1. Both resolvers (OpenAI + Anthropic) independently propose a finalValue
+//   2. Convergence is determined deterministically: if |A-B| / avg(A,B) ≤ 15%, → "resolved"
+//   3. If divergence >15% but both have evidence → "scenario_variable"
+//   4. If either resolver cannot provide a value → "unresolved"
 
 export const RESOLUTION_SCHEMA_DESCRIPTION = `{
-  "resolution": "resolved" | "unresolved" | "scenario_variable",
-  "finalValue": number | null,    // consensus value if resolved, null if unresolved
-  "finalUnit": string | null,
+  "canResolve": boolean,          // true if web evidence is sufficient to propose a value
+  "proposedValue": number | null, // your evidence-supported value; null if cannot resolve
+  "proposedUnit": string | null,
   "bullValue": number,            // optimistic scenario value
   "baseValue": number,            // base case value
   "bearValue": number,            // pessimistic scenario value
-  "resolutionReasoning": string,  // 2-3 sentences explaining the resolution
-  "evidenceCited": string[]       // list of evidence points that drove the resolution
+  "resolutionReasoning": string,  // 2-3 sentences explaining your proposed value
+  "evidenceCited": string[]       // list of evidence points that drove your reasoning
 }`;
 
-export const SYSTEM_RESOLVER = `You are a neutral senior market research analyst resolving a specific contested assumption.
+export const SYSTEM_RESOLVER = `You are a neutral senior market research analyst independently resolving a specific contested forecast assumption.
 You have been provided with:
 1. The two analysts' positions and reasoning
-2. All role-based objections raised
+2. All role-based objections raised about this assumption
 3. Web search evidence gathered for this specific assumption
 
 Your task:
-- If the evidence clearly supports one position → resolve as "resolved" with the evidence-supported value
-- If the evidence splits between bull and bear scenarios → resolve as "scenario_variable" with bull/base/bear values
-- If the evidence is insufficient to adjudicate → resolve as "unresolved" and note what would be needed
+- Review all available evidence and propose your own best-estimate value for this assumption
+- If the evidence clearly supports a specific value, set canResolve=true and provide proposedValue
+- If evidence is insufficient to support any specific value, set canResolve=false and proposedValue=null
+- ALWAYS provide bull/base/bear values for scenario planning, even if you cannot resolve the point estimate
 
-Always produce bull/base/bear values — even for resolved assumptions, context scenarios are required.
-Be conservative: prefer "unresolved" over a false consensus.
+Be conservative: only set canResolve=true if you have actual evidence (not just a preference).
+Do NOT anchor to either analyst's value — derive your proposed value from the evidence alone.
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;
 
@@ -234,12 +258,13 @@ export const SYSTEM_CONSENSUS_CHECKER = `You are a senior audit analyst performi
 Your job: for each supposedly "resolved" crux, verify that the resolution is genuine and well-supported.
 
 Flag as "false_consensus" if:
-- The resolution simply averaged the two positions without a clear reason
-- The "evidence" cited is vague or second-hand
-- The bull/base/bear spread is implausibly narrow
+- The two resolvers simply averaged the two analyst positions without a clear reason
+- The "evidence" cited is vague, second-hand, or not specific to the assumption value
+- The bull/base/bear spread is implausibly narrow given the original divergence
 
-Flag as "genuine_consensus" only if the resolution is clearly evidence-supported and logically sound.
+Flag as "genuine_consensus" only if both resolvers converged on a value that is clearly evidence-supported and logically sound.
 
 This is a quality gate — be skeptical. Better to flag something for human review than to rubber-stamp a weak resolution.
+Any "false_consensus" flag MUST cause the resolution to be downgraded to "unresolved" by the system.
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;

@@ -1,3 +1,14 @@
+/**
+ * Phase 3.5 — Consensus validation
+ *
+ * Performs a final audit pass on all resolved cruxes.
+ * Key behaviour:
+ *   - If a crux is flagged as "false_consensus", its resolution is DOWNGRADED
+ *     to "unresolved" — the model declaration does not override this.
+ *   - Only "genuine_consensus" flags preserve a "resolved" status.
+ *   - "scenario_variable" cruxes flagged as "scenario_required" are kept as-is.
+ */
+
 import { z } from "zod";
 import OpenAI from "openai";
 import {
@@ -6,7 +17,7 @@ import {
 } from "./phase3-prompts";
 import type { ResolvedCrux } from "./phase3-4";
 
-// ── Zod schema ─────────────────────────────────────────────────────────────
+// ── Zod schemas ────────────────────────────────────────────────────────────
 
 export const ValidationEntrySchema = z.object({
   assumptionId: z.string(),
@@ -37,6 +48,9 @@ export const ValidatedCruxSchema = z.object({
   resolutionReasoning: z.string(),
   evidenceCited: z.array(z.string()),
   webSearchPerformed: z.boolean(),
+  resolverAProposedValue: z.number().nullable(),
+  resolverBProposedValue: z.number().nullable(),
+  resolverConvergencePct: z.number().nullable(),
   // Validation fields
   consensusValidated: z.boolean(),
   validationFlag: z.enum(["genuine_consensus", "false_consensus", "insufficient_evidence", "scenario_required"]),
@@ -62,16 +76,15 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   throw lastError;
 }
 
-function extractObject(text: string): unknown {
+// Strict JSON parse — fence-strip only, no permissive salvage.
+function strictParseJson(text: string): unknown {
   try { return JSON.parse(text); } catch {}
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) { try { return JSON.parse(fence[1]); } catch {} }
-  const obj = text.match(/\{[\s\S]*\}/);
-  if (obj) { try { return JSON.parse(obj[0]); } catch {} }
-  throw new Error("No valid JSON in consensus checker response");
+  const fence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/m);
+  if (fence) { try { return JSON.parse(fence[1].trim()); } catch {} }
+  throw new Error("Consensus checker response was not valid JSON");
 }
 
-// ── Consensus check call ───────────────────────────────────────────────────
+// ── Consensus check call (gpt-4o-mini) ────────────────────────────────────
 
 async function checkConsensus(
   resolvedCruxes: ResolvedCrux[],
@@ -88,6 +101,9 @@ async function checkConsensus(
     divergencePct: c.divergencePct,
     resolution: c.resolution,
     finalValue: c.finalValue,
+    resolverAProposedValue: c.resolverAProposedValue,
+    resolverBProposedValue: c.resolverBProposedValue,
+    resolverConvergencePct: c.resolverConvergencePct,
     bullValue: c.bullValue,
     baseValue: c.baseValue,
     bearValue: c.bearValue,
@@ -101,6 +117,7 @@ async function checkConsensus(
 RESOLVED CRUXES:\n${JSON.stringify(payload, null, 2)}
 
 For each crux, assess whether the resolution is genuine and well-supported.
+Remember: flag as "false_consensus" if the two resolvers just averaged the analyst values without real evidence.
 Produce a JSON object matching this schema:\n${CONSENSUS_CHECK_SCHEMA_DESCRIPTION}`;
 
   const response = await client.chat.completions.create({
@@ -117,24 +134,24 @@ Produce a JSON object matching this schema:\n${CONSENSUS_CHECK_SCHEMA_DESCRIPTIO
   const content = response.choices[0]?.message?.content;
   if (!content) return [];
 
-  const raw = extractObject(content) as Record<string, unknown>;
-  const validationList = Array.isArray(raw.validations)
+  // Strict parse — failures propagate to withRetry
+  const raw = strictParseJson(content) as Record<string, unknown>;
+  const validationList: unknown[] = Array.isArray(raw.validations)
     ? raw.validations
     : Array.isArray(raw)
-    ? raw
+    ? raw as unknown[]
     : [];
 
-  return validationList.map((v: unknown) => {
+  const valid: ValidationEntry[] = [];
+  for (const v of validationList) {
     const result = ValidationEntrySchema.safeParse(v);
-    if (result.success) return result.data;
-    const p = v as Record<string, unknown>;
-    return {
-      assumptionId: (p.assumptionId as string) ?? "unknown",
-      consensusValidated: Boolean(p.consensusValidated ?? false),
-      flag: (p.flag as ValidationEntry["flag"]) ?? "insufficient_evidence",
-      note: (p.note as string) ?? "",
-    };
-  });
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      console.warn("[Phase3-5] Validation entry failed schema, skipping:", result.error.issues[0]?.message);
+    }
+  }
+  return valid;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -144,8 +161,8 @@ export async function runPhase35(
   openaiKey: string,
   openaiBaseUrl: string | undefined
 ): Promise<ValidatedCrux[]> {
-  // Only validate resolved cruxes — unresolved ones are always "insufficient_evidence"
-  const toValidate = resolvedCruxes.filter(c => c.resolution === "resolved" || c.resolution === "scenario_variable");
+  // Only run validation on cruxes that have a resolution (resolved or scenario_variable)
+  const toValidate = resolvedCruxes.filter(c => c.resolution !== "unresolved");
 
   let validations: ValidationEntry[] = [];
 
@@ -160,27 +177,40 @@ export async function runPhase35(
   return resolvedCruxes.map(c => {
     const validation = validationMap.get(c.assumptionId);
 
-    let flag: ValidatedCrux["validationFlag"] = "insufficient_evidence";
-    let consensusValidated = false;
-    let note = "";
+    let flag: ValidatedCrux["validationFlag"];
+    let consensusValidated: boolean;
+    let note: string;
+    let effectiveResolution = c.resolution;
 
     if (c.resolution === "unresolved") {
       flag = "insufficient_evidence";
       consensusValidated = false;
-      note = "Marked unresolved — needs primary research.";
+      note = "Marked unresolved by convergence logic — no consensus reached.";
     } else if (validation) {
       flag = validation.flag;
       consensusValidated = validation.consensusValidated;
       note = validation.note;
+
+      // ── CRITICAL: false_consensus must downgrade resolution to "unresolved" ──
+      // The consensus check is a quality gate. If it flags a resolution as
+      // false_consensus, the resolution must be downgraded — not preserved.
+      if (flag === "false_consensus") {
+        effectiveResolution = "unresolved";
+        consensusValidated = false;
+        note = `[Downgraded from "resolved"] ${note}`;
+      }
     } else {
-      // Validation missing — apply conservative default
+      // Validation pass did not cover this crux — conservative default
       flag = c.resolution === "scenario_variable" ? "scenario_required" : "insufficient_evidence";
       consensusValidated = false;
-      note = "Validation pass did not cover this crux — treat as requiring human review.";
+      note = "Validation pass did not cover this crux — requires human review.";
     }
 
     return {
       ...c,
+      resolution: effectiveResolution,
+      // finalValue must be cleared if resolution was downgraded
+      finalValue: effectiveResolution !== "resolved" ? null : c.finalValue,
       consensusValidated,
       validationFlag: flag,
       validationNote: note,

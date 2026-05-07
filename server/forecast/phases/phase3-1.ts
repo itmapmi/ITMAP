@@ -66,15 +66,23 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
   throw lastError;
 }
 
-// ── JSON extraction ────────────────────────────────────────────────────────
+// ── Strict JSON parse (structured retry — no permissive salvage) ──────────
+//
+// Only two parsing passes are attempted:
+//   1. Direct JSON.parse (handles clean JSON from json_object mode)
+//   2. Strip a markdown code fence (legitimate response wrapping pattern)
+// If both fail, the error propagates so the withRetry handler retries the
+// entire LLM call — we never attempt to extract partial objects with regex.
 
-function extractFirstObject(text: string): unknown {
+function strictParseJson(text: string): unknown {
+  // Pass 1: direct parse
   try { return JSON.parse(text); } catch {}
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) { try { return JSON.parse(fence[1]); } catch {} }
-  const obj = text.match(/\{[\s\S]*\}/);
-  if (obj) { try { return JSON.parse(obj[0]); } catch {} }
-  throw new Error("LLM response contained no valid JSON object");
+  // Pass 2: strip markdown code fence (well-defined wrapping pattern only)
+  const fence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/m);
+  if (fence) {
+    try { return JSON.parse(fence[1].trim()); } catch {}
+  }
+  throw new Error("LLM response was not valid JSON (even after markdown fence stripping)");
 }
 
 // ── Analyst-A: OpenAI ──────────────────────────────────────────────────────
@@ -108,7 +116,7 @@ async function generateDraftOpenAI(
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error(`OpenAI ${persona} returned empty response`);
 
-  const raw = extractFirstObject(content);
+  const raw = strictParseJson(content);
   return ForecastDraftSchema.parse(raw);
 }
 
@@ -120,7 +128,7 @@ async function generateDraftAnthropic(
 ): Promise<ForecastDraft> {
   const client = new Anthropic({ apiKey: anthropicKey });
   const contextStr = buildContextString(context);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b".`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b". Respond with ONLY a valid JSON object — no markdown fence, no explanation.`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
@@ -133,7 +141,7 @@ async function generateDraftAnthropic(
   const text = block.type === "text" ? block.text : "";
   if (!text) throw new Error("Anthropic analyst-b returned empty response");
 
-  const raw = extractFirstObject(text);
+  const raw = strictParseJson(text);
   return ForecastDraftSchema.parse(raw);
 }
 
@@ -151,17 +159,22 @@ export async function runPhase31(
   openaiBaseUrl: string | undefined,
   anthropicKey: string | undefined
 ): Promise<Phase31Result> {
-  const [analystA, analystBResult] = await Promise.all([
+  let anthropicSucceeded = false;
+
+  const [analystA, analystB] = await Promise.all([
     withRetry(() => generateDraftOpenAI("analyst-a", context, openaiKey, openaiBaseUrl)),
     anthropicKey
-      ? withRetry(() => generateDraftAnthropic(context, anthropicKey)).catch(async () => {
-          // Anthropic failed — fall back silently to OpenAI alt persona
-          return withRetry(() => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl));
-        })
+      ? withRetry(() => generateDraftAnthropic(context, anthropicKey))
+          .then(draft => { anthropicSucceeded = true; return draft; })
+          .catch(() =>
+            withRetry(() => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl))
+          )
       : withRetry(() => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl)),
   ]);
 
-  const usedFallback = !anthropicKey || analystBResult.modelLabel === "analyst-b";
+  // usedFallback = true when Anthropic was requested but fell back to OpenAI,
+  // OR when no Anthropic key was provided at all.
+  const usedFallback = !anthropicKey || (!!anthropicKey && !anthropicSucceeded);
 
-  return { analystA, analystB: analystBResult, usedFallback: !anthropicKey };
+  return { analystA, analystB, usedFallback };
 }
