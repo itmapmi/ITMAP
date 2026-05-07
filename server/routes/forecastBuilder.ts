@@ -12,7 +12,6 @@ import {
   upsertForecastBoundary,
   getForecastBoundary,
   upsertForecastBrief,
-  getForecastBrief,
   clearForecastBrief,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
@@ -26,6 +25,8 @@ import {
   answerEntrySchema,
   type AnswerEntry,
 } from "../forecast/phases/phase2";
+
+type ForecastStatus = "draft" | "boundary_confirmed" | "brief_complete" | "debate_complete" | "calculating" | "complete";
 
 // ── Shared schemas ────────────────────────────────────────────────────────
 
