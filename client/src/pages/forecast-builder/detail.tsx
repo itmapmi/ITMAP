@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -15,12 +15,11 @@ import {
   Sparkles,
   TrendingUp,
   X,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -53,9 +52,9 @@ interface DBBoundary {
   unitOfMeasurement: string | null;
   timeHorizon: string | null;
   customScope: boolean;
-  proposedBySystem: ExtractedBoundary | null;
+  proposedBySystem: (ExtractedBoundary & { _extractionCount?: number }) | null;
   confirmedByUser: boolean;
-  userEdits: any;
+  userEdits: Record<string, unknown> | null;
 }
 
 interface DBBrief {
@@ -110,29 +109,79 @@ interface AnswerEntry {
   skipped: boolean;
 }
 
-// ── Typewriter hook ────────────────────────────────────────────────────────
+// ── SSE stream reader ─────────────────────────────────────────────────────
 
-function useTypewriter(text: string, active: boolean) {
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (!active) { setDisplayed(text); setDone(true); return; }
-    setDisplayed("");
-    setDone(false);
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) { clearInterval(interval); setDone(true); }
-    }, 18);
-    return () => clearInterval(interval);
-  }, [text, active]);
-
-  return { displayed, done };
+interface StreamHandlers {
+  onThinking: () => void;
+  onToken: (token: string) => void;
+  onQuestion: (q: InterviewQuestion) => void;
+  onDone: () => void;
+  onError: (err: string) => void;
 }
 
-// ── Wizard step indicator ──────────────────────────────────────────────────
+async function streamInterviewNext(
+  forecastId: string,
+  mode: "express" | "full",
+  answers: AnswerEntry[],
+  handlers: StreamHandlers,
+  signal?: AbortSignal
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/forecast-builder/forecasts/${forecastId}/interview/next`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, answers }),
+      credentials: "include",
+      signal,
+    });
+  } catch (err: any) {
+    if (err.name !== "AbortError") handlers.onError(err.message ?? "Network error");
+    return;
+  }
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({ error: "Request failed" }));
+    handlers.onError((errBody as any).error ?? "Request failed");
+    return;
+  }
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const json = JSON.parse(line.slice(6)) as Record<string, unknown>;
+          if (json.type === "thinking") handlers.onThinking();
+          else if (json.type === "token") handlers.onToken(json.value as string);
+          else if (json.type === "question") handlers.onQuestion(json.data as InterviewQuestion);
+          else if (json.type === "done") handlers.onDone();
+          else if (json.type === "error") handlers.onError(json.error as string);
+        } catch {
+          // malformed SSE event — skip
+        }
+      }
+    }
+  } catch (err: any) {
+    if (err.name !== "AbortError") handlers.onError(err.message ?? "Stream error");
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ── Wizard step indicator ─────────────────────────────────────────────────
 
 const STEPS = [
   { key: "boundary", label: "Define scope" },
@@ -148,11 +197,17 @@ function WizardSteps({ current }: { current: string }) {
         const state = idx < currentIdx ? "done" : idx === currentIdx ? "active" : "upcoming";
         return (
           <div key={step.key} className="flex items-center gap-1">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all
-              ${state === "done" ? "bg-emerald-950 text-emerald-300 border border-emerald-500/20" :
-                state === "active" ? "bg-cyan-950 text-cyan-300 border border-cyan-500/30" :
-                "bg-slate-900 text-slate-500 border border-white/5"}`}>
-              {state === "done" ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-3 w-3 rounded-full inline-flex items-center justify-center text-[10px]">{idx + 1}</span>}
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+              ${state === "done" ? "bg-emerald-950 text-emerald-300 border border-emerald-500/20"
+                : state === "active" ? "bg-cyan-950 text-cyan-300 border border-cyan-500/30"
+                : "bg-slate-900 text-slate-500 border border-white/5"}`}
+            >
+              {state === "done" ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <span className="w-3 h-3 flex items-center justify-center text-[10px]">{idx + 1}</span>
+              )}
               {step.label}
             </div>
             {idx < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-slate-700" />}
@@ -163,52 +218,70 @@ function WizardSteps({ current }: { current: string }) {
   );
 }
 
-// ── Phase 1: Boundary step ─────────────────────────────────────────────────
+// ── Phase 1: Boundary step ────────────────────────────────────────────────
 
-function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onConfirmed: () => void }) {
+function BoundaryStep({
+  forecast,
+  onConfirmed,
+}: {
+  forecast: ForecastFull;
+  onConfirmed: () => void;
+}) {
   const { toast } = useToast();
   const [description, setDescription] = useState("");
-  const [subPhase, setSubPhase] = useState<"input" | "proposal">(
-    forecast.boundary?.proposedBySystem && !forecast.boundary.confirmedByUser ? "proposal" : "input"
-  );
+  const hasProposal = !!(forecast.boundary?.proposedBySystem && !forecast.boundary.confirmedByUser);
+  const [subPhase, setSubPhase] = useState<"input" | "proposal">(hasProposal ? "proposal" : "input");
   const [proposal, setProposal] = useState<ExtractedBoundary | null>(
     forecast.boundary?.proposedBySystem ?? null
   );
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editingChip, setEditingChip] = useState<{ field: "inclusions" | "exclusions"; idx: number; value: string } | null>(null);
+  const extractionCount = forecast.boundary?.proposedBySystem?._extractionCount ?? 0;
 
   const extractMutation = useMutation({
     mutationFn: (desc: string) =>
-      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/extract-boundary`, "POST", { description: desc }),
+      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/extract-boundary`, "POST", {
+        description: desc,
+      }),
     onSuccess: (data: any) => {
       setProposal(data.extracted);
       setSubPhase("proposal");
       queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
     },
-    onError: (err: any) => toast({ title: "Extraction failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) => {
+      if (err.message?.includes("Maximum boundary")) {
+        toast({ title: "Revision limit reached", description: "Please confirm the current boundary.", variant: "destructive" });
+        setSubPhase("proposal");
+      } else {
+        toast({ title: "Extraction failed", description: err.message, variant: "destructive" });
+      }
+    },
   });
 
   const confirmMutation = useMutation({
     mutationFn: (edits: Partial<ExtractedBoundary> | null) =>
-      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/confirm-boundary`, "POST",
-        edits ? { edits } : {}),
+      apiRequestJson(
+        `/api/forecast-builder/forecasts/${forecast.id}/confirm-boundary`,
+        "POST",
+        edits ? { edits } : {}
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
       onConfirmed();
     },
-    onError: (err: any) => toast({ title: "Confirm failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) =>
+      toast({ title: "Confirm failed", description: err.message, variant: "destructive" }),
   });
 
   const handleConfirm = () => {
     if (!proposal) return;
-    const edits: any = {};
-    if (proposal.inclusions) edits.inclusions = proposal.inclusions;
-    if (proposal.exclusions) edits.exclusions = proposal.exclusions;
-    if (proposal.geographicScope) edits.geographicScope = proposal.geographicScope;
-    if (proposal.baseYear) edits.baseYear = proposal.baseYear;
-    if (proposal.forecastHorizonYears) edits.forecastHorizonYears = proposal.forecastHorizonYears;
-    if (proposal.currency) edits.currency = proposal.currency;
-    if (proposal.unitOfMeasurement) edits.unitOfMeasurement = proposal.unitOfMeasurement;
+    const edits: Partial<ExtractedBoundary> = {
+      inclusions: proposal.inclusions,
+      exclusions: proposal.exclusions,
+      geographicScope: proposal.geographicScope,
+      baseYear: proposal.baseYear,
+      forecastHorizonYears: proposal.forecastHorizonYears,
+      currency: proposal.currency,
+      unitOfMeasurement: proposal.unitOfMeasurement,
+    };
     confirmMutation.mutate(edits);
   };
 
@@ -229,7 +302,7 @@ function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onCon
         <h2 className="text-2xl font-bold text-white mb-2">What market are you forecasting?</h2>
         <p className="text-slate-400 text-sm mb-6">
           Describe it in plain language — include geography, time period, and product type if relevant.
-          I'll propose a structured boundary for you to review.
+          I'll propose a structured boundary for you to review and edit.
         </p>
         <Textarea
           value={description}
@@ -244,7 +317,7 @@ function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onCon
           className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0"
         >
           {extractMutation.isPending ? (
-            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Extracting boundary…</>
+            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Extracting…</>
           ) : (
             <><Sparkles className="h-4 w-4 mr-2" /> Extract boundary</>
           )}
@@ -260,7 +333,10 @@ function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onCon
       <WizardSteps current="boundary" />
       <h2 className="text-2xl font-bold text-white mb-1">Review your market boundary</h2>
       <p className="text-slate-400 text-sm mb-6">
-        I've proposed a structured boundary. Edit any field inline — add or remove chips, change values — then confirm.
+        Edit any field inline before confirming.
+        {extractionCount >= 2 && (
+          <span className="text-amber-400 ml-1">You've used all revision attempts — please confirm.</span>
+        )}
       </p>
 
       {proposal.reasoning && (
@@ -271,25 +347,10 @@ function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onCon
       )}
 
       <div className="space-y-4">
-        {/* Inclusions */}
-        <BoundaryChipField
-          label="Included segments"
-          chips={proposal.inclusions}
-          color="cyan"
-          onRemove={(i) => removeChip("inclusions", i)}
-          onAdd={(v) => addChip("inclusions", v)}
-        />
-
-        {/* Exclusions */}
-        <BoundaryChipField
-          label="Excluded from scope"
-          chips={proposal.exclusions}
-          color="red"
-          onRemove={(i) => removeChip("exclusions", i)}
-          onAdd={(v) => addChip("exclusions", v)}
-        />
-
-        {/* Grid fields */}
+        <BoundaryChipField label="Included segments" chips={proposal.inclusions} color="cyan"
+          onRemove={(i) => removeChip("inclusions", i)} onAdd={(v) => addChip("inclusions", v)} />
+        <BoundaryChipField label="Excluded from scope" chips={proposal.exclusions} color="red"
+          onRemove={(i) => removeChip("exclusions", i)} onAdd={(v) => addChip("exclusions", v)} />
         <div className="grid grid-cols-2 gap-3">
           <BoundaryField label="Geography" value={proposal.geographicScope}
             onChange={(v) => setProposal({ ...proposal, geographicScope: v })} />
@@ -305,13 +366,12 @@ function BoundaryStep({ forecast, onConfirmed }: { forecast: ForecastFull; onCon
       </div>
 
       <div className="flex items-center gap-3 mt-8">
-        <Button
-          variant="ghost"
-          className="text-slate-400 hover:text-white"
-          onClick={() => { setSubPhase("input"); setDescription(""); }}
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" /> Re-describe
-        </Button>
+        {extractionCount < 2 && (
+          <Button variant="ghost" className="text-slate-400 hover:text-white"
+            onClick={() => { setSubPhase("input"); setDescription(""); }}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Re-describe
+          </Button>
+        )}
         <Button
           disabled={confirmMutation.isPending}
           onClick={handleConfirm}
@@ -340,7 +400,6 @@ function BoundaryChipField({
   const [adding, setAdding] = useState(false);
   const [newVal, setNewVal] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-
   const chipCls = color === "cyan"
     ? "bg-cyan-950 text-cyan-300 border border-cyan-500/20"
     : "bg-red-950/50 text-red-300 border border-red-500/20";
@@ -389,7 +448,6 @@ function BoundaryField({ label, value, type = "text", onChange }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [local, setLocal] = useState(value);
-
   useEffect(() => { setLocal(value); }, [value]);
 
   return (
@@ -402,7 +460,10 @@ function BoundaryField({ label, value, type = "text", onChange }: {
           autoFocus
           onChange={(e) => setLocal(e.target.value)}
           onBlur={() => { onChange(local); setEditing(false); }}
-          onKeyDown={(e) => { if (e.key === "Enter") { onChange(local); setEditing(false); } if (e.key === "Escape") { setLocal(value); setEditing(false); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { onChange(local); setEditing(false); }
+            if (e.key === "Escape") { setLocal(value); setEditing(false); }
+          }}
           className="bg-transparent text-white text-sm outline-none border-b border-cyan-500/50 w-full"
         />
       ) : (
@@ -410,7 +471,7 @@ function BoundaryField({ label, value, type = "text", onChange }: {
           onClick={() => setEditing(true)}
           className="flex items-center gap-1.5 text-sm text-white hover:text-cyan-300 transition-colors group text-left"
         >
-          {value}
+          {value || <span className="text-slate-500 italic">click to set</span>}
           <Edit3 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
       )}
@@ -418,77 +479,116 @@ function BoundaryField({ label, value, type = "text", onChange }: {
   );
 }
 
-// ── Phase 2: Interview step ────────────────────────────────────────────────
+// ── Phase 2: Interview step ───────────────────────────────────────────────
 
-function InterviewStep({ forecast, onComplete }: { forecast: ForecastFull; onComplete: () => void }) {
+function InterviewStep({
+  forecast,
+  onComplete,
+}: {
+  forecast: ForecastFull;
+  onComplete: () => void;
+}) {
   const { toast } = useToast();
   const [mode, setMode] = useState<"express" | "full" | null>(null);
   const [answers, setAnswers] = useState<AnswerEntry[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<InterviewQuestion | null>(null);
+  const [streamedText, setStreamedText] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [freeTextAnswer, setFreeTextAnswer] = useState("");
   const [showIdk, setShowIdk] = useState(false);
   const [idkData, setIdkData] = useState<{ defaultAnswer: string; rationale: string } | null>(null);
   const [showSkip, setShowSkip] = useState(false);
   const [skipData, setSkipData] = useState<{ consequence: string; defaultApplied: string } | null>(null);
-  const [questionKey, setQuestionKey] = useState(0);
+  const [interviewDone, setInterviewDone] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const nextMutation = useMutation({
-    mutationFn: (payload: { mode: "express" | "full"; answers: AnswerEntry[] }) =>
-      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/interview/next`, "POST", payload),
-    onSuccess: (data: any) => {
-      if (data.done) {
-        completeMutation.mutate();
-      } else {
-        setCurrentQuestion(data.question);
-        setFreeTextAnswer("");
-        setShowIdk(false);
-        setShowSkip(false);
-        setIdkData(null);
-        setSkipData(null);
-        setQuestionKey((k) => k + 1);
-      }
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
+  const fetchNextQuestion = useCallback(
+    async (newAnswers: AnswerEntry[], selectedMode: "express" | "full") => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      setIsThinking(false);
+      setIsStreaming(false);
+      setStreamedText("");
+      setCurrentQuestion(null);
+      setFreeTextAnswer("");
+      setShowIdk(false);
+      setShowSkip(false);
+      setIdkData(null);
+      setSkipData(null);
+
+      await streamInterviewNext(
+        forecast.id,
+        selectedMode,
+        newAnswers,
+        {
+          onThinking: () => setIsThinking(true),
+          onToken: (t) => {
+            setIsThinking(false);
+            setIsStreaming(true);
+            setStreamedText((s) => s + t);
+          },
+          onQuestion: (q) => {
+            setCurrentQuestion(q);
+            setIsStreaming(false);
+          },
+          onDone: () => {
+            setInterviewDone(true);
+            setIsThinking(false);
+            setIsStreaming(false);
+          },
+          onError: (err) => {
+            setIsThinking(false);
+            setIsStreaming(false);
+            toast({ title: "Interview error", description: err, variant: "destructive" });
+          },
+        },
+        ctrl.signal
+      );
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    [forecast.id, toast]
+  );
+
+  const completeMutation = useMutation({
+    mutationFn: (payload: { mode: "express" | "full"; answers: AnswerEntry[] }) =>
+      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/interview/complete`, "POST", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
+      onComplete();
+    },
+    onError: (err: any) =>
+      toast({ title: "Failed to save brief", description: err.message, variant: "destructive" }),
   });
 
   const idkMutation = useMutation({
     mutationFn: (questionId: string) =>
       apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/interview/idk`, "POST", { questionId }),
-    onSuccess: (data: any) => {
-      setIdkData(data);
-      setShowIdk(true);
-    },
+    onSuccess: (data: any) => { setIdkData(data); setShowIdk(true); },
+    onError: (err: any) =>
+      toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const skipInfoMutation = useMutation({
     mutationFn: (questionId: string) =>
       apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/interview/skip-info`, "POST", { questionId }),
-    onSuccess: (data: any) => {
-      setSkipData(data);
-      setShowSkip(true);
-    },
-  });
-
-  const completeMutation = useMutation({
-    mutationFn: () =>
-      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/interview/complete`, "POST", {
-        mode: mode ?? "express",
-        answers,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
-      onComplete();
-    },
-    onError: (err: any) => toast({ title: "Failed to save brief", description: err.message, variant: "destructive" }),
+    onSuccess: (data: any) => { setSkipData(data); setShowSkip(true); },
+    onError: (err: any) =>
+      toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const startInterview = (selectedMode: "express" | "full") => {
     setMode(selectedMode);
-    nextMutation.mutate({ mode: selectedMode, answers: [] });
+    fetchNextQuestion([], selectedMode);
   };
 
   const submitAnswer = (answer: string) => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || !mode) return;
     const entry: AnswerEntry = {
       questionId: currentQuestion.questionId,
       question: currentQuestion.text,
@@ -498,25 +598,11 @@ function InterviewStep({ forecast, onComplete }: { forecast: ForecastFull; onCom
     };
     const newAnswers = [...answers, entry];
     setAnswers(newAnswers);
-    nextMutation.mutate({ mode: mode!, answers: newAnswers });
-  };
-
-  const submitSkip = () => {
-    if (!currentQuestion || !skipData) return;
-    const entry: AnswerEntry = {
-      questionId: currentQuestion.questionId,
-      question: currentQuestion.text,
-      cluster: currentQuestion.cluster,
-      answer: skipData.defaultApplied,
-      skipped: true,
-    };
-    const newAnswers = [...answers, entry];
-    setAnswers(newAnswers);
-    nextMutation.mutate({ mode: mode!, answers: newAnswers });
+    fetchNextQuestion(newAnswers, mode);
   };
 
   const submitIdk = () => {
-    if (!currentQuestion || !idkData) return;
+    if (!currentQuestion || !idkData || !mode) return;
     const entry: AnswerEntry = {
       questionId: currentQuestion.questionId,
       question: currentQuestion.text,
@@ -526,51 +612,68 @@ function InterviewStep({ forecast, onComplete }: { forecast: ForecastFull; onCom
     };
     const newAnswers = [...answers, entry];
     setAnswers(newAnswers);
-    nextMutation.mutate({ mode: mode!, answers: newAnswers });
+    fetchNextQuestion(newAnswers, mode);
   };
 
-  // Mode selection
+  const submitSkip = () => {
+    if (!currentQuestion || !skipData || !mode) return;
+    const entry: AnswerEntry = {
+      questionId: currentQuestion.questionId,
+      question: currentQuestion.text,
+      cluster: currentQuestion.cluster,
+      answer: skipData.defaultApplied,
+      skipped: true,
+    };
+    const newAnswers = [...answers, entry];
+    setAnswers(newAnswers);
+    fetchNextQuestion(newAnswers, mode);
+  };
+
+  // Trigger completion when interview is done
+  useEffect(() => {
+    if (interviewDone && answers.length > 0 && mode) {
+      completeMutation.mutate({ mode, answers });
+    }
+  }, [interviewDone]);
+
+  // Mode selection screen
   if (!mode) {
     return (
       <div className="max-w-2xl">
         <WizardSteps current="interview" />
         <h2 className="text-2xl font-bold text-white mb-2">Brief interview</h2>
         <p className="text-slate-400 text-sm mb-8">
-          I'll ask a few questions to understand the strategic context before building the forecast.
-          How thorough do you want to go?
+          I'll ask a few structured questions before building the forecast. How thorough would you like to go?
         </p>
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => startInterview("express")}
             className="bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-xl p-5 text-left transition-all group"
           >
-            <p className="text-white font-semibold mb-1 group-hover:text-cyan-300 transition-colors">Express</p>
-            <p className="text-slate-400 text-sm">4–5 questions, ~3 minutes</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4 text-cyan-400" />
+              <p className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Express</p>
+            </div>
+            <p className="text-slate-400 text-sm">4–5 questions · ~3 minutes</p>
             <p className="text-slate-500 text-xs mt-2">Good for directional forecasts and internal strategy.</p>
           </button>
           <button
             onClick={() => startInterview("full")}
             className="bg-slate-900 border border-white/5 hover:border-violet-500/30 rounded-xl p-5 text-left transition-all group"
           >
-            <p className="text-white font-semibold mb-1 group-hover:text-violet-300 transition-colors">Deep Dive</p>
-            <p className="text-slate-400 text-sm">8–12 questions, ~8 minutes</p>
-            <p className="text-slate-500 text-xs mt-2">For investment cases, M&A work, or public-facing reports.</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-violet-400" />
+              <p className="text-white font-semibold group-hover:text-violet-300 transition-colors">Deep Dive</p>
+            </div>
+            <p className="text-slate-400 text-sm">8–12 questions · ~8 minutes</p>
+            <p className="text-slate-500 text-xs mt-2">For investment cases, M&A work, or board presentations.</p>
           </button>
         </div>
       </div>
     );
   }
 
-  // Loading first question
-  if (nextMutation.isPending && !currentQuestion) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
-      </div>
-    );
-  }
-
-  // Brief assembling
+  // Completing brief
   if (completeMutation.isPending) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -580,39 +683,140 @@ function InterviewStep({ forecast, onComplete }: { forecast: ForecastFull; onCom
     );
   }
 
-  if (!currentQuestion) return null;
+  const CLUSTER_LABELS: Record<QuestionCluster, string> = {
+    purpose: "Strategic context",
+    methodology: "Methodology",
+    drivers: "Market dynamics",
+    output: "Output format",
+  };
+
+  const totalEstimate =
+    mode === "express"
+      ? 4
+      : Math.max(answers.length + (currentQuestion?.estimatedRemaining ?? 0) + (currentQuestion ? 1 : 0), 8);
 
   return (
     <div className="max-w-2xl">
       <WizardSteps current="interview" />
 
-      {/* Progress indicator */}
-      <div className="mb-6">
-        <p className="text-slate-400 text-sm italic mb-3">{currentQuestion.progressMessage}</p>
-        <div className="flex gap-1">
-          {Array.from({ length: currentQuestion.totalAsked + currentQuestion.estimatedRemaining }).map((_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full ${i < answers.length ? "bg-cyan-500" : i === answers.length ? "bg-cyan-500/40" : "bg-slate-800"}`} />
-          ))}
+      {/* Progress */}
+      {(currentQuestion || isThinking || isStreaming) && (
+        <div className="mb-6">
+          <p className="text-slate-400 text-sm italic mb-3">
+            {currentQuestion?.progressMessage ?? (isThinking ? "Thinking…" : "")}
+          </p>
+          <div className="flex gap-1">
+            {Array.from({ length: totalEstimate }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  i < answers.length
+                    ? "bg-cyan-500"
+                    : i === answers.length
+                    ? isThinking || isStreaming ? "bg-cyan-500/40 animate-pulse" : "bg-cyan-500/40"
+                    : "bg-slate-800"
+                }`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Question */}
-      <QuestionCard
-        key={questionKey}
-        question={currentQuestion}
-        freeTextAnswer={freeTextAnswer}
-        setFreeTextAnswer={setFreeTextAnswer}
-        onSubmitOption={submitAnswer}
-        onSubmitFreeText={() => { if (freeTextAnswer.trim()) submitAnswer(freeTextAnswer.trim()); }}
-        onIdk={() => idkMutation.mutate(currentQuestion.questionId)}
-        onSkipRequest={() => skipInfoMutation.mutate(currentQuestion.questionId)}
-        submitting={nextMutation.isPending}
-      />
+      {/* Thinking indicator */}
+      {isThinking && !isStreaming && !currentQuestion && (
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-6 flex items-center gap-3">
+          <Loader2 className="h-4 w-4 animate-spin text-cyan-400 shrink-0" />
+          <p className="text-slate-400 text-sm italic">Selecting the most relevant next question…</p>
+        </div>
+      )}
 
-      {/* I don't know panel */}
+      {/* Streaming / question card */}
+      {(isStreaming || currentQuestion) && (
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
+          {currentQuestion && (
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                {CLUSTER_LABELS[currentQuestion.cluster]}
+              </span>
+              <span className="text-xs text-slate-600">Q{currentQuestion.totalAsked}</span>
+            </div>
+          )}
+
+          {/* Question text — SSE-streamed from server */}
+          <p className="text-white text-base font-medium leading-relaxed mb-6 min-h-[3rem]">
+            {streamedText || (isThinking ? "" : currentQuestion?.text ?? "")}
+            {(isStreaming) && (
+              <span className="inline-block w-0.5 h-4 bg-cyan-400 ml-0.5 animate-pulse align-middle" />
+            )}
+          </p>
+
+          {/* Controls — only shown once streaming is complete */}
+          {currentQuestion && !isStreaming && (
+            <>
+              {currentQuestion.options && (
+                <div className="flex flex-col gap-2 mb-4">
+                  {currentQuestion.options.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => submitAnswer(opt)}
+                      className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 border border-white/5 text-sm text-slate-200 hover:border-cyan-500/30 hover:text-white hover:bg-slate-800/80 transition-all"
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {currentQuestion.allowFreeText && (
+                <div className="mt-2">
+                  <Textarea
+                    value={freeTextAnswer}
+                    onChange={(e) => setFreeTextAnswer(e.target.value)}
+                    placeholder={currentQuestion.options ? "Or describe in your own words…" : "Your answer…"}
+                    className="bg-slate-800 border-white/10 text-white placeholder:text-slate-500 resize-none min-h-[80px] text-sm mb-3"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && freeTextAnswer.trim()) {
+                        submitAnswer(freeTextAnswer.trim());
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!freeTextAnswer.trim()}
+                    onClick={() => submitAnswer(freeTextAnswer.trim())}
+                    className="bg-gradient-to-r from-cyan-500 to-violet-600 text-white border-0 text-xs"
+                  >
+                    <ArrowRight className="h-3 w-3 mr-1" />
+                    {currentQuestion.isLast ? "Finish interview" : "Next question"}
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 mt-5 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => idkMutation.mutate(currentQuestion.questionId)}
+                  disabled={idkMutation.isPending}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-amber-300 transition-colors"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" /> I don't know
+                </button>
+                <button
+                  onClick={() => skipInfoMutation.mutate(currentQuestion.questionId)}
+                  disabled={skipInfoMutation.isPending}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <SkipForward className="h-3.5 w-3.5" /> Skip
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* "I don't know" panel */}
       {showIdk && idkData && (
         <div className="mt-4 bg-slate-900 border border-amber-500/20 rounded-xl px-5 py-4">
-          <p className="text-amber-300 text-sm font-medium mb-1">Here's what I'll apply instead</p>
+          <p className="text-amber-300 text-sm font-medium mb-1">Here's what I'll apply</p>
           <p className="text-white text-sm mb-2">"{idkData.defaultAnswer}"</p>
           <p className="text-slate-400 text-xs mb-4">{idkData.rationale}</p>
           <div className="flex gap-2">
@@ -649,120 +853,13 @@ function InterviewStep({ forecast, onComplete }: { forecast: ForecastFull; onCom
   );
 }
 
-function QuestionCard({
-  question,
-  freeTextAnswer,
-  setFreeTextAnswer,
-  onSubmitOption,
-  onSubmitFreeText,
-  onIdk,
-  onSkipRequest,
-  submitting,
+// ── Phase 3: Review step ──────────────────────────────────────────────────
+
+function ReviewStep({
+  forecast,
+  onStartDebate,
+  onEditBrief,
 }: {
-  question: InterviewQuestion;
-  freeTextAnswer: string;
-  setFreeTextAnswer: (v: string) => void;
-  onSubmitOption: (v: string) => void;
-  onSubmitFreeText: () => void;
-  onIdk: () => void;
-  onSkipRequest: () => void;
-  submitting: boolean;
-}) {
-  const { displayed, done } = useTypewriter(question.text, true);
-  const CLUSTER_LABELS: Record<QuestionCluster, string> = {
-    purpose: "Strategic context",
-    methodology: "Methodology",
-    drivers: "Market dynamics",
-    output: "Output format",
-  };
-
-  return (
-    <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-          {CLUSTER_LABELS[question.cluster]}
-        </span>
-        <span className="text-xs text-slate-600">Q{question.totalAsked}</span>
-      </div>
-
-      <p className="text-white text-base font-medium leading-relaxed mb-6 min-h-[3rem]">
-        {displayed}
-        {!done && <span className="inline-block w-0.5 h-4 bg-cyan-400 ml-0.5 animate-pulse" />}
-      </p>
-
-      {done && (
-        <>
-          {question.options && (
-            <div className="flex flex-col gap-2 mb-4">
-              {question.options.map((opt) => (
-                <button
-                  key={opt}
-                  disabled={submitting}
-                  onClick={() => onSubmitOption(opt)}
-                  className="w-full text-left px-4 py-3 rounded-xl bg-slate-800 border border-white/5 text-sm text-slate-200 hover:border-cyan-500/30 hover:text-white hover:bg-slate-800/80 transition-all disabled:opacity-50"
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {question.allowFreeText && (
-            <div className="mt-2">
-              <Textarea
-                value={freeTextAnswer}
-                onChange={(e) => setFreeTextAnswer(e.target.value)}
-                placeholder={question.options ? "Or describe in your own words…" : "Your answer…"}
-                className="bg-slate-800 border-white/10 text-white placeholder:text-slate-500 resize-none min-h-[80px] text-sm mb-3"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && freeTextAnswer.trim()) {
-                    onSubmitFreeText();
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                disabled={!freeTextAnswer.trim() || submitting}
-                onClick={onSubmitFreeText}
-                className="bg-gradient-to-r from-cyan-500 to-violet-600 text-white border-0 text-xs"
-              >
-                {submitting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ArrowRight className="h-3 w-3 mr-1" />}
-                {question.isLast ? "Finish interview" : "Next question"}
-              </Button>
-            </div>
-          )}
-
-          {!question.allowFreeText && (
-            <div className="flex items-center gap-2 mt-2">
-              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 mt-5 pt-4 border-t border-white/5">
-            <button
-              disabled={submitting}
-              onClick={onIdk}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-amber-300 transition-colors"
-            >
-              <HelpCircle className="h-3.5 w-3.5" /> I don't know
-            </button>
-            <button
-              disabled={submitting}
-              onClick={onSkipRequest}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              <SkipForward className="h-3.5 w-3.5" /> Skip
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Phase 3: Review step ───────────────────────────────────────────────────
-
-function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
   forecast: ForecastFull;
   onStartDebate: () => void;
   onEditBrief: () => void;
@@ -776,13 +873,29 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
       queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
       onEditBrief();
     },
-    onError: (err: any) => toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) =>
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
+  });
+
+  const debateMutation = useMutation({
+    mutationFn: () =>
+      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/debate/start`, "POST"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
+      toast({
+        title: "Debate queued",
+        description: "The multi-model debate engine will run in the next release.",
+      });
+      onStartDebate();
+    },
+    onError: (err: any) =>
+      toast({ title: "Failed to start debate", description: err.message, variant: "destructive" }),
   });
 
   if (!brief) return null;
 
   const CONF_COLORS: Record<string, string> = {
-    "directional": "text-amber-300",
+    directional: "text-amber-300",
     "decision-grade": "text-cyan-300",
     "M&A-grade": "text-violet-300",
   };
@@ -792,11 +905,10 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
       <WizardSteps current="review" />
       <h2 className="text-2xl font-bold text-white mb-2">Your forecast brief</h2>
       <p className="text-slate-400 text-sm mb-6">
-        Review everything captured before we start the multi-model debate. You can go back and edit if anything is off.
+        Review everything before starting the multi-model debate. Go back to edit if anything is off.
       </p>
 
       <div className="space-y-3">
-        {/* Market boundary */}
         {forecast.boundary && (
           <ReviewCard title="Market boundary">
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -805,12 +917,14 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
               <ReviewKV k="Currency" v={forecast.currency ?? "USD"} />
               <ReviewKV k="Unit" v={forecast.boundary.unitOfMeasurement ?? "—"} />
             </div>
-            {forecast.boundary.includedCategories?.length > 0 && (
+            {(forecast.boundary.includedCategories?.length ?? 0) > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-slate-500 mb-2 uppercase tracking-wide">Includes</p>
                 <div className="flex flex-wrap gap-1.5">
                   {forecast.boundary.includedCategories.map((c, i) => (
-                    <span key={i} className="px-2 py-0.5 rounded-full text-xs bg-cyan-950 text-cyan-300 border border-cyan-500/15">{c}</span>
+                    <span key={i} className="px-2 py-0.5 rounded-full text-xs bg-cyan-950 text-cyan-300 border border-cyan-500/15">
+                      {c}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -818,7 +932,6 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
           </ReviewCard>
         )}
 
-        {/* Strategic context */}
         <ReviewCard title="Strategic context">
           <div className="space-y-2 text-sm">
             {brief.purpose && <ReviewKV k="Purpose" v={brief.purpose} />}
@@ -834,7 +947,6 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
           </div>
         </ReviewCard>
 
-        {/* Drivers & discontinuities */}
         {(brief.drivers?.length > 0 || brief.discontinuities?.length > 0) && (
           <ReviewCard title="Market dynamics">
             {brief.drivers?.length > 0 && (
@@ -864,7 +976,6 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
           </ReviewCard>
         )}
 
-        {/* Output format */}
         {brief.outputFormat && (
           <ReviewCard title="Output preferences">
             <p className="text-sm text-slate-200">{brief.outputFormat}</p>
@@ -874,10 +985,9 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
           </ReviewCard>
         )}
 
-        {/* Interview mode badge */}
         <div className="flex justify-end">
           <span className="text-xs text-slate-600">
-            {brief.interviewMode === "express" ? "Express interview" : "Deep dive interview"} ·{" "}
+            {brief.interviewMode === "express" ? "Express" : "Deep dive"} interview ·{" "}
             {brief.interviewTranscript?.length ?? 0} questions
           </span>
         </div>
@@ -890,14 +1000,24 @@ function ReviewStep({ forecast, onStartDebate, onEditBrief }: {
           onClick={() => resetMutation.mutate()}
           className="text-slate-400 hover:text-white"
         >
-          {resetMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
+          {resetMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Edit3 className="h-4 w-4 mr-2" />
+          )}
           Edit brief
         </Button>
         <Button
-          onClick={onStartDebate}
+          disabled={debateMutation.isPending}
+          onClick={() => debateMutation.mutate()}
           className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0"
         >
-          Start Debate <ArrowRight className="h-4 w-4 ml-2" />
+          {debateMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <ArrowRight className="h-4 w-4 mr-2" />
+          )}
+          Start Debate
         </Button>
       </div>
     </div>
@@ -915,18 +1035,18 @@ function ReviewCard({ title, children }: { title: string; children: React.ReactN
 
 function ReviewKV({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-slate-400">{k}</span>
-      <span className="text-slate-200 text-right max-w-[60%]">{v}</span>
+    <div className="flex justify-between gap-4">
+      <span className="text-slate-400 shrink-0">{k}</span>
+      <span className="text-slate-200 text-right">{v}</span>
     </div>
   );
 }
 
-// ── Post-brief placeholder ─────────────────────────────────────────────────
+// ── Post-brief placeholder (debate_complete, calculating, complete) ────────
 
 function PostBriefPlaceholder({ forecast }: { forecast: ForecastFull }) {
   const STATUS_LABELS: Record<string, string> = {
-    debate_complete: "Debate complete",
+    debate_complete: "Debate complete — calculation coming",
     calculating: "Running calculations…",
     complete: "Forecast complete",
   };
@@ -936,20 +1056,21 @@ function PostBriefPlaceholder({ forecast }: { forecast: ForecastFull }) {
         <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center mx-auto mb-4">
           <TrendingUp className="h-6 w-6 text-white" />
         </div>
-        <h3 className="text-white font-semibold mb-2">{STATUS_LABELS[forecast.status] ?? forecast.status}</h3>
+        <h3 className="text-white font-semibold mb-2">
+          {STATUS_LABELS[forecast.status] ?? forecast.status}
+        </h3>
         <p className="text-slate-400 text-sm">
-          This forecast is being processed. Subsequent phases (debate, calculation, report) will be available soon.
+          Subsequent phases (multi-LLM debate, calculation, report) will be available in the next release.
         </p>
       </div>
     </div>
   );
 }
 
-// ── Main detail page ───────────────────────────────────────────────────────
+// ── Main detail page ──────────────────────────────────────────────────────
 
 export default function ForecastDetailPage() {
   const [, params] = useRoute("/forecast-builder/:id");
-  const [, setLocation] = useLocation();
   const id = params?.id;
   const { toast } = useToast();
   const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | null>(null);
@@ -957,8 +1078,10 @@ export default function ForecastDetailPage() {
   const { data: forecast, isLoading, error } = useQuery<ForecastFull>({
     queryKey: ["/api/forecast-builder/forecasts", id],
     queryFn: () =>
-      fetch(`/api/forecast-builder/forecasts/${id}`, { credentials: "include" })
-        .then((r) => { if (!r.ok) throw new Error("Not found"); return r.json(); }),
+      fetch(`/api/forecast-builder/forecasts/${id}`, { credentials: "include" }).then((r) => {
+        if (!r.ok) throw new Error("Not found");
+        return r.json();
+      }),
     enabled: !!id,
     staleTime: 10_000,
   });
@@ -966,12 +1089,10 @@ export default function ForecastDetailPage() {
   // Derive initial wizard step from forecast status
   useEffect(() => {
     if (!forecast || wizardStep !== null) return;
-    if (forecast.status === "draft" || (forecast.status === "draft" && !forecast.boundary?.confirmedByUser)) {
+    if (forecast.status === "draft") {
       setWizardStep("boundary");
     } else if (forecast.status === "boundary_confirmed") {
       setWizardStep("interview");
-    } else if (forecast.status === "brief_complete") {
-      setWizardStep("review");
     } else {
       setWizardStep("review");
     }
@@ -999,13 +1120,6 @@ export default function ForecastDetailPage() {
       </div>
     );
   }
-
-  const handleDebateStart = () => {
-    toast({
-      title: "Debate phase coming soon",
-      description: "Phase 3 (multi-LLM debate) will be available in the next release.",
-    });
-  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -1037,7 +1151,7 @@ export default function ForecastDetailPage() {
         {wizardStep === "review" && forecast.status === "brief_complete" && (
           <ReviewStep
             forecast={forecast}
-            onStartDebate={handleDebateStart}
+            onStartDebate={() => setWizardStep("review")}
             onEditBrief={() => setWizardStep("interview")}
           />
         )}

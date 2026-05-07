@@ -1,34 +1,41 @@
+import { z } from "zod";
 import OpenAI from "openai";
 
-export interface ExtractedBoundary {
-  inclusions: string[];
-  exclusions: string[];
-  geographicScope: string;
-  baseYear: number;
-  forecastHorizonYears: number;
-  currency: string;
-  unitOfMeasurement: string;
-  customScope: true;
-  reasoning: string;
-}
+// ── Zod schema for LLM output validation ──────────────────────────────────
+
+export const ExtractedBoundarySchema = z.object({
+  inclusions: z.array(z.string()).default([]),
+  exclusions: z.array(z.string()).default([]),
+  geographicScope: z.string().min(1),
+  baseYear: z.number().int().min(2000).max(2100),
+  forecastHorizonYears: z.number().int().min(1).max(20),
+  currency: z.string().min(2).max(5).transform((v) => v.toUpperCase().slice(0, 3)),
+  unitOfMeasurement: z.string().min(1),
+  customScope: z.literal(true),
+  reasoning: z.string().default(""),
+});
+
+export type ExtractedBoundary = z.infer<typeof ExtractedBoundarySchema>;
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-const SYSTEM_PROMPT = `You are an expert market research analyst specializing in market sizing and forecasting. Convert a natural-language market description into a structured market boundary object.
+const SYSTEM_PROMPT = `You are an expert market research analyst specialising in market sizing and forecasting.
+Convert a natural-language market description into a structured market boundary.
 
-Be precise and professionally specific about inclusions and exclusions. Choose sensible defaults for any parameters not explicitly stated.
+Be precise about inclusions and exclusions. Choose sensible professional defaults for any
+parameters not explicitly stated in the description.
 
-Respond with ONLY a valid JSON object:
+Respond with ONLY a valid JSON object matching this exact schema:
 {
-  "inclusions": string[],         // What IS included (products, services, segments, use cases)
-  "exclusions": string[],         // What is explicitly excluded
+  "inclusions": string[],         // segments / products / services / use cases that ARE in scope
+  "exclusions": string[],         // what is explicitly out of scope
   "geographicScope": string,      // e.g. "GCC region", "Global", "North America"
-  "baseYear": number,             // Most recent full year with available data (typically current year - 1)
-  "forecastHorizonYears": number, // Years to forecast (default 5)
-  "currency": string,             // 3-letter ISO code e.g. "USD"
+  "baseYear": number,             // most recent full year with available data (usually current year − 1)
+  "forecastHorizonYears": number, // years to forecast, default 5
+  "currency": string,             // 3-letter ISO code, e.g. "USD"
   "unitOfMeasurement": string,    // e.g. "$B revenue", "$M ARR", "units shipped"
   "customScope": true,
-  "reasoning": string             // Brief explanation of key boundary decisions (1-2 sentences)
+  "reasoning": string             // 1–2 sentences on the key boundary decisions made
 }`;
 
 export async function extractBoundary(marketDescription: string): Promise<ExtractedBoundary> {
@@ -54,22 +61,30 @@ export async function extractBoundary(marketDescription: string): Promise<Extrac
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("LLM returned empty response for boundary extraction");
 
-  let parsed: any;
+  let rawParsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    rawParsed = JSON.parse(content);
   } catch {
     throw new Error("LLM response was not valid JSON");
   }
 
-  return {
-    inclusions: Array.isArray(parsed.inclusions) ? parsed.inclusions.filter((x: any) => typeof x === "string") : [],
-    exclusions: Array.isArray(parsed.exclusions) ? parsed.exclusions.filter((x: any) => typeof x === "string") : [],
-    geographicScope: typeof parsed.geographicScope === "string" ? parsed.geographicScope : "Global",
-    baseYear: typeof parsed.baseYear === "number" ? Math.round(parsed.baseYear) : CURRENT_YEAR - 1,
-    forecastHorizonYears: typeof parsed.forecastHorizonYears === "number" ? Math.round(parsed.forecastHorizonYears) : 5,
-    currency: typeof parsed.currency === "string" ? parsed.currency.toUpperCase().slice(0, 3) : "USD",
-    unitOfMeasurement: typeof parsed.unitOfMeasurement === "string" ? parsed.unitOfMeasurement : "$B revenue",
-    customScope: true,
-    reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
-  };
+  const result = ExtractedBoundarySchema.safeParse(rawParsed);
+  if (!result.success) {
+    // Attempt to salvage with defaults for missing fields
+    const partial = rawParsed as Record<string, unknown>;
+    const salvaged = ExtractedBoundarySchema.parse({
+      inclusions: Array.isArray(partial.inclusions) ? partial.inclusions : [],
+      exclusions: Array.isArray(partial.exclusions) ? partial.exclusions : [],
+      geographicScope: typeof partial.geographicScope === "string" ? partial.geographicScope : "Global",
+      baseYear: typeof partial.baseYear === "number" ? partial.baseYear : CURRENT_YEAR - 1,
+      forecastHorizonYears: typeof partial.forecastHorizonYears === "number" ? partial.forecastHorizonYears : 5,
+      currency: typeof partial.currency === "string" ? partial.currency : "USD",
+      unitOfMeasurement: typeof partial.unitOfMeasurement === "string" ? partial.unitOfMeasurement : "$B revenue",
+      customScope: true,
+      reasoning: typeof partial.reasoning === "string" ? partial.reasoning : "",
+    });
+    return salvaged;
+  }
+
+  return result.data;
 }

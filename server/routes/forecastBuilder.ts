@@ -16,14 +16,17 @@ import {
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
-import { extractBoundary } from "../forecast/phases/phase1";
+import { extractBoundary, type ExtractedBoundary } from "../forecast/phases/phase1";
 import {
   getNextQuestion,
   getDefaultForQuestion,
   getSkipConsequence,
   assembleBrief,
+  answerEntrySchema,
   type AnswerEntry,
 } from "../forecast/phases/phase2";
+
+// ── Shared schemas ────────────────────────────────────────────────────────
 
 const patchForecastSchema = z.object({
   title: z.string().min(1).max(255).optional(),
@@ -36,17 +39,57 @@ const patchForecastSchema = z.object({
   error: z.string().nullable().optional(),
 });
 
-const answerEntrySchema = z.object({
-  questionId: z.string(),
-  question: z.string(),
-  cluster: z.enum(["purpose", "methodology", "drivers", "output"]),
-  answer: z.string(),
-  skipped: z.boolean(),
+const interviewBodySchema = z.object({
+  mode: z.enum(["express", "full"]),
+  answers: z.array(answerEntrySchema),
 });
+
+// ── SSE helpers ───────────────────────────────────────────────────────────
+
+function initSSE(res: Response): void {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+}
+
+function sendSSEEvent(res: Response, event: Record<string, unknown>): void {
+  if (!res.writableEnded) {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    if (typeof (res as any).flush === "function") (res as any).flush();
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ── Auth guard helper ─────────────────────────────────────────────────────
+
+async function guardForecastAccess(
+  req: Request,
+  res: Response,
+  forecastId: string
+): Promise<{ ok: true; forecast: Awaited<ReturnType<typeof getForecast>> } | { ok: false }> {
+  const user = req.user as any;
+  const forecast = await getForecast(forecastId);
+  if (!forecast) {
+    res.status(404).json({ error: "Forecast not found" });
+    return { ok: false };
+  }
+  if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
+    res.status(403).json({ error: "Access denied" });
+    return { ok: false };
+  }
+  return { ok: true, forecast };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 
 export function registerForecastBuilderRoutes(app: Express): void {
 
-  // ── List all forecasts (scoped to user unless admin) ──────────────────────
+  // ── List all forecasts (scoped to user unless admin) ────────────────────
   app.get("/api/forecast-builder/forecasts", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -59,22 +102,20 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Get full forecast with all related data ───────────────────────────────
+  // ── Get full forecast with all related data ─────────────────────────────
   app.get("/api/forecast-builder/forecasts/:id", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
       const full = await getForecastFull(req.params.id);
       if (!full) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && full.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
       res.json(full);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // ── Create a new forecast shell ───────────────────────────────────────────
+  // ── Create a new forecast shell ─────────────────────────────────────────
   app.post("/api/forecast-builder/forecasts", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -87,15 +128,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Update forecast metadata / status ────────────────────────────────────
+  // ── Update forecast metadata / status ──────────────────────────────────
   app.patch("/api/forecast-builder/forecasts/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
       const patch = patchForecastSchema.parse(req.body);
       const updated = await updateForecast(req.params.id, patch);
       await writeAuditEntry(req.params.id, "forecast_metadata_updated", user.id, {
@@ -107,16 +145,13 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Delete a forecast ─────────────────────────────────────────────────────
+  // ── Delete a forecast ───────────────────────────────────────────────────
   app.delete("/api/forecast-builder/forecasts/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      await writeAuditEntry(req.params.id, "forecast_deleted", user.id, { title: forecast.title });
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+      await writeAuditEntry(req.params.id, "forecast_deleted", user.id, { title: guard.forecast!.title });
       await deleteForecast(req.params.id);
       res.status(204).end();
     } catch (err: any) {
@@ -124,7 +159,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Admin: list all forecasts ─────────────────────────────────────────────
+  // ── Admin: list all forecasts ───────────────────────────────────────────
   app.get("/api/admin/forecast-builder/forecasts", requireAdmin, async (_req: Request, res: Response) => {
     try {
       res.json(await listForecasts());
@@ -133,67 +168,87 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════
   // PHASE 1 — BOUNDARY
-  // ════════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════
 
-  // ── Extract boundary via LLM ──────────────────────────────────────────────
-  // POST body: { description: string }
-  // Stores proposed boundary in DB; does NOT advance status yet.
+  // ── Extract boundary via LLM ────────────────────────────────────────────
+  // Enforces a maximum of 2 extraction rounds. On the third attempt returns
+  // 409 with { error, forceCommit: true } so the UI can lock the user into
+  // confirming whatever was last proposed.
   app.post("/api/forecast-builder/forecasts/:id/extract-boundary", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
 
       const { description } = z.object({ description: z.string().min(5).max(2000) }).parse(req.body);
 
+      // Check extraction attempt count stored inside proposedBySystem._extractionCount
+      const existing = await getForecastBoundary(req.params.id);
+      const prevCount: number =
+        typeof (existing?.proposedBySystem as any)?._extractionCount === "number"
+          ? (existing!.proposedBySystem as any)._extractionCount
+          : 0;
+
+      if (prevCount >= 2) {
+        return res.status(409).json({
+          error: "Maximum boundary revisions reached. Please confirm the boundary as proposed.",
+          forceCommit: true,
+        });
+      }
+
       const extracted = await extractBoundary(description);
+
+      // Build JSONB payload — include extraction metadata alongside the boundary
+      const proposedPayload: Record<string, unknown> = {
+        ...extracted,
+        _extractionCount: prevCount + 1,
+        _extractedAt: new Date().toISOString(),
+      };
+
+      const baseYear = extracted.baseYear;
+      const horizonYears = extracted.forecastHorizonYears;
 
       const boundary = await upsertForecastBoundary(req.params.id, {
         includedCategories: extracted.inclusions,
         excludedCategories: extracted.exclusions,
         geographicScope: extracted.geographicScope,
         unitOfMeasurement: extracted.unitOfMeasurement,
-        timeHorizon: `${extracted.baseYear}–${extracted.baseYear + extracted.forecastHorizonYears}`,
+        timeHorizon: `${baseYear}–${baseYear + horizonYears}`,
         customScope: true,
-        proposedBySystem: extracted as any,
+        proposedBySystem: proposedPayload,
         confirmedByUser: false,
       });
 
       // Sync key parameters to the forecast row
       await updateForecast(req.params.id, {
-        baseYear: extracted.baseYear,
-        forecastHorizonYears: extracted.forecastHorizonYears,
+        baseYear,
+        forecastHorizonYears: horizonYears,
         currency: extracted.currency,
       });
 
       await writeAuditEntry(req.params.id, "boundary_proposed", "gpt-4o-mini", {
+        extractionAttempt: prevCount + 1,
         geographicScope: extracted.geographicScope,
-        baseYear: extracted.baseYear,
-        forecastHorizonYears: extracted.forecastHorizonYears,
+        baseYear,
+        forecastHorizonYears: horizonYears,
       });
 
-      res.json({ boundary, extracted });
+      res.json({ boundary, extracted, extractionAttempt: prevCount + 1, remainingAttempts: Math.max(0, 2 - prevCount - 1) });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
   });
 
-  // ── Confirm boundary (with optional user edits) ───────────────────────────
-  // POST body: { edits?: Partial<ExtractedBoundary> }
-  // Advances status to "boundary_confirmed"
+  // ── Confirm boundary (with optional user edits) ─────────────────────────
+  // Accepts user overrides for any field and recomputes timeHorizon from
+  // the final baseYear + forecastHorizonYears before persisting.
   app.post("/api/forecast-builder/forecasts/:id/confirm-boundary", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
 
       const existingBoundary = await getForecastBoundary(req.params.id);
       if (!existingBoundary) {
@@ -204,38 +259,39 @@ export function registerForecastBuilderRoutes(app: Express): void {
         inclusions: z.array(z.string()).optional(),
         exclusions: z.array(z.string()).optional(),
         geographicScope: z.string().optional(),
-        baseYear: z.number().int().optional(),
+        baseYear: z.number().int().min(2000).max(2100).optional(),
         forecastHorizonYears: z.number().int().min(1).max(20).optional(),
         currency: z.string().max(10).optional(),
         unitOfMeasurement: z.string().optional(),
       }).optional();
 
-      const edits = editsSchema.parse(req.body.edits);
+      const edits = editsSchema.parse(req.body.edits ?? undefined);
+
+      const proposed = existingBoundary.proposedBySystem as ExtractedBoundary & { _extractionCount?: number } | null;
+      const finalBaseYear = edits?.baseYear ?? proposed?.baseYear ?? guard.forecast!.baseYear ?? new Date().getFullYear() - 1;
+      const finalHorizon = edits?.forecastHorizonYears ?? proposed?.forecastHorizonYears ?? guard.forecast!.forecastHorizonYears ?? 5;
+      const finalTimeHorizon = `${finalBaseYear}–${finalBaseYear + finalHorizon}`;
 
       const updatedBoundary = await upsertForecastBoundary(req.params.id, {
         includedCategories: edits?.inclusions ?? existingBoundary.includedCategories ?? [],
         excludedCategories: edits?.exclusions ?? existingBoundary.excludedCategories ?? [],
         geographicScope: edits?.geographicScope ?? existingBoundary.geographicScope ?? undefined,
         unitOfMeasurement: edits?.unitOfMeasurement ?? existingBoundary.unitOfMeasurement ?? undefined,
+        timeHorizon: finalTimeHorizon,
         confirmedByUser: true,
-        userEdits: edits ? (edits as any) : null,
+        userEdits: edits ? (edits as Record<string, unknown>) : null,
       });
 
-      // Sync any edited parameters to the forecast row
-      if (edits?.baseYear || edits?.forecastHorizonYears || edits?.currency) {
-        const proposed = existingBoundary.proposedBySystem as any;
-        await updateForecast(req.params.id, {
-          baseYear: edits?.baseYear ?? proposed?.baseYear,
-          forecastHorizonYears: edits?.forecastHorizonYears ?? proposed?.forecastHorizonYears,
-          currency: edits?.currency ?? proposed?.currency,
-          status: "boundary_confirmed",
-        });
-      } else {
-        await updateForecast(req.params.id, { status: "boundary_confirmed" });
-      }
+      const forecastPatch: Record<string, unknown> = { status: "boundary_confirmed" };
+      if (edits?.baseYear) forecastPatch.baseYear = edits.baseYear;
+      if (edits?.forecastHorizonYears) forecastPatch.forecastHorizonYears = edits.forecastHorizonYears;
+      if (edits?.currency) forecastPatch.currency = edits.currency;
+
+      await updateForecast(req.params.id, forecastPatch as Parameters<typeof updateForecast>[1]);
 
       await writeAuditEntry(req.params.id, "boundary_confirmed", user.id, {
         hadEdits: !!edits && Object.keys(edits).length > 0,
+        finalTimeHorizon,
       });
 
       res.json({ boundary: updatedBoundary });
@@ -244,68 +300,92 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // PHASE 2 — INTERVIEW
-  // ════════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE 2 — INTERVIEW  (SSE streaming)
+  // ════════════════════════════════════════════════════════════════════════
 
-  // ── Get next interview question ───────────────────────────────────────────
-  // POST body: { mode: "express" | "full", answers: AnswerEntry[] }
-  // Returns the next InterviewQuestion, or { done: true } if interview is complete.
+  // ── Get next interview question — SSE ───────────────────────────────────
+  // Body: { mode: "express" | "full", answers: AnswerEntry[] }
+  //
+  // SSE event sequence:
+  //   { type: "thinking" }                           — LLM adaptive call in progress
+  //   { type: "token", value: string }               — streaming question text chunk
+  //   { type: "question", data: InterviewQuestion }  — full metadata after streaming
+  //   { type: "done" }                               — interview complete
+  //   { type: "error", error: string }               — recoverable error
   app.post("/api/forecast-builder/forecasts/:id/interview/next", requireAuth, async (req: Request, res: Response) => {
+    const guard = await guardForecastAccess(req, res, req.params.id);
+    if (!guard.ok) return;
+
+    if (guard.forecast!.status !== "boundary_confirmed") {
+      return res.status(400).json({ error: "Boundary must be confirmed before the interview begins" });
+    }
+
+    let body: ReturnType<typeof interviewBodySchema.parse>;
     try {
-      const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      if (forecast.status !== "boundary_confirmed") {
-        return res.status(400).json({ error: "Boundary must be confirmed before the interview begins" });
-      }
-
-      const body = z.object({
-        mode: z.enum(["express", "full"]),
-        answers: z.array(answerEntrySchema),
-      }).parse(req.body);
-
-      const next = getNextQuestion(body.answers as AnswerEntry[], body.mode);
-      if (!next) {
-        return res.json({ done: true });
-      }
-
-      res.json({ done: false, question: next });
+      body = interviewBodySchema.parse(req.body);
     } catch (err: any) {
-      res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+
+    initSSE(res);
+    let clientGone = false;
+    req.on("close", () => { clientGone = true; });
+
+    try {
+      // Signal to client that adaptive LLM selection is running
+      sendSSEEvent(res, { type: "thinking" });
+
+      const next = await getNextQuestion(body.answers as AnswerEntry[], body.mode);
+
+      if (!next || clientGone) {
+        sendSSEEvent(res, { type: "done" });
+        res.end();
+        return;
+      }
+
+      // Stream question text in small chunks (~100 chars/sec)
+      const CHUNK = 4;
+      const DELAY_MS = 25;
+      for (let i = 0; i < next.text.length; i += CHUNK) {
+        if (clientGone) break;
+        sendSSEEvent(res, { type: "token", value: next.text.slice(i, i + CHUNK) });
+        await sleep(DELAY_MS);
+      }
+
+      if (!clientGone) {
+        // Send complete question metadata (text already streamed above)
+        sendSSEEvent(res, { type: "question", data: next });
+      }
+    } catch (err: any) {
+      console.error("[ForecastInterview] SSE error:", err);
+      sendSSEEvent(res, { type: "error", error: err.message });
+    } finally {
+      if (!res.writableEnded) res.end();
     }
   });
 
-  // ── "I don't know" handler ────────────────────────────────────────────────
-  // POST body: { questionId: string }
-  // Returns the default answer and a plain-English rationale.
+  // ── "I don't know" handler ──────────────────────────────────────────────
   app.post("/api/forecast-builder/forecasts/:id/interview/idk", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
 
       const { questionId } = z.object({ questionId: z.string() }).parse(req.body);
       const result = getDefaultForQuestion(questionId);
       if (!result) return res.status(404).json({ error: "Question not found" });
-
       res.json(result);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
   });
 
-  // ── Get skip consequence ──────────────────────────────────────────────────
-  // POST body: { questionId: string }
-  // Returns the consequence message and default that will be applied.
+  // ── Skip consequence info ───────────────────────────────────────────────
   app.post("/api/forecast-builder/forecasts/:id/interview/skip-info", requireAuth, async (req: Request, res: Response) => {
     try {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
       const { questionId } = z.object({ questionId: z.string() }).parse(req.body);
       const result = getSkipConsequence(questionId);
       if (!result) return res.status(404).json({ error: "Question not found" });
@@ -315,25 +395,20 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Complete interview and assemble brief ─────────────────────────────────
-  // POST body: { mode: "express" | "full", answers: AnswerEntry[] }
-  // Saves brief to DB, advances status to "brief_complete".
+  // ── Complete interview and assemble brief ───────────────────────────────
   app.post("/api/forecast-builder/forecasts/:id/interview/complete", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      if (forecast.status !== "boundary_confirmed") {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
+      if (guard.forecast!.status !== "boundary_confirmed") {
         return res.status(400).json({ error: "Boundary must be confirmed before completing the interview" });
       }
 
-      const body = z.object({
-        mode: z.enum(["express", "full"]),
-        answers: z.array(answerEntrySchema).min(1),
-      }).parse(req.body);
+      const body = interviewBodySchema
+        .extend({ answers: z.array(answerEntrySchema).min(1) })
+        .parse(req.body);
 
       const assembled = assembleBrief(body.answers as AnswerEntry[], body.mode);
 
@@ -352,15 +427,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
         interviewTranscript: assembled.interviewTranscript,
       });
 
-      // Sync confidence band to forecast row
-      if (assembled.confidenceLevel) {
-        await updateForecast(req.params.id, {
-          confidenceBand: assembled.confidenceLevel,
-          status: "brief_complete",
-        });
-      } else {
-        await updateForecast(req.params.id, { status: "brief_complete" });
-      }
+      const forecastPatch: Record<string, unknown> = { status: "brief_complete" };
+      if (assembled.confidenceLevel) forecastPatch.confidenceBand = assembled.confidenceLevel;
+      await updateForecast(req.params.id, forecastPatch as Parameters<typeof updateForecast>[1]);
 
       await writeAuditEntry(req.params.id, "brief_completed", user.id, {
         mode: body.mode,
@@ -374,24 +443,55 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   });
 
-  // ── Reset brief (restart interview) ──────────────────────────────────────
-  // Reverts status from brief_complete back to boundary_confirmed.
+  // ── Reset brief (restart interview from scratch) ────────────────────────
   app.post("/api/forecast-builder/forecasts/:id/interview/reset", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
-      const forecast = await getForecast(req.params.id);
-      if (!forecast) return res.status(404).json({ error: "Forecast not found" });
-      if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      if (forecast.status !== "brief_complete") {
-        return res.status(400).json({ error: "Nothing to reset — brief is not yet complete" });
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
+      if (guard.forecast!.status !== "brief_complete") {
+        return res.status(400).json({ error: "Nothing to reset — brief is not complete" });
       }
 
-      await updateForecast(req.params.id, { status: "boundary_confirmed" });
+      await updateForecast(req.params.id, { status: "boundary_confirmed" } as any);
       await writeAuditEntry(req.params.id, "re_debate_triggered", user.id, { action: "brief_reset" });
-
       res.json({ status: "boundary_confirmed" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE 3 STUB — DEBATE
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ── Start debate ────────────────────────────────────────────────────────
+  // Records a debate_started audit event and marks the forecast as having
+  // entered the debate queue. The full multi-LLM debate engine (Phase 3)
+  // is built in the next task. This endpoint is intentionally minimal so
+  // the wizard flow has a real state transition to make.
+  app.post("/api/forecast-builder/forecasts/:id/debate/start", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+
+      if (guard.forecast!.status !== "brief_complete") {
+        return res.status(400).json({ error: "Brief must be complete before starting the debate" });
+      }
+
+      // Write the audit entry — this is the canonical record that the debate was requested
+      await writeAuditEntry(req.params.id, "debate_started", user.id, {
+        queuedAt: new Date().toISOString(),
+        note: "Full multi-LLM debate engine queued — Phase 3",
+      });
+
+      // Return 202 Accepted: the debate has been queued but not completed
+      res.status(202).json({
+        status: "queued",
+        message: "Debate queued. The multi-LLM debate engine will be available in the next release.",
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
