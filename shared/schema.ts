@@ -990,3 +990,273 @@ export const insertUserLlmApiKeySchema = createInsertSchema(userLlmApiKeys).omit
 
 export type UserLlmApiKey = typeof userLlmApiKeys.$inferSelect;
 export type InsertUserLlmApiKey = z.infer<typeof insertUserLlmApiKeySchema>;
+
+// ── Forecast Builder ───────────────────────────────────────────────────────
+//
+// Forecast lifecycle:
+//   draft → boundary_confirmed → brief_complete → debate_complete
+//   → calculating → complete
+//
+// The canonical schema mirrors the spec's top-level objects.
+// LLM outputs are stored as typed JSONB; numbers are always computed by
+// the deterministic TypeScript calculation engine (never by an LLM).
+
+export const forecasts = pgTable("forecasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  status: text("status").notNull().default("draft"),
+  // draft | boundary_confirmed | brief_complete | debate_complete | calculating | complete
+
+  // Core parameters
+  baseYear: integer("base_year"),
+  forecastHorizonYears: integer("forecast_horizon_years"),
+  currency: text("currency").default("USD"),
+  currencyBasis: text("currency_basis").default("nominal"), // nominal | constant
+  confidenceBand: text("confidence_band"), // directional | decision-grade | M&A-grade
+
+  // Schema versioning for forward compatibility
+  schemaVersion: text("schema_version").notNull().default("1.0"),
+
+  error: text("error"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const forecastBoundaries = pgTable("forecast_boundaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  includedCategories: jsonb("included_categories").$type<string[]>().default([]),
+  excludedCategories: jsonb("excluded_categories").$type<string[]>().default([]),
+  geographicScope: text("geographic_scope"),
+  unitOfMeasurement: text("unit_of_measurement"),
+  timeHorizon: text("time_horizon"),
+  customScope: boolean("custom_scope").notNull().default(true),
+  // Raw LLM-proposed boundary and user edits
+  proposedBySystem: jsonb("proposed_by_system"),
+  confirmedByUser: boolean("confirmed_by_user").notNull().default(false),
+  userEdits: jsonb("user_edits"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// forecast_briefs — the locked input object produced after the Socratic interview
+export const forecastBriefs = pgTable("forecast_briefs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  // Interview mode: express | full
+  interviewMode: text("interview_mode").notNull().default("express"),
+  // Purpose / confidence level
+  purpose: text("purpose"),
+  confidenceLevel: text("confidence_level"), // directional | decision-grade | M&A-grade
+  audience: text("audience"),
+  // Methodology
+  methodologyPreference: text("methodology_preference"), // top-down | bottom-up | demand-side | hybrid
+  baseYearAnchor: text("base_year_anchor"),
+  // Drivers and discontinuities captured during interview
+  drivers: jsonb("drivers").$type<string[]>().default([]),
+  discontinuities: jsonb("discontinuities").$type<string[]>().default([]),
+  adjacentMarkets: jsonb("adjacent_markets").$type<string[]>().default([]),
+  // Output constraints
+  outputFormat: text("output_format"),
+  sourceRequirements: text("source_requirements"),
+  // Raw Q&A pairs from the interview
+  interviewTranscript: jsonb("interview_transcript").$type<{ question: string; answer: string }[]>().default([]),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const forecastSegments = pgTable("forecast_segments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  parentSegmentId: varchar("parent_segment_id"), // self-reference handled at app level
+  name: text("name").notNull(),
+  description: text("description"),
+  // Base year value and how it was constructed
+  baseYearValue: decimal("base_year_value", { precision: 20, scale: 4 }),
+  baseYearValueConstruction: jsonb("base_year_value_construction"),
+  // assumption_ids driving growth for this segment
+  growthAssumptionIds: jsonb("growth_assumption_ids").$type<string[]>().default([]),
+  // Year-by-year computed values — filled by calc engine, never by LLM
+  forecastPath: jsonb("forecast_path").$type<Record<string, number>>(),
+  meceValidated: boolean("mece_validated").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const forecastAssumptions = pgTable("forecast_assumptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  value: decimal("value", { precision: 20, scale: 6 }),
+  unit: text("unit"),
+  proposedByModels: jsonb("proposed_by_models").$type<string[]>().default([]),
+  // debate_consensus | user_override | primary_data
+  currentValueSource: text("current_value_source").notNull().default("debate_consensus"),
+  sensitivityRank: integer("sensitivity_rank"),
+  editableByUser: boolean("editable_by_user").notNull().default(true),
+  // Versioned edit history
+  originalAiValue: decimal("original_ai_value", { precision: 20, scale: 6 }),
+  currentValue: decimal("current_value", { precision: 20, scale: 6 }),
+  editHistory: jsonb("edit_history").$type<{
+    timestamp: string; actor: string; oldValue: string | null; newValue: string | null; reason?: string;
+  }[]>().default([]),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const forecastCruxes = pgTable("forecast_cruxes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  contestedAssumptionId: varchar("contested_assumption_id"),
+  // Array of {model, value, reasoning}
+  positions: jsonb("positions").$type<{ model: string; value: string; reasoning: string }[]>().default([]),
+  evidenceRequiredToResolve: text("evidence_required_to_resolve"),
+  // resolved | unresolved | scenario_variable
+  resolutionStatus: text("resolution_status").notNull().default("unresolved"),
+  resolutionPath: text("resolution_path"),
+  estimatedImpact: text("estimated_impact"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const forecastScenarios = pgTable("forecast_scenarios", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // base | bull | bear
+  narrative: text("narrative"),
+  // crux_id → resolution direction for this scenario
+  cruxResolutions: jsonb("crux_resolutions").$type<Record<string, string>>().default({}),
+  // Year-by-year computed values — filled by calc engine
+  forecastPath: jsonb("forecast_path").$type<Record<string, number>>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const forecastSources = pgTable("forecast_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  // regulator | vendor_filing | government_stat | industry_association | analyst_report | user_provided
+  sourceType: text("source_type").notNull(),
+  url: text("url"),
+  accessedDate: timestamp("accessed_date"),
+  verbatimQuote: text("verbatim_quote"),
+  // 1 = primary official data, 2 = web-assisted, 3 = estimated/inferred
+  reliabilityTier: integer("reliability_tier").notNull().default(2),
+  title: text("title"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const forecastAuditLog = pgTable("forecast_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  // generated | boundary_confirmed | brief_completed | debate_started | phase_completed
+  // assumption_overridden | source_added | re_debate_triggered | exported
+  eventType: text("event_type").notNull(),
+  // Model name+version or user_id
+  actor: text("actor").notNull(),
+  // Structured detail — schema varies per event_type
+  payload: jsonb("payload"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Relations
+export const forecastsRelations = relations(forecasts, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [forecasts.createdBy],
+    references: [users.id],
+  }),
+  boundary: one(forecastBoundaries, {
+    fields: [forecasts.id],
+    references: [forecastBoundaries.forecastId],
+  }),
+  brief: one(forecastBriefs, {
+    fields: [forecasts.id],
+    references: [forecastBriefs.forecastId],
+  }),
+  segments: many(forecastSegments),
+  assumptions: many(forecastAssumptions),
+  cruxes: many(forecastCruxes),
+  scenarios: many(forecastScenarios),
+  sources: many(forecastSources),
+  auditLog: many(forecastAuditLog),
+}));
+
+// Insert schemas
+export const insertForecastSchema = createInsertSchema(forecasts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  error: true,
+  schemaVersion: true,
+});
+
+export const insertForecastBoundarySchema = createInsertSchema(forecastBoundaries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertForecastBriefSchema = createInsertSchema(forecastBriefs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForecastSegmentSchema = createInsertSchema(forecastSegments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForecastAssumptionSchema = createInsertSchema(forecastAssumptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertForecastCruxSchema = createInsertSchema(forecastCruxes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertForecastScenarioSchema = createInsertSchema(forecastScenarios).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForecastSourceSchema = createInsertSchema(forecastSources).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertForecastAuditLogSchema = createInsertSchema(forecastAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type Forecast = typeof forecasts.$inferSelect;
+export type InsertForecast = z.infer<typeof insertForecastSchema>;
+
+export type ForecastBoundary = typeof forecastBoundaries.$inferSelect;
+export type InsertForecastBoundary = z.infer<typeof insertForecastBoundarySchema>;
+
+export type ForecastBrief = typeof forecastBriefs.$inferSelect;
+export type InsertForecastBrief = z.infer<typeof insertForecastBriefSchema>;
+
+export type ForecastSegment = typeof forecastSegments.$inferSelect;
+export type InsertForecastSegment = z.infer<typeof insertForecastSegmentSchema>;
+
+export type ForecastAssumption = typeof forecastAssumptions.$inferSelect;
+export type InsertForecastAssumption = z.infer<typeof insertForecastAssumptionSchema>;
+
+export type ForecastCrux = typeof forecastCruxes.$inferSelect;
+export type InsertForecastCrux = z.infer<typeof insertForecastCruxSchema>;
+
+export type ForecastScenario = typeof forecastScenarios.$inferSelect;
+export type InsertForecastScenario = z.infer<typeof insertForecastScenarioSchema>;
+
+export type ForecastSource = typeof forecastSources.$inferSelect;
+export type InsertForecastSource = z.infer<typeof insertForecastSourceSchema>;
+
+export type ForecastAuditLog = typeof forecastAuditLog.$inferSelect;
+export type InsertForecastAuditLog = z.infer<typeof insertForecastAuditLogSchema>;

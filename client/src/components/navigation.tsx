@@ -33,14 +33,16 @@ export default function Navigation() {
   };
 
   const marketBuilderHref = isAuthenticated ? "/me/market-builder" : "/login";
-  const isMarketBuilderActive = location.includes("market-builder");
+  const isMarketBuilderActive = location.includes("market-builder") && !location.includes("forecast");
+  const isForecastBuilderActive = location.includes("forecast-builder");
 
   const navItems = [
-    { href: "/platform",        label: "Platform" },
-    { href: "/markets",         label: "Markets" },
-    { href: marketBuilderHref,  label: "Market Builder", active: isMarketBuilderActive },
-    { href: "/licensing",       label: "Licensing" },
-    { href: "/about",           label: "About Us" },
+    { href: "/platform",          label: "Platform" },
+    { href: "/markets",           label: "Markets" },
+    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive },
+    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive },
+    { href: "/licensing",         label: "Licensing" },
+    { href: "/about",             label: "About Us" },
   ];
 
   if (isAdminArea) {

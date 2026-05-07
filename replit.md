@@ -34,6 +34,16 @@ Preferred communication style: Simple, everyday language.
 - **Build Tool**: Vite
 - **Data Visualization**: D3.js for Vendor Evaluation charts
 
+### Forecast Builder
+New AI-native market forecasting product at `/forecast-builder`. Architecture:
+- **DB tables** (9 new): `forecasts`, `forecast_boundaries`, `forecast_briefs`, `forecast_segments`, `forecast_assumptions`, `forecast_cruxes`, `forecast_scenarios`, `forecast_sources`, `forecast_audit_log`
+- **Calculation engine**: `server/forecast/engine.ts` — deterministic TypeScript, no LLM arithmetic. Implements MECE validation, year-by-year compound growth, sensitivity tables (±10%/±25%), bull/base/bear scenario paths
+- **Audit log**: `server/forecast/audit.ts` — typed `writeAuditEntry()` called on every state change
+- **Storage**: `server/storage/forecasts.ts` — full CRUD for all forecast entities
+- **Routes**: `server/routes/forecastBuilder.ts` — `/api/forecast-builder/forecasts` (list, create, get, update, delete)
+- **Forecast lifecycle**: `draft → boundary_confirmed → brief_complete → debate_complete → calculating → complete`
+- **Frontend**: `client/src/pages/forecast-builder/index.tsx` — dark premium list page with stats, status badges, create/delete dialogs
+
 ### Backend
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript

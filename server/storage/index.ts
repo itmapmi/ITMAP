@@ -23,6 +23,15 @@ import {
   type MarketBuilderPromptSelection, type InsertMarketBuilderPromptSelection,
   type MarketBuilderLlmSelection, type InsertMarketBuilderLlmSelection,
   type UserLlmApiKey,
+  type Forecast, type InsertForecast,
+  type ForecastBoundary, type InsertForecastBoundary,
+  type ForecastBrief, type InsertForecastBrief,
+  type ForecastSegment, type InsertForecastSegment,
+  type ForecastAssumption, type InsertForecastAssumption,
+  type ForecastCrux, type InsertForecastCrux,
+  type ForecastScenario, type InsertForecastScenario,
+  type ForecastSource, type InsertForecastSource,
+  type ForecastAuditLog, type InsertForecastAuditLog,
 } from "@shared/schema";
 
 export * from "./users";
@@ -35,6 +44,7 @@ export * from "./marketBuilder";
 export * from "./prompts";
 export * from "./userLlmKeys";
 export * from "./signals";
+export * from "./forecasts";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -45,6 +55,7 @@ import * as adminStorage from "./admin";
 import * as marketBuilderStorage from "./marketBuilder";
 import * as promptsStorage from "./prompts";
 import * as userLlmKeysStorage from "./userLlmKeys";
+import * as forecastsStorage from "./forecasts";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -213,6 +224,37 @@ export interface IStorage {
   getUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider): Promise<UserLlmApiKey | undefined>;
   upsertUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider, apiKey: string): Promise<UserLlmApiKey>;
   deleteUserLlmApiKey(userId: string, provider: import("./userLlmKeys").LlmProvider): Promise<void>;
+
+  // Forecast Builder
+  createForecast(data: InsertForecast): Promise<Forecast>;
+  getForecast(id: string): Promise<Forecast | undefined>;
+  listForecasts(): Promise<Forecast[]>;
+  listForecastsForUser(userId: string): Promise<Forecast[]>;
+  updateForecast(id: string, data: Partial<Pick<Forecast, "status" | "title" | "baseYear" | "forecastHorizonYears" | "currency" | "currencyBasis" | "confidenceBand" | "error" | "updatedAt">>): Promise<Forecast>;
+  deleteForecast(id: string): Promise<void>;
+  getForecastFull(id: string): Promise<import("./forecasts").ForecastFull | undefined>;
+  getForecastBoundary(forecastId: string): Promise<ForecastBoundary | undefined>;
+  upsertForecastBoundary(forecastId: string, data: Partial<InsertForecastBoundary>): Promise<ForecastBoundary>;
+  getForecastBrief(forecastId: string): Promise<ForecastBrief | undefined>;
+  upsertForecastBrief(forecastId: string, data: Partial<InsertForecastBrief>): Promise<ForecastBrief>;
+  getForecastSegments(forecastId: string): Promise<ForecastSegment[]>;
+  createForecastSegment(data: InsertForecastSegment): Promise<ForecastSegment>;
+  updateForecastSegment(id: string, data: Partial<Pick<ForecastSegment, "name" | "description" | "baseYearValue" | "baseYearValueConstruction" | "growthAssumptionIds" | "forecastPath" | "meceValidated">>): Promise<ForecastSegment>;
+  deleteForecastSegment(id: string): Promise<void>;
+  getForecastAssumptions(forecastId: string): Promise<ForecastAssumption[]>;
+  createForecastAssumption(data: InsertForecastAssumption): Promise<ForecastAssumption>;
+  updateForecastAssumption(id: string, data: Partial<Pick<ForecastAssumption, "value" | "currentValue" | "currentValueSource" | "sensitivityRank" | "editHistory" | "updatedAt">>): Promise<ForecastAssumption>;
+  getForecastCruxes(forecastId: string): Promise<ForecastCrux[]>;
+  createForecastCrux(data: InsertForecastCrux): Promise<ForecastCrux>;
+  updateForecastCrux(id: string, data: Partial<Pick<ForecastCrux, "resolutionStatus" | "resolutionPath" | "positions" | "updatedAt">>): Promise<ForecastCrux>;
+  getForecastScenarios(forecastId: string): Promise<ForecastScenario[]>;
+  createForecastScenario(data: InsertForecastScenario): Promise<ForecastScenario>;
+  updateForecastScenario(id: string, data: Partial<Pick<ForecastScenario, "name" | "narrative" | "cruxResolutions" | "forecastPath">>): Promise<ForecastScenario>;
+  getForecastSources(forecastId: string): Promise<ForecastSource[]>;
+  createForecastSource(data: InsertForecastSource): Promise<ForecastSource>;
+  deleteForecastSource(id: string): Promise<void>;
+  getForecastAuditLog(forecastId: string): Promise<ForecastAuditLog[]>;
+  appendForecastAuditEntry(data: InsertForecastAuditLog): Promise<ForecastAuditLog>;
 }
 
 export const storage: IStorage = {
@@ -225,4 +267,5 @@ export const storage: IStorage = {
   ...marketBuilderStorage,
   ...promptsStorage,
   ...userLlmKeysStorage,
+  ...forecastsStorage,
 };
