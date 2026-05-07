@@ -451,6 +451,14 @@ export async function runDebate(
         resolutionStatus: crux.resolution,
         resolutionPath: crux.resolutionReasoning,
         estimatedImpact: crux.estimatedImpact,
+        // Persist deterministic scenario values for downstream calc engine + UI
+        scenarioValues: {
+          finalValue: crux.finalValue ?? null,
+          bullValue: crux.bullValue ?? null,
+          baseValue: crux.baseValue ?? null,
+          bearValue: crux.bearValue ?? null,
+          unit: crux.analystAUnit || crux.analystBUnit || null,
+        },
       });
       cruxDbIds.set(crux.assumptionId, savedCrux.id);
 

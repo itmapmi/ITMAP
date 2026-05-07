@@ -1115,6 +1115,19 @@ export const forecastCruxes = pgTable("forecast_cruxes", {
   resolutionStatus: text("resolution_status").notNull().default("unresolved"),
   resolutionPath: text("resolution_path"),
   estimatedImpact: text("estimated_impact"),
+  // Deterministic scenario values populated by Phase 3.4 resolver:
+  //   finalValue  — converged point estimate (resolution="resolved" only, null otherwise)
+  //   bullValue   — optimistic scenario bound
+  //   baseValue   — base case estimate
+  //   bearValue   — pessimistic scenario bound
+  //   unit        — unit of measurement (same as assumptions)
+  scenarioValues: jsonb("scenario_values").$type<{
+    finalValue: number | null;
+    bullValue: number | null;
+    baseValue: number | null;
+    bearValue: number | null;
+    unit: string | null;
+  }>(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

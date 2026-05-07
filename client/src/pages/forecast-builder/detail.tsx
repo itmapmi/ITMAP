@@ -89,6 +89,13 @@ interface DBCrux {
   resolutionStatus: "resolved" | "unresolved" | "scenario_variable";
   resolutionPath: string | null;
   estimatedImpact: string | null;
+  scenarioValues: {
+    finalValue: number | null;
+    bullValue: number | null;
+    baseValue: number | null;
+    bearValue: number | null;
+    unit: string | null;
+  } | null;
 }
 
 interface DBAssumption {
@@ -1418,18 +1425,70 @@ function DebateResultsStep({
         </div>
       )}
 
-      {/* Crux table */}
-      {cruxes.length > 0 && (
+      {/* Resolved cruxes table */}
+      {cruxes.filter(c => c.resolutionStatus === "resolved").length > 0 && (
         <div className="mb-5">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Contested assumptions</p>
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Resolved cruxes</p>
           <div className="space-y-2">
-            {cruxes.map((crux) => {
-              const status = crux.resolutionStatus as "resolved" | "unresolved" | "scenario_variable";
+            {cruxes.filter(c => c.resolutionStatus === "resolved").map((crux) => {
               const analystAPos = crux.positions.find(p => p.model === "analyst-a");
               const analystBPos = crux.positions.find(p => p.model !== "analyst-a");
+              const sv = crux.scenarioValues;
+              const unit = sv?.unit ?? "";
+              const fmt = (v: number | null | undefined) =>
+                v != null ? `${v.toLocaleString()} ${unit}`.trim() : "—";
+              return (
+                <div key={crux.id} className="bg-slate-900 border border-emerald-500/10 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <p className="text-sm text-white font-medium">
+                      {crux.evidenceRequiredToResolve?.replace(/^.*?: /, "") ?? `Assumption ${crux.id.slice(-6)}`}
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border shrink-0 text-emerald-300 bg-emerald-950/40 border-emerald-500/20">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Resolved
+                    </span>
+                  </div>
+                  {/* Values table: Analyst A | Analyst B | Final value */}
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div className="text-center bg-slate-800/50 rounded-lg px-2 py-2">
+                      <p className="text-[10px] text-slate-500 mb-0.5">Analyst A</p>
+                      <p className="text-sm font-medium text-slate-200">{analystAPos?.value ?? "—"} {unit}</p>
+                    </div>
+                    <div className="text-center bg-slate-800/50 rounded-lg px-2 py-2">
+                      <p className="text-[10px] text-slate-500 mb-0.5">Analyst B</p>
+                      <p className="text-sm font-medium text-slate-200">{analystBPos?.value ?? "—"} {unit}</p>
+                    </div>
+                    <div className="text-center bg-emerald-950/40 border border-emerald-500/20 rounded-lg px-2 py-2">
+                      <p className="text-[10px] text-emerald-400/70 mb-0.5">Final value</p>
+                      <p className="text-sm font-semibold text-emerald-300">{fmt(sv?.finalValue)}</p>
+                    </div>
+                  </div>
+                  {crux.resolutionPath && (
+                    <p className="text-xs text-slate-400 leading-relaxed mt-1">{crux.resolutionPath}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Unresolved / scenario-variable cruxes table */}
+      {cruxes.filter(c => c.resolutionStatus !== "resolved").length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Unresolved &amp; scenario-variable cruxes</p>
+          <div className="space-y-2">
+            {cruxes.filter(c => c.resolutionStatus !== "resolved").map((crux) => {
+              const status = crux.resolutionStatus as "unresolved" | "scenario_variable";
+              const analystAPos = crux.positions.find(p => p.model === "analyst-a");
+              const analystBPos = crux.positions.find(p => p.model !== "analyst-a");
+              const sv = crux.scenarioValues;
+              const unit = sv?.unit ?? "";
+              const fmt = (v: number | null | undefined) =>
+                v != null ? `${v.toLocaleString()} ${unit}`.trim() : "—";
               return (
                 <div key={crux.id} className="bg-slate-900 border border-white/5 rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <p className="text-sm text-white font-medium">
                       {crux.evidenceRequiredToResolve?.replace(/^.*?: /, "") ?? `Assumption ${crux.id.slice(-6)}`}
                     </p>
@@ -1438,14 +1497,32 @@ function DebateResultsStep({
                       {RESOLUTION_LABEL[status]}
                     </span>
                   </div>
+                  {/* Analyst positions */}
                   {(analystAPos || analystBPos) && (
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
-                      {analystAPos && <span>A: {analystAPos.value}</span>}
-                      {analystBPos && <span>B: {analystBPos.value}</span>}
+                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-2">
+                      {analystAPos && <span>A: <span className="text-slate-300">{analystAPos.value} {unit}</span></span>}
+                      {analystBPos && <span>B: <span className="text-slate-300">{analystBPos.value} {unit}</span></span>}
+                    </div>
+                  )}
+                  {/* Bull / Base / Bear scenario values */}
+                  {sv && (sv.bullValue != null || sv.baseValue != null || sv.bearValue != null) && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      <div className="text-center bg-emerald-950/20 border border-emerald-500/10 rounded-lg px-2 py-2">
+                        <p className="text-[10px] text-emerald-400/60 mb-0.5">Bull</p>
+                        <p className="text-sm font-medium text-emerald-300">{fmt(sv.bullValue)}</p>
+                      </div>
+                      <div className="text-center bg-slate-800/50 rounded-lg px-2 py-2">
+                        <p className="text-[10px] text-slate-500 mb-0.5">Base</p>
+                        <p className="text-sm font-medium text-slate-200">{fmt(sv.baseValue)}</p>
+                      </div>
+                      <div className="text-center bg-amber-950/20 border border-amber-500/10 rounded-lg px-2 py-2">
+                        <p className="text-[10px] text-amber-400/60 mb-0.5">Bear</p>
+                        <p className="text-sm font-medium text-amber-300">{fmt(sv.bearValue)}</p>
+                      </div>
                     </div>
                   )}
                   {crux.resolutionPath && (
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">{crux.resolutionPath}</p>
+                    <p className="text-xs text-slate-400 leading-relaxed mt-1">{crux.resolutionPath}</p>
                   )}
                 </div>
               );

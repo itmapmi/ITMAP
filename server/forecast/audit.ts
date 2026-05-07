@@ -25,6 +25,11 @@ export type ForecastEventType =
   | "crux_identified"
   | "crux_resolved"
   | "crux_unresolved"
+  // Phase 3 sub-phase provenance events
+  | "draft_generated"
+  | "critique_completed"
+  | "crux_resolution_calls"
+  | "crux_validation"
   | "calculation_run"
   | "assumption_overridden"
   | "source_added"

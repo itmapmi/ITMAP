@@ -243,7 +243,7 @@ export async function createForecastCrux(data: InsertForecastCrux): Promise<Fore
 
 export async function updateForecastCrux(
   id: string,
-  data: Partial<Pick<ForecastCrux, "resolutionStatus" | "resolutionPath" | "positions" | "updatedAt">>
+  data: Partial<Pick<ForecastCrux, "resolutionStatus" | "resolutionPath" | "positions" | "scenarioValues" | "updatedAt">>
 ): Promise<ForecastCrux> {
   const [updated] = await db
     .update(forecastCruxes)
