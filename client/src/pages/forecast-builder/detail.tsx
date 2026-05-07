@@ -16,6 +16,12 @@ import {
   TrendingUp,
   X,
   Zap,
+  Brain,
+  ShieldCheck,
+  AlertTriangle,
+  XCircle,
+  Activity,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +80,38 @@ interface DBBrief {
   interviewTranscript: { question: string; answer: string }[];
 }
 
+interface DBCrux {
+  id: string;
+  forecastId: string;
+  contestedAssumptionId: string | null;
+  positions: { model: string; value: string; reasoning: string }[];
+  evidenceRequiredToResolve: string | null;
+  resolutionStatus: "resolved" | "unresolved" | "scenario_variable";
+  resolutionPath: string | null;
+  estimatedImpact: string | null;
+}
+
+interface DBAssumption {
+  id: string;
+  forecastId: string;
+  description: string;
+  value: string | null;
+  unit: string | null;
+  proposedByModels: string[];
+  currentValueSource: string;
+  sensitivityRank: number | null;
+  currentValue: string | null;
+  originalAiValue: string | null;
+}
+
+interface DBScenario {
+  id: string;
+  forecastId: string;
+  name: string;
+  narrative: string | null;
+  cruxResolutions: Record<string, string>;
+}
+
 interface ForecastFull {
   id: string;
   title: string;
@@ -85,6 +123,41 @@ interface ForecastFull {
   createdAt: string;
   boundary: DBBoundary | null;
   brief: DBBrief | null;
+  cruxes: DBCrux[];
+  assumptions: DBAssumption[];
+  scenarios: DBScenario[];
+}
+
+// ── Debate SSE event types ─────────────────────────────────────────────────
+
+interface DebateCruxEvent {
+  id: string;
+  name: string;
+  divergencePct: number;
+  impact: "high" | "medium" | "low";
+  analystAValue: number;
+  analystAUnit: string;
+  analystBValue: number;
+  analystBUnit: string;
+}
+
+interface DebateProgressEntry {
+  phase: number;
+  type: "phase_start" | "phase_complete" | "progress" | "crux_found" | "crux_resolved" | "error";
+  message: string;
+  crux?: DebateCruxEvent;
+}
+
+interface DebateSummaryData {
+  totalCruxes: number;
+  resolved: number;
+  unresolved: number;
+  scenarioVariable: number;
+  consensusValidated: number;
+  assumptionsSaved: number;
+  scenariosSaved: number;
+  usedFallback: boolean;
+  models: string[];
 }
 
 type QuestionCluster = "boundary" | "purpose" | "methodology" | "drivers" | "output";
@@ -187,6 +260,7 @@ const STEPS = [
   { key: "boundary", label: "Define scope" },
   { key: "interview", label: "Brief interview" },
   { key: "review", label: "Review brief" },
+  { key: "debate", label: "Debate" },
 ];
 
 function WizardSteps({ current }: { current: string }) {
@@ -878,21 +952,6 @@ function ReviewStep({
       toast({ title: "Reset failed", description: err.message, variant: "destructive" }),
   });
 
-  const debateMutation = useMutation({
-    mutationFn: () =>
-      apiRequestJson(`/api/forecast-builder/forecasts/${forecast.id}/debate/start`, "POST"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
-      toast({
-        title: "Debate queued",
-        description: "The multi-model debate engine will run in the next release.",
-      });
-      onStartDebate();
-    },
-    onError: (err: any) =>
-      toast({ title: "Failed to start debate", description: err.message, variant: "destructive" }),
-  });
-
   if (!brief) return null;
 
   const CONF_COLORS: Record<string, string> = {
@@ -1009,15 +1068,10 @@ function ReviewStep({
           Edit brief
         </Button>
         <Button
-          disabled={debateMutation.isPending}
-          onClick={() => debateMutation.mutate()}
+          onClick={onStartDebate}
           className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0"
         >
-          {debateMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <ArrowRight className="h-4 w-4 mr-2" />
-          )}
+          <Brain className="h-4 w-4 mr-2" />
           Start Debate
         </Button>
       </div>
@@ -1043,26 +1097,356 @@ function ReviewKV({ k, v }: { k: string; v: string }) {
   );
 }
 
-// ── Post-brief placeholder (debate_complete, calculating, complete) ────────
+// ── Phase 3: Debate step (live SSE) ──────────────────────────────────────
 
-function PostBriefPlaceholder({ forecast }: { forecast: ForecastFull }) {
-  const STATUS_LABELS: Record<string, string> = {
-    debate_complete: "Debate complete — calculation coming",
-    calculating: "Running calculations…",
-    complete: "Forecast complete",
-  };
+const PHASE_LABELS: Record<number, string> = {
+  1: "Independent drafts",
+  2: "Role critiques",
+  3: "Crux identification",
+  4: "Resolution",
+  5: "Consensus validation",
+};
+
+const IMPACT_COLORS: Record<string, string> = {
+  high: "text-red-300 bg-red-950/40 border-red-500/20",
+  medium: "text-amber-300 bg-amber-950/40 border-amber-500/20",
+  low: "text-slate-300 bg-slate-800 border-white/5",
+};
+
+function DebateStep({
+  forecast,
+  onComplete,
+}: {
+  forecast: ForecastFull;
+  onComplete: (summary: DebateSummaryData) => void;
+}) {
+  const [log, setLog] = useState<DebateProgressEntry[]>([]);
+  const [cruxes, setCruxes] = useState<DebateCruxEvent[]>([]);
+  const [activePhase, setActivePhase] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(true);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const addLog = useCallback((entry: DebateProgressEntry) => {
+    setLog(prev => [...prev.slice(-100), entry]);
+  }, []);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [log]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    (async () => {
+      let response: Response;
+      try {
+        response = await fetch(`/api/forecast-builder/forecasts/${forecast.id}/debate/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          signal: ctrl.signal,
+        });
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setError(err.message ?? "Connection failed");
+          setIsRunning(false);
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({ error: "Failed to start debate" })) as Record<string, unknown>;
+        setError(typeof errBody.error === "string" ? errBody.error : "Failed to start debate");
+        setIsRunning(false);
+        return;
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() ?? "";
+
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const ev = JSON.parse(line.slice(6)) as Record<string, unknown>;
+
+              if (ev.type === "phase_start") {
+                const phase = ev.phase as number;
+                setActivePhase(phase);
+                addLog({ phase, type: "phase_start", message: `Starting Phase ${phase}: ${PHASE_LABELS[phase] ?? ""}` });
+              } else if (ev.type === "progress") {
+                addLog({ phase: ev.phase as number, type: "progress", message: ev.message as string });
+              } else if (ev.type === "phase_complete") {
+                const phase = ev.phase as number;
+                addLog({ phase, type: "phase_complete", message: `Phase ${phase} complete: ${ev.summary}` });
+              } else if (ev.type === "crux_found") {
+                const crux = ev.crux as DebateCruxEvent;
+                setCruxes(prev => [...prev, crux]);
+                addLog({ phase: 3, type: "crux_found", message: `Crux identified: "${crux.name}" (${crux.divergencePct.toFixed(0)}% divergence, ${crux.impact} impact)`, crux });
+              } else if (ev.type === "crux_resolved") {
+                const statusLabel = ev.status === "resolved" ? "resolved" : ev.status === "scenario_variable" ? "scenario variable" : "unresolved";
+                addLog({ phase: 4, type: "crux_resolved", message: `${ev.id}: ${statusLabel}${ev.validated ? " ✓ validated" : ""}` });
+              } else if (ev.type === "debate_complete") {
+                setIsRunning(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
+                onComplete(ev.summary as DebateSummaryData);
+              } else if (ev.type === "error") {
+                const msg = ev.message as string;
+                setError(msg);
+                addLog({ phase: ev.phase as number, type: "error", message: `Error: ${msg}` });
+                setIsRunning(false);
+              }
+            } catch {
+              // malformed SSE — skip
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setError(err.message ?? "Stream error");
+          setIsRunning(false);
+        }
+      } finally {
+        reader.releaseLock();
+        setIsRunning(false);
+      }
+    })();
+
+    return () => { ctrl.abort(); };
+  }, [forecast.id]);
+
+  const PHASE_STEPS = [1, 2, 3, 4, 5];
+
   return (
     <div className="max-w-2xl">
-      <div className="bg-slate-900 border border-white/5 rounded-xl p-8 text-center">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center mx-auto mb-4">
-          <TrendingUp className="h-6 w-6 text-white" />
+      <WizardSteps current="debate" />
+      <h2 className="text-2xl font-bold text-white mb-2">Multi-model debate</h2>
+      <p className="text-slate-400 text-sm mb-6">
+        Two independent AI analysts debate the forecast assumptions. Each contested assumption is identified as a crux and resolved with web evidence.
+      </p>
+
+      {/* Phase progress bar */}
+      <div className="flex items-center gap-1 mb-6">
+        {PHASE_STEPS.map((phase) => {
+          const done = activePhase > phase || (!isRunning && !error && activePhase >= phase);
+          const active = activePhase === phase && isRunning;
+          return (
+            <div key={phase} className="flex-1">
+              <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                done ? "bg-gradient-to-r from-cyan-500 to-violet-600"
+                  : active ? "bg-cyan-500/60 animate-pulse"
+                  : "bg-slate-800"
+              }`} />
+              <p className="text-[10px] text-slate-600 mt-1 text-center hidden sm:block">{PHASE_LABELS[phase]}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Identified cruxes so far */}
+      {cruxes.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Contested assumptions identified</p>
+          <div className="space-y-1.5">
+            {cruxes.map((c) => (
+              <div key={c.id} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${IMPACT_COLORS[c.impact]}`}>
+                <span className="font-medium">{c.name}</span>
+                <div className="flex items-center gap-3 shrink-0 ml-2">
+                  <span className="opacity-70">{c.analystAValue} vs {c.analystBValue} {c.analystAUnit}</span>
+                  <span className="font-mono">{c.divergencePct.toFixed(0)}% gap</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <h3 className="text-white font-semibold mb-2">
-          {STATUS_LABELS[forecast.status] ?? forecast.status}
-        </h3>
-        <p className="text-slate-400 text-sm">
-          Subsequent phases (multi-LLM debate, calculation, report) will be available in the next release.
-        </p>
+      )}
+
+      {/* Live log */}
+      <div className="bg-slate-900 border border-white/5 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-xs text-slate-400 font-medium">Debate log</span>
+          </div>
+          {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />}
+          {!isRunning && !error && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+          {error && <XCircle className="h-3.5 w-3.5 text-red-400" />}
+        </div>
+        <div className="font-mono text-[11px] max-h-64 overflow-y-auto p-4 space-y-1">
+          {log.length === 0 && (
+            <p className="text-slate-600 italic">Initialising debate engine…</p>
+          )}
+          {log.map((entry, i) => (
+            <div key={i} className={
+              entry.type === "phase_start" ? "text-cyan-400 font-semibold mt-2" :
+              entry.type === "phase_complete" ? "text-emerald-400" :
+              entry.type === "crux_found" ? "text-amber-300" :
+              entry.type === "crux_resolved" ? "text-violet-300" :
+              entry.type === "error" ? "text-red-400" :
+              "text-slate-400"
+            }>
+              {entry.message}
+            </div>
+          ))}
+          <div ref={logEndRef} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-4 bg-red-950/30 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+          <AlertTriangle className="h-4 w-4 inline mr-1.5" />
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Debate results (debate_complete) ──────────────────────────────────────
+
+function DebateResultsStep({
+  forecast,
+  summary,
+}: {
+  forecast: ForecastFull;
+  summary: DebateSummaryData | null;
+}) {
+  const cruxes = forecast.cruxes ?? [];
+  const assumptions = forecast.assumptions ?? [];
+  const scenarios = forecast.scenarios ?? [];
+
+  const resolved = cruxes.filter(c => c.resolutionStatus === "resolved").length;
+  const unresolved = cruxes.filter(c => c.resolutionStatus === "unresolved").length;
+  const scenarioVar = cruxes.filter(c => c.resolutionStatus === "scenario_variable").length;
+
+  const RESOLUTION_ICON = {
+    resolved: <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />,
+    unresolved: <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />,
+    scenario_variable: <Activity className="h-3.5 w-3.5 text-violet-400" />,
+  };
+
+  const RESOLUTION_LABEL = {
+    resolved: "Resolved",
+    unresolved: "Unresolved",
+    scenario_variable: "Scenario variable",
+  };
+
+  const RESOLUTION_COLOR = {
+    resolved: "text-emerald-300 bg-emerald-950/40 border-emerald-500/20",
+    unresolved: "text-amber-300 bg-amber-950/40 border-amber-500/20",
+    scenario_variable: "text-violet-300 bg-violet-950/40 border-violet-500/20",
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <WizardSteps current="debate" />
+      <h2 className="text-2xl font-bold text-white mb-2">Debate complete</h2>
+      <p className="text-slate-400 text-sm mb-6">
+        The multi-model debate has finished. Review the findings before proceeding to the calculation engine.
+      </p>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-emerald-400">{resolved}</p>
+          <p className="text-xs text-slate-500 mt-1">Cruxes resolved</p>
+        </div>
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-amber-400">{unresolved}</p>
+          <p className="text-xs text-slate-500 mt-1">Unresolved</p>
+        </div>
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-white">{assumptions.length}</p>
+          <p className="text-xs text-slate-500 mt-1">Assumptions saved</p>
+        </div>
+      </div>
+
+      {/* Models used */}
+      {summary?.models && (
+        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+          <Brain className="h-3.5 w-3.5" />
+          <span>Models: {summary.models.join(" · ")}</span>
+          {summary.usedFallback && (
+            <span className="text-amber-500/70">(Add Anthropic key in Settings for Claude)</span>
+          )}
+        </div>
+      )}
+
+      {/* Crux table */}
+      {cruxes.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Contested assumptions</p>
+          <div className="space-y-2">
+            {cruxes.map((crux) => {
+              const status = crux.resolutionStatus as "resolved" | "unresolved" | "scenario_variable";
+              const analystAPos = crux.positions.find(p => p.model === "analyst-a");
+              const analystBPos = crux.positions.find(p => p.model !== "analyst-a");
+              return (
+                <div key={crux.id} className="bg-slate-900 border border-white/5 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="text-sm text-white font-medium">
+                      {crux.evidenceRequiredToResolve?.replace(/^.*?: /, "") ?? `Assumption ${crux.id.slice(-6)}`}
+                    </p>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border shrink-0 ${RESOLUTION_COLOR[status]}`}>
+                      {RESOLUTION_ICON[status]}
+                      {RESOLUTION_LABEL[status]}
+                    </span>
+                  </div>
+                  {(analystAPos || analystBPos) && (
+                    <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
+                      {analystAPos && <span>A: {analystAPos.value}</span>}
+                      {analystBPos && <span>B: {analystBPos.value}</span>}
+                    </div>
+                  )}
+                  {crux.resolutionPath && (
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">{crux.resolutionPath}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Scenarios created */}
+      {scenarios.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-2">Scenarios created</p>
+          <div className="flex gap-2">
+            {scenarios.map(s => (
+              <span key={s.id} className="px-3 py-1 rounded-full text-xs bg-slate-900 border border-white/5 text-slate-300 capitalize">
+                {s.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unresolved note */}
+      {unresolved > 0 && (
+        <div className="mb-6 bg-amber-950/20 border border-amber-500/15 rounded-xl px-4 py-3 text-sm text-amber-300/80">
+          <AlertTriangle className="h-4 w-4 inline mr-1.5 text-amber-400" />
+          {unresolved} assumption{unresolved > 1 ? "s were" : " was"} not resolved — {unresolved > 1 ? "they" : "it"} will be treated as scenario variables in the calculation engine.
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+          <TrendingUp className="h-3.5 w-3.5" />
+          <span>Calculation engine coming in the next phase</span>
+        </div>
       </div>
     </div>
   );
@@ -1074,7 +1458,8 @@ export default function ForecastDetailPage() {
   const [, params] = useRoute("/forecast-builder/:id");
   const id = params?.id;
   const { toast } = useToast();
-  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | null>(null);
+  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | null>(null);
+  const [debateSummary, setDebateSummary] = useState<DebateSummaryData | null>(null);
 
   const { data: forecast, isLoading, error } = useQuery<ForecastFull>({
     queryKey: ["/api/forecast-builder/forecasts", id],
@@ -1094,8 +1479,11 @@ export default function ForecastDetailPage() {
       setWizardStep("boundary");
     } else if (forecast.status === "boundary_confirmed") {
       setWizardStep("interview");
-    } else {
+    } else if (forecast.status === "brief_complete") {
       setWizardStep("review");
+    } else {
+      // debate_complete, calculating, complete → show debate results
+      setWizardStep("debate_results");
     }
   }, [forecast, wizardStep]);
 
@@ -1149,15 +1537,27 @@ export default function ForecastDetailPage() {
             onComplete={() => setWizardStep("review")}
           />
         )}
-        {wizardStep === "review" && forecast.status === "brief_complete" && (
+        {wizardStep === "review" && (
           <ReviewStep
             forecast={forecast}
-            onStartDebate={() => setWizardStep("review")}
+            onStartDebate={() => setWizardStep("debate")}
             onEditBrief={() => setWizardStep("interview")}
           />
         )}
-        {wizardStep === "review" && forecast.status !== "brief_complete" && (
-          <PostBriefPlaceholder forecast={forecast} />
+        {wizardStep === "debate" && (
+          <DebateStep
+            forecast={forecast}
+            onComplete={(summary) => {
+              setDebateSummary(summary);
+              setWizardStep("debate_results");
+            }}
+          />
+        )}
+        {wizardStep === "debate_results" && (
+          <DebateResultsStep
+            forecast={forecast}
+            summary={debateSummary}
+          />
         )}
       </div>
     </div>

@@ -11,6 +11,7 @@ import {
   deleteForecast,
   upsertForecastBoundary,
   getForecastBoundary,
+  getForecastBrief,
   upsertForecastBrief,
   clearForecastBrief,
 } from "../storage/forecasts";
@@ -25,6 +26,8 @@ import {
   answerEntrySchema,
   type AnswerEntry,
 } from "../forecast/phases/phase2";
+import { runDebate } from "../forecast/phases/debate-runner";
+import { getUserLlmApiKey } from "../storage/userLlmKeys";
 
 type ForecastStatus = "draft" | "boundary_confirmed" | "brief_complete" | "debate_complete" | "calculating" | "complete";
 
@@ -491,36 +494,121 @@ export function registerForecastBuilderRoutes(app: Express): void {
   });
 
   // ════════════════════════════════════════════════════════════════════════
-  // PHASE 3 STUB — DEBATE
+  // PHASE 3 — DEBATE (SSE streaming)
   // ════════════════════════════════════════════════════════════════════════
 
-  // ── Start debate ────────────────────────────────────────────────────────
-  // Records a debate_started audit event and marks the forecast as having
-  // entered the debate queue. The full multi-LLM debate engine (Phase 3)
-  // is built in the next task. This endpoint is intentionally minimal so
-  // the wizard flow has a real state transition to make.
+  // ── Start debate — SSE ──────────────────────────────────────────────────
+  // Runs the 5-sub-phase multi-LLM debate and streams progress via SSE.
+  //
+  // SSE event sequence (see debate-runner.ts for full spec):
+  //   { type: "phase_start",    phase, label }
+  //   { type: "progress",       phase, message }
+  //   { type: "phase_complete", phase, summary }
+  //   { type: "crux_found",     crux: {...} }
+  //   { type: "crux_resolved",  id, dbId, status, validated, validationFlag }
+  //   { type: "debate_complete", summary: {...} }
+  //   { type: "error",          phase, message }
   app.post("/api/forecast-builder/forecasts/:id/debate/start", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+
+    // ── Guard checks BEFORE SSE init so we can return JSON errors ──────
+    const guard = await guardForecastAccess(req, res, req.params.id);
+    if (!guard.ok) return;
+
+    if (guard.forecast!.status !== "brief_complete") {
+      return res.status(400).json({ error: "Brief must be complete before starting the debate" });
+    }
+
+    const boundary = await getForecastBoundary(req.params.id);
+    if (!boundary?.confirmedByUser) {
+      return res.status(400).json({ error: "Boundary must be confirmed before starting the debate" });
+    }
+
+    const brief = await getForecastBrief(req.params.id);
+    if (!brief) {
+      return res.status(400).json({ error: "Brief not found — complete the interview first" });
+    }
+
+    // ── Resolve LLM keys ───────────────────────────────────────────────
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const openaiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+    if (!openaiKey) {
+      return res.status(503).json({ error: "OpenAI API key not configured on this server" });
+    }
+
+    // Anthropic key from user's stored keys (optional — degrades gracefully)
+    const anthropicKeyRow = await getUserLlmApiKey(user.id, "anthropic").catch(() => undefined);
+    const anthropicKey = anthropicKeyRow?.apiKey || undefined;
+
+    // ── Build debate context ───────────────────────────────────────────
+    const context = {
+      title: guard.forecast!.title,
+      boundary: {
+        inclusions: (boundary.includedCategories as string[]) ?? [],
+        exclusions: (boundary.excludedCategories as string[]) ?? [],
+        geographicScope: boundary.geographicScope ?? "Global",
+        baseYear: guard.forecast!.baseYear ?? new Date().getFullYear() - 1,
+        forecastHorizonYears: guard.forecast!.forecastHorizonYears ?? 5,
+        currency: guard.forecast!.currency ?? "USD",
+        unitOfMeasurement: boundary.unitOfMeasurement ?? "$B revenue",
+      },
+      brief: {
+        purpose: brief.purpose ?? "Internal strategy / planning",
+        confidenceLevel: brief.confidenceLevel ?? "directional",
+        methodologyPreference: brief.methodologyPreference ?? "hybrid",
+        drivers: (brief.drivers as string[]) ?? [],
+        discontinuities: (brief.discontinuities as string[]) ?? [],
+        adjacentMarkets: (brief.adjacentMarkets as string[]) ?? [],
+        outputFormat: brief.outputFormat ?? "Bull / base / bear scenarios",
+        sourceRequirements: brief.sourceRequirements ?? "Any credible sources",
+      },
+    };
+
+    // ── Write audit entry and init SSE ─────────────────────────────────
+    await writeAuditEntry(req.params.id, "debate_started", user.id, {
+      startedAt: new Date().toISOString(),
+      models: anthropicKey ? ["gpt-4o", "claude-sonnet-4-5"] : ["gpt-4o", "gpt-4o-alt"],
+      hasAnthropicKey: !!anthropicKey,
+    });
+
+    initSSE(res);
+    let clientGone = false;
+    req.on("close", () => { clientGone = true; });
+
+    // ── Run debate (non-blocking — streams back via SSE) ───────────────
+    runDebate(
+      req.params.id,
+      context,
+      openaiKey,
+      openaiBaseUrl,
+      anthropicKey,
+      res,
+      user.id
+    )
+      .catch(async (err: any) => {
+        console.error("[ForecastDebate] Unhandled debate error:", err);
+        if (!clientGone && !res.writableEnded) {
+          sendSSEEvent(res, { type: "error", phase: 0, message: err.message });
+        }
+        await updateForecast(req.params.id, { error: err.message }).catch(() => {});
+      })
+      .finally(() => {
+        if (!res.writableEnded) res.end();
+      });
+  });
+
+  // ── Get debate results (assumptions + cruxes + scenarios) ───────────────
+  app.get("/api/forecast-builder/forecasts/:id/debate/results", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user as any;
       const guard = await guardForecastAccess(req, res, req.params.id);
       if (!guard.ok) return;
-
-      if (guard.forecast!.status !== "brief_complete") {
-        return res.status(400).json({ error: "Brief must be complete before starting the debate" });
-      }
-
-      // Advance status so the wizard can transition past the review screen
-      await updateForecast(req.params.id, { status: "debate_complete" });
-
-      // Write the audit entry as the canonical record that debate was initiated
-      await writeAuditEntry(req.params.id, "debate_started", user.id, {
-        queuedAt: new Date().toISOString(),
-        note: "Full multi-LLM debate engine queued — Phase 3",
-      });
-
-      res.status(202).json({
-        status: "debate_complete",
-        message: "Debate queued. The multi-LLM debate engine will be available in the next release.",
+      const full = await getForecastFull(req.params.id);
+      if (!full) return res.status(404).json({ error: "Forecast not found" });
+      res.json({
+        assumptions: full.assumptions,
+        cruxes: full.cruxes,
+        scenarios: full.scenarios,
       });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
