@@ -31,6 +31,10 @@ export interface Stage4ScoringHooks {
 export interface Stage4CommentaryHooks {
   resolveCommentaryPrompt?: (categoryName: string, featureName: string) => Promise<string>;
   onBatchComplete?: (done: number, total: number, vendorName: string, featureRange: string) => Promise<void>;
+  /** Partial result from a previous failed run — skip already-done vendors */
+  checkpoint?: Stage4Result;
+  /** Called after each vendor completes so the caller can persist partial results */
+  onVendorComplete?: (partial: Stage4Result) => Promise<void>;
 }
 
 interface FeatureRow {
@@ -262,9 +266,30 @@ export async function runStage4Commentary(
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
-  const updatedSupport: Stage4SupportRecord[] = [...scoringResult.support];
+  // If a checkpoint exists (from a previous failed run), start from it so already-done vendors are skipped
+  const updatedSupport: Stage4SupportRecord[] = hooks?.checkpoint
+    ? hooks.checkpoint.support.map(s => ({ ...s }))
+    : [...scoringResult.support];
+
+  // Number of LLM batches per vendor (used to advance done counter when skipping)
+  const batchesPerVendor = groups.reduce((n, g) => n + Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY), 0);
 
   for (const vendor of stage1.vendors) {
+    // Resume: if all features for this vendor already have non-empty commentary, skip entirely
+    if (hooks?.checkpoint) {
+      const allDone = allFeatures.every(f =>
+        updatedSupport.find(
+          r => r.vendorName === vendor.name && r.categoryName === f.categoryName &&
+               r.featureName === f.featureName && (r.comments?.trim().length ?? 0) > 0
+        )
+      );
+      if (allDone) {
+        done += batchesPerVendor;
+        await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, "resumed from checkpoint");
+        continue;
+      }
+    }
+
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
@@ -304,6 +329,9 @@ export async function runStage4Commentary(
         await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
       }
     }
+
+    // Persist partial result after each vendor so the next retry can resume from here
+    await hooks?.onVendorComplete?.({ support: updatedSupport });
   }
 
   return { support: updatedSupport };

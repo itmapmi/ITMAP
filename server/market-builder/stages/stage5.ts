@@ -270,6 +270,15 @@ export async function runStage8Scoring(
 
 // ── Stage 9 public export: commentary only (requires stage 8 scoring result) ──
 
+export interface Stage9CommentaryHooks {
+  resolveCommentaryPrompt?: (categoryName: string, featureName: string) => Promise<string>;
+  onProgress?: (msg: string) => Promise<void>;
+  /** Partial result from a previous failed run — skip already-done vendors */
+  checkpoint?: Stage5Result;
+  /** Called after each vendor completes so the caller can persist partial results */
+  onVendorComplete?: (partial: Stage5Result) => Promise<void>;
+}
+
 export async function runStage9Commentary(
   marketName: string,
   stage1: Stage1Result,
@@ -277,10 +286,7 @@ export async function runStage9Commentary(
   stage8Result: Stage8ScoringResult,
   llmConfig: LLMConfig,
   sourceContext: string = "",
-  hooks?: {
-    resolveCommentaryPrompt?: (categoryName: string, featureName: string) => Promise<string>;
-    onProgress?: (msg: string) => Promise<void>;
-  },
+  hooks?: Stage9CommentaryHooks,
 ): Promise<Stage5Result> {
   const allFeatures: FeatureRow[] = stage7Result.categories.flatMap(cat =>
     cat.features.map(f => ({ categoryName: cat.name, featureName: f.name, featureDescription: f.description }))
@@ -302,9 +308,30 @@ export async function runStage9Commentary(
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
-  const updatedSupport: Stage5SupportRecord[] = stage8Result.support.map(s => ({ ...s }));
+  // If a checkpoint exists (from a previous failed run), start from it so already-done vendors are skipped
+  const updatedSupport: Stage5SupportRecord[] = hooks?.checkpoint
+    ? hooks.checkpoint.support.map(s => ({ ...s }))
+    : stage8Result.support.map(s => ({ ...s }));
+
+  // Number of LLM batches per vendor (used to advance done counter when skipping)
+  const batchesPerVendor = groups.reduce((n, g) => n + Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY), 0);
 
   for (const vendor of stage1.vendors) {
+    // Resume: if all features for this vendor already have non-empty commentary, skip entirely
+    if (hooks?.checkpoint) {
+      const allDone = allFeatures.every(f =>
+        updatedSupport.find(
+          r => r.vendorName === vendor.name && r.categoryName === f.categoryName &&
+               r.featureName === f.featureName && (r.comments?.trim().length ?? 0) > 0
+        )
+      );
+      if (allDone) {
+        done += batchesPerVendor;
+        await hooks?.onProgress?.(`↩ Resuming: ${vendor.name} already completed — skipping`);
+        continue;
+      }
+    }
+
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
@@ -341,6 +368,9 @@ export async function runStage9Commentary(
         done++;
       }
     }
+
+    // Persist partial result after each vendor so the next retry can resume from here
+    await hooks?.onVendorComplete?.({ categories: stage7Result.categories, support: updatedSupport });
   }
 
   if (updatedSupport.length === 0) throw new Error("Stage 9: no ecosystem commentary generated");

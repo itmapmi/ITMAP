@@ -52,6 +52,10 @@ export interface Stage2ScoringHooks {
 export interface Stage2CommentaryHooks {
   resolveCommentaryPrompt?: (criterionName: string) => Promise<string>;
   onProgress?: (msg: string) => Promise<void>;
+  /** Partial result from a previous failed run — skip already-done criteria */
+  checkpoint?: Stage2Result;
+  /** Called after each criterion completes so the caller can persist partial results */
+  onCriterionComplete?: (partial: Stage2Result) => Promise<void>;
 }
 
 const WEIGHTS_SYSTEM_PROMPT = `You are a senior technology market research analyst. You define market-specific weights and rationale for predefined evaluation criteria.
@@ -365,6 +369,18 @@ export async function runStage2Commentary(
       continue;
     }
 
+    // Resume: skip this criterion if all vendors already have non-empty commentary from a previous run
+    if (hooks?.checkpoint) {
+      const ckScores = hooks.checkpoint.scores.filter(
+        s => s.criterionName === criterion.name && s.commentary.trim().length > 0
+      );
+      if (ckScores.length >= stage1.vendors.length) {
+        allScores.push(...ckScores);
+        await progress(`↩ Resuming: "${criterion.name}" already completed — skipping`);
+        continue;
+      }
+    }
+
     const rationale = scoringResult.criteriaWeights.find(w => w.criterionName === criterion.name)?.scoringRationale
       ?? `Evaluates ${criterion.name} for the ${marketName} market.`;
 
@@ -394,6 +410,9 @@ export async function runStage2Commentary(
         sources: c?.sources ?? [],
       });
     }
+
+    // Persist partial result after each criterion so the next retry can resume from here
+    await hooks?.onCriterionComplete?.({ criteriaWeights: scoringResult.criteriaWeights, scores: allScores });
   }
 
   return { criteriaWeights: scoringResult.criteriaWeights, scores: allScores };

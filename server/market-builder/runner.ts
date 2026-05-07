@@ -139,7 +139,9 @@ export async function runSingleStage(
     storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "running",
       startedAt: new Date(),
-      result: null,
+      // Do NOT clear result here — a previous partial run may have saved a checkpoint
+      // that commentary stages can resume from. markComplete will overwrite with the
+      // final result when the stage succeeds.
       error: null,
     });
 
@@ -212,11 +214,22 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage2 = await loadStageResult(jobId, 2);
         const allCriteria = await storage.getAllCriteria();
-        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors × ${allCriteria.length} criteria (${llmConfig.provider}/${llmConfig.model})…`);
+        // Load checkpoint from any previous failed run so we can resume mid-criteria
+        const existingStage3 = await storage.getMarketBuilderStage(jobId, 3);
+        const checkpoint3 = (existingStage3?.result as any) ?? undefined;
+        if (checkpoint3?.scores?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${checkpoint3.scores.length} vendor × criterion scores already saved`);
+        } else {
+          await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors × ${allCriteria.length} criteria (${llmConfig.provider}/${llmConfig.model})…`);
+        }
         result = await runStage2Commentary(inputName, stage1, allCriteria, stage2, llmConfig, sourceContext, {
           resolveCommentaryPrompt: (criterionName) =>
             resolvePromptContent({ jobId, stage: "vendor_evaluation", promptType: "commentary", criterionName }),
           onProgress: progress,
+          checkpoint: checkpoint3,
+          onCriterionComplete: async (partial) => {
+            await storage.upsertMarketBuilderStage(jobId, 3, { result: partial as any });
+          },
         });
         await progress(`✓ Generated commentary for ${result.scores?.length ?? 0} vendor × criterion combinations`);
         break;
@@ -258,7 +271,15 @@ export async function runSingleStage(
         const stage4 = await loadStageResult(jobId, 4);
         const stage5 = await loadStageResult(jobId, 5);
         const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
+        // Load checkpoint from any previous failed run so we can resume mid-vendor
+        const existingStage6 = await storage.getMarketBuilderStage(jobId, 6);
+        const checkpoint6 = (existingStage6?.result as any) ?? undefined;
+        if (checkpoint6?.support?.length > 0) {
+          const doneSoFar = checkpoint6.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
+          await progress(`↩ Resuming from checkpoint — ${doneSoFar} feature comments already saved`);
+        } else {
+          await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
+        }
         result = await runStage4Commentary(
           inputName, stage1, stage4, stage5, llmConfig, sourceContext,
           {
@@ -266,6 +287,10 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
             onBatchComplete: async (done, total, vendorName, featureRange) => {
               await progress(`Batch ${done}/${total} — Commentary: ${vendorName} | Features ${featureRange}`);
+            },
+            checkpoint: checkpoint6,
+            onVendorComplete: async (partial) => {
+              await storage.upsertMarketBuilderStage(jobId, 6, { result: partial as any });
             },
           }
         );
@@ -307,13 +332,25 @@ export async function runSingleStage(
         const stage7 = await loadStageResult(jobId, 7);
         const stage8 = await loadStageResult(jobId, 8);
         const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
+        // Load checkpoint from any previous failed run so we can resume mid-vendor
+        const existingStage9 = await storage.getMarketBuilderStage(jobId, 9);
+        const checkpoint9 = (existingStage9?.result as any) ?? undefined;
+        if (checkpoint9?.support?.length > 0) {
+          const doneSoFar = checkpoint9.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
+          await progress(`↩ Resuming from checkpoint — ${doneSoFar} ecosystem comments already saved`);
+        } else {
+          await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
+        }
         result = await runStage9Commentary(
           inputName, stage1, stage7, stage8, llmConfig, sourceContext,
           {
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
             onProgress: async (msg: string) => { await progress(msg); },
+            checkpoint: checkpoint9,
+            onVendorComplete: async (partial) => {
+              await storage.upsertMarketBuilderStage(jobId, 9, { result: partial as any });
+            },
           }
         );
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} ecosystem integration scores`);
