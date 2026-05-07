@@ -175,15 +175,29 @@ type PanelView =
   | { type: "global"; nearbyAssumptionIds?: string[]; highlightTopN?: number }
   | null;
 
+// Matches clickable numbers in report text. Covers:
+//   $12.5B / $4,200 / $1.2T  — currency values
+//   +12.5% / 3.4%            — percentages
+//   1,234 / 4.5B / 12.3M     — plain numbers with suffixes
+//   1234 (standalone integer) — bare integers ≥ 2 digits
+const NUMBER_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\]|\$[\d,]+\.?\d*[BMTK]?|[+-]?\d+\.?\d*%|(?<!\w)\d{1,3}(?:,\d{3})*(?:\.\d+)?[BMTK](?!\w)|(?<!\w)\d{2,}(?:\.\d+)?(?!\w)(?![%,\d]))/g;
+
+function isClickableNumber(part: string): boolean {
+  if (/^\$[\d,]+\.?\d*[BMTK]?$/.test(part)) return true;  // currency
+  if (/^[+-]?\d+\.?\d*%$/.test(part)) return true;          // percentage
+  if (/^(?:\d{1,3}(?:,\d{3})*(?:\.\d+)?)[BMTK]$/i.test(part)) return true; // e.g. 4.5B
+  if (/^\d{2,}(?:\.\d+)?$/.test(part) && Number(part.replace(/,/g, "")) > 1) return true; // plain int ≥ 2 digits
+  return false;
+}
+
 function renderInline(
   text: string,
   onTagClick?: (assumptionShortId: string) => void,
   onNumberClick?: () => void,
 ): React.ReactNode {
-  const parts = text.split(
-    /(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\]|\$[\d,]+\.?\d*[BMTK]?|[+-]?\d+\.?\d*%)/g
-  );
+  const parts = text.split(NUMBER_RE);
   return parts.map((part, i) => {
+    if (!part) return null;
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
     }
@@ -210,7 +224,7 @@ function renderInline(
         </code>
       );
     }
-    if (/^\$[\d,]+\.?\d*[BMTK]?$/.test(part) || /^[+-]?\d+\.?\d*%$/.test(part)) {
+    if (isClickableNumber(part)) {
       if (onNumberClick) {
         return (
           <span
@@ -291,7 +305,9 @@ function MarkdownContent({
               {bodyRows.map((row, ri) => (
                 <tr key={ri} className="border-b border-white/5 hover:bg-white/[0.02]">
                   {row.split("|").slice(1, -1).map((c, ci) => (
-                    <td key={ci} className="border border-white/10 px-3 py-1.5 text-slate-300">{c.trim()}</td>
+                    <td key={ci} className="border border-white/10 px-3 py-1.5 text-slate-300">
+                      {renderInline(c.trim(), onTagClick, boundOnNumberClick)}
+                    </td>
                   ))}
                 </tr>
               ))}

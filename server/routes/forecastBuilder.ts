@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { promises as dns } from "dns";
 import { z } from "zod";
 import { requireAuth, requireAdmin } from "../auth";
 import {
@@ -933,6 +934,32 @@ export function registerForecastBuilderRoutes(app: Express): void {
         }
         if (!["http:", "https:"].includes(targetUrl.protocol)) {
           return res.status(400).json({ error: "Only http/https URLs are supported" });
+        }
+
+        // SSRF protection: block private/internal addresses
+        const hostname = targetUrl.hostname;
+        // Block obvious local hostnames before DNS resolution
+        if (hostname === "localhost" || hostname === "0.0.0.0") {
+          return res.status(403).json({ error: "URL resolves to a private address" });
+        }
+        try {
+          const resolved = await dns.lookup(hostname);
+          const ip = resolved.address;
+          // Block loopback, private, link-local, cloud metadata ranges
+          if (
+            /^127\./.test(ip) ||
+            ip === "::1" ||
+            /^10\./.test(ip) ||
+            /^192\.168\./.test(ip) ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+            /^169\.254\./.test(ip) ||
+            ip === "0.0.0.0" ||
+            ip === "::ffff:127.0.0.1"
+          ) {
+            return res.status(403).json({ error: "URL resolves to a private/internal address" });
+          }
+        } catch {
+          return res.status(400).json({ error: "Could not resolve hostname" });
         }
 
         const controller = new AbortController();

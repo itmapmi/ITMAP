@@ -75,11 +75,23 @@ export interface AuditLogEntry {
 }
 
 interface ChallengeResult {
-  challengeLower: { scenario: string; value: number; confidence: string } | null;
-  challengeHigher: { scenario: string; value: number; confidence: string } | null;
-  proposedValue: number | null;
-  proposedRationale: string | null;
-  evidenceSources: string[];
+  assumptionId: string;
+  description: string;
+  currentValue: number;
+  unit: string;
+  webSearchPerformed: boolean;
+  webEvidence: string[];
+  resolverAValue: number | null;
+  resolverBValue: number | null;
+  resolverAReasoning: string;
+  resolverBReasoning: string;
+  evidenceCited: string[];
+  convergencePct: number | null;
+  resolution: "resolved" | "divergent" | "unresolved";
+  resolvedValue: number | null;
+  bullValue: number;
+  baseValue: number;
+  bearValue: number;
 }
 
 interface AuditPanelProps {
@@ -490,16 +502,27 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
                       toast({ title: "File too large", description: "Maximum file size is 500 KB.", variant: "destructive" });
                       return;
                     }
-                    const reader = new FileReader();
-                    reader.onload = ev => {
+                    const isText = file.type === "text/plain" || file.name.endsWith(".txt");
+                    if (isText) {
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        const text = (ev.target?.result as string ?? "").slice(0, 1500);
+                        setForm(f => ({
+                          ...f,
+                          title: f.title || file.name,
+                          url: "",
+                          verbatimQuote: f.verbatimQuote || text,
+                        }));
+                      };
+                      reader.readAsText(file);
+                    } else {
                       setForm(f => ({
                         ...f,
                         title: f.title || file.name,
-                        url: ev.target?.result as string ?? "",
+                        url: "",
                         verbatimQuote: f.verbatimQuote || `Attached: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
                       }));
-                    };
-                    reader.readAsDataURL(file);
+                    }
                   }} />
               </label>
             </div>
@@ -725,42 +748,91 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
         {challenge.status === "done" && challenge.result && (
           <div className="px-3 py-3 bg-slate-900/50 space-y-2.5">
-            {challenge.result.challengeLower && (
-              <div className="bg-red-950/20 border border-red-500/10 rounded p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[10px] text-red-400 font-medium">↓ Bear case</span>
-                  <span className="text-[10px] text-slate-600 capitalize">{challenge.result.challengeLower.confidence}</span>
-                </div>
-                <p className="text-xs text-slate-300 font-semibold">{challenge.result.challengeLower.value} {assumption.unit ?? ""}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{challenge.result.challengeLower.scenario}</p>
-              </div>
-            )}
-            {challenge.result.challengeHigher && (
-              <div className="bg-emerald-950/20 border border-emerald-500/10 rounded p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[10px] text-emerald-400 font-medium">↑ Bull case</span>
-                  <span className="text-[10px] text-slate-600 capitalize">{challenge.result.challengeHigher.confidence}</span>
-                </div>
-                <p className="text-xs text-slate-300 font-semibold">{challenge.result.challengeHigher.value} {assumption.unit ?? ""}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{challenge.result.challengeHigher.scenario}</p>
-              </div>
-            )}
-            {challenge.result.proposedValue != null && (
-              <div className="bg-violet-950/20 border border-violet-500/10 rounded p-2.5">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-[10px] text-violet-400 font-medium">Proposed revision</span>
-                  <Button
-                    size="sm"
-                    className="h-6 px-2 text-[10px] bg-violet-600 hover:bg-violet-500 text-white"
-                    onClick={() => acceptChallengeValue(challenge.result!.proposedValue!)}
-                  >
-                    Accept {challenge.result.proposedValue} {assumption.unit ?? ""}
-                  </Button>
-                </div>
-                {challenge.result.proposedRationale && (
-                  <p className="text-[11px] text-slate-500">{challenge.result.proposedRationale}</p>
+            {/* Dual-model resolver proposals */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-800/60 border border-white/5 rounded p-2">
+                <p className="text-[10px] text-slate-500 mb-1">Resolver A</p>
+                <p className="text-xs text-slate-300 font-semibold">
+                  {challenge.result.resolverAValue != null ? `${challenge.result.resolverAValue} ${assumption.unit ?? ""}` : "—"}
+                </p>
+                {challenge.result.resolverAReasoning && (
+                  <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{challenge.result.resolverAReasoning}</p>
                 )}
               </div>
+              <div className="bg-slate-800/60 border border-white/5 rounded p-2">
+                <p className="text-[10px] text-slate-500 mb-1">Resolver B</p>
+                <p className="text-xs text-slate-300 font-semibold">
+                  {challenge.result.resolverBValue != null ? `${challenge.result.resolverBValue} ${assumption.unit ?? ""}` : "—"}
+                </p>
+                {challenge.result.resolverBReasoning && (
+                  <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{challenge.result.resolverBReasoning}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Convergence result */}
+            {challenge.result.resolution === "resolved" && challenge.result.resolvedValue != null && (
+              <div className="bg-emerald-950/20 border border-emerald-500/20 rounded p-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div>
+                    <span className="text-[10px] text-emerald-400 font-medium">✓ Converged</span>
+                    {challenge.result.convergencePct != null && (
+                      <span className="text-[10px] text-slate-600 ml-1.5">Δ {(challenge.result.convergencePct * 100).toFixed(1)}%</span>
+                    )}
+                  </div>
+                  <Button size="sm" className="h-6 px-2 text-[10px] bg-emerald-700 hover:bg-emerald-600 text-white"
+                    onClick={() => acceptChallengeValue(challenge.result!.resolvedValue!)}>
+                    Accept {challenge.result.resolvedValue} {assumption.unit ?? ""}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-500">Midpoint of resolver proposals</p>
+              </div>
+            )}
+            {challenge.result.resolution === "divergent" && (
+              <div className="bg-amber-950/20 border border-amber-500/20 rounded p-2.5">
+                <p className="text-[10px] text-amber-400 font-medium">⚡ Resolvers diverged</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Gap: {challenge.result.convergencePct != null ? `${(challenge.result.convergencePct * 100).toFixed(1)}%` : "—"} — use base case or override manually
+                </p>
+                <Button size="sm" className="mt-1.5 h-6 px-2 text-[10px] bg-amber-700/80 hover:bg-amber-600 text-white"
+                  onClick={() => acceptChallengeValue(challenge.result!.baseValue)}>
+                  Accept base {challenge.result.baseValue} {assumption.unit ?? ""}
+                </Button>
+              </div>
+            )}
+            {challenge.result.resolution === "unresolved" && (
+              <div className="bg-slate-800/40 border border-white/5 rounded p-2.5">
+                <p className="text-[10px] text-slate-500">Insufficient evidence to propose a revised value.</p>
+              </div>
+            )}
+
+            {/* Bull / base / bear scenarios */}
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className="bg-red-950/20 border border-red-500/10 rounded p-1.5">
+                <p className="text-[9px] text-red-400 mb-0.5">Bear</p>
+                <p className="text-[10px] text-slate-300 font-semibold">{challenge.result.bearValue} {assumption.unit ?? ""}</p>
+              </div>
+              <div className="bg-slate-800/50 border border-white/5 rounded p-1.5">
+                <p className="text-[9px] text-slate-500 mb-0.5">Base</p>
+                <p className="text-[10px] text-slate-300 font-semibold">{challenge.result.baseValue} {assumption.unit ?? ""}</p>
+              </div>
+              <div className="bg-emerald-950/20 border border-emerald-500/10 rounded p-1.5">
+                <p className="text-[9px] text-emerald-400 mb-0.5">Bull</p>
+                <p className="text-[10px] text-slate-300 font-semibold">{challenge.result.bullValue} {assumption.unit ?? ""}</p>
+              </div>
+            </div>
+
+            {/* Web evidence */}
+            {challenge.result.webSearchPerformed && challenge.result.webEvidence.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[9px] text-slate-600 uppercase tracking-wider">Web evidence</p>
+                {challenge.result.webEvidence.map((e, i) => (
+                  <p key={i} className="text-[10px] text-slate-600 italic line-clamp-1">{e}</p>
+                ))}
+              </div>
+            )}
+            {!challenge.result.webSearchPerformed && (
+              <p className="text-[10px] text-slate-700 italic">Web search unavailable — based on model knowledge only.</p>
             )}
           </div>
         )}
