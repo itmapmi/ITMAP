@@ -766,7 +766,15 @@ async function qcNarrativeCoherence(
   });
 
   try {
-    const text = resp.choices[0]?.message?.content ?? "{}";
+    const text = resp.choices[0]?.message?.content ?? "";
+    if (!text.trim()) {
+      // Empty response — cannot confirm coherence; treat as fail to force retry
+      return {
+        coherent: false,
+        issue: "QC model returned empty response — cannot confirm coherence",
+        failingSections: [1, 4],
+      };
+    }
     const json = JSON.parse(text.replace(/```json|```/g, "").trim()) as {
       coherent?: boolean;
       issue?: string;
@@ -780,9 +788,22 @@ async function qcNarrativeCoherence(
           : [1, 4]; // fallback to most-likely culprits
       return { coherent: false, issue: json.issue ?? "Narrative QC found issues", failingSections };
     }
+    if (typeof json.coherent !== "boolean") {
+      // JSON parsed but `coherent` field is missing — treat as fail (malformed response)
+      return {
+        coherent: false,
+        issue: "QC model response missing `coherent` field — treating as fail",
+        failingSections: [1, 4],
+      };
+    }
     return { coherent: true, failingSections: [] };
   } catch {
-    return { coherent: true, failingSections: [] }; // parse error → treat as pass
+    // JSON parse error — cannot trust the response; treat as fail to force retry
+    return {
+      coherent: false,
+      issue: "QC model returned malformed JSON — treating as fail for safety",
+      failingSections: [1, 4],
+    };
   }
 }
 

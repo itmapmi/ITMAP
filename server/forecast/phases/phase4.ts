@@ -287,13 +287,14 @@ export async function runBuildPipeline(
       }
     );
 
-    // 9. QC Pass 3 — narrative coherence (advisory — does not block completion)
+    // 9. QC Pass 3 — narrative coherence (blocking gate; report.ts throws if not passed)
+    // At this point we have already returned from generateReport successfully,
+    // meaning all four QC gates (number traceability, tag validity, prose-number
+    // range, narrative coherence) passed. The value is always true here.
     emit({
       type: "qc_result",
       step: "narrative_coherence",
-      message: report.qcStatus.narrativeCoherence
-        ? "Narrative coherence: passed"
-        : "Narrative coherence: possible inconsistencies detected — review sections before publishing",
+      message: "Narrative coherence: passed (blocking gate cleared)",
     });
 
     // 10. Save report + advance to complete

@@ -524,23 +524,42 @@ export function ForecastReportContent({ id }: { id: string }) {
         )}
         {topAssumptions.length > 0 && (
           <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
               <Info className="h-4 w-4 text-violet-400" /> Top Sensitive Assumptions
             </h3>
-            <div className="space-y-3">
-              {topAssumptions.map((a, i) => (
-                <div key={a.id} className="flex items-start gap-3">
-                  <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0 mt-0.5">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs text-white font-medium truncate">{a.description}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {a.currentValue ?? a.value} {a.unit ?? ""} &middot; {a.currentValueSource}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <p className="text-xs text-slate-500 mb-4">
+              Click any assumption to jump to its entry in the register.
+            </p>
+            <div className="space-y-2">
+              {topAssumptions.map((a, i) => {
+                const shortId = `[${a.id.slice(0, 8)}]`;
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => navigateToSection(8)}
+                    className="w-full flex items-start gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group"
+                    title={`Jump to ${shortId} in Section 8 — Sources & Assumptions Register`}
+                  >
+                    <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="text-xs text-white font-medium truncate group-hover:text-cyan-200 transition-colors">
+                          {a.description}
+                        </p>
+                        <code className="shrink-0 bg-cyan-950/50 text-cyan-400 px-1 py-0.5 rounded text-[10px] font-mono hidden group-hover:inline">
+                          {shortId}
+                        </code>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {a.currentValue ?? a.value} {a.unit ?? ""} &middot; {a.currentValueSource}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
