@@ -1230,6 +1230,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   const [publishedVisible, setPublishedVisible] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
+  const fallbackPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   const { data: jobs = [], refetch: refetchJobs } = useQuery<MarketBuilderJob[]>({
@@ -1301,14 +1302,57 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
     };
 
     es.onerror = () => {
-      if (es.readyState === EventSource.CLOSED) return;
-      setStagePhases(prev => ({ ...prev, [stageNum]: "failed" }));
-      setStreamError("Connection lost — try running this stage again.");
       es.close();
+      esRef.current = null;
+      // SSE proxy timeout is common for long-running stages (6, 9).
+      // Don't mark failed immediately — the stage is still running server-side.
+      // Switch to DB polling every 5 s until the stage actually completes or fails.
+      setStreamError("Stream disconnected — stage is still running on the server. Monitoring for completion…");
+
+      if (fallbackPollRef.current) clearInterval(fallbackPollRef.current);
+      fallbackPollRef.current = setInterval(async () => {
+        try {
+          const r = await fetch(`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`, { credentials: "include" });
+          if (!r.ok) return;
+          const data: { status: string; progressLog: string } = await r.json();
+
+          if (data.status === "completed") {
+            clearInterval(fallbackPollRef.current!);
+            fallbackPollRef.current = null;
+            setStreamError(null);
+            // Load the stage result from the full job object
+            try {
+              const jobRes = await fetch(`${apiBase}/jobs/${jobId}`, { credentials: "include" });
+              if (jobRes.ok) {
+                const fullJob = await jobRes.json();
+                const stageData = (fullJob.stages ?? []).find((s: any) => s.stage === stageNum);
+                if (stageData?.result) {
+                  setStageResults(prev => ({ ...prev, [stageNum]: stageData.result }));
+                }
+              }
+            } catch (_) {}
+            setStagePhases(prev => ({ ...prev, [stageNum]: "done" }));
+            queryClient.invalidateQueries({ queryKey: [`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`] });
+            refetchJobs();
+
+          } else if (data.status === "failed") {
+            clearInterval(fallbackPollRef.current!);
+            fallbackPollRef.current = null;
+            setStagePhases(prev => ({ ...prev, [stageNum]: "failed" }));
+            const lastLine = (data.progressLog ?? "").split("\n").filter(Boolean).pop() ?? "";
+            setStreamError(lastLine.replace(/^✗ Error:\s*/, "") || "Stage failed — check the activity log.");
+            queryClient.invalidateQueries({ queryKey: [`${apiBase}/jobs/${jobId}/stages/${stageNum}/progress`] });
+          }
+          // status === "running" → keep polling
+        } catch (_) {}
+      }, 5000);
     };
   };
 
-  useEffect(() => () => { esRef.current?.close(); }, []);
+  useEffect(() => () => {
+    esRef.current?.close();
+    if (fallbackPollRef.current) clearInterval(fallbackPollRef.current);
+  }, []);
 
   // ── Mutations ─────────────────────────────────────────────────────────
 
@@ -1735,13 +1779,23 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
             {/* RUNNING state */}
             {currentPhase === "running" && (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3 py-3">
-                  <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta?.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Updates every few seconds · Page will refresh automatically when complete</p>
+                {streamError ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-3">
+                    <Loader2 className="h-4 w-4 text-amber-600 animate-spin shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">Connection to live stream dropped</p>
+                      <p className="text-xs text-amber-700 mt-0.5">{streamError}</p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3 py-3">
+                    <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta?.label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Updates every few seconds · Page will refresh automatically when complete</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Activity log */}
                 <div className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
