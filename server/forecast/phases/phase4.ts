@@ -6,6 +6,14 @@
  * forecast status to "complete".
  *
  * Streams progress back to the caller via onEvent callbacks.
+ *
+ * Failure contract
+ * ─────────────────
+ * - Schema completeness failure → hard stop; status reverts to debate_complete.
+ * - MECE / engine failure → hard stop; status reverts to debate_complete.
+ * - QC internal consistency failure → hard stop; status reverts to debate_complete.
+ * - Report generation failure → hard stop; status reverts to debate_complete.
+ * All failures include an actionable message and are persisted to the audit log.
  */
 
 import {
@@ -15,23 +23,18 @@ import {
   createForecastScenario,
   updateForecastAssumption,
   getForecastScenarios,
-} from "../storage/forecasts";
+} from "../../storage/forecasts";
 import { writeAuditEntry } from "../audit";
 import {
   runEngine,
   type DebateBrief,
-  type SegmentInput,
   type AssumptionInput,
   type CruxResolution,
   type EngineOutput,
 } from "../engine";
 import { generateReport, qcInternalConsistency, qcSchemaCompleteness } from "../report";
-import type { ForecastFull } from "../storage/forecasts";
-import type {
-  ForecastAssumption,
-  ForecastCrux,
-  ForecastSegment,
-} from "@shared/schema";
+import { assembleSegments, validateSegmentTree } from "./phase4-segments";
+import type { ForecastFull } from "../../storage/forecasts";
 
 // ── Event types streamed back to the API route ────────────────────────────────
 
@@ -59,56 +62,13 @@ export interface Phase4Event {
   error?: string;
 }
 
-// ── Segment synthesis ──────────────────────────────────────────────────────────
-//
-// If the DB has no segments (common case after debate-only Phase 3),
-// we synthesise a minimal single-root model from the debate assumptions.
-
-function synthesizeSegments(
-  assumptions: ForecastAssumption[],
-  forecastId: string,
-  baseYear: number
-): SegmentInput[] {
-  // Find growth rate assumptions (% unit or growth/cagr in description)
-  const growthAssumptions = assumptions.filter(a => {
-    const unit = (a.unit ?? "").toLowerCase();
-    const desc = (a.description ?? "").toLowerCase();
-    return unit.includes("%") || desc.includes("growth") || desc.includes("cagr") || desc.includes("rate");
-  });
-
-  // Find base year market size: prefer explicit "market size" / "TAM" mentions
-  const sizeAssumption =
-    assumptions.find(a => {
-      const desc = (a.description ?? "").toLowerCase();
-      return desc.includes("market size") || desc.includes("tam") || desc.includes("total market") || desc.includes("total addressable");
-    }) ??
-    assumptions.find(a => {
-      const unit = (a.unit ?? "").toLowerCase();
-      return unit.includes("$") || unit.includes("b") || unit.includes("m");
-    });
-
-  const baseValue = sizeAssumption ? Math.abs(Number(sizeAssumption.currentValue ?? sizeAssumption.value ?? 0)) : 0;
-
-  return [
-    {
-      id: `synth-root-${forecastId}`,
-      parentId: null,
-      name: "Total Market",
-      baseYearValue: baseValue,
-      growthAssumptionIds: growthAssumptions.map(a => a.id),
-    },
-  ];
-}
-
 // ── DB → DebateBrief assembly ─────────────────────────────────────────────────
 
-function assembleDebateBrief(
-  full: ForecastFull,
-  segments: SegmentInput[]
-): DebateBrief {
+function assembleDebateBrief(full: ForecastFull): DebateBrief {
   const baseYear = full.baseYear ?? new Date().getFullYear() - 1;
   const horizonYears = full.forecastHorizonYears ?? 5;
 
+  // Use real DB IDs throughout — assumption IDs are stable UUIDs
   const assumptions: AssumptionInput[] = full.assumptions.map(a => ({
     id: a.id,
     description: a.description,
@@ -127,7 +87,9 @@ function assembleDebateBrief(
         unit: string | null;
       };
       const matchedAssumption = full.assumptions.find(a => a.id === c.contestedAssumptionId);
-      const fallback = matchedAssumption ? Number(matchedAssumption.currentValue ?? matchedAssumption.value ?? 0) : 0;
+      const fallback = matchedAssumption
+        ? Number(matchedAssumption.currentValue ?? matchedAssumption.value ?? 0)
+        : 0;
       return {
         cruxId: c.id,
         assumptionId: c.contestedAssumptionId!,
@@ -137,7 +99,43 @@ function assembleDebateBrief(
       };
     });
 
-  return { baseYear, horizonYears, segments, assumptions, cruxResolutions };
+  // Assemble segments via the dedicated segment assembler
+  const segmentResult = assembleSegments(full);
+
+  return {
+    baseYear,
+    horizonYears,
+    segments: segmentResult.segments,
+    assumptions,
+    cruxResolutions,
+  };
+}
+
+// ── Schema completeness validation ────────────────────────────────────────────
+
+function assertSchemaCompleteness(full: ForecastFull): void {
+  const issues: string[] = [];
+
+  if (!full.title) issues.push("forecast title is missing");
+  if (full.baseYear == null) issues.push("base year is not set");
+  if (full.forecastHorizonYears == null) issues.push("forecast horizon is not set");
+
+  const badAssumptions = full.assumptions.filter(
+    a => !a.description || (a.value == null && a.currentValue == null)
+  );
+  if (badAssumptions.length > 0) {
+    issues.push(
+      `${badAssumptions.length} assumption(s) have no description or value: ${
+        badAssumptions.slice(0, 3).map(a => a.id).join(", ")
+      }${badAssumptions.length > 3 ? "…" : ""}`
+    );
+  }
+
+  if (issues.length > 0) {
+    throw new Error(
+      `Build blocked — schema completeness failed:\n• ${issues.join("\n• ")}\n\nFix these issues and retry.`
+    );
+  }
 }
 
 // ── Persist engine results ─────────────────────────────────────────────────────
@@ -147,7 +145,6 @@ async function persistEngineResults(
   brief: DebateBrief,
   engine: EngineOutput
 ): Promise<void> {
-  // Persist scenario forecast paths (base / bull / bear)
   const existingScenarios = await getForecastScenarios(forecastId);
 
   for (const scenario of [engine.baseScenario, engine.bullScenario, engine.bearScenario]) {
@@ -167,7 +164,7 @@ async function persistEngineResults(
     }
   }
 
-  // Persist sensitivity ranks to assumptions (rank by absolute spread)
+  // Persist sensitivity ranks (rank by absolute ±25% spread)
   const ranked = [...engine.sensitivityTable].sort(
     (a, b) =>
       Math.abs(b.delta_plus_25pct - b.delta_minus_25pct) -
@@ -200,77 +197,79 @@ export async function runBuildPipeline(
     if (!full) throw new Error("Forecast not found");
 
     if (!["debate_complete", "calculating"].includes(full.status)) {
-      throw new Error(`Cannot build forecast in status "${full.status}" — debate must be complete first`);
+      throw new Error(
+        `Cannot build forecast in status "${full.status}" — debate must be complete first`
+      );
     }
 
-    // 2. Set status to calculating
-    await updateForecast(forecastId, { status: "calculating" });
-    await writeAuditEntry(forecastId, "calculation_run", userId, { startedAt: new Date().toISOString() });
-
-    // 3. Assemble DebateBrief
-    emit({ type: "progress", step: "assembling", message: "Assembling forecast inputs…" });
-
-    let segments: SegmentInput[];
-    if (full.segments.length > 0) {
-      segments = full.segments.map(s => ({
-        id: s.id,
-        parentId: s.parentSegmentId ?? null,
-        name: s.name,
-        baseYearValue: Number(s.baseYearValue ?? 0),
-        growthAssumptionIds: (s.growthAssumptionIds as string[]) ?? [],
-      }));
-    } else {
-      emit({ type: "progress", step: "assembling", message: "No segments found — synthesising from assumptions…" });
-      segments = synthesizeSegments(full.assumptions, forecastId, full.baseYear ?? 2024);
-    }
-
-    const brief = assembleDebateBrief(full, segments);
-
-    // 4. QC Pass 1 — schema completeness
+    // 2. Hard gate: schema completeness
     emit({ type: "progress", step: "qc1", message: "Running QC pass 1: schema completeness…" });
-    const schemaOk = qcSchemaCompleteness(full);
-    emit({
-      type: "qc_result",
-      step: "schema_completeness",
-      message: schemaOk
-        ? "Schema completeness: passed"
-        : "Schema completeness: some fields missing — proceeding with available data",
+    assertSchemaCompleteness(full);
+    emit({ type: "qc_result", step: "schema_completeness", message: "Schema completeness: passed" });
+
+    // 3. Set status to calculating
+    await updateForecast(forecastId, { status: "calculating" });
+    await writeAuditEntry(forecastId, "calculation_run", userId, {
+      startedAt: new Date().toISOString(),
     });
 
-    // 5. Run calculation engine
-    emit({ type: "progress", step: "engine", message: "Running calculation engine (deterministic)…" });
+    // 4. Assemble DebateBrief (uses phase4-segments for segment tree + boundary metadata)
+    emit({ type: "progress", step: "assembling", message: "Assembling forecast inputs…" });
 
-    let engine: EngineOutput;
-    try {
-      engine = runEngine(brief);
-    } catch (engineErr: any) {
-      // MECE failure — attempt graceful fallback: treat all segments as independent roots
-      emit({ type: "progress", step: "engine", message: `MECE warning: ${engineErr.message} — retrying with leaf-only model…` });
-      const leaves = segments.filter(s => !segments.some(c => c.parentId === s.id));
-      const fallbackBrief = { ...brief, segments: leaves };
-      engine = runEngine(fallbackBrief);
+    const segmentResult = assembleSegments(full);
+    if (segmentResult.isSynthesised) {
+      emit({
+        type: "progress",
+        step: "assembling",
+        message: "No segments found — synthesised a single root from assumptions.",
+      });
+    } else {
+      emit({
+        type: "progress",
+        step: "assembling",
+        message: `Assembled ${segmentResult.segments.length} segment(s). Unit: ${segmentResult.unitOfMeasurement}. Scope: ${segmentResult.geographicScope}.`,
+      });
     }
 
-    // 6. QC Pass 2 — internal consistency
+    // Validate segment tree — hard gate
+    const treeError = validateSegmentTree(segmentResult.segments);
+    if (treeError) {
+      throw new Error(`Segment tree validation failed (${treeError.code}): ${treeError.detail}`);
+    }
+
+    const brief = assembleDebateBrief(full);
+
+    // 5. Run deterministic calculation engine — no fallback on MECE failure
+    emit({ type: "progress", step: "engine", message: "Running calculation engine (deterministic)…" });
+    const engine = runEngine(brief); // throws on MECE failure — caller catches and reverts status
+
+    // 6. QC Pass 2 — internal consistency (hard gate)
     emit({ type: "progress", step: "qc2", message: "Running QC pass 2: internal consistency…" });
     const consistencyOk = qcInternalConsistency(engine);
+    if (!consistencyOk) {
+      throw new Error(
+        "Build blocked — internal consistency QC failed: bull scenario is not >= base scenario, or bear scenario is not <= bull scenario at the horizon year. Review crux resolutions and retry."
+      );
+    }
     emit({
       type: "qc_result",
       step: "internal_consistency",
-      message: consistencyOk
-        ? "Internal consistency: passed"
-        : "Internal consistency: bull/bear ordering issue detected — review crux resolutions",
+      message: "Internal consistency: passed",
     });
 
     // 7. Persist engine results to DB
-    emit({ type: "progress", step: "persisting", message: "Persisting scenario paths and sensitivity ranks…" });
+    emit({
+      type: "progress",
+      step: "persisting",
+      message: "Persisting scenario paths and sensitivity ranks…",
+    });
     await persistEngineResults(forecastId, brief, engine);
 
     // Reload full (assumptions now have sensitivityRank)
     const fullUpdated = await getForecastFull(forecastId);
     if (!fullUpdated) throw new Error("Forecast disappeared after engine run");
 
-    // 8. Generate 8-section AI report
+    // 8. Generate 8-section AI report (sections 7-8 are templated; 1-6 via GPT-4o)
     emit({ type: "progress", step: "report", message: "Generating report sections…" });
 
     const report = await generateReport(
@@ -279,20 +278,25 @@ export async function runBuildPipeline(
       openaiKey,
       openaiBaseUrl,
       (sectionId, title) => {
-        emit({ type: "report_section", section: sectionId, sectionTitle: title, message: `Writing section ${sectionId}: ${title}…` });
+        emit({
+          type: "report_section",
+          section: sectionId,
+          sectionTitle: title,
+          message: `Writing section ${sectionId}: ${title}…`,
+        });
       }
     );
 
-    // 9. QC Pass 3 — narrative coherence (already run inside generateReport)
+    // 9. QC Pass 3 — narrative coherence (advisory — does not block completion)
     emit({
       type: "qc_result",
       step: "narrative_coherence",
       message: report.qcStatus.narrativeCoherence
         ? "Narrative coherence: passed"
-        : "Narrative coherence: possible inconsistencies detected — review sections",
+        : "Narrative coherence: possible inconsistencies detected — review sections before publishing",
     });
 
-    // 10. Save report + set status complete
+    // 10. Save report + advance to complete
     emit({ type: "progress", step: "saving", message: "Saving report and completing forecast…" });
     await updateForecast(forecastId, {
       status: "complete",
@@ -306,8 +310,6 @@ export async function runBuildPipeline(
       qcStatus: report.qcStatus,
     });
 
-    const horizonYear = report.engineSummary.horizonYear;
-
     emit({
       type: "complete",
       message: "Forecast complete",
@@ -315,13 +317,17 @@ export async function runBuildPipeline(
         baseTotal: report.engineSummary.baseTotal,
         bullTotal: report.engineSummary.bullTotal,
         bearTotal: report.engineSummary.bearTotal,
-        horizonYear,
+        horizonYear: report.engineSummary.horizonYear,
         baseCagr: report.engineSummary.baseCagr,
         qcPassed: report.qcStatus.internalConsistency && report.qcStatus.schemaCompleteness,
       },
     });
   } catch (err: any) {
-    await updateForecast(forecastId, { status: "debate_complete", error: err.message }).catch(() => {});
+    // Revert status to debate_complete so the user can correct issues and retry
+    await updateForecast(forecastId, {
+      status: "debate_complete",
+      error: err.message,
+    }).catch(() => {});
     await writeAuditEntry(forecastId, "calculation_run", userId, {
       error: err.message,
       failedAt: new Date().toISOString(),

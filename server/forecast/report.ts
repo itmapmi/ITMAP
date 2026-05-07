@@ -3,13 +3,27 @@
  *
  * Produces 8 sections of prose for the forecast report.
  * Sections 1-6 are LLM-written (GPT-4o); sections 7-8 are deterministic templates.
- * Every numeric claim is sourced directly from the calculation engine output —
- * the LLM is instructed to reference assumption IDs, never to invent numbers.
+ *
+ * Traceability contract
+ * ─────────────────────
+ * Every assumption cited in the report uses the actual DB record ID (first 8 chars
+ * of the UUID for readability), e.g. [3f9a12bc]. This is stable and traceable back
+ * to the Assumptions Register in Section 8.
+ *
+ * The LLM is explicitly forbidden from inventing numbers — all numeric claims must
+ * come from the engine output or assumption values provided in the prompt context.
+ *
+ * QC gates
+ * ────────
+ * - qcSchemaCompleteness: checked in phase4.ts BEFORE the engine runs (hard gate).
+ * - qcInternalConsistency: checked after engine run (hard gate).
+ * - qcNarrativeCoherence: checked after report generation (advisory — does not block).
  */
 
 import OpenAI from "openai";
 import type { EngineOutput, ScenarioResult } from "./engine";
 import type { ForecastFull } from "../storage/forecasts";
+import type { ForecastAssumption } from "@shared/schema";
 
 export interface ReportSection {
   id: number;
@@ -45,6 +59,14 @@ function fmt(n: number, currency = "USD"): string {
 
 function fmtPct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+}
+
+/**
+ * Stable short-form ID for an assumption — uses the real DB UUID prefix so that
+ * prose references are traceable to the Assumptions Register in Section 8.
+ */
+function aId(a: ForecastAssumption): string {
+  return `[${a.id.slice(0, 8)}]`;
 }
 
 function scenarioPathText(scenario: ScenarioResult, baseYear: number, horizonYears: number): string {
@@ -86,8 +108,8 @@ async function callLLM(
 // ── Section generators ────────────────────────────────────────────────────────
 
 const SYSTEM_BASE = `You are a senior market research analyst writing a formal forecast report for enterprise executives.
-Write clear, direct prose in the third person. Reference assumption IDs (e.g. [A-001]) when citing specific drivers.
-Do NOT invent numbers — use only the data provided. Produce 2-4 paragraphs in markdown (no headings, just paragraphs).`;
+Write clear, direct prose in the third person. When citing a specific assumption, reference its ID tag exactly as given (e.g. [3f9a12bc]) — these tags are stable identifiers that readers can cross-reference in the Assumptions Register.
+Do NOT invent numbers — use only the data provided in the user message. Produce 2-4 paragraphs in markdown (no headings, just paragraphs).`;
 
 async function genSection1ExecSummary(
   client: OpenAI,
@@ -105,8 +127,12 @@ async function genSection1ExecSummary(
   const baseStart = base[baseYear] ?? 0;
   const cagr = baseStart > 0 ? ((Math.pow(baseTotal / baseStart, 1 / horizonYears) - 1) * 100) : 0;
 
-  const topAssumptions = forecast.assumptions.slice(0, 5).map(
-    (a, i) => `[A-${String(i + 1).padStart(3, "0")}] ${a.description}: ${a.currentValue ?? a.value} ${a.unit ?? ""}`
+  // Use real DB IDs — top 5 assumptions by sensitivity rank (or insertion order)
+  const sorted = [...forecast.assumptions].sort(
+    (a, b) => (a.sensitivityRank ?? 999) - (b.sensitivityRank ?? 999)
+  );
+  const topAssumptions = sorted.slice(0, 5).map(
+    a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value} ${a.unit ?? ""}`
   ).join("\n");
 
   const topCruxes = forecast.cruxes.slice(0, 3).map(
@@ -120,7 +146,7 @@ BASE SCENARIO ${horizonYear}: ${fmt(baseTotal, currency)} (CAGR ${fmtPct(cagr)})
 BULL SCENARIO ${horizonYear}: ${fmt(bullTotal, currency)}
 BEAR SCENARIO ${horizonYear}: ${fmt(bearTotal, currency)}
 
-TOP ASSUMPTIONS:
+TOP ASSUMPTIONS (reference by ID tag when citing):
 ${topAssumptions}
 
 KEY CRUXES / CONTESTED ASSUMPTIONS:
@@ -175,6 +201,7 @@ async function genSection3MarketSizing(
     sf => `  ${sf.name}: ${fmt(sf.baseYearValue, currency)} base year`
   ).join("\n");
 
+  // Use real DB IDs for sizing assumptions
   const sizeAssumptions = forecast.assumptions
     .filter(a => {
       const desc = (a.description ?? "").toLowerCase();
@@ -182,7 +209,7 @@ async function genSection3MarketSizing(
       return unit.includes("$") || unit.includes("b") || desc.includes("market size") || desc.includes("tam");
     })
     .slice(0, 5)
-    .map((a, i) => `[A-${String(i + 1).padStart(3, "0")}] ${a.description}: ${a.currentValue ?? a.value} ${a.unit ?? ""}`)
+    .map(a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value} ${a.unit ?? ""}`)
     .join("\n");
 
   const sources = forecast.sources.slice(0, 5).map(
@@ -196,7 +223,7 @@ TOTAL BASE YEAR MARKET: ${fmt(baseTotal, currency)}
 SEGMENT BREAKDOWN:
 ${segmentLines || "  Single undifferentiated market"}
 
-SIZING ASSUMPTIONS:
+SIZING ASSUMPTIONS (reference by ID tag when citing):
 ${sizeAssumptions || "  See assumptions register"}
 
 SOURCES USED:
@@ -216,6 +243,7 @@ async function genSection4Drivers(
   const discontinuities = (brief?.discontinuities as string[] ?? []).join("\n  - ");
   const adjacent = (brief?.adjacentMarkets as string[] ?? []).join(", ") || "None identified";
 
+  // Use real DB IDs for growth-rate assumptions
   const growthAssumptions = forecast.assumptions
     .filter(a => {
       const u = (a.unit ?? "").toLowerCase();
@@ -223,7 +251,7 @@ async function genSection4Drivers(
       return u.includes("%") || d.includes("growth") || d.includes("cagr") || d.includes("rate");
     })
     .slice(0, 8)
-    .map((a, i) => `[A-${String(i + 1).padStart(3, "0")}] ${a.description}: ${a.currentValue ?? a.value}${a.unit ?? ""}`)
+    .map(a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value}${a.unit ?? ""}`)
     .join("\n  ");
 
   const cruxes = forecast.cruxes
@@ -241,7 +269,7 @@ POTENTIAL DISCONTINUITIES / RISKS:
 ADJACENT MARKETS (potential tailwinds / substitution threats):
   ${adjacent}
 
-KEY GROWTH-RATE ASSUMPTIONS:
+KEY GROWTH-RATE ASSUMPTIONS (reference by ID tag when citing):
   ${growthAssumptions || "See assumptions register"}
 
 CONTESTED CRUXES:
@@ -272,9 +300,12 @@ async function genSection5BaseScenario(
     sf => `  ${sf.name}: CAGR ${fmtPct(sf.cagr)}, ${fmt(sf.baseYearValue, currency)} → ${fmt(sf.forecastPath[horizonYear] ?? 0, currency)}`
   ).join("\n");
 
-  const baseAssumptions = forecast.assumptions
-    .slice(0, 8)
-    .map((a, i) => `[A-${String(i + 1).padStart(3, "0")}] ${a.description}: ${a.currentValue ?? a.value}${a.unit ?? ""}`)
+  // Sorted by sensitivity rank — most impactful assumptions first
+  const sorted = [...forecast.assumptions].sort(
+    (a, b) => (a.sensitivityRank ?? 999) - (b.sensitivityRank ?? 999)
+  );
+  const baseAssumptions = sorted.slice(0, 8)
+    .map(a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value}${a.unit ?? ""}`)
     .join("\n  ");
 
   const user = `FORECAST: ${forecast.title}
@@ -284,11 +315,10 @@ TOTAL CAGR ${baseYear}–${horizonYear}: ${fmtPct(cagr)}
 SEGMENT BREAKDOWN:
 ${segDetail || "  Single undifferentiated segment"}
 
-KEY ASSUMPTIONS UNDERPINNING THIS SCENARIO:
+KEY ASSUMPTIONS UNDERPINNING THIS SCENARIO (reference by ID tag when citing):
   ${baseAssumptions}
 
-Write the Base Scenario Forecast section, walking through the year-by-year trajectory and the assumptions that drive it.
-Reference assumption IDs where relevant.`;
+Write the Base Scenario Forecast section, walking through the year-by-year trajectory and the assumptions that drive it.`;
 
   return callLLM(client, SYSTEM_BASE, user);
 }
@@ -306,9 +336,12 @@ async function genSection6BullBear(
   const bearPath = scenarioPathText(engine.bearScenario, baseYear, horizonYears);
   const basePath = scenarioPathText(engine.baseScenario, baseYear, horizonYears);
 
+  // Map crux resolutions with real assumption IDs
   const cruxResolutions = forecast.cruxes.map(c => {
     const sv = c.scenarioValues as any;
-    return `  - ${c.evidenceRequiredToResolve ?? "Unnamed"}: bull=${sv?.bullValue ?? "?"}, base=${sv?.baseValue ?? "?"}, bear=${sv?.bearValue ?? "?"} ${sv?.unit ?? ""}`;
+    const matchedAssumption = forecast.assumptions.find(a => a.id === c.contestedAssumptionId);
+    const assumptionRef = matchedAssumption ? ` (assumption ${aId(matchedAssumption)})` : "";
+    return `  - ${c.evidenceRequiredToResolve ?? "Unnamed"}${assumptionRef}: bull=${sv?.bullValue ?? "?"}, base=${sv?.baseValue ?? "?"}, bear=${sv?.bearValue ?? "?"} ${sv?.unit ?? ""}`;
   }).join("\n");
 
   const user = `FORECAST: ${forecast.title}
@@ -322,53 +355,71 @@ CRUX RESOLUTIONS BY SCENARIO:
 ${cruxResolutions || "  No contested cruxes — scenarios diverge only from sensitivity bands"}
 
 Write the Bull & Bear Scenarios section, explaining what would have to be true for each scenario to materialise.
-Quantify the spread between bull and bear at the horizon year.`;
+Quantify the spread between bull and bear at the horizon year. Reference assumption ID tags where relevant.`;
 
   return callLLM(client, SYSTEM_BASE, user);
 }
 
 // Section 7 — Sensitivity Analysis (templated, no LLM)
-function genSection7Sensitivity(engine: EngineOutput, currency: string): string {
+function genSection7Sensitivity(
+  forecast: ForecastFull,
+  engine: EngineOutput,
+  currency: string
+): string {
   const rows = engine.sensitivityTable;
   if (rows.length === 0) {
     return "No sensitivity analysis available — forecast has no linked growth assumptions.";
   }
 
+  const horizonYear = Math.max(...Object.keys(engine.baseScenario.totalForecastPath).map(Number));
+  const baseTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
+
   const sorted = [...rows].sort(
     (a, b) => Math.abs(b.delta_plus_25pct - b.delta_minus_25pct) - Math.abs(a.delta_plus_25pct - a.delta_minus_25pct)
   );
 
-  const header = `| Assumption | Base | −25% | −10% | +10% | +25% |\n|---|---|---|---|---|---|`;
-  const tableRows = sorted.map(r =>
-    `| ${r.description} (${r.unit}) | ${r.baseValue} | ${fmtPct((r.delta_minus_25pct / ((engine.baseScenario.totalForecastPath[Object.keys(engine.baseScenario.totalForecastPath).map(Number).pop()!] ?? 1) || 1)) * 100)} | ${fmtPct((r.delta_minus_10pct / ((engine.baseScenario.totalForecastPath[Object.keys(engine.baseScenario.totalForecastPath).map(Number).pop()!] ?? 1) || 1)) * 100)} | ${fmtPct((r.delta_plus_10pct / ((engine.baseScenario.totalForecastPath[Object.keys(engine.baseScenario.totalForecastPath).map(Number).pop()!] ?? 1) || 1)) * 100)} | ${fmtPct((r.delta_plus_25pct / ((engine.baseScenario.totalForecastPath[Object.keys(engine.baseScenario.totalForecastPath).map(Number).pop()!] ?? 1) || 1)) * 100)} |`
-  );
+  // Resolve real assumption ID for each sensitivity row
+  const header = `| Assumption | ID | Base | −25% | −10% | +10% | +25% |\n|---|---|---|---|---|---|---|`;
+  const tableRows = sorted.map(r => {
+    const dbAssumption = forecast.assumptions.find(a => a.id === r.assumptionId);
+    const idTag = dbAssumption ? aId(dbAssumption) : r.assumptionId.slice(0, 8);
+    const pct = (delta: number) => fmtPct((delta / (baseTotal || 1)) * 100);
+    return `| ${r.description} (${r.unit}) | ${idTag} | ${r.baseValue} | ${pct(r.delta_minus_25pct)} | ${pct(r.delta_minus_10pct)} | ${pct(r.delta_plus_10pct)} | ${pct(r.delta_plus_25pct)} |`;
+  });
 
   const topDriver = sorted[0];
-  const horizonYear = Math.max(...Object.keys(engine.baseScenario.totalForecastPath).map(Number));
-  const baseTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
+  const topDbId = forecast.assumptions.find(a => a.id === topDriver.assumptionId);
+  const topIdTag = topDbId ? aId(topDbId) : topDriver.assumptionId.slice(0, 8);
 
   const intro = `The table below shows how the ${horizonYear} total market estimate changes when each key assumption is varied by ±10% and ±25%, holding all others constant. Values show the percentage change from the base case (${fmt(baseTotal, currency)} at horizon).
 
-The most sensitive assumption is **${topDriver.description}**: a 25% upside shift adds ${fmtPct((topDriver.delta_plus_25pct / (baseTotal || 1)) * 100)} to the horizon estimate, while a 25% downside removes ${fmtPct((topDriver.delta_minus_25pct / (baseTotal || 1)) * 100)}.`;
+The most sensitive assumption is **${topDriver.description}** ${topIdTag}: a 25% upside shift adds ${fmtPct((topDriver.delta_plus_25pct / (baseTotal || 1)) * 100)} to the horizon estimate, while a 25% downside removes ${fmtPct((topDriver.delta_minus_25pct / (baseTotal || 1)) * 100)}.`;
 
   return `${intro}\n\n${header}\n${tableRows.join("\n")}`;
 }
 
 // Section 8 — Sources & Assumptions Register (templated, no LLM)
+// Uses real DB IDs — the same IDs referenced throughout sections 1-7.
 function genSection8Register(forecast: ForecastFull): string {
-  const assumptionLines = forecast.assumptions.map((a, i) => {
-    const id = `A-${String(i + 1).padStart(3, "0")}`;
+  const sorted = [...forecast.assumptions].sort(
+    (a, b) => (a.sensitivityRank ?? 999) - (b.sensitivityRank ?? 999)
+  );
+
+  const assumptionLines = sorted.map(a => {
+    const id = aId(a); // stable UUID prefix — matches prose in sections 1-7
     const val = a.currentValue ?? a.value;
     const src = a.currentValueSource ?? "debate_consensus";
     const rank = a.sensitivityRank != null ? ` | sensitivity rank #${a.sensitivityRank}` : "";
-    return `**[${id}]** ${a.description}  \n_Value:_ ${val} ${a.unit ?? ""} | _Source:_ ${src}${rank}`;
+    return `**${id}** ${a.description}  \n_Value:_ ${val} ${a.unit ?? ""} | _Source:_ ${src}${rank}`;
   });
 
   const sourceLines = forecast.sources.map((s, i) => {
     const tier = `Tier ${s.reliabilityTier}`;
     const date = s.accessedDate ? new Date(s.accessedDate).toISOString().split("T")[0] : "n/d";
     const url = s.url ? ` — [link](${s.url})` : "";
-    const quote = s.verbatimQuote ? `\n  > "${s.verbatimQuote.slice(0, 200)}${s.verbatimQuote.length > 200 ? "…" : ""}"` : "";
+    const quote = s.verbatimQuote
+      ? `\n  > "${s.verbatimQuote.slice(0, 200)}${s.verbatimQuote.length > 200 ? "…" : ""}"`
+      : "";
     return `${i + 1}. **${s.title ?? "Unnamed source"}** [${tier}] (accessed ${date})${url}${quote}`;
   });
 
@@ -380,7 +431,7 @@ function genSection8Register(forecast: ForecastFull): string {
     ? `### Sources\n\n${sourceLines.join("\n\n")}`
     : "### Sources\n\n_No sources recorded._";
 
-  return `This section provides the complete traceability register for all assumptions and sources cited in this forecast.\n\n${aSection}\n\n${sSection}`;
+  return `This section provides the complete traceability register for all assumptions and sources cited in this forecast. Assumption IDs shown here match the tags used throughout sections 1–6.\n\n${aSection}\n\n${sSection}`;
 }
 
 // ── QC passes ─────────────────────────────────────────────────────────────────
@@ -390,15 +441,20 @@ export function qcInternalConsistency(engine: EngineOutput, tolerancePct = 0.1):
   const baseTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
   const bullTotal = engine.bullScenario.totalForecastPath[horizonYear] ?? 0;
   const bearTotal = engine.bearScenario.totalForecastPath[horizonYear] ?? 0;
-  return bullTotal >= baseTotal * (1 - tolerancePct) && bearTotal <= bullTotal * (1 + tolerancePct) && bearTotal >= 0;
+  return (
+    bullTotal >= baseTotal * (1 - tolerancePct) &&
+    bearTotal <= bullTotal * (1 + tolerancePct) &&
+    bearTotal >= 0
+  );
 }
 
 export function qcSchemaCompleteness(forecast: ForecastFull): boolean {
-  const hasTitle = Boolean(forecast.title);
-  const hasBaseYear = forecast.baseYear != null;
-  const hasHorizon = forecast.forecastHorizonYears != null;
-  const assumptionsOk = forecast.assumptions.every(a => a.description && (a.value != null || a.currentValue != null));
-  return hasTitle && hasBaseYear && hasHorizon && assumptionsOk;
+  if (!forecast.title) return false;
+  if (forecast.baseYear == null) return false;
+  if (forecast.forecastHorizonYears == null) return false;
+  return forecast.assumptions.every(
+    a => a.description && (a.value != null || a.currentValue != null)
+  );
 }
 
 async function qcNarrativeCoherence(
@@ -417,7 +473,8 @@ async function qcNarrativeCoherence(
     messages: [
       {
         role: "system",
-        content: "You are a QC reviewer. Check the following report excerpts for explicit numerical contradictions (e.g. different values claimed for the same metric in different sections). Reply with JSON: { \"coherent\": true } or { \"coherent\": false, \"issue\": \"...\" }",
+        content:
+          'You are a QC reviewer. Check the following report excerpts for explicit numerical contradictions (e.g. different values claimed for the same metric in different sections). Reply with JSON: { "coherent": true } or { "coherent": false, "issue": "..." }',
       },
       { role: "user", content: combined },
     ],
@@ -451,9 +508,10 @@ export async function generateReport(
   const baseTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
   const bullTotal = engine.bullScenario.totalForecastPath[horizonYear] ?? 0;
   const bearTotal = engine.bearScenario.totalForecastPath[horizonYear] ?? 0;
-  const baseCagr = baseStart > 0
-    ? Math.round(((Math.pow(baseTotal / baseStart, 1 / horizonYears) - 1) * 100) * 100) / 100
-    : 0;
+  const baseCagr =
+    baseStart > 0
+      ? Math.round(((Math.pow(baseTotal / baseStart, 1 / horizonYears) - 1) * 100) * 100) / 100
+      : 0;
 
   const sections: ReportSection[] = [];
 
@@ -474,20 +532,36 @@ export async function generateReport(
     let content = "";
 
     switch (meta.id) {
-      case 1: content = await genSection1ExecSummary(client, forecast, engine, horizonYear, currency); break;
-      case 2: content = await genSection2MarketDefMethodology(client, forecast); break;
-      case 3: content = await genSection3MarketSizing(client, forecast, engine, currency); break;
-      case 4: content = await genSection4Drivers(client, forecast); break;
-      case 5: content = await genSection5BaseScenario(client, forecast, engine, horizonYear, currency); break;
-      case 6: content = await genSection6BullBear(client, forecast, engine, horizonYear, currency); break;
-      case 7: content = genSection7Sensitivity(engine, currency); break;
-      case 8: content = genSection8Register(forecast); break;
+      case 1:
+        content = await genSection1ExecSummary(client, forecast, engine, horizonYear, currency);
+        break;
+      case 2:
+        content = await genSection2MarketDefMethodology(client, forecast);
+        break;
+      case 3:
+        content = await genSection3MarketSizing(client, forecast, engine, currency);
+        break;
+      case 4:
+        content = await genSection4Drivers(client, forecast);
+        break;
+      case 5:
+        content = await genSection5BaseScenario(client, forecast, engine, horizonYear, currency);
+        break;
+      case 6:
+        content = await genSection6BullBear(client, forecast, engine, horizonYear, currency);
+        break;
+      case 7:
+        content = genSection7Sensitivity(forecast, engine, currency);
+        break;
+      case 8:
+        content = genSection8Register(forecast);
+        break;
     }
 
     sections.push({ id: meta.id, title: meta.title, content });
   }
 
-  // QC
+  // QC — narrative coherence is advisory only; does not block completion
   const internalConsistency = qcInternalConsistency(engine);
   const schemaCompleteness = qcSchemaCompleteness(forecast);
   let narrativeCoherence = true;
