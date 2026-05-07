@@ -25,6 +25,7 @@ import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
 import { rebuildAndPersistEngine } from "../forecast/recalculate";
 import { extractBoundary, type ExtractedBoundary } from "../forecast/phases/phase1";
+import { runTargetedChallenge } from "../forecast/targeted-challenge";
 import {
   getNextQuestion,
   getDefaultForQuestion,
@@ -827,12 +828,13 @@ export function registerForecastBuilderRoutes(app: Express): void {
         const guard = await guardForecastAccess(req, res, req.params.id);
         if (!guard.ok) return;
 
+        // Note: sourceType is ALWAYS forced to "user_provided" server-side.
+        // Clients cannot forge AI-generated or system source records via this endpoint.
         const bodySchema = z.object({
-          url: z.string().url().optional().or(z.literal("")),
+          url: z.string().max(2048).optional().or(z.literal("")),
           title: z.string().max(500).optional(),
           reliabilityTier: z.number().int().min(1).max(3).default(2),
           verbatimQuote: z.string().max(2000).optional(),
-          sourceType: z.string().max(100).default("user_provided"),
           assumptionId: z.string().uuid().optional().nullable(),
         });
         const body = bodySchema.safeParse(req.body);
@@ -844,10 +846,19 @@ export function registerForecastBuilderRoutes(app: Express): void {
           return res.status(400).json({ error: "At least one of url or title is required" });
         }
 
+        // Validate assumptionId ownership — must belong to this forecast
+        if (body.data.assumptionId) {
+          const assumptions = await getForecastAssumptions(req.params.id);
+          const owned = assumptions.some(a => a.id === body.data.assumptionId);
+          if (!owned) {
+            return res.status(403).json({ error: "assumptionId does not belong to this forecast" });
+          }
+        }
+
         const source = await createForecastSource({
           forecastId: req.params.id,
           assumptionId: body.data.assumptionId ?? null,
-          sourceType: body.data.sourceType,
+          sourceType: "user_provided",  // ALWAYS forced server-side
           url: body.data.url || null,
           title: body.data.title ?? null,
           reliabilityTier: body.data.reliabilityTier,
@@ -902,12 +913,57 @@ export function registerForecastBuilderRoutes(app: Express): void {
     }
   );
 
+  // ── Phase 5: URL metadata fetch (for source form) ───────────────────────
+  // GET /api/forecast-builder/forecasts/:id/sources/url-meta?url=<encoded>
+  // Fetches page title and published date from a URL for auto-populating sources.
+  app.get(
+    "/api/forecast-builder/forecasts/:id/sources/url-meta",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const guard = await guardForecastAccess(req, res, req.params.id);
+        if (!guard.ok) return;
+
+        const rawUrl = req.query.url as string | undefined;
+        if (!rawUrl) return res.status(400).json({ error: "url query param required" });
+
+        let targetUrl: URL;
+        try { targetUrl = new URL(rawUrl); } catch {
+          return res.status(400).json({ error: "Invalid URL" });
+        }
+        if (!["http:", "https:"].includes(targetUrl.protocol)) {
+          return res.status(400).json({ error: "Only http/https URLs are supported" });
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        let title: string | null = null;
+        try {
+          const pageRes = await fetch(rawUrl, {
+            signal: controller.signal,
+            headers: { "User-Agent": "spectio-bot/1.0" },
+          });
+          clearTimeout(timeout);
+          const html = await pageRes.text();
+          const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (m) title = m[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim().slice(0, 300);
+        } catch {
+          clearTimeout(timeout);
+        }
+
+        res.json({ title });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
   // ── Phase 5: Challenge mode (SSE) ─────────────────────────────────────────
   //
   // POST /api/forecast-builder/forecasts/:id/challenge
   // Body: { assumptionIds: string[] }
   //
-  // Runs a lightweight AI adversarial challenge against the provided assumptions.
+  // Runs a dual-model web-search-enriched challenge per assumption (Phase 3.4 pattern).
   // Does NOT persist any changes — streams structured results for user to accept
   // (via the assumption override endpoint) or dismiss.
   app.post(
@@ -933,52 +989,24 @@ export function registerForecastBuilderRoutes(app: Express): void {
           const full = await getForecastFull(req.params.id);
           if (!full) throw new Error("Forecast not found");
 
-          const { default: OpenAI } = await import("openai");
-          const oai = new OpenAI({
-            apiKey: openaiKey,
-            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-          });
-
           for (const assumptionId of body.data.assumptionIds) {
             if (clientGone) break;
             const assumption = full.assumptions.find(a => a.id === assumptionId);
             if (!assumption) continue;
 
             const currentVal = Number(assumption.currentValue ?? assumption.value ?? 0);
-            sendSSEEvent(res, { type: "progress", message: `Challenging: ${assumption.description}` });
-
-            const prompt = `You are a rigorous market research analyst challenging a forecast assumption.
-
-Assumption: "${assumption.description}"
-Current value: ${currentVal} ${assumption.unit ?? ""}
-Forecast: "${full.title}"
-Base year: ${full.baseYear}, Horizon: ${full.forecastHorizonYears} years
-
-Challenge this assumption with real-world evidence. Consider:
-1. What would need to be true for this value to be 20% lower?
-2. What would need to be true for this value to be 20% higher?
-3. Based on your analysis, what is a better-supported point estimate?
-
-Respond with JSON only:
-{
-  "challengeLower": { "scenario": "string (max 200 chars)", "value": number, "confidence": "low|medium|high" },
-  "challengeHigher": { "scenario": "string (max 200 chars)", "value": number, "confidence": "low|medium|high" },
-  "proposedValue": number,
-  "proposedRationale": "string (max 300 chars)",
-  "evidenceSources": ["string", ...]
-}`;
+            sendSSEEvent(res, { type: "progress", message: `Searching evidence for: ${assumption.description}` });
 
             try {
-              const response = await oai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                response_format: { type: "json_object" },
-                max_tokens: 600,
-              });
-
-              const text = response.choices[0]?.message?.content ?? "{}";
-              let parsed: Record<string, unknown> = {};
-              try { parsed = JSON.parse(text); } catch { /* ignore */ }
+              const result = await runTargetedChallenge(
+                assumptionId,
+                assumption.description,
+                currentVal,
+                assumption.unit ?? "",
+                full.title,
+                openaiKey,
+                process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+              );
 
               sendSSEEvent(res, {
                 type: "challenge_result",
@@ -986,7 +1014,7 @@ Respond with JSON only:
                 description: assumption.description,
                 currentValue: currentVal,
                 unit: assumption.unit ?? "",
-                result: parsed,
+                result,
               });
             } catch (err: any) {
               sendSSEEvent(res, { type: "progress", message: `Challenge failed for ${assumptionId}: ${err.message}` });
@@ -1041,12 +1069,6 @@ Respond with JSON only:
           const full = await getForecastFull(req.params.id);
           if (!full) throw new Error("Forecast not found");
 
-          const { default: OpenAI } = await import("openai");
-          const oai = new OpenAI({
-            apiKey: openaiKey,
-            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-          });
-
           const actor = (req.user as any)?.email ?? (req.user as any)?.id ?? "user";
           let updatedCount = 0;
 
@@ -1056,56 +1078,34 @@ Respond with JSON only:
             const assumption = full.assumptions.find(a => a.id === assumptionId);
             if (!assumption) continue;
 
-            const crux = full.cruxes.find(c => c.contestedAssumptionId === assumptionId);
             const currentVal = Number(assumption.currentValue ?? assumption.value ?? 0);
-
-            sendSSEEvent(res, { type: "progress", message: `Re-debating: ${assumption.description}` });
-
-            const positionsSummary = crux?.positions?.length
-              ? crux.positions.map((p: { model: string; value: string; reasoning: string }) => `${p.model}: ${p.value} — ${p.reasoning}`).join("\n")
-              : `Single estimate: ${currentVal} ${assumption.unit ?? ""}`;
-
-            const prompt = `You are a senior analyst resolving a contested forecast assumption via fresh research.
-
-Assumption: "${assumption.description}"
-Current value: ${currentVal} ${assumption.unit ?? ""}
-Forecast market: "${full.title}"
-Base year: ${full.baseYear}
-
-Existing analyst positions:
-${positionsSummary}
-
-Review the evidence and propose the best point estimate for this assumption.
-Consider recent market data, industry reports, and macro trends.
-
-Respond with JSON only:
-{
-  "resolvedValue": number,
-  "confidence": "low|medium|high",
-  "reasoning": "string (max 300 chars)",
-  "resolutionPath": "string (max 200 chars)"
-}`;
+            sendSSEEvent(res, { type: "progress", message: `Searching evidence for: ${assumption.description}` });
 
             try {
-              const response = await oai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                response_format: { type: "json_object" },
-                max_tokens: 400,
+              // Phase 3.4 pattern: web search + dual-model resolver + deterministic convergence
+              const challengeResult = await runTargetedChallenge(
+                assumptionId,
+                assumption.description,
+                currentVal,
+                assumption.unit ?? "",
+                full.title,
+                openaiKey,
+                process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+              );
+
+              sendSSEEvent(res, {
+                type: "progress",
+                message: `Resolvers: A=${challengeResult.resolverAValue ?? "?"}, B=${challengeResult.resolverBValue ?? "?"} — ${challengeResult.resolution}`,
               });
 
-              const text = response.choices[0]?.message?.content ?? "{}";
-              let parsed: { resolvedValue?: number; confidence?: string; reasoning?: string; resolutionPath?: string } = {};
-              try { parsed = JSON.parse(text); } catch { /* ignore */ }
-
-              if (parsed.resolvedValue != null && isFinite(parsed.resolvedValue)) {
+              // Only apply converged values to DB (resolution === "resolved")
+              if (challengeResult.resolution === "resolved" && challengeResult.resolvedValue != null) {
                 const oldValue = assumption.currentValue ?? assumption.value ?? null;
-                const newValueStr = parsed.resolvedValue.toString();
+                const newValueStr = challengeResult.resolvedValue.toString();
 
                 const existingHistory = (assumption.editHistory ?? []) as {
                   timestamp: string; actor: string; oldValue: string | null; newValue: string | null; reason?: string;
                 }[];
-
                 await updateForecastAssumption(assumptionId, {
                   currentValue: newValueStr,
                   currentValueSource: "debate_consensus",
@@ -1116,7 +1116,7 @@ Respond with JSON only:
                       actor: `re-debate (${actor})`,
                       oldValue,
                       newValue: newValueStr,
-                      reason: parsed.reasoning ?? "Re-debate resolution",
+                      reason: `Dual-model convergence: A=${challengeResult.resolverAValue}, B=${challengeResult.resolverBValue}, Δ=${((challengeResult.convergencePct ?? 0) * 100).toFixed(1)}%`,
                     },
                   ],
                 });
@@ -1127,8 +1127,17 @@ Respond with JSON only:
                   assumptionId,
                   description: assumption.description,
                   oldValue: currentVal,
-                  newValue: parsed.resolvedValue,
-                  reasoning: parsed.reasoning ?? "",
+                  newValue: challengeResult.resolvedValue,
+                  reasoning: challengeResult.resolverAReasoning,
+                  convergencePct: challengeResult.convergencePct,
+                  evidenceCited: challengeResult.evidenceCited,
+                });
+              } else {
+                sendSSEEvent(res, {
+                  type: "progress",
+                  message: challengeResult.resolution === "divergent"
+                    ? `Resolvers diverged (${((challengeResult.convergencePct ?? 0) * 100).toFixed(1)}% apart) — no auto-update for ${assumption.description}`
+                    : `Could not resolve ${assumption.description} — use Challenge mode to inspect`,
                 });
               }
             } catch (err: any) {

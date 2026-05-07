@@ -363,6 +363,23 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
   const [showAdd, setShowAdd] = useState(false);
   const [inputMode, setInputMode] = useState<"url" | "file">("url");
   const [form, setForm] = useState({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
+  const [urlMetaFetching, setUrlMetaFetching] = useState(false);
+
+  async function fetchUrlMeta(url: string) {
+    if (!url || !url.startsWith("http")) return;
+    setUrlMetaFetching(true);
+    try {
+      const res = await fetch(
+        `/api/forecast-builder/forecasts/${forecastId}/sources/url-meta?url=${encodeURIComponent(url)}`,
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.title) setForm(f => ({ ...f, title: f.title || data.title }));
+      }
+    } catch {}
+    setUrlMetaFetching(false);
+  }
 
   const linkedSources = assumptionId ? sources.filter(s => s.assumptionId === assumptionId) : [];
   const generalSources = assumptionId ? sources.filter(s => s.assumptionId !== assumptionId) : sources;
@@ -452,8 +469,13 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
               onClick={() => setInputMode("file")}>Upload file</button>
           </div>
           {inputMode === "url" ? (
-            <input className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
-              placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+            <div className="relative">
+              <input className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40 pr-8"
+                placeholder="URL (optional)" value={form.url}
+                onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                onBlur={e => fetchUrlMeta(e.target.value)} />
+              {urlMetaFetching && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-cyan-500" />}
+            </div>
           ) : (
             <div>
               <label className="block w-full cursor-pointer">
@@ -794,12 +816,15 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
 // ── Global Overview tab ─────────────────────────────────────────────────────
 
-function GlobalOverviewTab({ assumptions, onAssumptionSelect, nearbyAssumptionIds, highlightTopN }: {
+function GlobalOverviewTab({ forecastId, assumptions, onAssumptionSelect, nearbyAssumptionIds, highlightTopN, queryKey }: {
+  forecastId: string;
   assumptions: AuditAssumption[];
   onAssumptionSelect?: (shortId: string) => void;
   nearbyAssumptionIds?: string[];
   highlightTopN?: number;
+  queryKey: string[];
 }) {
+  const qc = useQueryClient();
   const sorted = [...assumptions]
     .filter(a => a.sensitivityRank != null)
     .sort((a, b) => (a.sensitivityRank ?? 99) - (b.sensitivityRank ?? 99));
@@ -809,6 +834,66 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect, nearbyAssumptionId
   const isReferenced = (a: AuditAssumption) =>
     nearbyAssumptionIds != null &&
     nearbyAssumptionIds.some(id => a.id.startsWith(id) || a.id.slice(0, id.length) === id);
+
+  // Inline challenge runner — pre-selects top referenced assumptions
+  type ChallengeEvt = { type: string; message?: string; assumptionId?: string; description?: string; result?: Record<string, unknown> };
+  const [challengeStatus, setChallengeStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [challengeLog, setChallengeLog] = useState<string[]>([]);
+  const [challengeResults, setChallengeResults] = useState<ChallengeEvt[]>([]);
+  const challengeAbortRef = useRef<() => void>(() => {});
+
+  const referencedAssumptions = nearbyAssumptionIds
+    ? assumptions
+        .filter(isReferenced)
+        .sort((a, b) => (a.sensitivityRank ?? 99) - (b.sensitivityRank ?? 99))
+        .slice(0, 3)
+    : [];
+
+  function runChallenge() {
+    if (!referencedAssumptions.length || challengeStatus === "running") return;
+    const targetIds = referencedAssumptions.map(a => a.id);
+    setChallengeStatus("running");
+    setChallengeLog([]);
+    setChallengeResults([]);
+
+    let aborted = false;
+    challengeAbortRef.current = () => { aborted = true; };
+
+    fetch(`/api/forecast-builder/forecasts/${forecastId}/challenge`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assumptionIds: targetIds }),
+    }).then(async res => {
+      if (!res.body) throw new Error("No stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      async function read(): Promise<void> {
+        if (aborted) return;
+        const { done, value } = await reader.read();
+        if (done) { setChallengeStatus("done"); qc.invalidateQueries({ queryKey }); return; }
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt: ChallengeEvt = JSON.parse(line.slice(6));
+            if (evt.type === "progress" && evt.message) setChallengeLog(l => [...l, evt.message!]);
+            if (evt.type === "challenge_result") setChallengeResults(r => [...r, evt]);
+            if (evt.type === "complete") { setChallengeStatus("done"); qc.invalidateQueries({ queryKey }); }
+            if (evt.type === "error") { setChallengeStatus("error"); setChallengeLog(l => [...l, evt.message ?? "Error"]); }
+          } catch {}
+        }
+        return read();
+      }
+      return read();
+    }).catch(err => {
+      setChallengeStatus("error");
+      setChallengeLog([err.message]);
+    });
+  }
 
   function AssumptionRow({ a, rank, isLikelyDriver }: { a: AuditAssumption; rank?: number; isLikelyDriver?: boolean }) {
     const isOverride = a.currentValueSource === "user_override";
@@ -849,9 +934,65 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect, nearbyAssumptionId
   return (
     <div className="space-y-4">
       {nearbyAssumptionIds != null ? (
-        <p className="text-[10px] text-violet-400/80 bg-violet-950/20 border border-violet-500/10 rounded-lg px-2.5 py-2">
-          Showing assumptions referenced in this section. "Referenced here" assumptions are tagged in the text above.
-        </p>
+        <div className="bg-violet-950/20 border border-violet-500/10 rounded-lg px-2.5 py-2.5 space-y-2">
+          <p className="text-[10px] text-violet-400/80">
+            {referencedAssumptions.length} assumption{referencedAssumptions.length !== 1 ? "s" : ""} referenced in this section — ranked by sensitivity.
+          </p>
+          {challengeStatus === "idle" && referencedAssumptions.length > 0 && (
+            <Button size="sm"
+              className="w-full h-6 text-[10px] bg-violet-600/80 hover:bg-violet-500 text-white"
+              onClick={runChallenge}>
+              <Zap className="h-2.5 w-2.5 mr-1" />
+              Challenge these {referencedAssumptions.length} assumption{referencedAssumptions.length !== 1 ? "s" : ""} with fresh evidence
+            </Button>
+          )}
+          {challengeStatus === "running" && (
+            <p className="text-[10px] text-violet-300 flex items-center gap-1.5">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" /> Running dual-model challenge…
+            </p>
+          )}
+          {challengeLog.length > 0 && (
+            <div className="space-y-0.5 max-h-24 overflow-y-auto">
+              {challengeLog.map((msg, i) => <p key={i} className="text-[10px] text-slate-500">{msg}</p>)}
+            </div>
+          )}
+          {challengeResults.length > 0 && (
+            <div className="space-y-2 border-t border-violet-500/10 pt-2">
+              {challengeResults.map((r, i) => {
+                const res = r.result as any;
+                return (
+                  <div key={i} className="text-[10px] space-y-0.5">
+                    <p className="text-violet-300 font-medium truncate">{r.description}</p>
+                    <p className="text-slate-400">Resolver A: {res?.resolverAValue ?? "—"} · B: {res?.resolverBValue ?? "—"}</p>
+                    {res?.resolution === "resolved" && (
+                      <p className="text-emerald-400">✓ Converged → {res.resolvedValue} (Δ {((res.convergencePct ?? 0) * 100).toFixed(1)}%)</p>
+                    )}
+                    {res?.resolution === "divergent" && (
+                      <p className="text-amber-400">⚡ Diverged (Δ {((res.convergencePct ?? 0) * 100).toFixed(1)}%) — click assumption to override manually</p>
+                    )}
+                    {res?.resolution === "unresolved" && (
+                      <p className="text-slate-500">No resolution — insufficient evidence</p>
+                    )}
+                    {res?.webEvidence?.length > 0 && (
+                      <p className="text-slate-600 italic truncate">Evidence: {res.webEvidence[0]}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {challengeStatus === "done" && challengeResults.length === 0 && (
+            <p className="text-[10px] text-slate-500">Challenge complete — no results returned.</p>
+          )}
+          {challengeStatus !== "idle" && (
+            <button className="text-[10px] text-slate-600 hover:text-slate-400" onClick={() => {
+              challengeAbortRef.current();
+              setChallengeStatus("idle");
+              setChallengeLog([]);
+              setChallengeResults([]);
+            }}>Reset</button>
+          )}
+        </div>
       ) : highlightTopN ? (
         <p className="text-[10px] text-cyan-400/80 bg-cyan-950/20 border border-cyan-500/10 rounded-lg px-2.5 py-2">
           Top {highlightTopN} assumptions by sensitivity rank are the most likely drivers of this figure. Click any to inspect.
@@ -1050,7 +1191,7 @@ export function AuditPanel({
           </>
         ) : mode === "global" ? (
           <>
-            {globalTab === "overview" && <GlobalOverviewTab assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} nearbyAssumptionIds={nearbyAssumptionIds} highlightTopN={highlightTopN} />}
+            {globalTab === "overview" && <GlobalOverviewTab forecastId={forecastId} assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} nearbyAssumptionIds={nearbyAssumptionIds} highlightTopN={highlightTopN} queryKey={queryKey} />}
             {globalTab === "sources" && <SourcesTab forecastId={forecastId} assumptionId={null} sources={sources} queryKey={queryKey} />}
             {globalTab === "diary" && <DiaryTab auditLog={auditLog} />}
           </>
