@@ -186,6 +186,14 @@ export function registerForecastBuilderRoutes(app: Express): void {
       const guard = await guardForecastAccess(req, res, req.params.id);
       if (!guard.ok) return;
 
+      // Boundary extraction is only permitted before the brief is locked
+      const preWriteStatuses: ForecastStatus[] = ["draft", "boundary_confirmed"];
+      if (!preWriteStatuses.includes(guard.forecast!.status as ForecastStatus)) {
+        return res.status(409).json({
+          error: "Boundary cannot be changed after the brief has been completed. Use /interview/reset to restart.",
+        });
+      }
+
       const { description } = z.object({ description: z.string().min(5).max(2000) }).parse(req.body);
 
       // Check extraction attempt count stored inside proposedBySystem._extractionCount
@@ -258,6 +266,14 @@ export function registerForecastBuilderRoutes(app: Express): void {
       const user = req.user as any;
       const guard = await guardForecastAccess(req, res, req.params.id);
       if (!guard.ok) return;
+
+      // Boundary confirmation only permitted in pre-brief states
+      const preWriteStatuses: ForecastStatus[] = ["draft", "boundary_confirmed"];
+      if (!preWriteStatuses.includes(guard.forecast!.status as ForecastStatus)) {
+        return res.status(409).json({
+          error: "Boundary is locked once the brief is complete. Use /interview/reset to restart the process.",
+        });
+      }
 
       const existingBoundary = await getForecastBoundary(req.params.id);
       if (!existingBoundary) {
