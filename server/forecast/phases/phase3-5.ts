@@ -151,6 +151,11 @@ Produce a JSON object matching this schema:\n${CONSENSUS_CHECK_SCHEMA_DESCRIPTIO
       console.warn("[Phase3-5] Validation entry failed schema, skipping:", result.error.issues[0]?.message);
     }
   }
+  // If the model returned a non-empty list but ALL entries failed schema,
+  // treat this as a malformed response so withRetry can retry the LLM call.
+  if (validationList.length > 0 && valid.length === 0) {
+    throw new Error(`All ${validationList.length} validation entries failed schema check — consensus checker response was structurally malformed`);
+  }
   return valid;
 }
 
@@ -167,7 +172,8 @@ export async function runPhase35(
   let validations: ValidationEntry[] = [];
 
   if (toValidate.length > 0) {
-    validations = await withRetry(() => checkConsensus(toValidate, openaiKey, openaiBaseUrl)).catch(() => []);
+    // Propagate failure to runner — runner's catch block will emit phase_warning + fallback
+    validations = await withRetry(() => checkConsensus(toValidate, openaiKey, openaiBaseUrl));
   }
 
   const validationMap = new Map<string, ValidationEntry>(

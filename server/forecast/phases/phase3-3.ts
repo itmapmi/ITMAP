@@ -127,6 +127,12 @@ Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely
     }
   }
 
+  // If the model returned items but ALL failed schema, treat as malformed —
+  // propagate the error so withRetry retries the entire judge call.
+  if (cruxList.length > 0 && valid.length === 0) {
+    throw new Error(`All ${cruxList.length} crux entries failed schema validation — judge response was structurally malformed`);
+  }
+
   return valid.sort((a, b) => a.rank - b.rank);
 }
 

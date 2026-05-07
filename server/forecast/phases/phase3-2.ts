@@ -124,6 +124,10 @@ async function callRoleOpenAI(
       console.warn(`[Phase3-2] Skipping invalid objection from ${role} role:`, result.error.issues[0]?.message);
     }
   }
+  // All items present but all invalid → malformed response, retry the call
+  if (arr.length > 0 && valid.length === 0) {
+    throw new Error(`All ${arr.length} objections from ${role} failed schema validation — response was structurally malformed`);
+  }
   return valid;
 }
 
@@ -161,6 +165,9 @@ async function callRoleAnthropic(
     } else {
       console.warn(`[Phase3-2] Skipping invalid objection from Anthropic ${role}:`, result.error.issues[0]?.message);
     }
+  }
+  if (arr.length > 0 && valid.length === 0) {
+    throw new Error(`All ${arr.length} objections from Anthropic ${role} failed schema validation — response was structurally malformed`);
   }
   return valid;
 }
@@ -202,6 +209,9 @@ async function callRoleOpenAIFallback(
     } else {
       console.warn(`[Phase3-2] Skipping invalid objection from fallback ${role}:`, result.error.issues[0]?.message);
     }
+  }
+  if (arr.length > 0 && valid.length === 0) {
+    throw new Error(`All ${arr.length} objections from fallback ${role} failed schema validation — response was structurally malformed`);
   }
   return valid;
 }

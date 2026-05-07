@@ -370,14 +370,17 @@ export async function runDebate(
 
   let assumptionsSaved = 0;
   let cruxDbIds: Map<string, string> = new Map(); // assumptionId → DB crux id
+  // Maps logical assumptionId (crux key) → saved DB assumption UUID
+  // Used to populate contestedAssumptionId on crux rows for traceability
+  const assumptionDbIds: Map<string, string> = new Map();
 
   // Step 1: Save assumptions from the consensus (resolved + validated cruxes get finalValue)
   // Also save all analystA assumptions as the base set
-  const allAssumptionIds = new Set<string>();
+  const savedAssumptionLogicalIds = new Set<string>();
 
   for (const crux of validatedCruxes) {
-    if (allAssumptionIds.has(crux.assumptionId)) continue;
-    allAssumptionIds.add(crux.assumptionId);
+    if (savedAssumptionLogicalIds.has(crux.assumptionId)) continue;
+    savedAssumptionLogicalIds.add(crux.assumptionId);
 
     // Determine the base value to save:
     // - resolved + validated → finalValue or baseValue
@@ -405,7 +408,8 @@ export async function runDebate(
         editHistory: [],
       });
       assumptionsSaved++;
-      allAssumptionIds.add(savedAssumption.id);
+      // Track the logical-key → DB-UUID mapping for crux linkage
+      assumptionDbIds.set(crux.assumptionId, savedAssumption.id);
     } catch (err: any) {
       console.error(`[Debate] Failed to save assumption "${crux.assumptionName}":`, err.message);
     }
@@ -413,8 +417,8 @@ export async function runDebate(
 
   // Also save non-crux assumptions from analyst-A
   for (const assumption of analystA.assumptions) {
-    if (allAssumptionIds.has(assumption.id)) continue;
-    allAssumptionIds.add(assumption.id);
+    if (savedAssumptionLogicalIds.has(assumption.id)) continue;
+    savedAssumptionLogicalIds.add(assumption.id);
     try {
       await createForecastAssumption({
         forecastId,
@@ -445,7 +449,8 @@ export async function runDebate(
     try {
       const savedCrux = await createForecastCrux({
         forecastId,
-        contestedAssumptionId: null,
+        // Link to the saved assumption DB UUID for full traceability
+        contestedAssumptionId: assumptionDbIds.get(crux.assumptionId) ?? null,
         positions,
         evidenceRequiredToResolve: crux.evidenceRequired,
         resolutionStatus: crux.resolution,
