@@ -131,19 +131,25 @@ async function callAnthropic<T>(
 
   const client = new Anthropic({ apiKey: config.apiKey });
 
-  const response = await client.messages.create({
+  // Streaming is required by the Anthropic SDK for operations that may take
+  // longer than 10 minutes — which max_tokens=32000 can easily exceed. We use
+  // the streaming API and collect the final accumulated message at the end so
+  // the rest of the pipeline (which expects a single JSON payload) is unchanged.
+  const stream = client.messages.stream({
     model: config.model,
     max_tokens: 32000,
     system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  const response = await stream.finalMessage();
+
   if (response.stop_reason === "max_tokens") {
     throw new Error(`Anthropic response truncated at token limit for model ${config.model} — response JSON is incomplete. Retrying.`);
   }
 
   const block = response.content[0];
-  const text = block.type === "text" ? block.text : "";
+  const text = block && block.type === "text" ? block.text : "";
   if (!text) throw new Error("Anthropic returned an empty response");
   return extractJSON<T>(text);
 }
