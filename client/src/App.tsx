@@ -16,6 +16,7 @@ import Admin from "@/pages/admin";
 import MarketBuilderPage from "@/pages/market-builder";
 import MyMarketBuilderPage from "@/pages/my-market-builder";
 import ForecastBuilderPage from "@/pages/forecast-builder/index";
+import ForecastDetailPage from "@/pages/forecast-builder/detail";
 import MyReportsPage from "@/pages/my-reports";
 import MyLlmKeysPage from "@/pages/my-llm-keys";
 import MyProfile from "@/pages/my-profile";
@@ -75,7 +76,7 @@ function Router() {
         <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/forecast-builder" component={() => <ProtectedRoute component={ForecastBuilderPage} />} />
-        <Route path="/forecast-builder/:id" component={() => <ProtectedRoute component={ForecastBuilderPage} />} />
+        <Route path="/forecast-builder/:id" component={() => <ProtectedRoute component={ForecastDetailPage} />} />
         <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
         <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />

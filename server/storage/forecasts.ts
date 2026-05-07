@@ -299,7 +299,7 @@ export async function createForecastSource(data: InsertForecastSource): Promise<
 
 export async function updateForecastSource(
   id: string,
-  data: Partial<Pick<ForecastSource, "url" | "title" | "reliabilityTier" | "retrievedAt" | "summary">>
+  data: Partial<Pick<ForecastSource, "url" | "title" | "reliabilityTier" | "accessedDate" | "verbatimQuote" | "sourceType">>
 ): Promise<ForecastSource> {
   const [updated] = await db
     .update(forecastSources)
