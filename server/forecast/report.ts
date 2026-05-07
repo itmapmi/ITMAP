@@ -144,8 +144,12 @@ async function generateSectionWithRetry(
 // ── Section generators ────────────────────────────────────────────────────────
 
 const SYSTEM_BASE = `You are a senior market research analyst writing a formal forecast report for enterprise executives.
-Write clear, direct prose in the third person. When citing a specific assumption, reference its ID tag exactly as given (e.g. [3f9a12bc]) — these tags are stable identifiers that readers can cross-reference in the Assumptions Register.
-Do NOT invent numbers — use only the data provided in the user message. Produce 2-4 paragraphs in markdown (no headings, just paragraphs).`;
+Write clear, direct prose in the third person. Produce 2-4 paragraphs in markdown (no headings, just paragraphs).
+
+TRACEABILITY RULE (mandatory): Every currency amount (e.g. $15.2B) and every percentage (e.g. +12.5%) you state MUST be accompanied in the same sentence by the assumption ID tag that produced it, e.g. "[3f9a12bc] drives a $15.2B base-case estimate" or "growth of +12.5% is attributed to [3f9a12bc]". Do NOT write a number without an assumption ID tag in the same sentence. The only exception is calendar year references (e.g. "by 2029", "in 2024").
+
+Assumption ID tags are exactly 8 hex characters inside square brackets, e.g. [3f9a12bc]. Use only the IDs provided in the user message — never invent tags.
+Do NOT invent numbers — use only the data provided in the user message.`;
 
 async function genSection1ExecSummary(
   client: OpenAI,
@@ -545,9 +549,11 @@ export function qcInternalConsistency(engine: EngineOutput, tolerancePct = 0.1):
 /**
  * Schema completeness — hard gate checked before report generation.
  *
- * When `sections` is provided (post-generation), also runs traceability
- * validation: every assumption ID tag [xxxxxxxx] in LLM prose sections 1-6
- * must reference a real DB assumption UUID prefix.
+ * When `sections` is provided (post-generation), also validates:
+ * 1. Tag existence: every [xxxxxxxx] tag references a real DB assumption UUID prefix.
+ * 2. Number traceability: every sentence in sections 1-6 that contains a currency
+ *    amount ($X.YB/T/M) or percentage (±X.Y%) must also contain a [xxxxxxxx] tag.
+ *    This enforces the "every number is traceable" requirement.
  */
 export function qcSchemaCompleteness(forecast: ForecastFull, sections?: ReportSection[]): boolean {
   if (!forecast.title) return false;
@@ -557,14 +563,18 @@ export function qcSchemaCompleteness(forecast: ForecastFull, sections?: ReportSe
     return false;
   }
 
-  // Traceability: every assumption ID tag referenced in prose must exist in DB
   if (sections && sections.length > 0) {
+    // 1. Tag validity: referenced tags must exist in DB
     const validPrefixes = new Set(forecast.assumptions.map(a => a.id.slice(0, 8)));
     for (const s of sections.filter(s => s.id >= 1 && s.id <= 6)) {
       for (const tag of (s.content.match(/\[([a-z0-9]{8})\]/g) ?? [])) {
         if (!validPrefixes.has(tag.slice(1, 9))) return false;
       }
     }
+
+    // 2. Number traceability: every sentence with a numeric figure must have a tag
+    const r = qcNumberTraceability(sections);
+    if (!r.passed) return false;
   }
   return true;
 }
@@ -632,6 +642,61 @@ function qcProseNumbers(
   }
 
   return { passed: failingSections.length === 0, failingSections };
+}
+
+/**
+ * Number traceability — the core "every number is traceable" gate.
+ *
+ * For each sentence in sections 1-6 that contains a traceable numeric figure
+ * (a currency amount with a B/M/T suffix, or a percentage), checks that the
+ * sentence also contains an assumption ID tag [xxxxxxxx].
+ *
+ * Sentences that contain ONLY year references (e.g. "by 2029") are excluded.
+ *
+ * Returns { passed, failingSections, untracedSentences } where untracedSentences
+ * is a sample of the offending text for use in retry prompts / error messages.
+ */
+function qcNumberTraceability(
+  sections: ReportSection[]
+): { passed: boolean; failingSections: number[]; untracedSentences: string[] } {
+  // Patterns that require traceability
+  const NUM_PAT = /\$[\d,]+\.?\d*[BMT]|[+-]?\d+\.?\d*%/;
+  const TAG_PAT = /\[[a-z0-9]{8}\]/;
+  // Year references we explicitly allow without a tag (e.g. "by 2029")
+  const YEAR_ONLY_PAT = /^(?:\s*(?:by|in|through|from|to|until|since)?\s*\b(?:19|20)\d{2}\b[\s,.]?)*$/;
+
+  const failingSections: number[] = [];
+  const untracedSentences: string[] = [];
+
+  for (const s of sections.filter(sec => sec.id >= 1 && sec.id <= 6)) {
+    // Split on sentence-ending punctuation or newlines
+    const sentences = s.content.split(/(?<=[.!?\n])\s+/);
+    let sectionFailed = false;
+
+    for (const sent of sentences) {
+      const trimmed = sent.trim();
+      if (!trimmed) continue;
+      if (!NUM_PAT.test(trimmed)) continue; // no traceable number — skip
+
+      // Sentence has a number. Check if it's purely a year reference.
+      const numberlessYears = trimmed.replace(/\b(?:19|20)\d{2}\b/g, "").trim();
+      if (!NUM_PAT.test(numberlessYears)) continue; // only years remain — allowed
+
+      // Sentence has a real traceable figure. It MUST also have a tag.
+      if (!TAG_PAT.test(trimmed)) {
+        sectionFailed = true;
+        if (untracedSentences.length < 5) {
+          untracedSentences.push(`[section ${s.id}] ${trimmed.slice(0, 120)}`);
+        }
+      }
+    }
+
+    if (sectionFailed && !failingSections.includes(s.id)) {
+      failingSections.push(s.id);
+    }
+  }
+
+  return { passed: failingSections.length === 0, failingSections, untracedSentences };
 }
 
 /**
@@ -785,20 +850,25 @@ export async function generateReport(
     sections.push({ id: meta.id, title: meta.title, content });
   }
 
-  // ── QC: traceability + prose-number consistency + narrative coherence ────────
-  // All three are blocking gates; targeted retry regenerates only failing sections.
+  // ── QC: four blocking gates — targeted retry regenerates only failing sections ─
+  // 1. qcNumberTraceability — every prose sentence with a $ or % has an ID tag
+  // 2. qcTraceabilityCheck  — every ID tag references a real DB assumption prefix
+  // 3. qcProseNumbers       — prose currency figures are within engine output range
+  // 4. qcNarrativeCoherence — no numerical contradictions; top driver mentioned
   onProgress(0, "Running QC checks…");
 
+  const numTrace   = qcNumberTraceability(sections);
   const traceResult  = qcTraceabilityCheck(sections, forecast.assumptions);
   const proseResult  = qcProseNumbers(sections, engine);
   const ncResult     = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-  const qcFailed = !traceResult.passed || !proseResult.passed || !ncResult.coherent;
+  const qcFailed = !numTrace.passed || !traceResult.passed || !proseResult.passed || !ncResult.coherent;
 
   if (qcFailed) {
     // Collect exact failing sections from all QC passes — targeted retry, no blind 1+4 override
     const failingIds = [
       ...new Set([
+        ...numTrace.failingSections,
         ...traceResult.failingSections,
         ...proseResult.failingSections,
         ...ncResult.failingSections,
@@ -817,22 +887,30 @@ export async function generateReport(
       if (idx >= 0) sections[idx] = { id, title: meta.title, content: newContent };
     }
 
-    // Re-run all three QC checks against the regenerated sections
+    // Re-run all four QC checks against the regenerated sections
+    const numTrace2    = qcNumberTraceability(sections);
     const traceResult2 = qcTraceabilityCheck(sections, forecast.assumptions);
     const proseResult2 = qcProseNumbers(sections, engine);
     const ncResult2    = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-    if (!traceResult2.passed || !proseResult2.passed || !ncResult2.coherent) {
+    if (!numTrace2.passed || !traceResult2.passed || !proseResult2.passed || !ncResult2.coherent) {
       const issues: string[] = [];
+      if (!numTrace2.passed) {
+        issues.push(
+          `Number traceability: ${numTrace2.untracedSentences.length} sentence(s) contain ` +
+          `numeric figures without adjacent assumption ID tags — ` +
+          numTrace2.untracedSentences.slice(0, 2).join("; ")
+        );
+      }
       if (!traceResult2.passed) {
         issues.push(
-          `Traceability: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
+          `Tag validity: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
           `in sections ${traceResult2.failingSections.join(", ")}`
         );
       }
       if (!proseResult2.passed) {
         issues.push(
-          `Prose-number consistency: sections ${proseResult2.failingSections.join(", ")} ` +
+          `Prose-number range: sections ${proseResult2.failingSections.join(", ")} ` +
           `contain figures outside the engine output range`
         );
       }
@@ -849,7 +927,7 @@ export async function generateReport(
   // All QC checks passed (or passed after targeted retry)
   const finalInternalConsistency =
     qcInternalConsistency(engine) &&
-    qcProseNumbers(sections, engine).passed; // prose-number consistency is part of "internal consistency"
+    qcProseNumbers(sections, engine).passed; // prose-number range is part of "internal consistency"
 
   return {
     sections,
