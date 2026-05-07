@@ -61,13 +61,19 @@ function buildBriefFromFull(full: ForecastFull): DebateBrief {
         unit: string | null;
       };
       const matched = full.assumptions.find(a => a.id === c.contestedAssumptionId);
-      const fallback = matched ? Number(matched.currentValue ?? matched.value ?? 0) : 0;
+      // Always anchor to the assumption's current value so user overrides (PATCH /assumptions/:id)
+      // and re-debate convergence values are reflected in all three scenario paths.
+      // Bull/bear are preserved as additive spreads from the original crux base.
+      const currentVal = matched ? Number(matched.currentValue ?? matched.value ?? 0) : 0;
+      const originalBase = sv.baseValue ?? currentVal;
+      const bullSpread = (sv.bullValue ?? originalBase) - originalBase;
+      const bearSpread = (sv.bearValue ?? originalBase) - originalBase;
       return {
         cruxId: c.id,
         assumptionId: c.contestedAssumptionId!,
-        bullValue: sv.bullValue ?? fallback,
-        baseValue: sv.baseValue ?? fallback,
-        bearValue: sv.bearValue ?? fallback,
+        baseValue: currentVal,
+        bullValue: currentVal + bullSpread,
+        bearValue: currentVal + bearSpread,
       };
     });
 

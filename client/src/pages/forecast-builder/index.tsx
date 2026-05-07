@@ -15,6 +15,7 @@ import {
   Clock,
   BarChart3,
   Trash2,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +56,7 @@ type ForecastRow = {
   createdAt: string;
   updatedAt: string;
   versionNumber: number;
+  auditEventCount: number;
 };
 
 const STATUS_CONFIG: Record<ForecastStatus, { label: string; cls: string; Icon: any }> = {
@@ -195,7 +197,7 @@ export default function ForecastBuilderPage() {
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <StatusBadge status={forecast.status} />
                       {forecast.confidenceBand && (
                         <span className="text-xs text-slate-500 capitalize">{forecast.confidenceBand}</span>
@@ -203,6 +205,12 @@ export default function ForecastBuilderPage() {
                       <span className="text-[10px] text-slate-600 bg-slate-800/60 border border-white/5 px-1.5 py-0.5 rounded font-mono">
                         v{forecast.versionNumber + 1}
                       </span>
+                      {forecast.auditEventCount > 0 && (
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1 bg-slate-800/40 border border-white/5 px-1.5 py-0.5 rounded">
+                          <BookOpen className="h-2.5 w-2.5" />
+                          {forecast.auditEventCount} audit event{forecast.auditEventCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-base font-semibold text-white truncate mb-1">
                       {forecast.title}

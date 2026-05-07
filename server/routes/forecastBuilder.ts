@@ -831,11 +831,14 @@ export function registerForecastBuilderRoutes(app: Express): void {
 
         // Note: sourceType is ALWAYS forced to "user_provided" server-side.
         // Clients cannot forge AI-generated or system source records via this endpoint.
+        // fileContent: optional uploaded document text (up to 50,000 chars); stored as verbatimQuote
+        //   for text files. Binary files should send a metadata string here.
         const bodySchema = z.object({
           url: z.string().max(2048).optional().or(z.literal("")),
           title: z.string().max(500).optional(),
           reliabilityTier: z.number().int().min(1).max(3).default(2),
-          verbatimQuote: z.string().max(2000).optional(),
+          verbatimQuote: z.string().max(50_000).optional(),
+          fileContent: z.string().max(50_000).optional(),
           assumptionId: z.string().uuid().optional().nullable(),
         });
         const body = bodySchema.safeParse(req.body);
@@ -856,6 +859,11 @@ export function registerForecastBuilderRoutes(app: Express): void {
           }
         }
 
+        // fileContent (uploaded document text) is used as verbatimQuote if no explicit quote
+        const effectiveVerbatimQuote = body.data.verbatimQuote?.trim() ||
+          (body.data.fileContent ? body.data.fileContent.slice(0, 5000).trim() : null) ||
+          null;
+
         const source = await createForecastSource({
           forecastId: req.params.id,
           assumptionId: body.data.assumptionId ?? null,
@@ -863,7 +871,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
           url: body.data.url || null,
           title: body.data.title ?? null,
           reliabilityTier: body.data.reliabilityTier,
-          verbatimQuote: body.data.verbatimQuote ?? null,
+          verbatimQuote: effectiveVerbatimQuote,
           accessedDate: null,
         });
 
@@ -945,17 +953,23 @@ export function registerForecastBuilderRoutes(app: Express): void {
         try {
           const resolved = await dns.lookup(hostname);
           const ip = resolved.address;
-          // Block loopback, private, link-local, cloud metadata ranges
-          if (
+          // Block loopback, private, link-local, cloud metadata ranges (IPv4 + IPv6)
+          const isPrivate =
+            // IPv4 private/reserved
             /^127\./.test(ip) ||
-            ip === "::1" ||
             /^10\./.test(ip) ||
             /^192\.168\./.test(ip) ||
             /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
             /^169\.254\./.test(ip) ||
             ip === "0.0.0.0" ||
-            ip === "::ffff:127.0.0.1"
-          ) {
+            // IPv6 loopback, link-local, unique-local, IPv4-mapped private
+            ip === "::1" ||
+            /^fe80:/i.test(ip) ||      // link-local
+            /^fc0[0-9a-f]:/i.test(ip) || // unique-local (fc00::/7)
+            /^fd[0-9a-f]{2}:/i.test(ip) || // unique-local (fd00::/8)
+            ip === "::" ||
+            /^::ffff:(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/i.test(ip);
+          if (isPrivate) {
             return res.status(403).json({ error: "URL resolves to a private/internal address" });
           }
         } catch {

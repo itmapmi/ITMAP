@@ -42,16 +42,36 @@ export async function getForecast(id: string): Promise<Forecast | undefined> {
   return row;
 }
 
-export async function listForecasts(): Promise<Forecast[]> {
-  return db.select().from(forecasts).orderBy(desc(forecasts.createdAt));
+export type ForecastWithStats = Forecast & { auditEventCount: number };
+
+export async function listForecasts(): Promise<ForecastWithStats[]> {
+  const rows = await db.select().from(forecasts).orderBy(desc(forecasts.createdAt));
+  if (!rows.length) return [];
+  const ids = rows.map(r => r.id);
+  const counts = await db
+    .select({ forecastId: forecastAuditLog.forecastId, count: sql<number>`count(*)::int` })
+    .from(forecastAuditLog)
+    .where(inArray(forecastAuditLog.forecastId, ids))
+    .groupBy(forecastAuditLog.forecastId);
+  const countMap = Object.fromEntries(counts.map(c => [c.forecastId, c.count]));
+  return rows.map(r => ({ ...r, auditEventCount: countMap[r.id] ?? 0 }));
 }
 
-export async function listForecastsForUser(userId: string): Promise<Forecast[]> {
-  return db
+export async function listForecastsForUser(userId: string): Promise<ForecastWithStats[]> {
+  const rows = await db
     .select()
     .from(forecasts)
     .where(eq(forecasts.createdBy, userId))
     .orderBy(desc(forecasts.createdAt));
+  if (!rows.length) return [];
+  const ids = rows.map(r => r.id);
+  const counts = await db
+    .select({ forecastId: forecastAuditLog.forecastId, count: sql<number>`count(*)::int` })
+    .from(forecastAuditLog)
+    .where(inArray(forecastAuditLog.forecastId, ids))
+    .groupBy(forecastAuditLog.forecastId);
+  const countMap = Object.fromEntries(counts.map(c => [c.forecastId, c.count]));
+  return rows.map(r => ({ ...r, auditEventCount: countMap[r.id] ?? 0 }));
 }
 
 export async function updateForecast(

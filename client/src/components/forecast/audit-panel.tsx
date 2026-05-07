@@ -374,7 +374,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [inputMode, setInputMode] = useState<"url" | "file">("url");
-  const [form, setForm] = useState({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
+  const [form, setForm] = useState({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "", fileContent: "" });
   const [urlMetaFetching, setUrlMetaFetching] = useState(false);
 
   async function fetchUrlMeta(url: string) {
@@ -407,7 +407,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
       qc.invalidateQueries({ queryKey });
       toast({ title: "Source added" });
       setShowAdd(false);
-      setForm({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
+      setForm({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "", fileContent: "" });
     },
     onError: (e: Error) => toast({ title: "Failed to add source", description: e.message, variant: "destructive" }),
   });
@@ -506,12 +506,13 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
                     if (isText) {
                       const reader = new FileReader();
                       reader.onload = ev => {
-                        const text = (ev.target?.result as string ?? "").slice(0, 1500);
+                        const text = (ev.target?.result as string ?? "").slice(0, 50_000);
                         setForm(f => ({
                           ...f,
                           title: f.title || file.name,
                           url: "",
-                          verbatimQuote: f.verbatimQuote || text,
+                          verbatimQuote: "",
+                          fileContent: text,
                         }));
                       };
                       reader.readAsText(file);
@@ -520,7 +521,8 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
                         ...f,
                         title: f.title || file.name,
                         url: "",
-                        verbatimQuote: f.verbatimQuote || `Attached: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+                        verbatimQuote: "",
+                        fileContent: `Document attached: ${file.name} (${(file.size / 1024).toFixed(1)} KB, ${file.type || "binary"})`,
                       }));
                     }
                   }} />
@@ -548,7 +550,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
             <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-400" onClick={() => {
               setShowAdd(false);
               setInputMode("url");
-              setForm({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
+              setForm({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "", fileContent: "" });
             }}>Cancel</Button>
           </div>
         </div>
