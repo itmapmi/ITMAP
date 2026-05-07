@@ -1029,7 +1029,11 @@ export function ForecastReportContent({ id }: { id: string }) {
                     title="Click to explore assumptions driving this figure"
                     onClick={onCardNumberClick}
                   >{fmt(rpt.engineSummary.baseTotal, currency)}</button>
-                  <div className="text-xs text-cyan-400 mt-1">{fmtPct(rpt.engineSummary.baseCagr)} CAGR</div>
+                  <button
+                    className="text-xs text-cyan-400 mt-1 underline decoration-dotted decoration-cyan-400/40 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+                    title="Click to explore assumptions driving this figure"
+                    onClick={onCardNumberClick}
+                  >{fmtPct(rpt.engineSummary.baseCagr)} CAGR</button>
                 </div>
                 <div className="bg-slate-800/60 border border-emerald-500/10 rounded-xl p-4">
                   <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">

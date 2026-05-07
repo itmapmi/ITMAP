@@ -850,6 +850,16 @@ export function registerForecastBuilderRoutes(app: Express): void {
           return res.status(400).json({ error: "At least one of url or title is required" });
         }
 
+        // Defense-in-depth: enforce http/https scheme on stored URLs.
+        // This is separate from the SSRF check on url-meta; it ensures no
+        // javascript:, data:, file:, or other non-web schemes are persisted.
+        if (body.data.url) {
+          const parsedUrl = (() => { try { return new URL(body.data.url); } catch { return null; } })();
+          if (!parsedUrl || !["http:", "https:"].includes(parsedUrl.protocol)) {
+            return res.status(400).json({ error: "URL must use http or https scheme" });
+          }
+        }
+
         // Validate assumptionId ownership — must belong to this forecast
         if (body.data.assumptionId) {
           const assumptions = await getForecastAssumptions(req.params.id);
