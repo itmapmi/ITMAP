@@ -6,16 +6,22 @@ import OpenAI from "openai";
 export const answerEntrySchema = z.object({
   questionId: z.string(),
   question: z.string(),
-  cluster: z.enum(["purpose", "methodology", "drivers", "output"]),
+  cluster: z.enum(["boundary", "purpose", "methodology", "drivers", "output"]),
   answer: z.string(),
   skipped: z.boolean(),
 });
 
 export type AnswerEntry = z.infer<typeof answerEntrySchema>;
 
-export type QuestionCluster = "purpose" | "methodology" | "drivers" | "output";
+export type QuestionCluster = "boundary" | "purpose" | "methodology" | "drivers" | "output";
 
 // ── Question bank ──────────────────────────────────────────────────────────
+// Five clusters (2–4 questions each):
+//   boundary     — validate and sharpen the AI-extracted boundary
+//   purpose      — strategic context for the forecast
+//   methodology  — sizing approach and base-year anchor
+//   drivers      — growth forces and discontinuities
+//   output       — segmentation, scenarios, source requirements
 
 interface QuestionTemplate {
   id: string;
@@ -23,7 +29,7 @@ interface QuestionTemplate {
   text: string;
   options?: string[];
   allowFreeText: boolean;
-  expressDefault: string;
+  expressDefault: string;  // applied in assembleBrief for unasked express questions
   expressIncluded: boolean;
   condition?: (answers: AnswerEntry[]) => boolean;
 }
@@ -44,6 +50,45 @@ const MAX_QUESTIONS_FULL = 12;
 const MAX_QUESTIONS_EXPRESS = 5;
 
 const QUESTION_BANK: QuestionTemplate[] = [
+  // ── Cluster 1: boundary ─────────────────────────────────────────────────
+  {
+    id: "boundary-1",
+    cluster: "boundary",
+    text: "Looking at the market scope I extracted — are there any key segments that should be included but aren't, or segments I've included that should be out of scope?",
+    allowFreeText: true,
+    expressDefault: "The extracted boundary looks correct.",
+    expressIncluded: true,
+  },
+  {
+    id: "boundary-2",
+    cluster: "boundary",
+    text: "Is there a specific customer profile or deal size this market should focus on? (e.g. enterprise only, SMB, public sector, or all segments)",
+    options: [
+      "All segments (no filter)",
+      "Enterprise / large accounts only",
+      "SMB / mid-market",
+      "Public sector / government",
+    ],
+    allowFreeText: true,
+    expressDefault: "All segments (no filter)",
+    expressIncluded: false,
+  },
+  {
+    id: "boundary-3",
+    cluster: "boundary",
+    text: "Should adjacent or enabling technology layers be included in this forecast? (e.g. implementation services, hardware, complementary SaaS)",
+    options: [
+      "No — software / platform revenue only",
+      "Yes — include associated services revenue",
+      "Yes — include hardware where bundled",
+      "Depends — I'll define the boundaries in the scope",
+    ],
+    allowFreeText: true,
+    expressDefault: "No — software / platform revenue only",
+    expressIncluded: false,
+  },
+
+  // ── Cluster 2: purpose ──────────────────────────────────────────────────
   {
     id: "purpose-1",
     cluster: "purpose",
@@ -62,7 +107,7 @@ const QUESTION_BANK: QuestionTemplate[] = [
   {
     id: "purpose-2",
     cluster: "purpose",
-    text: "What confidence level do you need? Directional suits strategy decks. Decision-grade is for investment cases. M&A-grade requires primary data and carries higher cost.",
+    text: "What confidence level do you need? Directional suits strategy decks. Decision-grade is for investment cases. M&A-grade requires primary data.",
     options: [
       "Directional (±30% — fast, good for strategy)",
       "Decision-grade (±15% — solid investment case)",
@@ -70,8 +115,10 @@ const QUESTION_BANK: QuestionTemplate[] = [
     ],
     allowFreeText: false,
     expressDefault: "Directional (±30% — fast, good for strategy)",
-    expressIncluded: true,
+    expressIncluded: false,
   },
+
+  // ── Cluster 3: methodology ──────────────────────────────────────────────
   {
     id: "method-1",
     cluster: "methodology",
@@ -99,6 +146,8 @@ const QUESTION_BANK: QuestionTemplate[] = [
     expressDefault: "No — start from scratch",
     expressIncluded: false,
   },
+
+  // ── Cluster 4: drivers ──────────────────────────────────────────────────
   {
     id: "drivers-1",
     cluster: "drivers",
@@ -134,6 +183,8 @@ const QUESTION_BANK: QuestionTemplate[] = [
           (a.answer.toLowerCase().includes("significant") || a.answer.toLowerCase().includes("yes — significant"))
       ),
   },
+
+  // ── Cluster 5: output ───────────────────────────────────────────────────
   {
     id: "output-1",
     cluster: "output",
@@ -181,11 +232,12 @@ const QUESTION_BANK: QuestionTemplate[] = [
 
 function getProgressMessage(answers: AnswerEntry[], _mode: "express" | "full"): string {
   const clusters = new Set(answers.filter((a) => !a.skipped).map((a) => a.cluster));
-  const all: QuestionCluster[] = ["purpose", "methodology", "drivers", "output"];
+  const all: QuestionCluster[] = ["boundary", "purpose", "methodology", "drivers", "output"];
   const covered = all.filter((c) => clusters.has(c));
   const remaining = all.filter((c) => !clusters.has(c));
 
   const LABELS: Record<QuestionCluster, string> = {
+    boundary: "scope validation",
     purpose: "strategic context",
     methodology: "methodology",
     drivers: "market dynamics",
@@ -197,22 +249,27 @@ function getProgressMessage(answers: AnswerEntry[], _mode: "express" | "full"): 
 
   const coveredStr = covered.map((c) => LABELS[c]).join(", ");
   const remainingStr = remaining.map((c) => LABELS[c]).join(" and ");
-
   return `I have your ${coveredStr} — ${remaining.length === 1 ? "one more area" : `${remaining.length} more areas`} to cover: ${remainingStr}.`;
 }
 
 // ── LLM adaptive selector (full mode only) ────────────────────────────────
 //
-// Called once per question turn in full mode. Uses gpt-4o-mini to decide
-// which of the eligible remaining questions is most valuable to ask next.
-// Hard cap MAX_QUESTIONS_FULL prevents runaway loops.
-// Falls back to the first eligible question on any error.
+// After each answer in full mode, calls gpt-4o-mini to decide the best next
+// question from the eligible pool. The LLM may also signal the interview is
+// complete by returning `{ done: true }` — this allows early termination when
+// all important areas have already been addressed by earlier answers.
+
+const adaptiveSelectorResponseSchema = z.union([
+  z.object({ done: z.literal(true) }),
+  z.object({ done: z.literal(false).optional(), nextQuestionId: z.string() }),
+]);
 
 async function selectNextQuestionAdaptive(
   answers: AnswerEntry[],
   eligible: QuestionTemplate[]
-): Promise<string> {
-  if (eligible.length <= 1) return eligible[0]?.id ?? "";
+): Promise<string | "DONE"> {
+  if (eligible.length === 0) return "DONE";
+  if (eligible.length === 1) return eligible[0].id;
 
   const client = new OpenAI({
     apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -220,10 +277,16 @@ async function selectNextQuestionAdaptive(
   });
 
   const systemPrompt = `You are managing a concise market forecast interview.
-Select the SINGLE most valuable next question given what the user has already told you.
-If an earlier answer has already covered a topic, skip the overlapping question.
-Respond with ONLY valid JSON: { "nextQuestionId": string }
-nextQuestionId must be one of the eligible IDs provided.`;
+Review the answers given so far and decide what to do next.
+
+Option A — If the remaining questions would add no new information beyond what the user
+has already provided, return: { "done": true }
+
+Option B — Otherwise, select the SINGLE most valuable next question from the eligible
+list and return: { "nextQuestionId": "<id>" }
+
+Return ONLY valid JSON matching one of these two shapes. nextQuestionId must be one
+of the eligible IDs provided.`;
 
   const userPrompt = JSON.stringify({
     answeredSoFar: answers.map((a) => ({
@@ -247,16 +310,20 @@ nextQuestionId must be one of the eligible IDs provided.`;
       ],
       response_format: { type: "json_object" },
       temperature: 0,
-      max_tokens: 60,
+      max_tokens: 80,
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) return eligible[0].id;
 
-    const parsed = JSON.parse(content) as { nextQuestionId?: unknown };
-    const selectedId = parsed.nextQuestionId;
-    if (typeof selectedId === "string" && eligible.some((q) => q.id === selectedId)) {
-      return selectedId;
+    const raw = JSON.parse(content);
+    const parsed = adaptiveSelectorResponseSchema.safeParse(raw);
+    if (!parsed.success) return eligible[0].id;
+
+    if (parsed.data.done === true) return "DONE";
+    if ("nextQuestionId" in parsed.data) {
+      const id = parsed.data.nextQuestionId;
+      if (eligible.some((q) => q.id === id)) return id;
     }
     return eligible[0].id;
   } catch {
@@ -273,7 +340,6 @@ export async function getNextQuestion(
   const answeredIds = new Set(answers.map((a) => a.questionId));
   const maxQ = mode === "express" ? MAX_QUESTIONS_EXPRESS : MAX_QUESTIONS_FULL;
 
-  // Hard cap
   if (answers.length >= maxQ) return null;
 
   const eligible = QUESTION_BANK.filter((q) => {
@@ -285,17 +351,17 @@ export async function getNextQuestion(
 
   if (eligible.length === 0) return null;
 
-  // Adaptive LLM selection in full mode
-  const nextId =
-    mode === "full" && eligible.length > 1
-      ? await selectNextQuestionAdaptive(answers, eligible)
-      : eligible[0].id;
+  let nextId: string | "DONE";
+  if (mode === "full" && eligible.length > 1) {
+    nextId = await selectNextQuestionAdaptive(answers, eligible);
+  } else {
+    nextId = eligible[0].id;
+  }
+
+  // LLM signalled interview is complete
+  if (nextId === "DONE") return null;
 
   const next = eligible.find((q) => q.id === nextId) ?? eligible[0];
-
-  const totalQuestions = mode === "express"
-    ? QUESTION_BANK.filter((q) => q.expressIncluded).length
-    : Math.min(eligible.length + answers.length, 10); // estimate
 
   const estimatedRemaining = Math.max(0, eligible.length - 1);
 
@@ -317,15 +383,18 @@ export function getDefaultForQuestion(questionId: string): { defaultAnswer: stri
   if (!q) return null;
 
   const rationales: Record<string, string> = {
+    "boundary-1": "I'll treat the extracted scope as accurate and proceed.",
+    "boundary-2": "I'll include all customer segments in the total addressable market.",
+    "boundary-3": "I'll track software and platform revenue only, excluding services and hardware.",
     "purpose-1": "I'll treat this as supporting internal planning, which uses the most balanced methodology.",
-    "purpose-2": "I'll target directional confidence (±30%), appropriate for most strategy work and faster to produce.",
+    "purpose-2": "I'll target directional confidence (±30%), appropriate for most strategy work.",
     "method-1": "I'll use a hybrid approach blending top-down macro sizing with bottom-up vendor triangulation.",
     "method-2": "I'll build the base year from scratch using available public data.",
     "drivers-1": "I'll propose the most commonly cited growth drivers for this market type based on the boundary.",
     "drivers-2": "I'll assume moderate discontinuity risk and include one adverse scenario pathway.",
     "drivers-3": "I'll identify adjacent markets automatically from the boundary definition.",
     "output-1": "I'll use the most natural segmentation for how participants in this market typically report.",
-    "output-2": "I'll produce bull, base, and bear scenarios — maximum flexibility at no extra cost.",
+    "output-2": "I'll produce bull, base, and bear scenarios.",
     "output-3": "I'll use any credible public sources, citing each one in the audit trail.",
   };
 
@@ -340,13 +409,16 @@ export function getSkipConsequence(questionId: string): { consequence: string; d
   if (!q) return null;
 
   const consequences: Record<string, string> = {
-    "purpose-1": "Without strategic context, I'll calibrate for general-purpose analysis rather than a specific decision.",
+    "boundary-1": "I'll proceed with the AI-extracted boundary as-is.",
+    "boundary-2": "I'll size the total market across all customer segments without restriction.",
+    "boundary-3": "I'll focus on core software/platform revenue and exclude adjacent layers.",
+    "purpose-1": "Without strategic context, I'll calibrate for general-purpose analysis.",
     "purpose-2": "I'll target directional confidence. Return to this if you need investment-grade precision.",
-    "method-1": "I'll choose the methodology best suited to the available data — likely a hybrid approach.",
+    "method-1": "I'll choose the methodology best suited to the available data.",
     "method-2": "I'll build the base year estimate entirely from public sources.",
     "drivers-1": "I'll propose drivers myself, but your input here makes them significantly more defensible.",
     "drivers-2": "I'll model a standard bull/base/bear spread without a specific discontinuity scenario.",
-    "drivers-3": "I'll note adjacent markets in the brief without specifically weighting them as indicators.",
+    "drivers-3": "I'll note adjacent markets in the brief without specifically weighting them.",
     "output-1": "I'll use the segmentation I judge most analytically useful for this market type.",
     "output-2": "I'll produce three scenarios (bull/base/bear).",
     "output-3": "I'll use any credible public source, citing each in the audit log.",
@@ -360,68 +432,76 @@ export function getSkipConsequence(questionId: string): { consequence: string; d
 
 export interface AssembledBrief {
   interviewMode: "express" | "full";
-  purpose: string | null;
-  confidenceLevel: string | null;
+  purpose: string;
+  confidenceLevel: string;
   audience: string | null;
-  methodologyPreference: string | null;
+  methodologyPreference: string;
   baseYearAnchor: string | null;
   drivers: string[];
   discontinuities: string[];
   adjacentMarkets: string[];
-  outputFormat: string | null;
-  sourceRequirements: string | null;
+  outputFormat: string;
+  sourceRequirements: string;
   interviewTranscript: { question: string; answer: string }[];
 }
 
-export function assembleBrief(answers: AnswerEntry[], mode: "express" | "full"): AssembledBrief {
-  const get = (id: string) => answers.find((a) => a.questionId === id)?.answer ?? null;
-  const wasSkipped = (id: string) => answers.find((a) => a.questionId === id)?.skipped ?? false;
+// Helper: get answered value or fall back to the question's expressDefault.
+// This ensures every brief field is populated regardless of interview mode.
+function resolve(answers: AnswerEntry[], questionId: string): string {
+  const entry = answers.find((a) => a.questionId === questionId);
+  if (entry) return entry.answer;
+  const q = QUESTION_BANK.find((q) => q.id === questionId);
+  return q?.expressDefault ?? "";
+}
 
-  const confidenceRaw = get("purpose-2") ?? "";
-  let confidenceLevel: string | null = null;
-  if (confidenceRaw.toLowerCase().includes("directional")) confidenceLevel = "directional";
-  else if (confidenceRaw.toLowerCase().includes("decision")) confidenceLevel = "decision-grade";
+export function assembleBrief(answers: AnswerEntry[], mode: "express" | "full"): AssembledBrief {
+  // For every question not explicitly answered, resolve() returns the
+  // question's expressDefault — ensuring no field is ever null/empty.
+
+  const purposeRaw = resolve(answers, "purpose-1");
+  const confidenceRaw = resolve(answers, "purpose-2");
+  let confidenceLevel = "directional";
+  if (confidenceRaw.toLowerCase().includes("decision")) confidenceLevel = "decision-grade";
   else if (confidenceRaw.toLowerCase().includes("m&a") || confidenceRaw.toLowerCase().includes("8%"))
     confidenceLevel = "M&A-grade";
 
-  const methodRaw = get("method-1") ?? "";
-  let methodologyPreference: string | null = null;
+  const methodRaw = resolve(answers, "method-1");
+  let methodologyPreference = "hybrid";
   if (methodRaw.toLowerCase().includes("top-down")) methodologyPreference = "top-down";
   else if (methodRaw.toLowerCase().includes("bottom-up")) methodologyPreference = "bottom-up";
   else if (methodRaw.toLowerCase().includes("demand")) methodologyPreference = "demand-side";
-  else methodologyPreference = "hybrid";
 
-  const driversRaw = get("drivers-1") ?? "";
-  const drivers =
-    driversRaw && !wasSkipped("drivers-1")
-      ? driversRaw.split(/[,;\n•\-]+/).map((s) => s.trim()).filter(Boolean)
-      : [];
+  const driversRaw = resolve(answers, "drivers-1");
+  const drivers = driversRaw
+    ? driversRaw.split(/[,;\n•\-]+/).map((s) => s.trim()).filter(Boolean)
+    : [];
 
-  const discontRaw = get("drivers-2") ?? "";
-  const discontinuities = discontRaw && !wasSkipped("drivers-2") ? [discontRaw] : [];
+  const discontRaw = resolve(answers, "drivers-2");
+  const discontinuities = discontRaw ? [discontRaw] : [];
 
-  const adjRaw = get("drivers-3") ?? "";
-  const adjacentMarkets =
-    adjRaw && !wasSkipped("drivers-3")
-      ? adjRaw.split(/[,;\n•\-]+/).map((s) => s.trim()).filter(Boolean)
-      : [];
+  const adjRaw = answers.find((a) => a.questionId === "drivers-3")?.answer ?? "";
+  const adjacentMarkets = adjRaw
+    ? adjRaw.split(/[,;\n•\-]+/).map((s) => s.trim()).filter(Boolean)
+    : [];
 
-  const outputRaw = get("output-1");
-  const scenarioRaw = get("output-2");
-  const outputFormat = [outputRaw, scenarioRaw].filter(Boolean).join(" | ") || null;
+  const segmentationRaw = resolve(answers, "output-1");
+  const scenarioRaw = resolve(answers, "output-2");
+  const outputFormat = [segmentationRaw, scenarioRaw].filter(Boolean).join(" | ");
+
+  const sourceRaw = resolve(answers, "output-3");
 
   return {
     interviewMode: mode,
-    purpose: get("purpose-1"),
+    purpose: purposeRaw,
     confidenceLevel,
     audience: null,
     methodologyPreference,
-    baseYearAnchor: get("method-2"),
+    baseYearAnchor: answers.find((a) => a.questionId === "method-2")?.answer ?? null,
     drivers,
     discontinuities,
     adjacentMarkets,
     outputFormat,
-    sourceRequirements: get("output-3"),
+    sourceRequirements: sourceRaw,
     interviewTranscript: answers.map((a) => ({ question: a.question, answer: a.answer })),
   };
 }
