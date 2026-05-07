@@ -44,7 +44,7 @@ interface FeatureRow {
 }
 
 const FEATURE_BATCH_SCORING = 10;
-const FEATURE_BATCH_COMMENTARY = 5;
+const FEATURE_BATCH_COMMENTARY = 3;
 
 // ── Per-batch scoring call (scores only) ─────────────────────────────────
 

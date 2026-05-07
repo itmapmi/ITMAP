@@ -133,13 +133,13 @@ async function callAnthropic<T>(
 
   const response = await client.messages.create({
     model: config.model,
-    max_tokens: 16000,
+    max_tokens: 32000,
     system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });
 
   if (response.stop_reason === "max_tokens") {
-    console.warn(`[LLM] Anthropic response truncated (stop_reason=max_tokens) for model ${config.model}. The JSON will likely be incomplete.`);
+    throw new Error(`Anthropic response truncated at token limit for model ${config.model} — response JSON is incomplete. Retrying.`);
   }
 
   const block = response.content[0];
