@@ -172,7 +172,7 @@ function fmtPct(n: number): string {
 
 type PanelView =
   | { type: "assumption"; shortId: string }
-  | { type: "global"; highlightTopN?: number }
+  | { type: "global"; nearbyAssumptionIds?: string[]; highlightTopN?: number }
   | null;
 
 function renderInline(
@@ -244,8 +244,11 @@ function MarkdownContent({
 }: {
   content: string;
   onTagClick?: (id: string) => void;
-  onNumberClick?: () => void;
+  onNumberClick?: (nearbyIds: string[]) => void;
 }) {
+  // Extract assumption tag IDs referenced anywhere in this section's content
+  const nearbyIds = [...content.matchAll(/\[([A-Za-z0-9-]{4,16})\]/g)].map(m => m[1]);
+  const boundOnNumberClick = onNumberClick ? () => onNumberClick(nearbyIds) : undefined;
   const lines = content.split("\n");
   const elements: React.ReactElement[] = [];
   let key = 0;
@@ -302,7 +305,7 @@ function MarkdownContent({
     if (line.startsWith("> ")) {
       elements.push(
         <blockquote key={key++} className="border-l-2 border-slate-600 pl-4 text-sm text-slate-400 italic my-3">
-          {renderInline(line.slice(2), onTagClick, onNumberClick)}
+          {renderInline(line.slice(2), onTagClick, boundOnNumberClick)}
         </blockquote>
       );
       i++; continue;
@@ -310,7 +313,7 @@ function MarkdownContent({
 
     elements.push(
       <p key={key++} className="text-sm text-slate-300 leading-7 mb-3">
-        {renderInline(line, onTagClick, onNumberClick)}
+        {renderInline(line, onTagClick, boundOnNumberClick)}
       </p>
     );
     i++;
@@ -328,7 +331,7 @@ function SectionCard({
   isOpen: boolean;
   onToggle: () => void;
   onTagClick?: (id: string) => void;
-  onNumberClick?: () => void;
+  onNumberClick?: (nearbyIds: string[]) => void;
 }) {
   return (
     <div
@@ -721,8 +724,12 @@ export function ForecastReportContent({ id }: { id: string }) {
     setPanelView({ type: "assumption", shortId: rawId });
   }, []);
 
-  const handleNumberClick = useCallback(() => {
-    setPanelView({ type: "global", highlightTopN: 3 });
+  const handleNumberClick = useCallback((nearbyIds: string[]) => {
+    setPanelView({
+      type: "global",
+      nearbyAssumptionIds: nearbyIds.length > 0 ? nearbyIds : undefined,
+      highlightTopN: nearbyIds.length > 0 ? undefined : 3,
+    });
   }, []);
 
   const { data, isLoading, error } = useQuery<ReportData>({
@@ -831,6 +838,8 @@ export function ForecastReportContent({ id }: { id: string }) {
   }));
 
   const userOverrideCount = assumptions.filter(a => a.currentValueSource === "user_override").length;
+  // Monotonic version number: count of assumption_overridden audit events
+  const versionNumber = (auditLog ?? []).filter((e: AuditLogEntry) => e.eventType === "assumption_overridden").length;
 
   return (
     <>
@@ -848,6 +857,7 @@ export function ForecastReportContent({ id }: { id: string }) {
           queryKey={reportQueryKey}
           onClose={() => setPanelView(null)}
           onAssumptionSelect={(shortId) => setPanelView({ type: "assumption", shortId })}
+          nearbyAssumptionIds={panelView.type === "global" ? panelView.nearbyAssumptionIds : undefined}
           highlightTopN={panelView.type === "global" ? panelView.highlightTopN : undefined}
         />
       )}
@@ -867,7 +877,7 @@ export function ForecastReportContent({ id }: { id: string }) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[10px] text-slate-600 bg-slate-800/60 border border-white/5 px-1.5 py-1 rounded font-mono">
-              v{userOverrideCount + 1}
+              v{versionNumber + 1}
             </span>
             {userOverrideCount > 0 && (
               <span className="text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-2 py-1 rounded-full">

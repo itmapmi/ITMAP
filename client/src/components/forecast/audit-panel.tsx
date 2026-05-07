@@ -94,6 +94,7 @@ interface AuditPanelProps {
   queryKey: string[];
   onClose: () => void;
   onAssumptionSelect?: (shortId: string) => void;
+  nearbyAssumptionIds?: string[];
   highlightTopN?: number;
 }
 
@@ -360,6 +361,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
+  const [inputMode, setInputMode] = useState<"url" | "file">("url");
   const [form, setForm] = useState({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
 
   const linkedSources = assumptionId ? sources.filter(s => s.assumptionId === assumptionId) : [];
@@ -441,8 +443,45 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
           {assumptionId && (
             <p className="text-[10px] text-violet-400">This source will be linked to the current assumption.</p>
           )}
-          <input className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
-            placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+          <div className="flex rounded-md overflow-hidden border border-white/10 text-[10px]">
+            <button
+              className={`flex-1 py-1 transition-colors ${inputMode === "url" ? "bg-cyan-900/50 text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}
+              onClick={() => setInputMode("url")}>URL</button>
+            <button
+              className={`flex-1 py-1 transition-colors ${inputMode === "file" ? "bg-cyan-900/50 text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}
+              onClick={() => setInputMode("file")}>Upload file</button>
+          </div>
+          {inputMode === "url" ? (
+            <input className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
+              placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+          ) : (
+            <div>
+              <label className="block w-full cursor-pointer">
+                <span className="block w-full text-center text-xs text-slate-400 border border-dashed border-white/20 rounded px-2.5 py-3 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors">
+                  {form.title ? `📄 ${form.title}` : "Click to select a file (PDF, TXT, DOCX — max 500 KB)"}
+                </span>
+                <input type="file" accept=".pdf,.txt,.doc,.docx" className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 512_000) {
+                      toast({ title: "File too large", description: "Maximum file size is 500 KB.", variant: "destructive" });
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                      setForm(f => ({
+                        ...f,
+                        title: f.title || file.name,
+                        url: ev.target?.result as string ?? "",
+                        verbatimQuote: f.verbatimQuote || `Attached: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+                      }));
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+              </label>
+            </div>
+          )}
           <input className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/40"
             placeholder="Title / publication" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           <select className="w-full bg-slate-900 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500/40"
@@ -461,7 +500,11 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
               {addSource.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
               Save
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-400" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-400" onClick={() => {
+              setShowAdd(false);
+              setInputMode("url");
+              setForm({ url: "", title: "", reliabilityTier: 2, verbatimQuote: "" });
+            }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -751,9 +794,10 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
 // ── Global Overview tab ─────────────────────────────────────────────────────
 
-function GlobalOverviewTab({ assumptions, onAssumptionSelect, highlightTopN }: {
+function GlobalOverviewTab({ assumptions, onAssumptionSelect, nearbyAssumptionIds, highlightTopN }: {
   assumptions: AuditAssumption[];
   onAssumptionSelect?: (shortId: string) => void;
+  nearbyAssumptionIds?: string[];
   highlightTopN?: number;
 }) {
   const sorted = [...assumptions]
@@ -761,17 +805,28 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect, highlightTopN }: {
     .sort((a, b) => (a.sensitivityRank ?? 99) - (b.sensitivityRank ?? 99));
   const unranked = assumptions.filter(a => a.sensitivityRank == null);
 
+  // An assumption is "referenced here" if its short ID appears in the section content tags
+  const isReferenced = (a: AuditAssumption) =>
+    nearbyAssumptionIds != null &&
+    nearbyAssumptionIds.some(id => a.id.startsWith(id) || a.id.slice(0, id.length) === id);
+
   function AssumptionRow({ a, rank, isLikelyDriver }: { a: AuditAssumption; rank?: number; isLikelyDriver?: boolean }) {
     const isOverride = a.currentValueSource === "user_override";
+    const referenced = isReferenced(a);
     return (
       <button
         key={a.id}
-        className={`w-full flex items-center gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group ${isLikelyDriver ? "ring-1 ring-cyan-500/20 bg-cyan-950/10" : ""}`}
+        className={`w-full flex items-center gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group ${
+          referenced ? "ring-1 ring-violet-500/30 bg-violet-950/10" :
+          isLikelyDriver ? "ring-1 ring-cyan-500/20 bg-cyan-950/10" : ""
+        }`}
         onClick={() => onAssumptionSelect?.(a.id.slice(0, 8))}
         title="Open assumption detail"
       >
         <span className={`h-5 w-5 rounded-full flex items-center justify-center text-xs font-mono shrink-0 ${
-          isLikelyDriver
+          referenced
+            ? "bg-violet-950/60 border border-violet-500/30 text-violet-300"
+            : isLikelyDriver
             ? "bg-cyan-950/60 border border-cyan-500/30 text-cyan-300"
             : "bg-violet-950/60 border border-violet-500/20 text-violet-300"
         }`}>
@@ -780,7 +835,8 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect, highlightTopN }: {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <p className="text-xs text-white font-medium truncate group-hover:text-cyan-200 transition-colors">{a.description}</p>
-            {isLikelyDriver && <span className="shrink-0 text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-500/20 px-1 py-0.5 rounded">likely driver</span>}
+            {referenced && <span className="shrink-0 text-[10px] text-violet-400 bg-violet-950/40 border border-violet-500/20 px-1 py-0.5 rounded">referenced here</span>}
+            {!referenced && isLikelyDriver && <span className="shrink-0 text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-500/20 px-1 py-0.5 rounded">likely driver</span>}
             {isOverride && <span className="shrink-0 text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-1 py-0.5 rounded">override</span>}
           </div>
           <p className="text-xs text-slate-500">{a.currentValue ?? a.value} {a.unit ?? ""}</p>
@@ -792,7 +848,11 @@ function GlobalOverviewTab({ assumptions, onAssumptionSelect, highlightTopN }: {
 
   return (
     <div className="space-y-4">
-      {highlightTopN ? (
+      {nearbyAssumptionIds != null ? (
+        <p className="text-[10px] text-violet-400/80 bg-violet-950/20 border border-violet-500/10 rounded-lg px-2.5 py-2">
+          Showing assumptions referenced in this section. "Referenced here" assumptions are tagged in the text above.
+        </p>
+      ) : highlightTopN ? (
         <p className="text-[10px] text-cyan-400/80 bg-cyan-950/20 border border-cyan-500/10 rounded-lg px-2.5 py-2">
           Top {highlightTopN} assumptions by sensitivity rank are the most likely drivers of this figure. Click any to inspect.
         </p>
@@ -896,6 +956,7 @@ type GlobalTabId = (typeof GLOBAL_TABS)[number]["id"];
 export function AuditPanel({
   forecastId, mode = "assumption", assumption, allAssumptions = [], cruxes,
   sources, segments, auditLog = [], queryKey, onClose, onAssumptionSelect,
+  nearbyAssumptionIds,
   highlightTopN,
 }: AuditPanelProps) {
   const [assumptionTab, setAssumptionTab] = useState<AssumptionTabId>("composition");
@@ -989,7 +1050,7 @@ export function AuditPanel({
           </>
         ) : mode === "global" ? (
           <>
-            {globalTab === "overview" && <GlobalOverviewTab assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} highlightTopN={highlightTopN} />}
+            {globalTab === "overview" && <GlobalOverviewTab assumptions={allAssumptions} onAssumptionSelect={onAssumptionSelect} nearbyAssumptionIds={nearbyAssumptionIds} highlightTopN={highlightTopN} />}
             {globalTab === "sources" && <SourcesTab forecastId={forecastId} assumptionId={null} sources={sources} queryKey={queryKey} />}
             {globalTab === "diary" && <DiaryTab auditLog={auditLog} />}
           </>

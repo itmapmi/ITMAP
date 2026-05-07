@@ -19,7 +19,7 @@ import {
   createForecastSource,
   getForecastSource,
   deleteForecastSource,
-  getOverrideCountsForForecasts,
+  getForecastVersionNumbers,
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
@@ -113,8 +113,8 @@ export function registerForecastBuilderRoutes(app: Express): void {
       const rows = user?.role === "admin"
         ? await listForecasts()
         : await listForecastsForUser(user.id);
-      const overrideCounts = await getOverrideCountsForForecasts(rows.map(r => r.id));
-      res.json(rows.map(r => ({ ...r, overrideCount: overrideCounts[r.id] ?? 0 })));
+      const versionNumbers = await getForecastVersionNumbers(rows.map(r => r.id));
+      res.json(rows.map(r => ({ ...r, versionNumber: versionNumbers[r.id] ?? 0 })));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -181,8 +181,8 @@ export function registerForecastBuilderRoutes(app: Express): void {
   app.get("/api/admin/forecast-builder/forecasts", requireAdmin, async (_req: Request, res: Response) => {
     try {
       const rows = await listForecasts();
-      const overrideCounts = await getOverrideCountsForForecasts(rows.map(r => r.id));
-      res.json(rows.map(r => ({ ...r, overrideCount: overrideCounts[r.id] ?? 0 })));
+      const versionNumbers = await getForecastVersionNumbers(rows.map(r => r.id));
+      res.json(rows.map(r => ({ ...r, versionNumber: versionNumbers[r.id] ?? 0 })));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -863,6 +863,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
           reliabilityTier: body.data.reliabilityTier,
         });
 
+        await updateForecast(req.params.id, {});
         res.status(201).json(source);
       } catch (err: any) {
         res.status(500).json({ error: err.message });
@@ -893,6 +894,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
           sourceId: req.params.sourceId,
         });
 
+        await updateForecast(req.params.id, {});
         res.status(204).end();
       } catch (err: any) {
         res.status(500).json({ error: err.message });

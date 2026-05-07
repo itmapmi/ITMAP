@@ -337,20 +337,24 @@ export async function appendForecastAuditEntry(data: InsertForecastAuditLog): Pr
   return row;
 }
 
-export async function getOverrideCountsForForecasts(forecastIds: string[]): Promise<Record<string, number>> {
+// getForecastVersionNumbers counts assumption_overridden audit events per forecast.
+// This is monotonically increasing (never decreases after reverts) — suitable
+// for display as v1, v2, v3… version labels.
+// db:push was run to add forecast_sources.assumption_id — column is live.
+export async function getForecastVersionNumbers(forecastIds: string[]): Promise<Record<string, number>> {
   if (!forecastIds.length) return {};
   const rows = await db
     .select({
-      forecastId: forecastAssumptions.forecastId,
+      forecastId: forecastAuditLog.forecastId,
       cnt: sql<number>`count(*)::int`,
     })
-    .from(forecastAssumptions)
+    .from(forecastAuditLog)
     .where(
       and(
-        inArray(forecastAssumptions.forecastId, forecastIds),
-        eq(forecastAssumptions.currentValueSource, "user_override")
+        inArray(forecastAuditLog.forecastId, forecastIds),
+        eq(forecastAuditLog.eventType, "assumption_overridden")
       )
     )
-    .groupBy(forecastAssumptions.forecastId);
+    .groupBy(forecastAuditLog.forecastId);
   return Object.fromEntries(rows.map(r => [r.forecastId, Number(r.cnt ?? 0)]));
 }
