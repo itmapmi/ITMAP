@@ -65,10 +65,10 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+async function withRetry<T>(fn: (attempt: number) => Promise<T>, maxAttempts = 3): Promise<T> {
   let lastError: Error = new Error("Unknown error");
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try { return await fn(); } catch (err: any) {
+    try { return await fn(attempt); } catch (err: any) {
       lastError = err;
       if (attempt < maxAttempts - 1) await sleep(1500 * (attempt + 1));
     }
@@ -84,12 +84,25 @@ function strictParseJson(text: string): unknown {
   throw new Error("Consensus checker response was not valid JSON");
 }
 
+// Constrained retry suffix for consensus checker — appended when attempt > 0
+function consensusRetryHint(attempt: number): string {
+  if (attempt === 0) return "";
+  return `
+
+RETRY CORRECTION (attempt ${attempt + 1}/3):
+Your previous response was rejected. Each entry in "validations" MUST include:
+assumptionId (string matching input), consensusValidated (boolean),
+flag ("genuine_consensus"|"false_consensus"|"insufficient_evidence"|"scenario_required").
+Respond with ONLY the corrected JSON object — no markdown, no explanation.`;
+}
+
 // ── Consensus check call (gpt-4o-mini) ────────────────────────────────────
 
 async function checkConsensus(
   resolvedCruxes: ResolvedCrux[],
   openaiKey: string,
-  openaiBaseUrl: string | undefined
+  openaiBaseUrl: string | undefined,
+  attempt: number
 ): Promise<ValidationEntry[]> {
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
 
@@ -173,7 +186,7 @@ export async function runPhase35(
 
   if (toValidate.length > 0) {
     // Propagate failure to runner — runner's catch block will emit phase_warning + fallback
-    validations = await withRetry(() => checkConsensus(toValidate, openaiKey, openaiBaseUrl));
+    validations = await withRetry((attempt) => checkConsensus(toValidate, openaiKey, openaiBaseUrl, attempt));
   }
 
   const validationMap = new Map<string, ValidationEntry>(

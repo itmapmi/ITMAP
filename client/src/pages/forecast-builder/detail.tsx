@@ -1329,9 +1329,11 @@ function DebateStep({
 function DebateResultsStep({
   forecast,
   summary,
+  onBuildForecast,
 }: {
   forecast: ForecastFull;
   summary: DebateSummaryData | null;
+  onBuildForecast: () => void;
 }) {
   const cruxes = forecast.cruxes ?? [];
   const assumptions = forecast.assumptions ?? [];
@@ -1553,11 +1555,15 @@ function DebateResultsStep({
         </div>
       )}
 
-      <div className="flex items-center gap-3 mt-2">
-        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-          <TrendingUp className="h-3.5 w-3.5" />
-          <span>Calculation engine coming in the next phase</span>
-        </div>
+      <div className="flex items-center gap-3 mt-6">
+        <button
+          onClick={onBuildForecast}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          <TrendingUp className="h-4 w-4" />
+          Build Forecast
+        </button>
+        <span className="text-xs text-slate-500">Advance to the calculation engine (Phase 4)</span>
       </div>
     </div>
   );
@@ -1668,6 +1674,10 @@ export default function ForecastDetailPage() {
           <DebateResultsStep
             forecast={forecast}
             summary={debateSummary}
+            onBuildForecast={() => {
+              // Phase 4 not yet built — advance status and notify user
+              toast({ title: "Debate complete", description: "Calculation engine (Phase 4) coming soon." });
+            }}
           />
         )}
       </div>

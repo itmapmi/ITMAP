@@ -33,10 +33,10 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+async function withRetry<T>(fn: (attempt: number) => Promise<T>, maxAttempts = 3): Promise<T> {
   let lastError: Error = new Error("Unknown error");
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try { return await fn(); } catch (err: any) {
+    try { return await fn(attempt); } catch (err: any) {
       lastError = err;
       if (attempt < maxAttempts - 1) await sleep(1500 * (attempt + 1));
     }
@@ -55,12 +55,26 @@ function strictParseJson(text: string): unknown {
 
 // ── Judge call (gpt-4o-mini) ───────────────────────────────────────────────
 
+// Constrained retry suffix for judge calls — appended when attempt > 0
+function judgeRetryHint(attempt: number): string {
+  if (attempt === 0) return "";
+  return `
+
+RETRY CORRECTION (attempt ${attempt + 1}/3):
+Your previous response was rejected because crux entries were missing required fields.
+Each entry in the "cruxes" array MUST include: assumptionId (string), assumptionName (string),
+analystAValue (number), analystBValue (number), divergencePct (number ≥0), rank (integer ≥1),
+estimatedImpact ("high"|"medium"|"low"). All other fields may be empty strings but must be present.
+Respond with ONLY the corrected JSON object — no markdown, no explanation.`;
+}
+
 async function identifyCruxes(
   analystA: ForecastDraft,
   analystB: ForecastDraft,
   objections: Objection[],
   openaiKey: string,
-  openaiBaseUrl: string | undefined
+  openaiBaseUrl: string | undefined,
+  attempt: number
 ): Promise<IdentifiedCrux[]> {
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
 
@@ -91,7 +105,7 @@ DATA:\n${JSON.stringify(payload, null, 2)}
 
 Produce a JSON object matching this schema:\n${CRUX_SCHEMA_DESCRIPTION}
 
-Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely diverge AND where that divergence materially impacts the final forecast number.`;
+Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely diverge AND where that divergence materially impacts the final forecast number.${judgeRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
     // Per spec: crux identification judge must use gpt-4o-mini
@@ -161,7 +175,7 @@ export async function runPhase33(
   openaiKey: string,
   openaiBaseUrl: string | undefined
 ): Promise<IdentifiedCrux[]> {
-  const cruxes = await withRetry(() => identifyCruxes(analystA, analystB, objections, openaiKey, openaiBaseUrl));
+  const cruxes = await withRetry((attempt) => identifyCruxes(analystA, analystB, objections, openaiKey, openaiBaseUrl, attempt));
 
   // Backfill any missing analystA/B values from the actual draft data
   return cruxes.map(c => {

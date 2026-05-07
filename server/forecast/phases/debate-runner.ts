@@ -18,10 +18,8 @@ import type { Response } from "express";
 import {
   createForecastAssumption,
   createForecastCrux,
-  updateForecastCrux,
   createForecastScenario,
   updateForecast,
-  getForecastCruxes,
 } from "../../storage/forecasts";
 import { writeAuditEntry } from "../audit";
 import { runPhase31, type ForecastDraft } from "./phase3-1";

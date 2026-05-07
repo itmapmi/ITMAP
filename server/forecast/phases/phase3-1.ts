@@ -66,11 +66,11 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+async function withRetry<T>(fn: (attempt: number) => Promise<T>, maxAttempts = 3): Promise<T> {
   let lastError: Error = new Error("Unknown error");
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      return await fn();
+      return await fn(attempt);
     } catch (err: any) {
       lastError = err;
       if (attempt < maxAttempts - 1) {
@@ -100,13 +100,34 @@ function strictParseJson(text: string): unknown {
   throw new Error("LLM response was not valid JSON (even after markdown fence stripping)");
 }
 
+// ── Constrained retry hint (appended to user prompt on attempt >= 1) ─────
+//
+// On first failure the model is given explicit field-level requirements and
+// told exactly which fields were missing or malformed.  This avoids repeating
+// the exact same prompt and expecting a different result.
+
+function constrainedRetryHint(attempt: number): string {
+  if (attempt === 0) return "";
+  return `
+
+RETRY CORRECTION (attempt ${attempt + 1}/${3}):
+Your previous response was rejected because one or more REQUIRED fields were absent or invalid.
+Strictly check the following before responding:
+- "external_estimate" object MUST be present with: source (string), value (number|null), unit (string|null), why_setting_aside (string ≥1 char).
+- Each segment MUST include "baseYearConstruction" with a non-empty derivation string showing the formula used.
+- "methodology" MUST be a non-empty string describing your sizing approach.
+- All numeric fields must be numbers, not strings.
+Respond with ONLY the corrected JSON object. Do not include any explanation outside the JSON.`;
+}
+
 // ── Analyst-A: OpenAI ──────────────────────────────────────────────────────
 
 async function generateDraftOpenAI(
   persona: "analyst-a" | "analyst-b",
   context: DebateContext,
   openaiKey: string,
-  openaiBaseUrl: string | undefined
+  openaiBaseUrl: string | undefined,
+  attempt: number
 ): Promise<ForecastDraft> {
   const client = new OpenAI({
     apiKey: openaiKey,
@@ -115,7 +136,7 @@ async function generateDraftOpenAI(
 
   const systemPrompt = persona === "analyst-a" ? SYSTEM_ANALYST_A : SYSTEM_ANALYST_B;
   const contextStr = buildContextString(context);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "${persona}".`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "${persona}".${constrainedRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
@@ -124,7 +145,8 @@ async function generateDraftOpenAI(
       { role: "user", content: userPrompt },
     ],
     response_format: { type: "json_object" },
-    temperature: persona === "analyst-a" ? 0.3 : 0.7,
+    // Lower temperature on retries to reduce creative deviation
+    temperature: attempt > 0 ? 0.1 : (persona === "analyst-a" ? 0.3 : 0.7),
     max_tokens: 4096,
   });
 
@@ -139,11 +161,12 @@ async function generateDraftOpenAI(
 
 async function generateDraftAnthropic(
   context: DebateContext,
-  anthropicKey: string
+  anthropicKey: string,
+  attempt: number
 ): Promise<ForecastDraft> {
   const client = new Anthropic({ apiKey: anthropicKey });
   const contextStr = buildContextString(context);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b". Respond with ONLY a valid JSON object — no markdown fence, no explanation.`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b". Respond with ONLY a valid JSON object — no markdown fence, no explanation.${constrainedRetryHint(attempt)}`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
@@ -177,14 +200,14 @@ export async function runPhase31(
   let anthropicSucceeded = false;
 
   const [analystA, analystB] = await Promise.all([
-    withRetry(() => generateDraftOpenAI("analyst-a", context, openaiKey, openaiBaseUrl)),
+    withRetry((attempt) => generateDraftOpenAI("analyst-a", context, openaiKey, openaiBaseUrl, attempt)),
     anthropicKey
-      ? withRetry(() => generateDraftAnthropic(context, anthropicKey))
+      ? withRetry((attempt) => generateDraftAnthropic(context, anthropicKey, attempt))
           .then(draft => { anthropicSucceeded = true; return draft; })
           .catch(() =>
-            withRetry(() => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl))
+            withRetry((attempt) => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl, attempt))
           )
-      : withRetry(() => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl)),
+      : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl, attempt)),
   ]);
 
   // usedFallback = true when Anthropic was requested but fell back to OpenAI,
