@@ -32,18 +32,18 @@ interface IntelligenceFeedProps {
 }
 
 export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
-  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
 
-  const signalsUrl = selectedVendorId
-    ? `/api/markets/${marketId}/vendor-signals?vendorId=${selectedVendorId}${
-        sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : ""
-      }&limit=15`
-    : null;
+  const signalsUrl = (() => {
+    const base = `/api/markets/${marketId}/vendor-signals?limit=20`;
+    const vendor = selectedVendorId !== "all" ? `&vendorId=${selectedVendorId}` : "";
+    const source = sourceFilter !== "all" ? `&sourceType=${sourceFilter}` : "";
+    return `${base}${vendor}${source}`;
+  })();
 
   const { data: page, isLoading } = useQuery<VendorSignalsPage>({
-    queryKey: signalsUrl ? [signalsUrl] : ["noop"],
-    enabled: !!signalsUrl,
+    queryKey: [signalsUrl],
   });
 
   return (
@@ -59,9 +59,10 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
           <SelectTrigger className="w-48 h-9 text-sm">
-            <SelectValue placeholder="Select a vendor…" />
+            <SelectValue placeholder="All vendors" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All vendors</SelectItem>
             {vendors.map(v => (
               <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
             ))}
@@ -87,11 +88,7 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       </div>
 
       {/* Content */}
-      {!selectedVendorId ? (
-        <div className="text-center py-12 text-gray-400 text-sm">
-          Select a vendor above to see their intelligence signals.
-        </div>
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <Skeleton key={i} className="h-24 w-full rounded-lg" />
@@ -99,7 +96,9 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
         </div>
       ) : !page || page.data.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">
-          No signals collected yet for this vendor.
+          {selectedVendorId === "all"
+            ? "No signals collected yet for this market."
+            : "No signals collected yet for this vendor."}
         </div>
       ) : (
         <div className="space-y-2">
