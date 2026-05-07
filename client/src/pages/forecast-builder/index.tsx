@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -91,8 +91,8 @@ export default function ForecastBuilderPage() {
 
   const createMutation = useMutation({
     mutationFn: (title: string) =>
-      apiRequest("POST", "/api/forecast-builder/forecasts", { title }),
-    onSuccess: async (data: any) => {
+      apiRequestJson("/api/forecast-builder/forecasts", "POST", { title }),
+    onSuccess: async (data: ForecastRow) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts"] });
       setNewDialogOpen(false);
       setNewTitle("");
@@ -105,7 +105,7 @@ export default function ForecastBuilderPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/forecast-builder/forecasts/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/forecast-builder/forecasts/${id}`, "DELETE"),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts"] });
       setDeleteId(null);

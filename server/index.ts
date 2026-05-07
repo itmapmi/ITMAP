@@ -66,6 +66,14 @@ app.use((req, res, next) => {
     log("Warning: Could not seed Market Builder system prompts:", String(err));
   }
 
+  // Verify Forecast calculation engine is functional (deterministic, no DB/LLM)
+  try {
+    const { smokeTest } = await import("./forecast/engine");
+    smokeTest();
+  } catch (err) {
+    log("Warning: Forecast Engine smoke test failed:", String(err));
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

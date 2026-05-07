@@ -219,6 +219,10 @@ export async function updateForecastAssumption(
   return updated;
 }
 
+export async function deleteForecastAssumption(id: string): Promise<void> {
+  await db.delete(forecastAssumptions).where(eq(forecastAssumptions.id, id));
+}
+
 // ── Cruxes ────────────────────────────────────────────────────────────────
 
 export async function getForecastCruxes(forecastId: string): Promise<ForecastCrux[]> {
@@ -243,6 +247,10 @@ export async function updateForecastCrux(
     .where(eq(forecastCruxes.id, id))
     .returning();
   return updated;
+}
+
+export async function deleteForecastCrux(id: string): Promise<void> {
+  await db.delete(forecastCruxes).where(eq(forecastCruxes.id, id));
 }
 
 // ── Scenarios ─────────────────────────────────────────────────────────────
@@ -271,6 +279,10 @@ export async function updateForecastScenario(
   return updated;
 }
 
+export async function deleteForecastScenario(id: string): Promise<void> {
+  await db.delete(forecastScenarios).where(eq(forecastScenarios.id, id));
+}
+
 // ── Sources ───────────────────────────────────────────────────────────────
 
 export async function getForecastSources(forecastId: string): Promise<ForecastSource[]> {
@@ -283,6 +295,18 @@ export async function getForecastSources(forecastId: string): Promise<ForecastSo
 export async function createForecastSource(data: InsertForecastSource): Promise<ForecastSource> {
   const [row] = await db.insert(forecastSources).values(data).returning();
   return row;
+}
+
+export async function updateForecastSource(
+  id: string,
+  data: Partial<Pick<ForecastSource, "url" | "title" | "reliabilityTier" | "retrievedAt" | "summary">>
+): Promise<ForecastSource> {
+  const [updated] = await db
+    .update(forecastSources)
+    .set(data)
+    .where(eq(forecastSources.id, id))
+    .returning();
+  return updated;
 }
 
 export async function deleteForecastSource(id: string): Promise<void> {

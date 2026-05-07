@@ -65,6 +65,10 @@ export function registerForecastBuilderRoutes(app: Express): void {
         return res.status(403).json({ error: "Access denied" });
       }
       const updated = await updateForecast(req.params.id, req.body);
+      await writeAuditEntry(req.params.id, "forecast_created", user.id, {
+        action: "metadata_updated",
+        fields: Object.keys(req.body),
+      });
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -80,6 +84,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
       if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
         return res.status(403).json({ error: "Access denied" });
       }
+      // Write audit entry before deletion (cascade removes audit rows too, but we
+      // still want the event recorded for any external audit export already taken)
+      await writeAuditEntry(req.params.id, "export_triggered", user.id, {
+        action: "forecast_deleted",
+        title: forecast.title,
+      });
       await deleteForecast(req.params.id);
       res.status(204).end();
     } catch (err: any) {
