@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -19,7 +18,6 @@ import {
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -98,7 +96,7 @@ function fmtPct(n: number): string {
   return `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 }
 
-// ── Markdown renderer (pure CSS approach) ─────────────────────────────────
+// ── Markdown renderer ─────────────────────────────────────────────────────
 
 function MarkdownContent({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -109,10 +107,8 @@ function MarkdownContent({ content }: { content: string }) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Empty line
     if (!line.trim()) { i++; continue; }
 
-    // h3/h4
     if (line.startsWith("### ")) {
       elements.push(<h4 key={key++} className="text-sm font-semibold text-white mt-4 mb-2">{line.slice(4)}</h4>);
       i++; continue;
@@ -122,7 +118,6 @@ function MarkdownContent({ content }: { content: string }) {
       i++; continue;
     }
 
-    // Table
     if (line.startsWith("|")) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i].startsWith("|")) {
@@ -130,7 +125,7 @@ function MarkdownContent({ content }: { content: string }) {
         i++;
       }
       const headerRow = tableLines[0];
-      const bodyRows = tableLines.slice(2); // skip separator row
+      const bodyRows = tableLines.slice(2);
       const headers = headerRow.split("|").slice(1, -1).map(c => c.trim());
       elements.push(
         <div key={key++} className="overflow-x-auto my-4">
@@ -157,7 +152,6 @@ function MarkdownContent({ content }: { content: string }) {
       continue;
     }
 
-    // Blockquote
     if (line.startsWith("> ")) {
       elements.push(
         <blockquote key={key++} className="border-l-2 border-slate-600 pl-4 text-sm text-slate-400 italic my-3">
@@ -167,7 +161,6 @@ function MarkdownContent({ content }: { content: string }) {
       i++; continue;
     }
 
-    // Regular paragraph
     elements.push(
       <p key={key++} className="text-sm text-slate-300 leading-7 mb-3">
         {renderInline(line)}
@@ -180,7 +173,9 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[A-\d+\])/g);
+  // Match **bold**, *italic*, and assumption ID tags — now supports both
+  // old [A-001] format and new [a-z0-9]{8} UUID-prefix format
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[A-Za-z0-9-]{4,16}\])/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
@@ -188,7 +183,7 @@ function renderInline(text: string): React.ReactNode {
     if (part.startsWith("*") && part.endsWith("*") && !part.startsWith("**")) {
       return <em key={i} className="text-slate-200 italic">{part.slice(1, -1)}</em>;
     }
-    if (/^\[A-\d+\]$/.test(part)) {
+    if (/^\[[A-Za-z0-9-]{4,16}\]$/.test(part)) {
       return <code key={i} className="bg-cyan-950/50 text-cyan-400 px-1.5 py-0.5 rounded text-xs font-mono">{part}</code>;
     }
     return <span key={i}>{part}</span>;
@@ -228,7 +223,7 @@ function SectionCard({ section }: { section: ReportSection }) {
   );
 }
 
-// ── Scenario chart (simple year-by-year bars) ──────────────────────────────
+// ── Scenario table ─────────────────────────────────────────────────────────
 
 function ScenarioTable({
   scenarios,
@@ -248,7 +243,6 @@ function ScenarioTable({
   if (!base?.forecastPath) return null;
 
   const years = Array.from({ length: horizonYears + 1 }, (_, i) => baseYear + i);
-
   const maxVal = Math.max(
     ...years.map(y => Math.max(
       base.forecastPath![y] ?? 0,
@@ -274,7 +268,6 @@ function ScenarioTable({
             const buv = bull?.forecastPath?.[year] ?? 0;
             const bev = bear?.forecastPath?.[year] ?? 0;
             const barWidth = maxVal > 0 ? (bv / maxVal) * 100 : 0;
-
             return (
               <tr key={year} className="border-b border-white/5 hover:bg-white/[0.02]">
                 <td className="py-2 pr-4 text-slate-400 font-mono">{year}</td>
@@ -287,12 +280,8 @@ function ScenarioTable({
                     <span className="text-white font-medium">{fmt(bv, currency)}</span>
                   </div>
                 </td>
-                {bull && (
-                  <td className="py-2 px-4 text-emerald-300">{fmt(buv, currency)}</td>
-                )}
-                {bear && (
-                  <td className="py-2 px-4 text-red-300">{fmt(bev, currency)}</td>
-                )}
+                {bull && <td className="py-2 px-4 text-emerald-300">{fmt(buv, currency)}</td>}
+                {bear && <td className="py-2 px-4 text-red-300">{fmt(bev, currency)}</td>}
               </tr>
             );
           })}
@@ -311,20 +300,15 @@ function QcBadge({ label, passed }: { label: string; passed: boolean }) {
         ? "bg-emerald-950/50 text-emerald-300 border border-emerald-500/20"
         : "bg-amber-950/50 text-amber-300 border border-amber-500/20"
     }`}>
-      {passed
-        ? <CheckCircle2 className="h-3 w-3" />
-        : <AlertTriangle className="h-3 w-3" />
-      }
+      {passed ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
       {label}
     </span>
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
+// ── Shared report body (used both at /report URL and embedded in detail page) ──
 
-export default function ForecastReportPage() {
-  const [, params] = useRoute("/forecast-builder/:id/report");
-  const id = params?.id;
+export function ForecastReportContent({ id }: { id: string }) {
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
 
@@ -350,7 +334,7 @@ export default function ForecastReportPage() {
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Export failed" }));
-        throw new Error(err.error ?? "Export failed");
+        throw new Error((err as { error?: string }).error ?? "Export failed");
       }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
@@ -360,8 +344,8 @@ export default function ForecastReportPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "PDF downloaded" });
-    } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Export failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -369,7 +353,7 @@ export default function ForecastReportPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-7 w-7 animate-spin text-cyan-400" />
       </div>
     );
@@ -377,15 +361,10 @@ export default function ForecastReportPage() {
 
   if (error || !data || !data.reportSections) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <p className="text-white text-lg font-semibold mb-2">Report not available</p>
-          <p className="text-slate-400 text-sm mb-6">The forecast may still be calculating or does not have a report yet.</p>
-          <Link href={`/forecast-builder/${id}`}>
-            <Button variant="ghost" className="text-slate-400 hover:text-white">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to forecast
-            </Button>
-          </Link>
+          <p className="text-slate-400 text-sm">The forecast may still be calculating or does not have a report yet.</p>
         </div>
       </div>
     );
@@ -406,146 +385,150 @@ export default function ForecastReportPage() {
     .slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8 gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link href={`/forecast-builder/${id}`}>
-              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2 shrink-0">
-                <ArrowLeft className="h-4 w-4 mr-1" /> Forecast
-              </Button>
-            </Link>
-            <span className="text-slate-700">/</span>
-            <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              onClick={handleExportPdf}
-              disabled={exporting}
-              size="sm"
-              className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0"
-            >
-              {exporting ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
-              Export PDF
+    <div className="max-w-5xl mx-auto">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-8 gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/forecast-builder">
+            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2 shrink-0">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Forecasts
             </Button>
+          </Link>
+          <span className="text-slate-700">/</span>
+          <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
+        </div>
+        <Button
+          onClick={handleExportPdf}
+          disabled={exporting}
+          size="sm"
+          className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 shrink-0"
+        >
+          {exporting ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
+          Export PDF
+        </Button>
+      </div>
+
+      {/* Summary hero */}
+      <div className="bg-slate-900 border border-white/5 rounded-2xl p-6 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Market Forecast Report</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white mt-2">{forecast.title}</h2>
+            <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{baseYear}–{rpt.engineSummary.horizonYear}</span>
+              <span>{currency}</span>
+              {forecast.confidenceBand && <span className="capitalize">{forecast.confidenceBand}</span>}
+              <span>Generated {generatedDate}</span>
+            </div>
           </div>
         </div>
 
-        {/* Summary hero */}
-        <div className="bg-slate-900 border border-white/5 rounded-2xl p-6 mb-6">
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Market Forecast Report</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mt-2">{forecast.title}</h2>
-              <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{baseYear}–{rpt.engineSummary.horizonYear}</span>
-                <span>{currency}</span>
-                {forecast.confidenceBand && <span className="capitalize">{forecast.confidenceBand}</span>}
-                <span>Generated {generatedDate}</span>
-              </div>
+        {/* Scenario cards */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-slate-800/60 border border-cyan-500/10 rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+              <Target className="h-3 w-3" /> Base {rpt.engineSummary.horizonYear}
+            </div>
+            <div className="text-2xl font-bold text-white">{fmt(rpt.engineSummary.baseTotal, currency)}</div>
+            <div className="text-xs text-cyan-400 mt-1">{fmtPct(rpt.engineSummary.baseCagr)} CAGR</div>
+          </div>
+          <div className="bg-slate-800/60 border border-emerald-500/10 rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+              <TrendingUp className="h-3 w-3 text-emerald-400" /> Bull {rpt.engineSummary.horizonYear}
+            </div>
+            <div className="text-2xl font-bold text-emerald-300">{fmt(rpt.engineSummary.bullTotal, currency)}</div>
+            <div className="text-xs text-slate-500 mt-1">
+              {fmtPct(((rpt.engineSummary.bullTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
             </div>
           </div>
-
-          {/* Scenario cards */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-slate-800/60 border border-cyan-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <Target className="h-3 w-3" /> Base Scenario {rpt.engineSummary.horizonYear}
-              </div>
-              <div className="text-2xl font-bold text-white">{fmt(rpt.engineSummary.baseTotal, currency)}</div>
-              <div className="text-xs text-cyan-400 mt-1">{fmtPct(rpt.engineSummary.baseCagr)} CAGR</div>
+          <div className="bg-slate-800/60 border border-red-500/10 rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+              <TrendingDown className="h-3 w-3 text-red-400" /> Bear {rpt.engineSummary.horizonYear}
             </div>
-            <div className="bg-slate-800/60 border border-emerald-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-400" /> Bull Scenario {rpt.engineSummary.horizonYear}
-              </div>
-              <div className="text-2xl font-bold text-emerald-300">{fmt(rpt.engineSummary.bullTotal, currency)}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {fmtPct(((rpt.engineSummary.bullTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
-              </div>
+            <div className="text-2xl font-bold text-red-300">{fmt(rpt.engineSummary.bearTotal, currency)}</div>
+            <div className="text-xs text-slate-500 mt-1">
+              {fmtPct(((rpt.engineSummary.bearTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
             </div>
-            <div className="bg-slate-800/60 border border-red-500/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-red-400" /> Bear Scenario {rpt.engineSummary.horizonYear}
-              </div>
-              <div className="text-2xl font-bold text-red-300">{fmt(rpt.engineSummary.bearTotal, currency)}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {fmtPct(((rpt.engineSummary.bearTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
-              </div>
-            </div>
-          </div>
-
-          {/* QC badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-slate-500 mr-1">QC:</span>
-            <QcBadge label="Internal consistency" passed={rpt.qcStatus.internalConsistency} />
-            <QcBadge label="Schema completeness" passed={rpt.qcStatus.schemaCompleteness} />
-            <QcBadge label="Narrative coherence" passed={rpt.qcStatus.narrativeCoherence} />
           </div>
         </div>
 
-        {/* Two-column layout: scenarios table + top assumptions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          {/* Scenario paths */}
-          {scenarios.length > 0 && (
-            <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-cyan-400" /> Year-by-Year Forecast
-              </h3>
-              <ScenarioTable
-                scenarios={scenarios}
-                baseYear={baseYear}
-                horizonYears={horizonYears}
-                currency={currency}
-              />
-            </div>
-          )}
+        {/* QC badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-500 mr-1">QC:</span>
+          <QcBadge label="Internal consistency" passed={rpt.qcStatus.internalConsistency} />
+          <QcBadge label="Schema completeness" passed={rpt.qcStatus.schemaCompleteness} />
+          <QcBadge label="Narrative coherence" passed={rpt.qcStatus.narrativeCoherence} />
+        </div>
+      </div>
 
-          {/* Top sensitive assumptions */}
-          {topAssumptions.length > 0 && (
-            <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <Info className="h-4 w-4 text-violet-400" /> Top Sensitive Assumptions
-              </h3>
-              <div className="space-y-3">
-                {topAssumptions.map((a, i) => (
-                  <div key={a.id} className="flex items-start gap-3">
-                    <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs text-white font-medium truncate">{a.description}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {a.currentValue ?? a.value} {a.unit ?? ""} &middot; {a.currentValueSource}
-                      </p>
-                    </div>
+      {/* Two-column: scenarios + top assumptions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        {scenarios.length > 0 && (
+          <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-cyan-400" /> Year-by-Year Forecast
+            </h3>
+            <ScenarioTable scenarios={scenarios} baseYear={baseYear} horizonYears={horizonYears} currency={currency} />
+          </div>
+        )}
+        {topAssumptions.length > 0 && (
+          <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <Info className="h-4 w-4 text-violet-400" /> Top Sensitive Assumptions
+            </h3>
+            <div className="space-y-3">
+              {topAssumptions.map((a, i) => (
+                <div key={a.id} className="flex items-start gap-3">
+                  <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-white font-medium truncate">{a.description}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {a.currentValue ?? a.value} {a.unit ?? ""} &middot; {a.currentValueSource}
+                    </p>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Report sections */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
-          {rpt.sections.map(section => (
-            <SectionCard key={section.id} section={section} />
-          ))}
-        </div>
+      {/* Report sections */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
+        {rpt.sections.map(section => (
+          <SectionCard key={section.id} section={section} />
+        ))}
+      </div>
 
-        {/* Footer */}
-        <div className="mt-10 pt-6 border-t border-white/5 flex items-center justify-between text-xs text-slate-600">
-          <span>Generated by spectio.ai Forecast Builder</span>
-          <span>Report generated {generatedDate}</span>
-        </div>
+      {/* Footer */}
+      <div className="mt-10 pt-6 border-t border-white/5 flex items-center justify-between text-xs text-slate-600">
+        <span>Generated by spectio.ai Forecast Builder</span>
+        <span>Report generated {generatedDate}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Standalone report page at /forecast-builder/:id/report ─────────────────
+
+export default function ForecastReportPage() {
+  const [, params] = useRoute("/forecast-builder/:id/report");
+  const id = params?.id;
+
+  if (!id) return null;
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="px-4 sm:px-6 lg:px-8 py-10">
+        <ForecastReportContent id={id} />
       </div>
     </div>
   );

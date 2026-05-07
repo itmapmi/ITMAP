@@ -5,13 +5,12 @@
  * SegmentInput shape required by the calculation engine.
  *
  * Explicit responsibilities:
- *  1. Attach boundary inclusion/exclusion metadata to each segment.
- *  2. Attach unit of measurement from the boundary.
- *  3. Validate parent–child references form a valid tree (no orphans).
- *  4. Provide a synthesis fallback when no segments exist in DB —
- *     synthesises a single "Total Market" root from assumptions.
- *  5. Validate that at least one root segment (parentId = null) exists
- *     and that the tree resolves to a single root (required for MECE rollup).
+ *  1. Attach boundary inclusion/exclusion metadata to segments (filter excluded).
+ *  2. Record unit of measurement and geographic scope from the boundary.
+ *  3. Validate parent–child references form a valid tree (no orphans, no cycles).
+ *  4. Synthesise a single-root fallback from assumptions when no segments exist in DB.
+ *  5. Surface actionable errors for each structural violation rather than silently
+ *     continuing — all failures propagate to the Phase 4 pipeline for hard-stop handling.
  */
 
 import type { SegmentInput } from "../engine";
@@ -24,6 +23,7 @@ export interface SegmentAssemblyResult {
   includedCategories: string[];
   excludedCategories: string[];
   isSynthesised: boolean;
+  rootCount: number;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -36,64 +36,64 @@ function parseStringArray(v: unknown): string[] {
   return [];
 }
 
+function parseStringArrayField(v: unknown): string[] {
+  return parseStringArray(v);
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 export interface SegmentValidationError {
-  code: "NO_ROOT" | "MULTIPLE_ROOTS" | "ORPHAN" | "CYCLE";
+  code: "ORPHAN" | "CYCLE";
   detail: string;
 }
 
 export function validateSegmentTree(segments: SegmentInput[]): SegmentValidationError | null {
-  if (segments.length === 0) return null; // synthesis handles empty case
+  if (segments.length === 0) return null;
 
   const ids = new Set(segments.map(s => s.id));
-  const roots = segments.filter(s => !s.parentId);
 
   // Every non-null parentId must reference an existing segment
-  const orphans = segments.filter(s => s.parentId && !ids.has(s.parentId));
+  const orphans = segments.filter(s => s.parentId !== null && !ids.has(s.parentId));
   if (orphans.length > 0) {
     return {
       code: "ORPHAN",
-      detail: `Segments reference unknown parents: ${orphans.map(s => `"${s.name}" (parentId=${s.parentId})`).join(", ")}. Fix segment parentage before building.`,
+      detail:
+        `${orphans.length} segment(s) reference unknown parents: ` +
+        orphans.slice(0, 3).map(s => `"${s.name}" (parentId=${s.parentId})`).join(", ") +
+        (orphans.length > 3 ? "…" : "") +
+        ". Fix segment parentage before building.",
     };
   }
 
-  if (roots.length === 0) {
-    return {
-      code: "NO_ROOT",
-      detail: "No root segment found (all segments have a parent). At least one segment must have parentId = null.",
-    };
+  // Cycle detection via DFS
+  const childrenMap = new Map<string, string[]>();
+  const rootKey = "__root__";
+  for (const s of segments) {
+    const key = s.parentId ?? rootKey;
+    if (!childrenMap.has(key)) childrenMap.set(key, []);
+    childrenMap.get(key)!.push(s.id);
   }
 
-  // Multiple roots are allowed only when the engine supports multi-root (MECE additive).
-  // We allow it here and let the engine enforce MECE rules — no error from assembly.
-
-  // Simple cycle detection via DFS
   const visited = new Set<string>();
   const inStack = new Set<string>();
-  const children = new Map<string, string[]>();
-  for (const s of segments) {
-    if (!children.has(s.parentId ?? "__root__")) children.set(s.parentId ?? "__root__", []);
-    children.get(s.parentId ?? "__root__")!.push(s.id);
-  }
 
   function dfs(id: string): boolean {
-    if (inStack.has(id)) return true; // cycle
+    if (inStack.has(id)) return true;
     if (visited.has(id)) return false;
     visited.add(id);
     inStack.add(id);
-    for (const child of children.get(id) ?? []) {
+    for (const child of childrenMap.get(id) ?? []) {
       if (dfs(child)) return true;
     }
     inStack.delete(id);
     return false;
   }
 
-  for (const root of roots) {
-    if (dfs(root.id)) {
+  for (const root of (childrenMap.get(rootKey) ?? [])) {
+    if (dfs(root)) {
       return {
         code: "CYCLE",
-        detail: `Cycle detected in segment tree starting from root "${root.name}". Fix segment parentage before building.`,
+        detail: `Cycle detected in segment tree. Fix segment parentage before building.`,
       };
     }
   }
@@ -104,9 +104,7 @@ export function validateSegmentTree(segments: SegmentInput[]): SegmentValidation
 // ── Synthesis fallback ────────────────────────────────────────────────────────
 
 function synthesiseFromAssumptions(full: ForecastFull): SegmentInput[] {
-  const assumptions = full.assumptions;
-
-  const growthIds = assumptions
+  const growthIds = full.assumptions
     .filter(a => {
       const unit = (a.unit ?? "").toLowerCase();
       const desc = (a.description ?? "").toLowerCase();
@@ -115,11 +113,16 @@ function synthesiseFromAssumptions(full: ForecastFull): SegmentInput[] {
     .map(a => a.id);
 
   const sizeAssumption =
-    assumptions.find(a => {
+    full.assumptions.find(a => {
       const desc = (a.description ?? "").toLowerCase();
-      return desc.includes("market size") || desc.includes("tam") || desc.includes("total market") || desc.includes("total addressable");
+      return (
+        desc.includes("market size") ||
+        desc.includes("tam") ||
+        desc.includes("total market") ||
+        desc.includes("total addressable")
+      );
     }) ??
-    assumptions.find(a => {
+    full.assumptions.find(a => {
       const unit = (a.unit ?? "").toLowerCase();
       return unit.includes("$") || unit.includes("b") || unit.includes("usd");
     });
@@ -143,46 +146,54 @@ function synthesiseFromAssumptions(full: ForecastFull): SegmentInput[] {
 
 export function assembleSegments(full: ForecastFull): SegmentAssemblyResult {
   const boundary = full.boundary;
-  const unitOfMeasurement = (boundary?.unitOfMeasurement as string | null) ?? "USD billions, revenue";
-  const geographicScope = (boundary?.geographicScope as string | null) ?? "Global";
-  const includedCategories = parseStringArray(boundary?.includedCategories);
-  const excludedCategories = parseStringArray(boundary?.excludedCategories);
+  const unitOfMeasurement =
+    typeof boundary?.unitOfMeasurement === "string"
+      ? boundary.unitOfMeasurement
+      : "USD billions, revenue";
+  const geographicScope =
+    typeof boundary?.geographicScope === "string" ? boundary.geographicScope : "Global";
+  const includedCategories = parseStringArrayField(boundary?.includedCategories);
+  const excludedCategories = parseStringArrayField(boundary?.excludedCategories);
 
   let isSynthesised = false;
   let segments: SegmentInput[];
 
   if (full.segments.length > 0) {
-    segments = full.segments.map(s => ({
+    // Build typed SegmentInput list — no any casts on individual records
+    const allSegments: SegmentInput[] = full.segments.map(s => ({
       id: s.id,
       parentId: s.parentSegmentId ?? null,
       name: s.name,
       baseYearValue: Number(s.baseYearValue ?? 0),
-      growthAssumptionIds: (s.growthAssumptionIds as string[]) ?? [],
-      // Carry through unit + boundary metadata as optional extensions
-      meta: {
-        unitOfMeasurement,
-        geographicScope,
-        includedCategories,
-        excludedCategories,
-        isIncluded: includedCategories.length === 0 || includedCategories.some(cat =>
-          s.name.toLowerCase().includes(cat.toLowerCase())
-        ),
-      },
+      growthAssumptionIds: Array.isArray(s.growthAssumptionIds)
+        ? (s.growthAssumptionIds as string[]).filter(id => typeof id === "string")
+        : [],
     }));
 
-    // Filter out explicitly excluded segments
-    if (excludedCategories.length > 0) {
-      segments = segments.filter(seg => {
-        const meta = (seg as any).meta;
-        return !excludedCategories.some(cat =>
-          seg.name.toLowerCase().includes(cat.toLowerCase())
-        );
-      });
-    }
+    // Filter out explicitly excluded segments and their sub-trees
+    segments =
+      excludedCategories.length === 0
+        ? allSegments
+        : allSegments.filter(
+            seg =>
+              !excludedCategories.some(cat =>
+                seg.name.toLowerCase().includes(cat.toLowerCase())
+              )
+          );
   } else {
     isSynthesised = true;
     segments = synthesiseFromAssumptions(full);
   }
 
-  return { segments, unitOfMeasurement, geographicScope, includedCategories, excludedCategories, isSynthesised };
+  const rootCount = segments.filter(s => !s.parentId).length;
+
+  return {
+    segments,
+    unitOfMeasurement,
+    geographicScope,
+    includedCategories,
+    excludedCategories,
+    isSynthesised,
+    rootCount,
+  };
 }

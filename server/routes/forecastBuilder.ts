@@ -730,10 +730,13 @@ export function registerForecastBuilderRoutes(app: Express): void {
         return `${sym}${(n * 1000).toFixed(0)}M`;
       };
 
+      // Section titles and metadata are escaped; section prose goes through
+      // markdownToHtml which converts markdown syntax only — LLM text content
+      // is escaped first to prevent tag/script injection in Puppeteer rendering.
       const htmlSections = rpt.sections.map(s => `
         <div class="section">
-          <h2>${s.id}. ${s.title}</h2>
-          <div class="prose">${markdownToHtml(s.content)}</div>
+          <h2>${s.id}. ${escapeHtml(s.title)}</h2>
+          <div class="prose">${markdownToHtml(escapeHtml(s.content))}</div>
         </div>
       `).join("\n");
 
@@ -760,8 +763,8 @@ export function registerForecastBuilderRoutes(app: Express): void {
           .qc-item.fail { background: #fee2e2; color: #991b1b; }
         </style>
 
-        <h1>${full.title}</h1>
-        <p class="meta">Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} &nbsp;|&nbsp; Base year: ${baseYear} &nbsp;|&nbsp; Horizon: ${horizonYear} &nbsp;|&nbsp; Currency: ${currency}</p>
+        <h1>${escapeHtml(full.title)}</h1>
+        <p class="meta">Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} &nbsp;|&nbsp; Base year: ${baseYear} &nbsp;|&nbsp; Horizon: ${horizonYear} &nbsp;|&nbsp; Currency: ${escapeHtml(currency)}</p>
 
         <div class="summary-cards">
           <div class="card"><div class="card-label">Base Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.baseTotal)}</div><div class="card-sub">CAGR ${rpt.engineSummary.baseCagr >= 0 ? "+" : ""}${rpt.engineSummary.baseCagr.toFixed(1)}%</div></div>
@@ -795,6 +798,21 @@ export function registerForecastBuilderRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to generate PDF: " + err.message });
     }
   });
+}
+
+// ── HTML helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Escape user/LLM-derived plain text before embedding into HTML.
+ * Prevents script or tag injection in Puppeteer-rendered PDF output.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ── Minimal markdown → HTML converter for PDF export ───────────────────────

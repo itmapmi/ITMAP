@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRoute, useLocation, Link } from "wouter";
+import { useRoute, Link } from "wouter";
+import { ForecastReportContent } from "./report";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1729,7 +1730,7 @@ export default function ForecastDetailPage() {
   const [, params] = useRoute("/forecast-builder/:id");
   const id = params?.id;
   const { toast } = useToast();
-  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | "building" | null>(null);
+  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | "building" | "complete" | null>(null);
   const [debateSummary, setDebateSummary] = useState<DebateSummaryData | null>(null);
 
   const { data: forecast, isLoading, error } = useQuery<ForecastFull>({
@@ -1755,7 +1756,7 @@ export default function ForecastDetailPage() {
     } else if (forecast.status === "calculating") {
       setWizardStep("building");
     } else if (forecast.status === "complete") {
-      setLocation(`/forecast-builder/${forecast.id}/report`);
+      setWizardStep("complete");
     } else {
       // debate_complete → show debate results
       setWizardStep("debate_results");
@@ -1842,9 +1843,12 @@ export default function ForecastDetailPage() {
             forecast={forecast}
             onComplete={() => {
               queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
-              setLocation(`/forecast-builder/${forecast.id}/report`);
+              setWizardStep("complete");
             }}
           />
+        )}
+        {wizardStep === "complete" && (
+          <ForecastReportContent id={forecast.id} />
         )}
       </div>
     </div>
