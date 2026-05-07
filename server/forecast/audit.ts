@@ -12,6 +12,8 @@ import { appendForecastAuditEntry } from "../storage/forecasts";
 
 export type ForecastEventType =
   | "forecast_created"
+  | "forecast_metadata_updated"
+  | "forecast_deleted"
   | "boundary_proposed"
   | "boundary_confirmed"
   | "boundary_edited"

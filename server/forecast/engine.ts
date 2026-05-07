@@ -238,6 +238,9 @@ export function runEngine(brief: DebateBrief): EngineOutput {
     );
   }
 
+  const baseOverrides = new Map<string, number>(
+    brief.cruxResolutions.map(c => [c.assumptionId, c.baseValue])
+  );
   const bullOverrides = new Map<string, number>(
     brief.cruxResolutions.map(c => [c.assumptionId, c.bullValue])
   );
@@ -245,7 +248,7 @@ export function runEngine(brief: DebateBrief): EngineOutput {
     brief.cruxResolutions.map(c => [c.assumptionId, c.bearValue])
   );
 
-  const baseScenario = buildScenario("base", brief, new Map());
+  const baseScenario = buildScenario("base", brief, baseOverrides);
   const bullScenario = buildScenario("bull", brief, bullOverrides);
   const bearScenario = buildScenario("bear", brief, bearOverrides);
 

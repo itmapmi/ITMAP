@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { z } from "zod";
 import { requireAuth, requireAdmin } from "../auth";
 import {
   createForecast,
@@ -11,6 +12,17 @@ import {
 } from "../storage/forecasts";
 import { writeAuditEntry } from "../forecast/audit";
 import { insertForecastSchema } from "@shared/schema";
+
+const patchForecastSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  status: z.enum(["draft", "boundary_confirmed", "brief_complete", "debate_complete", "calculating", "complete"]).optional(),
+  baseYear: z.number().int().min(2000).max(2100).optional(),
+  forecastHorizonYears: z.number().int().min(1).max(20).optional(),
+  currency: z.string().max(10).optional(),
+  currencyBasis: z.string().max(50).optional(),
+  confidenceBand: z.number().min(0).max(100).optional(),
+  error: z.string().nullable().optional(),
+});
 
 export function registerForecastBuilderRoutes(app: Express): void {
 
@@ -64,10 +76,10 @@ export function registerForecastBuilderRoutes(app: Express): void {
       if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const updated = await updateForecast(req.params.id, req.body);
-      await writeAuditEntry(req.params.id, "forecast_created", user.id, {
-        action: "metadata_updated",
-        fields: Object.keys(req.body),
+      const patch = patchForecastSchema.parse(req.body);
+      const updated = await updateForecast(req.params.id, patch);
+      await writeAuditEntry(req.params.id, "forecast_metadata_updated", user.id, {
+        fields: Object.keys(patch),
       });
       res.json(updated);
     } catch (err: any) {
@@ -84,10 +96,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
       if (user?.role !== "admin" && forecast.createdBy !== user?.id) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Write audit entry before deletion (cascade removes audit rows too, but we
-      // still want the event recorded for any external audit export already taken)
-      await writeAuditEntry(req.params.id, "export_triggered", user.id, {
-        action: "forecast_deleted",
+      await writeAuditEntry(req.params.id, "forecast_deleted", user.id, {
         title: forecast.title,
       });
       await deleteForecast(req.params.id);
