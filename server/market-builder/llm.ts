@@ -175,7 +175,7 @@ async function callPerplexity<T>(
       { role: "user", content: userPrompt },
     ],
     temperature: 0.2,
-    max_tokens: 8000,
+    max_tokens: 32000,
   });
 
   const content = response.choices[0]?.message?.content;
