@@ -28,6 +28,8 @@ import {
 } from "../forecast/phases/phase2";
 import { runDebate } from "../forecast/phases/debate-runner";
 import { getUserLlmApiKey } from "../storage/userLlmKeys";
+import { runBuildPipeline } from "../forecast/phases/phase4";
+import { pdfService } from "../pdf-generator/pdf-service";
 
 type ForecastStatus = "draft" | "boundary_confirmed" | "brief_complete" | "debate_complete" | "calculating" | "complete";
 
@@ -614,4 +616,205 @@ export function registerForecastBuilderRoutes(app: Express): void {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // ── Phase 4: Build forecast (SSE) ───────────────────────────────────────
+  // Assembles DebateBrief, runs engine, generates 8-section report.
+  // SSE event sequence:
+  //   { type: "progress",      step, message }
+  //   { type: "qc_result",     step, message }
+  //   { type: "report_section", section, sectionTitle, message }
+  //   { type: "complete",      message, summary: { baseTotal, bullTotal, bearTotal, horizonYear, baseCagr, qcPassed } }
+  //   { type: "error",         message, error }
+  app.post("/api/forecast-builder/forecasts/:id/build", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+
+    const guard = await guardForecastAccess(req, res, req.params.id);
+    if (!guard.ok) return;
+
+    if (!["debate_complete", "calculating"].includes(guard.forecast!.status as string)) {
+      return res.status(400).json({ error: "Debate must be complete before building the forecast" });
+    }
+
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const openaiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+    if (!openaiKey) {
+      return res.status(503).json({ error: "OpenAI API key not configured" });
+    }
+
+    initSSE(res);
+    let clientGone = false;
+    req.on("close", () => { clientGone = true; });
+
+    runBuildPipeline(
+      req.params.id,
+      user.id,
+      openaiKey,
+      openaiBaseUrl,
+      (event) => {
+        if (!clientGone) sendSSEEvent(res, event);
+      }
+    )
+      .catch(async (err: any) => {
+        console.error("[ForecastBuild] Unhandled error:", err);
+        if (!clientGone && !res.writableEnded) {
+          sendSSEEvent(res, { type: "error", message: err.message, error: err.message });
+        }
+      })
+      .finally(() => {
+        if (!res.writableEnded) res.end();
+      });
+  });
+
+  // ── Phase 4: Get report data ─────────────────────────────────────────────
+  app.get("/api/forecast-builder/forecasts/:id/report-data", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+      const full = await getForecastFull(req.params.id);
+      if (!full) return res.status(404).json({ error: "Forecast not found" });
+      if (full.status !== "complete") {
+        return res.status(400).json({ error: "Forecast is not complete yet" });
+      }
+      res.json({
+        forecast: {
+          id: full.id,
+          title: full.title,
+          status: full.status,
+          baseYear: full.baseYear,
+          forecastHorizonYears: full.forecastHorizonYears,
+          currency: full.currency,
+          currencyBasis: full.currencyBasis,
+          confidenceBand: full.confidenceBand,
+          createdAt: full.createdAt,
+          updatedAt: full.updatedAt,
+        },
+        reportSections: full.reportSections,
+        scenarios: full.scenarios,
+        assumptions: full.assumptions,
+        cruxes: full.cruxes,
+        sources: full.sources,
+        boundary: full.boundary,
+        brief: full.brief,
+        auditLog: full.auditLog.slice(-20),
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Phase 4: Export forecast report as PDF ──────────────────────────────
+  app.post("/api/forecast-builder/forecasts/:id/export-pdf", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+      const full = await getForecastFull(req.params.id);
+      if (!full) return res.status(404).json({ error: "Forecast not found" });
+      if (full.status !== "complete" || !full.reportSections) {
+        return res.status(400).json({ error: "Forecast must be complete before exporting PDF" });
+      }
+
+      await writeAuditEntry(req.params.id, "export_triggered", (req.user as any)?.id ?? "system", {
+        format: "pdf",
+        triggeredAt: new Date().toISOString(),
+      });
+
+      const rpt = full.reportSections;
+      const baseYear = full.baseYear ?? 2024;
+      const horizonYear = rpt.engineSummary.horizonYear;
+      const currency = full.currency ?? "USD";
+
+      const sym = currency === "USD" ? "$" : currency;
+      const fmt = (n: number) => {
+        if (Math.abs(n) >= 1000) return `${sym}${(n / 1000).toFixed(1)}T`;
+        if (Math.abs(n) >= 1) return `${sym}${n.toFixed(1)}B`;
+        return `${sym}${(n * 1000).toFixed(0)}M`;
+      };
+
+      const htmlSections = rpt.sections.map(s => `
+        <div class="section">
+          <h2>${s.id}. ${s.title}</h2>
+          <div class="prose">${markdownToHtml(s.content)}</div>
+        </div>
+      `).join("\n");
+
+      const content = `
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.7; }
+          h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+          .meta { color: #64748b; font-size: 12px; margin-bottom: 40px; }
+          .summary-cards { display: flex; gap: 16px; margin-bottom: 40px; }
+          .card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+          .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
+          .card-value { font-size: 20px; font-weight: 700; color: #0f172a; }
+          .card-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+          .section { margin-bottom: 36px; page-break-inside: avoid; }
+          h2 { font-size: 16px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px; }
+          .prose p { margin: 0 0 12px; font-size: 12px; color: #334155; }
+          .prose table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+          .prose th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; }
+          .prose td { padding: 5px 8px; border: 1px solid #e2e8f0; }
+          blockquote { border-left: 3px solid #e2e8f0; margin: 0; padding-left: 12px; color: #64748b; font-size: 11px; }
+          strong { font-weight: 600; }
+          .qc { display: flex; gap: 12px; margin-bottom: 28px; font-size: 11px; }
+          .qc-item { padding: 4px 10px; border-radius: 999px; background: #dcfce7; color: #166534; }
+          .qc-item.fail { background: #fee2e2; color: #991b1b; }
+        </style>
+
+        <h1>${full.title}</h1>
+        <p class="meta">Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} &nbsp;|&nbsp; Base year: ${baseYear} &nbsp;|&nbsp; Horizon: ${horizonYear} &nbsp;|&nbsp; Currency: ${currency}</p>
+
+        <div class="summary-cards">
+          <div class="card"><div class="card-label">Base Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.baseTotal)}</div><div class="card-sub">CAGR ${rpt.engineSummary.baseCagr >= 0 ? "+" : ""}${rpt.engineSummary.baseCagr.toFixed(1)}%</div></div>
+          <div class="card"><div class="card-label">Bull Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.bullTotal)}</div></div>
+          <div class="card"><div class="card-label">Bear Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.bearTotal)}</div></div>
+        </div>
+
+        <div class="qc">
+          <span class="qc-item${rpt.qcStatus.internalConsistency ? "" : " fail"}">Internal consistency: ${rpt.qcStatus.internalConsistency ? "✓" : "✗"}</span>
+          <span class="qc-item${rpt.qcStatus.schemaCompleteness ? "" : " fail"}">Schema completeness: ${rpt.qcStatus.schemaCompleteness ? "✓" : "✗"}</span>
+          <span class="qc-item${rpt.qcStatus.narrativeCoherence ? "" : " fail"}">Narrative coherence: ${rpt.qcStatus.narrativeCoherence ? "✓" : "✗"}</span>
+        </div>
+
+        ${htmlSections}
+      `;
+
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: full.title,
+        reportTitle: "Market Forecast Report",
+        reportType: "Forecast",
+        content,
+      });
+
+      const filename = `${full.title.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "_")}_forecast.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", pdfBuffer.length.toString());
+      res.end(pdfBuffer);
+    } catch (err: any) {
+      console.error("[ForecastPDF] Error:", err);
+      res.status(500).json({ error: "Failed to generate PDF: " + err.message });
+    }
+  });
+}
+
+// ── Minimal markdown → HTML converter for PDF export ───────────────────────
+
+function markdownToHtml(md: string): string {
+  return md
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^### (.+)$/gm, "<h4>$1</h4>")
+    .replace(/^## (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/^\| (.+)$/gm, (line) => {
+      if (line.includes("|---")) return "";
+      const cells = line.split("|").slice(1, -1).map(c => `<td>${c.trim()}</td>`).join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .replace(/(<tr>.+<\/tr>\n?)+/g, (rows) => `<table>${rows}</table>`)
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/^(?!<)(.+)$/gm, (line) => line ? line : "")
+    .replace(/^(<p>|<\/p>|<h|<table|<block)/m, (m) => m)
+    .replace(/(^|\n)(?!<)(.*\S.*)/g, (_, p, line) => `${p}<p>${line}</p>`)
+    .trim();
 }

@@ -241,6 +241,13 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS scenario_values jsonb
     `);
 
+    // 18. Add report_sections JSONB column to forecasts (Phase 4 report output)
+    //     Stores 8-section AI-written report + engine summary + QC status.
+    await client.query(`
+      ALTER TABLE forecasts
+        ADD COLUMN IF NOT EXISTS report_sections jsonb
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

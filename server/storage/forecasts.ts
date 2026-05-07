@@ -56,7 +56,7 @@ export async function listForecastsForUser(userId: string): Promise<Forecast[]> 
 
 export async function updateForecast(
   id: string,
-  data: Partial<Pick<Forecast, "status" | "title" | "baseYear" | "forecastHorizonYears" | "currency" | "currencyBasis" | "confidenceBand" | "error" | "updatedAt">>
+  data: Partial<Pick<Forecast, "status" | "title" | "baseYear" | "forecastHorizonYears" | "currency" | "currencyBasis" | "confidenceBand" | "error" | "reportSections" | "updatedAt">>
 ): Promise<Forecast> {
   const [updated] = await db
     .update(forecasts)

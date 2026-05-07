@@ -1018,6 +1018,24 @@ export const forecasts = pgTable("forecasts", {
   // Schema versioning for forward compatibility
   schemaVersion: text("schema_version").notNull().default("1.0"),
 
+  // Phase 4 — stored report (8 sections + engine summary + QC status)
+  reportSections: jsonb("report_sections").$type<{
+    sections: { id: number; title: string; content: string }[];
+    engineSummary: {
+      baseTotal: number;
+      bullTotal: number;
+      bearTotal: number;
+      horizonYear: number;
+      baseCagr: number;
+    };
+    qcStatus: {
+      internalConsistency: boolean;
+      schemaCompleteness: boolean;
+      narrativeCoherence: boolean;
+    };
+    generatedAt: string;
+  }>(),
+
   error: text("error"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

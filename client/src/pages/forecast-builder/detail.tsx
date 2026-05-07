@@ -271,6 +271,7 @@ const STEPS = [
   { key: "interview", label: "Brief interview" },
   { key: "review", label: "Review brief" },
   { key: "debate", label: "Debate" },
+  { key: "build", label: "Build report" },
 ];
 
 function WizardSteps({ current }: { current: string }) {
@@ -1324,6 +1325,159 @@ function DebateStep({
   );
 }
 
+// ── Phase 4: Build step (calculating → complete) ──────────────────────────
+
+interface BuildLogEntry {
+  type: "progress" | "qc_result" | "report_section" | "complete" | "error";
+  message: string;
+}
+
+function BuildingStep({
+  forecast,
+  onComplete,
+}: {
+  forecast: ForecastFull;
+  onComplete: () => void;
+}) {
+  const [log, setLog] = useState<BuildLogEntry[]>([]);
+  const [isRunning, setIsRunning] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [log]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+
+    (async () => {
+      try {
+        const resp = await fetch(`/api/forecast-builder/forecasts/${forecast.id}/build`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+        });
+        if (!resp.ok || !resp.body) {
+          const err = await resp.json().catch(() => ({ error: "Build failed" }));
+          throw new Error(err.error ?? "Build failed");
+        }
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() ?? "";
+          for (const part of parts) {
+            if (!part.startsWith("data:")) continue;
+            try {
+              const ev = JSON.parse(part.slice(5).trim());
+              const entry: BuildLogEntry = { type: ev.type, message: ev.message ?? "" };
+              setLog(prev => [...prev, entry]);
+              if (ev.type === "complete") {
+                setIsRunning(false);
+                onComplete();
+              } else if (ev.type === "error") {
+                setError(ev.message ?? "Build failed");
+                setIsRunning(false);
+              }
+            } catch {
+              // malformed SSE — skip
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setError(err.message ?? "Stream error");
+          setIsRunning(false);
+        }
+      }
+    })();
+
+    return () => { ctrl.abort(); };
+  }, [forecast.id]);
+
+  const BUILD_STEPS = ["assembling", "engine", "qc", "report", "saving"];
+
+  return (
+    <div className="max-w-2xl">
+      <WizardSteps current="build" />
+      <h2 className="text-2xl font-bold text-white mb-2">Building forecast</h2>
+      <p className="text-slate-400 text-sm mb-6">
+        Running the deterministic calculation engine, QC checks, and generating the 8-section AI report.
+      </p>
+
+      {/* Progress bar */}
+      <div className="flex items-center gap-1 mb-6">
+        {BUILD_STEPS.map((step, idx) => {
+          const completedCount = log.filter(l => l.type === "complete").length;
+          const done = completedCount > 0 || log.some(l => l.message?.toLowerCase().includes(step));
+          const active = isRunning && !done;
+          return (
+            <div key={step} className="flex-1">
+              <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                done ? "bg-gradient-to-r from-cyan-500 to-violet-600"
+                  : active && idx === 0 ? "bg-cyan-500/60 animate-pulse"
+                  : "bg-slate-800"
+              }`} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Live log */}
+      <div className="bg-slate-900 border border-white/5 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-xs text-slate-400 font-medium">Build log</span>
+          </div>
+          {isRunning && <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />}
+          {!isRunning && !error && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+          {error && <XCircle className="h-3.5 w-3.5 text-red-400" />}
+        </div>
+        <div className="font-mono text-[11px] max-h-64 overflow-y-auto p-4 space-y-1">
+          {log.length === 0 && (
+            <p className="text-slate-600 italic">Initialising build pipeline…</p>
+          )}
+          {log.map((entry, i) => (
+            <div key={i} className={
+              entry.type === "complete" ? "text-emerald-400 font-semibold" :
+              entry.type === "qc_result" ? "text-violet-300" :
+              entry.type === "report_section" ? "text-cyan-400" :
+              entry.type === "error" ? "text-red-400" :
+              "text-slate-400"
+            }>
+              {entry.message}
+            </div>
+          ))}
+          <div ref={logEndRef} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-4 bg-red-950/30 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-300">
+          <AlertTriangle className="h-4 w-4 inline mr-1.5" />
+          {error}
+          <div className="mt-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs text-red-400 underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Debate results (debate_complete) ──────────────────────────────────────
 
 function DebateResultsStep({
@@ -1575,7 +1729,7 @@ export default function ForecastDetailPage() {
   const [, params] = useRoute("/forecast-builder/:id");
   const id = params?.id;
   const { toast } = useToast();
-  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | null>(null);
+  const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | "building" | null>(null);
   const [debateSummary, setDebateSummary] = useState<DebateSummaryData | null>(null);
 
   const { data: forecast, isLoading, error } = useQuery<ForecastFull>({
@@ -1598,8 +1752,12 @@ export default function ForecastDetailPage() {
       setWizardStep("interview");
     } else if (forecast.status === "brief_complete") {
       setWizardStep("review");
+    } else if (forecast.status === "calculating") {
+      setWizardStep("building");
+    } else if (forecast.status === "complete") {
+      setLocation(`/forecast-builder/${forecast.id}/report`);
     } else {
-      // debate_complete, calculating, complete → show debate results
+      // debate_complete → show debate results
       setWizardStep("debate_results");
     }
   }, [forecast, wizardStep]);
@@ -1675,8 +1833,16 @@ export default function ForecastDetailPage() {
             forecast={forecast}
             summary={debateSummary}
             onBuildForecast={() => {
-              // Phase 4 not yet built — advance status and notify user
-              toast({ title: "Debate complete", description: "Calculation engine (Phase 4) coming soon." });
+              setWizardStep("building");
+            }}
+          />
+        )}
+        {wizardStep === "building" && (
+          <BuildingStep
+            forecast={forecast}
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/forecast-builder/forecasts", forecast.id] });
+              setLocation(`/forecast-builder/${forecast.id}/report`);
             }}
           />
         )}
