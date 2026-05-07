@@ -174,16 +174,62 @@ export function assembleSegments(full: ForecastFull): SegmentAssemblyResult {
         : [],
     }));
 
-    // Filter out explicitly excluded segments and their sub-trees
-    segments =
-      excludedCategories.length === 0
-        ? allSegments
-        : allSegments.filter(
-            seg =>
-              !excludedCategories.some(cat =>
-                seg.name.toLowerCase().includes(cat.toLowerCase())
-              )
-          );
+    if (excludedCategories.length === 0) {
+      segments = allSegments;
+    } else {
+      // Step 1: identify all segment IDs whose name matches an exclusion
+      const childrenMap = new Map<string, string[]>();
+      for (const s of allSegments) {
+        if (s.parentId) {
+          if (!childrenMap.has(s.parentId)) childrenMap.set(s.parentId, []);
+          childrenMap.get(s.parentId)!.push(s.id);
+        }
+      }
+
+      const excludedIds = new Set<string>();
+
+      function markExcludedSubtree(id: string) {
+        excludedIds.add(id);
+        for (const childId of (childrenMap.get(id) ?? [])) {
+          markExcludedSubtree(childId); // recurse to exclude full sub-tree
+        }
+      }
+
+      for (const seg of allSegments) {
+        if (excludedCategories.some(cat => seg.name.toLowerCase().includes(cat.toLowerCase()))) {
+          markExcludedSubtree(seg.id);
+        }
+      }
+
+      segments = allSegments.filter(s => !excludedIds.has(s.id));
+    }
+
+    // Deterministic parent rollup: parent's baseYearValue = sum of its children.
+    // This ensures MECE consistency regardless of what was stored in the DB.
+    // Computed bottom-up (post-order traversal) so multi-level trees work correctly.
+    const segById = new Map(segments.map(s => [s.id, { ...s }]));
+    const segChildrenMap = new Map<string, string[]>();
+    for (const s of segments) {
+      if (s.parentId && segById.has(s.parentId)) {
+        if (!segChildrenMap.has(s.parentId)) segChildrenMap.set(s.parentId, []);
+        segChildrenMap.get(s.parentId)!.push(s.id);
+      }
+    }
+
+    function rollupBaseValue(id: string): number {
+      const children = segChildrenMap.get(id) ?? [];
+      if (children.length === 0) {
+        return segById.get(id)?.baseYearValue ?? 0; // leaf: use DB value
+      }
+      const childSum = children.reduce((sum, cid) => sum + rollupBaseValue(cid), 0);
+      segById.get(id)!.baseYearValue = childSum; // parent: override with child sum
+      return childSum;
+    }
+
+    for (const s of segments.filter(seg => !seg.parentId)) {
+      rollupBaseValue(s.id); // post-order from each root
+    }
+    segments = [...segById.values()];
   } else {
     isSynthesised = true;
     segments = synthesiseFromAssumptions(full);

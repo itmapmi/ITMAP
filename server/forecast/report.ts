@@ -231,10 +231,27 @@ async function genSection3MarketSizing(
 ): Promise<string> {
   return generateSectionWithRetry(async () => {
     const baseYear = forecast.baseYear ?? 2024;
+    const horizonYears = forecast.forecastHorizonYears ?? 5;
+    const horizonYear = baseYear + horizonYears;
     const baseTotal = engine.baseScenario.totalForecastPath[baseYear] ?? 0;
+    const horizonTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
+    const cagr = baseTotal > 0 ? ((Math.pow(horizonTotal / baseTotal, 1 / horizonYears) - 1) * 100) : 0;
 
+    // Full segment tree with both base-year value and horizon-year forecast trajectory
     const segmentLines = engine.baseScenario.segmentForecasts
-      .map(sf => `  ${sf.name}: ${fmt(sf.baseYearValue, currency)} base year`)
+      .map(sf => {
+        const horizonVal = sf.forecastPath[horizonYear] ?? 0;
+        const segCagr = sf.baseYearValue > 0
+          ? ((Math.pow(horizonVal / sf.baseYearValue, 1 / horizonYears) - 1) * 100)
+          : 0;
+        // Find assumption ID tags for this segment's growth assumptions
+        const assumptionTags = forecast.assumptions
+          .filter(a => sf.forecastPath !== undefined) // always include
+          .slice(0, 2)
+          .map(a => aId(a))
+          .join(", ");
+        return `  ${sf.name}: ${fmt(sf.baseYearValue, currency)} (${baseYear}) → ${fmt(horizonVal, currency)} (${horizonYear}), CAGR ${fmtPct(segCagr)}`;
+      })
       .join("\n");
 
     const sizeAssumptions = forecast.assumptions
@@ -243,8 +260,19 @@ async function genSection3MarketSizing(
         const unit = (a.unit ?? "").toLowerCase();
         return unit.includes("$") || unit.includes("b") || desc.includes("market size") || desc.includes("tam");
       })
-      .slice(0, 5)
+      .slice(0, 6)
       .map(a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value} ${a.unit ?? ""}`)
+      .join("\n");
+
+    const growthAssumptions = [...forecast.assumptions]
+      .sort((a, b) => (a.sensitivityRank ?? 999) - (b.sensitivityRank ?? 999))
+      .filter(a => {
+        const u = (a.unit ?? "").toLowerCase();
+        const d = (a.description ?? "").toLowerCase();
+        return u.includes("%") || d.includes("growth") || d.includes("cagr") || d.includes("rate");
+      })
+      .slice(0, 5)
+      .map(a => `${aId(a)} ${a.description}: ${a.currentValue ?? a.value}${a.unit ?? ""}`)
       .join("\n");
 
     const sources = forecast.sources.slice(0, 5)
@@ -252,19 +280,23 @@ async function genSection3MarketSizing(
       .join("\n");
 
     return callLLM(client, SYSTEM_BASE, `FORECAST: ${forecast.title}
-BASE YEAR: ${baseYear}
+BASE YEAR: ${baseYear} | HORIZON: ${horizonYear}
 TOTAL BASE YEAR MARKET: ${fmt(baseTotal, currency)}
+TOTAL HORIZON MARKET (base scenario): ${fmt(horizonTotal, currency)} (CAGR ${fmtPct(cagr)})
 
-SEGMENT BREAKDOWN:
+SEGMENTATION TREE (base year value → horizon year value, CAGR):
 ${segmentLines || "  Single undifferentiated market"}
 
-SIZING ASSUMPTIONS (reference by ID tag when citing):
+SIZING ASSUMPTIONS — reference by ID tag when citing (these IDs appear in the Assumptions Register):
 ${sizeAssumptions || "  See assumptions register"}
+
+KEY GROWTH ASSUMPTIONS:
+${growthAssumptions || "  See assumptions register"}
 
 SOURCES USED:
 ${sources || "  No sources recorded"}
 
-Write the Market Sizing & Base Year section, explaining how the base year estimate was constructed and validated.`);
+Write the Market Sizing & Base Year section. Explain how the base year estimate was constructed and validated. Walk through the segmentation tree, citing specific assumption ID tags where you reference figures. State the total base year market size and the horizon year projection clearly so they can be cross-referenced against the forecast tables.`);
   });
 }
 
@@ -538,6 +570,71 @@ export function qcSchemaCompleteness(forecast: ForecastFull, sections?: ReportSe
 }
 
 /**
+ * Prose-number consistency — synchronous structural check (no LLM).
+ *
+ * Extracts currency figures ($15.2B, $1.5T, $800M) from LLM-written sections
+ * 1, 3, 5 and 6 (the sections that state total market values) and checks each
+ * against the known engine output range.  Any figure that falls outside a 50%
+ * tolerance band around the known min/max engine values indicates the LLM may
+ * have hallucinated a number outside the data it was given.
+ *
+ * Returns { passed, failingSections } so the caller can trigger targeted retry.
+ */
+function qcProseNumbers(
+  sections: ReportSection[],
+  engine: EngineOutput
+): { passed: boolean; failingSections: number[] } {
+  const years = Object.keys(engine.baseScenario.totalForecastPath).map(Number);
+  if (years.length === 0) return { passed: true, failingSections: [] };
+
+  // Collect every legitimate market-total value the engine produced
+  const engineValues: number[] = [];
+  for (const y of years) {
+    const bv = engine.baseScenario.totalForecastPath[y];
+    const buv = engine.bullScenario.totalForecastPath[y];
+    const bev = engine.bearScenario.totalForecastPath[y];
+    if (bv != null && bv > 0) engineValues.push(bv);
+    if (buv != null && buv > 0) engineValues.push(buv);
+    if (bev != null && bev > 0) engineValues.push(bev);
+  }
+  if (engineValues.length === 0) return { passed: true, failingSections: [] };
+
+  const minVal = Math.min(...engineValues);
+  const maxVal = Math.max(...engineValues);
+  const tolerance = 0.5;
+
+  /** Parse a $X.YZ[BMTK] string into billions. */
+  function parseCurrencyFig(raw: string): number | null {
+    const suffix = raw.slice(-1).toUpperCase();
+    const num = parseFloat(raw.slice(1).replace(/,/g, ""));
+    if (isNaN(num)) return null;
+    if (suffix === "T") return num * 1000;
+    if (suffix === "B") return num;
+    if (suffix === "M") return num / 1000;
+    if (suffix === "K") return num / 1000000;
+    return num; // no suffix → assume billions
+  }
+
+  const failingSections: number[] = [];
+
+  for (const s of sections.filter(sec => [1, 3, 5, 6].includes(sec.id))) {
+    const matches = s.content.match(/\$[\d,]+\.?\d*[BMTK]?/g) ?? [];
+    for (const m of matches) {
+      const val = parseCurrencyFig(m);
+      if (val === null || val <= 0) continue;
+      // Values far below $1M (0.001B) or outside 50% band of engine range are suspicious
+      if (val < 0.001) continue; // ignore tiny numbers (probably not totals)
+      if (val > maxVal * (1 + tolerance) || val < minVal * (1 - tolerance)) {
+        if (!failingSections.includes(s.id)) failingSections.push(s.id);
+        break; // one outlier per section is enough to flag it
+      }
+    }
+  }
+
+  return { passed: failingSections.length === 0, failingSections };
+}
+
+/**
  * Traceability check — run against generated sections.
  * Returns which sections contain assumption ID tags that don't match any
  * real assumption UUID prefix, so the retry can target exactly those sections.
@@ -688,17 +785,25 @@ export async function generateReport(
     sections.push({ id: meta.id, title: meta.title, content });
   }
 
-  // ── QC: traceability + narrative coherence — blocking gates with retry ─────
+  // ── QC: traceability + prose-number consistency + narrative coherence ────────
+  // All three are blocking gates; targeted retry regenerates only failing sections.
   onProgress(0, "Running QC checks…");
 
-  const traceResult = qcTraceabilityCheck(sections, forecast.assumptions);
-  const ncResult = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
+  const traceResult  = qcTraceabilityCheck(sections, forecast.assumptions);
+  const proseResult  = qcProseNumbers(sections, engine);
+  const ncResult     = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-  const qcFailed = !traceResult.passed || !ncResult.coherent;
+  const qcFailed = !traceResult.passed || !proseResult.passed || !ncResult.coherent;
 
   if (qcFailed) {
-    // Collect the exact failing sections from all QC passes — no blind retry
-    const failingIds = [...new Set([...traceResult.failingSections, ...ncResult.failingSections])];
+    // Collect exact failing sections from all QC passes — targeted retry, no blind 1+4 override
+    const failingIds = [
+      ...new Set([
+        ...traceResult.failingSections,
+        ...proseResult.failingSections,
+        ...ncResult.failingSections,
+      ]),
+    ];
 
     onProgress(0, `QC retry — regenerating section(s) ${failingIds.join(", ")}…`);
     for (const id of failingIds) {
@@ -712,16 +817,23 @@ export async function generateReport(
       if (idx >= 0) sections[idx] = { id, title: meta.title, content: newContent };
     }
 
-    // Re-run both QC checks against the regenerated sections
+    // Re-run all three QC checks against the regenerated sections
     const traceResult2 = qcTraceabilityCheck(sections, forecast.assumptions);
-    const ncResult2 = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
+    const proseResult2 = qcProseNumbers(sections, engine);
+    const ncResult2    = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-    if (!traceResult2.passed || !ncResult2.coherent) {
+    if (!traceResult2.passed || !proseResult2.passed || !ncResult2.coherent) {
       const issues: string[] = [];
       if (!traceResult2.passed) {
         issues.push(
           `Traceability: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
           `in sections ${traceResult2.failingSections.join(", ")}`
+        );
+      }
+      if (!proseResult2.passed) {
+        issues.push(
+          `Prose-number consistency: sections ${proseResult2.failingSections.join(", ")} ` +
+          `contain figures outside the engine output range`
         );
       }
       if (!ncResult2.coherent) {
@@ -734,11 +846,16 @@ export async function generateReport(
     }
   }
 
+  // All QC checks passed (or passed after targeted retry)
+  const finalInternalConsistency =
+    qcInternalConsistency(engine) &&
+    qcProseNumbers(sections, engine).passed; // prose-number consistency is part of "internal consistency"
+
   return {
     sections,
     engineSummary: { baseTotal, bullTotal, bearTotal, horizonYear, baseCagr },
     qcStatus: {
-      internalConsistency: qcInternalConsistency(engine),
+      internalConsistency: finalInternalConsistency,
       schemaCompleteness: qcSchemaCompleteness(forecast, sections), // includes traceability
       narrativeCoherence: true, // reaches here only if passed
     },
