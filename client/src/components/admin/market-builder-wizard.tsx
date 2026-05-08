@@ -1569,6 +1569,34 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
         return;
       }
     }
+    // End-user auto-publish: when the Vendor evaluation phase is complete
+    // (Stage 3 approved) we mark the job complete and publish it in the
+    // background so the report shows up immediately under "My Reports".
+    // This is fire-and-forget — the user can keep going to Product /
+    // Ecosystem stages if they want, and a republish on stage 6/9 approval
+    // refreshes the same market in place.
+    if (mode === "user" && stageNum === 3 && activeJob) {
+      try {
+        await completeJob.mutateAsync(activeJob.id);
+        await apiRequest(`${apiBase}/jobs/${activeJob.id}/publish`, "POST", {});
+        toast({ title: "Report published", description: "Available now under My Reports." });
+        refetchJobs();
+        queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/market-builder/jobs"] });
+      } catch (err: any) {
+        // Non-fatal — user can still continue to Product/Ecosystem and use the
+        // explicit "Finish here & Publish" button later.
+        toast({ title: "Auto-publish failed", description: err.message, variant: "destructive" });
+      }
+    }
+    if (mode === "user" && stageNum === 6 && activeJob && activeJob.status === "published") {
+      // Republish in place after Product phase so the My Reports view reflects
+      // the newly added phase without an explicit click.
+      try {
+        await apiRequest(`${apiBase}/jobs/${activeJob.id}/publish`, "POST", {});
+        queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      } catch { /* non-fatal */ }
+    }
     if (stageNum === 9) {
       await completeJob.mutateAsync(activeJob!.id);
       setActiveStage(10);

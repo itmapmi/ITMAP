@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock } from "lucide-react";
+import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus } from "lucide-react";
 import type { Market } from "@shared/schema";
 
 export const FREE_MARKET_ID = "130ee3b2-16b1-4803-a8f0-8c4ed3a61d96";
@@ -21,19 +21,31 @@ const fadeUp = {
 };
 
 export default function Markets() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { data: markets, isLoading, error } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [tab, setTab] = useState<"all" | "mine">("all");
+
+  // Authenticated user's own private markets (from the Market Builder).
+  const myMarkets = useMemo(() => {
+    if (!markets || !user?.id) return [];
+    return markets.filter((m: any) => m.ownerUserId === user.id);
+  }, [markets, user?.id]);
+
+  // Public markets list (excludes the user's private markets so they only
+  // appear under "My Reports").
+  const publicMarkets = useMemo(() => {
+    if (!markets) return [];
+    return markets.filter((m: any) => !m.ownerUserId || m.ownerUserId !== user?.id);
+  }, [markets, user?.id]);
 
   const categories = useMemo(() => {
-    if (!markets) return [];
-    return Array.from(new Set(markets.map(m => m.category).filter(Boolean))).sort() as string[];
-  }, [markets]);
+    return Array.from(new Set(publicMarkets.map(m => m.category).filter(Boolean))).sort() as string[];
+  }, [publicMarkets]);
 
   const filtered = useMemo(() => {
-    if (!markets) return [];
-    return markets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
-  }, [markets, selectedCategory]);
+    return publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
+  }, [publicMarkets, selectedCategory]);
 
   if (error) {
     return (
@@ -96,8 +108,124 @@ export default function Markets() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Tab toggle — only for authenticated users */}
+        {isAuthenticated && (
+          <div className="flex items-center gap-2 mb-8 border-b border-white/5">
+            <button
+              onClick={() => setTab("all")}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                tab === "all"
+                  ? "border-cyan-400 text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              }`}
+              data-testid="tab-all-markets"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Globe2 className="h-4 w-4" /> All Markets
+              </span>
+            </button>
+            <button
+              onClick={() => setTab("mine")}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                tab === "mine"
+                  ? "border-cyan-400 text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-300"
+              }`}
+              data-testid="tab-my-reports"
+            >
+              <span className="inline-flex items-center gap-2">
+                <FileText className="h-4 w-4" /> My Reports
+                {myMarkets.length > 0 && (
+                  <span className="text-[11px] bg-violet-500/20 text-violet-300 border border-violet-400/30 rounded-full px-2 py-0.5">
+                    {myMarkets.length}
+                  </span>
+                )}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* My Reports view */}
+        {tab === "mine" && isAuthenticated && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Your private reports</h2>
+                <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" /> Only you can see these.
+                </p>
+              </div>
+              <Link href="/me/market-builder">
+                <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 gap-2">
+                  <Plus className="h-4 w-4" /> Build New Report
+                </Button>
+              </Link>
+            </div>
+
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-52 bg-slate-900/60 rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : myMarkets.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-12 text-center">
+                <Sparkles className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">No reports yet</h3>
+                <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
+                  Build your own private market report with AI-powered vendor evaluation, scoring, and commentary.
+                </p>
+                <Link href="/me/market-builder">
+                  <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 gap-2">
+                    <Plus className="h-4 w-4" /> Build Your First Report
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {myMarkets.map((market, i) => (
+                  <motion.div
+                    key={market.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: i * 0.06 }}
+                  >
+                    <Link href={`/markets/${market.id}`}>
+                      <div className="group relative bg-slate-900 border border-violet-500/20 hover:border-violet-400/50 rounded-2xl p-6 h-full cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(139,92,246,0.10)]">
+                        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-cyan-500/0 group-hover:from-violet-500/10 transition-all duration-500" />
+                        <div className="relative flex flex-col h-full">
+                          <div className="flex items-start justify-between mb-5">
+                            <div className="p-2.5 bg-gradient-to-br from-violet-500/20 to-cyan-500/15 border border-violet-400/20 rounded-xl">
+                              <FileText className="h-5 w-5 text-violet-300" />
+                            </div>
+                            <span className="text-[10px] uppercase tracking-wide font-semibold text-violet-300 bg-violet-500/15 border border-violet-400/30 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+                              <Lock className="h-3 w-3" /> Private
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-white mb-3 group-hover:text-violet-200 transition-colors leading-snug flex-grow">
+                            {cleanName(market.name)}
+                          </h3>
+                          <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-5">
+                            {market.shortDescription || market.description}
+                          </p>
+                          <div className="flex items-center justify-between mt-auto">
+                            <span className="text-xs text-slate-500">Your report</span>
+                            <span className="text-xs text-violet-300 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              Open <ChevronRight className="h-3 w-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Filter */}
-        {categories.length > 0 && (
+        {tab === "all" && categories.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,8 +251,8 @@ export default function Markets() {
           </motion.div>
         )}
 
-        {/* Grid */}
-        {isLoading ? (
+        {/* Grid — All Markets tab only */}
+        {tab === "all" && (<>{isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-52 bg-slate-900/60 rounded-2xl animate-pulse" />
@@ -244,9 +372,9 @@ export default function Markets() {
               Clear Filter
             </Button>
           </div>
-        )}
+        )}</>)}
 
-        {!isAuthenticated && filtered.length > 0 && (
+        {tab === "all" && !isAuthenticated && filtered.length > 0 && (
           <motion.div {...fadeUp} className="mt-16 relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-12 text-center overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.06)_0%,transparent_70%)]" />
             <div className="relative">
