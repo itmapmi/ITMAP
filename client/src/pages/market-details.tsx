@@ -21,6 +21,7 @@ import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Market, Vendor } from "@shared/schema";
+import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
@@ -29,7 +30,7 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const isFreeMarket = marketId === FREE_MARKET_ID;
 
@@ -45,6 +46,41 @@ export default function MarketDetails() {
     queryKey: ["/api/markets", marketId, "vendors"],
     enabled: !!marketId,
   });
+
+  // For private (end-user-built) markets the owner can re-enter the wizard to
+  // add an optional phase. Compute which phases are missing from the feature
+  // categories so we can show targeted placeholders.
+  const isOwner = !!(market?.ownerUserId && user?.id === market.ownerUserId);
+  const showOwnerControls = isOwner && market?.visibility === "private";
+  const { data: featureCategories = [] } = useQuery<any[]>({
+    queryKey: ["/api/markets", marketId, "feature-categories"],
+    enabled: !!marketId && showOwnerControls,
+  });
+  const hasProductPhase = featureCategories.some((c: any) =>
+    !/(ecosystem|integration|partnership|third-party|isv)/i.test(c.name));
+  const hasEcosystemPhase = featureCategories.some((c: any) =>
+    /(ecosystem|integration|partnership|third-party|isv)/i.test(c.name));
+  const { data: myJobs = [] } = useQuery<any[]>({
+    queryKey: ["/api/market-builder/jobs"],
+    enabled: showOwnerControls,
+  });
+  const originatingJob = myJobs.find((j: any) => j.marketId === marketId);
+  const wizardLink = originatingJob ? `/me/market-builder?job=${originatingJob.id}` : "/me/market-builder";
+
+  const PhasePlaceholder = ({ phase }: { phase: "Product" | "Ecosystem" }) => (
+    <div className="rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 p-8 text-center">
+      <Sparkles className="h-8 w-8 text-blue-500 mx-auto mb-3" />
+      <p className="font-semibold text-gray-900 mb-1">{phase} phase not added yet</p>
+      <p className="text-sm text-gray-600 mb-4">
+        This market was published without the {phase.toLowerCase()} phase. Add it in the Market Builder to populate this section.
+      </p>
+      <Link href={wizardLink}>
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+          Add {phase} phase
+        </Button>
+      </Link>
+    </div>
+  );
 
   const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
     setIsGenerating(true);
@@ -302,11 +338,15 @@ export default function MarketDetails() {
           </TabsContent>
 
           <TabsContent value="support-matrix" className="mt-6">
-            <SupportMatrix marketId={marketId!} />
+            {showOwnerControls && !hasProductPhase
+              ? <PhasePlaceholder phase="Product" />
+              : <SupportMatrix marketId={marketId!} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">
-            <EcosystemSupport marketId={marketId!} />
+            {showOwnerControls && !hasEcosystemPhase
+              ? <PhasePlaceholder phase="Ecosystem" />
+              : <EcosystemSupport marketId={marketId!} />}
           </TabsContent>
 
           <TabsContent value="research-methodology" className="mt-6">

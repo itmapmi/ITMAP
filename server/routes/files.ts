@@ -157,8 +157,24 @@ export function registerFileRoutes(app: Express): void {
 
       const workbook = xlsx.utils.book_new();
       xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(vendorEvalData, { header: vendorEvalHeaders }), 'Vendor Evaluation');
-      xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(productEvalData, { header: productEvalHeaders }), 'Product Evaluation');
-      xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(ecosystemData, { header: ecosystemHeaders }), 'ISV Ecosystem');
+      // Partial markets (end-user builder) may publish without the product or
+      // ecosystem phases. Omit the corresponding sheets entirely and record an
+      // explicit note in a dedicated "Notes" sheet so consumers understand
+      // why a section is missing.
+      const omitted: { Section: string; Note: string }[] = [];
+      if (productFeatures.length > 0) {
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(productEvalData, { header: productEvalHeaders }), 'Product Evaluation');
+      } else {
+        omitted.push({ Section: 'Product Evaluation', Note: 'The Product Evaluation phase was not included when this market was published. Re-open the market in the Market Builder to add it.' });
+      }
+      if (ecosystemFeatures.length > 0) {
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(ecosystemData, { header: ecosystemHeaders }), 'ISV Ecosystem');
+      } else {
+        omitted.push({ Section: 'ISV Ecosystem', Note: 'The ISV Ecosystem phase was not included when this market was published. Re-open the market in the Market Builder to add it.' });
+      }
+      if (omitted.length > 0) {
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(omitted), 'Notes');
+      }
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Disposition', `attachment; filename="${market.name.replace(/[^a-z0-9]/gi, '_')}_export.xlsx"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -417,6 +433,11 @@ export function registerFileRoutes(app: Express): void {
       const allSupport = await storage.getVendorFeatureSupport(marketId);
       const productSupport = ecosystemCategory ? allSupport.filter((s: any) => !ecosystemFeatures.find((f: any) => f.id === s.featureId)) : allSupport;
       const ecosystemSupport = ecosystemCategory ? allSupport.filter((s: any) => ecosystemFeatures.find((f: any) => f.id === s.featureId)) : [];
+      // Partial markets: pass empty arrays for phases that weren't published.
+      // The PDF service detects empty input and renders a "section not
+      // generated" note rather than an empty table.
+      const includeProduct = productFeatures.length > 0;
+      const includeEcosystem = ecosystemFeatures.length > 0;
       const { getVendorSignals } = await import('../storage/signals');
       const { newsStorage } = await import('../news/storage');
       const signalsByVendor: Record<string, any[]> = {};
@@ -435,7 +456,15 @@ export function registerFileRoutes(app: Express): void {
           console.warn(`[PDF] Failed to fetch news for vendor ${vendor.id} (${vendor.name}):`, err);
         }
       }
-      const content = pdfService.generateFullReportContent(market, vendors, scores, productFeatures, productCategories, productSupport, ecosystemFeatures, ecosystemSupport, newsByVendor, signalsByVendor);
+      const content = pdfService.generateFullReportContent(
+        market, vendors, scores,
+        includeProduct ? productFeatures : [],
+        includeProduct ? productCategories : [],
+        includeProduct ? productSupport : [],
+        includeEcosystem ? ecosystemFeatures : [],
+        includeEcosystem ? ecosystemSupport : [],
+        newsByVendor, signalsByVendor,
+      );
       const pdfBuffer = await pdfService.generatePDF({ marketName: market.name, reportTitle: 'Complete Market Analysis', reportType: 'Full Market Report', content });
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName}.pdf`;
@@ -484,6 +513,9 @@ export function registerFileRoutes(app: Express): void {
       const productCategories = allCategories.filter((c: any) => c.id !== ecosystemCategory?.id);
       const allFeatures = await storage.getMarketFeatures(marketId);
       const productFeatures = ecosystemCategory ? allFeatures.filter((f: any) => f.categoryId !== ecosystemCategory.id) : allFeatures;
+      if (productFeatures.length === 0) {
+        return res.status(404).json({ error: "Product Evaluation phase was not included when this market was published. Add the Product phase in the Market Builder to enable this report." });
+      }
       const allSupport = await storage.getVendorFeatureSupport(marketId);
       const productSupport = ecosystemCategory ? allSupport.filter((s: any) => !allFeatures.find((f: any) => f.id === s.featureId && f.categoryId === ecosystemCategory.id)) : allSupport;
       const content = pdfService.generateProductEvaluationContent(market, vendors, productFeatures, productCategories, productSupport);
@@ -509,7 +541,7 @@ export function registerFileRoutes(app: Express): void {
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allCategories = await storage.getMarketFeatureCategories(marketId);
       const ecosystemCategory = allCategories.find((c: any) => c.name.toLowerCase().includes('ecosystem') || c.name.toLowerCase().includes('isv'));
-      if (!ecosystemCategory) return res.status(404).json({ error: "No ecosystem category found for this market" });
+      if (!ecosystemCategory) return res.status(404).json({ error: "Ecosystem phase was not included when this market was published. Add the Ecosystem phase in the Market Builder to enable this report." });
       const allFeatures = await storage.getMarketFeatures(marketId);
       const ecosystemFeatures = allFeatures.filter((f: any) => f.categoryId === ecosystemCategory.id);
       const allSupport = await storage.getVendorFeatureSupport(marketId);

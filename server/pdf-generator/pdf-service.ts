@@ -537,17 +537,37 @@ export class PDFService {
     console.log('[PDF] Vendor evaluation content length:', vendorEvalContent.length);
     content += vendorEvalContent;
 
-    // 2. Product Evaluation
-    console.log('[PDF] Generating product evaluation content...');
-    const productEvalContent = this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
-    console.log('[PDF] Product evaluation content length:', productEvalContent.length);
-    content += productEvalContent;
+    // 2. Product Evaluation — omit and add a "section not generated" note
+    // when the market was published without the Product phase (end-user
+    // builder partial publish).
+    if (features.length > 0) {
+      console.log('[PDF] Generating product evaluation content...');
+      const productEvalContent = this.generateProductEvaluationContent(market, vendors, features, categories, supportData);
+      content += productEvalContent;
+    } else {
+      content += `
+        <div class="section-break">
+          <h2>Product Evaluation</h2>
+          <p style="padding: 16px; background: #f8fafc; border-left: 4px solid #94a3b8; color: #475569; font-style: italic;">
+            Section not generated — the Product Evaluation phase was not included when this market was published.
+          </p>
+        </div>`;
+    }
 
-    // 3. Ecosystem
-    console.log('[PDF] Generating ecosystem content...');
-    const ecosystemContent = this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
-    console.log('[PDF] Ecosystem content length:', ecosystemContent.length);
-    content += ecosystemContent;
+    // 3. Ecosystem — same omission handling.
+    if (ecosystemFeatures.length > 0) {
+      console.log('[PDF] Generating ecosystem content...');
+      const ecosystemContent = this.generateEcosystemContent(market, vendors, ecosystemFeatures, ecosystemSupport);
+      content += ecosystemContent;
+    } else {
+      content += `
+        <div class="section-break">
+          <h2>ISV Ecosystem</h2>
+          <p style="padding: 16px; background: #f8fafc; border-left: 4px solid #94a3b8; color: #475569; font-style: italic;">
+            Section not generated — the ISV Ecosystem phase was not included when this market was published.
+          </p>
+        </div>`;
+    }
 
     // 4. Vendor News
     if (newsByVendor) {

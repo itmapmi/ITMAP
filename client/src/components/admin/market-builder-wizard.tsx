@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,85 @@ interface MarketBuilderStage {
 
 type StagePhase = "ready" | "running" | "done" | "failed";
 type WizardView = "dashboard" | "new-setup" | "stages" | "published";
+
+// ── Phase helpers (Vendor 1–3, Product 4–6, Ecosystem 7–9) ───────────────
+// In end-user mode the Product and Ecosystem phases are optional. Each phase
+// is all-or-none on publish, so we use these helpers to decide which CTAs
+// (Finish & Publish, Continue to next phase, etc.) to surface in the wizard.
+
+const VENDOR_PHASE = [1, 2, 3] as const;
+const PRODUCT_PHASE = [4, 5, 6] as const;
+const ECOSYSTEM_PHASE = [7, 8, 9] as const;
+
+type PhaseState = "complete" | "partial" | "empty";
+function phaseState(phases: Record<number, StagePhase>, stages: readonly number[]): PhaseState {
+  const done = stages.filter(n => phases[n] === "done").length;
+  if (done === stages.length) return "complete";
+  if (done === 0) return "empty";
+  return "partial";
+}
+
+// Phase Overview cards (end-user mode) — replaces the linear stage tracker
+// as the primary navigation when working on a phased build. Each phase card
+// shows status + a primary action (Start / Continue / Refresh).
+function PhaseOverview({
+  stagePhases, vendorAvailable, onJumpTo,
+}: {
+  stagePhases: Record<number, StagePhase>;
+  vendorAvailable: boolean;
+  onJumpTo: (stage: number) => void;
+}) {
+  const phases = [
+    { key: "vendor",    label: "Vendor Phase",    range: VENDOR_PHASE,    desc: "Vendor list, scoring, commentary",          required: true,  startStage: 1 },
+    { key: "product",   label: "Product Phase",   range: PRODUCT_PHASE,   desc: "Product features, scoring, commentary",     required: false, startStage: 4 },
+    { key: "ecosystem", label: "Ecosystem Phase", range: ECOSYSTEM_PHASE, desc: "ISV ecosystem, scoring, commentary",        required: false, startStage: 7 },
+  ] as const;
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {phases.map(p => {
+        const state = phaseState(stagePhases, p.range);
+        const inProgress = p.range.some(n => stagePhases[n] === "running")
+          || (state === "partial");
+        const locked = !p.required && !vendorAvailable;
+        const next = p.range.find(n => stagePhases[n] !== "done") ?? p.range[0];
+        const action =
+          state === "complete" ? { label: "Refresh phase", stage: p.startStage } :
+          state === "partial"  ? { label: `Continue — Stage ${next}`, stage: next } :
+                                 { label: `Start phase`, stage: p.startStage };
+        const badge =
+          state === "complete" ? { text: "Done",        cls: "bg-emerald-100 text-emerald-700 border-emerald-200" } :
+          inProgress           ? { text: "In progress", cls: "bg-amber-100 text-amber-700 border-amber-200" } :
+                                 { text: "Not started", cls: "bg-gray-100 text-gray-500 border-gray-200" };
+        const doneCount = p.range.filter(n => stagePhases[n] === "done").length;
+        return (
+          <div
+            key={p.key}
+            className={`rounded-lg border p-4 flex flex-col gap-2 ${locked ? "bg-gray-50 opacity-60" : "bg-white"}`}
+            data-testid={`phase-card-${p.key}`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-gray-900">{p.label}</p>
+              <span className={`text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 border ${badge.cls}`}>{badge.text}</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-snug">{p.desc}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{doneCount}/{p.range.length} stages</p>
+            <Button
+              size="sm"
+              variant={state === "complete" ? "outline" : "default"}
+              className={`mt-1 h-8 text-xs gap-1.5 ${state === "complete" ? "" : "bg-blue-600 hover:bg-blue-700"}`}
+              disabled={locked}
+              onClick={() => onJumpTo(action.stage)}
+              data-testid={`phase-action-${p.key}`}
+            >
+              {state === "complete" ? <RefreshCw className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
+              {locked ? "Vendor phase required first" : action.label}
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const STAGE_META = [
   { num: 1, label: "Vendors",             icon: Building2, eta: "~1 min",    desc: "AI identifies key vendors and products in this market.", what: "Top 15 vendors with names, product descriptions, websites, and newsroom URLs — plus a 'Next 10' suggestions list to optionally include." },
@@ -147,11 +227,13 @@ function StageDots({ stageSummary }: { stageSummary: Record<number, string> }) {
 
 // ── Step tracker (in-wizard top bar) ──────────────────────────────────────
 
-function StepTracker({ activeStage, stagePhases, onStepClick }: {
+function StepTracker({ activeStage, stagePhases, onStepClick, mode = "admin" }: {
   activeStage: number;
   stagePhases: Record<number, StagePhase>;
   onStepClick: (n: number) => void;
+  mode?: "admin" | "user";
 }) {
+  const vendorDone = phaseState(stagePhases, VENDOR_PHASE) === "complete";
   return (
     <div className="flex items-center gap-0">
       {STAGE_META.map((s, i) => {
@@ -159,16 +241,22 @@ function StepTracker({ activeStage, stagePhases, onStepClick }: {
         const isActive = s.num === activeStage;
         const isDone = phase === "done";
         const isRunning = phase === "running";
-        const isLocked = !phase && s.num > activeStage;
+        // In end-user mode Product (4) and Ecosystem (7) are independent
+        // optional phases — once Vendor is done, both phase entry-points are
+        // unlocked regardless of the other one's progress.
+        const phaseEntryUnlocked =
+          mode === "user" && vendorDone && (s.num === 4 || s.num === 7);
+        const isLocked = !phase && s.num > activeStage && !phaseEntryUnlocked;
+        const isClickable = isDone || phaseEntryUnlocked;
         return (
           <div key={s.num} className="flex items-center flex-1 min-w-0">
             <button
-              onClick={() => isDone && onStepClick(s.num)}
+              onClick={() => isClickable && onStepClick(s.num)}
               title={`${s.label} — est. ${s.eta}`}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-lg flex-1 min-w-0 text-left transition-all ${
-                isActive  ? "bg-blue-50 border-2 border-blue-300" :
-                isDone    ? "hover:bg-gray-50 cursor-pointer border border-transparent" :
-                            "cursor-default border border-transparent"
+                isActive   ? "bg-blue-50 border-2 border-blue-300" :
+                isClickable ? "hover:bg-gray-50 cursor-pointer border border-transparent" :
+                             "cursor-default border border-transparent"
               }`}
             >
               <div className="shrink-0">
@@ -943,9 +1031,10 @@ function SourcesOnlyNotice() {
 
 // ── Publish panel ─────────────────────────────────────────────────────────
 
-function PublishPanel({ job, stageResults, onPublished, apiBase, mode }: {
+function PublishPanel({ job, stageResults, stagePhases, onPublished, apiBase, mode }: {
   job: MarketBuilderJob;
   stageResults: Record<number, any>;
+  stagePhases: Record<number, StagePhase>;
   onPublished: (marketId: string, isVisible: boolean) => void;
   apiBase: string;
   mode: "admin" | "user";
@@ -958,23 +1047,36 @@ function PublishPanel({ job, stageResults, onPublished, apiBase, mode }: {
   const s5 = stageResults[7]; const s6 = stageResults[9];
   const productFeatures = s3?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
   const ecoFeatures = s5?.categories?.reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0) ?? 0;
+  const productDone = phaseState(stagePhases, PRODUCT_PHASE) === "complete";
+  const ecoDone = phaseState(stagePhases, ECOSYSTEM_PHASE) === "complete";
+  const isRepublish = job.status === "published";
   const publish = useMutation({
     mutationFn: () => apiRequest(`${apiBase}/jobs/${job.id}/publish`, "POST", { isVisible }).then(r => r.json()),
-    onSuccess: (data: any) => { onPublished(data.marketId, isVisible); toast({ title: "Market published!" }); },
+    onSuccess: (data: any) => { onPublished(data.marketId, isVisible); toast({ title: isRepublish ? "Market updated!" : "Market published!" }); },
     onError: (err: any) => toast({ title: "Publish failed", description: err.message, variant: "destructive" }),
   });
+  const headline = mode === "user"
+    ? (isRepublish ? "Republish Market"
+       : !productDone && !ecoDone ? "Vendor Phase Ready — Publish a Vendor-only Market"
+       : "Ready to Publish")
+    : "All Stages Approved — Ready to Publish";
+  const subhead = mode === "user"
+    ? (isRepublish
+        ? "Re-applies every approved phase to your existing market — vendors are upserted by name; Product / Ecosystem phases are fully refreshed when present. You can return later to add the remaining phases."
+        : "Publishes what's approved so far. You can return later to add the Product or Ecosystem phases — they'll be merged into this market.")
+    : "Review the summary, set visibility, then publish to create the market.";
   return (
     <div className="rounded-xl border-2 border-green-200 bg-green-50 p-6 space-y-4">
       <div>
-        <h3 className="text-lg font-bold text-green-900">All Stages Approved — Ready to Publish</h3>
-        <p className="text-sm text-green-700 mt-0.5">Review the summary, set visibility, then publish to create the market.</p>
+        <h3 className="text-lg font-bold text-green-900">{headline}</h3>
+        <p className="text-sm text-green-700 mt-0.5">{subhead}</p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { l: "Vendors", v: s1?.vendors?.length ?? 0 },
           { l: "Criteria", v: s2?.criteriaWeights?.length ?? 0 },
-          { l: "Product Features", v: productFeatures },
-          { l: "Ecosystem Features", v: ecoFeatures },
+          { l: productDone ? "Product Features" : "Product Features (skipped)", v: productDone ? productFeatures : "—" },
+          { l: ecoDone ? "Ecosystem Features" : "Ecosystem Features (skipped)", v: ecoDone ? ecoFeatures : "—" },
         ].map(({ l, v }) => (
           <div key={l} className="rounded-lg bg-white border border-green-200 p-3 text-center">
             <p className="text-2xl font-bold text-green-800">{v}</p>
@@ -1001,7 +1103,7 @@ function PublishPanel({ job, stageResults, onPublished, apiBase, mode }: {
       )}
       <Button className="w-full gap-2 bg-green-700 hover:bg-green-800 h-10" onClick={() => publish.mutate()} disabled={publish.isPending}>
         {publish.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-        Publish Market
+        {isRepublish ? "Republish Market" : "Publish Market"}
       </Button>
     </div>
   );
@@ -1066,10 +1168,11 @@ function nextPendingStage(summary: Record<number, string>): number {
   return 10; // all done
 }
 
-function ProjectCard({ job, onResume, onDelete }: {
+function ProjectCard({ job, onResume, onDelete, mode = "admin" }: {
   job: MarketBuilderJob;
   onResume: (j: MarketBuilderJob) => void;
   onDelete: (id: string) => void;
+  mode?: "admin" | "user";
 }) {
   const summary = job.stageSummary ?? {};
   const done = stagesCompletedCount(summary);
@@ -1132,6 +1235,14 @@ function ProjectCard({ job, onResume, onDelete }: {
             {!isPublished && (
               <Button size="sm" className="h-7 px-3 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={() => onResume(job)}>
                 {done === 9 ? <><CheckCircle2 className="h-3.5 w-3.5" />Publish</> : <><ArrowRight className="h-3.5 w-3.5" />Continue — Stage {next}</>}
+              </Button>
+            )}
+            {/* End-user published markets stay editable: refresh a phase or add
+                an optional phase. Admin published markets stay locked. */}
+            {isPublished && mode === "user" && (
+              <Button size="sm" variant="outline" className="h-7 px-3 text-xs gap-1.5" onClick={() => onResume(job)}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                {done === 9 ? "Refresh" : `Add / Refresh phase`}
               </Button>
             )}
           </div>
@@ -1214,6 +1325,7 @@ function SetupForm({ onBack, onCreate, mode = "admin" }: {
 
 export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user" } = {}) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   // API base differs for admin vs end-user surfaces. Sub-components are
   // passed apiBase/promptsBase so they hit the right routes.
   const apiBase = mode === "user" ? "/api/market-builder" : "/api/admin/market-builder";
@@ -1404,6 +1516,33 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
   // ── Approve stage and advance ─────────────────────────────────────────
 
+  // "Finish here & Publish" entry-point for end-users at the end of a phase.
+  // Marks the job complete (server allows partial phases for end users), then
+  // immediately publishes (or re-publishes if the market already exists) and
+  // redirects to /me/reports so the user lands on their report.
+  const finishAndPublish = async () => {
+    if (!activeJob) return;
+    try {
+      await completeJob.mutateAsync(activeJob.id);
+      const r = await apiRequest(`${apiBase}/jobs/${activeJob.id}/publish`, "POST", {}).then(r => r.json());
+      toast({ title: activeJob.status === "published" ? "Market updated!" : "Market published!" });
+      refetchJobs();
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/market-builder/jobs"] });
+      // End users see their reports list; admin path keeps the existing
+      // in-app published confirmation screen.
+      if (mode === "user") {
+        setLocation("/me/reports");
+      } else {
+        setPublishedMarketId(r.marketId ?? null);
+        setPublishedVisible(!!r.isVisible);
+        setView("published");
+      }
+    } catch (err: any) {
+      toast({ title: "Publish failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   const approveStage = async (stageNum: number) => {
     if (stageNum === 9) {
       await completeJob.mutateAsync(activeJob!.id);
@@ -1460,8 +1599,20 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
     setStageResults(results);
 
-    if (job.status === "completed" || job.status === "published") {
+    // Completed admin jobs and any newly-completed end-user job land on the
+    // publish panel. Already-published end-user jobs jump back into stages
+    // mode at the first incomplete stage so the user can either refresh an
+    // existing phase or start an optional one.
+    if (job.status === "completed") {
       setActiveStage(10);
+    } else if (job.status === "published") {
+      if (mode === "user") {
+        const nextStage = Math.min(highestDone + 1, 9);
+        setActiveStage(nextStage);
+        if (!phases[nextStage]) phases[nextStage] = "ready";
+      } else {
+        setActiveStage(10);
+      }
     } else if (runningStage !== null) {
       // A stage was running when we left — jump straight to it; polling will resume
       setActiveStage(runningStage);
@@ -1574,6 +1725,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                 <ProjectCard
                   key={job.id}
                   job={job}
+                  mode={mode}
                   onResume={handleResume}
                   onDelete={id => deleteJob.mutate(id)}
                 />
@@ -1594,6 +1746,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                 <ProjectCard
                   key={job.id}
                   job={job}
+                  mode={mode}
                   onResume={handleResume}
                   onDelete={id => deleteJob.mutate(id)}
                 />
@@ -1635,12 +1788,40 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
         </div>
       </div>
 
+      {/* Phase Overview (user mode only) — primary navigation by phase with
+          Start / Continue / Refresh actions. The linear step tracker stays
+          below as a secondary view for stage-level navigation. */}
+      {mode === "user" && (
+        <div className="rounded-xl border bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-900">Phase Overview</p>
+            <p className="text-xs text-gray-500">Vendor required · Product &amp; Ecosystem optional</p>
+          </div>
+          <PhaseOverview
+            stagePhases={stagePhases}
+            vendorAvailable={phaseState(stagePhases, VENDOR_PHASE) === "complete"}
+            onJumpTo={n => {
+              setActiveStage(n);
+              setStagePhases(prev => prev[n] ? prev : { ...prev, [n]: "ready" });
+            }}
+          />
+        </div>
+      )}
+
       {/* Step tracker */}
       <div className="rounded-xl border bg-white p-3">
         <StepTracker
           activeStage={activeStage}
           stagePhases={stagePhases}
-          onStepClick={n => { if (stagePhases[n] === "done") setActiveStage(n); }}
+          mode={mode}
+          onStepClick={n => {
+            const vendorDone = phaseState(stagePhases, VENDOR_PHASE) === "complete";
+            const phaseEntryUnlocked = mode === "user" && vendorDone && (n === 4 || n === 7);
+            if (stagePhases[n] === "done" || phaseEntryUnlocked) {
+              setActiveStage(n);
+              setStagePhases(prev => prev[n] ? prev : { ...prev, [n]: "ready" });
+            }
+          }}
         />
       </div>
 
@@ -1649,6 +1830,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
         <PublishPanel
           job={activeJob!}
           stageResults={stageResults}
+          stagePhases={stagePhases}
           apiBase={apiBase}
           mode={mode}
           onPublished={(marketId, isVisible) => {
@@ -1679,8 +1861,17 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
               </p>
             </div>
             {currentPhase === "done" && (
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => runStage(activeJob!.id, activeStage)}>
-                <RefreshCw className="h-3.5 w-3.5" />Re-run Stage
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5 shrink-0"
+                onClick={() => runStage(activeJob!.id, activeStage)}
+                data-testid={`refresh-stage-${activeStage}`}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {activeStage === 2 ? "Refresh Vendor Scoring"
+                  : activeStage === 3 ? "Refresh Vendor Commentary"
+                  : "Re-run Stage"}
               </Button>
             )}
           </div>
@@ -1899,18 +2090,35 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
           {/* Bottom nav — only when done */}
           {currentPhase === "done" && (
-            <div className="border-t px-6 py-4 flex items-center justify-between">
+            <div className="border-t px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
               {activeStage > 1 ? (
                 <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}><ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}</Button>
               ) : <div />}
-              <Button
-                className="gap-2 bg-green-600 hover:bg-green-700 px-6"
-                onClick={() => approveStage(activeStage)}
-                disabled={completeJob.isPending}
-              >
-                {completeJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {activeStage < 9 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* End-user phase boundary: at the end of Vendor (3) or Product
+                    (6), surface a "Finish here & Publish" CTA so the user can
+                    publish a partial market instead of running every stage. */}
+                {mode === "user" && (activeStage === 3 || activeStage === 6) &&
+                 phaseState(stagePhases, activeStage === 3 ? VENDOR_PHASE : PRODUCT_PHASE) === "complete" && (
+                  <Button
+                    variant="outline"
+                    className="gap-2 px-5 border-green-300 text-green-800 hover:bg-green-50"
+                    onClick={() => finishAndPublish()}
+                    disabled={completeJob.isPending}
+                  >
+                    {completeJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {activeJob?.status === "published" ? "Republish Now" : "Finish here & Publish"}
+                  </Button>
+                )}
+                <Button
+                  className="gap-2 bg-green-600 hover:bg-green-700 px-6"
+                  onClick={() => approveStage(activeStage)}
+                  disabled={completeJob.isPending}
+                >
+                  {completeJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {activeStage < 9 ? `Approve & Continue to Stage ${activeStage + 1}` : "Approve & Go to Publish"}
+                </Button>
+              </div>
             </div>
           )}
         </div>

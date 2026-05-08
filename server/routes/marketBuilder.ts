@@ -12,6 +12,32 @@ import { listInFlightVendors } from "../market-builder/inflight";
 const USER_MAX_ACTIVE_JOBS = 2;
 const USER_MAX_JOBS_PER_24H = 5;
 
+// ── Phase model (end-user wizard) ────────────────────────────────────────
+// The 9-stage pipeline groups into 3 user-facing phases. Vendor is always
+// required; Product and Ecosystem are optional and may be added later in
+// any order. Within a phase, stages must run in linear order.
+const VENDOR_PHASE = [1, 2, 3] as const;
+const PRODUCT_PHASE = [4, 5, 6] as const;
+const ECOSYSTEM_PHASE = [7, 8, 9] as const;
+
+type PhaseStatus = "complete" | "partial" | "none";
+
+function phaseStatus(
+  stages: Array<{ stage: number; status: string }>,
+  phase: readonly number[],
+): PhaseStatus {
+  const done = phase.filter(n => stages.find(s => s.stage === n)?.status === "completed").length;
+  if (done === phase.length) return "complete";
+  if (done === 0) return "none";
+  return "partial";
+}
+
+async function jobIsEndUser(job: { createdBy: string | null }): Promise<boolean> {
+  if (!job.createdBy) return false;
+  const owner = await storage.getUser(job.createdBy);
+  return !!owner && owner.role !== "admin";
+}
+
 // Middleware: ensure the authenticated user owns the job in :id (or is admin).
 // Usage: app.get("/api/market-builder/jobs/:id", requireAuth, requireJobOwner, handler)
 async function requireJobOwner(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -399,7 +425,19 @@ export function registerMarketBuilderRoutes(app: Express): void {
   > {
     const job = await storage.getMarketBuilderJobWithStages(jobId);
     if (!job) return { ok: false, status: 404, error: "Job not found" };
-    if (job.status !== "completed") return { ok: false, status: 400, error: "Job must be completed before publishing" };
+    const endUser = await jobIsEndUser(job);
+    // End-user jobs may republish (they own the market and can refresh phases
+    // or add new ones after the initial publish). Admin jobs are still strict
+    // single-publish.
+    if (endUser) {
+      if (job.status !== "completed" && job.status !== "published") {
+        return { ok: false, status: 400, error: "Job must be completed before publishing" };
+      }
+    } else {
+      if (job.status !== "completed") {
+        return { ok: false, status: 400, error: "Job must be completed before publishing" };
+      }
+    }
     return await publishJobInner(job, isVisibleRequested);
   }
 
@@ -429,35 +467,82 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const stage5 = job.stages.find(s => s.stage === 7)?.result as any; // ecosystem list (was stage 5)
       const stage6 = job.stages.find(s => s.stage === 9)?.result as any; // ecosystem commentary (was stage 6)
 
-      if (!stage1 || !stage2 || !stage3 || !stage4 || !stage5 || !stage6) {
-        return { ok: false, status: 400, error: "One or more stages are missing results" };
-      }
-
       // End-user jobs always publish private markets owned by the creator.
       // Admin jobs default to public (visibility toggle controlled separately).
       const owner = job.createdBy ? await storage.getUser(job.createdBy) : undefined;
       const isEndUserJob = !!owner && owner.role !== "admin";
+
+      // Vendor phase (stages 1, 2, 3 → result rows stage1, stage2) is always required.
+      if (!stage1 || !stage2) {
+        return { ok: false, status: 400, error: "Vendor phase results are missing — finish stages 1–3 before publishing." };
+      }
+
+      const havePhaseProduct = !!stage3 && !!stage4;
+      const haveProductPartial = (!!stage3 || !!stage4) && !havePhaseProduct;
+      const havePhaseEcosystem = !!stage5 && !!stage6;
+      const haveEcosystemPartial = (!!stage5 || !!stage6) && !havePhaseEcosystem;
+
+      if (!isEndUserJob) {
+        // Admin: strict — every stage required.
+        if (!stage3 || !stage4 || !stage5 || !stage6) {
+          return { ok: false, status: 400, error: "One or more stages are missing results" };
+        }
+      } else {
+        if (haveProductPartial) {
+          return { ok: false, status: 400, error: "Product phase is partially complete — finish all of stages 4–6 or skip the phase entirely." };
+        }
+        if (haveEcosystemPartial) {
+          return { ok: false, status: 400, error: "Ecosystem phase is partially complete — finish all of stages 7–9 or skip the phase entirely." };
+        }
+      }
+
       const visibility = isEndUserJob ? "private" : "public";
       const isVisible = isEndUserJob ? false : (isVisibleRequested ?? false);
 
-      const market = await storage.createMarket({
-        name: job.inputName,
-        description: stage1.marketSummary,
-        shortDescription: job.inputDescription,
-        category: job.inputCategory ?? undefined,
-        isVisible,
-        ownerUserId: isEndUserJob ? owner!.id : null,
-        visibility,
-      });
-
-      const vendorIdMap = new Map<string, string>();
-      for (const v of stage1.vendors) {
-        const vendor = await storage.createVendor({
-          name: v.name, product: v.product, website: v.website,
-          description: v.description, newsroomUrl: v.newsroomUrl,
-          marketId: market.id, revenue: null,
+      // Republish path: re-use the existing market (owned by this end-user job)
+      // and refresh in place. Initial publish creates a new market.
+      let market = job.marketId ? await storage.getMarketById(job.marketId) : undefined;
+      if (market) {
+        market = await storage.updateMarket(market.id, {
+          name: job.inputName,
+          description: stage1.marketSummary,
+          shortDescription: job.inputDescription,
         });
-        vendorIdMap.set(v.name, vendor.id);
+      } else {
+        market = await storage.createMarket({
+          name: job.inputName,
+          description: stage1.marketSummary,
+          shortDescription: job.inputDescription,
+          category: job.inputCategory ?? undefined,
+          isVisible,
+          ownerUserId: isEndUserJob ? owner!.id : null,
+          visibility,
+        });
+      }
+
+      // Upsert vendors by name. Existing vendor ids are preserved so any
+      // product/ecosystem support already attached to them remains valid
+      // when the user later refreshes the Vendor phase.
+      const existingVendors = await storage.getVendorsByMarket(market.id);
+      const vendorIdMap = new Map<string, string>();
+      for (const ev of existingVendors) vendorIdMap.set(ev.name, ev.id);
+
+      for (const v of (stage1.vendors ?? [])) {
+        const existing = existingVendors.find(ev => ev.name === v.name);
+        if (existing) {
+          await storage.updateVendor(existing.id, {
+            product: v.product, website: v.website,
+            description: v.description, newsroomUrl: v.newsroomUrl,
+          });
+          vendorIdMap.set(v.name, existing.id);
+        } else {
+          const created = await storage.createVendor({
+            name: v.name, product: v.product, website: v.website,
+            description: v.description, newsroomUrl: v.newsroomUrl,
+            marketId: market.id, revenue: null,
+          });
+          vendorIdMap.set(v.name, created.id);
+        }
       }
 
       // ── Stage 2: Vendor Evaluation — score against PREDEFINED criteria ──
@@ -505,74 +590,87 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
 
-      // ── Stage 3: Product feature categories (isEcosystem = false) ────────
+      // ── Product phase (stages 4–6) — only materialise when both result ──
+      // rows are present. On republish, wipe existing non-ecosystem feature
+      // categories first so the phase is fully refreshed (cascade clears
+      // child features + vendor support rows).
       const productFeatureIdMap = new Map<string, string>();
-      let catOrder = 0;
-      for (const cat of (stage3.categories ?? [])) {
-        const category = await storage.createFeatureCategory({
-          name: cat.name,
-          description: cat.description,
-          marketId: market.id,
-          isEcosystem: false,
-          displayOrder: catOrder++,
-        });
-        let featOrder = 0;
-        for (const f of (cat.features ?? [])) {
-          const feature = await storage.createFeature({
-            name: f.name, description: f.description,
-            categoryId: category.id, displayOrder: featOrder++,
+      if (havePhaseProduct) {
+        const existingCategories = await storage.getMarketFeatureCategories(market.id);
+        for (const cat of existingCategories) {
+          if ((cat as any).isEcosystem) continue;
+          await storage.deleteFeatureCategory(cat.id);
+        }
+        let catOrder = 0;
+        for (const cat of (stage3.categories ?? [])) {
+          const category = await storage.createFeatureCategory({
+            name: cat.name,
+            description: cat.description,
+            marketId: market.id,
+            isEcosystem: false,
+            displayOrder: catOrder++,
           });
-          productFeatureIdMap.set(f.name, feature.id);
+          let featOrder = 0;
+          for (const f of (cat.features ?? [])) {
+            const feature = await storage.createFeature({
+              name: f.name, description: f.description,
+              categoryId: category.id, displayOrder: featOrder++,
+            });
+            productFeatureIdMap.set(f.name, feature.id);
+          }
+        }
+        for (const s of (stage4.support ?? [])) {
+          const vendorId = vendorIdMap.get(s.vendorName);
+          const featureId = productFeatureIdMap.get(s.featureName);
+          if (!vendorId || !featureId) continue;
+          const srcList4: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+          const comments4 = srcList4.length > 0
+            ? `${s.comments ?? ""}\n\nSources:\n${srcList4.map((src: string) => `• ${src}`).join("\n")}`
+            : (s.comments ?? "");
+          await storage.createOrUpdateVendorFeatureSupport({
+            vendorId, featureId, supportLevel: s.supportLevel, comments: comments4,
+          });
         }
       }
 
-      // ── Stage 4: Product feature Harvey Ball support ───────────────────
-      for (const s of (stage4.support ?? [])) {
-        const vendorId = vendorIdMap.get(s.vendorName);
-        const featureId = productFeatureIdMap.get(s.featureName);
-        if (!vendorId || !featureId) continue;
-        const srcList4: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
-        const comments4 = srcList4.length > 0
-          ? `${s.comments ?? ""}\n\nSources:\n${srcList4.map((src: string) => `• ${src}`).join("\n")}`
-          : (s.comments ?? "");
-        await storage.createOrUpdateVendorFeatureSupport({
-          vendorId, featureId, supportLevel: s.supportLevel, comments: comments4,
-        });
-      }
-
-      // ── Stage 5: Ecosystem categories (isEcosystem = true) ─────────────
+      // ── Ecosystem phase (stages 7–9) — same idempotent pattern ──────────
       const ecoFeatureIdMap = new Map<string, string>();
-      let ecoCatOrder = 0;
-      for (const cat of (stage5.categories ?? [])) {
-        const category = await storage.createFeatureCategory({
-          name: cat.name,
-          description: cat.description,
-          marketId: market.id,
-          isEcosystem: true,
-          displayOrder: ecoCatOrder++,
-        });
-        let featOrder = 0;
-        for (const f of (cat.features ?? [])) {
-          const feature = await storage.createFeature({
-            name: f.name, description: f.description,
-            categoryId: category.id, displayOrder: featOrder++,
-          });
-          ecoFeatureIdMap.set(f.name, feature.id);
+      if (havePhaseEcosystem) {
+        const existingCategories = await storage.getMarketFeatureCategories(market.id);
+        for (const cat of existingCategories) {
+          if (!(cat as any).isEcosystem) continue;
+          await storage.deleteFeatureCategory(cat.id);
         }
-      }
-
-      // ── Stage 6: Ecosystem Harvey Ball support scores ────────────────────
-      for (const s of (stage6.support ?? [])) {
-        const vendorId = vendorIdMap.get(s.vendorName);
-        const featureId = ecoFeatureIdMap.get(s.featureName);
-        if (!vendorId || !featureId) continue;
-        const srcList6: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
-        const comments6 = srcList6.length > 0
-          ? `${s.comments ?? ""}\n\nSources:\n${srcList6.map((src: string) => `• ${src}`).join("\n")}`
-          : (s.comments ?? "");
-        await storage.createOrUpdateVendorFeatureSupport({
-          vendorId, featureId, supportLevel: s.supportLevel, comments: comments6,
-        });
+        let ecoCatOrder = 0;
+        for (const cat of (stage5.categories ?? [])) {
+          const category = await storage.createFeatureCategory({
+            name: cat.name,
+            description: cat.description,
+            marketId: market.id,
+            isEcosystem: true,
+            displayOrder: ecoCatOrder++,
+          });
+          let featOrder = 0;
+          for (const f of (cat.features ?? [])) {
+            const feature = await storage.createFeature({
+              name: f.name, description: f.description,
+              categoryId: category.id, displayOrder: featOrder++,
+            });
+            ecoFeatureIdMap.set(f.name, feature.id);
+          }
+        }
+        for (const s of (stage6.support ?? [])) {
+          const vendorId = vendorIdMap.get(s.vendorName);
+          const featureId = ecoFeatureIdMap.get(s.featureName);
+          if (!vendorId || !featureId) continue;
+          const srcList6: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
+          const comments6 = srcList6.length > 0
+            ? `${s.comments ?? ""}\n\nSources:\n${srcList6.map((src: string) => `• ${src}`).join("\n")}`
+            : (s.comments ?? "");
+          await storage.createOrUpdateVendorFeatureSupport({
+            vendorId, featureId, supportLevel: s.supportLevel, comments: comments6,
+          });
+        }
       }
 
       // ── Auto-compute Product Capabilities & ISV Ecosystem scores ─────────
@@ -590,8 +688,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const ecoFeatureIds     = new Set(ecoFeatureIdMap.values());
 
       for (const [vendorName, vendorId] of vendorIdMap) {
-        // Product Capabilities — from stage4.support
-        if (productCapCriterionId && productFeatureIds.size > 0) {
+        // Product Capabilities — from stage4.support (only when product phase ran)
+        if (havePhaseProduct && productCapCriterionId && productFeatureIds.size > 0) {
           const prodSupport = (stage4.support ?? []).filter((s: any) => s.vendorName === vendorName);
           const prodSum = prodSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
           const prodScore = Number(((prodSum / productFeatureIds.size) * 10).toFixed(1));
@@ -603,8 +701,8 @@ export function registerMarketBuilderRoutes(app: Express): void {
           });
         }
 
-        // ISV Ecosystem — from stage6.support
-        if (isvEcoCriterionId && ecoFeatureIds.size > 0) {
+        // ISV Ecosystem — from stage6.support (only when ecosystem phase ran)
+        if (havePhaseEcosystem && isvEcoCriterionId && ecoFeatureIds.size > 0) {
           const ecoSupport = (stage6.support ?? []).filter((s: any) => s.vendorName === vendorName);
           const ecoSum = ecoSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
           const ecoScore = Number(((ecoSum / ecoFeatureIds.size) * 10).toFixed(1));
@@ -775,7 +873,26 @@ export function registerMarketBuilderRoutes(app: Express): void {
         return;
       }
       const job = (req as any).job;
-      if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
+      // End-user phase-ordering gate. Vendor phase (1–3) is always required
+      // first; Product (4–6) and Ecosystem (7–9) can then run in any order
+      // but each is linear within itself. Published jobs may re-run any
+      // already-completed stage to refresh data, and may add an unstarted
+      // optional phase on top of the existing market.
+      const stages = await storage.getMarketBuilderStages(job.id);
+      const isCompleted = (n: number) => stages.find(s => s.stage === n)?.status === "completed";
+      const vendorDone = isCompleted(1) && isCompleted(2) && isCompleted(3);
+      if ((stageNum === 2 || stageNum === 3) && !isCompleted(stageNum - 1)) {
+        return res.status(400).json({ error: `Stage ${stageNum - 1} must be completed first.` });
+      }
+      if (stageNum >= 4 && stageNum <= 9 && !vendorDone) {
+        return res.status(400).json({ error: "Finish the Vendor phase (stages 1–3) first." });
+      }
+      if ((stageNum === 5 || stageNum === 6) && !isCompleted(stageNum - 1)) {
+        return res.status(400).json({ error: `Stage ${stageNum - 1} must be completed first.` });
+      }
+      if ((stageNum === 8 || stageNum === 9) && !isCompleted(stageNum - 1)) {
+        return res.status(400).json({ error: `Stage ${stageNum - 1} must be completed first.` });
+      }
       // Preflight LLM key resolution — surface missing keys as a structured
       // 412 so the wizard can deep-link the user to /me/settings/llm-keys.
       try {
@@ -881,17 +998,30 @@ export function registerMarketBuilderRoutes(app: Express): void {
     }
   });
 
-  // Complete — mark the job as completed once all 6 stages are done. Mirrors
-  // the admin /complete endpoint exactly, scoped to the job owner.
+  // Complete — phase-aware for end-user jobs. Vendor (1–3) is required;
+  // Product (4–6) and Ecosystem (7–9) are each all-or-none. Republish on a
+  // job that is already published is allowed (e.g. user finished an extra
+  // phase and is ready to materialise it into the existing market).
   app.post("/api/market-builder/jobs/:id/complete", requireAuth, requireJobOwner, async (req, res) => {
     try {
       const job = await storage.getMarketBuilderJobWithStages(req.params.id);
       if (!job) return res.status(404).json({ error: "Job not found" });
-      const allDone = [1, 2, 3, 4, 5, 6, 7, 8, 9].every(n =>
-        job.stages.find(s => s.stage === n)?.status === "completed"
-      );
-      if (!allDone) return res.status(400).json({ error: "Not all stages are completed" });
-      const updated = await storage.updateMarketBuilderJob(job.id, { status: "completed" });
+      const v = phaseStatus(job.stages, VENDOR_PHASE);
+      const p = phaseStatus(job.stages, PRODUCT_PHASE);
+      const e = phaseStatus(job.stages, ECOSYSTEM_PHASE);
+      if (v !== "complete") {
+        return res.status(400).json({ error: "Vendor phase (stages 1–3) must be completed before publishing." });
+      }
+      if (p === "partial") {
+        return res.status(400).json({ error: "Product phase is partially complete — finish stages 4–6 or skip the phase entirely." });
+      }
+      if (e === "partial") {
+        return res.status(400).json({ error: "Ecosystem phase is partially complete — finish stages 7–9 or skip the phase entirely." });
+      }
+      // Don't downgrade a published job to "completed" on a refresh round-trip;
+      // /publish below will reapply the phases in place.
+      const nextStatus = job.status === "published" ? "published" : "completed";
+      const updated = await storage.updateMarketBuilderJob(job.id, { status: nextStatus });
       res.json(updated);
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });

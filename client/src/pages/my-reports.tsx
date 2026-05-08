@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, FileText, Lock, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { ChevronLeft, FileText, Lock, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
 import type { Market } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,6 +13,17 @@ type JobRow = {
   createdAt: string;
   stageSummary?: Record<number, "pending" | "running" | "completed" | "failed">;
 };
+
+// Phase coverage badge — shows ✓ (complete), partial count, or "missing" with
+// a deep-link CTA back into the wizard so the user can add the phase.
+function PhaseBadge({ label, done, total }: { label: string; done: number; total: number }) {
+  const cls =
+    done === total ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+    : done === 0   ? "bg-gray-100 text-gray-500 border-gray-200"
+    :                "bg-amber-100 text-amber-700 border-amber-200";
+  const text = done === total ? `${label} ✓` : done === 0 ? `${label} — not added` : `${label} ${done}/${total}`;
+  return <span className={`text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 border ${cls}`}>{text}</span>;
+}
 
 const STATUS_BADGE: Record<JobStatus, { label: string; cls: string; Icon: any }> = {
   idle:      { label: "Draft",     cls: "bg-gray-100 text-gray-700",   Icon: Clock },
@@ -68,14 +79,23 @@ export default function MyReportsPage() {
               const badge = STATUS_BADGE[j.status] ?? STATUS_BADGE.idle;
               const Icon = badge.Icon;
               const stages = j.stageSummary ?? {};
-              const done = [1, 2, 3, 4, 5, 6].filter(n => stages[n] === "completed").length;
+              const phaseLabel = (label: string, nums: number[]) => {
+                const done = nums.filter(n => stages[n] === "completed").length;
+                return done === nums.length ? `${label} ✓` : done === 0 ? null : `${label} ${done}/${nums.length}`;
+              };
+              const phases = [
+                phaseLabel("Vendor", [1, 2, 3]),
+                phaseLabel("Product", [4, 5, 6]),
+                phaseLabel("Ecosystem", [7, 8, 9]),
+              ].filter(Boolean) as string[];
+              const summaryLine = phases.length === 0 ? "Not started" : phases.join(" · ");
               return (
                 <Link key={j.id} href={`/me/market-builder?job=${j.id}`}>
                   <a className="block rounded-lg border bg-white p-3 hover:border-blue-300 hover:shadow-sm transition-colors">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 truncate">{j.inputName}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{done}/6 stages complete</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{summaryLine}</p>
                       </div>
                       <span className={`text-[11px] font-medium rounded-full px-2 py-1 inline-flex items-center gap-1 shrink-0 ${badge.cls}`}>
                         <Icon className={`h-3 w-3 ${j.status === "running" ? "animate-spin" : ""}`} />
@@ -103,23 +123,49 @@ export default function MyReportsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {myMarkets.map(m => (
-              <Link key={m.id} href={`/market/${m.id}`}>
-                <a className="block rounded-lg border bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-colors">
+            {myMarkets.map(m => {
+              // Find the originating job so we can show phase coverage badges
+              // and deep-link back to the wizard for any missing phase.
+              const job = jobs.find(j => j.marketId === m.id);
+              const stages = job?.stageSummary ?? {};
+              const vendorDone = [1,2,3].filter(n => stages[n] === "completed").length;
+              const productDone = [4,5,6].filter(n => stages[n] === "completed").length;
+              const ecoDone = [7,8,9].filter(n => stages[n] === "completed").length;
+              return (
+                <div key={m.id} className="rounded-lg border bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-colors">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{m.name}</p>
-                      {m.description && (
-                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{m.description}</p>
-                      )}
-                    </div>
+                    <Link href={`/markets/${m.id}`}>
+                      <a className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">{m.name}</p>
+                        {m.description && (
+                          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{m.description}</p>
+                        )}
+                      </a>
+                    </Link>
                     <span className="text-[10px] uppercase tracking-wide rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 shrink-0">
                       Private
                     </span>
                   </div>
-                </a>
-              </Link>
-            ))}
+                  {job && (
+                    <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <PhaseBadge label="Vendor"    done={vendorDone}  total={3} />
+                        <PhaseBadge label="Product"   done={productDone} total={3} />
+                        <PhaseBadge label="Ecosystem" done={ecoDone}     total={3} />
+                      </div>
+                      {(productDone < 3 || ecoDone < 3) && (
+                        <Link href={`/me/market-builder?job=${job.id}`}>
+                          <a className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+                            <Plus className="h-3 w-3" />
+                            Add / refresh phases
+                          </a>
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

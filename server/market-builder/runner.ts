@@ -161,8 +161,16 @@ export async function runSingleStage(
       completedAt: new Date(),
     });
 
+  // Re-running a stage on an already-published end-user job (refresh / add
+  // phase) must NOT downgrade job.status — keep it "published" throughout
+  // so the wizard, listing pages, and link to the market all stay stable.
+  const priorJob = await storage.getMarketBuilderJob(jobId);
+  const wasPublished = priorJob?.status === "published";
+
   try {
-    await storage.updateMarketBuilderJob(jobId, { status: "running" });
+    if (!wasPublished) {
+      await storage.updateMarketBuilderJob(jobId, { status: "running" });
+    }
     await markRunning();
     sendEvent(res, { type: "stage_start", stage: stageNum });
 
@@ -391,11 +399,18 @@ export async function runSingleStage(
 
     await markComplete(result);
 
-    // Check if all 9 stages are now done and mark job completed
-    const allStages = await storage.getMarketBuilderStages(jobId);
-    const allDone = [1,2,3,4,5,6,7,8,9].every(n => allStages.find(s => s.stage === n)?.status === "completed");
-    if (allDone) {
-      await storage.updateMarketBuilderJob(jobId, { status: "completed" });
+    // Check if all 9 stages are now done and mark job completed.
+    // For published jobs (refresh/add-phase round-trip), keep the job
+    // "published" so the existing market link remains live; the user will
+    // hit /publish again to reapply changes.
+    if (wasPublished) {
+      await storage.updateMarketBuilderJob(jobId, { status: "published" });
+    } else {
+      const allStages = await storage.getMarketBuilderStages(jobId);
+      const allDone = [1,2,3,4,5,6,7,8,9].every(n => allStages.find(s => s.stage === n)?.status === "completed");
+      if (allDone) {
+        await storage.updateMarketBuilderJob(jobId, { status: "completed" });
+      }
     }
 
     const summary =
@@ -415,7 +430,13 @@ export async function runSingleStage(
     console.error(`[MarketBuilder] Stage ${stageNum} error for job ${jobId}:`, err);
     await progress(`✗ Error: ${err.message}`);
     await markFailed(err.message);
-    await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
+    // Don't blow away "published" status on a failed refresh/add-phase run;
+    // the published market still exists and other phases are unaffected.
+    if (wasPublished) {
+      await storage.updateMarketBuilderJob(jobId, { status: "published", error: err.message });
+    } else {
+      await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
+    }
     sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
   } finally {
     clearInFlightVendors(jobId, stageNum);
