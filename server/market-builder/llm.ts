@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import { retryOnRateLimit } from "./concurrency";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -92,32 +93,34 @@ async function callOpenAI<T>(
   systemPrompt: string,
   userPrompt: string
 ): Promise<T> {
-  // Use custom key if provided; fall back to Replit AI Integration
-  const client = new OpenAI({
-    apiKey: config.apiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-    baseURL: config.apiKey
-      ? undefined
-      : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  });
+  return retryOnRateLimit(async () => {
+    // Use custom key if provided; fall back to Replit AI Integration
+    const client = new OpenAI({
+      apiKey: config.apiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: config.apiKey
+        ? undefined
+        : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
 
-  // Reasoning models (o-series) use max_completion_tokens and don't support response_format
-  const isReasoning = /^o\d/.test(config.model);
-  const response = await client.chat.completions.create({
-    model: config.model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    ...(isReasoning ? { max_completion_tokens: 32768 } : { response_format: { type: "json_object" }, temperature: 0.2, max_tokens: 32768 }),
-  });
+    // Reasoning models (o-series) use max_completion_tokens and don't support response_format
+    const isReasoning = /^o\d/.test(config.model);
+    const response = await client.chat.completions.create({
+      model: config.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      ...(isReasoning ? { max_completion_tokens: 32768 } : { response_format: { type: "json_object" }, temperature: 0.2, max_tokens: 32768 }),
+    });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("OpenAI returned an empty response");
-  const finishReason = response.choices[0]?.finish_reason;
-  if (finishReason === "length") {
-    console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}.`);
-  }
-  return extractJSON<T>(content);
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("OpenAI returned an empty response");
+    const finishReason = response.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}.`);
+    }
+    return extractJSON<T>(content);
+  });
 }
 
 // ── Anthropic ─────────────────────────────────────────────────────────────
@@ -129,29 +132,31 @@ async function callAnthropic<T>(
 ): Promise<T> {
   if (!config.apiKey) throw new Error("Anthropic requires an API key — add one in LLM Settings");
 
-  const client = new Anthropic({ apiKey: config.apiKey });
+  return retryOnRateLimit(async () => {
+    const client = new Anthropic({ apiKey: config.apiKey });
 
-  // Streaming is required by the Anthropic SDK for operations that may take
-  // longer than 10 minutes — which max_tokens=32000 can easily exceed. We use
-  // the streaming API and collect the final accumulated message at the end so
-  // the rest of the pipeline (which expects a single JSON payload) is unchanged.
-  const stream = client.messages.stream({
-    model: config.model,
-    max_tokens: 32000,
-    system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
-    messages: [{ role: "user", content: userPrompt }],
+    // Streaming is required by the Anthropic SDK for operations that may take
+    // longer than 10 minutes — which max_tokens=32000 can easily exceed. We use
+    // the streaming API and collect the final accumulated message at the end so
+    // the rest of the pipeline (which expects a single JSON payload) is unchanged.
+    const stream = client.messages.stream({
+      model: config.model,
+      max_tokens: 32000,
+      system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const response = await stream.finalMessage();
+
+    if (response.stop_reason === "max_tokens") {
+      throw new Error(`Anthropic response truncated at token limit for model ${config.model} — response JSON is incomplete. Retrying.`);
+    }
+
+    const block = response.content[0];
+    const text = block && block.type === "text" ? block.text : "";
+    if (!text) throw new Error("Anthropic returned an empty response");
+    return extractJSON<T>(text);
   });
-
-  const response = await stream.finalMessage();
-
-  if (response.stop_reason === "max_tokens") {
-    throw new Error(`Anthropic response truncated at token limit for model ${config.model} — response JSON is incomplete. Retrying.`);
-  }
-
-  const block = response.content[0];
-  const text = block && block.type === "text" ? block.text : "";
-  if (!text) throw new Error("Anthropic returned an empty response");
-  return extractJSON<T>(text);
 }
 
 // ── Perplexity ────────────────────────────────────────────────────────────
@@ -163,26 +168,28 @@ async function callPerplexity<T>(
 ): Promise<T> {
   if (!config.apiKey) throw new Error("Perplexity requires an API key — add one in LLM Settings");
 
-  const client = new OpenAI({
-    apiKey: config.apiKey,
-    baseURL: "https://api.perplexity.ai",
-  });
+  return retryOnRateLimit(async () => {
+    const client = new OpenAI({
+      apiKey: config.apiKey,
+      baseURL: "https://api.perplexity.ai",
+    });
 
-  const response = await client.chat.completions.create({
-    model: config.model,
-    messages: [
-      { role: "system", content: systemPrompt + "\n\nRespond with ONLY a valid JSON object." },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 32000,
-  });
+    const response = await client.chat.completions.create({
+      model: config.model,
+      messages: [
+        { role: "system", content: systemPrompt + "\n\nRespond with ONLY a valid JSON object." },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 32000,
+    });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("Perplexity returned an empty response");
-  const finishReason = response.choices[0]?.finish_reason;
-  if (finishReason === "length") {
-    console.warn(`[LLM] Perplexity response truncated (finish_reason=length) for model ${config.model}.`);
-  }
-  return extractJSON<T>(content);
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Perplexity returned an empty response");
+    const finishReason = response.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.warn(`[LLM] Perplexity response truncated (finish_reason=length) for model ${config.model}.`);
+    }
+    return extractJSON<T>(content);
+  });
 }

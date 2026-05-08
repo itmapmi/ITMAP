@@ -8,6 +8,7 @@
  * runStage9Commentary → stage 9 (loads stage 8 result, adds commentary)
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
+import { runWithConcurrency, createMutex, VENDOR_CONCURRENCY } from "../concurrency";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
 
 export interface Stage5Feature { name: string; description: string; }
@@ -316,7 +317,11 @@ export async function runStage9Commentary(
   // Number of LLM batches per vendor (used to advance done counter when skipping)
   const batchesPerVendor = groups.reduce((n, g) => n + Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY), 0);
 
-  for (const vendor of stage1.vendors) {
+  // Mutex serializes the shared mutations: progress counter, support array
+  // merge, and checkpoint persistence. LLM calls happen outside the lock.
+  const lock = createMutex();
+
+  await runWithConcurrency(stage1.vendors, VENDOR_CONCURRENCY, async (vendor) => {
     // Resume: if all features for this vendor already have non-empty commentary, skip entirely
     if (hooks?.checkpoint) {
       const allDone = allFeatures.every(f =>
@@ -326,18 +331,31 @@ export async function runStage9Commentary(
         )
       );
       if (allDone) {
-        done += batchesPerVendor;
-        await hooks?.onProgress?.(`↩ Resuming: ${vendor.name} already completed — skipping`);
-        continue;
+        await lock(async () => {
+          done += batchesPerVendor;
+          await hooks?.onProgress?.(`↩ Resuming: ${vendor.name} already completed — skipping`);
+        });
+        return;
       }
     }
+
+    // Collect this vendor's records locally; merge into shared state under the lock when done.
+    const myRecords: Stage5SupportRecord[] = [];
 
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH_COMMENTARY, g.features.length);
-        await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Commentary: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
+
+        // Atomically reserve this batch's number AND emit the progress
+        // message in one critical section, so concurrent workers never
+        // claim the same number. (Increment-on-start, not on-complete,
+        // because Stage 9's onProgress fires *before* the LLM call.)
+        await lock(async () => {
+          done++;
+          await hooks?.onProgress?.(`Batch ${done}/${totalBatches} — Commentary: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
+        });
 
         const scores = chunk.map(f => {
           const rec = stage8Result.support.find(
@@ -352,26 +370,32 @@ export async function runStage9Commentary(
 
         for (const f of chunk) {
           const c = commentary.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
-          const idx = updatedSupport.findIndex(
-            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
-          );
-          if (idx !== -1 && c) {
-            updatedSupport[idx] = { ...updatedSupport[idx], comments: c.comments ?? "", sources: c.sources ?? [] };
-          } else if (idx === -1) {
-            const lvl = (scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName)?.supportLevel ?? 0) as 0|1|2|3|4;
-            updatedSupport.push({
-              vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
-              supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
-            });
-          }
+          const lvl = (scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName)?.supportLevel ?? 0) as 0|1|2|3|4;
+          myRecords.push({
+            vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
+            supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
+          });
         }
-        done++;
+
       }
     }
 
-    // Persist partial result after each vendor so the next retry can resume from here
-    await hooks?.onVendorComplete?.({ categories: stage7Result.categories, support: updatedSupport });
-  }
+    // Merge this vendor's records into the shared array and checkpoint —
+    // serialized so concurrent workers don't race on the array or DB write.
+    await lock(async () => {
+      for (const r of myRecords) {
+        const idx = updatedSupport.findIndex(
+          s => s.vendorName === r.vendorName && s.categoryName === r.categoryName && s.featureName === r.featureName
+        );
+        if (idx !== -1) {
+          updatedSupport[idx] = { ...updatedSupport[idx], comments: r.comments, sources: r.sources };
+        } else {
+          updatedSupport.push(r);
+        }
+      }
+      await hooks?.onVendorComplete?.({ categories: stage7Result.categories, support: updatedSupport });
+    });
+  });
 
   if (updatedSupport.length === 0) throw new Error("Stage 9: no ecosystem commentary generated");
   return { categories: stage7Result.categories, support: updatedSupport };

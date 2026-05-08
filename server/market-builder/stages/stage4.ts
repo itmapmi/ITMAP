@@ -7,6 +7,7 @@
  *   runStage4Commentary → loads scoring result, adds commentary → full Stage4Result
  */
 import { callLLMForJSON, type LLMConfig } from "../llm";
+import { runWithConcurrency, createMutex, VENDOR_CONCURRENCY } from "../concurrency";
 import type { Stage1Result, Stage1Vendor } from "./stage1";
 import type { Stage3Category } from "./stage3";
 
@@ -274,7 +275,13 @@ export async function runStage4Commentary(
   // Number of LLM batches per vendor (used to advance done counter when skipping)
   const batchesPerVendor = groups.reduce((n, g) => n + Math.ceil(g.features.length / FEATURE_BATCH_COMMENTARY), 0);
 
-  for (const vendor of stage1.vendors) {
+  // Mutex serializes the shared mutations: progress counter, support array
+  // merge, and checkpoint persistence. Each parallel worker still does its
+  // LLM calls outside the lock — the lock is only held for the in-memory
+  // merge + the awaited checkpoint write.
+  const lock = createMutex();
+
+  await runWithConcurrency(stage1.vendors, VENDOR_CONCURRENCY, async (vendor) => {
     // Resume: if all features for this vendor already have non-empty commentary, skip entirely
     if (hooks?.checkpoint) {
       const allDone = allFeatures.every(f =>
@@ -284,11 +291,17 @@ export async function runStage4Commentary(
         )
       );
       if (allDone) {
-        done += batchesPerVendor;
-        await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, "resumed from checkpoint");
-        continue;
+        await lock(async () => {
+          done += batchesPerVendor;
+          await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, "resumed from checkpoint");
+        });
+        return;
       }
     }
+
+    // Collect this vendor's records locally first; merge into shared state
+    // under the lock once the vendor is fully done.
+    const myRecords: Stage4SupportRecord[] = [];
 
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
@@ -308,31 +321,38 @@ export async function runStage4Commentary(
 
         for (const f of chunk) {
           const c = commentary.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName);
-          const idx = updatedSupport.findIndex(
-            s => s.vendorName === vendor.name && s.categoryName === f.categoryName && s.featureName === f.featureName
-          );
-          if (idx !== -1 && c) {
-            updatedSupport[idx] = { ...updatedSupport[idx], comments: c.comments ?? "", sources: c.sources ?? [] };
-          } else if (idx === -1) {
-            // Row missing from scoring result — add it
-            const lvl = (scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName)?.supportLevel ?? 0) as 0|1|2|3|4;
-            updatedSupport.push({
-              vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
-              supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
-            });
-          }
+          const lvl = (scores.find(x => x.featureName === f.featureName && x.categoryName === f.categoryName)?.supportLevel ?? 0) as 0|1|2|3|4;
+          myRecords.push({
+            vendorName: vendor.name, categoryName: f.categoryName, featureName: f.featureName,
+            supportLevel: lvl, comments: c?.comments ?? "", sources: c?.sources ?? [],
+          });
         }
 
-        done++;
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH_COMMENTARY, g.features.length);
-        await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
+        await lock(async () => {
+          done++;
+          await hooks?.onBatchComplete?.(done, totalBatches, vendor.name, `${featStart}–${featEnd} of ${g.features.length}`);
+        });
       }
     }
 
-    // Persist partial result after each vendor so the next retry can resume from here
-    await hooks?.onVendorComplete?.({ support: updatedSupport });
-  }
+    // Merge this vendor's records into the shared array and checkpoint —
+    // serialized so concurrent workers don't race on the array or DB write.
+    await lock(async () => {
+      for (const r of myRecords) {
+        const idx = updatedSupport.findIndex(
+          s => s.vendorName === r.vendorName && s.categoryName === r.categoryName && s.featureName === r.featureName
+        );
+        if (idx !== -1) {
+          updatedSupport[idx] = { ...updatedSupport[idx], comments: r.comments, sources: r.sources };
+        } else {
+          updatedSupport.push(r);
+        }
+      }
+      await hooks?.onVendorComplete?.({ support: updatedSupport });
+    });
+  });
 
   return { support: updatedSupport };
 }
