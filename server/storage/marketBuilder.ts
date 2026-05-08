@@ -236,6 +236,7 @@ export async function upsertMarketBuilderStage(
   const existing = await getMarketBuilderStage(jobId, stage);
 
   if (existing) {
+    console.log(`[STAGE_UPSERT update] job=${jobId} stage=${stage} existingId=${existing.id} existingStage=${existing.stage} status=${(data as any).status ?? "?"}`);
     const [updated] = await db
       .update(marketBuilderStages)
       .set(data)
@@ -244,10 +245,12 @@ export async function upsertMarketBuilderStage(
     return updated;
   }
 
+  console.log(`[STAGE_UPSERT insert] job=${jobId} stage=${stage} status=${(data as any).status ?? "?"} stack=${new Error().stack?.split("\n").slice(2, 5).join(" | ")}`);
   const [created] = await db
     .insert(marketBuilderStages)
     .values({ jobId, stage, status: "pending", ...data })
     .returning();
+  console.log(`[STAGE_UPSERT inserted] job=${jobId} requestedStage=${stage} actualRowStage=${created.stage} rowId=${created.id}`);
   return created;
 }
 

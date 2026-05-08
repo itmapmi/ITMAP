@@ -868,6 +868,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
   app.get("/api/market-builder/jobs/:id/stream", requireAuth, requireJobOwner, async (req, res) => {
     try {
       const stageNum = parseInt(req.query.stage as string, 10);
+      console.log(`[STREAM_IN user] job=${req.params.id} rawStage=${JSON.stringify(req.query.stage)} parsed=${stageNum} ua=${req.headers["user-agent"]?.slice(0, 40) ?? ""}`);
       if (!stageNum || stageNum < 1 || stageNum > 9) {
         res.status(400).json({ error: "?stage=1..9 is required" });
         return;

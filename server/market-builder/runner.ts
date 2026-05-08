@@ -165,6 +165,7 @@ export async function runSingleStage(
   job: MarketBuilderJob,
   stageNum: number
 ): Promise<void> {
+  console.log(`[RUN_SINGLE_STAGE entry] job=${job.id} stageNum=${stageNum} typeOfStageNum=${typeof stageNum} stageName=${STAGE_NAMES[stageNum] ?? "??"}`);
   const { id: jobId, inputName, inputDescription, inputCategory, inputContext } = job;
 
   const jobLlmConfig = await buildLLMConfig(job);
