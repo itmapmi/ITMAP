@@ -294,27 +294,59 @@ export function registerMarketRoutes(app: Express): void {
       const user = isAuth ? (req.user as any) : null;
       if (!user) return res.status(401).json({ error: "Not authenticated" });
 
-      const positionData = insertVendorLabelPositionSchema.parse(req.body);
+      // Coerce numeric fields BEFORE schema parse — older deployed bundles
+      // and certain serializers can deliver these as strings. We accept either.
+      const rawBody = req.body ?? {};
+      const normalised = {
+        vendorId: typeof rawBody.vendorId === "string" ? rawBody.vendorId.trim() : rawBody.vendorId,
+        marketId: typeof rawBody.marketId === "string" ? rawBody.marketId.trim() : rawBody.marketId,
+        labelX: typeof rawBody.labelX === "string" ? Number(rawBody.labelX) : rawBody.labelX,
+        labelY: typeof rawBody.labelY === "string" ? Number(rawBody.labelY) : rawBody.labelY,
+      };
 
-      // Verify the vendor actually belongs to the claimed market (defence
-      // against malformed/cross-market payloads from any caller).
+      let positionData;
+      try {
+        positionData = insertVendorLabelPositionSchema.parse(normalised);
+      } catch (zerr: any) {
+        console.error("[label-positions] schema validation failed", { body: rawBody, issues: zerr?.issues });
+        return res.status(400).json({ error: "Invalid label position payload", details: zerr?.issues ?? String(zerr) });
+      }
+
+      // Guard against NaN coordinates (drag handler theoretically could emit them)
+      if (!Number.isFinite(positionData.labelX) || !Number.isFinite(positionData.labelY)) {
+        return res.status(400).json({ error: "labelX/labelY must be finite numbers" });
+      }
+
       const vendor = await storage.getVendorById(positionData.vendorId);
-      if (!vendor || vendor.marketId !== positionData.marketId) {
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      if (vendor.marketId !== positionData.marketId) {
         return res.status(400).json({ error: "Vendor does not belong to the specified market" });
       }
 
       if (user.role !== "admin") {
         const market = await storage.getMarketById(positionData.marketId);
-        if (!market || market.ownerUserId !== user.id) {
+        if (!market) {
+          return res.status(404).json({ error: "Market not found" });
+        }
+        if (market.ownerUserId !== user.id) {
           return res.status(403).json({ error: "Not allowed to edit this market's labels" });
         }
       }
 
       const position = await storage.saveVendorLabelPosition(positionData);
-      res.json(position);
-    } catch (error) {
-      console.error("Error saving label position:", error);
-      res.status(400).json({ error: "Failed to save label position" });
+      return res.json(position);
+    } catch (error: any) {
+      console.error("[label-positions] save failed:", {
+        message: error?.message,
+        stack: error?.stack,
+        body: req.body,
+      });
+      return res.status(500).json({
+        error: "Failed to save label position",
+        details: error?.message ?? String(error),
+      });
     }
   });
 
