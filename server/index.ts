@@ -58,6 +58,19 @@ app.use((req, res, next) => {
     log("Warning: Could not reset orphaned Market Builder stages:", String(err));
   }
 
+  // Startup banner: print the canonical Market Builder stage map so any future
+  // deploy mismatch (e.g. server bundle from one commit, client bundle from
+  // another) shows up in the deployment logs immediately.
+  try {
+    const { STAGE_NAMES } = await import("./market-builder/runner");
+    const map = Object.entries(STAGE_NAMES)
+      .map(([n, label]) => `${n}=${label}`)
+      .join(", ");
+    log(`[MarketBuilder] Stage map (server build): ${map}`);
+  } catch (err) {
+    log("Warning: Could not log Market Builder stage map:", String(err));
+  }
+
   // Seed Market Builder system default prompts (idempotent)
   try {
     const { seedSystemPrompts } = await import("./market-builder/prompts");

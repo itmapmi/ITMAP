@@ -11,6 +11,22 @@ import { runStage5A, runStage8Scoring, runStage9Commentary } from "./stages/stag
 import { resolvePromptContent } from "./prompts";
 import { addInFlightVendor, removeInFlightVendor, clearInFlightVendors } from "./inflight";
 
+// ── Canonical stage map (frontend & backend MUST agree on this) ──────────
+// If a deployed bundle ever drifts from this map, the startup banner in
+// server/index.ts will print the mismatch and the per-stage sanity check
+// below will refuse to mark a stage complete that wrote to the wrong row.
+export const STAGE_NAMES: Record<number, string> = {
+  1: "Vendor List",
+  2: "Vendor Scoring",
+  3: "Vendor Commentary",
+  4: "Product Features",
+  5: "Product Scoring",
+  6: "Product Commentary",
+  7: "Ecosystem List",
+  8: "Ecosystem Scoring",
+  9: "Ecosystem Commentary",
+};
+
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
 export function initSSE(res: Response): void {
@@ -172,12 +188,25 @@ export async function runSingleStage(
       error: null,
     });
 
-  const markComplete = (result: unknown) =>
-    storage.upsertMarketBuilderStage(jobId, stageNum, {
+  const markComplete = async (result: unknown) => {
+    await storage.upsertMarketBuilderStage(jobId, stageNum, {
       status: "completed",
       result: result as any,
       completedAt: new Date(),
     });
+    // Sanity check: confirm the row landed at the stageNum the frontend expects.
+    // If a future deploy ever ships a bundle where case N writes to row M ≠ N,
+    // this readback will catch it before the user sees missing/empty editor tabs.
+    const written = await storage.getMarketBuilderStage(jobId, stageNum);
+    if (!written || written.status !== "completed") {
+      const msg = `[MarketBuilder] STAGE_ROW_MISMATCH: case ${stageNum} (${STAGE_NAMES[stageNum]}) ` +
+        `did not write a completed row at stage=${stageNum} for job ${jobId}. ` +
+        `Frontend will read empty data from this tab. This indicates a deployed bundle ` +
+        `with mismatched stage numbering — re-publish from a clean build.`;
+      console.error(msg);
+      try { sendEvent(res, { type: "stage_warning", stage: stageNum, message: msg }); } catch (_) {}
+    }
+  };
 
   const markFailed = (error: string) =>
     storage.upsertMarketBuilderStage(jobId, stageNum, {
