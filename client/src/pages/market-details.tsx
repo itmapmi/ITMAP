@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink, Move, Save, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Market, Vendor } from "@shared/schema";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -54,6 +54,55 @@ export default function MarketDetails() {
   const isOwner = !!(market?.ownerUserId && user?.id === market.ownerUserId);
   const showOwnerControls = isOwner && market?.visibility === "private";
   const canManageVendors = isAdmin || showOwnerControls;
+
+  // Inline label-position editor state for the Vendor Evaluation chart
+  const [editingLabels, setEditingLabels] = useState(false);
+  const [pendingLabelPositions, setPendingLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
+  const [savingLabels, setSavingLabels] = useState(false);
+
+  const handleLabelPositionChange = (vendorId: string, x: number, y: number) => {
+    setPendingLabelPositions(prev => ({ ...prev, [vendorId]: { x, y } }));
+  };
+
+  const handleSaveLabelPositions = async () => {
+    if (!marketId || Object.keys(pendingLabelPositions).length === 0) {
+      setEditingLabels(false);
+      return;
+    }
+    setSavingLabels(true);
+    try {
+      await Promise.all(
+        Object.entries(pendingLabelPositions).map(([vendorId, pos]) =>
+          apiRequest("/api/label-positions", "POST", {
+            vendorId,
+            marketId,
+            labelX: pos.x,
+            labelY: pos.y,
+          })
+        )
+      );
+      await queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "label-positions"] });
+      toast({
+        title: "Saved",
+        description: `Updated ${Object.keys(pendingLabelPositions).length} label position(s).`,
+      });
+      setPendingLabelPositions({});
+      setEditingLabels(false);
+    } catch (err: any) {
+      toast({
+        title: "Save failed",
+        description: err?.message ?? "Could not save label positions.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingLabels(false);
+    }
+  };
+
+  const handleCancelLabelEdit = () => {
+    setPendingLabelPositions({});
+    setEditingLabels(false);
+  };
   const { data: featureCategories = [] } = useQuery<any[]>({
     queryKey: ["/api/markets", marketId, "feature-categories"],
     enabled: !!marketId && showOwnerControls,
@@ -341,7 +390,65 @@ export default function MarketDetails() {
           </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
-            <MagicQuadrant marketId={marketId!} marketName={market.name} />
+            {canManageVendors && (
+              <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-sm text-gray-600">
+                  {editingLabels ? (
+                    <span className="inline-flex items-center gap-1.5 text-blue-700">
+                      <Move className="h-3.5 w-3.5" />
+                      Drag any vendor name to reposition it.
+                      {Object.keys(pendingLabelPositions).length > 0 && (
+                        <span className="ml-1 font-medium">
+                          {Object.keys(pendingLabelPositions).length} unsaved change(s)
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span>Labels look cluttered? Adjust them.</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {editingLabels ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancelLabelEdit}
+                        disabled={savingLabels}
+                        data-testid="button-cancel-label-edit"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveLabelPositions}
+                        disabled={savingLabels || Object.keys(pendingLabelPositions).length === 0}
+                        data-testid="button-save-label-positions"
+                      >
+                        <Save className="h-3.5 w-3.5 mr-1" />
+                        {savingLabels ? "Saving…" : "Save Positions"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingLabels(true)}
+                      data-testid="button-edit-labels"
+                    >
+                      <Move className="h-3.5 w-3.5 mr-1" /> Edit Label Positions
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            <MagicQuadrant
+              key={`mq-${editingLabels ? "edit" : "view"}`}
+              marketId={marketId!}
+              marketName={market.name}
+              enableDrag={editingLabels}
+              onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="support-matrix" className="mt-6">

@@ -286,9 +286,30 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/label-positions", requireAdmin, async (req, res) => {
+  app.post("/api/label-positions", async (req, res) => {
     try {
+      // Authz: admins can save label positions for any market; non-admins
+      // may save only for private markets they own.
+      const isAuth = (req as any).isAuthenticated?.();
+      const user = isAuth ? (req.user as any) : null;
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+
       const positionData = insertVendorLabelPositionSchema.parse(req.body);
+
+      // Verify the vendor actually belongs to the claimed market (defence
+      // against malformed/cross-market payloads from any caller).
+      const vendor = await storage.getVendorById(positionData.vendorId);
+      if (!vendor || vendor.marketId !== positionData.marketId) {
+        return res.status(400).json({ error: "Vendor does not belong to the specified market" });
+      }
+
+      if (user.role !== "admin") {
+        const market = await storage.getMarketById(positionData.marketId);
+        if (!market || market.ownerUserId !== user.id) {
+          return res.status(403).json({ error: "Not allowed to edit this market's labels" });
+        }
+      }
+
       const position = await storage.saveVendorLabelPosition(positionData);
       res.json(position);
     } catch (error) {
