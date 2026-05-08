@@ -1118,13 +1118,14 @@ function PublishPanel({ job, stageResults, stagePhases, onPublished, apiBase, mo
 
 // ── Done stage view ───────────────────────────────────────────────────────
 
-function DoneStageView({ stageNum, result, jobId, onSave, apiBase }: {
+function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange }: {
   stageNum: number; result: any; jobId: string; onSave: (r: any) => void; apiBase: string;
+  onDirtyChange?: (stageNum: number, dirtyResult: any | null) => void;
 }) {
   const [localResult, setLocalResult] = useState(result);
   const [isDirty, setIsDirty] = useState(false);
-  useEffect(() => { setLocalResult(result); setIsDirty(false); }, [result]);
-  const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); };
+  useEffect(() => { setLocalResult(result); setIsDirty(false); onDirtyChange?.(stageNum, null); }, [result, stageNum]);
+  const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); onDirtyChange?.(stageNum, r); };
   return (
     <div className="space-y-5">
       <SourcesPanel jobId={jobId} currentStage={stageNum} apiBase={apiBase} />
@@ -1352,6 +1353,10 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   const esRef = useRef<EventSource | null>(null);
   const fallbackPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  // Tracks unsaved edits in the current DoneStageView so Approve & Continue
+  // (and the next-stage run trigger) can flush them to the server before
+  // launching downstream stages that read from row.result.
+  const dirtyEditRef = useRef<{ stageNum: number; result: any } | null>(null);
 
   const { data: jobs = [], refetch: refetchJobs } = useQuery<MarketBuilderJob[]>({
     queryKey: [apiBase, "jobs"],
@@ -1551,6 +1556,19 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   };
 
   const approveStage = async (stageNum: number) => {
+    // Flush any unsaved edits before navigating. Downstream stages read the
+    // saved row.result on the server, so without this the user's edits
+    // (e.g. deleted vendors in Stage 1) would be silently discarded.
+    if (dirtyEditRef.current && dirtyEditRef.current.stageNum === stageNum) {
+      try {
+        await saveEdits.mutateAsync({ stageNum, result: dirtyEditRef.current.result });
+        setStageResults(prev => ({ ...prev, [stageNum]: dirtyEditRef.current!.result }));
+        dirtyEditRef.current = null;
+      } catch {
+        // saveEdits.onError already toasts; abort approval so the user can fix it
+        return;
+      }
+    }
     if (stageNum === 9) {
       await completeJob.mutateAsync(activeJob!.id);
       setActiveStage(10);
@@ -2092,9 +2110,17 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                 result={currentResult}
                 jobId={activeJob!.id}
                 apiBase={apiBase}
+                onDirtyChange={(stageNum, dirtyResult) => {
+                  if (dirtyResult === null) {
+                    if (dirtyEditRef.current?.stageNum === stageNum) dirtyEditRef.current = null;
+                  } else {
+                    dirtyEditRef.current = { stageNum, result: dirtyResult };
+                  }
+                }}
                 onSave={r => {
                   setStageResults(prev => ({ ...prev, [activeStage]: r }));
                   saveEdits.mutate({ stageNum: activeStage, result: r });
+                  if (dirtyEditRef.current?.stageNum === activeStage) dirtyEditRef.current = null;
                 }}
               />
             )}
