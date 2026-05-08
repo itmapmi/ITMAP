@@ -1248,11 +1248,13 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   // is re-fetched from DB immediately so they see everything that happened.
 
   const pollingEnabled = view === "stages" && stagePhases[activeStage] === "running" && !!activeJob;
-  const { data: progressData } = useQuery<{ progressLog: string; status: string }>({
+  const { data: progressData } = useQuery<{ progressLog: string; status: string; inFlightVendors?: string[] }>({
     queryKey: [`${apiBase}/jobs/${activeJob?.id}/stages/${activeStage}/progress`],
     enabled: pollingEnabled,
     refetchInterval: pollingEnabled ? 2500 : false,
   });
+
+  const inFlightVendors = progressData?.inFlightVendors ?? [];
 
   const activityLines = useMemo(() => {
     const raw = progressData?.progressLog ?? "";
@@ -1794,6 +1796,30 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-700">AI is working on Stage {activeStage}: {currentMeta?.label}</p>
                       <p className="text-xs text-gray-400 mt-0.5">Updates every few seconds · Page will refresh automatically when complete</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Now processing — concurrent vendors in flight */}
+                {inFlightVendors.length > 0 && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 overflow-hidden" data-testid="now-processing-panel">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 border-b border-blue-200">
+                      <Loader2 className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                      <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">
+                        Now processing ({inFlightVendors.length})
+                      </span>
+                    </div>
+                    <div className="px-3 py-2 flex flex-wrap gap-1.5">
+                      {inFlightVendors.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white border border-blue-200 px-2.5 py-1 text-xs font-medium text-blue-800"
+                          data-testid={`inflight-vendor-${name}`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          {name}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}

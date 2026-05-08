@@ -278,6 +278,10 @@ export interface Stage9CommentaryHooks {
   checkpoint?: Stage5Result;
   /** Called after each vendor completes so the caller can persist partial results */
   onVendorComplete?: (partial: Stage5Result) => Promise<void>;
+  /** Called when a worker picks up a vendor — powers the "Now processing" panel */
+  onVendorStart?: (vendorName: string) => void;
+  /** Called when a worker releases a vendor (success or failure) */
+  onVendorEnd?: (vendorName: string) => void;
 }
 
 export async function runStage9Commentary(
@@ -339,9 +343,12 @@ export async function runStage9Commentary(
       }
     }
 
+    hooks?.onVendorStart?.(vendor.name);
+
     // Collect this vendor's records locally; merge into shared state under the lock when done.
     const myRecords: Stage5SupportRecord[] = [];
 
+    try {
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
@@ -395,6 +402,9 @@ export async function runStage9Commentary(
       }
       await hooks?.onVendorComplete?.({ categories: stage7Result.categories, support: updatedSupport });
     });
+    } finally {
+      hooks?.onVendorEnd?.(vendor.name);
+    }
   });
 
   if (updatedSupport.length === 0) throw new Error("Stage 9: no ecosystem commentary generated");

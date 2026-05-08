@@ -9,6 +9,7 @@ import { runStage3 } from "./stages/stage3";
 import { runStage4Scoring, runStage4Commentary } from "./stages/stage4";
 import { runStage5A, runStage8Scoring, runStage9Commentary } from "./stages/stage5";
 import { resolvePromptContent } from "./prompts";
+import { addInFlightVendor, removeInFlightVendor, clearInFlightVendors } from "./inflight";
 
 // ── SSE helpers ───────────────────────────────────────────────────────────
 
@@ -132,6 +133,7 @@ export async function runSingleStage(
   const sourceContext = buildSourceContext(allSources, stageNum);
 
   await storage.clearStageProgress(jobId, stageNum);
+  clearInFlightVendors(jobId, stageNum);
 
   const progress = makeProgress(res, jobId, stageNum);
 
@@ -292,6 +294,8 @@ export async function runSingleStage(
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 6, { result: partial as any });
             },
+            onVendorStart: (vendorName) => addInFlightVendor(jobId, 6, vendorName),
+            onVendorEnd: (vendorName) => removeInFlightVendor(jobId, 6, vendorName),
           }
         );
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} product feature scores`);
@@ -351,6 +355,8 @@ export async function runSingleStage(
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 9, { result: partial as any });
             },
+            onVendorStart: (vendorName) => addInFlightVendor(jobId, 9, vendorName),
+            onVendorEnd: (vendorName) => removeInFlightVendor(jobId, 9, vendorName),
           }
         );
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} ecosystem integration scores`);
@@ -390,6 +396,7 @@ export async function runSingleStage(
     await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
     sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
   } finally {
+    clearInFlightVendors(jobId, stageNum);
     res.end();
   }
 }

@@ -5,6 +5,7 @@ import { insertMarketBuilderJobSchema } from "@shared/schema";
 import { initSSE, sendEvent, runSingleStage, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
+import { listInFlightVendors } from "../market-builder/inflight";
 
 // Per-user rate limits for end-user Market Builder runs.
 // These are intentionally generous; tighten if abuse appears.
@@ -219,6 +220,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
       res.json({
         progressLog: (stage as any)?.progressLog ?? "",
         status: stage?.status ?? "pending",
+        inFlightVendors: listInFlightVendors(req.params.id, stageNum),
       });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
@@ -802,7 +804,11 @@ export function registerMarketBuilderRoutes(app: Express): void {
     try {
       const stageNum = parseInt(req.params.stageNum, 10);
       const stage = await storage.getMarketBuilderStage(req.params.id, stageNum);
-      res.json({ progressLog: (stage as any)?.progressLog ?? "", status: stage?.status ?? "pending" });
+      res.json({
+        progressLog: (stage as any)?.progressLog ?? "",
+        status: stage?.status ?? "pending",
+        inFlightVendors: listInFlightVendors(req.params.id, stageNum),
+      });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 

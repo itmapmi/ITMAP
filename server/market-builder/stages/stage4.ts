@@ -36,6 +36,10 @@ export interface Stage4CommentaryHooks {
   checkpoint?: Stage4Result;
   /** Called after each vendor completes so the caller can persist partial results */
   onVendorComplete?: (partial: Stage4Result) => Promise<void>;
+  /** Called when a worker picks up a vendor — powers the "Now processing" panel */
+  onVendorStart?: (vendorName: string) => void;
+  /** Called when a worker releases a vendor (success or failure) */
+  onVendorEnd?: (vendorName: string) => void;
 }
 
 interface FeatureRow {
@@ -299,10 +303,13 @@ export async function runStage4Commentary(
       }
     }
 
+    hooks?.onVendorStart?.(vendor.name);
+
     // Collect this vendor's records locally first; merge into shared state
     // under the lock once the vendor is fully done.
     const myRecords: Stage4SupportRecord[] = [];
 
+    try {
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_COMMENTARY) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_COMMENTARY);
@@ -352,6 +359,9 @@ export async function runStage4Commentary(
       }
       await hooks?.onVendorComplete?.({ support: updatedSupport });
     });
+    } finally {
+      hooks?.onVendorEnd?.(vendor.name);
+    }
   });
 
   return { support: updatedSupport };
