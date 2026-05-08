@@ -2063,6 +2063,11 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-red-800">Stage {activeStage} failed</p>
                     {streamError && <p className="text-xs text-red-600 mt-1">{streamError}</p>}
+                    <p className="text-xs text-red-700 mt-2">
+                      {[5, 6, 8, 9].includes(activeStage)
+                        ? "Click \"Try Again\" — the stage will resume from the last vendor that finished, not restart from scratch."
+                        : "Click \"Try Again\" to re-run this stage."}
+                    </p>
                   </div>
                 </div>
                 <SourcesOnlyNotice />
