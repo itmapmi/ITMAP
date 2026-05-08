@@ -213,6 +213,10 @@ export async function runStage8Scoring(
   hooks?: {
     resolveScoringPrompt?: (categoryName: string, featureName: string) => Promise<string>;
     onProgress?: (msg: string) => Promise<void>;
+    /** Partial result from a previous failed run — skip already-done vendors */
+    checkpoint?: Stage8ScoringResult;
+    /** Called after each vendor completes so the caller can persist partial results */
+    onVendorComplete?: (partial: Stage8ScoringResult) => Promise<void>;
   },
 ): Promise<Stage8ScoringResult> {
   const allFeatures: FeatureRow[] = stage7Result.categories.flatMap(cat =>
@@ -235,15 +239,52 @@ export async function runStage8Scoring(
   totalBatches *= stage1.vendors.length;
 
   let done = 0;
-  const allSupport: Stage5SupportRecord[] = [];
+  // Seed from checkpoint if present so already-scored vendors are preserved
+  const allSupport: Stage5SupportRecord[] = hooks?.checkpoint
+    ? hooks.checkpoint.support.map(s => ({ ...s }))
+    : [];
 
-  for (const vendor of stage1.vendors) {
+  // Number of LLM batches per vendor (used to advance done counter when skipping)
+  const batchesPerVendor = groups.reduce((n, g) => n + Math.ceil(g.features.length / FEATURE_BATCH_SCORING), 0);
+
+  // Mutex serializes mutations to shared state: progress counter, support
+  // array merge, and checkpoint persistence. LLM calls run outside the lock.
+  const lock = createMutex();
+
+  await runWithConcurrency(stage1.vendors, VENDOR_CONCURRENCY, async (vendor) => {
+    // Resume: if checkpoint already has scores for every (vendor × feature), skip
+    if (hooks?.checkpoint) {
+      const allDone = allFeatures.every(f =>
+        allSupport.find(
+          r => r.vendorName === vendor.name && r.categoryName === f.categoryName && r.featureName === f.featureName
+        )
+      );
+      if (allDone) {
+        await lock(async () => {
+          done += batchesPerVendor;
+          await hooks?.onProgress?.(`↩ Resuming: ${vendor.name} already scored — skipping`);
+        });
+        return;
+      }
+    }
+
+    // Collect this vendor's records locally; merge into shared state under the lock when done.
+    const myRecords: Stage5SupportRecord[] = [];
+
     for (const g of groups) {
       for (let i = 0; i < g.features.length; i += FEATURE_BATCH_SCORING) {
         const chunk = g.features.slice(i, i + FEATURE_BATCH_SCORING);
         const featStart = i + 1;
         const featEnd = Math.min(i + FEATURE_BATCH_SCORING, g.features.length);
-        await hooks?.onProgress?.(`Batch ${done + 1}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
+
+        // Atomically reserve this batch's number AND emit the progress
+        // message so concurrent workers never claim the same number.
+        // (Increment-on-start, like Stage 9, because onProgress fires
+        // *before* the LLM call.)
+        await lock(async () => {
+          done++;
+          await hooks?.onProgress?.(`Batch ${done}/${totalBatches} — Scoring: ${vendor.name} | Integrations ${featStart}–${featEnd} of ${g.features.length} (${llmConfig.provider}/${llmConfig.model})`);
+        });
 
         const scores = await scoreEcosystemBatch(
           marketName, vendor, chunk, g.prompt, llmConfig, sourceContext
@@ -252,7 +293,7 @@ export async function runStage8Scoring(
         for (const f of chunk) {
           const s = scores.find(x => x.categoryName === f.categoryName && x.featureName === f.featureName);
           const lvl = Math.max(0, Math.min(4, s?.supportLevel ?? 0)) as 0 | 1 | 2 | 3 | 4;
-          allSupport.push({
+          myRecords.push({
             vendorName: vendor.name,
             categoryName: f.categoryName,
             featureName: f.featureName,
@@ -261,10 +302,25 @@ export async function runStage8Scoring(
             sources: [],
           });
         }
-        done++;
       }
     }
-  }
+
+    // Merge this vendor's records into the shared array and checkpoint —
+    // serialized so concurrent workers don't race on the array or DB write.
+    await lock(async () => {
+      for (const r of myRecords) {
+        const idx = allSupport.findIndex(
+          s => s.vendorName === r.vendorName && s.categoryName === r.categoryName && s.featureName === r.featureName
+        );
+        if (idx !== -1) {
+          allSupport[idx] = r;
+        } else {
+          allSupport.push(r);
+        }
+      }
+      await hooks?.onVendorComplete?.({ categories: stage7Result.categories, support: allSupport });
+    });
+  });
 
   return { categories: stage7Result.categories, support: allSupport };
 }

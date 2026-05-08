@@ -252,7 +252,14 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage4 = await loadStageResult(jobId, 4);
         const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features (numeric scores only)…`);
+        // Load checkpoint from any previous failed run so fully-scored vendors are skipped
+        const existingStage5 = await storage.getMarketBuilderStage(jobId, 5);
+        const checkpoint5 = (existingStage5?.result as any) ?? undefined;
+        if (checkpoint5?.support?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${checkpoint5.support.length} feature scores already saved`);
+        } else {
+          await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features (numeric scores only)…`);
+        }
         result = await runStage4Scoring(
           inputName, stage1, stage4, llmConfig, sourceContext,
           {
@@ -260,6 +267,10 @@ export async function runSingleStage(
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
             onBatchComplete: async (done, total, vendorName, featureRange) => {
               await progress(`Batch ${done}/${total} — Scoring: ${vendorName} | Features ${featureRange}`);
+            },
+            checkpoint: checkpoint5,
+            onVendorComplete: async (partial) => {
+              await storage.upsertMarketBuilderStage(jobId, 5, { result: partial as any });
             },
           }
         );
@@ -317,13 +328,24 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage7 = await loadStageResult(jobId, 7);
         const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations (numeric scores only)…`);
+        // Load checkpoint from any previous failed run so fully-scored vendors are skipped
+        const existingStage8 = await storage.getMarketBuilderStage(jobId, 8);
+        const checkpoint8 = (existingStage8?.result as any) ?? undefined;
+        if (checkpoint8?.support?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${checkpoint8.support.length} ecosystem scores already saved`);
+        } else {
+          await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations (numeric scores only)…`);
+        }
         result = await runStage8Scoring(
           inputName, stage1, stage7, llmConfig, sourceContext,
           {
             resolveScoringPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
             onProgress: async (msg: string) => { await progress(msg); },
+            checkpoint: checkpoint8,
+            onVendorComplete: async (partial) => {
+              await storage.upsertMarketBuilderStage(jobId, 8, { result: partial as any });
+            },
           }
         );
         await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem Harvey Ball scores`);
