@@ -37,6 +37,31 @@ function makeProgress(res: Response, jobId: string, stageNum: number) {
   };
 }
 
+// Wrap a long-running, single-call stage step with a heartbeat that emits a
+// progress message every ~30 s while we wait for the LLM to respond. Without
+// this, single-call stages (1, 4, 7) appear silent for minutes and the UI's
+// "stage appears stuck" warning fires incorrectly.
+async function withHeartbeat<T>(
+  progress: (msg: string) => Promise<void>,
+  label: string,
+  fn: () => Promise<T>,
+  intervalMs = 30_000,
+): Promise<T> {
+  const startedAt = Date.now();
+  let ticks = 0;
+  const timer = setInterval(() => {
+    ticks += 1;
+    const secs = Math.round((Date.now() - startedAt) / 1000);
+    progress(`⏳ Still waiting on ${label}… (${secs}s elapsed)`).catch(() => {});
+  }, intervalMs);
+  try {
+    return await fn();
+  } finally {
+    clearInterval(timer);
+    void ticks;
+  }
+}
+
 // ── LLM config from job ───────────────────────────────────────────────────
 
 export class MissingLlmKeyError extends Error {
@@ -184,10 +209,12 @@ export async function runSingleStage(
       // ── Stage 1: Identify vendors ─────────────────────────────────────
       case 1: {
         await progress(`Identifying vendors in the "${inputName}" market (${llmConfig.provider}/${llmConfig.model})…`);
-        result = await runStage1(
-          { name: inputName, description: inputDescription, category: inputCategory, context: inputContext },
-          llmConfig,
-          sourceContext
+        result = await withHeartbeat(progress, `${llmConfig.provider}/${llmConfig.model} (vendor list)`, () =>
+          runStage1(
+            { name: inputName, description: inputDescription, category: inputCategory, context: inputContext },
+            llmConfig,
+            sourceContext
+          )
         );
         await progress(`✓ Found ${result.vendors?.length ?? 0} vendors`);
         break;
@@ -249,7 +276,9 @@ export async function runSingleStage(
       case 4: {
         const stage1 = await loadStageResult(jobId, 1);
         await progress(`Building product feature matrix for "${inputName}" (${llmConfig.provider}/${llmConfig.model})…`);
-        result = await runStage3(inputName, stage1, llmConfig, sourceContext);
+        result = await withHeartbeat(progress, `${llmConfig.provider}/${llmConfig.model} (feature matrix)`, () =>
+          runStage3(inputName, stage1, llmConfig, sourceContext)
+        );
         const totalFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
         await progress(`✓ Built ${result.categories?.length ?? 0} categories with ${totalFeatures} features`);
         break;
@@ -325,7 +354,9 @@ export async function runSingleStage(
       case 7: {
         const stage1 = await loadStageResult(jobId, 1);
         await progress(`Defining ecosystem integration categories for "${inputName}" (${llmConfig.provider}/${llmConfig.model})…`);
-        result = await runStage5A(inputName, stage1, llmConfig, sourceContext);
+        result = await withHeartbeat(progress, `${llmConfig.provider}/${llmConfig.model} (ecosystem categories)`, () =>
+          runStage5A(inputName, stage1, llmConfig, sourceContext)
+        );
         const totalEcoFeatures = (result.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
         await progress(`✓ Defined ${result.categories?.length ?? 0} ecosystem categories with ${totalEcoFeatures} integration points`);
         break;

@@ -161,10 +161,17 @@ function StuckStageReset({ jobId, stageNum, apiBase, onReset }: {
   const { toast } = useToast();
   const [show, setShow] = useState(false);
 
+  // Single-call stages (1, 4, 7) wait on one long LLM response and emit no
+  // intermediate progress for minutes at a time — give them a longer grace
+  // period before showing the "stuck" warning. The server now also emits a
+  // 30 s heartbeat for these stages, so a truly stuck stage will be obvious.
+  const SINGLE_CALL_STAGES = new Set([1, 4, 7]);
+  const thresholdMs = SINGLE_CALL_STAGES.has(stageNum) ? 180_000 : 30_000;
+
   useEffect(() => {
-    const t = setTimeout(() => setShow(true), 30_000);
+    const t = setTimeout(() => setShow(true), thresholdMs);
     return () => clearTimeout(t);
-  }, []);
+  }, [thresholdMs]);
 
   const resetMutation = useMutation({
     mutationFn: () =>
@@ -184,8 +191,8 @@ function StuckStageReset({ jobId, stageNum, apiBase, onReset }: {
       <div className="flex-1">
         <p className="text-sm font-semibold text-amber-800">Stage appears stuck</p>
         <p className="text-xs text-amber-700 mt-0.5">
-          No activity logged in 30 s — the server may have restarted mid-run.
-          Reset this stage so you can run it again.
+          No activity logged in {Math.round(thresholdMs / 1000)} s — the server
+          may have restarted mid-run. Reset this stage so you can run it again.
         </p>
         <Button
           size="sm"
