@@ -19,6 +19,7 @@ import ForecastBuilderPage from "@/pages/forecast-builder/index";
 import ForecastDetailPage from "@/pages/forecast-builder/detail";
 import ForecastReportPage from "@/pages/forecast-builder/report";
 import MyReportsPage from "@/pages/my-reports";
+import MyMarketVendorsPage from "@/pages/my-market-vendors";
 import MyLlmKeysPage from "@/pages/my-llm-keys";
 import MyProfile from "@/pages/my-profile";
 import MySettings from "@/pages/my-settings";
@@ -80,6 +81,7 @@ function Router() {
         <Route path="/forecast-builder/:id/report" component={() => <ProtectedRoute component={ForecastReportPage} />} />
         <Route path="/forecast-builder/:id" component={() => <ProtectedRoute component={ForecastDetailPage} />} />
         <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
+        <Route path="/me/markets/:marketId/vendors" component={() => <ProtectedRoute component={MyMarketVendorsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
         <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
         <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />

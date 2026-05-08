@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, FileDown, Lock, ArrowRight } from "lucide-react";
+import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { MarketNews } from "@/components/market-news";
 import { VendorSelectionModal } from "@/components/vendor-selection-modal";
 import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
+import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Market, Vendor } from "@shared/schema";
@@ -30,7 +31,7 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isAdmin } = useAuth();
   const { toast } = useToast();
   const isFreeMarket = marketId === FREE_MARKET_ID;
 
@@ -52,6 +53,7 @@ export default function MarketDetails() {
   // categories so we can show targeted placeholders.
   const isOwner = !!(market?.ownerUserId && user?.id === market.ownerUserId);
   const showOwnerControls = isOwner && market?.visibility === "private";
+  const canManageVendors = isAdmin || showOwnerControls;
   const { data: featureCategories = [] } = useQuery<any[]>({
     queryKey: ["/api/markets", marketId, "feature-categories"],
     enabled: !!marketId && showOwnerControls,
@@ -323,6 +325,11 @@ export default function MarketDetails() {
             <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-news">
               News
             </TabsTrigger>
+            {canManageVendors && (
+              <TabsTrigger value="vendors" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-vendors">
+                {isMobile ? 'Vendors' : 'Vendor Newsroom URLs'}
+              </TabsTrigger>
+            )}
             {isAuthenticated && (
               <TabsTrigger value="intelligence-feed" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-intelligence-feed">
                 {isMobile ? 'Signals' : 'Intelligence Feed'}
@@ -360,6 +367,25 @@ export default function MarketDetails() {
           <TabsContent value="news" className="mt-6">
             <MarketNews marketId={marketId!} />
           </TabsContent>
+
+          {canManageVendors && (
+            <TabsContent value="vendors" className="mt-6">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Vendor Newsroom URLs</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Add a press / newsroom page for each vendor — the daily ingestion at 7:00 AM UTC will pull their news automatically.
+                  </p>
+                </div>
+                <Link href={`/me/markets/${marketId}/vendors`}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    Open dedicated page <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+              <VendorNewsroomManager marketId={marketId!} variant="compact" />
+            </TabsContent>
+          )}
 
           {isAuthenticated && (
             <TabsContent value="intelligence-feed" className="mt-6">

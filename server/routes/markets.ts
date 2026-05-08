@@ -147,9 +147,36 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/vendors/:id", requireAdmin, async (req, res) => {
+  app.put("/api/vendors/:id", async (req, res) => {
     try {
-      const vendorData = insertVendorSchema.partial().parse(req.body);
+      // Authz: admins can edit any vendor; end-users may edit a vendor only
+      // when they own the parent market (private markets created via the
+      // end-user Market Builder). For owner edits we restrict the editable
+      // fields to newsroom-related ones to prevent accidental overwrites.
+      const isAuth = (req as any).isAuthenticated?.();
+      const user = isAuth ? (req.user as any) : null;
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
+      const isAdmin = user.role === "admin";
+
+      const existing = await storage.getVendorById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Vendor not found" });
+
+      let vendorData: any;
+      if (isAdmin) {
+        vendorData = insertVendorSchema.partial().parse(req.body);
+      } else {
+        const market = await storage.getMarketById(existing.marketId);
+        if (!market || market.ownerUserId !== user.id) {
+          return res.status(403).json({ error: "Not allowed to edit this vendor" });
+        }
+        // Owner-allowed fields only
+        const ownerSchema = insertVendorSchema.partial().pick({
+          newsroomUrl: true,
+          newsroomAlertDisabled: true,
+        });
+        vendorData = ownerSchema.parse(req.body);
+      }
+
       const vendor = await storage.updateVendor(req.params.id, vendorData);
       res.json(vendor);
       if (vendorData.newsroomUrl !== undefined) {
