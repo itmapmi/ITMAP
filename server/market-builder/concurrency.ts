@@ -88,6 +88,35 @@ export async function retryOnRateLimit<T>(fn: () => Promise<T>, maxAttempts = 5)
   }
 }
 
+/**
+ * Retry a function when the LLM returned a response that couldn't be parsed
+ * as JSON (typically Claude Opus emitting an unescaped control character or
+ * stray prose inside a long string). Cheap to retry — different sampling on
+ * the next call usually produces clean JSON. Cap small (3 attempts) since
+ * each retry is a fresh expensive LLM call.
+ */
+export async function retryOnInvalidJSON<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (e: unknown) {
+      attempt++;
+      if (!isInvalidJSONError(e) || attempt >= maxAttempts) throw e;
+      console.warn(
+        `[LLM] Invalid JSON response (attempt ${attempt}/${maxAttempts}) — retrying`,
+      );
+      // Tiny pause so we don't hammer the provider on a transient hiccup
+      await new Promise<void>((r) => setTimeout(r, 500));
+    }
+  }
+}
+
+function isInvalidJSONError(e: unknown): boolean {
+  const msg = String((e as { message?: string })?.message ?? "");
+  return /not valid JSON|truncated at token limit|response truncated|empty response/i.test(msg);
+}
+
 function isRateLimitError(e: unknown): boolean {
   const err = e as { status?: number; statusCode?: number; response?: { status?: number }; message?: string };
   const status = err?.status ?? err?.statusCode ?? err?.response?.status;

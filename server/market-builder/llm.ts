@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { retryOnRateLimit } from "./concurrency";
+import { retryOnRateLimit, retryOnInvalidJSON } from "./concurrency";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -60,11 +60,57 @@ function extractJSON<T>(text: string): T {
   const objMatch = text.match(/\{[\s\S]*\}/);
   if (objMatch) {
     try { return JSON.parse(objMatch[0]) as T; } catch {}
+
+    // Sanitize: strip stray control characters that often appear inside
+    // long Claude Opus commentary strings (e.g. raw \x00–\x1F other than
+    // \t, \n, \r), then retry. Done as a last-ditch attempt only.
+    const sanitized = objMatch[0].replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+    if (sanitized !== objMatch[0]) {
+      try { return JSON.parse(sanitized) as T; } catch {}
+    }
+
+    // Walk forward from the first '{' and find the *true* matching closing
+    // brace by counting nesting (respecting strings / escapes), in case the
+    // greedy regex over-captured trailing prose.
+    const balanced = extractBalancedObject(objMatch[0]);
+    if (balanced && balanced !== objMatch[0]) {
+      try { return JSON.parse(balanced) as T; } catch {}
+      const balancedSanitized = balanced.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+      if (balancedSanitized !== balanced) {
+        try { return JSON.parse(balancedSanitized) as T; } catch {}
+      }
+    }
   }
 
   const preview = text.slice(0, 300).replace(/\n/g, "↵");
   console.error(`[LLM] extractJSON failed. Response preview: ${preview}`);
   throw new Error("LLM returned a response that is not valid JSON");
+}
+
+/**
+ * Walk a string starting at the first '{' and return the substring up to and
+ * including its matching '}'. Respects double-quoted strings and escaped
+ * characters so braces inside string values don't confuse the counter.
+ */
+function extractBalancedObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 // ── Core call ─────────────────────────────────────────────────────────────
@@ -93,7 +139,7 @@ async function callOpenAI<T>(
   systemPrompt: string,
   userPrompt: string
 ): Promise<T> {
-  return retryOnRateLimit(async () => {
+  return retryOnInvalidJSON(() => retryOnRateLimit(async () => {
     // Use custom key if provided; fall back to Replit AI Integration
     const client = new OpenAI({
       apiKey: config.apiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -120,7 +166,7 @@ async function callOpenAI<T>(
       console.warn(`[LLM] OpenAI response truncated (finish_reason=length) for model ${config.model}.`);
     }
     return extractJSON<T>(content);
-  });
+  }));
 }
 
 // ── Anthropic ─────────────────────────────────────────────────────────────
@@ -132,7 +178,7 @@ async function callAnthropic<T>(
 ): Promise<T> {
   if (!config.apiKey) throw new Error("Anthropic requires an API key — add one in LLM Settings");
 
-  return retryOnRateLimit(async () => {
+  return retryOnInvalidJSON(() => retryOnRateLimit(async () => {
     const client = new Anthropic({ apiKey: config.apiKey });
 
     // Streaming is required by the Anthropic SDK for operations that may take
@@ -152,11 +198,16 @@ async function callAnthropic<T>(
       throw new Error(`Anthropic response truncated at token limit for model ${config.model} — response JSON is incomplete. Retrying.`);
     }
 
-    const block = response.content[0];
-    const text = block && block.type === "text" ? block.text : "";
+    // Concatenate ALL text blocks — Opus with extended thinking can return
+    // a `thinking` block first followed by the actual `text` block, and
+    // multi-block text responses do appear in long answers.
+    const text = response.content
+      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
+      .map((b) => b.text)
+      .join("");
     if (!text) throw new Error("Anthropic returned an empty response");
     return extractJSON<T>(text);
-  });
+  }));
 }
 
 // ── Perplexity ────────────────────────────────────────────────────────────
@@ -168,7 +219,7 @@ async function callPerplexity<T>(
 ): Promise<T> {
   if (!config.apiKey) throw new Error("Perplexity requires an API key — add one in LLM Settings");
 
-  return retryOnRateLimit(async () => {
+  return retryOnInvalidJSON(() => retryOnRateLimit(async () => {
     const client = new OpenAI({
       apiKey: config.apiKey,
       baseURL: "https://api.perplexity.ai",
@@ -191,5 +242,5 @@ async function callPerplexity<T>(
       console.warn(`[LLM] Perplexity response truncated (finish_reason=length) for model ${config.model}.`);
     }
     return extractJSON<T>(content);
-  });
+  }));
 }
