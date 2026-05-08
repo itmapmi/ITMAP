@@ -208,25 +208,15 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
-    // 15. Remap market_builder_stages stage numbers from 6-stage to 9-stage pipeline.
-    // Old: 2=VendorEval, 3=ProductFeatures, 4=ProductScoring, 5=Ecosystem, 6=EcoScoring
-    // New: 3=VendorCommentary, 4=ProductFeatures, 6=ProductCommentary, 7=Ecosystem, 9=EcoCommentary
-    // Remap in descending order to avoid collisions: 6→9, 5→7, 4→6, 3→4, 2→3
-    await client.query(`
-      DO $$
-      BEGIN
-        -- Only remap if the old 6-stage data still exists (no stage 7,8,9 yet)
-        IF NOT EXISTS (
-          SELECT 1 FROM market_builder_stages WHERE stage IN (7,8,9) LIMIT 1
-        ) THEN
-          UPDATE market_builder_stages SET stage = 9  WHERE stage = 6;
-          UPDATE market_builder_stages SET stage = 7  WHERE stage = 5;
-          UPDATE market_builder_stages SET stage = 6  WHERE stage = 4;
-          UPDATE market_builder_stages SET stage = 4  WHERE stage = 3;
-          UPDATE market_builder_stages SET stage = 3  WHERE stage = 2;
-        END IF;
-      END $$
-    `);
+    // 15. (Removed) Historical 6→9 stage remap migration.
+    //     This block was a one-shot remap that shipped when the pipeline grew
+    //     from 6 stages to 9. Its idempotency guard ("skip if any row already
+    //     has stage 7/8/9") was fundamentally broken: any production database
+    //     where no current job has reached stage 7+ would re-run the remap on
+    //     every server boot, silently shifting newly-inserted stage rows
+    //     (2→3, 3→4, 4→6, etc.). This caused the long-running Market Builder
+    //     row-numbering bug. The historical remap completed in prod long ago,
+    //     so the migration is removed entirely.
 
     // 16. Add missing created_at column to market_builder_job_stage_llm (omitted in migration 14)
     await client.query(`
