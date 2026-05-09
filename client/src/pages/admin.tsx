@@ -18,6 +18,7 @@ import { NewsAdmin } from "@/components/admin/news-admin";
 import { ApiKeysAdmin } from "@/components/admin/api-keys-admin";
 import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
 import { SignalFeedAdmin } from "@/components/admin/signal-feed-admin";
+import { UserMarketsAdmin } from "@/components/admin/user-markets-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight } from "lucide-react";
@@ -111,6 +112,7 @@ export default function Admin() {
         <Tabs value={activeTab} onValueChange={(tab) => { if (tab !== "signal-feed") setPendingSignalFeedVendor(null); setActiveTab(tab); }} className="w-full">
           <TabsList className="flex w-full overflow-x-auto flex-wrap gap-0 h-auto">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
+            <TabsTrigger value="user-markets">User Markets</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
             <TabsTrigger value="news">News</TabsTrigger>
@@ -132,6 +134,10 @@ export default function Admin() {
 
           <TabsContent value="market-management" className="mt-6">
             <MarketManagement />
+          </TabsContent>
+
+          <TabsContent value="user-markets" className="mt-6">
+            <UserMarketsAdmin />
           </TabsContent>
 
           <TabsContent value="vendor-management" className="mt-6">

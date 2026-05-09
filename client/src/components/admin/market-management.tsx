@@ -22,9 +22,11 @@ export default function MarketManagement() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  const { data: markets, isLoading } = useQuery<Market[]>({
+  const { data: allMarkets, isLoading } = useQuery<Market[]>({
     queryKey: ["/api/markets"],
   });
+  // Hide private (end-user-built) markets — they live in the "User Markets" tab.
+  const markets = allMarkets?.filter(m => (m as any).visibility !== "private");
 
   const form = useForm<InsertMarket>({
     resolver: zodResolver(insertMarketSchema),

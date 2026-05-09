@@ -114,6 +114,36 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Admin-only: list every private (end-user-built) market with owner info.
+  // Used by the "User Markets" tab so admins can see what end-users are building
+  // without those markets cluttering the main Markets tab.
+  app.get("/api/admin/user-markets", requireAdmin, async (_req, res) => {
+    try {
+      const all = await storage.getAllMarkets();
+      const privateMarkets = all.filter(m => m.visibility === "private");
+      // Look up owner info in one batch.
+      const ownerIds = Array.from(new Set(privateMarkets.map(m => m.ownerUserId).filter(Boolean) as string[]));
+      const owners = await Promise.all(ownerIds.map(id => storage.getUser(id).catch(() => null)));
+      const ownerById = new Map(owners.filter(Boolean).map(u => [u!.id, u!] as const));
+      const enriched = privateMarkets.map(m => {
+        const owner = m.ownerUserId ? ownerById.get(m.ownerUserId) : null;
+        return {
+          ...m,
+          owner: owner ? {
+            id: owner.id,
+            email: owner.email,
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+          } : null,
+        };
+      });
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching user markets:", error);
+      res.status(500).json({ error: "Failed to fetch user markets" });
+    }
+  });
+
   // ── Vendors ───────────────────────────────────────────────────────────────
 
   app.get("/api/vendors", requireAdmin, async (_req, res) => {
