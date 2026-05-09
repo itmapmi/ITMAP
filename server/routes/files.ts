@@ -188,6 +188,7 @@ export function registerFileRoutes(app: Express): void {
   // ── Excel Import ──────────────────────────────────────────────────────────
 
   app.post("/api/markets/:marketId/import", requireAdmin, async (req, res) => {
+    const t0 = Date.now();
     try {
       const marketId = req.params.marketId;
       const xlsx = await import('xlsx');
@@ -199,62 +200,179 @@ export function registerFileRoutes(app: Express): void {
       if (missingSheets.length > 0) return res.status(400).json({ error: `Missing required sheets: ${missingSheets.join(', ')}` });
       const market = await storage.getMarketById(marketId);
       if (!market) return res.status(404).json({ error: "Market not found" });
-      const vendors = await storage.getVendorsByMarket(marketId);
-      const criteria = await storage.getAllCriteria();
-      const features = await storage.getMarketFeatures(marketId);
-      let importedVendors = 0, importedScores = 0, importedSupport = 0;
 
-      const vendorEvalData = xlsx.utils.sheet_to_json(workbook.Sheets['Vendor Evaluation']);
-      const vendorList = [...vendors];
-      for (const row of vendorEvalData as any[]) {
+      const log = (msg: string, extra?: any) => console.log(`[import market=${marketId}] ${msg}`, extra ?? '');
+
+      // ── Step 1: Vendors + Vendor Evaluation scores ────────────────────────
+      const criteria = await storage.getAllCriteria();
+      const criteriaByName = new Map(criteria.map(c => [c.name, c]));
+      const existingVendors = await storage.getVendorsByMarket(marketId);
+      const vendorByName = new Map(existingVendors.map(v => [v.name, v as any]));
+      const vendorEvalData = xlsx.utils.sheet_to_json(workbook.Sheets['Vendor Evaluation']) as any[];
+
+      let importedVendors = 0, updatedVendors = 0, importedScores = 0;
+      const unknownCriteria = new Set<string>();
+
+      for (const row of vendorEvalData) {
         const vendorName = row['Vendor Name'];
         if (!vendorName) continue;
-        let vendor = vendorList.find(v => v.name === vendorName);
+        let vendor = vendorByName.get(vendorName);
         if (!vendor) {
           vendor = await storage.createVendor({ name: vendorName, product: row['Product'] || '', marketId, revenue: null });
-          vendorList.push(vendor);
+          vendorByName.set(vendorName, vendor);
           importedVendors++;
-        } else if (row['Product']) {
+        } else if (row['Product'] && row['Product'] !== vendor.product) {
           await storage.updateVendor(vendor.id, { ...vendor, product: row['Product'] });
-        }
-        for (const criterion of criteria) {
-          const scoreValue = row[criterion.name];
-          const notesValue = row[`${criterion.name} - Notes`];
-          if (scoreValue !== undefined && scoreValue !== null && scoreValue !== '') {
-            const numericScore = typeof scoreValue === 'number' ? scoreValue : parseFloat(scoreValue);
-            if (!isNaN(numericScore)) {
-              await storage.createOrUpdateVendorScore({ vendorId: vendor.id, criteriaId: criterion.id, score: numericScore, notes: notesValue || null });
-              importedScores++;
-            }
-          }
+          updatedVendors++;
         }
       }
+
+      // Pre-load existing scores → keyed (vendorId, criteriaId)
+      const allScores = await storage.getMarketVendorScores(marketId);
+      const scoreKey = (vId: string, cId: string) => `${vId}:${cId}`;
+      const existingScoreKeys = new Set(allScores.map(s => scoreKey(s.vendorId, s.criteriaId)));
+
+      const scoreWrites: Promise<any>[] = [];
+      for (const row of vendorEvalData) {
+        const vendor = vendorByName.get(row['Vendor Name']);
+        if (!vendor) continue;
+        for (const colName of Object.keys(row)) {
+          if (colName === 'Vendor Name' || colName === 'Product' || colName.endsWith(' - Notes')) continue;
+          const criterion = criteriaByName.get(colName);
+          if (!criterion) { unknownCriteria.add(colName); continue; }
+          const raw = row[colName];
+          if (raw === '' || raw === undefined || raw === null) continue;
+          const numericScore = typeof raw === 'number' ? raw : parseFloat(raw);
+          if (isNaN(numericScore)) continue;
+          const notes = row[`${colName} - Notes`] || null;
+          scoreWrites.push(storage.createOrUpdateVendorScore({ vendorId: vendor.id, criteriaId: criterion.id, score: numericScore, notes }));
+          existingScoreKeys.add(scoreKey(vendor.id, criterion.id));
+          importedScores++;
+        }
+      }
+      // Run score writes in parallel chunks of 25 to keep things fast without overwhelming the connection pool.
+      for (let i = 0; i < scoreWrites.length; i += 25) {
+        await Promise.all(scoreWrites.slice(i, i + 25));
+      }
+      log(`vendor eval done in ${Date.now() - t0}ms — vendors: +${importedVendors} new / ${updatedVendors} updated, scores: ${importedScores}, unknown criteria: ${unknownCriteria.size}`);
+
+      // ── Step 2: Auto-create missing feature categories + features ─────────
+      // Feature columns are everything except "Vendor Name" / "*- Comments" headers.
+      const collectFeatureColumns = (sheetName: string): string[] => {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) return [];
+        const header = (xlsx.utils.sheet_to_json(sheet, { header: 1 })[0] as string[]) || [];
+        return header.filter(h => h && h !== 'Vendor Name' && !h.endsWith(' - Comments'));
+      };
+      const productFeatureCols = collectFeatureColumns('Product Evaluation');
+      const ecosystemFeatureCols = collectFeatureColumns('ISV Ecosystem');
+
+      let categories = await storage.getMarketFeatureCategories(marketId);
+      const isEcosystemCat = (name: string) => {
+        const n = name.toLowerCase();
+        return n.includes('ecosystem') || n.includes('isv') || n.includes('integration') || n.includes('partnership') || n.includes('third-party');
+      };
+      let prodCategory = categories.find(c => !isEcosystemCat(c.name));
+      let ecoCategory  = categories.find(c =>  isEcosystemCat(c.name));
+      if (!prodCategory && productFeatureCols.length > 0) {
+        prodCategory = await storage.createFeatureCategory({ marketId, name: 'Product Capabilities', displayOrder: 0 }) as any;
+        log(`created category "Product Capabilities"`);
+      }
+      if (!ecoCategory && ecosystemFeatureCols.length > 0) {
+        ecoCategory = await storage.createFeatureCategory({ marketId, name: 'ISV Ecosystem', displayOrder: 1 }) as any;
+        log(`created category "ISV Ecosystem"`);
+      }
+
+      let features = await storage.getMarketFeatures(marketId);
+      const featureByName = new Map<string, any>(features.map(f => [f.name, f]));
+      let createdFeatures = 0;
+      const ensureFeature = async (name: string, category: any, displayOrder: number) => {
+        if (featureByName.has(name) || !category) return;
+        const f = await storage.createFeature({ name, categoryId: category.id, displayOrder, description: null });
+        featureByName.set(name, f);
+        createdFeatures++;
+      };
+      // Create sequentially with column-order displayOrder so the UI matches the spreadsheet.
+      for (let i = 0; i < productFeatureCols.length; i++) await ensureFeature(productFeatureCols[i], prodCategory, i);
+      for (let i = 0; i < ecosystemFeatureCols.length; i++) await ensureFeature(ecosystemFeatureCols[i], ecoCategory, i);
+      log(`features ensured (${createdFeatures} newly created) in ${Date.now() - t0}ms`);
+
+      // ── Step 3: Vendor Feature Support — bulk INSERT new + parallel UPDATE existing ──
+      const allSupport = await storage.getVendorFeatureSupport(marketId);
+      const supportKey = (vId: string, fId: string) => `${vId}:${fId}`;
+      const existingSupportByKey = new Map(allSupport.map(s => [supportKey(s.vendorId, s.featureId), s as any]));
+
+      const inserts: { vendorId: string; featureId: string; supportLevel: number; comments: string | null }[] = [];
+      const updates: { id: string; supportLevel: number; comments: string | null }[] = [];
 
       for (const sheetName of ['Product Evaluation', 'ISV Ecosystem']) {
-        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-        for (const row of sheetData as any[]) {
-          const vendorName = row['Vendor Name'];
-          if (!vendorName) continue;
-          const vendor = vendorList.find(v => v.name === vendorName);
+        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]) as any[];
+        for (const row of sheetData) {
+          const vendor = vendorByName.get(row['Vendor Name']);
           if (!vendor) continue;
-          for (const feature of features) {
-            const supportValue = row[feature.name];
-            const commentsValue = row[`${feature.name} - Comments`];
-            if (supportValue !== undefined && supportValue !== null && supportValue !== '') {
-              const supportLevel = typeof supportValue === 'number' ? supportValue : parseInt(supportValue, 10);
-              if (!isNaN(supportLevel)) {
-                await storage.createOrUpdateVendorFeatureSupport({ vendorId: vendor.id, featureId: feature.id, supportLevel, comments: commentsValue || null });
-                importedSupport++;
-              }
+          for (const colName of Object.keys(row)) {
+            if (colName === 'Vendor Name' || colName.endsWith(' - Comments')) continue;
+            const feature = featureByName.get(colName);
+            if (!feature) continue;
+            const raw = row[colName];
+            if (raw === '' || raw === undefined || raw === null) continue;
+            const supportLevel = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+            if (isNaN(supportLevel)) continue;
+            const comments = row[`${colName} - Comments`] || null;
+            const key = supportKey(vendor.id, feature.id);
+            const existing = existingSupportByKey.get(key);
+            if (existing) {
+              updates.push({ id: existing.id, supportLevel, comments });
+            } else {
+              inserts.push({ vendorId: vendor.id, featureId: feature.id, supportLevel, comments });
+              // Mark as "now exists" so a duplicate row in the sheet doesn't try to insert twice.
+              existingSupportByKey.set(key, { id: '__pending__', vendorId: vendor.id, featureId: feature.id });
             }
           }
         }
       }
 
-      res.json({ success: true, message: 'Data imported successfully', stats: { vendors: importedVendors, scores: importedScores, supportLevels: importedSupport } });
-    } catch (error) {
-      console.error("Error importing market data:", error);
-      res.status(500).json({ error: "Failed to import market data" });
+      // Bulk INSERT in chunks (Postgres has parameter limits; ~1000 rows × 4 cols = 4000 params is safe).
+      const { db } = await import('../db');
+      const { vendorFeatureSupport } = await import('@shared/schema');
+      let insertedCount = 0;
+      for (let i = 0; i < inserts.length; i += 500) {
+        const chunk = inserts.slice(i, i + 500);
+        if (chunk.length === 0) continue;
+        await db.insert(vendorFeatureSupport).values(chunk);
+        insertedCount += chunk.length;
+      }
+      // Parallel UPDATEs in chunks (direct update by id — skips the SELECT in the storage helper).
+      const { eq } = await import('drizzle-orm');
+      let updatedCount = 0;
+      for (let i = 0; i < updates.length; i += 25) {
+        const chunk = updates.slice(i, i + 25);
+        await Promise.all(chunk.map(u =>
+          db.update(vendorFeatureSupport)
+            .set({ supportLevel: u.supportLevel, comments: u.comments, updatedAt: new Date() })
+            .where(eq(vendorFeatureSupport.id, u.id))
+        ));
+        updatedCount += chunk.length;
+      }
+      const importedSupport = insertedCount + updatedCount;
+      log(`support done in ${Date.now() - t0}ms — inserted: ${insertedCount}, updated: ${updatedCount}`);
+
+      const stats = {
+        vendors: importedVendors,
+        vendorsUpdated: updatedVendors,
+        scores: importedScores,
+        supportLevels: importedSupport,
+        supportInserted: insertedCount,
+        supportUpdated: updatedCount,
+        featuresCreated: createdFeatures,
+        unknownCriteria: Array.from(unknownCriteria),
+        elapsedMs: Date.now() - t0,
+      };
+      log(`COMPLETE`, stats);
+      res.json({ success: true, message: 'Data imported successfully', stats });
+    } catch (error: any) {
+      console.error(`[import market=${req.params.marketId}] FAILED after ${Date.now() - t0}ms:`, error?.stack || error?.message || error);
+      res.status(500).json({ error: "Failed to import market data", detail: error?.message ?? String(error) });
     }
   });
 
