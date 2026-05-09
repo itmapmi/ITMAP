@@ -870,7 +870,7 @@ export function registerAdminRoutes(app: Express): void {
     try {
       await client.query('BEGIN');
 
-      const srcCheck = await client.query('SELECT id, name FROM markets WHERE id = $1', [sourceMarketId]);
+      const srcCheck = await client.query('SELECT id, name FROM markets WHERE id = $1::text', [sourceMarketId]);
       if (srcCheck.rowCount === 0) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Source market not found' });
@@ -878,21 +878,22 @@ export function registerAdminRoutes(app: Express): void {
       const finalName = newName || srcCheck.rows[0].name;
 
       await client.query(`CREATE TEMP TABLE _market_map (old_id text, new_id text) ON COMMIT DROP`);
-      await client.query(`INSERT INTO _market_map VALUES ($1, gen_random_uuid()::text)`, [sourceMarketId]);
+      await client.query(`INSERT INTO _market_map VALUES ($1::text, gen_random_uuid()::text)`, [sourceMarketId]);
 
       await client.query(
         `INSERT INTO markets (id, name, description, category, image_url, short_description, is_visible,
             quadrant_image_url, quadrant_image_updated_at, owner_user_id, visibility, created_at, updated_at)
-         SELECT mm.new_id, $2, m.description, m.category, m.image_url, m.short_description, true,
-            m.quadrant_image_url, m.quadrant_image_updated_at, NULL, $3, NOW(), NOW()
-         FROM markets m JOIN _market_map mm ON mm.old_id = m.id`,
+         SELECT mm.new_id, $2::text, m.description, m.category, m.image_url, m.short_description, true,
+            m.quadrant_image_url, m.quadrant_image_updated_at, NULL, $3::text, NOW(), NOW()
+         FROM markets m JOIN _market_map mm ON mm.old_id = m.id
+         WHERE mm.old_id = $1::text`,
         [sourceMarketId, finalName, visibility]
       );
 
       await client.query(`CREATE TEMP TABLE _vendor_map (old_id text, new_id text) ON COMMIT DROP`);
       await client.query(
         `INSERT INTO _vendor_map (old_id, new_id)
-         SELECT id, gen_random_uuid()::text FROM vendors WHERE market_id = $1`,
+         SELECT id, gen_random_uuid()::text FROM vendors WHERE market_id = $1::text`,
         [sourceMarketId]
       );
       await client.query(
@@ -908,7 +909,7 @@ export function registerAdminRoutes(app: Express): void {
       await client.query(`CREATE TEMP TABLE _fc_map (old_id text, new_id text) ON COMMIT DROP`);
       await client.query(
         `INSERT INTO _fc_map (old_id, new_id)
-         SELECT id, gen_random_uuid()::text FROM feature_categories WHERE market_id = $1`,
+         SELECT id, gen_random_uuid()::text FROM feature_categories WHERE market_id = $1::text`,
         [sourceMarketId]
       );
       await client.query(
