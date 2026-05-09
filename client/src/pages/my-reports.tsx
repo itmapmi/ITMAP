@@ -1,6 +1,8 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, FileText, Lock, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock, Plus } from "lucide-react";
+import { ChevronLeft, FileText, Lock, Sparkles, Loader2, CheckCircle2, AlertCircle, Clock, Plus, Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import type { Market } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -35,6 +37,32 @@ const STATUS_BADGE: Record<JobStatus, { label: string; cls: string; Icon: any }>
 
 export default function MyReportsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  async function handleExport(marketId: string, marketName: string) {
+    setExportingId(marketId);
+    try {
+      const res = await fetch(`/api/markets/${marketId}/export`, { credentials: "include" });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Export failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${marketName.replace(/[^a-z0-9]/gi, "_")}_export.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err?.message ?? "Could not export the report", variant: "destructive" });
+    } finally {
+      setExportingId(null);
+    }
+  }
 
   // Markets the user owns (private markets they've published).
   const { data: markets = [], isLoading: marketsLoading } = useQuery<Market[]>({
@@ -142,9 +170,25 @@ export default function MyReportsPage() {
                         )}
                       </a>
                     </Link>
-                    <span className="text-[10px] uppercase tracking-wide rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 shrink-0">
-                      Private
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); handleExport(m.id, m.name); }}
+                        disabled={exportingId === m.id}
+                        className="inline-flex items-center gap-1 text-xs font-medium rounded-md border border-gray-300 bg-white px-2.5 py-1 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-testid={`button-export-${m.id}`}
+                      >
+                        {exportingId === m.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3" />
+                        )}
+                        Export Excel
+                      </button>
+                      <span className="text-[10px] uppercase tracking-wide rounded-full bg-purple-100 text-purple-700 px-2 py-0.5">
+                        Private
+                      </span>
+                    </div>
                   </div>
                   {job && (
                     <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
