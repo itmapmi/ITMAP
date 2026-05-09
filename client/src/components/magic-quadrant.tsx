@@ -793,7 +793,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-weight", "700")
       .attr("fill", "#7c3aed")
       .style("text-shadow", textShadow)
-      .text("Innovators");
+      .text("Evolving Players");
 
     // Enhanced collision detection with stronger separation for overlapping vendors
     const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
