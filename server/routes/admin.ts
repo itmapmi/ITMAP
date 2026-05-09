@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
-import { pool } from "../db";
+import { pool, db } from "../db";
+import { sql } from "drizzle-orm";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
 import { insertPromptRepositorySchema } from "@shared/schema";
@@ -860,120 +861,131 @@ export function registerAdminRoutes(app: Express): void {
 
   // ── Clone a market (e.g. private user-built market → public spectio research)
   // Body: { sourceMarketId: string, newName?: string, visibility?: 'public'|'private' }
+  // Generates new IDs in JS so we don't rely on temp-table session state in
+  // the neon serverless driver — every statement is self-contained.
   app.post('/api/admin/markets/clone', requireAdmin, async (req, res) => {
     const sourceMarketId = String(req.body?.sourceMarketId || '').trim();
     const newName = req.body?.newName ? String(req.body.newName) : null;
     const visibility = req.body?.visibility === 'private' ? 'private' : 'public';
     if (!sourceMarketId) return res.status(400).json({ error: 'sourceMarketId is required' });
 
-    const client = await pool.connect();
+    console.log('[admin/markets/clone] start', { sourceMarketId, newName, visibility });
+    const step = (label: string) => console.log('[admin/markets/clone]', label);
+
     try {
-      await client.query('BEGIN');
+      step('checking source market');
+      const srcRows = await db.execute(sql`SELECT id, name FROM markets WHERE id = ${sourceMarketId}`);
+      const srcRow = (srcRows as any).rows?.[0] ?? (Array.isArray(srcRows) ? srcRows[0] : undefined);
+      if (!srcRow) return res.status(404).json({ error: 'Source market not found' });
+      const finalName = newName || srcRow.name;
 
-      const srcCheck = await client.query('SELECT id, name FROM markets WHERE id = $1::text', [sourceMarketId]);
-      if (srcCheck.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({ error: 'Source market not found' });
-      }
-      const finalName = newName || srcCheck.rows[0].name;
+      step('reading children');
+      const [vendorsRes, fcRes, featsRes, mcwRes, vsRes, vfsRes] = await Promise.all([
+        db.execute(sql`SELECT * FROM vendors WHERE market_id = ${sourceMarketId}`),
+        db.execute(sql`SELECT * FROM feature_categories WHERE market_id = ${sourceMarketId}`),
+        db.execute(sql`SELECT f.* FROM features f JOIN feature_categories fc ON fc.id = f.category_id WHERE fc.market_id = ${sourceMarketId}`),
+        db.execute(sql`SELECT * FROM market_criteria_weights WHERE market_id = ${sourceMarketId}`),
+        db.execute(sql`SELECT vs.* FROM vendor_scores vs JOIN vendors v ON v.id = vs.vendor_id WHERE v.market_id = ${sourceMarketId}`),
+        db.execute(sql`SELECT vfs.* FROM vendor_feature_support vfs JOIN vendors v ON v.id = vfs.vendor_id WHERE v.market_id = ${sourceMarketId}`),
+      ]);
+      const rowsOf = (r: any) => (r.rows ?? r) as any[];
+      const srcVendors = rowsOf(vendorsRes);
+      const srcFcs = rowsOf(fcRes);
+      const srcFeats = rowsOf(featsRes);
+      const srcMcws = rowsOf(mcwRes);
+      const srcVs = rowsOf(vsRes);
+      const srcVfs = rowsOf(vfsRes);
+      step(`source counts: vendors=${srcVendors.length} fcs=${srcFcs.length} feats=${srcFeats.length} mcws=${srcMcws.length} vs=${srcVs.length} vfs=${srcVfs.length}`);
 
-      await client.query(`CREATE TEMP TABLE _market_map (old_id text, new_id text) ON COMMIT DROP`);
-      await client.query(`INSERT INTO _market_map VALUES ($1::text, gen_random_uuid()::text)`, [sourceMarketId]);
+      // Pre-generate all IDs in JS
+      const newMarketId = crypto.randomUUID();
+      const vendorIdMap = new Map(srcVendors.map(v => [v.id as string, crypto.randomUUID()]));
+      const fcIdMap = new Map(srcFcs.map(fc => [fc.id as string, crypto.randomUUID()]));
+      const featIdMap = new Map(srcFeats.map(f => [f.id as string, crypto.randomUUID()]));
 
-      await client.query(
-        `INSERT INTO markets (id, name, description, category, image_url, short_description, is_visible,
-            quadrant_image_url, quadrant_image_updated_at, owner_user_id, visibility, created_at, updated_at)
-         SELECT mm.new_id, $2::text, m.description, m.category, m.image_url, m.short_description, true,
-            m.quadrant_image_url, m.quadrant_image_updated_at, NULL, $3::text, NOW(), NOW()
-         FROM markets m JOIN _market_map mm ON mm.old_id = m.id
-         WHERE mm.old_id = $1::text`,
-        [sourceMarketId, finalName, visibility]
-      );
+      step('inserting market');
+      // Pull the full source market row so we can copy descriptive fields verbatim.
+      const srcMarketFull = (rowsOf(await db.execute(sql`SELECT * FROM markets WHERE id = ${sourceMarketId}`)))[0];
+      await db.execute(sql`
+        INSERT INTO markets (id, name, description, category, image_url, short_description, is_visible,
+          quadrant_image_url, quadrant_image_updated_at, owner_user_id, visibility, created_at, updated_at)
+        VALUES (${newMarketId}, ${finalName}, ${srcMarketFull.description ?? null}, ${srcMarketFull.category ?? null},
+          ${srcMarketFull.image_url ?? null}, ${srcMarketFull.short_description ?? null}, true,
+          ${srcMarketFull.quadrant_image_url ?? null}, ${srcMarketFull.quadrant_image_updated_at ?? null},
+          NULL, ${visibility}, NOW(), NOW())
+      `);
 
-      await client.query(`CREATE TEMP TABLE _vendor_map (old_id text, new_id text) ON COMMIT DROP`);
-      await client.query(
-        `INSERT INTO _vendor_map (old_id, new_id)
-         SELECT id, gen_random_uuid()::text FROM vendors WHERE market_id = $1::text`,
-        [sourceMarketId]
-      );
-      await client.query(
-        `INSERT INTO vendors (id, name, description, website, revenue, market_id, product, newsroom_url,
+      step('inserting vendors');
+      for (const v of srcVendors) {
+        await db.execute(sql`
+          INSERT INTO vendors (id, name, description, website, revenue, market_id, product, newsroom_url,
             newsroom_alert_disabled, created_at, updated_at)
-         SELECT vm.new_id, v.name, v.description, v.website, v.revenue, mm.new_id, v.product,
-            v.newsroom_url, v.newsroom_alert_disabled, NOW(), NOW()
-         FROM vendors v
-         JOIN _vendor_map vm ON vm.old_id = v.id
-         JOIN _market_map mm ON mm.old_id = v.market_id`
-      );
+          VALUES (${vendorIdMap.get(v.id)}, ${v.name}, ${v.description ?? null}, ${v.website ?? null},
+            ${v.revenue ?? null}, ${newMarketId}, ${v.product ?? null}, ${v.newsroom_url ?? null},
+            ${v.newsroom_alert_disabled ?? false}, NOW(), NOW())
+        `);
+      }
 
-      await client.query(`CREATE TEMP TABLE _fc_map (old_id text, new_id text) ON COMMIT DROP`);
-      await client.query(
-        `INSERT INTO _fc_map (old_id, new_id)
-         SELECT id, gen_random_uuid()::text FROM feature_categories WHERE market_id = $1::text`,
-        [sourceMarketId]
-      );
-      await client.query(
-        `INSERT INTO feature_categories (id, name, description, market_id, display_order, is_ecosystem, created_at)
-         SELECT fm.new_id, fc.name, fc.description, mm.new_id, fc.display_order, fc.is_ecosystem, NOW()
-         FROM feature_categories fc
-         JOIN _fc_map fm ON fm.old_id = fc.id
-         JOIN _market_map mm ON mm.old_id = fc.market_id`
-      );
+      step('inserting feature_categories');
+      for (const fc of srcFcs) {
+        await db.execute(sql`
+          INSERT INTO feature_categories (id, name, description, market_id, display_order, is_ecosystem, created_at)
+          VALUES (${fcIdMap.get(fc.id)}, ${fc.name}, ${fc.description ?? null}, ${newMarketId},
+            ${fc.display_order ?? null}, ${fc.is_ecosystem ?? false}, NOW())
+        `);
+      }
 
-      await client.query(`CREATE TEMP TABLE _feat_map (old_id text, new_id text) ON COMMIT DROP`);
-      await client.query(
-        `INSERT INTO _feat_map (old_id, new_id)
-         SELECT f.id, gen_random_uuid()::text
-         FROM features f JOIN _fc_map fm ON fm.old_id = f.category_id`
-      );
-      await client.query(
-        `INSERT INTO features (id, name, description, category_id, display_order, created_at)
-         SELECT fem.new_id, f.name, f.description, fm.new_id, f.display_order, NOW()
-         FROM features f
-         JOIN _feat_map fem ON fem.old_id = f.id
-         JOIN _fc_map fm ON fm.old_id = f.category_id`
-      );
+      step('inserting features');
+      for (const f of srcFeats) {
+        await db.execute(sql`
+          INSERT INTO features (id, name, description, category_id, display_order, created_at)
+          VALUES (${featIdMap.get(f.id)}, ${f.name}, ${f.description ?? null},
+            ${fcIdMap.get(f.category_id)}, ${f.display_order ?? null}, NOW())
+        `);
+      }
 
-      await client.query(
-        `INSERT INTO market_criteria_weights (id, market_id, criteria_id, weight)
-         SELECT gen_random_uuid()::text, mm.new_id, mcw.criteria_id, mcw.weight
-         FROM market_criteria_weights mcw
-         JOIN _market_map mm ON mm.old_id = mcw.market_id`
-      );
+      step('inserting market_criteria_weights');
+      for (const w of srcMcws) {
+        await db.execute(sql`
+          INSERT INTO market_criteria_weights (id, market_id, criteria_id, weight)
+          VALUES (${crypto.randomUUID()}, ${newMarketId}, ${w.criteria_id}, ${w.weight})
+        `);
+      }
 
-      await client.query(
-        `INSERT INTO vendor_scores (id, vendor_id, criteria_id, score, notes, created_at, updated_at)
-         SELECT gen_random_uuid()::text, vm.new_id, vs.criteria_id, vs.score, vs.notes, NOW(), NOW()
-         FROM vendor_scores vs JOIN _vendor_map vm ON vm.old_id = vs.vendor_id`
-      );
+      step('inserting vendor_scores');
+      for (const s of srcVs) {
+        await db.execute(sql`
+          INSERT INTO vendor_scores (id, vendor_id, criteria_id, score, notes, created_at, updated_at)
+          VALUES (${crypto.randomUUID()}, ${vendorIdMap.get(s.vendor_id)}, ${s.criteria_id},
+            ${s.score}, ${s.notes ?? null}, NOW(), NOW())
+        `);
+      }
 
-      await client.query(
-        `INSERT INTO vendor_feature_support (id, vendor_id, feature_id, support_level, comments, updated_at)
-         SELECT gen_random_uuid()::text, vm.new_id, fem.new_id, vfs.support_level, vfs.comments, NOW()
-         FROM vendor_feature_support vfs
-         JOIN _vendor_map vm ON vm.old_id = vfs.vendor_id
-         JOIN _feat_map fem ON fem.old_id = vfs.feature_id`
-      );
+      step('inserting vendor_feature_support');
+      for (const x of srcVfs) {
+        await db.execute(sql`
+          INSERT INTO vendor_feature_support (id, vendor_id, feature_id, support_level, comments, updated_at)
+          VALUES (${crypto.randomUUID()}, ${vendorIdMap.get(x.vendor_id)}, ${featIdMap.get(x.feature_id)},
+            ${x.support_level}, ${x.comments ?? null}, NOW())
+        `);
+      }
 
-      const summary = await client.query(
-        `SELECT mm.new_id AS new_market_id,
-           (SELECT count(*)::int FROM vendors WHERE market_id = mm.new_id) AS vendors,
-           (SELECT count(*)::int FROM feature_categories WHERE market_id = mm.new_id) AS feature_categories,
-           (SELECT count(*)::int FROM features f JOIN feature_categories fc ON fc.id = f.category_id WHERE fc.market_id = mm.new_id) AS features,
-           (SELECT count(*)::int FROM market_criteria_weights WHERE market_id = mm.new_id) AS criteria_weights,
-           (SELECT count(*)::int FROM vendor_scores vs JOIN vendors v ON v.id = vs.vendor_id WHERE v.market_id = mm.new_id) AS scores,
-           (SELECT count(*)::int FROM vendor_feature_support vfs JOIN vendors v ON v.id = vfs.vendor_id WHERE v.market_id = mm.new_id) AS feature_support
-         FROM _market_map mm`
-      );
-
-      await client.query('COMMIT');
-      return res.json({ ok: true, name: finalName, visibility, ...summary.rows[0] });
+      step('done');
+      return res.json({
+        ok: true,
+        new_market_id: newMarketId,
+        name: finalName,
+        visibility,
+        vendors: srcVendors.length,
+        feature_categories: srcFcs.length,
+        features: srcFeats.length,
+        criteria_weights: srcMcws.length,
+        scores: srcVs.length,
+        feature_support: srcVfs.length,
+      });
     } catch (err: any) {
-      try { await client.query('ROLLBACK'); } catch {}
-      console.error('[admin/markets/clone] failed:', err);
+      console.error('[admin/markets/clone] failed:', { message: err?.message, stack: err?.stack });
       return res.status(500).json({ error: err?.message ?? String(err) });
-    } finally {
-      client.release();
     }
   });
 }
