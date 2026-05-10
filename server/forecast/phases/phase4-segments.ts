@@ -15,6 +15,7 @@
 
 import type { SegmentInput } from "../engine";
 import type { ForecastFull } from "../../storage/forecasts";
+import { parseUnit, isVolumeAssumption } from "../units";
 
 export interface SegmentAssemblyResult {
   segments: SegmentInput[];
@@ -24,6 +25,17 @@ export interface SegmentAssemblyResult {
   excludedCategories: string[];
   isSynthesised: boolean;
   rootCount: number;
+  /** Set when boundary unit is a price unit and a volume assumption was applied. */
+  tamTransform?: {
+    applied: boolean;
+    denominator: string;
+    period: string | null;
+    periodMultiplier: number;
+    volumeValue: number;
+    volumeAssumptionId: string;
+    /** Multiplier applied to each leaf segment baseYearValue (volume × periodMultiplier). */
+    multiplier: number;
+  };
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -235,6 +247,84 @@ export function assembleSegments(full: ForecastFull): SegmentAssemblyResult {
     segments = synthesiseFromAssumptions(full);
   }
 
+  // ── TAM transform: when the boundary unit is a PRICE unit (e.g. "$ per user
+  // per year"), the analyst draft only produced the price side. Convert leaf
+  // segment values to total-market dollars by multiplying by the auto-derived
+  // volume × period multiplier. Skipped when the boundary unit is a market unit.
+  let tamTransform: SegmentAssemblyResult["tamTransform"] | undefined;
+  const parsedUnit = parseUnit(unitOfMeasurement);
+
+  if (parsedUnit.kind === "price") {
+    // Pick the LATEST usable volume assumption: filter to positive numeric
+    // values (so a stray edit to 0/null doesn't poison the transform), then
+    // sort by updatedAt desc so the most recent edit wins. We do not silently
+    // fall back when no usable assumption exists — the phase4 pipeline already
+    // hard-gates on this before calling assembleSegments.
+    const volumeAssumption = full.assumptions
+      .filter(a => {
+        if (!isVolumeAssumption(a.currentValueSource)) return false;
+        const v = Number(a.currentValue ?? a.value ?? 0);
+        return Number.isFinite(v) && v > 0;
+      })
+      .sort((a, b) => {
+        const ta = a.updatedAt ? new Date(a.updatedAt as any).getTime() : 0;
+        const tb = b.updatedAt ? new Date(b.updatedAt as any).getTime() : 0;
+        return tb - ta;
+      })[0];
+
+    if (volumeAssumption) {
+      const volumeValue = Number(
+        volumeAssumption.currentValue ?? volumeAssumption.value ?? 0
+      );
+
+      if (volumeValue > 0) {
+        const multiplier = volumeValue * parsedUnit.periodMultiplier;
+
+        // Apply multiplier to LEAF segments only — parent rollup re-runs below.
+        const childrenSet = new Set(
+          segments.filter(s => s.parentId !== null).map(s => s.parentId as string)
+        );
+
+        segments = segments.map(s => {
+          const isLeaf = !childrenSet.has(s.id);
+          if (!isLeaf) return s;
+          return { ...s, baseYearValue: s.baseYearValue * multiplier };
+        });
+
+        // Re-run parent rollup so non-leaf totals reflect the transformed leaves.
+        const segById = new Map(segments.map(s => [s.id, { ...s }]));
+        const segChildrenMap2 = new Map<string, string[]>();
+        for (const s of segments) {
+          if (s.parentId && segById.has(s.parentId)) {
+            if (!segChildrenMap2.has(s.parentId)) segChildrenMap2.set(s.parentId, []);
+            segChildrenMap2.get(s.parentId)!.push(s.id);
+          }
+        }
+        function rollupTransformed(id: string): number {
+          const children = segChildrenMap2.get(id) ?? [];
+          if (children.length === 0) return segById.get(id)?.baseYearValue ?? 0;
+          const childSum = children.reduce((sum, cid) => sum + rollupTransformed(cid), 0);
+          segById.get(id)!.baseYearValue = childSum;
+          return childSum;
+        }
+        for (const s of segments.filter(seg => !seg.parentId)) {
+          rollupTransformed(s.id);
+        }
+        segments = [...segById.values()];
+
+        tamTransform = {
+          applied: true,
+          denominator: parsedUnit.denominator ?? "",
+          period: parsedUnit.period,
+          periodMultiplier: parsedUnit.periodMultiplier,
+          volumeValue,
+          volumeAssumptionId: volumeAssumption.id,
+          multiplier,
+        };
+      }
+    }
+  }
+
   const rootCount = segments.filter(s => !s.parentId).length;
 
   return {
@@ -245,5 +335,6 @@ export function assembleSegments(full: ForecastFull): SegmentAssemblyResult {
     excludedCategories,
     isSynthesised,
     rootCount,
+    tamTransform,
   };
 }

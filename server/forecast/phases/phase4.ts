@@ -34,6 +34,9 @@ import {
 } from "../engine";
 import { generateReport, qcInternalConsistency, qcSchemaCompleteness } from "../report";
 import { assembleSegments, validateSegmentTree } from "./phase4-segments";
+import { needsAutoVolume, runAutoVolume } from "./auto-volume";
+import { checkSanityBand } from "./sanity-band";
+import { isVolumeAssumption, parseUnit } from "../units";
 import type { ForecastFull } from "../../storage/forecasts";
 
 // ── Event types streamed back to the API route ────────────────────────────────
@@ -68,13 +71,18 @@ function assembleDebateBrief(full: ForecastFull): DebateBrief {
   const baseYear = full.baseYear ?? new Date().getFullYear() - 1;
   const horizonYears = full.forecastHorizonYears ?? 5;
 
-  // Use real DB IDs throughout — assumption IDs are stable UUIDs
-  const assumptions: AssumptionInput[] = full.assumptions.map(a => ({
-    id: a.id,
-    description: a.description,
-    value: Number(a.currentValue ?? a.value ?? 0),
-    unit: a.unit ?? "%",
-  }));
+  // Use real DB IDs throughout — assumption IDs are stable UUIDs.
+  // Skip auto-volume assumption: it's a TAM multiplier (already baked into segment
+  // baseYearValue by phase4-segments), not a growth driver, so it must not appear
+  // in the engine's growth math or sensitivity table (would compute as 0-impact).
+  const assumptions: AssumptionInput[] = full.assumptions
+    .filter(a => !isVolumeAssumption(a.currentValueSource))
+    .map(a => ({
+      id: a.id,
+      description: a.description,
+      value: Number(a.currentValue ?? a.value ?? 0),
+      unit: a.unit ?? "%",
+    }));
 
   const cruxResolutions: CruxResolution[] = full.cruxes
     .filter(c => c.scenarioValues != null && c.contestedAssumptionId != null)
@@ -213,10 +221,70 @@ export async function runBuildPipeline(
       startedAt: new Date().toISOString(),
     });
 
+    // 3b. Auto-volume agent: if the boundary unit is a PRICE unit (e.g. "$ per
+    // user per year") and no volume assumption exists yet, derive one before we
+    // assemble segments. This is what converts per-X spend into total-market
+    // dollars downstream — without it the engine would compound a price as if it
+    // were TAM.
+    let fullForBuild = full;
+    if (needsAutoVolume(full)) {
+      emit({
+        type: "progress",
+        step: "auto_volume",
+        message: "Boundary unit is per-X pricing — auto-deriving the addressable volume…",
+      });
+      try {
+        const autoVol = await runAutoVolume(full, openaiKey, openaiBaseUrl);
+        emit({
+          type: "progress",
+          step: "auto_volume",
+          message:
+            `Auto-volume: ${autoVol.estimate.value.toLocaleString()} ${autoVol.denominator}` +
+            ` (${autoVol.estimate.confidence} confidence) — ${autoVol.estimate.derivation.slice(0, 200)}`,
+        });
+        const reloaded = await getForecastFull(forecastId);
+        if (reloaded) fullForBuild = reloaded;
+      } catch (err: any) {
+        // Hard stop — without volume we'd publish a per-X number labelled as TAM.
+        throw new Error(
+          `Auto-volume agent failed: ${err.message}. ` +
+          `This forecast's boundary uses a price unit (${full.boundary?.unitOfMeasurement}) ` +
+          `which requires a paired volume assumption to compute total market size. ` +
+          `Either retry, or change the boundary unit to a market unit like "$B revenue".`
+        );
+      }
+    }
+
+    // 3c. Hard gate: when boundary is a price unit, fullForBuild MUST contain at
+    // least one usable volume assumption (positive numeric value). Auto-volume
+    // assumptions are user-editable, so a stray edit to 0/negative/non-numeric
+    // would otherwise silently bypass the TAM transform and republish a per-X
+    // number labelled as $B TAM — exactly the bug this fix exists to prevent.
+    {
+      const parsedBoundaryUnit = parseUnit(
+        fullForBuild.boundary?.unitOfMeasurement as string | undefined
+      );
+      if (parsedBoundaryUnit.kind === "price") {
+        const usableVolumeAssumptions = fullForBuild.assumptions.filter(a => {
+          if (!isVolumeAssumption(a.currentValueSource)) return false;
+          const v = Number(a.currentValue ?? a.value ?? 0);
+          return Number.isFinite(v) && v > 0;
+        });
+        if (usableVolumeAssumptions.length === 0) {
+          throw new Error(
+            `Build blocked — boundary unit is a price unit (${fullForBuild.boundary?.unitOfMeasurement}) ` +
+            `but no usable volume assumption was found. A volume assumption must exist with ` +
+            `currentValueSource="auto_volume_agent" and a positive numeric value. ` +
+            `Re-run the auto-volume agent or fix the volume assumption value, then retry.`
+          );
+        }
+      }
+    }
+
     // 4. Assemble DebateBrief (uses phase4-segments for segment tree + boundary metadata)
     emit({ type: "progress", step: "assembling", message: "Assembling forecast inputs…" });
 
-    const segmentResult = assembleSegments(full);
+    const segmentResult = assembleSegments(fullForBuild);
     if (segmentResult.isSynthesised) {
       emit({
         type: "progress",
@@ -237,7 +305,7 @@ export async function runBuildPipeline(
       throw new Error(`Segment tree validation failed (${treeError.code}): ${treeError.detail}`);
     }
 
-    const brief = assembleDebateBrief(full);
+    const brief = assembleDebateBrief(fullForBuild);
 
     // 5. Run deterministic calculation engine — no fallback on MECE failure
     emit({ type: "progress", step: "engine", message: "Running calculation engine (deterministic)…" });
@@ -308,6 +376,71 @@ export async function runBuildPipeline(
         step: "narrative_coherence",
         message: "Narrative coherence: passed (blocking gate cleared)",
       });
+    }
+
+    // 9b. Sanity-band check — compare engine baseTotal against publicly known
+    // analyst estimates. Advisory only: appends a warning to qcStatus.warnings
+    // when the engine number is more than 2× outside the public range, so users
+    // see "this looks too high/low compared to public estimates" before they
+    // share the report. Catches unit-confusion and scope-mismatch bugs without
+    // ever blocking a forecast that may legitimately differ from analysts.
+    emit({ type: "progress", step: "sanity_band", message: "Sanity-checking against public estimates…" });
+    let sanityWarning = "";
+    try {
+      const baseStart = engine.baseScenario.totalForecastPath[fullUpdated.baseYear ?? brief.baseYear] ?? 0;
+      const sanity = await checkSanityBand(
+        fullUpdated.title,
+        fullUpdated.baseYear ?? brief.baseYear,
+        baseStart,
+        fullUpdated.boundary?.unitOfMeasurement as string | undefined,
+        openaiKey,
+        openaiBaseUrl
+      );
+      if (!sanity.skipped) {
+        emit({
+          type: "qc_result",
+          step: "sanity_band",
+          message: sanity.withinBand
+            ? `Sanity band: passed (engine $${sanity.engineBaseTotalBn.toFixed(2)}B within public range)`
+            : sanity.warning,
+        });
+        if (!sanity.withinBand) {
+          sanityWarning = sanity.warning;
+        }
+      } else {
+        emit({
+          type: "qc_result",
+          step: "sanity_band",
+          message: "Sanity band: skipped (no credible public estimates available to check against)",
+        });
+      }
+      await writeAuditEntry(forecastId, "calculation_run", userId, {
+        sanityBand: {
+          withinBand: sanity.withinBand,
+          skipped: sanity.skipped,
+          engineBaseTotalBn: sanity.engineBaseTotalBn,
+          publicMin: sanity.publicRange?.minBillionsUsd ?? null,
+          publicMax: sanity.publicRange?.maxBillionsUsd ?? null,
+        },
+      }).catch(() => {});
+    } catch (err: any) {
+      // Sanity band is advisory — never blocks a build.
+      emit({
+        type: "qc_result",
+        step: "sanity_band",
+        message: `Sanity band: skipped (check failed: ${err.message})`,
+      });
+    }
+
+    // Append the sanity warning into the report's qcStatus so the UI surfaces it
+    // alongside the existing degraded-mode warnings (no schema change required).
+    if (sanityWarning) {
+      const existingWarnings = report.qcStatus.warnings ?? [];
+      report.qcStatus = {
+        ...report.qcStatus,
+        degraded: true,
+        warnings: [...existingWarnings, sanityWarning],
+      };
     }
 
     // 10. Save report + advance to complete
