@@ -1318,15 +1318,31 @@ export function ForecastReportContent({ id }: { id: string }) {
           <div className="flex-1 min-w-0 space-y-3">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
             {rpt.sections.map(section => {
+              // Filter narrative by selected scenario: dim sections that don't
+              // belong to the active scenario view (Base scenario section when
+              // user is exploring Bull/Bear, and vice versa). Other sections
+              // remain unaffected.
+              const activeScenario = chartFilters?.scenario ?? "base";
+              const dimmed =
+                (section.id === 5 && activeScenario !== "base") ||
+                (section.id === 6 && activeScenario === "base");
+
               const card = (
-                <SectionCard
-                  key={`s-${section.id}`}
-                  section={section}
-                  isOpen={openSectionIds.has(section.id)}
-                  onToggle={() => toggleSection(section.id)}
-                  onTagClick={handleTagClick}
-                  onNumberClick={handleNumberClick}
-                />
+                <div className={dimmed ? "opacity-40 hover:opacity-100 transition-opacity" : ""} title={dimmed ? `Hidden by current "${activeScenario}" scenario filter — click to reveal` : undefined}>
+                  {dimmed && (
+                    <div className="text-[10px] text-amber-400/80 px-3 py-1 -mb-1 italic">
+                      Out of current scenario filter ({activeScenario})
+                    </div>
+                  )}
+                  <SectionCard
+                    key={`s-${section.id}`}
+                    section={section}
+                    isOpen={openSectionIds.has(section.id)}
+                    onToggle={() => toggleSection(section.id)}
+                    onTagClick={handleTagClick}
+                    onNumberClick={handleNumberClick}
+                  />
+                </div>
               );
 
               // Decide which chart(s) follow this section. We interleave so

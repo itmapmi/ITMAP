@@ -279,8 +279,28 @@ export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: 
     const width = w - margin.left - margin.right;
     const height = 280 - margin.top - margin.bottom;
 
+    // When segments are selected, totals are recomputed from the per-scenario
+    // segment paths rather than the full scenarioPaths total — so the fan
+    // reflects the user's segment subtree selection. When no segments are
+    // chosen we use the engine's full scenario totals.
+    const useSegmentTotals = filters.segmentIds.size > 0;
+    const segmentTotalForYear = (key: ScenarioKey, year: number): number => {
+      const segs = data.segmentScenarios[key] ?? [];
+      let total = 0;
+      for (const s of segs) {
+        if (filters.segmentIds.has(s.segmentId)) {
+          total += s.forecastPath[String(year)] ?? 0;
+        }
+      }
+      return total;
+    };
     const series = (key: ScenarioKey) =>
-      years.map(y => ({ year: y, value: data.scenarioPaths[key]?.[String(y)] ?? 0 }));
+      years.map(y => ({
+        year: y,
+        value: useSegmentTotals
+          ? segmentTotalForYear(key, y)
+          : (data.scenarioPaths[key]?.[String(y)] ?? 0),
+      }));
 
     const baseS = series("base");
     const bullS = series("bull");
@@ -318,18 +338,23 @@ export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: 
       .y(d => y(d.value))
       .curve(d3.curveMonotoneX);
 
+    // The selected scenario is emphasized; the others are dimmed so the
+    // user can still see the spread but knows which path is "active".
     (["bear", "base", "bull"] as ScenarioKey[]).forEach(key => {
       const s = key === "bull" ? bullS : key === "bear" ? bearS : baseS;
+      const isSelected = key === filters.scenario;
       g.append("path")
         .datum(s)
         .attr("d", line)
         .attr("fill", "none")
         .attr("stroke", SCENARIO_COLORS[key])
-        .attr("stroke-width", key === "base" ? 2.5 : 1.5)
-        .attr("opacity", 0.95);
+        .attr("stroke-width", isSelected ? 3.5 : 1.25)
+        .attr("opacity", isSelected ? 1 : 0.4);
       g.selectAll(`.dot-${key}`).data(s).enter().append("circle")
         .attr("cx", d => x(d.year)).attr("cy", d => y(d.value))
-        .attr("r", 2.5).attr("fill", SCENARIO_COLORS[key]);
+        .attr("r", isSelected ? 3.5 : 2)
+        .attr("fill", SCENARIO_COLORS[key])
+        .attr("opacity", isSelected ? 1 : 0.5);
     });
 
     // Axes
@@ -373,7 +398,13 @@ export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: 
 
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-white mb-1">Scenario Fan — Bull / Base / Bear</h3>
+      <div className="flex items-baseline justify-between mb-1">
+        <h3 className="text-sm font-semibold text-white">Scenario Fan — Bull / Base / Bear</h3>
+        <span className="text-[11px] text-slate-500 capitalize">
+          {filters.scenario} highlighted
+          {filters.segmentIds.size > 0 ? ` · ${filters.segmentIds.size} segment${filters.segmentIds.size === 1 ? "" : "s"}` : ""}
+        </span>
+      </div>
       <p className="text-xs text-slate-500 mb-3">Total market value across the forecast horizon. Hover for year-level detail.</p>
       <svg ref={ref} className="w-full block" height={280} />
     </div>
@@ -489,14 +520,43 @@ export function SensitivityTornadoChart({ data, filters, topN = 10 }: { data: Ch
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  // Filter-driven values: the engine reports sensitivity at the full base
+  // horizon. When the user narrows scope (different scenario, segment subset,
+  // earlier horizon), we rescale each delta by
+  //     ratio = (filtered total at chosen horizon) / (base total at engine horizon)
+  // so the bars actually move when the filter changes.
+  const filterScale = useMemo(() => {
+    if (!filters) return 1;
+    const baseSegs = data.segmentScenarios.base ?? [];
+    const fullBaseTotal = baseSegs.reduce(
+      (sum, s) => sum + (s.forecastPath[String(data.horizonYear)] ?? 0),
+      0,
+    );
+    if (fullBaseTotal === 0) return 1;
+    const targetYear = String(filters.yearRange[1]);
+    const segs = data.segmentScenarios[filters.scenario] ?? [];
+    const filteredTotal = segs.reduce((sum, s) => {
+      if (filters.segmentIds.size > 0 && !filters.segmentIds.has(s.segmentId)) return sum;
+      return sum + (s.forecastPath[targetYear] ?? 0);
+    }, 0);
+    return filteredTotal / fullBaseTotal;
+  }, [data, filters]);
+
   const ranked = useMemo(() => {
     return [...data.sensitivityTable]
+      .map(r => ({
+        ...r,
+        delta_minus_25pct: r.delta_minus_25pct * filterScale,
+        delta_minus_10pct: r.delta_minus_10pct * filterScale,
+        delta_plus_10pct: r.delta_plus_10pct * filterScale,
+        delta_plus_25pct: r.delta_plus_25pct * filterScale,
+      }))
       .sort((a, b) =>
         Math.abs(b.delta_plus_25pct - b.delta_minus_25pct) -
         Math.abs(a.delta_plus_25pct - a.delta_minus_25pct)
       )
       .slice(0, topN);
-  }, [data.sensitivityTable, topN]);
+  }, [data.sensitivityTable, topN, filterScale]);
 
   useEffect(() => {
     if (!ref.current) return;
