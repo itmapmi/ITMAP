@@ -1387,10 +1387,18 @@ export function registerForecastBuilderRoutes(app: Express): void {
         };
       }
 
+      const filtersSchema = z.object({
+        scenario: z.enum(["base", "bull", "bear"]).optional(),
+        segmentIds: z.array(z.string()).optional(),
+        yearRange: z.tuple([z.number().int(), z.number().int()]).optional(),
+      }).optional();
+      const parsedFilters = filtersSchema.parse(req.body?.filters);
+
       const buf = await buildForecastPptx(
         full.title ?? "Market Forecast",
         reportForExport,
         new Date(),
+        parsedFilters,
       );
 
       const filename = `${(full.title ?? "forecast").replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "_")}_forecast.pptx`;

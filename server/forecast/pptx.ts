@@ -57,10 +57,40 @@ function chunkText(text: string, maxChars: number): string[] {
   return chunks.length > 0 ? chunks : [""];
 }
 
+export interface PptxFilters {
+  scenario?: "base" | "bull" | "bear";
+  segmentIds?: string[];
+  yearRange?: [number, number];
+}
+
+interface ResolvedFilters {
+  scenario: "base" | "bull" | "bear";
+  segmentIdSet: Set<string> | null;
+  yearStart: number;
+  yearEnd: number;
+}
+
+function resolveFilters(chart: ReportChartData, filters: PptxFilters | undefined): ResolvedFilters {
+  const scenario = filters?.scenario ?? "base";
+  const [reqStart, reqEnd] = filters?.yearRange ?? [chart.baseYear, chart.horizonYear];
+  const yearStart = Math.max(chart.baseYear, Math.min(reqStart, reqEnd));
+  const yearEnd = Math.min(chart.horizonYear, Math.max(reqStart, reqEnd));
+  const segmentIdSet = filters?.segmentIds && filters.segmentIds.length > 0
+    ? new Set(filters.segmentIds)
+    : null;
+  return {
+    scenario,
+    segmentIdSet,
+    yearStart: yearStart <= yearEnd ? yearStart : chart.baseYear,
+    yearEnd: yearStart <= yearEnd ? yearEnd : chart.horizonYear,
+  };
+}
+
 export async function buildForecastPptx(
   forecastTitle: string,
   report: ReportOutput,
   generatedAt: Date,
+  filters?: PptxFilters,
 ): Promise<Buffer> {
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
@@ -129,10 +159,11 @@ export async function buildForecastPptx(
 
   // ── Chart slide 1: Scenario Fan ────────────────────────────────────────
   if (chart) {
-    addScenarioFanSlide(pptx, chart);
-    addSegmentStackedSlide(pptx, chart);
+    const resolved = resolveFilters(chart, filters);
+    addScenarioFanSlide(pptx, chart, resolved);
+    addSegmentStackedSlide(pptx, chart, resolved);
     addSensitivitySlide(pptx, chart);
-    addSegmentMixSlide(pptx, chart);
+    addSegmentMixSlide(pptx, chart, resolved);
   }
 
   // ── Narrative slides — one or more per section ─────────────────────────
@@ -179,24 +210,42 @@ export async function buildForecastPptx(
 
 // ── Slide builders ──────────────────────────────────────────────────────────
 
-function addScenarioFanSlide(pptx: PptxGenJS, chart: ReportChartData) {
+function addScenarioFanSlide(pptx: PptxGenJS, chart: ReportChartData, resolved: ResolvedFilters) {
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.bg };
   slide.addText("Scenario Fan — Bull / Base / Bear", {
     x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, color: COLORS.text, bold: true,
   });
-  slide.addText("Total market value across the forecast horizon", {
-    x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted,
-  });
+  slide.addText(
+    `Total market value · ${resolved.yearStart}–${resolved.yearEnd}`,
+    { x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted },
+  );
 
   const years: number[] = [];
-  for (let y = chart.baseYear; y <= chart.horizonYear; y++) years.push(y);
+  for (let y = resolved.yearStart; y <= resolved.yearEnd; y++) years.push(y);
   const labels = years.map(String);
 
+  // Mirror on-screen ScenarioFanChart: when a segment subset is active, totals
+  // are recomputed from the per-scenario segment paths so the fan matches the
+  // user's segment selection. Without a subset, use full scenarioPaths totals.
+  const totalForYear = (key: "base" | "bull" | "bear", year: number): number => {
+    if (resolved.segmentIdSet) {
+      const segs = chart.segmentScenarios[key] ?? [];
+      let total = 0;
+      for (const s of segs) {
+        if (resolved.segmentIdSet.has(s.segmentId)) {
+          total += s.forecastPath[String(year)] ?? 0;
+        }
+      }
+      return total;
+    }
+    return chart.scenarioPaths[key]?.[String(year)] ?? 0;
+  };
+
   const chartData = [
-    { name: "Bull", labels, values: years.map(y => chart.scenarioPaths.bull[String(y)] ?? 0) },
-    { name: "Base", labels, values: years.map(y => chart.scenarioPaths.base[String(y)] ?? 0) },
-    { name: "Bear", labels, values: years.map(y => chart.scenarioPaths.bear[String(y)] ?? 0) },
+    { name: "Bull", labels, values: years.map(y => totalForYear("bull", y)) },
+    { name: "Base", labels, values: years.map(y => totalForYear("base", y)) },
+    { name: "Bear", labels, values: years.map(y => totalForYear("bear", y)) },
   ];
 
   slide.addChart(pptx.ChartType.line, chartData, {
@@ -210,20 +259,25 @@ function addScenarioFanSlide(pptx: PptxGenJS, chart: ReportChartData) {
   });
 }
 
-function addSegmentStackedSlide(pptx: PptxGenJS, chart: ReportChartData) {
+function addSegmentStackedSlide(pptx: PptxGenJS, chart: ReportChartData, resolved: ResolvedFilters) {
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.bg };
-  slide.addText("Segment Mix Over Time — Base Scenario", {
+  const scenLabel = resolved.scenario.charAt(0).toUpperCase() + resolved.scenario.slice(1);
+  slide.addText(`Segment Mix Over Time — ${scenLabel} Scenario`, {
     x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, color: COLORS.text, bold: true,
   });
-  slide.addText("Stacked contribution of each segment to the total", {
-    x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted,
-  });
+  slide.addText(
+    `Stacked contribution of each segment · ${resolved.yearStart}–${resolved.yearEnd}`,
+    { x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted },
+  );
 
   const years: number[] = [];
-  for (let y = chart.baseYear; y <= chart.horizonYear; y++) years.push(y);
+  for (let y = resolved.yearStart; y <= resolved.yearEnd; y++) years.push(y);
   const labels = years.map(String);
-  const segs = chart.segmentScenarios.base;
+  const allSegs = chart.segmentScenarios[resolved.scenario] ?? chart.segmentScenarios.base;
+  const segs = resolved.segmentIdSet
+    ? allSegs.filter(s => resolved.segmentIdSet!.has(s.segmentId))
+    : allSegs;
 
   if (segs.length === 0) {
     slide.addText("No segments available.", { x: 0.5, y: 3, w: 12, h: 0.4, fontSize: 14, color: COLORS.muted, align: "center" });
@@ -351,18 +405,25 @@ function squarify(items: TreemapItem[], bounds: { x: number; y: number; w: numbe
   return out;
 }
 
-function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData) {
+function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData, resolved: ResolvedFilters) {
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.bg };
-  slide.addText(`Segment Composition · ${chart.horizonYear}`, {
+  const scenLabel = resolved.scenario.charAt(0).toUpperCase() + resolved.scenario.slice(1);
+  const targetYear = resolved.yearEnd;
+  slide.addText(`Segment Composition · ${targetYear}`, {
     x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, color: COLORS.text, bold: true,
   });
-  slide.addText("Relative segment contribution at horizon year (base scenario) — native editable treemap", {
-    x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted,
-  });
+  slide.addText(
+    `Relative segment contribution at ${targetYear} (${scenLabel.toLowerCase()} scenario) — native editable treemap`,
+    { x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted },
+  );
 
-  const segs = chart.segmentScenarios.base
-    .map(s => ({ name: s.name, value: Math.max(0, s.forecastPath[String(chart.horizonYear)] ?? 0) }))
+  const allSegs = chart.segmentScenarios[resolved.scenario] ?? chart.segmentScenarios.base;
+  const filtered = resolved.segmentIdSet
+    ? allSegs.filter(s => resolved.segmentIdSet!.has(s.segmentId))
+    : allSegs;
+  const segs = filtered
+    .map(s => ({ name: s.name, value: Math.max(0, s.forecastPath[String(targetYear)] ?? 0) }))
     .filter(s => s.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 14);
@@ -398,7 +459,7 @@ function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData) {
   const rows: PptxGenJS.TableRow[] = [
     [
       { text: "Segment", options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 10 } },
-      { text: `${chart.currency} (${chart.horizonYear})`, options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 10 } },
+      { text: `${chart.currency} (${targetYear})`, options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 10 } },
     ],
     ...segs.map(s => [
       { text: s.name, options: { fontSize: 9, color: "1E293B" } },

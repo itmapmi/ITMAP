@@ -869,10 +869,20 @@ export function ForecastReportContent({ id }: { id: string }) {
   async function handleExportPptx() {
     setExportingPptx(true);
     try {
+      const filterBody = chartFilters
+        ? {
+            filters: {
+              scenario: chartFilters.scenario,
+              segmentIds: Array.from(chartFilters.segmentIds),
+              yearRange: chartFilters.yearRange,
+            },
+          }
+        : {};
       const resp = await fetch(`/api/forecast-builder/forecasts/${id}/export-pptx`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filterBody),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Export failed" }));
