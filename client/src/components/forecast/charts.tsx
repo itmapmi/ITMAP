@@ -45,6 +45,28 @@ export interface ChartFilters {
   yearRange: [number, number];
 }
 
+export interface SegmentTreeNode {
+  id: string;
+  name: string;
+  parentSegmentId: string | null;
+}
+
+/** Returns the set of all descendant segment IDs (including the seed itself). */
+function descendantsOf(seedId: string, tree: SegmentTreeNode[]): Set<string> {
+  const out = new Set<string>([seedId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const node of tree) {
+      if (node.parentSegmentId && out.has(node.parentSegmentId) && !out.has(node.id)) {
+        out.add(node.id);
+        added = true;
+      }
+    }
+  }
+  return out;
+}
+
 function fmt(n: number, currency = "USD"): string {
   const sym = currency === "USD" ? "$" : currency;
   if (Math.abs(n) >= 1000) return `${sym}${(n / 1000).toFixed(1)}T`;
@@ -69,19 +91,58 @@ export function FilterBar({
   data,
   filters,
   onChange,
+  segmentTree,
 }: {
   data: ChartData;
   filters: ChartFilters;
   onChange: (next: ChartFilters) => void;
+  /** Optional hierarchical segment tree. When provided, parent toggles
+   *  cascade to all descendant leaf segments (subtree semantics). */
+  segmentTree?: SegmentTreeNode[];
 }) {
   const allSegments = data.segmentScenarios[filters.scenario] ?? [];
+  const leafIds = new Set(allSegments.map(s => s.segmentId));
   const allYears: number[] = [];
   for (let y = data.baseYear; y <= data.horizonYear; y++) allYears.push(y);
 
-  function toggleSegment(id: string) {
+  // Build a display list. When a segmentTree is supplied, render an indented
+  // hierarchy (parents first, children indented). Toggling a parent flips all
+  // of its descendant leaves on/off together.
+  type Row = { id: string; name: string; depth: number; isLeaf: boolean; descendantLeaves: string[] };
+  const rows: Row[] = (() => {
+    if (!segmentTree || segmentTree.length === 0) {
+      return allSegments.map(s => ({ id: s.segmentId, name: s.name, depth: 0, isLeaf: true, descendantLeaves: [s.segmentId] }));
+    }
+    const byParent = new Map<string | null, SegmentTreeNode[]>();
+    for (const n of segmentTree) {
+      const arr = byParent.get(n.parentSegmentId) ?? [];
+      arr.push(n);
+      byParent.set(n.parentSegmentId, arr);
+    }
+    const out: Row[] = [];
+    const walk = (parentId: string | null, depth: number) => {
+      const kids = byParent.get(parentId) ?? [];
+      for (const k of kids) {
+        const descendants = descendantsOf(k.id, segmentTree);
+        const descendantLeaves = [...descendants].filter(id => leafIds.has(id));
+        const isLeaf = leafIds.has(k.id) && descendantLeaves.length <= 1;
+        if (descendantLeaves.length === 0) continue; // skip nodes with no chartable leaves
+        out.push({ id: k.id, name: k.name, depth, isLeaf, descendantLeaves });
+        walk(k.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return out;
+  })();
+
+  function toggleRow(row: Row) {
     const next = new Set(filters.segmentIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    const allOn = row.descendantLeaves.every(id => next.has(id));
+    if (allOn) {
+      row.descendantLeaves.forEach(id => next.delete(id));
+    } else {
+      row.descendantLeaves.forEach(id => next.add(id));
+    }
     onChange({ ...filters, segmentIds: next });
   }
 
@@ -138,32 +199,42 @@ export function FilterBar({
         </select>
       </div>
 
-      {allSegments.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/5">
-          <span className="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Segments:</span>
-          <button onClick={selectAllSegments} className="text-[11px] text-cyan-400 hover:text-cyan-300">All</button>
-          <span className="text-slate-700">·</span>
-          <button onClick={clearSegments} className="text-[11px] text-slate-500 hover:text-white">None</button>
-          <div className="flex flex-wrap gap-1.5 mt-0.5">
-            {allSegments.map((s, i) => {
-              const on = filters.segmentIds.has(s.segmentId);
+      {rows.length > 0 && (
+        <div className="pt-2 border-t border-white/5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-medium">Segments:</span>
+            <button onClick={selectAllSegments} className="text-[11px] text-cyan-400 hover:text-cyan-300">All</button>
+            <span className="text-slate-700">·</span>
+            <button onClick={clearSegments} className="text-[11px] text-slate-500 hover:text-white">None</button>
+            {segmentTree && segmentTree.length > 0 && (
+              <span className="text-[10px] text-slate-600 ml-2">(toggling a parent cascades to children)</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {rows.map((row, i) => {
+              const allOn = row.descendantLeaves.every(id => filters.segmentIds.has(id));
+              const someOn = !allOn && row.descendantLeaves.some(id => filters.segmentIds.has(id));
               const color = SEGMENT_PALETTE[i % SEGMENT_PALETTE.length];
               return (
                 <button
-                  key={s.segmentId}
-                  onClick={() => toggleSegment(s.segmentId)}
+                  key={row.id}
+                  onClick={() => toggleRow(row)}
+                  style={{ marginLeft: row.depth * 12 }}
                   className={`px-2 py-0.5 rounded-full text-[11px] border transition-colors ${
-                    on
+                    allOn
                       ? "border-white/20 bg-slate-800 text-white"
-                      : "border-white/5 bg-slate-900/60 text-slate-500 hover:text-slate-300"
+                      : someOn
+                        ? "border-cyan-500/30 bg-slate-800/80 text-cyan-200"
+                        : "border-white/5 bg-slate-900/60 text-slate-500 hover:text-slate-300"
                   }`}
-                  title={s.name}
+                  title={row.isLeaf ? row.name : `${row.name} (${row.descendantLeaves.length} leaves)`}
                 >
                   <span
                     className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
-                    style={{ backgroundColor: on ? color : "#475569" }}
+                    style={{ backgroundColor: allOn ? color : someOn ? "#22d3ee" : "#475569" }}
                   />
-                  {s.name.length > 24 ? s.name.slice(0, 22) + "…" : s.name}
+                  {!row.isLeaf && <span className="opacity-60 mr-1">▾</span>}
+                  {row.name.length > 24 ? row.name.slice(0, 22) + "…" : row.name}
                 </button>
               );
             })}
@@ -403,7 +474,8 @@ export function SegmentStackedAreaChart({ data, filters }: { data: ChartData; fi
 
 // ── Sensitivity Tornado Chart ──────────────────────────────────────────────
 
-export function SensitivityTornadoChart({ data, topN = 10 }: { data: ChartData; topN?: number }) {
+export function SensitivityTornadoChart({ data, filters, topN = 10 }: { data: ChartData; filters?: ChartFilters; topN?: number }) {
+  const horizonForLabel = filters?.yearRange[1] ?? data.horizonYear;
   const ref = useRef<SVGSVGElement | null>(null);
   const [w, setW] = useState(640);
 
@@ -509,7 +581,7 @@ export function SensitivityTornadoChart({ data, topN = 10 }: { data: ChartData; 
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
       <h3 className="text-sm font-semibold text-white mb-1">Sensitivity Tornado</h3>
       <p className="text-xs text-slate-500 mb-3">
-        Impact on horizon-year total when each assumption moves ±10% (solid) or ±25% (light).
+        Impact on {horizonForLabel} total when each assumption moves ±10% (solid) or ±25% (light).
       </p>
       <svg ref={ref} className="w-full block" />
     </div>
@@ -616,24 +688,26 @@ export function SegmentTreemap({ data, filters }: { data: ChartData; filters: Ch
   );
 }
 
-// ── Convenience: full panel ────────────────────────────────────────────────
+// ── Convenience: full panel (kept for backwards compatibility) ─────────────
 
 export function ForecastChartsPanel({
   data,
   filters,
   onFiltersChange,
+  segmentTree,
 }: {
   data: ChartData;
   filters: ChartFilters;
   onFiltersChange: (next: ChartFilters) => void;
+  segmentTree?: SegmentTreeNode[];
 }) {
   return (
     <div className="space-y-4 mb-8">
-      <FilterBar data={data} filters={filters} onChange={onFiltersChange} />
+      <FilterBar data={data} filters={filters} onChange={onFiltersChange} segmentTree={segmentTree} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ScenarioFanChart data={data} filters={filters} />
         <SegmentStackedAreaChart data={data} filters={filters} />
-        <SensitivityTornadoChart data={data} />
+        <SensitivityTornadoChart data={data} filters={filters} />
         <SegmentTreemap data={data} filters={filters} />
       </div>
     </div>

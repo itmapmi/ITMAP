@@ -33,7 +33,11 @@ import {
   type AuditSegment,
 } from "@/components/forecast/audit-panel";
 import {
-  ForecastChartsPanel,
+  FilterBar as ChartsFilterBar,
+  ScenarioFanChart,
+  SegmentStackedAreaChart,
+  SensitivityTornadoChart,
+  SegmentTreemap,
   type ChartData,
   type ChartFilters,
 } from "@/components/forecast/charts";
@@ -128,6 +132,7 @@ interface ForecastSource {
 interface ForecastSegment {
   id: string;
   name: string;
+  parentSegmentId: string | null;
   baseYearValue: string | null;
   growthAssumptionIds: string[];
   forecastPath: Record<string, number> | null;
@@ -1196,13 +1201,16 @@ export function ForecastReportContent({ id }: { id: string }) {
           />
         </div>
 
-        {/* Interactive charts panel */}
+        {/* Sticky filter bar — drives every chart below */}
         {chartData && chartFilters && (
-          <ForecastChartsPanel
-            data={chartData}
-            filters={chartFilters}
-            onFiltersChange={setChartFilters}
-          />
+          <div className="sticky top-2 z-10 mb-4">
+            <ChartsFilterBar
+              data={chartData}
+              filters={chartFilters}
+              onChange={setChartFilters}
+              segmentTree={segments.map(s => ({ id: s.id, name: s.name, parentSegmentId: s.parentSegmentId }))}
+            />
+          </div>
         )}
 
         {/* Two-column: scenarios + top assumptions */}
@@ -1306,19 +1314,46 @@ export function ForecastReportContent({ id }: { id: string }) {
             </div>
           </aside>
 
-          {/* Section cards */}
+          {/* Section cards — charts interleaved between sections for ~50/50 visual+text balance */}
           <div className="flex-1 min-w-0 space-y-3">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
-            {rpt.sections.map(section => (
-              <SectionCard
-                key={section.id}
-                section={section}
-                isOpen={openSectionIds.has(section.id)}
-                onToggle={() => toggleSection(section.id)}
-                onTagClick={handleTagClick}
-                onNumberClick={handleNumberClick}
-              />
-            ))}
+            {rpt.sections.map(section => {
+              const card = (
+                <SectionCard
+                  key={`s-${section.id}`}
+                  section={section}
+                  isOpen={openSectionIds.has(section.id)}
+                  onToggle={() => toggleSection(section.id)}
+                  onTagClick={handleTagClick}
+                  onNumberClick={handleNumberClick}
+                />
+              );
+
+              // Decide which chart(s) follow this section. We interleave so
+              // narrative sections and visuals alternate roughly 50/50.
+              let inlineChart: React.ReactNode = null;
+              if (chartData && chartFilters) {
+                if (section.id === 1) {
+                  inlineChart = <ScenarioFanChart data={chartData} filters={chartFilters} />;
+                } else if (section.id === 5) {
+                  inlineChart = (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <SegmentStackedAreaChart data={chartData} filters={chartFilters} />
+                      <SegmentTreemap data={chartData} filters={chartFilters} />
+                    </div>
+                  );
+                } else if (section.id === 7) {
+                  inlineChart = <SensitivityTornadoChart data={chartData} filters={chartFilters} />;
+                }
+              }
+
+              return (
+                <div key={`row-${section.id}`} className="space-y-3">
+                  {card}
+                  {inlineChart}
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -294,13 +294,70 @@ function addSensitivitySlide(pptx: PptxGenJS, chart: ReportChartData) {
   });
 }
 
+// Squarified treemap — Bruls/Huijsma/van Wijk algorithm.
+// Lays out rectangles inside `bounds` proportional to the supplied weights.
+interface TreemapItem { name: string; value: number; }
+interface TreemapRect { item: TreemapItem; x: number; y: number; w: number; h: number; }
+
+function squarify(items: TreemapItem[], bounds: { x: number; y: number; w: number; h: number }): TreemapRect[] {
+  const out: TreemapRect[] = [];
+  const totalArea = bounds.w * bounds.h;
+  const totalValue = items.reduce((s, it) => s + it.value, 0) || 1;
+  const scaled = items.map(it => ({ item: it, area: (it.value / totalValue) * totalArea }));
+
+  let { x, y, w, h } = bounds;
+  let row: typeof scaled = [];
+
+  const worst = (r: typeof scaled, side: number): number => {
+    if (r.length === 0) return Infinity;
+    const sum = r.reduce((s, it) => s + it.area, 0);
+    const max = Math.max(...r.map(it => it.area));
+    const min = Math.min(...r.map(it => it.area));
+    return Math.max((side * side * max) / (sum * sum), (sum * sum) / (side * side * min));
+  };
+
+  const layoutRow = (r: typeof scaled, side: number, isHorizontal: boolean) => {
+    const sum = r.reduce((s, it) => s + it.area, 0);
+    const thickness = sum / side;
+    let pos = isHorizontal ? x : y;
+    for (const it of r) {
+      const length = it.area / thickness;
+      if (isHorizontal) {
+        out.push({ item: it.item, x: pos, y: y, w: length, h: thickness });
+      } else {
+        out.push({ item: it.item, x: x, y: pos, w: thickness, h: length });
+      }
+      pos += length;
+    }
+    if (isHorizontal) { y += thickness; h -= thickness; }
+    else { x += thickness; w -= thickness; }
+  };
+
+  let remaining = scaled.slice();
+  while (remaining.length > 0) {
+    const isHorizontal = w >= h;
+    const side = isHorizontal ? w : h;
+    const next = remaining[0];
+    const candidate = [...row, next];
+    if (row.length === 0 || worst(candidate, side) <= worst(row, side)) {
+      row = candidate;
+      remaining = remaining.slice(1);
+    } else {
+      layoutRow(row, side, isHorizontal);
+      row = [];
+    }
+  }
+  if (row.length > 0) layoutRow(row, w >= h ? w : h, w >= h);
+  return out;
+}
+
 function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData) {
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.bg };
   slide.addText(`Segment Composition · ${chart.horizonYear}`, {
     x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, color: COLORS.text, bold: true,
   });
-  slide.addText("Relative segment contribution at horizon year (base scenario)", {
+  slide.addText("Relative segment contribution at horizon year (base scenario) — native editable treemap", {
     x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted,
   });
 
@@ -308,40 +365,49 @@ function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData) {
     .map(s => ({ name: s.name, value: Math.max(0, s.forecastPath[String(chart.horizonYear)] ?? 0) }))
     .filter(s => s.value > 0)
     .sort((a, b) => b.value - a.value)
-    .slice(0, 12);
+    .slice(0, 14);
 
   if (segs.length === 0) {
     slide.addText("No segment values for this year.", { x: 0.5, y: 3, w: 12, h: 0.4, fontSize: 14, color: COLORS.muted, align: "center" });
     return;
   }
 
-  const chartData = [{
-    name: `Horizon ${chart.horizonYear}`,
-    labels: segs.map(s => s.name),
-    values: segs.map(s => s.value),
-  }];
+  // Layout box (inches) for the treemap on the slide
+  const box = { x: 0.5, y: 1.3, w: 8.5, h: 5.5 };
+  const cells = squarify(segs as TreemapItem[], box);
 
-  slide.addChart(pptx.ChartType.doughnut, chartData, {
-    x: 0.5, y: 1.3, w: 7, h: 5.5,
-    chartColors: segs.map((_, i) => SEGMENT_PALETTE[i % SEGMENT_PALETTE.length]),
-    showLegend: true, legendPos: "r", legendFontSize: 10,
-    showPercent: true, dataLabelFontSize: 9,
+  cells.forEach((c, i) => {
+    const fill = SEGMENT_PALETTE[i % SEGMENT_PALETTE.length];
+    slide.addShape(pptx.ShapeType.rect, {
+      x: c.x, y: c.y, w: c.w, h: c.h,
+      fill: { color: fill }, line: { color: "FFFFFF", width: 1 },
+    });
+    if (c.w > 0.6 && c.h > 0.35) {
+      const fontSize = c.w * c.h > 4 ? 14 : c.w * c.h > 1.5 ? 11 : 9;
+      slide.addText(
+        [
+          { text: c.item.name + "\n", options: { bold: true, fontSize, color: "0F172A" } },
+          { text: fmtMoney(c.item.value, chart.currency), options: { fontSize: Math.max(8, fontSize - 2), color: "1E293B" } },
+        ],
+        { x: c.x + 0.05, y: c.y + 0.05, w: c.w - 0.1, h: c.h - 0.1, valign: "top", align: "left" }
+      );
+    }
   });
 
   // Side table with values
   const rows: PptxGenJS.TableRow[] = [
     [
-      { text: "Segment", options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 11 } },
-      { text: `${chart.currency} (${chart.horizonYear})`, options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 11 } },
+      { text: "Segment", options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 10 } },
+      { text: `${chart.currency} (${chart.horizonYear})`, options: { bold: true, color: "FFFFFF", fill: { color: "0F172A" }, fontSize: 10 } },
     ],
     ...segs.map(s => [
-      { text: s.name, options: { fontSize: 10, color: "1E293B" } },
-      { text: fmtMoney(s.value, chart.currency), options: { fontSize: 10, color: "1E293B", align: "right" as const } },
+      { text: s.name, options: { fontSize: 9, color: "1E293B" } },
+      { text: fmtMoney(s.value, chart.currency), options: { fontSize: 9, color: "1E293B", align: "right" as const } },
     ]),
   ];
 
   slide.addTable(rows, {
-    x: 7.7, y: 1.3, w: 5.1, colW: [3.5, 1.6],
-    fontSize: 10, border: { type: "solid", color: "E2E8F0", pt: 0.5 },
+    x: 9.2, y: 1.3, w: 3.6, colW: [2.4, 1.2],
+    fontSize: 9, border: { type: "solid", color: "E2E8F0", pt: 0.5 },
   });
 }
