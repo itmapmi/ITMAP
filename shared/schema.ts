@@ -1149,6 +1149,25 @@ export const forecastAssumptions = pgTable("forecast_assumptions", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// forecast_geo_splits — per-region share of TAM, derived by a dedicated AI debate
+// that weighs macroeconomic, political, and geopolitical factors over the time
+// horizon. Shares are decimals in [0, 1] that MECE-validate to ~1.0 in both the
+// base year and horizon year. Bull/bear shares represent the upper/lower bounds
+// of the region's share under the bull/bear macro environment.
+export const forecastGeoSplits = pgTable("forecast_geo_splits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
+  region: text("region").notNull(),
+  baseShare: decimal("base_share", { precision: 7, scale: 5 }).notNull(),
+  horizonShare: decimal("horizon_share", { precision: 7, scale: 5 }).notNull(),
+  bullShare: decimal("bull_share", { precision: 7, scale: 5 }),
+  bearShare: decimal("bear_share", { precision: 7, scale: 5 }),
+  rationale: text("rationale").notNull(),
+  confidence: text("confidence").notNull().default("medium"),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const forecastCruxes = pgTable("forecast_cruxes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
@@ -1273,6 +1292,11 @@ export const insertForecastAssumptionSchema = createInsertSchema(forecastAssumpt
   updatedAt: true,
 });
 
+export const insertForecastGeoSplitSchema = createInsertSchema(forecastGeoSplits).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertForecastCruxSchema = createInsertSchema(forecastCruxes).omit({
   id: true,
   createdAt: true,
@@ -1309,6 +1333,9 @@ export type InsertForecastSegment = z.infer<typeof insertForecastSegmentSchema>;
 
 export type ForecastAssumption = typeof forecastAssumptions.$inferSelect;
 export type InsertForecastAssumption = z.infer<typeof insertForecastAssumptionSchema>;
+
+export type ForecastGeoSplit = typeof forecastGeoSplits.$inferSelect;
+export type InsertForecastGeoSplit = z.infer<typeof insertForecastGeoSplitSchema>;
 
 export type ForecastCrux = typeof forecastCruxes.$inferSelect;
 export type InsertForecastCrux = z.infer<typeof insertForecastCruxSchema>;

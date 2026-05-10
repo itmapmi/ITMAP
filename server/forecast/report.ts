@@ -22,6 +22,7 @@ import OpenAI from "openai";
 import type { EngineOutput, ScenarioResult } from "./engine";
 import type { ForecastFull } from "../storage/forecasts";
 import type { ForecastAssumption } from "@shared/schema";
+import { projectGeoForecast, type RegionProjection } from "./phases/geo-split";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -55,6 +56,24 @@ export interface ReportChartData {
     delta_plus_10pct: number;
     delta_plus_25pct: number;
   }[];
+  /**
+   * Per-region projections derived from forecast_geo_splits + engine totals.
+   * Present iff a geo-split debate succeeded for this forecast. Each region's
+   * forecast paths sum to the total scenario path (within rounding).
+   */
+  geoProjections?: {
+    macroNarrative: string;
+    confidence: "high" | "medium" | "low";
+    regions: {
+      region: string;
+      rationale: string;
+      baseShare: number;
+      horizonShare: number;
+      baseForecast: Record<string, number>;
+      bullForecast: Record<string, number>;
+      bearForecast: Record<string, number>;
+    }[];
+  };
 }
 
 export interface ReportOutput {
@@ -80,7 +99,13 @@ export interface ReportOutput {
   generatedAt: string;
 }
 
-export function buildChartData(engine: EngineOutput, baseYear: number, horizonYear: number, currency: string): ReportChartData {
+export function buildChartData(
+  engine: EngineOutput,
+  baseYear: number,
+  horizonYear: number,
+  currency: string,
+  geoProjections?: ReportChartData["geoProjections"]
+): ReportChartData {
   const stringifyPath = (p: Record<number, number>): Record<string, number> => {
     const out: Record<string, number> = {};
     for (const [k, v] of Object.entries(p)) out[String(k)] = v;
@@ -111,6 +136,52 @@ export function buildChartData(engine: EngineOutput, baseYear: number, horizonYe
       delta_minus_10pct: r.delta_minus_10pct,
       delta_plus_10pct: r.delta_plus_10pct,
       delta_plus_25pct: r.delta_plus_25pct,
+    })),
+    geoProjections,
+  };
+}
+
+/**
+ * Builds the geo projections payload for chartData from persisted geo splits
+ * + the engine output. Returns undefined when no splits exist.
+ */
+export function buildGeoProjections(
+  forecast: ForecastFull,
+  engine: EngineOutput,
+  baseYear: number,
+  horizonYear: number,
+  macroNarrative: string,
+  confidence: "high" | "medium" | "low"
+): ReportChartData["geoProjections"] | undefined {
+  if (!forecast.geoSplits || forecast.geoSplits.length === 0) return undefined;
+
+  const regions: RegionProjection[] = projectGeoForecast(
+    forecast.geoSplits.map(s => ({
+      region: s.region,
+      baseShare: Number(s.baseShare),
+      horizonShare: Number(s.horizonShare),
+      bullShare: s.bullShare != null ? Number(s.bullShare) : null,
+      bearShare: s.bearShare != null ? Number(s.bearShare) : null,
+      rationale: s.rationale,
+    })),
+    baseYear,
+    horizonYear,
+    engine.baseScenario.totalForecastPath,
+    engine.bullScenario.totalForecastPath,
+    engine.bearScenario.totalForecastPath
+  );
+
+  return {
+    macroNarrative,
+    confidence,
+    regions: regions.map(r => ({
+      region: r.region,
+      rationale: r.rationale,
+      baseShare: r.baseShare,
+      horizonShare: r.horizonShare,
+      baseForecast: r.baseForecast,
+      bullForecast: r.bullForecast,
+      bearForecast: r.bearForecast,
     })),
   };
 }
@@ -575,6 +646,82 @@ function genSection8Register(forecast: ForecastFull): string {
   return `This section provides the complete traceability register for all assumptions and sources cited in this forecast. Assumption ID tags here match the tags used throughout sections 1–6.\n\n${aSection}\n\n${sSection}`;
 }
 
+// Section 9 — Geographic Split (AI commentary + deterministic table)
+// Uses the macroNarrative + per-region rationales already produced by the
+// geo-split debate phase. Deterministic projections are appended as a table.
+function genSection9GeoSplit(
+  forecast: ForecastFull,
+  engine: EngineOutput,
+  geo: NonNullable<ReportChartData["geoProjections"]>,
+  baseYear: number,
+  horizonYear: number,
+  currency: string
+): string {
+  const baseTotal = engine.baseScenario.totalForecastPath[baseYear] ?? 0;
+  const horizonTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
+
+  const intro = `${geo.macroNarrative}\n\n_Confidence in this regional split: **${geo.confidence}**._\n\n_The split below is derived by an AI debate weighing macroeconomic divergence, political climate (regulation, sovereignty rules), and geopolitical pressures unfolding across ${baseYear}–${horizonYear}. Per-year region values are computed deterministically by interpolating each region's share between base and horizon years and multiplying by the engine's scenario totals — Σ regions = total in every year._`;
+
+  const tableHeader = `| Region | ${baseYear} share | ${baseYear} value | ${horizonYear} share | ${horizonYear} value | Δ share |\n|---|---|---|---|---|---|`;
+  const tableRows = geo.regions.map(r => {
+    const baseValue = baseTotal * r.baseShare;
+    const horizonValue = horizonTotal * r.horizonShare;
+    const deltaShare = (r.horizonShare - r.baseShare) * 100;
+    return `| ${r.region} | ${(r.baseShare * 100).toFixed(1)}% | ${fmt(baseValue, currency)} | ${(r.horizonShare * 100).toFixed(1)}% | ${fmt(horizonValue, currency)} | ${deltaShare >= 0 ? "+" : ""}${deltaShare.toFixed(1)} pp |`;
+  });
+
+  const rationales = geo.regions.map(r => `**${r.region}** — ${r.rationale}`).join("\n\n");
+
+  return `${intro}\n\n### Regional split — base scenario\n\n${tableHeader}\n${tableRows.join("\n")}\n\n### Per-region rationale\n\n${rationales}`;
+}
+
+// Section 10 — Market Segment Split (deterministic, no LLM)
+// Reuses engine.baseScenario.segmentForecasts directly — no extra compute or AI.
+function genSection10SegmentSplit(
+  forecast: ForecastFull,
+  engine: EngineOutput,
+  baseYear: number,
+  horizonYear: number,
+  currency: string
+): string {
+  const baseSegs = engine.baseScenario.segmentForecasts;
+  if (baseSegs.length === 0) {
+    return "_No leaf-level segments defined for this market — segment split unavailable._";
+  }
+
+  const baseTotal = engine.baseScenario.totalForecastPath[baseYear] ?? 0;
+  const horizonTotal = engine.baseScenario.totalForecastPath[horizonYear] ?? 0;
+
+  // Build header with all years between base and horizon
+  const years: number[] = [];
+  for (let y = baseYear; y <= horizonYear; y++) years.push(y);
+
+  const header = `| Segment | ${years.join(" | ")} | CAGR |`;
+  const sep = `|---|${years.map(() => "---").join("|")}|---|`;
+  const rows = baseSegs.map(seg => {
+    const start = seg.forecastPath[baseYear] ?? 0;
+    const end = seg.forecastPath[horizonYear] ?? 0;
+    const cagr = start > 0 && years.length > 1
+      ? ((Math.pow(end / start, 1 / (years.length - 1)) - 1) * 100).toFixed(1) + "%"
+      : "n/a";
+    const cells = years.map(y => fmt(seg.forecastPath[y] ?? 0, currency)).join(" | ");
+    return `| ${seg.name} | ${cells} | ${cagr} |`;
+  });
+
+  const baseShareLines = baseSegs.map(seg => {
+    const baseShare = baseTotal > 0 ? ((seg.forecastPath[baseYear] ?? 0) / baseTotal) * 100 : 0;
+    const horizonShare = horizonTotal > 0 ? ((seg.forecastPath[horizonYear] ?? 0) / horizonTotal) * 100 : 0;
+    const deltaShare = horizonShare - baseShare;
+    return `- **${seg.name}** — ${baseShare.toFixed(1)}% in ${baseYear} → ${horizonShare.toFixed(1)}% in ${horizonYear} (${deltaShare >= 0 ? "+" : ""}${deltaShare.toFixed(1)} pp)`;
+  });
+
+  const intro = `Year-by-year market value by segment under the **base scenario**. Segment paths are computed deterministically by the calculation engine from each segment's growth assumptions — Σ segments = total market in every year (MECE-validated). Bull and bear segment paths are available in the interactive chart above; the table below shows the base case.`;
+
+  const shareSection = `### Segment share evolution\n\n${baseShareLines.join("\n")}`;
+
+  return `${intro}\n\n${header}\n${sep}\n${rows.join("\n")}\n\n${shareSection}`;
+}
+
 // ── QC passes ─────────────────────────────────────────────────────────────────
 
 /**
@@ -881,7 +1028,8 @@ export async function generateReport(
   engine: EngineOutput,
   openaiKey: string,
   openaiBaseUrl: string | undefined,
-  onProgress: (sectionId: number, title: string) => void
+  onProgress: (sectionId: number, title: string) => void,
+  geoProjections?: ReportChartData["geoProjections"]
 ): Promise<ReportOutput> {
   const client = getOpenAI(openaiKey, openaiBaseUrl);
   const baseYear = forecast.baseYear ?? 2024;
@@ -905,7 +1053,7 @@ export async function generateReport(
   const topDriverIdShort = topDriver ? topDriver.id.slice(0, 8) : null;
   const topDriverDesc = topDriver?.description ?? null;
 
-  const SECTION_META = [
+  const SECTION_META: { id: number; title: string }[] = [
     { id: 1, title: "Executive Summary" },
     { id: 2, title: "Market Definition & Methodology" },
     { id: 3, title: "Market Sizing & Base Year" },
@@ -915,6 +1063,15 @@ export async function generateReport(
     { id: 7, title: "Sensitivity Analysis" },
     { id: 8, title: "Sources & Assumptions Register" },
   ];
+
+  // Section 9 only renders when the geo-split debate succeeded.
+  if (geoProjections && geoProjections.regions.length > 0) {
+    SECTION_META.push({ id: 9, title: "Geographic Split" });
+  }
+  // Section 10 only renders when the engine produced segment forecasts.
+  if (engine.baseScenario.segmentForecasts.length > 0) {
+    SECTION_META.push({ id: 10, title: "Market Segment Split" });
+  }
 
   // Build a generator map so any section can be (re)generated by ID
   type GenFn = () => Promise<string> | string;
@@ -928,6 +1085,12 @@ export async function generateReport(
     [7, () => genSection7Sensitivity(forecast, engine, currency)],
     [8, () => genSection8Register(forecast)],
   ]);
+  if (geoProjections && geoProjections.regions.length > 0) {
+    generators.set(9, () => genSection9GeoSplit(forecast, engine, geoProjections, baseYear, horizonYear, currency));
+  }
+  if (engine.baseScenario.segmentForecasts.length > 0) {
+    generators.set(10, () => genSection10SegmentSplit(forecast, engine, baseYear, horizonYear, currency));
+  }
 
   // ── Generate all sections ──────────────────────────────────────────────────
   const sections: ReportSection[] = [];
@@ -1024,7 +1187,7 @@ export async function generateReport(
           degraded: true,
           warnings,
         },
-        chartData: buildChartData(engine, baseYear, horizonYear, currency),
+        chartData: buildChartData(engine, baseYear, horizonYear, currency, geoProjections),
         generatedAt: new Date().toISOString(),
       };
     }
@@ -1045,7 +1208,7 @@ export async function generateReport(
       degraded: false,
       warnings: [],
     },
-    chartData: buildChartData(engine, baseYear, horizonYear, currency),
+    chartData: buildChartData(engine, baseYear, horizonYear, currency, geoProjections),
     generatedAt: new Date().toISOString(),
   };
 }

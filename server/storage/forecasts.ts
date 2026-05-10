@@ -10,6 +10,7 @@ import {
   forecastScenarios,
   forecastSources,
   forecastAuditLog,
+  forecastGeoSplits,
   type Forecast,
   type ForecastBoundary,
   type ForecastBrief,
@@ -19,6 +20,7 @@ import {
   type ForecastScenario,
   type ForecastSource,
   type ForecastAuditLog,
+  type ForecastGeoSplit,
   type InsertForecast,
   type InsertForecastBoundary,
   type InsertForecastBrief,
@@ -28,6 +30,7 @@ import {
   type InsertForecastScenario,
   type InsertForecastSource,
   type InsertForecastAuditLog,
+  type InsertForecastGeoSplit,
 } from "@shared/schema";
 
 // ── Forecasts ────────────────────────────────────────────────────────────
@@ -101,13 +104,14 @@ export type ForecastFull = Forecast & {
   scenarios: ForecastScenario[];
   sources: ForecastSource[];
   auditLog: ForecastAuditLog[];
+  geoSplits: ForecastGeoSplit[];
 };
 
 export async function getForecastFull(id: string): Promise<ForecastFull | undefined> {
   const forecast = await getForecast(id);
   if (!forecast) return undefined;
 
-  const [boundary, brief, segments, assumptions, cruxes, scenarios, sources, auditLog] =
+  const [boundary, brief, segments, assumptions, cruxes, scenarios, sources, auditLog, geoSplits] =
     await Promise.all([
       getForecastBoundary(id),
       getForecastBrief(id),
@@ -117,9 +121,10 @@ export async function getForecastFull(id: string): Promise<ForecastFull | undefi
       getForecastScenarios(id),
       getForecastSources(id),
       getForecastAuditLog(id),
+      getForecastGeoSplits(id),
     ]);
 
-  return { ...forecast, boundary: boundary ?? null, brief: brief ?? null, segments, assumptions, cruxes, scenarios, sources, auditLog };
+  return { ...forecast, boundary: boundary ?? null, brief: brief ?? null, segments, assumptions, cruxes, scenarios, sources, auditLog, geoSplits };
 }
 
 // ── Boundary ──────────────────────────────────────────────────────────────
@@ -340,6 +345,36 @@ export async function getForecastSource(id: string): Promise<ForecastSource | nu
 
 export async function deleteForecastSource(id: string): Promise<void> {
   await db.delete(forecastSources).where(eq(forecastSources.id, id));
+}
+
+// ── Geographic Splits ─────────────────────────────────────────────────────
+
+export async function getForecastGeoSplits(forecastId: string): Promise<ForecastGeoSplit[]> {
+  return db
+    .select()
+    .from(forecastGeoSplits)
+    .where(eq(forecastGeoSplits.forecastId, forecastId))
+    .orderBy(forecastGeoSplits.displayOrder);
+}
+
+/** Replaces the entire set of geo splits for a forecast atomically. */
+export async function replaceForecastGeoSplits(
+  forecastId: string,
+  rows: Omit<InsertForecastGeoSplit, "forecastId">[]
+): Promise<ForecastGeoSplit[]> {
+  return db.transaction(async tx => {
+    await tx.delete(forecastGeoSplits).where(eq(forecastGeoSplits.forecastId, forecastId));
+    if (rows.length === 0) return [];
+    const inserted = await tx
+      .insert(forecastGeoSplits)
+      .values(rows.map(r => ({ ...r, forecastId })))
+      .returning();
+    return inserted;
+  });
+}
+
+export async function deleteForecastGeoSplits(forecastId: string): Promise<void> {
+  await db.delete(forecastGeoSplits).where(eq(forecastGeoSplits.forecastId, forecastId));
 }
 
 // ── Audit Log ─────────────────────────────────────────────────────────────

@@ -25,6 +25,22 @@ export interface ChartSensitivityRow {
   delta_plus_25pct: number;
 }
 
+export interface ChartGeoRegion {
+  region: string;
+  rationale: string;
+  baseShare: number;
+  horizonShare: number;
+  baseForecast: Record<string, number>;
+  bullForecast: Record<string, number>;
+  bearForecast: Record<string, number>;
+}
+
+export interface ChartGeoProjections {
+  macroNarrative: string;
+  confidence: "high" | "medium" | "low";
+  regions: ChartGeoRegion[];
+}
+
 export interface ChartData {
   baseYear: number;
   horizonYear: number;
@@ -36,6 +52,7 @@ export interface ChartData {
     bear: ChartSegmentForecast[];
   };
   sensitivityTable: ChartSensitivityRow[];
+  geoProjections?: ChartGeoProjections;
 }
 
 export type ScenarioKey = "base" | "bull" | "bear";

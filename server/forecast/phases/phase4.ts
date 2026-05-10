@@ -32,7 +32,8 @@ import {
   type CruxResolution,
   type EngineOutput,
 } from "../engine";
-import { generateReport, qcInternalConsistency, qcSchemaCompleteness } from "../report";
+import { generateReport, qcInternalConsistency, qcSchemaCompleteness, buildGeoProjections } from "../report";
+import { runGeoSplitDebate } from "./geo-split";
 import { assembleSegments, validateSegmentTree } from "./phase4-segments";
 import { needsAutoVolume, runAutoVolume } from "./auto-volume";
 import { checkSanityBand } from "./sanity-band";
@@ -337,11 +338,65 @@ export async function runBuildPipeline(
     const fullUpdated = await getForecastFull(forecastId);
     if (!fullUpdated) throw new Error("Forecast disappeared after engine run");
 
-    // 8. Generate 8-section AI report (sections 7-8 are templated; 1-6 via GPT-4o)
+    // 7b. Geographic split debate — best-effort. Decides per-region TAM shares
+    // by weighing macroeconomic, political, and geopolitical factors over the
+    // forecast horizon. Failure here is non-fatal: the report just omits
+    // section 9 and proceeds. Persists into forecast_geo_splits.
+    emit({
+      type: "progress",
+      step: "geo_split",
+      message: "Running geographic split debate (macro + political + geopolitical)…",
+    });
+    const geoBaseYear = fullUpdated.baseYear ?? brief.baseYear;
+    const geoHorizonYear = geoBaseYear + (fullUpdated.forecastHorizonYears ?? brief.forecastHorizonYears ?? 5);
+    let geoDebateResult: Awaited<ReturnType<typeof runGeoSplitDebate>> = null;
+    try {
+      geoDebateResult = await runGeoSplitDebate({
+        forecast: fullUpdated,
+        openaiKey,
+        openaiBaseUrl,
+        baseYear: geoBaseYear,
+        horizonYear: geoHorizonYear,
+        userId,
+      });
+    } catch (err: any) {
+      emit({
+        type: "qc_result",
+        step: "geo_split",
+        message: `Geo split debate skipped (${err.message || "error"}) — continuing without regional section`,
+      });
+    }
+    if (geoDebateResult) {
+      emit({
+        type: "qc_result",
+        step: "geo_split",
+        message: `Geo split: ${geoDebateResult.regions.length} regions, confidence ${geoDebateResult.confidence}`,
+      });
+    }
+
+    // Reload full a SECOND time so persisted geoSplits are included in
+    // fullForReport — the report generator reads forecast.geoSplits to build
+    // section 9 prose AND the geoProjections chartData payload.
+    const fullForReport = (await getForecastFull(forecastId)) ?? fullUpdated;
+
+    // 8. Generate AI report. Sections 1–6 are LLM-written, 7–8 templated,
+    // 9 (geo) only when the debate succeeded, 10 (segments) when the engine
+    // produced segment forecasts.
     emit({ type: "progress", step: "report", message: "Generating report sections…" });
 
+    const geoProjections = geoDebateResult
+      ? buildGeoProjections(
+          fullForReport,
+          engine,
+          geoBaseYear,
+          geoHorizonYear,
+          geoDebateResult.macroNarrative,
+          geoDebateResult.confidence
+        )
+      : undefined;
+
     const report = await generateReport(
-      fullUpdated,
+      fullForReport,
       engine,
       openaiKey,
       openaiBaseUrl,
@@ -352,7 +407,8 @@ export async function runBuildPipeline(
           sectionTitle: title,
           message: `Writing section ${sectionId}: ${title}…`,
         });
-      }
+      },
+      geoProjections
     );
 
     // 9. QC Pass 3 — narrative coherence + traceability gates.

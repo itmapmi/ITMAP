@@ -410,6 +410,334 @@ function SectionCard({
   );
 }
 
+// ── Geo Split filterable view (Section 9) ──────────────────────────────────
+//
+// Renders the AI-debated regional split with a multi-select region pill bar,
+// a year-by-year region table, and a horizontal stacked bar showing the
+// regional mix at the base year vs. the horizon year. The full list of
+// regions, their per-year values, and the macro/political/geopolitical
+// rationale all come from the geo-split debate phase via chartData.geoProjections.
+
+const REGION_PALETTE = [
+  "#22d3ee", "#a78bfa", "#34d399", "#fbbf24", "#fb7185",
+  "#60a5fa", "#f472b6", "#facc15", "#4ade80", "#c084fc",
+];
+
+function GeoSplitView({
+  geo,
+  scenario,
+  baseYear,
+  horizonYear,
+  currency,
+}: {
+  geo: NonNullable<ChartData["geoProjections"]>;
+  scenario: "base" | "bull" | "bear";
+  baseYear: number;
+  horizonYear: number;
+  currency: string;
+}) {
+  const allRegions = geo.regions.map(r => r.region);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(allRegions));
+
+  const years = useMemo(() => {
+    const ys: number[] = [];
+    for (let y = baseYear; y <= horizonYear; y++) ys.push(y);
+    return ys;
+  }, [baseYear, horizonYear]);
+
+  const visibleRegions = geo.regions.filter(r => selected.has(r.region));
+
+  function toggle(name: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next.size === 0 ? new Set([name]) : next;
+    });
+  }
+
+  function pickPath(r: NonNullable<ChartData["geoProjections"]>["regions"][number]): Record<string, number> {
+    if (scenario === "bull") return r.bullForecast;
+    if (scenario === "bear") return r.bearForecast;
+    return r.baseForecast;
+  }
+
+  const totals = years.map(y =>
+    visibleRegions.reduce((s, r) => s + (pickPath(r)[String(y)] ?? 0), 0)
+  );
+
+  return (
+    <div className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-slate-500 font-medium">Regional split — {scenario} scenario</div>
+          <div className="text-[10px] text-slate-600 mt-0.5">
+            Confidence: <span className={`font-medium ${
+              geo.confidence === "high" ? "text-emerald-400" :
+              geo.confidence === "medium" ? "text-amber-400" : "text-rose-400"
+            }`}>{geo.confidence}</span> · derived by AI debate over macro, political and geopolitical factors
+          </div>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setSelected(new Set(allRegions))}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
+          >All</button>
+          <button
+            onClick={() => allRegions.length > 0 && setSelected(new Set([allRegions[0]]))}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
+            disabled={allRegions.length === 0}
+          >Just first</button>
+        </div>
+      </div>
+
+      {/* Region filter pills */}
+      <div className="flex flex-wrap gap-1.5">
+        {geo.regions.map((r, i) => {
+          const color = REGION_PALETTE[i % REGION_PALETTE.length];
+          const on = selected.has(r.region);
+          return (
+            <button
+              key={r.region}
+              onClick={() => toggle(r.region)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                on ? "border-white/30 text-white" : "border-white/10 text-slate-500 hover:text-slate-300"
+              }`}
+              style={on ? { boxShadow: `inset 0 0 0 1px ${color}55`, background: `${color}11` } : undefined}
+            >
+              <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ background: color }} />
+              {r.region}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Year-by-year table with horizontal bar */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left">
+          <thead>
+            <tr className="border-b border-white/10 text-slate-400">
+              <th className="py-2 pr-3 font-medium">Region</th>
+              <th className="py-2 px-2 font-medium text-right">{baseYear} share</th>
+              {years.map(y => (
+                <th key={y} className="py-2 px-2 font-medium text-right">{y}</th>
+              ))}
+              <th className="py-2 px-2 font-medium text-right">Δ share</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRegions.map((r, i) => {
+              const path = pickPath(r);
+              const colorIdx = geo.regions.findIndex(g => g.region === r.region);
+              const color = REGION_PALETTE[colorIdx % REGION_PALETTE.length];
+              const dShare = (r.horizonShare - r.baseShare) * 100;
+              return (
+                <tr key={r.region} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="py-2 pr-3">
+                    <span className="inline-block w-2 h-2 rounded-full mr-2 align-middle" style={{ background: color }} />
+                    <span className="text-white font-medium">{r.region}</span>
+                  </td>
+                  <td className="py-2 px-2 text-right text-slate-400 font-mono">
+                    {(r.baseShare * 100).toFixed(1)}%
+                  </td>
+                  {years.map(y => (
+                    <td key={y} className="py-2 px-2 text-right text-slate-200 font-mono">
+                      {fmt(path[String(y)] ?? 0, currency)}
+                    </td>
+                  ))}
+                  <td className={`py-2 px-2 text-right font-mono ${dShare >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {dShare >= 0 ? "+" : ""}{dShare.toFixed(1)}pp
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="text-slate-500">
+              <td className="py-2 pr-3 text-[10px] uppercase tracking-wider">Total</td>
+              <td className="py-2 px-2"></td>
+              {years.map((y, i) => (
+                <td key={y} className="py-2 px-2 text-right text-slate-400 font-mono">{fmt(totals[i], currency)}</td>
+              ))}
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Stacked horizontal bar — base year vs horizon */}
+      <div className="space-y-2 pt-1">
+        {[0, years.length - 1].map(idx => {
+          const y = years[idx];
+          const total = totals[idx];
+          if (total <= 0) return null;
+          return (
+            <div key={y}>
+              <div className="text-[10px] text-slate-500 mb-1 font-mono">{y}</div>
+              <div className="flex h-3 rounded overflow-hidden bg-slate-800">
+                {visibleRegions.map(r => {
+                  const v = pickPath(r)[String(y)] ?? 0;
+                  const w = (v / total) * 100;
+                  if (w < 0.1) return null;
+                  const colorIdx = geo.regions.findIndex(g => g.region === r.region);
+                  const color = REGION_PALETTE[colorIdx % REGION_PALETTE.length];
+                  return (
+                    <div
+                      key={r.region}
+                      style={{ width: `${w}%`, background: color }}
+                      title={`${r.region}: ${fmt(v, currency)} (${w.toFixed(1)}%)`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex h-3 mt-0.5 text-[9px] text-slate-500">
+                <div style={{ width: "50%" }}>Total {fmt(total, currency)}</div>
+                <div style={{ width: "50%", textAlign: "right" }}>
+                  {visibleRegions.length} of {geo.regions.length} regions
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Segment Split filterable view (Section 10) ─────────────────────────────
+//
+// Reuses chartData.segmentScenarios — already produced by the deterministic
+// engine. Provides a segment multi-select filter + year-by-year table.
+function SegmentSplitView({
+  data,
+  scenario,
+  baseYear,
+  horizonYear,
+  currency,
+}: {
+  data: ChartData;
+  scenario: "base" | "bull" | "bear";
+  baseYear: number;
+  horizonYear: number;
+  currency: string;
+}) {
+  const segs = data.segmentScenarios[scenario] ?? [];
+  const allIds = useMemo(() => segs.map(s => s.segmentId), [segs]);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(allIds));
+
+  // Sync selection when scenario changes (segments may differ — usually same)
+  useEffect(() => {
+    setSelected(prev => {
+      const next = new Set<string>();
+      for (const id of allIds) if (prev.has(id)) next.add(id);
+      return next.size === 0 ? new Set(allIds) : next;
+    });
+  }, [allIds]);
+
+  const years = useMemo(() => {
+    const ys: number[] = [];
+    for (let y = baseYear; y <= horizonYear; y++) ys.push(y);
+    return ys;
+  }, [baseYear, horizonYear]);
+
+  if (segs.length === 0) return null;
+
+  function toggle(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next.size === 0 ? new Set([id]) : next;
+    });
+  }
+
+  const visible = segs.filter(s => selected.has(s.segmentId));
+  const totals = years.map(y => visible.reduce((s, seg) => s + (seg.forecastPath[String(y)] ?? 0), 0));
+
+  return (
+    <div className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="text-xs uppercase tracking-wider text-slate-500 font-medium">
+          Segment split — {scenario} scenario
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setSelected(new Set(allIds))}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
+          >All</button>
+          <button
+            onClick={() => allIds.length > 0 && setSelected(new Set([allIds[0]]))}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
+            disabled={allIds.length === 0}
+          >Just first</button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {segs.map((s, i) => {
+          const color = REGION_PALETTE[i % REGION_PALETTE.length];
+          const on = selected.has(s.segmentId);
+          return (
+            <button
+              key={s.segmentId}
+              onClick={() => toggle(s.segmentId)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                on ? "border-white/30 text-white" : "border-white/10 text-slate-500 hover:text-slate-300"
+              }`}
+              style={on ? { boxShadow: `inset 0 0 0 1px ${color}55`, background: `${color}11` } : undefined}
+            >
+              <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ background: color }} />
+              {s.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left">
+          <thead>
+            <tr className="border-b border-white/10 text-slate-400">
+              <th className="py-2 pr-3 font-medium">Segment</th>
+              {years.map(y => (
+                <th key={y} className="py-2 px-2 font-medium text-right">{y}</th>
+              ))}
+              <th className="py-2 px-2 font-medium text-right">CAGR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((s, i) => {
+              const colorIdx = segs.findIndex(g => g.segmentId === s.segmentId);
+              const color = REGION_PALETTE[colorIdx % REGION_PALETTE.length];
+              const start = s.forecastPath[String(baseYear)] ?? 0;
+              const end = s.forecastPath[String(horizonYear)] ?? 0;
+              const cagr = start > 0 && years.length > 1
+                ? ((Math.pow(end / start, 1 / (years.length - 1)) - 1) * 100).toFixed(1) + "%"
+                : "n/a";
+              return (
+                <tr key={s.segmentId} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="py-2 pr-3">
+                    <span className="inline-block w-2 h-2 rounded-full mr-2 align-middle" style={{ background: color }} />
+                    <span className="text-white font-medium">{s.name}</span>
+                  </td>
+                  {years.map(y => (
+                    <td key={y} className="py-2 px-2 text-right text-slate-200 font-mono">
+                      {fmt(s.forecastPath[String(y)] ?? 0, currency)}
+                    </td>
+                  ))}
+                  <td className="py-2 px-2 text-right text-cyan-400 font-mono">{cagr}</td>
+                </tr>
+              );
+            })}
+            <tr className="text-slate-500">
+              <td className="py-2 pr-3 text-[10px] uppercase tracking-wider">Total</td>
+              {years.map((y, i) => (
+                <td key={y} className="py-2 px-2 text-right text-slate-400 font-mono">{fmt(totals[i], currency)}</td>
+              ))}
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── Scenario table ─────────────────────────────────────────────────────────
 
 function ScenarioTable({
@@ -1430,6 +1758,26 @@ export function ForecastReportContent({ id }: { id: string }) {
                   );
                 } else if (section.id === 7) {
                   inlineChart = <SensitivityTornadoChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />;
+                } else if (section.id === 9 && chartData.geoProjections) {
+                  inlineChart = (
+                    <GeoSplitView
+                      geo={chartData.geoProjections}
+                      scenario={chartFilters.scenario}
+                      baseYear={chartData.baseYear}
+                      horizonYear={chartData.horizonYear}
+                      currency={chartData.currency}
+                    />
+                  );
+                } else if (section.id === 10) {
+                  inlineChart = (
+                    <SegmentSplitView
+                      data={chartData}
+                      scenario={chartFilters.scenario}
+                      baseYear={chartData.baseYear}
+                      horizonYear={chartData.horizonYear}
+                      currency={chartData.currency}
+                    />
+                  );
                 }
               }
 
