@@ -1244,14 +1244,23 @@ export function registerForecastBuilderRoutes(app: Express): void {
         return res.status(400).json({ error: "Forecast must be complete before exporting PDF" });
       }
 
+      // Optional active-filter state mirroring the on-screen filter bar
+      const filtersSchema = z.object({
+        scenario: z.enum(["base", "bull", "bear"]).optional(),
+        segmentIds: z.array(z.string()).optional(),
+        yearRange: z.tuple([z.number().int(), z.number().int()]).optional(),
+      }).optional();
+      const parsedFilters = filtersSchema.parse(req.body?.filters);
+
       await writeAuditEntry(req.params.id, "export_triggered", (req.user as any)?.id ?? "system", {
         format: "pdf",
         triggeredAt: new Date().toISOString(),
+        filters: parsedFilters ?? null,
       });
 
       const rpt = full.reportSections;
       const baseYear = full.baseYear ?? 2024;
-      const horizonYear = rpt.engineSummary.horizonYear;
+      const defaultHorizonYear = rpt.engineSummary.horizonYear;
       const currency = full.currency ?? "USD";
 
       const sym = currency === "USD" ? "$" : currency;
@@ -1260,6 +1269,116 @@ export function registerForecastBuilderRoutes(app: Express): void {
         if (Math.abs(n) >= 1) return `${sym}${n.toFixed(1)}B`;
         return `${sym}${(n * 1000).toFixed(0)}M`;
       };
+
+      // Resolve filters against chart data when present. When no chartData or
+      // no filters, all values fall back to the precomputed engineSummary.
+      const chart = rpt.chartData;
+      const reqStart = parsedFilters?.yearRange?.[0] ?? baseYear;
+      const reqEnd = parsedFilters?.yearRange?.[1] ?? defaultHorizonYear;
+      const yearStart = chart
+        ? Math.max(chart.baseYear, Math.min(reqStart, reqEnd))
+        : Math.min(reqStart, reqEnd);
+      const yearEnd = chart
+        ? Math.min(chart.horizonYear, Math.max(reqStart, reqEnd))
+        : Math.max(reqStart, reqEnd);
+      const segmentIdSet = parsedFilters?.segmentIds && parsedFilters.segmentIds.length > 0
+        ? new Set(parsedFilters.segmentIds)
+        : null;
+      const selectedScenario = parsedFilters?.scenario ?? "base";
+
+      // Treat "all defaults" (base scenario, every segment, full horizon) as
+      // no filters so the PDF doesn't show a redundant "Active filters" block
+      // when the UI just sends its initial state.
+      const allSegmentsSelected = !segmentIdSet
+        || !chart
+        || (chart.segmentScenarios.base?.every(s => segmentIdSet.has(s.segmentId)) ?? true);
+      const fullYearRange = !chart
+        || (yearStart === chart.baseYear && yearEnd === chart.horizonYear);
+      const isDefaultScenario = selectedScenario === "base";
+      const hasFilters = !!parsedFilters && !(allSegmentsSelected && fullYearRange && isDefaultScenario);
+
+      // Mirrors PPTX: when a segment subset is active, scenario totals are
+      // recomputed from per-scenario segment paths so the PDF matches the
+      // user's filter selection.
+      const totalForYear = (key: "base" | "bull" | "bear", year: number): number => {
+        if (!chart) {
+          if (year !== defaultHorizonYear) return 0;
+          if (key === "base") return rpt.engineSummary.baseTotal;
+          if (key === "bull") return rpt.engineSummary.bullTotal;
+          return rpt.engineSummary.bearTotal;
+        }
+        if (segmentIdSet) {
+          const segs = chart.segmentScenarios[key] ?? [];
+          let total = 0;
+          for (const s of segs) {
+            if (segmentIdSet.has(s.segmentId)) total += s.forecastPath[String(year)] ?? 0;
+          }
+          return total;
+        }
+        return chart.scenarioPaths[key]?.[String(year)] ?? 0;
+      };
+
+      const horizonYear = chart && hasFilters ? yearEnd : defaultHorizonYear;
+      const startYear = chart && hasFilters ? yearStart : baseYear;
+
+      const baseTotal = chart && hasFilters ? totalForYear("base", horizonYear) : rpt.engineSummary.baseTotal;
+      const bullTotal = chart && hasFilters ? totalForYear("bull", horizonYear) : rpt.engineSummary.bullTotal;
+      const bearTotal = chart && hasFilters ? totalForYear("bear", horizonYear) : rpt.engineSummary.bearTotal;
+
+      // Recompute base-scenario CAGR from filtered segment subset / year range
+      const baseCagr = (() => {
+        if (!chart || !hasFilters) return rpt.engineSummary.baseCagr;
+        const startVal = totalForYear("base", startYear);
+        const endVal = totalForYear("base", horizonYear);
+        const years = horizonYear - startYear;
+        if (years <= 0 || startVal <= 0 || endVal <= 0) return rpt.engineSummary.baseCagr;
+        return (Math.pow(endVal / startVal, 1 / years) - 1) * 100;
+      })();
+
+      // Active filter summary line (only when filters are actually applied)
+      let filterSummaryHtml = "";
+      if (hasFilters) {
+        const parts: string[] = [];
+        const scenarioLabel = selectedScenario.charAt(0).toUpperCase() + selectedScenario.slice(1);
+        parts.push(`Scenario: <strong>${scenarioLabel}</strong>`);
+        parts.push(`Years: <strong>${startYear}–${horizonYear}</strong>`);
+        if (chart && segmentIdSet) {
+          const allSegs = chart.segmentScenarios.base ?? [];
+          const total = allSegs.length;
+          const selectedNames = allSegs
+            .filter(s => segmentIdSet.has(s.segmentId))
+            .map(s => s.name);
+          const segLabel = selectedNames.length === total
+            ? `All ${total}`
+            : `${selectedNames.length} of ${total} (${selectedNames.slice(0, 4).map(escapeHtml).join(", ")}${selectedNames.length > 4 ? "…" : ""})`;
+          parts.push(`Segments: <strong>${segLabel}</strong>`);
+        }
+        filterSummaryHtml = `<div class="filters">Active filters — ${parts.join(" · ")}</div>`;
+      }
+
+      // Optional year-by-year scenario table when filters narrow the view
+      let scenarioTableHtml = "";
+      if (chart && hasFilters && horizonYear > startYear) {
+        const years: number[] = [];
+        for (let y = startYear; y <= horizonYear; y++) years.push(y);
+        const rows = years.map(y => `
+          <tr>
+            <td>${y}</td>
+            <td>${fmt(totalForYear("base", y))}</td>
+            <td>${fmt(totalForYear("bull", y))}</td>
+            <td>${fmt(totalForYear("bear", y))}</td>
+          </tr>
+        `).join("");
+        scenarioTableHtml = `
+          <div class="section">
+            <h2>Filtered Scenario Trajectory</h2>
+            <table class="scenario-table">
+              <thead><tr><th>Year</th><th>Base</th><th>Bull</th><th>Bear</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
 
       // Section titles and metadata are escaped; section prose goes through
       // markdownToHtml which converts markdown syntax only — LLM text content
@@ -1271,22 +1390,29 @@ export function registerForecastBuilderRoutes(app: Express): void {
         </div>
       `).join("\n");
 
+      const cardLabelBase = hasFilters ? `Base Scenario ${horizonYear}${selectedScenario === "base" ? " (selected)" : ""}` : `Base Scenario ${horizonYear}`;
+      const cardLabelBull = hasFilters ? `Bull Scenario ${horizonYear}${selectedScenario === "bull" ? " (selected)" : ""}` : `Bull Scenario ${horizonYear}`;
+      const cardLabelBear = hasFilters ? `Bear Scenario ${horizonYear}${selectedScenario === "bear" ? " (selected)" : ""}` : `Bear Scenario ${horizonYear}`;
+      const sel = (k: "base" | "bull" | "bear") => hasFilters && selectedScenario === k ? " selected" : "";
+
       const content = `
         <style>
           body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.7; }
           h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-          .meta { color: #64748b; font-size: 12px; margin-bottom: 40px; }
+          .meta { color: #64748b; font-size: 12px; margin-bottom: 8px; }
+          .filters { color: #0f172a; font-size: 12px; background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 6px; padding: 8px 12px; margin-bottom: 28px; }
           .summary-cards { display: flex; gap: 16px; margin-bottom: 40px; }
           .card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+          .card.selected { background: #ecfeff; border-color: #06b6d4; }
           .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
           .card-value { font-size: 20px; font-weight: 700; color: #0f172a; }
           .card-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
           .section { margin-bottom: 36px; page-break-inside: avoid; }
           h2 { font-size: 16px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px; }
           .prose p { margin: 0 0 12px; font-size: 12px; color: #334155; }
-          .prose table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
-          .prose th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; }
-          .prose td { padding: 5px 8px; border: 1px solid #e2e8f0; }
+          .prose table, .scenario-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+          .prose th, .scenario-table th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; }
+          .prose td, .scenario-table td { padding: 5px 8px; border: 1px solid #e2e8f0; }
           blockquote { border-left: 3px solid #e2e8f0; margin: 0; padding-left: 12px; color: #64748b; font-size: 11px; }
           strong { font-weight: 600; }
           .qc { display: flex; gap: 12px; margin-bottom: 28px; font-size: 11px; }
@@ -1296,11 +1422,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
 
         <h1>${escapeHtml(full.title)}</h1>
         <p class="meta">Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} &nbsp;|&nbsp; Base year: ${baseYear} &nbsp;|&nbsp; Horizon: ${horizonYear} &nbsp;|&nbsp; Currency: ${escapeHtml(currency)}</p>
+        ${filterSummaryHtml}
 
         <div class="summary-cards">
-          <div class="card"><div class="card-label">Base Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.baseTotal)}</div><div class="card-sub">CAGR ${rpt.engineSummary.baseCagr >= 0 ? "+" : ""}${rpt.engineSummary.baseCagr.toFixed(1)}%</div></div>
-          <div class="card"><div class="card-label">Bull Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.bullTotal)}</div></div>
-          <div class="card"><div class="card-label">Bear Scenario ${horizonYear}</div><div class="card-value">${fmt(rpt.engineSummary.bearTotal)}</div></div>
+          <div class="card${sel("base")}"><div class="card-label">${cardLabelBase}</div><div class="card-value">${fmt(baseTotal)}</div><div class="card-sub">CAGR ${baseCagr >= 0 ? "+" : ""}${baseCagr.toFixed(1)}%</div></div>
+          <div class="card${sel("bull")}"><div class="card-label">${cardLabelBull}</div><div class="card-value">${fmt(bullTotal)}</div></div>
+          <div class="card${sel("bear")}"><div class="card-label">${cardLabelBear}</div><div class="card-value">${fmt(bearTotal)}</div></div>
         </div>
 
         <div class="qc">
@@ -1309,6 +1436,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
           <span class="qc-item${rpt.qcStatus.narrativeCoherence ? "" : " fail"}">Narrative coherence: ${rpt.qcStatus.narrativeCoherence ? "✓" : "✗"}</span>
         </div>
 
+        ${scenarioTableHtml}
         ${htmlSections}
       `;
 
