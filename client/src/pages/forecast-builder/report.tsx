@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -818,6 +818,54 @@ export function ForecastReportContent({ id }: { id: string }) {
     staleTime: 30_000,
   });
 
+  // Build chartData (memoised) and initialise filters BEFORE any conditional
+  // early returns so React hook ordering stays stable across loading/error/loaded states.
+  const chartData: ChartData | null = useMemo(() => {
+    if (!data || !data.reportSections) return null;
+    const rpt = data.reportSections;
+    const segments = data.segments;
+    const scenarios = data.scenarios;
+    const baseYear = data.forecast.baseYear ?? 2024;
+    const currency = data.forecast.currency ?? "USD";
+    if (rpt.chartData) return rpt.chartData;
+    if (!segments.length && !scenarios.length) return null;
+    const horizonYear = rpt.engineSummary.horizonYear;
+    const baseScenario = scenarios.find(s => s.name === "base");
+    const bullScenario = scenarios.find(s => s.name === "bull");
+    const bearScenario = scenarios.find(s => s.name === "bear");
+    const fallbackSegs = segments.map(s => ({
+      segmentId: s.id,
+      name: s.name,
+      forecastPath: s.forecastPath ?? {},
+    }));
+    return {
+      baseYear,
+      horizonYear,
+      currency,
+      scenarioPaths: {
+        base: baseScenario?.forecastPath ?? {},
+        bull: bullScenario?.forecastPath ?? {},
+        bear: bearScenario?.forecastPath ?? {},
+      },
+      segmentScenarios: {
+        base: fallbackSegs,
+        bull: fallbackSegs,
+        bear: fallbackSegs,
+      },
+      sensitivityTable: [],
+    };
+  }, [data]);
+
+  useEffect(() => {
+    if (chartData && !chartFilters) {
+      setChartFilters({
+        scenario: "base",
+        segmentIds: new Set(chartData.segmentScenarios.base.map(s => s.segmentId)),
+        yearRange: [chartData.baseYear, chartData.horizonYear],
+      });
+    }
+  }, [chartData, chartFilters]);
+
   async function handleExportPptx() {
     setExportingPptx(true);
     try {
@@ -937,50 +985,6 @@ export function ForecastReportContent({ id }: { id: string }) {
     proposedByModels: a.proposedByModels ?? [],
     editHistory: a.editHistory ?? [],
   }));
-
-  // Build chart data — prefer the engine-baked chartData on the report,
-  // otherwise reconstruct a base-only fallback from the persisted segments
-  // and scenarios (older reports have no chartData yet).
-  const chartData: ChartData | null = (() => {
-    if (rpt.chartData) return rpt.chartData;
-    if (!segments.length && !scenarios.length) return null;
-    const horizonYear = rpt.engineSummary.horizonYear;
-    const baseScenario = scenarios.find(s => s.name === "base");
-    const bullScenario = scenarios.find(s => s.name === "bull");
-    const bearScenario = scenarios.find(s => s.name === "bear");
-    const fallbackSegs = segments.map(s => ({
-      segmentId: s.id,
-      name: s.name,
-      forecastPath: s.forecastPath ?? {},
-    }));
-    return {
-      baseYear,
-      horizonYear,
-      currency,
-      scenarioPaths: {
-        base: baseScenario?.forecastPath ?? {},
-        bull: bullScenario?.forecastPath ?? {},
-        bear: bearScenario?.forecastPath ?? {},
-      },
-      segmentScenarios: {
-        base: fallbackSegs,
-        bull: fallbackSegs,
-        bear: fallbackSegs,
-      },
-      sensitivityTable: [],
-    };
-  })();
-
-  // Initialise chart filters once when chartData first becomes available
-  useEffect(() => {
-    if (chartData && !chartFilters) {
-      setChartFilters({
-        scenario: "base",
-        segmentIds: new Set(chartData.segmentScenarios.base.map(s => s.segmentId)),
-        yearRange: [chartData.baseYear, chartData.horizonYear],
-      });
-    }
-  }, [chartData, chartFilters]);
 
   const userOverrideCount = assumptions.filter(a => a.currentValueSource === "user_override").length;
   // Monotonic version number: count of assumption_overridden audit events
