@@ -34,7 +34,6 @@ import {
   type AuditSegment,
 } from "@/components/forecast/audit-panel";
 import {
-  FilterBar as ChartsFilterBar,
   ScenarioFanChart,
   SegmentStackedAreaChart,
   SensitivityTornadoChart,
@@ -1283,18 +1282,6 @@ export function ForecastReportContent({ id }: { id: string }) {
             queryKey={reportQueryKey}
           />
         </div>
-
-        {/* Sticky filter bar — drives every chart below */}
-        {chartData && chartFilters && (
-          <div className="sticky top-2 z-10 mb-4">
-            <ChartsFilterBar
-              data={chartData}
-              filters={chartFilters}
-              onChange={setChartFilters}
-              segmentTree={segments.map(s => ({ id: s.id, name: s.name, parentSegmentId: s.parentSegmentId }))}
-            />
-          </div>
-        )}
 
         {/* Two-column: scenarios + top assumptions */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
