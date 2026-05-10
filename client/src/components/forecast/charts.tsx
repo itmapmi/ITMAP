@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as d3 from "d3";
+import { useToast } from "@/hooks/use-toast";
 
 export interface ChartScenarioPaths {
   base: Record<string, number>;
@@ -135,6 +136,40 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+async function renderSvgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
+  const { xml, width, height } = serializeSvgWithBackground(svg);
+  const dataUrl =
+    "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Failed to render SVG"));
+    img.src = dataUrl;
+  });
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return await new Promise<Blob | null>(resolve =>
+    canvas.toBlob(blob => resolve(blob), "image/png"),
+  );
+}
+
+async function copyChartToClipboard(svg: SVGSVGElement | null): Promise<void> {
+  if (!svg) throw new Error("Chart not ready");
+  if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
+    throw new Error("Your browser does not support copying images to the clipboard. Try the PNG download instead.");
+  }
+  const blob = await renderSvgToPngBlob(svg);
+  if (!blob) throw new Error("Failed to render chart image");
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+}
+
 async function downloadChartImage(
   svg: SVGSVGElement | null,
   baseName: string,
@@ -185,13 +220,39 @@ function ChartDownloadButtons({
   svgRef: RefObject<SVGSVGElement>;
   baseName: string;
 }) {
+  const { toast } = useToast();
+  const [copying, setCopying] = useState(false);
   const onClick = (format: "png" | "svg") => () => {
     void downloadChartImage(svgRef.current, baseName, format);
   };
+  const onCopy = async () => {
+    if (copying) return;
+    setCopying(true);
+    try {
+      await copyChartToClipboard(svgRef.current);
+      toast({ title: "Chart copied", description: "PNG image is on your clipboard — paste it anywhere." });
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "Could not copy chart to clipboard.";
+      const msg = /png download/i.test(raw) ? raw : `${raw} Try the PNG download instead.`;
+      toast({ title: "Copy failed", description: msg, variant: "destructive" });
+    } finally {
+      setCopying(false);
+    }
+  };
   const cls =
-    "px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 bg-slate-800/60 text-slate-400 hover:text-white hover:border-white/20 transition-colors";
+    "px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 bg-slate-800/60 text-slate-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
   return (
     <div className="flex items-center gap-1 ml-2">
+      <button
+        type="button"
+        onClick={() => { void onCopy(); }}
+        disabled={copying}
+        className={cls}
+        title="Copy chart image to clipboard"
+        data-testid={`button-copy-${baseName}`}
+      >
+        {copying ? "…" : "Copy"}
+      </button>
       <button type="button" onClick={onClick("png")} className={cls} title="Download chart as PNG" data-testid={`button-download-${baseName}-png`}>
         PNG
       </button>
