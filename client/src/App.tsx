@@ -18,6 +18,7 @@ import MyMarketBuilderPage from "@/pages/my-market-builder";
 import ForecastBuilderPage from "@/pages/forecast-builder/index";
 import ForecastDetailPage from "@/pages/forecast-builder/detail";
 import ForecastReportPage from "@/pages/forecast-builder/report";
+import { ForecastThemeProvider } from "@/components/forecast/forecast-theme";
 import MyReportsPage from "@/pages/my-reports";
 import MyMarketVendorsPage from "@/pages/my-market-vendors";
 import MyLlmKeysPage from "@/pages/my-llm-keys";
@@ -77,9 +78,9 @@ function Router() {
             are redirected to /me/market-builder via the page itself. */}
         <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
-        <Route path="/forecast-builder" component={() => <ProtectedRoute component={ForecastBuilderPage} />} />
-        <Route path="/forecast-builder/:id/report" component={() => <ProtectedRoute component={ForecastReportPage} />} />
-        <Route path="/forecast-builder/:id" component={() => <ProtectedRoute component={ForecastDetailPage} />} />
+        <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />
+        <Route path="/forecast-builder/:id/report" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastReportPage} /></ForecastThemeProvider>} />
+        <Route path="/forecast-builder/:id" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastDetailPage} /></ForecastThemeProvider>} />
         <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
         <Route path="/me/markets/:marketId/vendors" component={() => <ProtectedRoute component={MyMarketVendorsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />

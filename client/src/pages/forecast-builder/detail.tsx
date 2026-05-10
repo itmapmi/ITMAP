@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1790,14 +1791,17 @@ export default function ForecastDetailPage() {
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/forecast-builder">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Forecasts
-            </Button>
-          </Link>
-          <span className="text-slate-700">/</span>
-          <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
+        <div className="flex items-center justify-between gap-3 mb-8">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/forecast-builder">
+              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2">
+                <ArrowLeft className="h-4 w-4 mr-1" /> Forecasts
+              </Button>
+            </Link>
+            <span className="text-slate-700">/</span>
+            <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
+          </div>
+          <ForecastThemeToggle />
         </div>
 
         {/* Wizard content */}

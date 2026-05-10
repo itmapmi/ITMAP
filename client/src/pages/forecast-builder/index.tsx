@@ -18,6 +18,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
 import {
   Dialog,
   DialogContent,
@@ -141,12 +142,15 @@ export default function ForecastBuilderPage() {
               and fully auditable assumptions.
             </p>
           </div>
-          <Button
-            onClick={() => setNewDialogOpen(true)}
-            className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 font-medium"
-          >
-            <Plus className="h-4 w-4 mr-2" /> New Forecast
-          </Button>
+          <div className="flex items-center gap-2">
+            <ForecastThemeToggle />
+            <Button
+              onClick={() => setNewDialogOpen(true)}
+              className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 font-medium"
+            >
+              <Plus className="h-4 w-4 mr-2" /> New Forecast
+            </Button>
+          </div>
         </div>
 
         {/* Stats row */}

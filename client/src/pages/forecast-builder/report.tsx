@@ -24,6 +24,7 @@ import {
   Bot,
   Activity,
 } from "lucide-react";
+import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
 import { Button } from "@/components/ui/button";
 import {
   AuditPanel,
@@ -1098,6 +1099,7 @@ export function ForecastReportContent({ id }: { id: string }) {
                 {userOverrideCount} override{userOverrideCount > 1 ? "s" : ""} active
               </span>
             )}
+            <ForecastThemeToggle />
             <Button
               variant="ghost"
               size="sm"
