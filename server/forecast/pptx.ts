@@ -86,6 +86,38 @@ function resolveFilters(chart: ReportChartData, filters: PptxFilters | undefined
   };
 }
 
+function buildFilterSummary(chart: ReportChartData | null | undefined, filters: PptxFilters | undefined): string | null {
+  if (!filters) return null;
+  const parts: string[] = [];
+
+  if (filters.scenario && filters.scenario !== "base") {
+    const label = filters.scenario.charAt(0).toUpperCase() + filters.scenario.slice(1);
+    parts.push(`${label} scenario`);
+  }
+
+  if (filters.yearRange && chart) {
+    const [reqStart, reqEnd] = filters.yearRange;
+    const yearStart = Math.max(chart.baseYear, Math.min(reqStart, reqEnd));
+    const yearEnd = Math.min(chart.horizonYear, Math.max(reqStart, reqEnd));
+    if (yearStart !== chart.baseYear || yearEnd !== chart.horizonYear) {
+      parts.push(`${yearStart}–${yearEnd}`);
+    }
+  }
+
+  if (filters.segmentIds && filters.segmentIds.length > 0 && chart) {
+    const baseSegs = chart.segmentScenarios.base ?? [];
+    const validIds = new Set(baseSegs.map(s => s.segmentId));
+    const selected = new Set(filters.segmentIds.filter(id => validIds.has(id)));
+    const totalSegs = baseSegs.length;
+    if (totalSegs > 0 && selected.size > 0 && selected.size < totalSegs) {
+      parts.push(`${selected.size} of ${totalSegs} segments`);
+    }
+  }
+
+  if (parts.length === 0) return null;
+  return `Filtered view · ${parts.join(" · ")}`;
+}
+
 export async function buildForecastPptx(
   forecastTitle: string,
   report: ReportOutput,
@@ -118,6 +150,13 @@ export async function buildForecastPptx(
     `  ·  Base year ${chart?.baseYear ?? "—"}  ·  Horizon ${summary.horizonYear}  ·  ${currency}`,
     { x: 0.6, y: 2.6, w: 12, h: 0.4, fontSize: 14, color: "94A3B8" }
   );
+
+  const filterSummary = buildFilterSummary(chart, filters);
+  if (filterSummary) {
+    cover.addText(filterSummary, {
+      x: 0.6, y: 3.05, w: 12, h: 0.4, fontSize: 13, color: "FCD34D", italic: true,
+    });
+  }
 
   // Scenario summary cards on the cover
   const cardY = 4.2;
