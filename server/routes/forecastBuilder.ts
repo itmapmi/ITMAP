@@ -1331,7 +1331,12 @@ export function registerForecastBuilderRoutes(app: Express): void {
   });
 
   // ── Phase 4: Export forecast report as PowerPoint ───────────────────────
-  app.post("/api/forecast-builder/forecasts/:id/export-pptx", requireAuth, async (req: Request, res: Response) => {
+  // Alias `/export/pptx` to match the documented contract; keep `/export-pptx`
+  // for any existing clients.
+  app.post([
+    "/api/forecast-builder/forecasts/:id/export-pptx",
+    "/api/forecast-builder/forecasts/:id/export/pptx",
+  ], requireAuth, async (req: Request, res: Response) => {
     try {
       const guard = await guardForecastAccess(req, res, req.params.id);
       if (!guard.ok) return;
