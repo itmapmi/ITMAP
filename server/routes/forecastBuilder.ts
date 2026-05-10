@@ -39,6 +39,7 @@ import { runDebate } from "../forecast/phases/debate-runner";
 import { getUserLlmApiKey } from "../storage/userLlmKeys";
 import { runBuildPipeline } from "../forecast/phases/phase4";
 import { pdfService } from "../pdf-generator/pdf-service";
+import { buildForecastPptx } from "../forecast/pptx";
 
 type ForecastStatus = "draft" | "boundary_confirmed" | "brief_complete" | "debate_complete" | "calculating" | "complete";
 
@@ -1326,6 +1327,75 @@ export function registerForecastBuilderRoutes(app: Express): void {
     } catch (err: any) {
       console.error("[ForecastPDF] Error:", err);
       res.status(500).json({ error: "Failed to generate PDF: " + err.message });
+    }
+  });
+
+  // ── Phase 4: Export forecast report as PowerPoint ───────────────────────
+  app.post("/api/forecast-builder/forecasts/:id/export-pptx", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const guard = await guardForecastAccess(req, res, req.params.id);
+      if (!guard.ok) return;
+      const full = await getForecastFull(req.params.id);
+      if (!full) return res.status(404).json({ error: "Forecast not found" });
+      if (full.status !== "complete" || !full.reportSections) {
+        return res.status(400).json({ error: "Forecast must be complete before exporting PowerPoint" });
+      }
+
+      await writeAuditEntry(req.params.id, "export_triggered", (req.user as any)?.id ?? "system", {
+        format: "pptx",
+        triggeredAt: new Date().toISOString(),
+      });
+
+      // Backwards-compat: reconstruct chartData on the fly for older reports
+      // that were generated before chartData was baked into reportSections.
+      let reportForExport = full.reportSections;
+      if (!reportForExport.chartData) {
+        const baseYear = full.baseYear ?? new Date().getFullYear() - 1;
+        const horizonYear = reportForExport.engineSummary.horizonYear;
+        const currency = full.currency ?? "USD";
+        const baseS = full.scenarios.find(s => s.name === "base");
+        const bullS = full.scenarios.find(s => s.name === "bull");
+        const bearS = full.scenarios.find(s => s.name === "bear");
+        const fallbackSegs = full.segments.map(s => ({
+          segmentId: s.id,
+          name: s.name,
+          forecastPath: (s.forecastPath ?? {}) as Record<string, number>,
+        }));
+        reportForExport = {
+          ...reportForExport,
+          chartData: {
+            baseYear,
+            horizonYear,
+            currency,
+            scenarioPaths: {
+              base: (baseS?.forecastPath ?? {}) as Record<string, number>,
+              bull: (bullS?.forecastPath ?? {}) as Record<string, number>,
+              bear: (bearS?.forecastPath ?? {}) as Record<string, number>,
+            },
+            segmentScenarios: {
+              base: fallbackSegs,
+              bull: fallbackSegs,
+              bear: fallbackSegs,
+            },
+            sensitivityTable: [],
+          },
+        };
+      }
+
+      const buf = await buildForecastPptx(
+        full.title ?? "Market Forecast",
+        reportForExport,
+        new Date(),
+      );
+
+      const filename = `${(full.title ?? "forecast").replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "_")}_forecast.pptx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", buf.length.toString());
+      res.end(buf);
+    } catch (err: any) {
+      console.error("[ForecastPPTX] Error:", err);
+      res.status(500).json({ error: "Failed to generate PowerPoint: " + err.message });
     }
   });
 }

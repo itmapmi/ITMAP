@@ -1035,6 +1035,31 @@ export const forecasts = pgTable("forecasts", {
       degraded?: boolean;
       warnings?: string[];
     };
+    chartData?: {
+      baseYear: number;
+      horizonYear: number;
+      currency: string;
+      scenarioPaths: {
+        base: Record<string, number>;
+        bull: Record<string, number>;
+        bear: Record<string, number>;
+      };
+      segmentScenarios: {
+        base: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+        bull: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+        bear: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+      };
+      sensitivityTable: {
+        assumptionId: string;
+        description: string;
+        baseValue: number;
+        unit: string;
+        delta_minus_25pct: number;
+        delta_minus_10pct: number;
+        delta_plus_10pct: number;
+        delta_plus_25pct: number;
+      }[];
+    };
     generatedAt: string;
   }>(),
 

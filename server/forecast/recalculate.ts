@@ -14,6 +14,7 @@
 import {
   getForecastFull,
   getForecastScenarios,
+  updateForecast,
   updateForecastSegment,
   updateForecastScenario,
   createForecastScenario,
@@ -27,6 +28,7 @@ import {
   type CruxResolution,
 } from "./engine";
 import { assembleSegments } from "./phases/phase4-segments";
+import { buildChartData } from "./report";
 
 export interface EngineRecalcResult {
   baseTotal: number;
@@ -151,6 +153,18 @@ export async function rebuildAndPersistEngine(
     baseStart > 0
       ? Math.round(((Math.pow(baseTotal / baseStart, 1 / horizonYears) - 1) * 100) * 100) / 100
       : 0;
+
+  // Refresh reportSections.chartData + engineSummary so the report visuals
+  // and the PowerPoint export stay in sync after overrides / re-debate.
+  if (full.reportSections) {
+    const currency = full.currency ?? "USD";
+    const refreshed = {
+      ...full.reportSections,
+      engineSummary: { baseTotal, bullTotal, bearTotal, horizonYear: endYear, baseCagr },
+      chartData: buildChartData(engine, baseYear, endYear, currency),
+    };
+    await updateForecast(forecastId, { reportSections: refreshed });
+  }
 
   return { baseTotal, bullTotal, bearTotal, horizonYear: endYear, baseCagr };
 }

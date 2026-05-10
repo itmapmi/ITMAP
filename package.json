@@ -103,6 +103,7 @@
     "passport-local": "^1.0.0",
     "pdf-lib": "^1.17.1",
     "postgres": "^3.4.7",
+    "pptxgenjs": "^4.0.1",
     "puppeteer": "^24.21.0",
     "quill-better-table": "^1.2.10",
     "react": "^18.3.1",

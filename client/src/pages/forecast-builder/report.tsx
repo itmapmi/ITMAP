@@ -32,6 +32,11 @@ import {
   type AuditSource,
   type AuditSegment,
 } from "@/components/forecast/audit-panel";
+import {
+  ForecastChartsPanel,
+  type ChartData,
+  type ChartFilters,
+} from "@/components/forecast/charts";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +66,7 @@ interface ReportSections {
   sections: ReportSection[];
   engineSummary: EngineSum;
   qcStatus: QcStatus;
+  chartData?: ChartData;
   generatedAt: string;
 }
 
@@ -760,8 +766,10 @@ function ForecastDiary({ auditLog }: { auditLog: AuditLogEntry[] }) {
 export function ForecastReportContent({ id }: { id: string }) {
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
+  const [exportingPptx, setExportingPptx] = useState(false);
   const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(new Set([1, 2]));
   const [panelView, setPanelView] = useState<PanelView>(null);
+  const [chartFilters, setChartFilters] = useState<ChartFilters | null>(null);
 
   const reportQueryKey = ["/api/forecast-builder/forecasts", id, "report-data"];
 
@@ -804,6 +812,33 @@ export function ForecastReportContent({ id }: { id: string }) {
     enabled: !!id,
     staleTime: 30_000,
   });
+
+  async function handleExportPptx() {
+    setExportingPptx(true);
+    try {
+      const resp = await fetch(`/api/forecast-builder/forecasts/${id}/export-pptx`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Export failed" }));
+        throw new Error((err as { error?: string }).error ?? "Export failed");
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${data?.forecast.title ?? "forecast"}_report.pptx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PowerPoint downloaded" });
+    } catch (err: unknown) {
+      toast({ title: "Export failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setExportingPptx(false);
+    }
+  }
 
   async function handleExportPdf() {
     setExporting(true);
@@ -898,6 +933,50 @@ export function ForecastReportContent({ id }: { id: string }) {
     editHistory: a.editHistory ?? [],
   }));
 
+  // Build chart data — prefer the engine-baked chartData on the report,
+  // otherwise reconstruct a base-only fallback from the persisted segments
+  // and scenarios (older reports have no chartData yet).
+  const chartData: ChartData | null = (() => {
+    if (rpt.chartData) return rpt.chartData;
+    if (!segments.length && !scenarios.length) return null;
+    const horizonYear = rpt.engineSummary.horizonYear;
+    const baseScenario = scenarios.find(s => s.name === "base");
+    const bullScenario = scenarios.find(s => s.name === "bull");
+    const bearScenario = scenarios.find(s => s.name === "bear");
+    const fallbackSegs = segments.map(s => ({
+      segmentId: s.id,
+      name: s.name,
+      forecastPath: s.forecastPath ?? {},
+    }));
+    return {
+      baseYear,
+      horizonYear,
+      currency,
+      scenarioPaths: {
+        base: baseScenario?.forecastPath ?? {},
+        bull: bullScenario?.forecastPath ?? {},
+        bear: bearScenario?.forecastPath ?? {},
+      },
+      segmentScenarios: {
+        base: fallbackSegs,
+        bull: fallbackSegs,
+        bear: fallbackSegs,
+      },
+      sensitivityTable: [],
+    };
+  })();
+
+  // Initialise chart filters once when chartData first becomes available
+  useEffect(() => {
+    if (chartData && !chartFilters) {
+      setChartFilters({
+        scenario: "base",
+        segmentIds: new Set(chartData.segmentScenarios.base.map(s => s.segmentId)),
+        yearRange: [chartData.baseYear, chartData.horizonYear],
+      });
+    }
+  }, [chartData, chartFilters]);
+
   const userOverrideCount = assumptions.filter(a => a.currentValueSource === "user_override").length;
   // Monotonic version number: count of assumption_overridden audit events
   const versionNumber = (auditLog ?? []).filter((e: AuditLogEntry) => e.eventType === "assumption_overridden").length;
@@ -969,6 +1048,17 @@ export function ForecastReportContent({ id }: { id: string }) {
             >
               <Activity className="h-3.5 w-3.5" />
               Audit
+            </Button>
+            <Button
+              onClick={handleExportPptx}
+              disabled={exportingPptx}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:text-cyan-300 hover:bg-cyan-950/20 border border-white/10"
+              title="Export with native editable charts"
+            >
+              {exportingPptx ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
+              PowerPoint
             </Button>
             <Button
               onClick={handleExportPdf}
@@ -1105,6 +1195,15 @@ export function ForecastReportContent({ id }: { id: string }) {
             queryKey={reportQueryKey}
           />
         </div>
+
+        {/* Interactive charts panel */}
+        {chartData && chartFilters && (
+          <ForecastChartsPanel
+            data={chartData}
+            filters={chartFilters}
+            onFiltersChange={setChartFilters}
+          />
+        )}
 
         {/* Two-column: scenarios + top assumptions */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">

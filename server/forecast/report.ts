@@ -31,6 +31,32 @@ export interface ReportSection {
   content: string;
 }
 
+export interface ReportChartData {
+  baseYear: number;
+  horizonYear: number;
+  currency: string;
+  scenarioPaths: {
+    base: Record<string, number>;
+    bull: Record<string, number>;
+    bear: Record<string, number>;
+  };
+  segmentScenarios: {
+    base: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+    bull: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+    bear: { segmentId: string; name: string; forecastPath: Record<string, number> }[];
+  };
+  sensitivityTable: {
+    assumptionId: string;
+    description: string;
+    baseValue: number;
+    unit: string;
+    delta_minus_25pct: number;
+    delta_minus_10pct: number;
+    delta_plus_10pct: number;
+    delta_plus_25pct: number;
+  }[];
+}
+
 export interface ReportOutput {
   sections: ReportSection[];
   engineSummary: {
@@ -50,7 +76,43 @@ export interface ReportOutput {
     degraded?: boolean;
     warnings?: string[];
   };
+  chartData?: ReportChartData;
   generatedAt: string;
+}
+
+export function buildChartData(engine: EngineOutput, baseYear: number, horizonYear: number, currency: string): ReportChartData {
+  const stringifyPath = (p: Record<number, number>): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(p)) out[String(k)] = v;
+    return out;
+  };
+  const mapSeg = (segs: { segmentId: string; name: string; forecastPath: Record<number, number> }[]) =>
+    segs.map(s => ({ segmentId: s.segmentId, name: s.name, forecastPath: stringifyPath(s.forecastPath) }));
+  return {
+    baseYear,
+    horizonYear,
+    currency,
+    scenarioPaths: {
+      base: stringifyPath(engine.baseScenario.totalForecastPath),
+      bull: stringifyPath(engine.bullScenario.totalForecastPath),
+      bear: stringifyPath(engine.bearScenario.totalForecastPath),
+    },
+    segmentScenarios: {
+      base: mapSeg(engine.baseScenario.segmentForecasts),
+      bull: mapSeg(engine.bullScenario.segmentForecasts),
+      bear: mapSeg(engine.bearScenario.segmentForecasts),
+    },
+    sensitivityTable: engine.sensitivityTable.map(r => ({
+      assumptionId: r.assumptionId,
+      description: r.description,
+      baseValue: r.baseValue,
+      unit: r.unit,
+      delta_minus_25pct: r.delta_minus_25pct,
+      delta_minus_10pct: r.delta_minus_10pct,
+      delta_plus_10pct: r.delta_plus_10pct,
+      delta_plus_25pct: r.delta_plus_25pct,
+    })),
+  };
 }
 
 // ── Typed schema for crux scenarioValues JSONB ────────────────────────────────
@@ -962,6 +1024,7 @@ export async function generateReport(
           degraded: true,
           warnings,
         },
+        chartData: buildChartData(engine, baseYear, horizonYear, currency),
         generatedAt: new Date().toISOString(),
       };
     }
@@ -982,6 +1045,7 @@ export async function generateReport(
       degraded: false,
       warnings: [],
     },
+    chartData: buildChartData(engine, baseYear, horizonYear, currency),
     generatedAt: new Date().toISOString(),
   };
 }
