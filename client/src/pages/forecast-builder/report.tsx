@@ -38,9 +38,13 @@ import {
   SegmentStackedAreaChart,
   SensitivityTornadoChart,
   SegmentTreemap,
+  serializeSvgWithBackground,
+  svgToPngBlob,
+  slugify as slugifyChart,
   type ChartData,
   type ChartFilters,
 } from "@/components/forecast/charts";
+import { buildZip, type ZipEntry } from "@/lib/zip";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -772,6 +776,8 @@ export function ForecastReportContent({ id }: { id: string }) {
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
   const [exportingPptx, setExportingPptx] = useState(false);
+  const [exportingCharts, setExportingCharts] = useState(false);
+  const reportContentRef = useRef<HTMLDivElement | null>(null);
   const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(new Set([1, 2]));
   const [panelView, setPanelView] = useState<PanelView>(null);
   const [chartFilters, setChartFilters] = useState<ChartFilters | null>(null);
@@ -900,6 +906,45 @@ export function ForecastReportContent({ id }: { id: string }) {
       toast({ title: "Export failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
       setExportingPptx(false);
+    }
+  }
+
+  async function handleExportAllCharts() {
+    setExportingCharts(true);
+    try {
+      const root: ParentNode = reportContentRef.current ?? document;
+      const svgs = Array.from(
+        root.querySelectorAll<SVGSVGElement>("svg[data-chart-export-name]"),
+      );
+      if (svgs.length === 0) {
+        toast({ title: "No charts to export", variant: "destructive" });
+        return;
+      }
+      const entries: ZipEntry[] = [];
+      const enc = new TextEncoder();
+      for (const svg of svgs) {
+        const baseName = svg.getAttribute("data-chart-export-name") || "chart";
+        const { xml } = serializeSvgWithBackground(svg);
+        entries.push({ name: `${baseName}.svg`, data: enc.encode(xml) });
+        const png = await svgToPngBlob(svg);
+        if (png) {
+          entries.push({ name: `${baseName}.png`, data: new Uint8Array(await png.arrayBuffer()) });
+        }
+      }
+      const zipBlob = buildZip(entries);
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slugifyChart(data?.forecast.title ?? "forecast")}_charts.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: `Downloaded ${svgs.length} chart${svgs.length === 1 ? "" : "s"}` });
+    } catch (err: unknown) {
+      toast({ title: "Chart export failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setExportingCharts(false);
     }
   }
 
@@ -1032,7 +1077,7 @@ export function ForecastReportContent({ id }: { id: string }) {
       )}
 
       {/* Main content — shifts right when panel is open, fully interactive */}
-      <div className={`max-w-5xl mx-auto transition-[margin] duration-300 ${panelView ? "mr-[26rem]" : ""}`}>
+      <div ref={reportContentRef} className={`max-w-5xl mx-auto transition-[margin] duration-300 ${panelView ? "mr-[26rem]" : ""}`}>
         {/* Header row */}
         <div className="flex items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -1077,6 +1122,18 @@ export function ForecastReportContent({ id }: { id: string }) {
             >
               <Activity className="h-3.5 w-3.5" />
               Audit
+            </Button>
+            <Button
+              onClick={handleExportAllCharts}
+              disabled={exportingCharts}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:text-cyan-300 hover:bg-cyan-950/20 border border-white/10"
+              title="Download all four charts as PNG + SVG in a zip"
+              data-testid="button-download-all-charts"
+            >
+              {exportingCharts ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
+              All Charts
             </Button>
             <Button
               onClick={handleExportPptx}

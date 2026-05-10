@@ -88,7 +88,7 @@ const SEGMENT_PALETTE = [
 
 // ── Chart download helpers ─────────────────────────────────────────────────
 
-function slugify(s: string): string {
+export function slugify(s: string): string {
   return (
     s
       .toLowerCase()
@@ -98,7 +98,7 @@ function slugify(s: string): string {
   );
 }
 
-function serializeSvgWithBackground(svg: SVGSVGElement): { xml: string; width: number; height: number } {
+export function serializeSvgWithBackground(svg: SVGSVGElement): { xml: string; width: number; height: number } {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
@@ -136,10 +136,9 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-async function renderSvgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
+export async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
   const { xml, width, height } = serializeSvgWithBackground(svg);
-  const dataUrl =
-    "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+  const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
   const img = new Image();
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
@@ -155,9 +154,7 @@ async function renderSvgToPngBlob(svg: SVGSVGElement): Promise<Blob | null> {
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return await new Promise<Blob | null>(resolve =>
-    canvas.toBlob(blob => resolve(blob), "image/png"),
-  );
+  return await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), "image/png"));
 }
 
 async function copyChartToClipboard(svg: SVGSVGElement | null): Promise<void> {
@@ -165,7 +162,7 @@ async function copyChartToClipboard(svg: SVGSVGElement | null): Promise<void> {
   if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
     throw new Error("Your browser does not support copying images to the clipboard. Try the PNG download instead.");
   }
-  const blob = await renderSvgToPngBlob(svg);
+  const blob = await svgToPngBlob(svg);
   if (!blob) throw new Error("Failed to render chart image");
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
@@ -588,7 +585,7 @@ export function ScenarioFanChart({ data, filters, forecastTitle }: { data: Chart
         </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Total market value across the forecast horizon. Hover for year-level detail.</p>
-      <svg ref={ref} className="w-full block" height={280} />
+      <svg ref={ref} className="w-full block" height={280} data-chart-export-name={baseName} />
     </div>
   );
 }
@@ -684,7 +681,7 @@ export function SegmentStackedAreaChart({ data, filters, forecastTitle }: { data
         </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Stacked contribution of each segment to the total.</p>
-      <svg ref={ref} className="w-full block" height={280} />
+      <svg ref={ref} className="w-full block" height={280} data-chart-export-name={baseName} />
     </div>
   );
 }
@@ -833,7 +830,7 @@ export function SensitivityTornadoChart({ data, filters, topN = 10, forecastTitl
       <p className="text-xs text-slate-500 mb-3">
         Impact on {horizonForLabel} total when each assumption moves ±10% (solid) or ±25% (light).
       </p>
-      <svg ref={ref} className="w-full block" />
+      <svg ref={ref} className="w-full block" data-chart-export-name={baseName} />
     </div>
   );
 }
@@ -937,7 +934,7 @@ export function SegmentTreemap({ data, filters, forecastTitle }: { data: ChartDa
         </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Relative size of each segment at the selected horizon year.</p>
-      <svg ref={ref} className="w-full block" />
+      <svg ref={ref} className="w-full block" data-chart-export-name={baseName} />
     </div>
   );
 }
