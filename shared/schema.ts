@@ -1032,6 +1032,8 @@ export const forecasts = pgTable("forecasts", {
       internalConsistency: boolean;
       schemaCompleteness: boolean;
       narrativeCoherence: boolean;
+      degraded?: boolean;
+      warnings?: string[];
     };
     generatedAt: string;
   }>(),

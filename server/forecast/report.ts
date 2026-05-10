@@ -44,6 +44,11 @@ export interface ReportOutput {
     internalConsistency: boolean;
     schemaCompleteness: boolean;
     narrativeCoherence: boolean;
+    // When true, one or more narrative QC gates failed even after a targeted
+    // retry. The deterministic engine output (bull/base/bear) is still
+    // accurate — only the AI-written prose has issues.
+    degraded?: boolean;
+    warnings?: string[];
   };
   generatedAt: string;
 }
@@ -914,34 +919,51 @@ export async function generateReport(
     const proseResult2 = qcProseNumbers(sections, engine);
     const ncResult2    = await qcNarrativeCoherence(client, sections, topDriverIdShort, topDriverDesc);
 
-    if (!numTrace2.passed || !traceResult2.passed || !proseResult2.passed || !ncResult2.coherent) {
-      const issues: string[] = [];
-      if (!numTrace2.passed) {
-        issues.push(
-          `Number traceability: ${numTrace2.untracedSentences.length} sentence(s) contain ` +
-          `numeric figures without adjacent assumption ID tags — ` +
-          numTrace2.untracedSentences.slice(0, 2).join("; ")
-        );
-      }
-      if (!traceResult2.passed) {
-        issues.push(
-          `Tag validity: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
-          `in sections ${traceResult2.failingSections.join(", ")}`
-        );
-      }
-      if (!proseResult2.passed) {
-        issues.push(
-          `Prose-number range: sections ${proseResult2.failingSections.join(", ")} ` +
-          `contain figures outside the engine output range`
-        );
-      }
-      if (!ncResult2.coherent) {
-        issues.push(`Narrative coherence: ${ncResult2.issue ?? "contradictions found"}`);
-      }
-      throw new Error(
-        `Build blocked — QC failed after targeted retry: ${issues.join("; ")}. ` +
-        `Review the failing sections and re-run the build.`
+    // Degraded-mode fallback: deliver the report even if narrative QC still
+    // fails after the targeted retry. The deterministic engine numbers
+    // (bull/base/bear scenario paths) are unaffected by prose quality, so the
+    // user still gets a usable forecast — we just flag the failing gates as
+    // warnings so the UI can surface them honestly.
+    const warnings: string[] = [];
+    if (!numTrace2.passed) {
+      warnings.push(
+        `Number traceability: ${numTrace2.untracedSentences.length} sentence(s) contain ` +
+        `numeric figures without adjacent assumption ID tags — ` +
+        numTrace2.untracedSentences.slice(0, 2).join("; ")
       );
+    }
+    if (!traceResult2.passed) {
+      warnings.push(
+        `Tag validity: unknown assumption ID tags ${traceResult2.badTags.join(", ")} ` +
+        `in sections ${traceResult2.failingSections.join(", ")}`
+      );
+    }
+    if (!proseResult2.passed) {
+      warnings.push(
+        `Prose-number range: sections ${proseResult2.failingSections.join(", ")} ` +
+        `contain figures outside the engine output range`
+      );
+    }
+    if (!ncResult2.coherent) {
+      warnings.push(`Narrative coherence: ${ncResult2.issue ?? "contradictions found"}`);
+    }
+
+    if (warnings.length > 0) {
+      console.warn(`[Report] Forecast completed with ${warnings.length} QC warning(s):`, warnings);
+      const finalInternalConsistency =
+        qcInternalConsistency(engine) && proseResult2.passed;
+      return {
+        sections,
+        engineSummary: { baseTotal, bullTotal, bearTotal, horizonYear, baseCagr },
+        qcStatus: {
+          internalConsistency: finalInternalConsistency,
+          schemaCompleteness: numTrace2.passed && traceResult2.passed,
+          narrativeCoherence: ncResult2.coherent,
+          degraded: true,
+          warnings,
+        },
+        generatedAt: new Date().toISOString(),
+      };
     }
   }
 
@@ -957,6 +979,8 @@ export async function generateReport(
       internalConsistency: finalInternalConsistency,
       schemaCompleteness: qcSchemaCompleteness(forecast, sections), // includes traceability
       narrativeCoherence: true, // reaches here only if passed
+      degraded: false,
+      warnings: [],
     },
     generatedAt: new Date().toISOString(),
   };

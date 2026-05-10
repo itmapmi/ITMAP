@@ -287,15 +287,28 @@ export async function runBuildPipeline(
       }
     );
 
-    // 9. QC Pass 3 — narrative coherence (blocking gate; report.ts throws if not passed)
-    // At this point we have already returned from generateReport successfully,
-    // meaning all four QC gates (number traceability, tag validity, prose-number
-    // range, narrative coherence) passed. The value is always true here.
-    emit({
-      type: "qc_result",
-      step: "narrative_coherence",
-      message: "Narrative coherence: passed (blocking gate cleared)",
-    });
+    // 9. QC Pass 3 — narrative coherence + traceability gates.
+    // The report can come back in two states:
+    //   (a) all four gates passed → qcStatus.degraded === false
+    //   (b) at least one gate still failing after targeted retry → degraded
+    //       fallback: report is still delivered (engine output is deterministic
+    //       and unaffected by prose), but warnings are surfaced to the user.
+    if (report.qcStatus.degraded) {
+      emit({
+        type: "qc_result",
+        step: "narrative_coherence",
+        message:
+          `Completed with ${report.qcStatus.warnings?.length ?? 0} QC warning(s) — ` +
+          `bull/base/bear scenario numbers are accurate, but the AI narrative has issues: ` +
+          (report.qcStatus.warnings ?? []).join("; "),
+      });
+    } else {
+      emit({
+        type: "qc_result",
+        step: "narrative_coherence",
+        message: "Narrative coherence: passed (blocking gate cleared)",
+      });
+    }
 
     // 10. Save report + advance to complete
     emit({ type: "progress", step: "saving", message: "Saving report and completing forecast…" });

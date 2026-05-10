@@ -53,6 +53,8 @@ interface QcStatus {
   internalConsistency: boolean;
   schemaCompleteness: boolean;
   narrativeCoherence: boolean;
+  degraded?: boolean;
+  warnings?: string[];
 }
 
 interface ReportSections {
@@ -1072,6 +1074,28 @@ export function ForecastReportContent({ id }: { id: string }) {
             <QcBadge label="Schema completeness" passed={rpt.qcStatus.schemaCompleteness} />
             <QcBadge label="Narrative coherence" passed={rpt.qcStatus.narrativeCoherence} />
           </div>
+
+          {/* Degraded-mode warning banner — engine output is still accurate,
+              but the AI-written narrative has unresolved QC issues. */}
+          {rpt.qcStatus.degraded && (rpt.qcStatus.warnings?.length ?? 0) > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 mt-2">
+              <div className="flex items-start gap-3">
+                <div className="text-amber-400 text-sm font-semibold">
+                  Forecast completed with narrative warnings
+                </div>
+              </div>
+              <p className="text-xs text-amber-200/80 mt-1">
+                The deterministic engine output (bull, base, bear scenario numbers) is accurate.
+                The AI-written narrative did not pass all quality checks even after a retry —
+                please read the prose with extra care.
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-amber-100/90 list-disc list-inside">
+                {(rpt.qcStatus.warnings ?? []).map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Forecast-level re-debate control */}
           <ReDebateControl
