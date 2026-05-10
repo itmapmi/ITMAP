@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as d3 from "d3";
 
 export interface ChartScenarioPaths {
@@ -84,6 +84,123 @@ const SEGMENT_PALETTE = [
   "#22d3ee", "#a78bfa", "#34d399", "#fbbf24", "#fb7185",
   "#60a5fa", "#f472b6", "#facc15", "#4ade80", "#c084fc",
 ];
+
+// ── Chart download helpers ─────────────────────────────────────────────────
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "forecast"
+  );
+}
+
+function serializeSvgWithBackground(svg: SVGSVGElement): { xml: string; width: number; height: number } {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+  const vb = svg.viewBox.baseVal;
+  const width = vb && vb.width ? vb.width : svg.clientWidth || 800;
+  const height = vb && vb.height ? vb.height : svg.clientHeight || 400;
+
+  if (!clone.getAttribute("viewBox")) {
+    clone.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  }
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
+
+  // Background rect that matches the dark card so exports don't look transparent.
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("x", "0");
+  bg.setAttribute("y", "0");
+  bg.setAttribute("width", "100%");
+  bg.setAttribute("height", "100%");
+  bg.setAttribute("fill", "#0f172a");
+  clone.insertBefore(bg, clone.firstChild);
+
+  return { xml: new XMLSerializer().serializeToString(clone), width, height };
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadChartImage(
+  svg: SVGSVGElement | null,
+  baseName: string,
+  format: "png" | "svg",
+): Promise<void> {
+  if (!svg) return;
+  const { xml, width, height } = serializeSvgWithBackground(svg);
+
+  if (format === "svg") {
+    triggerDownload(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }), `${baseName}.svg`);
+    return;
+  }
+
+  const dataUrl =
+    "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Failed to render SVG"));
+    img.src = dataUrl;
+  });
+
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  await new Promise<void>(resolve =>
+    canvas.toBlob(
+      blob => {
+        if (blob) triggerDownload(blob, `${baseName}.png`);
+        resolve();
+      },
+      "image/png",
+    ),
+  );
+}
+
+function ChartDownloadButtons({
+  svgRef,
+  baseName,
+}: {
+  svgRef: RefObject<SVGSVGElement>;
+  baseName: string;
+}) {
+  const onClick = (format: "png" | "svg") => () => {
+    void downloadChartImage(svgRef.current, baseName, format);
+  };
+  const cls =
+    "px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/10 bg-slate-800/60 text-slate-400 hover:text-white hover:border-white/20 transition-colors";
+  return (
+    <div className="flex items-center gap-1 ml-2">
+      <button type="button" onClick={onClick("png")} className={cls} title="Download chart as PNG" data-testid={`button-download-${baseName}-png`}>
+        PNG
+      </button>
+      <button type="button" onClick={onClick("svg")} className={cls} title="Download chart as SVG" data-testid={`button-download-${baseName}-svg`}>
+        SVG
+      </button>
+    </div>
+  );
+}
 
 // ── Filter Bar ──────────────────────────────────────────────────────────────
 
@@ -255,7 +372,7 @@ function yearsInRange(filters: ChartFilters): number[] {
 
 // ── Scenario Fan Chart ─────────────────────────────────────────────────────
 
-export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: ChartFilters }) {
+export function ScenarioFanChart({ data, filters, forecastTitle }: { data: ChartData; filters: ChartFilters; forecastTitle?: string }) {
   const ref = useRef<SVGSVGElement | null>(null);
   const [w, setW] = useState(640);
 
@@ -396,14 +513,18 @@ export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: 
     }).on("mouseleave", () => tooltip.style("display", "none"));
   }, [data, filters, w]);
 
+  const baseName = `${slugify(forecastTitle ?? "forecast")}_scenario-fan_${filters.scenario}`;
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-sm font-semibold text-white">Scenario Fan — Bull / Base / Bear</h3>
-        <span className="text-[11px] text-slate-500 capitalize">
-          {filters.scenario} highlighted
-          {filters.segmentIds.size > 0 ? ` · ${filters.segmentIds.size} segment${filters.segmentIds.size === 1 ? "" : "s"}` : ""}
-        </span>
+        <div className="flex items-center">
+          <span className="text-[11px] text-slate-500 capitalize">
+            {filters.scenario} highlighted
+            {filters.segmentIds.size > 0 ? ` · ${filters.segmentIds.size} segment${filters.segmentIds.size === 1 ? "" : "s"}` : ""}
+          </span>
+          <ChartDownloadButtons svgRef={ref} baseName={baseName} />
+        </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Total market value across the forecast horizon. Hover for year-level detail.</p>
       <svg ref={ref} className="w-full block" height={280} />
@@ -413,7 +534,7 @@ export function ScenarioFanChart({ data, filters }: { data: ChartData; filters: 
 
 // ── Segment Stacked Area Chart ─────────────────────────────────────────────
 
-export function SegmentStackedAreaChart({ data, filters }: { data: ChartData; filters: ChartFilters }) {
+export function SegmentStackedAreaChart({ data, filters, forecastTitle }: { data: ChartData; filters: ChartFilters; forecastTitle?: string }) {
   const ref = useRef<SVGSVGElement | null>(null);
   const [w, setW] = useState(640);
 
@@ -491,11 +612,15 @@ export function SegmentStackedAreaChart({ data, filters }: { data: ChartData; fi
     g.selectAll(".domain, .tick line").attr("stroke", "#1e293b");
   }, [data, filters, visibleSegments, w]);
 
+  const baseName = `${slugify(forecastTitle ?? "forecast")}_segment-mix_${filters.scenario}`;
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-sm font-semibold text-white">Segment Mix Over Time</h3>
-        <span className="text-[11px] text-slate-500 capitalize">{filters.scenario} scenario</span>
+        <div className="flex items-center">
+          <span className="text-[11px] text-slate-500 capitalize">{filters.scenario} scenario</span>
+          <ChartDownloadButtons svgRef={ref} baseName={baseName} />
+        </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Stacked contribution of each segment to the total.</p>
       <svg ref={ref} className="w-full block" height={280} />
@@ -505,7 +630,7 @@ export function SegmentStackedAreaChart({ data, filters }: { data: ChartData; fi
 
 // ── Sensitivity Tornado Chart ──────────────────────────────────────────────
 
-export function SensitivityTornadoChart({ data, filters, topN = 10 }: { data: ChartData; filters?: ChartFilters; topN?: number }) {
+export function SensitivityTornadoChart({ data, filters, topN = 10, forecastTitle }: { data: ChartData; filters?: ChartFilters; topN?: number; forecastTitle?: string }) {
   const horizonForLabel = filters?.yearRange[1] ?? data.horizonYear;
   const ref = useRef<SVGSVGElement | null>(null);
   const [w, setW] = useState(640);
@@ -637,9 +762,13 @@ export function SensitivityTornadoChart({ data, filters, topN = 10 }: { data: Ch
     g.selectAll(".domain, .tick line").attr("stroke", "#1e293b");
   }, [ranked, data.currency, w]);
 
+  const baseName = `${slugify(forecastTitle ?? "forecast")}_sensitivity-tornado`;
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-white mb-1">Sensitivity Tornado</h3>
+      <div className="flex items-baseline justify-between mb-1">
+        <h3 className="text-sm font-semibold text-white">Sensitivity Tornado</h3>
+        <ChartDownloadButtons svgRef={ref} baseName={baseName} />
+      </div>
       <p className="text-xs text-slate-500 mb-3">
         Impact on {horizonForLabel} total when each assumption moves ±10% (solid) or ±25% (light).
       </p>
@@ -650,7 +779,7 @@ export function SensitivityTornadoChart({ data, filters, topN = 10 }: { data: Ch
 
 // ── Segment Treemap ────────────────────────────────────────────────────────
 
-export function SegmentTreemap({ data, filters }: { data: ChartData; filters: ChartFilters }) {
+export function SegmentTreemap({ data, filters, forecastTitle }: { data: ChartData; filters: ChartFilters; forecastTitle?: string }) {
   const ref = useRef<SVGSVGElement | null>(null);
   const [w, setW] = useState(640);
 
@@ -736,11 +865,15 @@ export function SegmentTreemap({ data, filters }: { data: ChartData; filters: Ch
     });
   }, [data, filters, w]);
 
+  const baseName = `${slugify(forecastTitle ?? "forecast")}_segment-treemap_${filters.scenario}_${filters.yearRange[1]}`;
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-sm font-semibold text-white">Segment Composition · {filters.yearRange[1]}</h3>
-        <span className="text-[11px] text-slate-500 capitalize">{filters.scenario} scenario</span>
+        <div className="flex items-center">
+          <span className="text-[11px] text-slate-500 capitalize">{filters.scenario} scenario</span>
+          <ChartDownloadButtons svgRef={ref} baseName={baseName} />
+        </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Relative size of each segment at the selected horizon year.</p>
       <svg ref={ref} className="w-full block" />
@@ -755,20 +888,22 @@ export function ForecastChartsPanel({
   filters,
   onFiltersChange,
   segmentTree,
+  forecastTitle,
 }: {
   data: ChartData;
   filters: ChartFilters;
   onFiltersChange: (next: ChartFilters) => void;
   segmentTree?: SegmentTreeNode[];
+  forecastTitle?: string;
 }) {
   return (
     <div className="space-y-4 mb-8">
       <FilterBar data={data} filters={filters} onChange={onFiltersChange} segmentTree={segmentTree} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ScenarioFanChart data={data} filters={filters} />
-        <SegmentStackedAreaChart data={data} filters={filters} />
-        <SensitivityTornadoChart data={data} filters={filters} />
-        <SegmentTreemap data={data} filters={filters} />
+        <ScenarioFanChart data={data} filters={filters} forecastTitle={forecastTitle} />
+        <SegmentStackedAreaChart data={data} filters={filters} forecastTitle={forecastTitle} />
+        <SensitivityTornadoChart data={data} filters={filters} forecastTitle={forecastTitle} />
+        <SegmentTreemap data={data} filters={filters} forecastTitle={forecastTitle} />
       </div>
     </div>
   );

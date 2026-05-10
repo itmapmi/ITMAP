@@ -1364,16 +1364,16 @@ export function ForecastReportContent({ id }: { id: string }) {
               let inlineChart: React.ReactNode = null;
               if (chartData && chartFilters) {
                 if (section.id === 1) {
-                  inlineChart = <ScenarioFanChart data={chartData} filters={chartFilters} />;
+                  inlineChart = <ScenarioFanChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />;
                 } else if (section.id === 5) {
                   inlineChart = (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      <SegmentStackedAreaChart data={chartData} filters={chartFilters} />
-                      <SegmentTreemap data={chartData} filters={chartFilters} />
+                      <SegmentStackedAreaChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
+                      <SegmentTreemap data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
                     </div>
                   );
                 } else if (section.id === 7) {
-                  inlineChart = <SensitivityTornadoChart data={chartData} filters={chartFilters} />;
+                  inlineChart = <SensitivityTornadoChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />;
                 }
               }
 
