@@ -9,13 +9,17 @@ import type { Objection } from "./phase3-2";
 
 // ── Zod schema ─────────────────────────────────────────────────────────────
 
+// The judge LLM occasionally returns null for analystAValue / analystBValue when
+// it can't read the value off the analyst draft. Those nulls are recoverable —
+// the runPhase33 backfill (findAssumptionValue) looks them up from the draft —
+// so we accept nullable numbers here and only drop the crux if backfill also fails.
 export const IdentifiedCruxSchema = z.object({
   assumptionId: z.string(),
   assumptionName: z.string(),
-  analystAValue: z.number(),
+  analystAValue: z.number().nullable().default(null),
   analystAUnit: z.string().default(""),
   analystAReasoning: z.string().default(""),
-  analystBValue: z.number(),
+  analystBValue: z.number().nullable().default(null),
   analystBUnit: z.string().default(""),
   analystBReasoning: z.string().default(""),
   divergencePct: z.number().min(0),
@@ -25,7 +29,10 @@ export const IdentifiedCruxSchema = z.object({
   rank: z.number().int().min(1),
 });
 
-export type IdentifiedCrux = z.infer<typeof IdentifiedCruxSchema>;
+export type IdentifiedCrux = z.infer<typeof IdentifiedCruxSchema> & {
+  analystAValue: number;
+  analystBValue: number;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -177,16 +184,25 @@ export async function runPhase33(
 ): Promise<IdentifiedCrux[]> {
   const cruxes = await withRetry((attempt) => identifyCruxes(analystA, analystB, objections, openaiKey, openaiBaseUrl, attempt));
 
-  // Backfill any missing analystA/B values from the actual draft data
-  return cruxes.map(c => {
+  // Backfill any missing analystA/B values from the actual draft data, then
+  // drop cruxes whose values still can't be resolved — the engine needs numbers.
+  const resolved: IdentifiedCrux[] = [];
+  for (const c of cruxes) {
     const aVal = findAssumptionValue(analystA, c.assumptionId);
     const bVal = findAssumptionValue(analystB, c.assumptionId);
-    return {
+    const finalA = aVal ? aVal.value : c.analystAValue;
+    const finalB = bVal ? bVal.value : c.analystBValue;
+    if (finalA == null || finalB == null) {
+      console.warn(`[Phase3-3] Crux "${c.assumptionId}" has no resolvable analyst values — dropping`);
+      continue;
+    }
+    resolved.push({
       ...c,
-      analystAValue: aVal ? aVal.value : c.analystAValue,
+      analystAValue: finalA,
       analystAUnit: aVal ? aVal.unit : c.analystAUnit,
-      analystBValue: bVal ? bVal.value : c.analystBValue,
+      analystBValue: finalB,
       analystBUnit: bVal ? bVal.unit : c.analystBUnit,
-    };
-  });
+    });
+  }
+  return resolved;
 }
