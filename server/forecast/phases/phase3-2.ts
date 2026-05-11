@@ -11,6 +11,7 @@ import {
   SYSTEM_ROLE_HISTORIAN,
 } from "./phase3-prompts";
 import type { ForecastDraft } from "./phase3-1";
+import { formatEvidencePackForPrompt, type MarketScanEvidence } from "./market-scan";
 
 // ── Zod schema ─────────────────────────────────────────────────────────────
 
@@ -90,13 +91,14 @@ async function callRoleOpenAI(
   systemPrompt: string,
   contextStr: string,
   draftsStr: string,
+  evidenceStr: string,
   openaiKey: string,
   openaiBaseUrl: string | undefined
 ): Promise<Objection[]> {
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
 
   // Ask model to wrap the array in an object so json_object mode works reliably
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
@@ -138,11 +140,12 @@ async function callRoleAnthropic(
   systemPrompt: string,
   contextStr: string,
   draftsStr: string,
+  evidenceStr: string,
   anthropicKey: string
 ): Promise<Objection[]> {
   const client = new Anthropic({ apiKey: anthropicKey });
 
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nRespond with ONLY a JSON array of objection objects. No markdown, no explanation.`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nRespond with ONLY a JSON array of objection objects. No markdown, no explanation.`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
@@ -179,11 +182,12 @@ async function callRoleOpenAIFallback(
   systemPrompt: string,
   contextStr: string,
   draftsStr: string,
+  evidenceStr: string,
   openaiKey: string,
   openaiBaseUrl: string | undefined
 ): Promise<Objection[]> {
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
@@ -251,29 +255,31 @@ export async function runPhase32(
   analystB: ForecastDraft,
   openaiKey: string,
   openaiBaseUrl: string | undefined,
-  anthropicKey: string | undefined
+  anthropicKey: string | undefined,
+  evidencePack?: MarketScanEvidence
 ): Promise<Phase32Result> {
   const contextStr = buildContextString(context);
   const draftsStr = buildDraftsContext(analystA, analystB);
+  const evidenceStr = formatEvidencePackForPrompt(evidencePack);
 
   const [bearResult, bullResult, methodResult, histResult] = await Promise.all([
     runRoleWithResult("bear", () =>
-      callRoleOpenAI("bear", SYSTEM_ROLE_BEAR, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+      callRoleOpenAI("bear", SYSTEM_ROLE_BEAR, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl)
     ),
     runRoleWithResult("bull", () =>
       anthropicKey
-        ? callRoleAnthropic("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, anthropicKey)
-            .catch(() => callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl))
-        : callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+        ? callRoleAnthropic("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, evidenceStr, anthropicKey)
+            .catch(() => callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl))
+        : callRoleOpenAIFallback("bull", SYSTEM_ROLE_BULL, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl)
     ),
     runRoleWithResult("methodologist", () =>
-      callRoleOpenAI("methodologist", SYSTEM_ROLE_METHODOLOGIST, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+      callRoleOpenAI("methodologist", SYSTEM_ROLE_METHODOLOGIST, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl)
     ),
     runRoleWithResult("historian", () =>
       anthropicKey
-        ? callRoleAnthropic("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, anthropicKey)
-            .catch(() => callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl))
-        : callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, openaiKey, openaiBaseUrl)
+        ? callRoleAnthropic("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, evidenceStr, anthropicKey)
+            .catch(() => callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl))
+        : callRoleOpenAIFallback("historian", SYSTEM_ROLE_HISTORIAN, contextStr, draftsStr, evidenceStr, openaiKey, openaiBaseUrl)
     ),
   ]);
 

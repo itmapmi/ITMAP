@@ -8,6 +8,7 @@ import {
   SYSTEM_ANALYST_A,
   SYSTEM_ANALYST_B,
 } from "./phase3-prompts";
+import { formatEvidencePackForPrompt, type MarketScanEvidence } from "./market-scan";
 
 // ── Zod schema ─────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ Respond with ONLY the corrected JSON object. Do not include any explanation outs
 async function generateDraftOpenAI(
   persona: "analyst-a" | "analyst-b",
   context: DebateContext,
+  evidencePack: MarketScanEvidence | undefined,
   openaiKey: string,
   openaiBaseUrl: string | undefined,
   attempt: number
@@ -136,7 +138,8 @@ async function generateDraftOpenAI(
 
   const systemPrompt = persona === "analyst-a" ? SYSTEM_ANALYST_A : SYSTEM_ANALYST_B;
   const contextStr = buildContextString(context);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "${persona}".${constrainedRetryHint(attempt)}`;
+  const evidenceStr = formatEvidencePackForPrompt(evidencePack);
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "${persona}".${constrainedRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
@@ -161,12 +164,14 @@ async function generateDraftOpenAI(
 
 async function generateDraftAnthropic(
   context: DebateContext,
+  evidencePack: MarketScanEvidence | undefined,
   anthropicKey: string,
   attempt: number
 ): Promise<ForecastDraft> {
   const client = new Anthropic({ apiKey: anthropicKey });
   const contextStr = buildContextString(context);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b". Respond with ONLY a valid JSON object — no markdown fence, no explanation.${constrainedRetryHint(attempt)}`;
+  const evidenceStr = formatEvidencePackForPrompt(evidencePack);
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-b". Respond with ONLY a valid JSON object — no markdown fence, no explanation.${constrainedRetryHint(attempt)}`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
@@ -195,19 +200,20 @@ export async function runPhase31(
   context: DebateContext,
   openaiKey: string,
   openaiBaseUrl: string | undefined,
-  anthropicKey: string | undefined
+  anthropicKey: string | undefined,
+  evidencePack?: MarketScanEvidence
 ): Promise<Phase31Result> {
   let anthropicSucceeded = false;
 
   const [analystA, analystB] = await Promise.all([
-    withRetry((attempt) => generateDraftOpenAI("analyst-a", context, openaiKey, openaiBaseUrl, attempt)),
+    withRetry((attempt) => generateDraftOpenAI("analyst-a", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
     anthropicKey
-      ? withRetry((attempt) => generateDraftAnthropic(context, anthropicKey, attempt))
+      ? withRetry((attempt) => generateDraftAnthropic(context, evidencePack, anthropicKey, attempt))
           .then(draft => { anthropicSucceeded = true; return draft; })
           .catch(() =>
-            withRetry((attempt) => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl, attempt))
+            withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt))
           )
-      : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, openaiKey, openaiBaseUrl, attempt)),
+      : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
   ]);
 
   // usedFallback = true when Anthropic was requested but fell back to OpenAI,

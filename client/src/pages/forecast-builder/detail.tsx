@@ -1190,6 +1190,7 @@ function ReviewKV({ k, v }: { k: string; v: string }) {
 // ── Phase 3: Debate step (live SSE) ──────────────────────────────────────
 
 const PHASE_LABELS: Record<number, string> = {
+  0: "Market scan",
   1: "Independent drafts",
   2: "Role critiques",
   3: "Crux identification",
@@ -1317,7 +1318,7 @@ function DebateStep({
     return () => { ctrl.abort(); };
   }, [forecast.id]);
 
-  const PHASE_STEPS = [1, 2, 3, 4, 5];
+  const PHASE_STEPS = [0, 1, 2, 3, 4, 5];
 
   return (
     <div className="max-w-2xl">

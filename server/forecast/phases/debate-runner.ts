@@ -27,6 +27,7 @@ import { runPhase32, type Objection } from "./phase3-2";
 import { runPhase33, type IdentifiedCrux } from "./phase3-3";
 import { runPhase34, type ResolvedCrux } from "./phase3-4";
 import { runPhase35, type ValidatedCrux } from "./phase3-5";
+import { runMarketScan, type MarketScanEvidence } from "./market-scan";
 import type { DebateContext } from "./phase3-prompts";
 
 // ── SSE helpers ────────────────────────────────────────────────────────────
@@ -94,6 +95,36 @@ export async function runDebate(
   let identifiedCruxes: IdentifiedCrux[] = [];
   let resolvedCruxes: ResolvedCrux[] = [];
   let validatedCruxes: ValidatedCrux[] = [];
+  let evidencePack: MarketScanEvidence | undefined;
+
+  // ── Phase 3.0: Market scan (best-effort web research) ─────────────────
+
+  send({ type: "phase_start", phase: 0, label: "Market scan" });
+  progress(0, "Gathering current market research, vendor moves, and trend signals via web search…");
+
+  try {
+    evidencePack = await runMarketScan(context, openaiKey, openaiBaseUrl, (msg) => progress(0, msg));
+    if (evidencePack.performed) {
+      const totalBullets = evidencePack.findings.reduce((n, f) => n + f.bullets.length, 0);
+      progress(0, `Collected ${evidencePack.findings.length} topic packs (${totalBullets} factual bullets) — analysts will use these as qualitative grounding.`);
+      send({ type: "phase_complete", phase: 0, summary: `${evidencePack.findings.length} topic packs gathered (${totalBullets} bullets)` });
+      await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
+        phase: 0,
+        topicsCollected: evidencePack.findings.length,
+        bullets: totalBullets,
+        failedTopics: evidencePack.failedTopics,
+      }).catch(() => {});
+    } else {
+      progress(0, "Web research returned no usable content — proceeding with brief-only context.");
+      send({ type: "phase_complete", phase: 0, summary: "No web evidence collected — proceeding without it" });
+    }
+  } catch (err: any) {
+    console.error("[Debate] Phase 0 (market scan) failed:", err);
+    // Non-fatal — continue without evidence pack
+    progress(0, `Warning: market scan failed (${err.message}) — proceeding with brief-only context.`);
+    send({ type: "phase_complete", phase: 0, summary: "Market scan skipped" });
+    evidencePack = undefined;
+  }
 
   // ── Phase 3.1: Independent drafts ─────────────────────────────────────
 
@@ -104,7 +135,7 @@ export async function runDebate(
   );
 
   try {
-    const result = await runPhase31(context, openaiKey, openaiBaseUrl, anthropicKey);
+    const result = await runPhase31(context, openaiKey, openaiBaseUrl, anthropicKey, evidencePack);
     analystA = result.analystA;
     analystB = result.analystB;
 
@@ -155,7 +186,7 @@ export async function runDebate(
 
   let phase2FailedRoles: string[] = [];
   try {
-    const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey);
+    const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey, evidencePack);
     objections = result.objections;
     phase2FailedRoles = result.failedRoles;
 
