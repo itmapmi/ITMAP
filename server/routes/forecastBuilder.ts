@@ -1464,9 +1464,9 @@ export function registerForecastBuilderRoutes(app: Express): void {
           .section { margin-bottom: 36px; page-break-inside: avoid; }
           h2 { font-size: 16px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px; }
           .prose p { margin: 0 0 12px; font-size: 12px; color: #334155; }
-          .prose table, .scenario-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
-          .prose th, .scenario-table th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; }
-          .prose td, .scenario-table td { padding: 5px 8px; border: 1px solid #e2e8f0; }
+          .prose table, .scenario-table, .md-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 12px 0; page-break-inside: avoid; }
+          .prose th, .scenario-table th, .md-table th { background: #f1f5f9; padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600; color: #0f172a; }
+          .prose td, .scenario-table td, .md-table td { padding: 5px 8px; border: 1px solid #e2e8f0; vertical-align: top; }
           blockquote { border-left: 3px solid #e2e8f0; margin: 0; padding-left: 12px; color: #64748b; font-size: 11px; }
           strong { font-weight: 600; }
           .qc { display: flex; gap: 12px; margin-bottom: 28px; font-size: 11px; }
@@ -1616,21 +1616,49 @@ function escapeHtml(text: string): string {
 // ── Minimal markdown → HTML converter for PDF export ───────────────────────
 
 function markdownToHtml(md: string): string {
-  return md
+  // First pass: extract markdown tables (header row + separator + data rows)
+  // and replace each block with a fully-formed <table> so they survive the
+  // subsequent paragraph-wrapping pass intact.
+  const lines = md.split("\n");
+  const out: string[] = [];
+  const splitRow = (line: string) => {
+    const t = line.trim();
+    const inner = t.startsWith("|") ? t.slice(1) : t;
+    const tail = inner.endsWith("|") ? inner.slice(0, -1) : inner;
+    return tail.split("|").map(c => c.trim());
+  };
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const next = lines[i + 1] ?? "";
+    const isPipe = line.trim().startsWith("|");
+    const isSep = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(next);
+    if (isPipe && isSep) {
+      const headers = splitRow(line);
+      const bodyRows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        bodyRows.push(splitRow(lines[i]));
+        i++;
+      }
+      const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>`;
+      const tbody = `<tbody>${bodyRows.map(r =>
+        `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`
+      ).join("")}</tbody>`;
+      out.push(`<table class="md-table">${thead}${tbody}</table>`);
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+  return out.join("\n")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/^### (.+)$/gm, "<h4>$1</h4>")
     .replace(/^## (.+)$/gm, "<h3>$1</h3>")
     .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
-    .replace(/^\| (.+)$/gm, (line) => {
-      if (line.includes("|---")) return "";
-      const cells = line.split("|").slice(1, -1).map(c => `<td>${c.trim()}</td>`).join("");
-      return `<tr>${cells}</tr>`;
-    })
-    .replace(/(<tr>.+<\/tr>\n?)+/g, (rows) => `<table>${rows}</table>`)
     .replace(/\n{2,}/g, "</p><p>")
     .replace(/^(?!<)(.+)$/gm, (line) => line ? line : "")
-    .replace(/^(<p>|<\/p>|<h|<table|<block)/m, (m) => m)
     .replace(/(^|\n)(?!<)(.*\S.*)/g, (_, p, line) => `${p}<p>${line}</p>`)
     .trim();
 }

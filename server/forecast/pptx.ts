@@ -41,6 +41,108 @@ function stripMarkdown(s: string): string {
     .trim();
 }
 
+interface ExtractedTable {
+  headers: string[];
+  rows: string[][];
+}
+
+/**
+ * Extract markdown tables from a block of text. Returns the original text
+ * with the table blocks removed plus a list of parsed tables. Recognises
+ * any line starting with "|" that is followed by a separator row of dashes.
+ */
+function extractMarkdownTables(text: string): { cleanText: string; tables: ExtractedTable[] } {
+  const lines = text.split("\n");
+  const tables: ExtractedTable[] = [];
+  const out: string[] = [];
+  let i = 0;
+  const splitRow = (line: string) => {
+    const trimmed = line.trim();
+    const inner = trimmed.startsWith("|") ? trimmed.slice(1) : trimmed;
+    const tail = inner.endsWith("|") ? inner.slice(0, -1) : inner;
+    return tail.split("|").map(c => stripMarkdown(c.trim()));
+  };
+  while (i < lines.length) {
+    const line = lines[i];
+    const isPipeLine = line.trim().startsWith("|");
+    const next = lines[i + 1] ?? "";
+    const isSeparator = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(next);
+    if (isPipeLine && isSeparator) {
+      const headers = splitRow(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        rows.push(splitRow(lines[i]));
+        i++;
+      }
+      if (headers.length > 0) tables.push({ headers, rows });
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+  return { cleanText: out.join("\n").replace(/\n{3,}/g, "\n\n").trim(), tables };
+}
+
+function addSectionTableSlides(
+  pptx: PptxGenJS,
+  section: { id: number; title: string },
+  table: ExtractedTable,
+  index: number,
+  total: number,
+  forecastTitle: string,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.bg };
+  slide.addText(`SECTION ${section.id}`, {
+    x: 0.5, y: 0.3, w: 12, h: 0.3,
+    fontSize: 10, color: COLORS.accent, bold: true, charSpacing: 4,
+  });
+  const titleSuffix = total > 1 ? ` — Table ${index + 1} of ${total}` : " — Table";
+  slide.addText(section.title + titleSuffix, {
+    x: 0.5, y: 0.6, w: 12, h: 0.6,
+    fontSize: 22, color: COLORS.text, bold: true,
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0.5, y: 1.2, w: 2, h: 0,
+    line: { color: "22D3EE", width: 2 },
+  });
+
+  const cols = table.headers.length || (table.rows[0]?.length ?? 1);
+  const headerRow = table.headers.map(h => ({
+    text: h || " ",
+    options: { bold: true, color: "0F172A", fill: { color: "F1F5F9" }, valign: "middle" as const },
+  }));
+  const dataRows = table.rows.map(r => {
+    const padded = r.length < cols
+      ? [...r, ...Array(cols - r.length).fill("")]
+      : r.slice(0, cols);
+    return padded.map(c => ({
+      text: c || " ",
+      options: { color: "1E293B", valign: "middle" as const },
+    }));
+  });
+
+  // Distribute columns evenly across slide width minus margins
+  const tableW = 12.3;
+  const colW = Array(cols).fill(tableW / cols);
+
+  slide.addTable([headerRow, ...dataRows], {
+    x: 0.5, y: 1.5, w: tableW, colW,
+    fontSize: 10,
+    border: { type: "solid", color: "E2E8F0", pt: 0.5 },
+    autoPage: true,
+    autoPageRepeatHeader: true,
+    autoPageCharWeight: 0.5,
+    newSlideStartY: 1.5,
+  });
+
+  slide.addText(`spectio.ai · ${forecastTitle}`, {
+    x: 0.5, y: 7.05, w: 12.3, h: 0.3,
+    fontSize: 9, color: COLORS.muted, italic: true,
+  });
+}
+
 function chunkText(text: string, maxChars: number): string[] {
   const paragraphs = text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
   const chunks: string[] = [];
@@ -235,7 +337,11 @@ export async function buildForecastPptx(
 
   // ── Narrative slides — one or more per section ─────────────────────────
   for (const section of report.sections) {
-    const text = stripMarkdown(section.content || "_No content._");
+    const raw = section.content || "_No content._";
+    // Pull out markdown tables first so they render as native PPTX tables
+    // on dedicated slides instead of being collapsed into prose by stripMarkdown.
+    const { cleanText, tables } = extractMarkdownTables(raw);
+    const text = stripMarkdown(cleanText || "_No content._");
     const chunks = chunkText(text, 1700);
     chunks.forEach((chunk, idx) => {
       const slide = pptx.addSlide();
@@ -260,6 +366,13 @@ export async function buildForecastPptx(
         x: 0.5, y: 7.05, w: 12.3, h: 0.3,
         fontSize: 9, color: COLORS.muted, italic: true,
       });
+    });
+
+    // After narrative chunks, render any extracted markdown tables as
+    // dedicated native PPTX table slides (preserves data structure for
+    // copy/paste and downstream editing).
+    tables.forEach((tbl, ti) => {
+      addSectionTableSlides(pptx, section, tbl, ti, tables.length, forecastTitle);
     });
   }
 
