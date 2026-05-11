@@ -27,6 +27,14 @@ import {
 import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+import {
   AuditPanel,
   type AuditAssumption,
   type AuditCrux,
@@ -838,6 +846,15 @@ function ScenarioTable({
 
 // ── QC badge ──────────────────────────────────────────────────────────────
 
+function QcDot({ passed, label }: { passed: boolean; label: string }) {
+  return (
+    <span
+      title={`${label}: ${passed ? "passed" : "failed"}`}
+      className={`inline-block h-1.5 w-1.5 rounded-full ${passed ? "bg-emerald-400" : "bg-rose-400"}`}
+    />
+  );
+}
+
 function QcBadge({ label, passed }: { label: string; passed: boolean }) {
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -1406,8 +1423,8 @@ export function ForecastReportContent({ id }: { id: string }) {
 
       {/* Main content — shifts right when panel is open, fully interactive */}
       <div ref={reportContentRef} className={`max-w-5xl mx-auto transition-[margin] duration-300 ${panelView ? "mr-[26rem]" : ""}`}>
-        {/* Header row */}
-        <div className="flex items-center justify-between mb-8 gap-4">
+        {/* Compact header — title + version pill + 3 actions (Audit, More ▾, Export PDF) */}
+        <div className="flex items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/forecast-builder">
               <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2 shrink-0">
@@ -1416,70 +1433,76 @@ export function ForecastReportContent({ id }: { id: string }) {
             </Link>
             <span className="text-slate-700">/</span>
             <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] text-slate-600 bg-slate-800/60 border border-white/5 px-1.5 py-1 rounded font-mono">
+            <span className="text-[10px] text-slate-500 bg-slate-800/60 border border-white/5 px-1.5 py-0.5 rounded font-mono shrink-0">
               v{versionNumber + 1}
             </span>
-            {userOverrideCount > 0 && (
-              <span className="text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-2 py-1 rounded-full">
-                {userOverrideCount} override{userOverrideCount > 1 ? "s" : ""} active
-              </span>
-            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             <ForecastThemeToggle />
             <Button
               variant="ghost"
               size="sm"
-              className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1"
-              onClick={() => {
-                const a = document.createElement("a");
-                a.href = `/api/forecast-builder/forecasts/${id}/diary.json`;
-                a.download = "";
-                a.click();
-              }}
-              title="Download full audit diary as JSON"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Diary
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1"
+              className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1.5"
               onClick={() => setPanelView({ type: "global" })}
               title="Open forecast composition panel"
             >
               <Activity className="h-3.5 w-3.5" />
               Audit
             </Button>
-            <Button
-              onClick={handleExportAllCharts}
-              disabled={exportingCharts}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:text-cyan-300 hover:bg-cyan-950/20 border border-white/10"
-              title="Download all four charts as PNG + SVG in a zip"
-              data-testid="button-download-all-charts"
-            >
-              {exportingCharts ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
-              All Charts
-            </Button>
-            <Button
-              onClick={handleExportPptx}
-              disabled={exportingPptx}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:text-cyan-300 hover:bg-cyan-950/20 border border-white/10"
-              title="Export with native editable charts"
-            >
-              {exportingPptx ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
-              PowerPoint
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/20 gap-1.5"
+                  title="More export options"
+                  data-testid="button-export-menu"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  More
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 bg-slate-900 border-white/10 text-slate-200">
+                <DropdownMenuItem
+                  onClick={handleExportPptx}
+                  disabled={exportingPptx}
+                  className="gap-2 focus:bg-white/5 focus:text-white"
+                  data-testid="menu-export-pptx"
+                >
+                  {exportingPptx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  Export PowerPoint
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportAllCharts}
+                  disabled={exportingCharts}
+                  className="gap-2 focus:bg-white/5 focus:text-white"
+                  data-testid="menu-export-charts"
+                >
+                  {exportingCharts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  All charts (PNG + SVG)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = `/api/forecast-builder/forecasts/${id}/diary.json`;
+                    a.download = "";
+                    a.click();
+                  }}
+                  className="gap-2 focus:bg-white/5 focus:text-white"
+                  data-testid="menu-download-diary"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Diary JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               onClick={handleExportPdf}
               disabled={exporting}
               size="sm"
               className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0"
+              data-testid="button-export-pdf"
             >
               {exporting ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-2" />}
               Export PDF
@@ -1487,32 +1510,38 @@ export function ForecastReportContent({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* Override notice banner */}
-        {userOverrideCount > 0 && (
-          <div className="bg-amber-950/20 border border-amber-500/20 rounded-lg px-4 py-2.5 mb-5 flex items-center gap-2.5">
-            <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-            <p className="text-xs text-amber-300">
-              {userOverrideCount} assumption{userOverrideCount > 1 ? "s have" : " has"} been overridden — all scenario numbers and the year-by-year table reflect the updated engine values.
-            </p>
-          </div>
-        )}
-
-        {/* Summary hero */}
-        <div className="bg-slate-900 border border-white/5 rounded-2xl p-6 mb-6">
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-4 w-4 text-white" />
+        {/* Summary hero — title, metadata + QC inline, then scenario cards */}
+        <div className="bg-slate-900 border border-white/5 rounded-2xl p-5 mb-5">
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Market Forecast Report</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Market Forecast Report</span>
               </div>
-              <h2 className="text-2xl font-bold text-white mt-2">{forecast.title}</h2>
-              <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+              <h2 className="text-2xl font-bold text-white">{forecast.title}</h2>
+              <div className="flex items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-500 flex-wrap">
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{baseYear}–{rpt.engineSummary.horizonYear}</span>
                 <span>{currency}</span>
                 {forecast.confidenceBand && <span className="capitalize">{forecast.confidenceBand}</span>}
                 <span>Generated {generatedDate}</span>
+                <span className="text-slate-700">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-slate-600">QC</span>
+                  <QcDot passed={rpt.qcStatus.internalConsistency} label="Internal consistency" />
+                  <QcDot passed={rpt.qcStatus.schemaCompleteness} label="Schema completeness" />
+                  <QcDot passed={rpt.qcStatus.narrativeCoherence} label="Narrative coherence" />
+                </span>
+                {userOverrideCount > 0 && (
+                  <>
+                    <span className="text-slate-700">·</span>
+                    <span className="flex items-center gap-1 text-amber-400">
+                      <Zap className="h-3 w-3" />
+                      {userOverrideCount} override{userOverrideCount > 1 ? "s" : ""} active
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1572,37 +1601,24 @@ export function ForecastReportContent({ id }: { id: string }) {
             );
           })()}
 
-          {/* QC badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-slate-500 mr-1">QC:</span>
-            <QcBadge label="Internal consistency" passed={rpt.qcStatus.internalConsistency} />
-            <QcBadge label="Schema completeness" passed={rpt.qcStatus.schemaCompleteness} />
-            <QcBadge label="Narrative coherence" passed={rpt.qcStatus.narrativeCoherence} />
-          </div>
-
-          {/* Degraded-mode warning banner — engine output is still accurate,
-              but the AI-written narrative has unresolved QC issues. */}
+          {/* Degraded-mode warning — only when the AI narrative failed QC.
+              The engine numbers are still accurate; only the prose is suspect. */}
           {rpt.qcStatus.degraded && (rpt.qcStatus.warnings?.length ?? 0) > 0 && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 mt-2">
-              <div className="flex items-start gap-3">
-                <div className="text-amber-400 text-sm font-semibold">
-                  Forecast completed with narrative warnings
-                </div>
-              </div>
-              <p className="text-xs text-amber-200/80 mt-1">
-                The deterministic engine output (bull, base, bear scenario numbers) is accurate.
-                The AI-written narrative did not pass all quality checks even after a retry —
-                please read the prose with extra care.
-              </p>
-              <ul className="mt-2 space-y-1 text-xs text-amber-100/90 list-disc list-inside">
+            <details className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 mt-2 group">
+              <summary className="text-xs text-amber-300 font-medium cursor-pointer flex items-center gap-2 list-none">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Forecast completed with narrative warnings — engine numbers still accurate
+                <ChevronDown className="h-3.5 w-3.5 ml-auto group-open:rotate-180 transition-transform" />
+              </summary>
+              <ul className="mt-2 space-y-1 text-xs text-amber-100/80 list-disc list-inside">
                 {(rpt.qcStatus.warnings ?? []).map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
 
-          {/* Forecast-level re-debate control */}
+          {/* Forecast-level re-debate control (low-key utility) */}
           <ReDebateControl
             forecastId={id}
             cruxes={cruxes as ForecastCrux[]}
@@ -1611,110 +1627,35 @@ export function ForecastReportContent({ id }: { id: string }) {
           />
         </div>
 
-        {/* Two-column: scenarios + top assumptions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          {scenarios.length > 0 && (
-            <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-cyan-400" /> Year-by-Year Forecast
-              </h3>
-              <ScenarioTable
-                scenarios={scenarios}
-                baseYear={baseYear}
-                horizonYears={horizonYears}
-                currency={currency}
-                onNumberClick={() => handleNumberClick(topAssumptions.map(a => a.id.slice(0, 8)))}
-              />
-            </div>
-          )}
-          {topAssumptions.length > 0 && (
-            <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                <Info className="h-4 w-4 text-violet-400" /> Top Sensitive Assumptions
-              </h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Click any assumption to inspect, override, or view its debate history.
-              </p>
-              <div className="space-y-2">
-                {topAssumptions.map((a, i) => {
-                  const shortId = a.id.slice(0, 8);
-                  const isOverride = a.currentValueSource === "user_override";
-                  return (
-                    <button
-                      key={a.id}
-                      onClick={() => setPanelView({ type: "assumption", shortId })}
-                      className="w-full flex items-start gap-3 text-left rounded-lg px-2 py-2 hover:bg-white/[0.04] transition-colors group"
-                      title={`Open audit panel for [${shortId}]`}
-                    >
-                      <span className="h-5 w-5 rounded-full bg-violet-950/60 border border-violet-500/20 flex items-center justify-center text-xs text-violet-300 font-mono shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <p className="text-xs text-white font-medium truncate group-hover:text-cyan-200 transition-colors">
-                            {a.description}
-                          </p>
-                          {isOverride && (
-                            <span className="shrink-0 text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-1 py-0.5 rounded">override</span>
-                          )}
-                          <code className="shrink-0 bg-cyan-950/50 text-cyan-400 px-1 py-0.5 rounded text-[10px] font-mono hidden group-hover:inline">
-                            [{shortId}]
-                          </code>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          {a.currentValue ?? a.value} {a.unit ?? ""} &middot; {a.currentValueSource}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* Sticky horizontal section nav — replaces the wide sidebar */}
+        <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-slate-950/85 backdrop-blur-sm border-b border-white/5 mb-4">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin">
+            <span className="text-[10px] text-slate-600 uppercase tracking-wider font-medium pr-2 shrink-0">Jump to</span>
+            {rpt.sections.map(s => {
+              const open = openSectionIds.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => navigateToSection(s.id)}
+                  className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] transition-colors ${
+                    open
+                      ? "bg-cyan-950/60 text-cyan-300 border border-cyan-500/20"
+                      : "text-slate-500 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent"
+                  }`}
+                  title={s.title}
+                  data-testid={`nav-section-${s.id}`}
+                >
+                  <span className="font-mono text-[10px] opacity-70">{s.id}</span>
+                  <span className="truncate max-w-[12rem]">{s.title}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Report sections — two-column: sticky sidebar nav + section cards */}
-        <div className="flex gap-6 items-start">
-          {/* Sticky section navigator */}
-          <aside className="hidden xl:block w-52 shrink-0">
-            <div className="sticky top-8">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 font-medium px-2">Sections</p>
-              <nav className="space-y-0.5">
-                {rpt.sections.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => navigateToSection(s.id)}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.04] transition-colors group"
-                  >
-                    <span className={`h-5 w-5 rounded-md flex items-center justify-center text-xs font-mono shrink-0 transition-colors ${
-                      openSectionIds.has(s.id)
-                        ? "bg-cyan-950/60 text-cyan-400 border border-cyan-500/20"
-                        : "bg-slate-800/80 text-slate-500 border border-white/5 group-hover:text-slate-300 group-hover:bg-slate-700/60"
-                    }`}>
-                      {s.id}
-                    </span>
-                    <span className={`text-xs leading-tight truncate transition-colors ${
-                      openSectionIds.has(s.id)
-                        ? "text-slate-200"
-                        : "text-slate-400 group-hover:text-slate-200"
-                    }`}>
-                      {s.title}
-                    </span>
-                  </button>
-                ))}
-              </nav>
-              <div className="mt-4 pt-4 border-t border-white/5 px-2">
-                <p className="text-[10px] text-slate-600">
-                  Click <code className="text-cyan-600">[xxxxxxxx]</code> tags or any figure to explore assumptions.
-                </p>
-              </div>
-            </div>
-          </aside>
-
-          {/* Section cards — charts interleaved between sections for ~50/50 visual+text balance */}
-          <div className="flex-1 min-w-0 space-y-3">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Report Sections</h2>
+        {/* Report sections — full-width, charts interleaved */}
+        <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             {rpt.sections.map(section => {
               // Filter narrative by selected scenario: dim sections that don't
               // belong to the active scenario view (Base scenario section when
