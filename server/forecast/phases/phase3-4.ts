@@ -143,6 +143,37 @@ function strictParseJson(text: string): unknown {
   throw new Error("Resolver response was not valid JSON");
 }
 
+// ── Scenario triple normalization ──────────────────────────────────────────
+// Guarantees `bear ≤ base ≤ bull` with a minimum spread, so the downstream
+// engine + internal-consistency QC cannot be tripped by an LLM that returns
+// flipped or collapsed bull/base/bear values.
+const MIN_SCENARIO_SPREAD_PCT = 0.10; // 10% on each side when collapsed
+
+function normalizeScenarioTriple(
+  bull: number,
+  base: number,
+  bear: number
+): { bullValue: number; baseValue: number; bearValue: number } {
+  // 1. If bull and bear are flipped relative to each other, swap them so
+  //    `bull` is the higher of the two.
+  if (bull < bear) {
+    const tmp = bull;
+    bull = bear;
+    bear = tmp;
+  }
+
+  // 2. Determine a minimum spread anchored on |base| (fall back to |bull-bear|
+  //    or 1 so we still produce a non-zero gap when base == 0).
+  const anchor = Math.max(Math.abs(base), Math.abs(bull - bear) / 2, 1);
+  const minSpread = anchor * MIN_SCENARIO_SPREAD_PCT;
+
+  // 3. Force bull ≥ base + minSpread and bear ≤ base − minSpread.
+  if (bull < base + minSpread) bull = base + minSpread;
+  if (bear > base - minSpread) bear = base - minSpread;
+
+  return { bullValue: bull, baseValue: base, bearValue: bear };
+}
+
 // ── Deterministic convergence logic ────────────────────────────────────────
 
 function computeResolution(
@@ -162,13 +193,16 @@ function computeResolution(
 
   // Case 1: Neither resolver can propose a value
   if (aVal === null && bVal === null) {
+    const triple = normalizeScenarioTriple(
+      Math.max(crux.analystAValue, crux.analystBValue),
+      (crux.analystAValue + crux.analystBValue) / 2,
+      Math.min(crux.analystAValue, crux.analystBValue)
+    );
     return {
       resolution: "unresolved",
       finalValue: null,
       convergencePct: null,
-      bullValue: Math.max(crux.analystAValue, crux.analystBValue),
-      baseValue: (crux.analystAValue + crux.analystBValue) / 2,
-      bearValue: Math.min(crux.analystAValue, crux.analystBValue),
+      ...triple,
     };
   }
 
@@ -176,13 +210,16 @@ function computeResolution(
   if (aVal === null || bVal === null) {
     const singleValue = aVal ?? bVal!;
     const singleOutput = aVal !== null ? resolverA : resolverB;
+    const triple = normalizeScenarioTriple(
+      singleOutput.bullValue,
+      singleValue,
+      singleOutput.bearValue
+    );
     return {
       resolution: "scenario_variable",
       finalValue: null,
       convergencePct: null,
-      bullValue: singleOutput.bullValue,
-      baseValue: singleValue,
-      bearValue: singleOutput.bearValue,
+      ...triple,
     };
   }
 
@@ -193,23 +230,29 @@ function computeResolution(
   if (convergencePct <= CONVERGENCE_TOLERANCE) {
     // Resolvers agree within ±15% — resolved
     const finalValue = (aVal + bVal) / 2;
+    const triple = normalizeScenarioTriple(
+      Math.max(resolverA.bullValue, resolverB.bullValue),
+      finalValue,
+      Math.min(resolverA.bearValue, resolverB.bearValue)
+    );
     return {
       resolution: "resolved",
       finalValue,
       convergencePct,
-      bullValue: Math.max(resolverA.bullValue, resolverB.bullValue),
-      baseValue: finalValue,
-      bearValue: Math.min(resolverA.bearValue, resolverB.bearValue),
+      ...triple,
     };
   } else {
     // Resolvers diverge > 15% — scenario_variable
+    const triple = normalizeScenarioTriple(
+      Math.max(aVal, bVal),
+      (aVal + bVal) / 2,
+      Math.min(aVal, bVal)
+    );
     return {
       resolution: "scenario_variable",
       finalValue: null,
       convergencePct,
-      bullValue: Math.max(aVal, bVal),
-      baseValue: (aVal + bVal) / 2,
-      bearValue: Math.min(aVal, bVal),
+      ...triple,
     };
   }
 }
@@ -376,14 +419,19 @@ export async function runPhase34(
 
     // If both resolvers failed entirely, mark as unresolved
     if (!resolverAOutput && !resolverBOutput) {
+      const fallbackTriple = normalizeScenarioTriple(
+        Math.max(crux.analystAValue, crux.analystBValue),
+        (crux.analystAValue + crux.analystBValue) / 2,
+        Math.min(crux.analystAValue, crux.analystBValue)
+      );
       const fallback: ResolvedCrux = {
         ...crux,
         resolution: "unresolved",
         finalValue: null,
         finalUnit: null,
-        bullValue: Math.max(crux.analystAValue, crux.analystBValue),
-        baseValue: (crux.analystAValue + crux.analystBValue) / 2,
-        bearValue: Math.min(crux.analystAValue, crux.analystBValue),
+        bullValue: fallbackTriple.bullValue,
+        baseValue: fallbackTriple.baseValue,
+        bearValue: fallbackTriple.bearValue,
         resolutionReasoning: "Both resolvers failed — treated as unresolved",
         evidenceCited: [],
         webSearchPerformed: webEvidence.length > 0,
