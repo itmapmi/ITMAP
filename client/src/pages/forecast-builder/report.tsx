@@ -182,6 +182,44 @@ interface ReportData {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
+function csvEscape(v: string | number | null | undefined): string {
+  if (v == null) return "";
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(rows: (string | number | null | undefined)[][], filename: string) {
+  const csv = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function TableExportButton({ rows, filename, label = "CSV" }: {
+  rows: (string | number | null | undefined)[][];
+  filename: string;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => downloadCsv(rows, filename)}
+      className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30 inline-flex items-center gap-1"
+      title="Download this table as CSV"
+    >
+      <Download className="h-3 w-3" />
+      {label}
+    </button>
+  );
+}
+
 function fmt(n: number, currency = "USD"): string {
   const sym = currency === "USD" ? "$" : currency;
   if (Math.abs(n) >= 1000) return `${sym}${(n / 1000).toFixed(1)}T`;
@@ -326,8 +364,16 @@ function MarkdownContent({
       const headerRow = tableLines[0];
       const bodyRows = tableLines.slice(2);
       const headers = headerRow.split("|").slice(1, -1).map(c => c.trim());
+      const csvRows: string[][] = [
+        headers,
+        ...bodyRows.map(row => row.split("|").slice(1, -1).map(c => c.trim())),
+      ];
       elements.push(
-        <div key={key++} className="overflow-x-auto my-4">
+        <div key={key++} className="my-4">
+          <div className="flex justify-end mb-1">
+            <TableExportButton rows={csvRows} filename="report-table" />
+          </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
             <thead>
               <tr>
@@ -351,6 +397,7 @@ function MarkdownContent({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       );
       continue;
@@ -473,6 +520,20 @@ function GeoSplitView({
     visibleRegions.reduce((s, r) => s + (pickPath(r)[String(y)] ?? 0), 0)
   );
 
+  const csvRows: (string | number)[][] = [
+    ["Region", `${baseYear} share %`, ...years.map(String), "Δ share pp"],
+    ...visibleRegions.map(r => {
+      const path = pickPath(r);
+      return [
+        r.region,
+        Number((r.baseShare * 100).toFixed(2)),
+        ...years.map(y => path[String(y)] ?? 0),
+        Number(((r.horizonShare - r.baseShare) * 100).toFixed(2)),
+      ];
+    }),
+    ["Total", "", ...totals, ""],
+  ];
+
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -495,6 +556,7 @@ function GeoSplitView({
             className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
             disabled={allRegions.length === 0}
           >Just first</button>
+          <TableExportButton rows={csvRows} filename={`geo-split-${scenario}`} />
         </div>
       </div>
 
@@ -658,6 +720,19 @@ function SegmentSplitView({
   const visible = segs.filter(s => selected.has(s.segmentId));
   const totals = years.map(y => visible.reduce((s, seg) => s + (seg.forecastPath[String(y)] ?? 0), 0));
 
+  const csvRows: (string | number)[][] = [
+    ["Segment", ...years.map(String), "CAGR %"],
+    ...visible.map(s => {
+      const start = s.forecastPath[String(baseYear)] ?? 0;
+      const end = s.forecastPath[String(horizonYear)] ?? 0;
+      const cagr = start > 0 && years.length > 1
+        ? Number(((Math.pow(end / start, 1 / (years.length - 1)) - 1) * 100).toFixed(2))
+        : "";
+      return [s.name, ...years.map(y => s.forecastPath[String(y)] ?? 0), cagr];
+    }),
+    ["Total", ...totals, ""],
+  ];
+
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -674,6 +749,7 @@ function SegmentSplitView({
             className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-400 hover:text-white hover:border-white/30"
             disabled={allIds.length === 0}
           >Just first</button>
+          <TableExportButton rows={csvRows} filename={`segment-split-${scenario}`} />
         </div>
       </div>
 
@@ -776,8 +852,21 @@ function ScenarioTable({
     ))
   );
 
+  const csvRows: (string | number)[][] = [
+    ["Year", "Base", ...(bull ? ["Bull"] : []), ...(bear ? ["Bear"] : [])],
+    ...years.map(y => [
+      y,
+      base.forecastPath![y] ?? 0,
+      ...(bull ? [bull.forecastPath?.[y] ?? 0] : []),
+      ...(bear ? [bear.forecastPath?.[y] ?? 0] : []),
+    ]),
+  ];
+
   return (
     <div className="overflow-x-auto">
+      <div className="flex justify-end mb-2">
+        <TableExportButton rows={csvRows} filename="scenario-paths" />
+      </div>
       <table className="w-full text-xs text-left">
         <thead>
           <tr className="border-b border-white/10">
