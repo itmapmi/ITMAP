@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft,
   BarChart3,
   CheckCircle2,
   ChevronDown,
@@ -1512,16 +1511,9 @@ export function ForecastReportContent({ id }: { id: string }) {
 
       {/* Main content — shifts right when panel is open, fully interactive */}
       <div ref={reportContentRef} className={`max-w-5xl mx-auto transition-[margin] duration-300 ${panelView ? "mr-[26rem]" : ""}`}>
-        {/* Compact header — title + version pill + 3 actions (Audit, More ▾, Export PDF) */}
+        {/* Compact action bar — version pill + Audit, More ▾, Export PDF */}
         <div className="flex items-center justify-between mb-6 gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/forecast-builder">
-              <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white -ml-2 shrink-0">
-                <ArrowLeft className="h-4 w-4 mr-1" /> Forecasts
-              </Button>
-            </Link>
-            <span className="text-slate-700">/</span>
-            <h1 className="text-lg font-semibold text-white truncate">{forecast.title}</h1>
             <span className="text-[10px] text-slate-500 bg-slate-800/60 border border-white/5 px-1.5 py-0.5 rounded font-mono shrink-0">
               v{versionNumber + 1}
             </span>
