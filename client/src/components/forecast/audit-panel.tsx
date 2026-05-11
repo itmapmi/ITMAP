@@ -9,6 +9,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function fmtAssumptionValue(v: string | number | null | undefined): string {
+  if (v == null || v === "") return "—";
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  const abs = Math.abs(n);
+  const decimals = abs >= 100 ? 0 : abs >= 10 ? 1 : abs >= 1 ? 2 : 3;
+  return n.toFixed(decimals).replace(/\.?0+$/, "");
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface AuditAssumption {
@@ -150,7 +161,7 @@ function CompositionTab({ assumption, segments, cruxes }: {
           <div className="bg-slate-800/60 rounded-lg p-3">
             <p className="text-[10px] text-slate-500 mb-1">Current</p>
             <p className="text-sm font-semibold text-cyan-300">
-              {assumption.currentValue ?? assumption.value ?? "—"} {assumption.unit ?? ""}
+              {fmtAssumptionValue(assumption.currentValue ?? assumption.value)} {assumption.unit ?? ""}
             </p>
             {assumption.currentValueSource === "user_override" && (
               <span className="text-[10px] text-amber-400 font-medium">User override</span>
@@ -675,7 +686,7 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
       {!editing ? (
         <div className="bg-slate-800/60 border border-white/10 rounded-lg p-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-slate-400">Current: <span className="text-white font-semibold">{assumption.currentValue ?? assumption.value ?? "—"} {assumption.unit ?? ""}</span></span>
+            <span className="text-xs text-slate-400">Current: <span className="text-white font-semibold">{fmtAssumptionValue(assumption.currentValue ?? assumption.value)} {assumption.unit ?? ""}</span></span>
             {assumption.currentValueSource === "user_override" && (
               <span className="text-[10px] text-amber-400 font-medium">Override active</span>
             )}
@@ -998,7 +1009,7 @@ function GlobalOverviewTab({ forecastId, assumptions, onAssumptionSelect, nearby
             {!referenced && isLikelyDriver && <span className="shrink-0 text-[10px] text-cyan-400 bg-cyan-950/40 border border-cyan-500/20 px-1 py-0.5 rounded">likely driver</span>}
             {isOverride && <span className="shrink-0 text-[10px] text-amber-400 bg-amber-950/40 border border-amber-500/20 px-1 py-0.5 rounded">override</span>}
           </div>
-          <p className="text-xs text-slate-500">{a.currentValue ?? a.value} {a.unit ?? ""}</p>
+          <p className="text-xs text-slate-500">{fmtAssumptionValue(a.currentValue ?? a.value)} {a.unit ?? ""}</p>
         </div>
         <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
       </button>
@@ -1211,7 +1222,7 @@ export function AuditPanel({
               </div>
               <p className="text-sm font-semibold text-white leading-tight">{assumption.description}</p>
               <p className="text-xs text-cyan-300 mt-1 font-medium">
-                {assumption.currentValue ?? assumption.value ?? "—"} {assumption.unit ?? ""}
+                {fmtAssumptionValue(assumption.currentValue ?? assumption.value)} {assumption.unit ?? ""}
                 {crux && (
                   <span className={`ml-2 ${resolutionColor(crux.resolutionStatus)}`}>
                     · {crux.resolutionStatus === "resolved" ? "Resolved" :
