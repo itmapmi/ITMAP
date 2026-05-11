@@ -1769,8 +1769,57 @@ export function ForecastReportContent({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* Report sections — full-width, charts interleaved */}
+        {/* Forecast visuals — grouped dashboard, rendered before narrative
+            so the sections below read cleanly top-to-bottom without random
+            chart interruptions. */}
+        {chartData && chartFilters && (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <div className="h-px flex-1 bg-white/5" />
+              <span className="text-[10px] text-slate-500 uppercase tracking-[0.18em] font-medium">
+                Forecast Visuals
+              </span>
+              <div className="h-px flex-1 bg-white/5" />
+            </div>
+
+            <ScenarioFanChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <SegmentStackedAreaChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
+              <SegmentTreemap data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
+            </div>
+
+            <SensitivityTornadoChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
+
+            {chartData.geoProjections && (
+              <GeoSplitView
+                geo={chartData.geoProjections}
+                scenario={chartFilters.scenario}
+                baseYear={chartData.baseYear}
+                horizonYear={chartData.horizonYear}
+                currency={chartData.currency}
+              />
+            )}
+
+            <SegmentSplitView
+              data={chartData}
+              scenario={chartFilters.scenario}
+              baseYear={chartData.baseYear}
+              horizonYear={chartData.horizonYear}
+              currency={chartData.currency}
+            />
+          </div>
+        )}
+
+        {/* Report sections — clean, sequential narrative (no interleaved charts) */}
         <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1 mb-2">
+            <div className="h-px flex-1 bg-white/5" />
+            <span className="text-[10px] text-slate-500 uppercase tracking-[0.18em] font-medium">
+              Narrative
+            </span>
+            <div className="h-px flex-1 bg-white/5" />
+          </div>
           <div className="min-w-0 space-y-3">
             {rpt.sections.map(section => {
               // Filter narrative by selected scenario: dim sections that don't
@@ -1782,66 +1831,24 @@ export function ForecastReportContent({ id }: { id: string }) {
                 (section.id === 5 && activeScenario !== "base") ||
                 (section.id === 6 && activeScenario === "base");
 
-              const card = (
-                <div className={dimmed ? "opacity-40 hover:opacity-100 transition-opacity" : ""} title={dimmed ? `Hidden by current "${activeScenario}" scenario filter — click to reveal` : undefined}>
+              return (
+                <div
+                  key={`row-${section.id}`}
+                  className={dimmed ? "opacity-40 hover:opacity-100 transition-opacity" : ""}
+                  title={dimmed ? `Hidden by current "${activeScenario}" scenario filter — click to reveal` : undefined}
+                >
                   {dimmed && (
                     <div className="text-[10px] text-amber-400/80 px-3 py-1 -mb-1 italic">
                       Out of current scenario filter ({activeScenario})
                     </div>
                   )}
                   <SectionCard
-                    key={`s-${section.id}`}
                     section={section}
                     isOpen={openSectionIds.has(section.id)}
                     onToggle={() => toggleSection(section.id)}
                     onTagClick={handleTagClick}
                     onNumberClick={handleNumberClick}
                   />
-                </div>
-              );
-
-              // Decide which chart(s) follow this section. We interleave so
-              // narrative sections and visuals alternate roughly 50/50.
-              let inlineChart: React.ReactNode = null;
-              if (chartData && chartFilters) {
-                if (section.id === 1) {
-                  inlineChart = <ScenarioFanChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />;
-                } else if (section.id === 5) {
-                  inlineChart = (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      <SegmentStackedAreaChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
-                      <SegmentTreemap data={chartData} filters={chartFilters} forecastTitle={forecast.title} />
-                    </div>
-                  );
-                } else if (section.id === 7) {
-                  inlineChart = <SensitivityTornadoChart data={chartData} filters={chartFilters} forecastTitle={forecast.title} />;
-                } else if (section.id === 9 && chartData.geoProjections) {
-                  inlineChart = (
-                    <GeoSplitView
-                      geo={chartData.geoProjections}
-                      scenario={chartFilters.scenario}
-                      baseYear={chartData.baseYear}
-                      horizonYear={chartData.horizonYear}
-                      currency={chartData.currency}
-                    />
-                  );
-                } else if (section.id === 10) {
-                  inlineChart = (
-                    <SegmentSplitView
-                      data={chartData}
-                      scenario={chartFilters.scenario}
-                      baseYear={chartData.baseYear}
-                      horizonYear={chartData.horizonYear}
-                      currency={chartData.currency}
-                    />
-                  );
-                }
-              }
-
-              return (
-                <div key={`row-${section.id}`} className="space-y-3">
-                  {card}
-                  {inlineChart}
                 </div>
               );
             })}
