@@ -1643,7 +1643,41 @@ export function ForecastReportContent({ id }: { id: string }) {
               nearbyAssumptionIds: topIds.length > 0 ? topIds : undefined,
               highlightTopN: topIds.length === 0 ? 3 : undefined,
             });
+            const baseScenario = scenarios.find(s => s.name === "base");
+            const bullScenario = scenarios.find(s => s.name === "bull");
+            const bearScenario = scenarios.find(s => s.name === "bear");
+            const baseToday = baseScenario?.forecastPath?.[baseYear] ?? rpt.engineSummary.baseTotal;
+            const bullToday = bullScenario?.forecastPath?.[baseYear] ?? baseToday;
+            const bearToday = bearScenario?.forecastPath?.[baseYear] ?? baseToday;
             return (
+              <div>
+              <div className="grid grid-cols-3 gap-4 mb-3">
+                <div className="bg-slate-800/40 border border-white/5 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> Base {baseYear}
+                  </div>
+                  <div className="text-xl font-semibold text-white">{fmt(baseToday, currency)}</div>
+                  <div className="text-[10px] text-slate-500 mt-1">Starting market size</div>
+                </div>
+                <div className="bg-slate-800/40 border border-white/5 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-emerald-400" /> Bull {baseYear}
+                  </div>
+                  <div className="text-xl font-semibold text-emerald-300">{fmt(bullToday, currency)}</div>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    {fmtPct(((bullToday - baseToday) / (baseToday || 1)) * 100)} vs base
+                  </div>
+                </div>
+                <div className="bg-slate-800/40 border border-white/5 rounded-xl p-4">
+                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-red-400" /> Bear {baseYear}
+                  </div>
+                  <div className="text-xl font-semibold text-red-300">{fmt(bearToday, currency)}</div>
+                  <div className="text-[10px] text-slate-500 mt-1">
+                    {fmtPct(((bearToday - baseToday) / (baseToday || 1)) * 100)} vs base
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-slate-800/60 border border-cyan-500/10 rounded-xl p-4">
                   <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">
@@ -1686,6 +1720,7 @@ export function ForecastReportContent({ id }: { id: string }) {
                     {fmtPct(((rpt.engineSummary.bearTotal - rpt.engineSummary.baseTotal) / (rpt.engineSummary.baseTotal || 1)) * 100)} vs base
                   </div>
                 </div>
+              </div>
               </div>
             );
           })()}
