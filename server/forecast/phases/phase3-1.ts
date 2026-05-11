@@ -7,6 +7,7 @@ import {
   DRAFT_SCHEMA_DESCRIPTION,
   SYSTEM_ANALYST_A,
   SYSTEM_ANALYST_B,
+  CANONICAL_SEGMENT_NAMES,
 } from "./phase3-prompts";
 import { formatEvidencePackForPrompt, type MarketScanEvidence } from "./market-scan";
 
@@ -46,6 +47,18 @@ export const ExternalEstimateSchema = z.object({
   why_setting_aside: z.string().min(1, "external_estimate.why_setting_aside is required"),
 });
 
+// Soft-match a segment name to one of the canonical customer-size buckets so
+// minor casing/wording differences don't trigger an unnecessary retry.
+function canonicaliseSegmentName(raw: string): string | null {
+  const n = raw.trim().toLowerCase().replace(/[_\-]+/g, " ").replace(/\s+/g, " ");
+  if (n === "smb" || n.startsWith("small ") || n.includes("small business")) return "SMB";
+  if (n.includes("mid-market") || n === "mid market" || n.includes("midmarket") || n.includes("medium")) return "Mid-market";
+  if (n.includes("large enterprise") || n.includes("very large") || n.includes("global enterprise")) return "Large Enterprise";
+  if (n.startsWith("enterprise") || n === "enterprise") return "Enterprise";
+  if (n.includes("government") || n.includes("public sector") || n === "gov" || n.includes("federal")) return "Government";
+  return null;
+}
+
 export const ForecastDraftSchema = z.object({
   modelLabel: z.string().default("unknown"),
   // Required — model must surface any known external estimate and set it aside.
@@ -57,6 +70,38 @@ export const ForecastDraftSchema = z.object({
   assumptions: z.array(DraftAssumptionSchema).min(1),
   anticipatedCruxes: z.array(z.string()).default([]),
   sources: z.array(DraftSourceSchema).default([]),
+}).superRefine((draft, ctx) => {
+  // Enforce mandatory customer-size segmentation: must contain all five
+  // canonical buckets, with no extras. Names are normalised to canonical form
+  // by a post-parse pass below; here we just validate coverage.
+  const matched = new Set<string>();
+  for (const seg of draft.segments) {
+    const canon = canonicaliseSegmentName(seg.name);
+    if (canon) matched.add(canon);
+  }
+  const missing = CANONICAL_SEGMENT_NAMES.filter(n => !matched.has(n));
+  if (missing.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["segments"],
+      message: `Mandatory customer-size segmentation: missing segment(s) ${missing.join(", ")}. Required: ${CANONICAL_SEGMENT_NAMES.join(", ")}.`,
+    });
+  }
+}).transform(draft => {
+  // Normalise to canonical names + drop any extras + sort to canonical order.
+  // We keep only the FIRST match for each canonical bucket — duplicates from
+  // the model are dropped silently rather than failing the whole call.
+  const byCanonical = new Map<string, typeof draft.segments[number]>();
+  for (const seg of draft.segments) {
+    const canon = canonicaliseSegmentName(seg.name);
+    if (canon && !byCanonical.has(canon)) {
+      byCanonical.set(canon, { ...seg, name: canon });
+    }
+  }
+  const orderedSegments = CANONICAL_SEGMENT_NAMES
+    .map(n => byCanonical.get(n))
+    .filter((s): s is typeof draft.segments[number] => !!s);
+  return { ...draft, segments: orderedSegments };
 });
 
 export type ForecastDraft = z.infer<typeof ForecastDraftSchema>;

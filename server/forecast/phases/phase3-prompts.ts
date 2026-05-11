@@ -62,6 +62,36 @@ export function buildContextString(ctx: DebateContext): string {
 // then set aside any known published figure — so the audit trail is preserved
 // but the value cannot silently bias the bottom-up derivation.
 
+// ── Mandatory segmentation (shared, included verbatim in all Phase 3.1 prompts) ──
+//
+// Every forecast must be segmented along a single, fixed customer-size dimension
+// so downstream comparison, MECE rollup, and report rendering work consistently
+// across markets. Segment names are canonical and case-sensitive.
+
+export const CANONICAL_SEGMENT_NAMES = [
+  "SMB",
+  "Mid-market",
+  "Enterprise",
+  "Large Enterprise",
+  "Government",
+] as const;
+
+export const MANDATORY_SEGMENTATION_INSTRUCTION = `MANDATORY SEGMENTATION (required — do not deviate):
+1. Your "segments" array MUST contain EXACTLY these five segments, in this order, with these EXACT names:
+   - "SMB"               (small businesses, < 100 employees)
+   - "Mid-market"        (100–999 employees)
+   - "Enterprise"        (1,000–9,999 employees)
+   - "Large Enterprise"  (10,000+ employees)
+   - "Government"        (public sector — federal, state, local, defence)
+2. Each segment's baseYearValue is the absolute base-year revenue attributable to customers
+   in that size band, in the unit specified above. The five values MUST sum to your
+   marketSizeBaseYear within ±2%.
+3. Each segment gets its own cagr — segments grow at different rates (e.g. SMB and
+   Mid-market typically grow faster than Large Enterprise; Government is steadier).
+4. baseYearConstruction MUST show the per-segment derivation, e.g. "~3M SMB seats × $35 ASP × 12mo = $1.26B".
+5. Do NOT use any other segmentation dimension (no platform breakdown, no geography,
+   no vertical, no deployment model). Customer size is the ONLY allowed dimension.`;
+
 export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULES (mandatory — do not omit):
 1. Do NOT retrieve market size estimates from analyst reports (e.g. Gartner, IDC, Forrester,
    McKinsey) or published industry databases to use as anchor points for your own estimate.
@@ -112,6 +142,8 @@ Your job: produce an independent, well-reasoned market size forecast.
 
 ${ANTI_ANCHORING_INSTRUCTION}
 
+${MANDATORY_SEGMENTATION_INSTRUCTION}
+
 Methodology: build from observable sub-segments and aggregate up.
 Be conservative on growth assumptions — prefer triangulating from multiple data points.
 Every segment's baseYearConstruction MUST show your derivation explicitly (seats × ASP, or equivalent).
@@ -122,6 +154,8 @@ export const SYSTEM_ANALYST_B = `You are a market research analyst with a demand
 Your job: produce an independent, well-reasoned market size forecast.
 
 ${ANTI_ANCHORING_INSTRUCTION}
+
+${MANDATORY_SEGMENTATION_INSTRUCTION}
 
 Methodology: start from total addressable demand and apply penetration rates.
 Be willing to take a bolder stance on growth if the structural drivers justify it.

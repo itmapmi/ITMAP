@@ -189,9 +189,14 @@ const QUESTION_BANK: QuestionTemplate[] = [
   {
     id: "output-1",
     cluster: "output",
-    text: "How should the market be segmented in the output? (e.g. by deployment model, geography, customer size, use case, vertical)",
+    // Segmentation is fixed to a single customer-size dimension across every
+    // forecast (SMB / Mid-market / Enterprise / Large Enterprise / Government)
+    // so cross-market comparison and report rendering stay consistent. Any
+    // freeform notes here are passed to the analysts as supplementary context
+    // (e.g. vertical commentary) but do not change the segment dimension.
+    text: "Segmentation is fixed to customer size: SMB, Mid-market, Enterprise, Large Enterprise, Government. Any extra commentary you'd like the analysts to consider (e.g. vertical mix, geography mix)?",
     allowFreeText: true,
-    expressDefault: "Standard segmentation based on market structure.",
+    expressDefault: "Use the standard customer-size segmentation.",
     expressIncluded: false,
   },
   {
@@ -401,7 +406,7 @@ export function getDefaultForQuestion(questionId: string): { defaultAnswer: stri
     "drivers-1": "I'll propose the most commonly cited growth drivers for this market type based on the boundary.",
     "drivers-2": "I'll assume moderate discontinuity risk and include one adverse scenario pathway.",
     "drivers-3": "I'll identify adjacent markets automatically from the boundary definition.",
-    "output-1": "I'll use the most natural segmentation for how participants in this market typically report.",
+    "output-1": "Standard customer-size segmentation applies (SMB, Mid-market, Enterprise, Large Enterprise, Government). No extra commentary.",
     "output-2": "I'll produce bull, base, and bear scenarios.",
     "output-3": "I'll use any credible public sources, citing each one in the audit trail.",
   };
@@ -427,7 +432,7 @@ export function getSkipConsequence(questionId: string): { consequence: string; d
     "drivers-1": "I'll propose drivers myself, but your input here makes them significantly more defensible.",
     "drivers-2": "I'll model a standard bull/base/bear spread without a specific discontinuity scenario.",
     "drivers-3": "I'll note adjacent markets in the brief without specifically weighting them.",
-    "output-1": "I'll use the segmentation I judge most analytically useful for this market type.",
+    "output-1": "Standard customer-size segmentation applies (SMB, Mid-market, Enterprise, Large Enterprise, Government). No extra commentary.",
     "output-2": "I'll produce three scenarios (bull/base/bear).",
     "output-3": "I'll use any credible public source, citing each in the audit log.",
   };
