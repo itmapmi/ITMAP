@@ -489,6 +489,43 @@ export async function runDebate(
         });
         growthAssumptionId = cagrAssumption.id;
         assumptionsSaved++;
+
+        // Persist a paired crux for this segment growth seed so the calculation
+        // engine can produce a real bull/bear scenario fan. Without this every
+        // scenario projects with the same CAGR and bull/base/bear collapse to
+        // an identical number.
+        //
+        // Default spread: ±20% relative to the seed CAGR (i.e. a 15% CAGR yields
+        // bull=18%, bear=12%). This is a deterministic fallback for the
+        // common case where the analyst draft only supplies a single CAGR per
+        // segment. If a future debate phase contests the seed directly it can
+        // overwrite scenarioValues via updateForecastCrux.
+        try {
+          const seedCagr = Number(seg.cagr);
+          const bull = Math.round(seedCagr * 1.2 * 100) / 100;
+          const bear = Math.round(seedCagr * 0.8 * 100) / 100;
+          await createForecastCrux({
+            forecastId,
+            contestedAssumptionId: cagrAssumption.id,
+            positions: [
+              { model: "engine", value: String(bull), reasoning: "Bull case: +20% relative to analyst draft CAGR (deterministic seed)." },
+              { model: "engine", value: String(bear), reasoning: "Bear case: -20% relative to analyst draft CAGR (deterministic seed)." },
+            ],
+            evidenceRequiredToResolve: null,
+            resolutionStatus: "scenario_variable",
+            resolutionPath: `Auto-generated scenario spread for ${seg.name} segment CAGR (±20% relative).`,
+            estimatedImpact: "Drives the bull/bear scenario fan for this segment.",
+            scenarioValues: {
+              finalValue: null,
+              baseValue: seedCagr,
+              bullValue: bull,
+              bearValue: bear,
+              unit: "% per year",
+            },
+          });
+        } catch (cruxErr: any) {
+          console.error(`[Debate] Failed to save scenario crux for segment "${seg.name}":`, cruxErr.message);
+        }
       } catch (err: any) {
         console.error(`[Debate] Failed to save CAGR assumption for segment "${seg.name}":`, err.message);
       }
