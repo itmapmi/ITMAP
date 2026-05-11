@@ -688,6 +688,25 @@ export function SegmentStackedAreaChart({ data, filters, forecastTitle }: { data
   }, [data, filters, visibleSegments, w]);
 
   const baseName = `${slugify(forecastTitle ?? "forecast")}_segment-mix_${filters.scenario}`;
+
+  const startYear = yearsInRange(filters)[0] ?? data.baseYear;
+  const endYear = yearsInRange(filters)[yearsInRange(filters).length - 1] ?? data.horizonYear;
+  const segmentRows = useMemo(() => {
+    return visibleSegments.map((s, i) => {
+      const start = s.forecastPath[String(startYear)] ?? 0;
+      const end = s.forecastPath[String(endYear)] ?? 0;
+      return {
+        id: s.segmentId,
+        name: s.name,
+        color: SEGMENT_PALETTE[i % SEGMENT_PALETTE.length],
+        start,
+        end,
+      };
+    });
+  }, [visibleSegments, startYear, endYear]);
+  const startTotal = segmentRows.reduce((sum, r) => sum + r.start, 0);
+  const endTotal = segmentRows.reduce((sum, r) => sum + r.end, 0);
+
   return (
     <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
       <div className="flex items-baseline justify-between mb-1">
@@ -698,7 +717,39 @@ export function SegmentStackedAreaChart({ data, filters, forecastTitle }: { data
         </div>
       </div>
       <p className="text-xs text-slate-500 mb-3">Stacked contribution of each segment to the total.</p>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-slate-950/60 border border-white/5 rounded-lg p-3">
+          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Starting · {startYear}</div>
+          <div className="text-lg font-semibold text-white">{fmt(startTotal, data.currency)}</div>
+        </div>
+        <div className="bg-slate-950/60 border border-white/5 rounded-lg p-3">
+          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Horizon · {endYear}</div>
+          <div className="text-lg font-semibold text-white">{fmt(endTotal, data.currency)}</div>
+        </div>
+      </div>
+
       <svg ref={ref} className="w-full block" height={280} data-chart-export-name={baseName} />
+
+      {segmentRows.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {segmentRows.map(r => (
+              <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: r.color }} />
+                  <span className="text-slate-300 truncate">{r.name}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] tabular-nums shrink-0">
+                  <span className="text-slate-500">{fmt(r.start, data.currency)}</span>
+                  <span className="text-slate-600">→</span>
+                  <span className="text-white font-medium">{fmt(r.end, data.currency)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
