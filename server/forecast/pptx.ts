@@ -158,8 +158,33 @@ export async function buildForecastPptx(
     });
   }
 
-  // Scenario summary cards on the cover
-  const cardY = 4.2;
+  // Base-year (starting) cards row — mirrors on-screen "Base/Bull/Bear baseYear".
+  const startY = 3.55;
+  const baseYearNum = chart?.baseYear ?? 0;
+  const baseStart = chart?.scenarioPaths.base?.[String(baseYearNum)] ?? summary.baseTotal;
+  const bullStart = chart?.scenarioPaths.bull?.[String(baseYearNum)] ?? baseStart;
+  const bearStart = chart?.scenarioPaths.bear?.[String(baseYearNum)] ?? baseStart;
+  const startCards: [string, number, string, string][] = [
+    [`Base ${baseYearNum}`, baseStart, COLORS.base, "Starting market size"],
+    [`Bull ${baseYearNum}`, bullStart, COLORS.bull,
+      baseStart > 0 ? `${((bullStart - baseStart) / baseStart * 100) >= 0 ? "+" : ""}${((bullStart - baseStart) / baseStart * 100).toFixed(1)}% vs base` : ""],
+    [`Bear ${baseYearNum}`, bearStart, COLORS.bear,
+      baseStart > 0 ? `${((bearStart - baseStart) / baseStart * 100) >= 0 ? "+" : ""}${((bearStart - baseStart) / baseStart * 100).toFixed(1)}% vs base` : ""],
+  ];
+  startCards.forEach(([label, val, color, sub], i) => {
+    const cx = 0.6 + i * 4.25;
+    cover.addShape(pptx.ShapeType.roundRect, {
+      x: cx, y: startY, w: 4, h: 1.1,
+      fill: { color: "0F172A" }, line: { color: "334155", width: 1 },
+      rectRadius: 0.08,
+    });
+    cover.addText(label, { x: cx + 0.2, y: startY + 0.1, w: 3.6, h: 0.3, fontSize: 10, color: "94A3B8", bold: true });
+    cover.addText(fmtMoney(val, currency), { x: cx + 0.2, y: startY + 0.4, w: 3.6, h: 0.4, fontSize: 18, color: color, bold: true });
+    if (sub) cover.addText(sub, { x: cx + 0.2, y: startY + 0.78, w: 3.6, h: 0.25, fontSize: 9, color: "64748B" });
+  });
+
+  // Horizon-year scenario summary cards on the cover
+  const cardY = 4.85;
   const cards: [string, number, string][] = [
     [`Base ${summary.horizonYear}`, summary.baseTotal, COLORS.base],
     [`Bull ${summary.horizonYear}`, summary.bullTotal, COLORS.bull],
@@ -168,19 +193,19 @@ export async function buildForecastPptx(
   cards.forEach(([label, val, color], i) => {
     const cx = 0.6 + i * 4.25;
     cover.addShape(pptx.ShapeType.roundRect, {
-      x: cx, y: cardY, w: 4, h: 2,
+      x: cx, y: cardY, w: 4, h: 1.55,
       fill: { color: "0F172A" }, line: { color: color, width: 1, transparency: 60 },
       rectRadius: 0.1,
     });
-    cover.addText(label, { x: cx + 0.25, y: cardY + 0.2, w: 3.5, h: 0.4, fontSize: 11, color: "94A3B8", bold: true });
-    cover.addText(fmtMoney(val, currency), { x: cx + 0.25, y: cardY + 0.7, w: 3.5, h: 1, fontSize: 32, color: color, bold: true });
+    cover.addText(label, { x: cx + 0.25, y: cardY + 0.15, w: 3.5, h: 0.35, fontSize: 11, color: "94A3B8", bold: true });
+    cover.addText(fmtMoney(val, currency), { x: cx + 0.25, y: cardY + 0.55, w: 3.5, h: 0.7, fontSize: 26, color: color, bold: true });
     if (i === 0) {
       cover.addText(`${summary.baseCagr >= 0 ? "+" : ""}${summary.baseCagr.toFixed(1)}% CAGR`,
-        { x: cx + 0.25, y: cardY + 1.5, w: 3.5, h: 0.3, fontSize: 12, color: "CBD5E1" });
+        { x: cx + 0.25, y: cardY + 1.2, w: 3.5, h: 0.3, fontSize: 11, color: "CBD5E1" });
     } else {
       const delta = summary.baseTotal > 0 ? ((val - summary.baseTotal) / summary.baseTotal) * 100 : 0;
       cover.addText(`${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs base`,
-        { x: cx + 0.25, y: cardY + 1.5, w: 3.5, h: 0.3, fontSize: 12, color: "CBD5E1" });
+        { x: cx + 0.25, y: cardY + 1.2, w: 3.5, h: 0.3, fontSize: 11, color: "CBD5E1" });
     }
   });
 
@@ -203,6 +228,9 @@ export async function buildForecastPptx(
     addSegmentStackedSlide(pptx, chart, resolved);
     addSensitivitySlide(pptx, chart);
     addSegmentMixSlide(pptx, chart, resolved);
+    if (chart.geoProjections && chart.geoProjections.regions.length > 0) {
+      addGeoSplitSlide(pptx, chart, resolved);
+    }
   }
 
   // ── Narrative slides — one or more per section ─────────────────────────
@@ -508,6 +536,80 @@ function addSegmentMixSlide(pptx: PptxGenJS, chart: ReportChartData, resolved: R
 
   slide.addTable(rows, {
     x: 9.2, y: 1.3, w: 3.6, colW: [2.4, 1.2],
+    fontSize: 9, border: { type: "solid", color: "E2E8F0", pt: 0.5 },
+  });
+}
+
+function addGeoSplitSlide(pptx: PptxGenJS, chart: ReportChartData, resolved: ResolvedFilters) {
+  const geo = chart.geoProjections!;
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.bg };
+  const scenLabel = resolved.scenario.charAt(0).toUpperCase() + resolved.scenario.slice(1);
+  const pathKey = resolved.scenario === "bull" ? "bullForecast"
+    : resolved.scenario === "bear" ? "bearForecast"
+    : "baseForecast";
+
+  slide.addText("Geographic Split — Regional Breakdown", {
+    x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, color: COLORS.text, bold: true,
+  });
+  slide.addText(
+    `${scenLabel} scenario · ${resolved.yearStart}–${resolved.yearEnd} · Confidence: ${geo.confidence}`,
+    { x: 0.5, y: 0.85, w: 12, h: 0.3, fontSize: 12, color: COLORS.muted },
+  );
+
+  if (geo.macroNarrative) {
+    slide.addText(geo.macroNarrative, {
+      x: 0.5, y: 1.2, w: 12.3, h: 0.6, fontSize: 11, color: "334155", italic: true, valign: "top",
+    });
+  }
+
+  // Stacked bar chart: regional contribution per year
+  const years: number[] = [];
+  for (let y = resolved.yearStart; y <= resolved.yearEnd; y++) years.push(y);
+  const labels = years.map(String);
+  const chartData = geo.regions.map(r => ({
+    name: r.region,
+    labels,
+    values: years.map(y => r[pathKey][String(y)] ?? 0),
+  }));
+
+  slide.addChart(pptx.ChartType.bar, chartData, {
+    x: 0.5, y: 1.95, w: 7.8, h: 4.9,
+    barDir: "col", barGrouping: "stacked",
+    chartColors: geo.regions.map((_, i) => SEGMENT_PALETTE[i % SEGMENT_PALETTE.length]),
+    showLegend: true, legendPos: "b", legendFontSize: 10,
+    catAxisLabelFontSize: 11, valAxisLabelFontSize: 11,
+    valAxisTitle: `Market value (${chart.currency} B)`,
+    showValAxisTitle: true, valAxisTitleFontSize: 11,
+  });
+
+  // Region table on the right
+  const headerRow = [
+    { text: "Region", options: { bold: true, fill: { color: "F1F5F9" } } },
+    { text: `${resolved.yearStart} sh.`, options: { bold: true, fill: { color: "F1F5F9" } } },
+    { text: `${resolved.yearEnd} sh.`, options: { bold: true, fill: { color: "F1F5F9" } } },
+    { text: `${resolved.yearEnd} val.`, options: { bold: true, fill: { color: "F1F5F9" } } },
+    { text: "CAGR", options: { bold: true, fill: { color: "F1F5F9" } } },
+  ];
+  const yrs = resolved.yearEnd - resolved.yearStart;
+  const dataRows = geo.regions.map((r, i) => {
+    const startVal = r[pathKey][String(resolved.yearStart)] ?? 0;
+    const endVal = r[pathKey][String(resolved.yearEnd)] ?? 0;
+    const cagr = yrs > 0 && startVal > 0 && endVal > 0
+      ? (Math.pow(endVal / startVal, 1 / yrs) - 1) * 100
+      : null;
+    const swatch = SEGMENT_PALETTE[i % SEGMENT_PALETTE.length];
+    return [
+      { text: r.region, options: { bold: true, color: swatch } },
+      { text: `${(r.baseShare * 100).toFixed(1)}%` },
+      { text: `${(r.horizonShare * 100).toFixed(1)}%` },
+      { text: fmtMoney(endVal, chart.currency) },
+      { text: cagr != null ? `${cagr >= 0 ? "+" : ""}${cagr.toFixed(1)}%` : "—" },
+    ];
+  });
+
+  slide.addTable([headerRow, ...dataRows], {
+    x: 8.5, y: 1.95, w: 4.4, colW: [1.5, 0.7, 0.7, 0.85, 0.65],
     fontSize: 9, border: { type: "solid", color: "E2E8F0", pt: 0.5 },
   });
 }

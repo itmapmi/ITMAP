@@ -1395,14 +1395,68 @@ export function registerForecastBuilderRoutes(app: Express): void {
       const cardLabelBear = hasFilters ? `Bear Scenario ${horizonYear}${selectedScenario === "bear" ? " (selected)" : ""}` : `Bear Scenario ${horizonYear}`;
       const sel = (k: "base" | "bull" | "bear") => hasFilters && selectedScenario === k ? " selected" : "";
 
+      // Base-year (starting) totals — mirrors the on-screen "Base/Bull/Bear baseYear" row.
+      const baseStart = chart ? totalForYear("base", startYear) : rpt.engineSummary.baseTotal;
+      const bullStart = chart ? totalForYear("bull", startYear) : baseStart;
+      const bearStart = chart ? totalForYear("bear", startYear) : baseStart;
+      const startCardsHtml = `
+        <div class="summary-cards start-cards">
+          <div class="card start"><div class="card-label">Base ${startYear}</div><div class="card-value">${fmt(baseStart)}</div><div class="card-sub">Starting market size</div></div>
+          <div class="card start"><div class="card-label">Bull ${startYear}</div><div class="card-value">${fmt(bullStart)}</div><div class="card-sub">${baseStart > 0 ? `${((bullStart - baseStart) / baseStart * 100 >= 0 ? "+" : "")}${((bullStart - baseStart) / baseStart * 100).toFixed(1)}% vs base` : ""}</div></div>
+          <div class="card start"><div class="card-label">Bear ${startYear}</div><div class="card-value">${fmt(bearStart)}</div><div class="card-sub">${baseStart > 0 ? `${((bearStart - baseStart) / baseStart * 100 >= 0 ? "+" : "")}${((bearStart - baseStart) / baseStart * 100).toFixed(1)}% vs base` : ""}</div></div>
+        </div>
+      `;
+
+      // Geographic split — mirrors the on-screen Geo Split View. Renders a
+      // table of regions with their base-year and horizon-year shares plus
+      // base-scenario value at horizon (for the selected scenario when filtered).
+      let geoSplitHtml = "";
+      const geo = chart?.geoProjections;
+      if (geo && geo.regions.length > 0) {
+        const scenForGeo: "base" | "bull" | "bear" = hasFilters ? selectedScenario : "base";
+        const pathKey = scenForGeo === "bull" ? "bullForecast" : scenForGeo === "bear" ? "bearForecast" : "baseForecast";
+        const rows = geo.regions.map(r => {
+          const startVal = r[pathKey][String(startYear)] ?? 0;
+          const endVal = r[pathKey][String(horizonYear)] ?? 0;
+          const years = horizonYear - startYear;
+          const cagr = years > 0 && startVal > 0 && endVal > 0
+            ? (Math.pow(endVal / startVal, 1 / years) - 1) * 100
+            : null;
+          return `
+            <tr>
+              <td><strong>${escapeHtml(r.region)}</strong></td>
+              <td>${(r.baseShare * 100).toFixed(1)}%</td>
+              <td>${(r.horizonShare * 100).toFixed(1)}%</td>
+              <td>${fmt(startVal)}</td>
+              <td>${fmt(endVal)}</td>
+              <td>${cagr != null ? `${cagr >= 0 ? "+" : ""}${cagr.toFixed(1)}%` : "—"}</td>
+            </tr>
+          `;
+        }).join("");
+        const confLabel = geo.confidence.charAt(0).toUpperCase() + geo.confidence.slice(1);
+        geoSplitHtml = `
+          <div class="section">
+            <h2>Geographic Split (${escapeHtml(scenForGeo.charAt(0).toUpperCase() + scenForGeo.slice(1))} scenario · Confidence: ${escapeHtml(confLabel)})</h2>
+            ${geo.macroNarrative ? `<p class="prose" style="margin-bottom:12px;">${escapeHtml(geo.macroNarrative)}</p>` : ""}
+            <table class="scenario-table">
+              <thead><tr><th>Region</th><th>${startYear} share</th><th>${horizonYear} share</th><th>${startYear} value</th><th>${horizonYear} value</th><th>CAGR</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       const content = `
         <style>
           body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.7; }
           h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
           .meta { color: #64748b; font-size: 12px; margin-bottom: 8px; }
           .filters { color: #0f172a; font-size: 12px; background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 6px; padding: 8px 12px; margin-bottom: 28px; }
-          .summary-cards { display: flex; gap: 16px; margin-bottom: 40px; }
+          .summary-cards { display: flex; gap: 16px; margin-bottom: 16px; }
+          .summary-cards.start-cards { margin-bottom: 12px; }
+          .summary-cards + .summary-cards { margin-bottom: 40px; }
           .card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+          .card.start { background: #f1f5f9; }
           .card.selected { background: #ecfeff; border-color: #06b6d4; }
           .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
           .card-value { font-size: 20px; font-weight: 700; color: #0f172a; }
@@ -1424,6 +1478,8 @@ export function registerForecastBuilderRoutes(app: Express): void {
         <p class="meta">Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} &nbsp;|&nbsp; Base year: ${baseYear} &nbsp;|&nbsp; Horizon: ${horizonYear} &nbsp;|&nbsp; Currency: ${escapeHtml(currency)}</p>
         ${filterSummaryHtml}
 
+        ${startCardsHtml}
+
         <div class="summary-cards">
           <div class="card${sel("base")}"><div class="card-label">${cardLabelBase}</div><div class="card-value">${fmt(baseTotal)}</div><div class="card-sub">CAGR ${baseCagr >= 0 ? "+" : ""}${baseCagr.toFixed(1)}%</div></div>
           <div class="card${sel("bull")}"><div class="card-label">${cardLabelBull}</div><div class="card-value">${fmt(bullTotal)}</div></div>
@@ -1437,6 +1493,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         </div>
 
         ${scenarioTableHtml}
+        ${geoSplitHtml}
         ${htmlSections}
       `;
 
