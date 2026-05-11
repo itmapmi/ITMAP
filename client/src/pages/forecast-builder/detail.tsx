@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { useRoute, Link } from "wouter";
 import { ForecastReportContent } from "./report";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -274,29 +274,89 @@ const STEPS = [
   { key: "review", label: "Review brief" },
   { key: "debate", label: "Debate" },
   { key: "build", label: "Build report" },
-];
+] as const;
+
+type WizardStepKey = "boundary" | "interview" | "review" | "debate" | "debate_results" | "building" | "complete";
+
+// Maps each ForecastStatus to the highest STEPS index the user has reached.
+function maxReachedIdxForStatus(status: ForecastStatus): number {
+  switch (status) {
+    case "draft":               return 0; // boundary
+    case "boundary_confirmed":  return 1; // interview
+    case "brief_complete":      return 3; // debate
+    case "debate_complete":     return 4; // build
+    case "calculating":         return 4;
+    case "complete":            return 4;
+    default:                    return 0;
+  }
+}
+
+// Maps a clicked STEPS key to the wizardStep we should set, given current status.
+function targetStepForKey(key: string, status: ForecastStatus): WizardStepKey {
+  if (key === "boundary") return "boundary";
+  if (key === "interview") return "interview";
+  if (key === "review") return "review";
+  if (key === "debate") {
+    return status === "debate_complete" || status === "calculating" || status === "complete"
+      ? "debate_results"
+      : "debate";
+  }
+  // build
+  if (status === "complete") return "complete";
+  if (status === "calculating") return "building";
+  return "debate_results";
+}
+
+interface WizardNavCtx {
+  status: ForecastStatus;
+  current: WizardStepKey;
+  onNavigate: (step: WizardStepKey) => void;
+}
+const WizardNavContext = createContext<WizardNavCtx | null>(null);
 
 function WizardSteps({ current }: { current: string }) {
+  const ctx = useContext(WizardNavContext);
   const currentIdx = STEPS.findIndex((s) => s.key === current);
+  const maxReachedIdx = ctx ? maxReachedIdxForStatus(ctx.status) : currentIdx;
   return (
-    <div className="flex items-center gap-1 mb-8">
+    <div className="flex items-center gap-1 mb-8 flex-wrap">
       {STEPS.map((step, idx) => {
         const state = idx < currentIdx ? "done" : idx === currentIdx ? "active" : "upcoming";
+        const reachable = ctx != null && idx <= maxReachedIdx;
+        const isCurrent = idx === currentIdx;
+        const clickable = reachable && !isCurrent;
+
+        const pill = (
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+            ${state === "done" ? "bg-emerald-950 text-emerald-300 border border-emerald-500/20"
+              : state === "active" ? "bg-cyan-950 text-cyan-300 border border-cyan-500/30"
+              : "bg-slate-900 text-slate-500 border border-white/5"}
+            ${clickable ? "cursor-pointer hover:border-cyan-400/40 hover:text-white" : ""}`}
+          >
+            {state === "done" ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <span className="w-3 h-3 flex items-center justify-center text-[10px]">{idx + 1}</span>
+            )}
+            {step.label}
+          </div>
+        );
+
         return (
           <div key={step.key} className="flex items-center gap-1">
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all
-              ${state === "done" ? "bg-emerald-950 text-emerald-300 border border-emerald-500/20"
-                : state === "active" ? "bg-cyan-950 text-cyan-300 border border-cyan-500/30"
-                : "bg-slate-900 text-slate-500 border border-white/5"}`}
-            >
-              {state === "done" ? (
-                <CheckCircle2 className="h-3 w-3" />
-              ) : (
-                <span className="w-3 h-3 flex items-center justify-center text-[10px]">{idx + 1}</span>
-              )}
-              {step.label}
-            </div>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={() => ctx!.onNavigate(targetStepForKey(step.key, ctx!.status))}
+                title={`Restart from "${step.label}"`}
+                className="focus:outline-none focus:ring-2 focus:ring-cyan-500/40 rounded-full"
+              >
+                {pill}
+              </button>
+            ) : (
+              pill
+            )}
             {idx < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-slate-700" />}
           </div>
         );
@@ -1822,6 +1882,13 @@ export default function ForecastDetailPage() {
         </div>
 
         {/* Wizard content */}
+        <WizardNavContext.Provider
+          value={{
+            status: forecast.status,
+            current: wizardStep ?? "boundary",
+            onNavigate: (step) => setWizardStep(step),
+          }}
+        >
         {wizardStep === "boundary" && (
           <BoundaryStep
             forecast={forecast}
@@ -1871,6 +1938,7 @@ export default function ForecastDetailPage() {
         {wizardStep === "complete" && (
           <ForecastReportContent id={forecast.id} />
         )}
+        </WizardNavContext.Provider>
       </div>
     </div>
   );
