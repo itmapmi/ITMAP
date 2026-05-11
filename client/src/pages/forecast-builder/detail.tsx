@@ -702,6 +702,14 @@ function InterviewStep({
     fetchNextQuestion(newAnswers, mode);
   };
 
+  const goBack = () => {
+    if (!mode || answers.length === 0) return;
+    const newAnswers = answers.slice(0, -1);
+    setAnswers(newAnswers);
+    setInterviewDone(false);
+    fetchNextQuestion(newAnswers, mode);
+  };
+
   const submitSkip = () => {
     if (!currentQuestion || !skipData || !mode) return;
     const entry: AnswerEntry = {
@@ -881,6 +889,15 @@ function InterviewStep({
               )}
 
               <div className="flex items-center gap-3 mt-5 pt-4 border-t border-white/5">
+                {answers.length > 0 && (
+                  <button
+                    onClick={goBack}
+                    disabled={isThinking || isStreaming}
+                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-cyan-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back
+                  </button>
+                )}
                 <button
                   onClick={() => idkMutation.mutate(currentQuestion.questionId)}
                   disabled={idkMutation.isPending}
