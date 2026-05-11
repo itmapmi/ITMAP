@@ -28,6 +28,7 @@ import {
   type CruxResolution,
 } from "./engine";
 import { assembleSegments } from "./phases/phase4-segments";
+import { isSegmentGrowthSeed } from "./units";
 import { buildChartData } from "./report";
 
 export interface EngineRecalcResult {
@@ -50,6 +51,7 @@ function buildBriefFromFull(full: ForecastFull): DebateBrief {
     description: a.description,
     value: Number(a.currentValue ?? a.value ?? 0),
     unit: a.unit ?? "%",
+    excludeFromSensitivity: isSegmentGrowthSeed(a.currentValueSource),
   }));
 
   const cruxResolutions: CruxResolution[] = full.cruxes

@@ -24,6 +24,13 @@ export interface AssumptionInput {
   description: string;
   value: number;
   unit: string;
+  /**
+   * When true, this assumption is still used by projectSegment for growth
+   * compounding (via growthAssumptionIds) but is omitted from the sensitivity
+   * table. Used for synthetic per-segment CAGR seeds created by the debate
+   * runner — they're growth machinery, not user-facing debated assumptions.
+   */
+  excludeFromSensitivity?: boolean;
 }
 
 export interface CruxResolution {
@@ -205,7 +212,9 @@ function computeTotalForAssumptionValue(brief: DebateBrief, assumptionId: string
 }
 
 function buildSensitivityTable(brief: DebateBrief, baseTotal: number): SensitivityRow[] {
-  return brief.assumptions.map(assumption => {
+  return brief.assumptions
+    .filter(a => !a.excludeFromSensitivity)
+    .map(assumption => {
     const base = assumption.value;
 
     const vals = {

@@ -128,6 +128,22 @@ function synthesiseFromAssumptions(full: ForecastFull): SegmentInput[] {
     })
     .map(a => a.id);
 
+  // Heuristic to find a "total market size" assumption when no segments exist.
+  // CRITICAL: We must NOT pick a per-unit price assumption (e.g. "$ per user
+  // annually", "$/seat", "USD per device") because that is a unit price, not a
+  // market total — using it as the market size produces order-of-magnitude
+  // wrong forecasts. We also exclude obvious per-X price descriptions.
+  const isPerUnitPriceAssumption = (a: { description?: string | null; unit?: string | null }) => {
+    const unit = (a.unit ?? "").toLowerCase();
+    const desc = (a.description ?? "").toLowerCase();
+    // Unit looks like "$ per user", "$ / seat", "USD/device", "per user annually" etc.
+    if (/\bper\b/.test(unit) || /\//.test(unit)) return true;
+    // Description signals a unit price even if unit is just "$"
+    if (/\bper\s+(user|seat|device|employee|customer|mb|gb|tb)\b/.test(desc)) return true;
+    if (/\bspend\s+per\b/.test(desc) || /\bprice\s+per\b/.test(desc) || /\barpu\b/.test(desc)) return true;
+    return false;
+  };
+
   const sizeAssumption =
     full.assumptions.find(a => {
       const desc = (a.description ?? "").toLowerCase();
@@ -139,8 +155,17 @@ function synthesiseFromAssumptions(full: ForecastFull): SegmentInput[] {
       );
     }) ??
     full.assumptions.find(a => {
+      if (isPerUnitPriceAssumption(a)) return false;
       const unit = (a.unit ?? "").toLowerCase();
-      return unit.includes("$") || unit.includes("b") || unit.includes("usd");
+      // Require a clear MARKET-size unit signal: $B, $M, USD billions, revenue, etc.
+      // A bare "$" unit is ambiguous and previously matched per-user prices, so we
+      // require an explicit magnitude word.
+      return (
+        /\$\s*(b|m|bn|t)\b/.test(unit) ||
+        /\b(billion|million|trillion|bn|mm)\b/.test(unit) ||
+        /\busd\b/.test(unit) ||
+        /\brevenue\b/.test(unit)
+      );
     });
 
   const baseValue = sizeAssumption

@@ -137,3 +137,14 @@ export function parseUnit(raw: string | null | undefined): ParsedUnit {
 export function isVolumeAssumption(currentValueSource: string | null | undefined): boolean {
   return currentValueSource === "auto_volume_agent";
 }
+
+/**
+ * True if this assumption is a synthetic per-segment CAGR seed created by the
+ * debate runner so the engine can compound segment baseYearValues year-over-year.
+ * These must stay IN the engine (projectSegment looks them up via growthAssumptionIds)
+ * but must be excluded from the user-facing sensitivity table and top-driver picks
+ * — they aren't real debated assumptions and would crowd out genuine market drivers.
+ */
+export function isSegmentGrowthSeed(currentValueSource: string | null | undefined): boolean {
+  return currentValueSource === "segment_growth_seed";
+}

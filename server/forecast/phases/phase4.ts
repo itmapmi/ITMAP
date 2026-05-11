@@ -37,7 +37,7 @@ import { runGeoSplitDebate } from "./geo-split";
 import { assembleSegments, validateSegmentTree } from "./phase4-segments";
 import { needsAutoVolume, runAutoVolume } from "./auto-volume";
 import { checkSanityBand } from "./sanity-band";
-import { isVolumeAssumption, parseUnit } from "../units";
+import { isVolumeAssumption, isSegmentGrowthSeed, parseUnit } from "../units";
 import type { ForecastFull } from "../../storage/forecasts";
 
 // ── Event types streamed back to the API route ────────────────────────────────
@@ -83,6 +83,7 @@ function assembleDebateBrief(full: ForecastFull): DebateBrief {
       description: a.description,
       value: Number(a.currentValue ?? a.value ?? 0),
       unit: a.unit ?? "%",
+      excludeFromSensitivity: isSegmentGrowthSeed(a.currentValueSource),
     }));
 
   const cruxResolutions: CruxResolution[] = full.cruxes

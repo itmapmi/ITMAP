@@ -19,6 +19,7 @@ import {
   createForecastAssumption,
   createForecastCrux,
   createForecastScenario,
+  createForecastSegment,
   updateForecast,
 } from "../../storage/forecasts";
 import { writeAuditEntry } from "../audit";
@@ -456,6 +457,70 @@ export async function runDebate(
     } catch (err: any) {
       console.error(`[Debate] Failed to save assumption "${crux.assumptionName}":`, err.message);
     }
+  }
+
+  // Step 1b: Persist analyst-A's segments + per-segment CAGR growth assumptions
+  // so the calculation engine has real segment data to project. Without this
+  // the engine falls back to synthesiseFromAssumptions, which can mis-pick a
+  // per-unit price assumption (e.g. "$ per user annually") as the market size
+  // and produce wildly inflated forecasts.
+  let segmentsSaved = 0;
+  try {
+    for (let i = 0; i < analystA.segments.length; i++) {
+      const seg = analystA.segments[i];
+      // Create one growth assumption per segment so projectSegment can compound it.
+      let growthAssumptionId: string | null = null;
+      try {
+        const cagrAssumption = await createForecastAssumption({
+          forecastId,
+          description: `${seg.name} CAGR (analyst-A draft)`,
+          value: String(seg.cagr),
+          unit: "% per year",
+          proposedByModels: ["analyst-a"],
+          // Tagged so phase4/recalculate keep this assumption IN the engine
+          // (projectSegment looks it up via growthAssumptionIds) but EXCLUDE it
+          // from the sensitivity table and report top-driver picks.
+          currentValueSource: "segment_growth_seed",
+          sensitivityRank: 99,
+          editableByUser: true,
+          originalAiValue: String(seg.cagr),
+          currentValue: String(seg.cagr),
+          editHistory: [],
+        });
+        growthAssumptionId = cagrAssumption.id;
+        assumptionsSaved++;
+      } catch (err: any) {
+        console.error(`[Debate] Failed to save CAGR assumption for segment "${seg.name}":`, err.message);
+      }
+
+      try {
+        await createForecastSegment({
+          forecastId,
+          parentSegmentId: null,
+          name: seg.name,
+          description: null,
+          baseYearValue: String(seg.baseYearValue),
+          baseYearValueConstruction: { derivation: seg.baseYearConstruction ?? "", source: "analyst-a" },
+          growthAssumptionIds: growthAssumptionId ? [growthAssumptionId] : [],
+          forecastPath: null,
+          meceValidated: false,
+          sortOrder: i,
+        });
+        segmentsSaved++;
+      } catch (err: any) {
+        console.error(`[Debate] Failed to save segment "${seg.name}":`, err.message);
+      }
+    }
+    if (segmentsSaved > 0) {
+      progress(5, `Persisted ${segmentsSaved} analyst-A segments (base year total: ${context.boundary.currency}${analystA.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement})`);
+      await writeAuditEntry(forecastId, "segments_persisted", "system", {
+        source: "analyst-a",
+        count: segmentsSaved,
+        baseYearTotal: analystA.marketSizeBaseYear,
+      }).catch(() => {});
+    }
+  } catch (err: any) {
+    console.error("[Debate] Failed to persist analyst-A segments:", err);
   }
 
   // Also save non-crux assumptions from analyst-A
