@@ -1,0 +1,38 @@
+# spectio.ai
+
+> spectio.ai is an AI-native enterprise IT vendor intelligence platform delivering independent, real-time intelligence on technology vendors — vendor rankings, feature evaluations, market forecasts, news impact analysis, and research reports — for enterprise IT buyers across multiple markets.
+
+Tagline: "See Every Vendor. Know Every Move."
+
+## What spectio.ai does
+
+- **Vendor Intelligence**: Independent, AI-powered rankings and evaluations of enterprise software and IT vendors across dozens of markets, scored on Execution and Viability axes.
+- **Market Forecasts**: AI-native market sizing and multi-year forecasts (bull/base/bear scenarios) with full audit trails — built from boundary definitions, briefs, structured assumptions and debated cruxes, not LLM arithmetic.
+- **Feature Evaluations**: Granular product feature support matrices using a 0–4 Harvey Ball scoring scale.
+- **News Impact Analysis**: Daily automated ingestion and AI classification of vendor news, with high/medium impact signals fed back into score updates.
+- **Research Reports**: Long-form market research reports with vendor commentary, generated and exported as PDF, PowerPoint, and Excel.
+- **AI Chat Agent**: Conversational assistant on every market page that answers complex vendor and market questions using the underlying database via custom RAG.
+
+## Who it's for
+
+Enterprise IT buyers, CIOs, procurement teams, technology strategists, and analysts who need unbiased, real-time vendor intelligence faster and more cheaply than traditional analyst firms.
+
+## Key pages
+
+- Home: https://spectio.ai/
+- Markets directory: https://spectio.ai/markets
+- Platform overview: https://spectio.ai/platform
+- About: https://spectio.ai/about
+- Licensing: https://spectio.ai/licensing
+- Contact: https://spectio.ai/contact
+
+## How spectio.ai differs from traditional analyst firms
+
+- **AI-native pipeline**: Every market is built and continuously refreshed by an LLM-driven multi-stage pipeline (vendor list → scoring → commentary → features → ecosystem) with admin approval gates.
+- **Transparent**: Forecasts include MECE-validated segments, sensitivity tables, scenario debate logs, and per-source citations.
+- **Real-time signals**: A multi-source vendor signal pipeline (HackerNews, Reddit, Layoffs.fyi, GitHub) classifies and ranks vendor signals daily.
+- **Unbiased**: spectio.ai does not take vendor sponsorship for placement.
+
+## Contact
+
+For partnerships, licensing, or media: https://spectio.ai/contact

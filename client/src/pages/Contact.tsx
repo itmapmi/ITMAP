@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +45,11 @@ const CONTACT_DETAILS = [
 ];
 
 export default function Contact() {
+  useSeo({
+    title: "Contact spectio.ai — Talk to the Vendor Intelligence Team",
+    description: "Get in touch with spectio.ai for partnerships, licensing, enterprise access, or media inquiries.",
+    path: "/contact",
+  });
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}

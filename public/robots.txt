@@ -1,7 +1,88 @@
+# spectio.ai — robots.txt
+# See https://spectio.ai for the live site
+
+# Default rules for all crawlers
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /admin/
 Disallow: /login
 Disallow: /register
+Disallow: /me/
+Disallow: /api/
+Disallow: /market-builder
+Disallow: /forecast-builder
 
-Sitemap: https://itmap.ai/sitemap.xml
+# Major search engines — explicit allow
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /me/
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /me/
+Disallow: /api/
+
+User-agent: DuckDuckBot
+Allow: /
+
+# AI crawlers — explicitly allowed so spectio.ai is indexed by
+# ChatGPT, Claude, Perplexity, Google AI, You.com, etc.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+Sitemap: https://spectio.ai/sitemap.xml

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Shield, FileText, CheckCircle2, XCircle, ArrowRight, Mail } from "lucide-react";
 
@@ -64,6 +65,11 @@ const STEPS = [
 ];
 
 export default function Licensing() {
+  useSeo({
+    title: "Licensing & Reprints — spectio.ai",
+    description: "License spectio.ai vendor evaluations, market reports, and forecasts for internal use, marketing, sales enablement, or analyst-style reprint rights.",
+    path: "/licensing",
+  });
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}

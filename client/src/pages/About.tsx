@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,6 +76,11 @@ const CONTACT_DETAILS = [
 ];
 
 export default function About() {
+  useSeo({
+    title: "About spectio.ai — Independent AI-Powered Vendor Intelligence",
+    description: "Learn about spectio.ai's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
+    path: "/about",
+  });
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}

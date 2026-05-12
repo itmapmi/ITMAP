@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus } from "lucide-react";
 import type { Market } from "@shared/schema";
@@ -21,6 +22,11 @@ const fadeUp = {
 };
 
 export default function Markets() {
+  useSeo({
+    title: "Markets — spectio.ai | Browse Enterprise IT Vendor Markets",
+    description: "Browse every enterprise IT market on spectio.ai — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
+    path: "/markets",
+  });
   const { isAuthenticated, user } = useAuth();
   const { data: markets, isLoading, error } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
   const [selectedCategory, setSelectedCategory] = useState("all");

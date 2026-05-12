@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import type { Market } from "@shared/schema";
 import {
@@ -105,6 +106,11 @@ const FEATURES = [
 ];
 
 export default function Home() {
+  useSeo({
+    title: "spectio.ai — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
+    description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
+    path: "/",
+  });
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: markets, isLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 

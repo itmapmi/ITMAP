@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import {
   BarChart3, TrendingUp, Shield, Zap, Search, FileText, Target,
@@ -89,6 +90,11 @@ const HOW_STEPS = [
 ];
 
 export default function Platform() {
+  useSeo({
+    title: "Platform — spectio.ai | AI-Native IT Vendor Intelligence",
+    description: "Explore the spectio.ai platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
+    path: "/platform",
+  });
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}

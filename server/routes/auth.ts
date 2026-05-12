@@ -18,7 +18,13 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   app.get('/robots.txt', (_req, res) => {
+    res.type('text/plain');
     res.sendFile(path.join(process.cwd(), 'public', 'robots.txt'));
+  });
+
+  app.get('/llms.txt', (_req, res) => {
+    res.type('text/plain');
+    res.sendFile(path.join(process.cwd(), 'public', 'llms.txt'));
   });
 
   // Track user activity for existing sessions (restored from cookie)
