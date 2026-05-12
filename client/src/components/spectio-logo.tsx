@@ -1,7 +1,3 @@
-import logoLight from "@assets/spectio-ai-logo-transparent_1778569854412.jpg";
-import logoDark from "@assets/spectio-ai-logo-dark_1778569854413.jpg";
-import iconOnly from "@assets/spectio-ai-icon_1778569854412.jpg";
-
 interface SpectioLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg";
@@ -13,33 +9,76 @@ export default function SpectioLogo({
   className = "",
   size = "md",
   variant = "light",
-  iconOnly: iconOnlyProp = false,
+  iconOnly = false,
 }: SpectioLogoProps) {
-  // "light" = used on dark backgrounds → use white-text logo
-  // "dark"  = used on light backgrounds → use navy-text logo
-  const heights = { sm: 22, md: 28, lg: 36 };
+  const heights = { sm: 32, md: 44, lg: 64 };
   const h = heights[size];
 
-  if (iconOnlyProp) {
+  // "light" = used on dark backgrounds → white wordmark
+  // "dark"  = used on light backgrounds → navy wordmark
+  const wordmarkFill = variant === "light" ? "#FFFFFF" : "#0F1729";
+  const accentFill = "#22D3EE";
+
+  if (iconOnly) {
     return (
-      <img
-        src={iconOnly}
-        alt="spectio.ai"
+      <svg
+        viewBox="0 0 220 220"
         height={h}
         style={{ height: h, width: "auto" }}
         className={className}
-      />
+        xmlns="http://www.w3.org/2000/svg"
+        aria-label="spectio.ai"
+      >
+        <g transform="translate(110, 110)">
+          <path
+            d="M 0 -70 Q 8 -70, 14 -64 L 64 -14 Q 70 -8, 70 0 Q 70 8, 64 14 L 14 64 Q 8 70, 0 70 Q -8 70, -14 64 L -64 14 Q -70 8, -70 0 Q -70 -8, -64 -14 L -14 -64 Q -8 -70, 0 -70 Z"
+            fill="#22D3EE"
+            stroke="#0F1729"
+            strokeWidth={3}
+          />
+          <path
+            d="M -38 0 Q -20 -20, 0 -20 Q 20 -20, 38 0 Q 20 20, 0 20 Q -20 20, -38 0 Z"
+            fill="#E0F2FE"
+          />
+          <circle cx={0} cy={0} r={11} fill="#A4133C" />
+        </g>
+      </svg>
     );
   }
 
-  const src = variant === "dark" ? logoLight : logoDark;
   return (
-    <img
-      src={src}
-      alt="spectio.ai"
+    <svg
+      viewBox="0 0 680 220"
       height={h}
       style={{ height: h, width: "auto" }}
       className={className}
-    />
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="spectio.ai"
+    >
+      <g transform="translate(110, 110)">
+        <path
+          d="M 0 -70 Q 8 -70, 14 -64 L 64 -14 Q 70 -8, 70 0 Q 70 8, 64 14 L 14 64 Q 8 70, 0 70 Q -8 70, -14 64 L -64 14 Q -70 8, -70 0 Q -70 -8, -64 -14 L -14 -64 Q -8 -70, 0 -70 Z"
+          fill="#22D3EE"
+          stroke="#0F1729"
+          strokeWidth={3}
+        />
+        <path
+          d="M -38 0 Q -20 -20, 0 -20 Q 20 -20, 38 0 Q 20 20, 0 20 Q -20 20, -38 0 Z"
+          fill="#E0F2FE"
+        />
+        <circle cx={0} cy={0} r={11} fill="#A4133C" />
+      </g>
+      <text
+        x={225}
+        y={135}
+        fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        fontSize={68}
+        fontWeight={600}
+        letterSpacing={-1.5}
+      >
+        <tspan fill={wordmarkFill}>Spectio</tspan>
+        <tspan fill={accentFill}>.ai</tspan>
+      </text>
+    </svg>
   );
 }

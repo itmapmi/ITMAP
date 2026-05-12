@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220" width="680" height="220">
+  <title>Spectio.ai</title>
+  <desc>Logo with transparent background for embedding.</desc>
+
+  <g transform="translate(110, 110)">
+    <path d="M 0 -70 Q 8 -70, 14 -64 L 64 -14 Q 70 -8, 70 0 Q 70 8, 64 14 L 14 64 Q 8 70, 0 70 Q -8 70, -14 64 L -64 14 Q -70 8, -70 0 Q -70 -8, -64 -14 L -14 -64 Q -8 -70, 0 -70 Z" fill="#22D3EE" stroke="#0F1729" stroke-width="3"/>
+    <path d="M -38 0 Q -20 -20, 0 -20 Q 20 -20, 38 0 Q 20 20, 0 20 Q -20 20, -38 0 Z" fill="#E0F2FE"/>
+    <circle cx="0" cy="0" r="11" fill="#A4133C"/>
+  </g>
+
+  <text x="225" y="135" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="68" font-weight="600" letter-spacing="-1.5">
+    <tspan fill="#0F1729">Spectio</tspan><tspan fill="#22D3EE">.ai</tspan>
+  </text>
+</svg>
