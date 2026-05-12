@@ -11,7 +11,7 @@ export default function SpectioLogo({
   variant = "light",
   iconOnly = false,
 }: SpectioLogoProps) {
-  const heights = { sm: 32, md: 44, lg: 64 };
+  const heights = { sm: 44, md: 60, lg: 88 };
   const h = heights[size];
 
   // "light" = used on dark backgrounds → white wordmark
