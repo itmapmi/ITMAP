@@ -12,3 +12,9 @@ id = "gOF3d-IoNG0PqxYhHyBFo"
 uri = "file://docs/ITMAP-Partner-API-Guide.docx"
 type = "word_document"
 title = "ITMAP Partner API Guide (Word)"
+
+[[outputs]]
+id = "A7gIlfBrYiBZTkB5pCzLY"
+uri = "file://client/public/og-image.png"
+type = "image"
+title = "og-image.png (1200×630)"
