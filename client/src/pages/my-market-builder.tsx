@@ -1,21 +1,39 @@
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { Sparkles, Lock, Key, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
 import { MyPromptsRepository } from "@/components/me/my-prompts-repository";
 
+type TabKey = "builder" | "prompts";
+
+function readTabFromUrl(): TabKey {
+  const search = typeof window !== "undefined" ? window.location.search : "";
+  return new URLSearchParams(search).get("tab") === "prompts" ? "prompts" : "builder";
+}
+
 export default function MyMarketBuilderPage() {
   // URL-driven tab so deep-links like ?tab=prompts (used by the prompt
   // selector's "Manage My Prompts" link) auto-open the right view.
-  const [location, setLocation] = useLocation();
-  const params = new URLSearchParams(location.includes("?") ? location.split("?")[1] : window.location.search);
-  const tab = params.get("tab") === "prompts" ? "prompts" : "builder";
+  // We can't rely on wouter's useLocation here — it only re-renders on
+  // pathname changes, not query-string changes, which is why clicking
+  // the tab used to do nothing visible.
+  const [tab, setTab] = useState<TabKey>(() => readTabFromUrl());
+
+  useEffect(() => {
+    const onPop = () => setTab(readTabFromUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const onTabChange = (next: string) => {
+    const tabKey: TabKey = next === "prompts" ? "prompts" : "builder";
+    setTab(tabKey);
     const search = new URLSearchParams(window.location.search);
-    if (next === "builder") search.delete("tab"); else search.set("tab", next);
+    if (tabKey === "builder") search.delete("tab"); else search.set("tab", "prompts");
     const qs = search.toString();
-    setLocation(`/me/market-builder${qs ? `?${qs}` : ""}`, { replace: true });
+    const url = `/me/market-builder${qs ? `?${qs}` : ""}`;
+    window.history.replaceState(null, "", url);
   };
 
   return (
