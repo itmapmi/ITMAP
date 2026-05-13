@@ -29,6 +29,8 @@ import {
   ExternalLink,
   Newspaper,
   BookOpen,
+  Copy,
+  Sparkles,
 } from "lucide-react";
 import {
   Dialog,
@@ -297,13 +299,14 @@ function SuggestionCard({
   const isPending = s.status === "pending";
   const isScore = s.suggestionType === "criterion_score";
 
+  const { toast } = useToast();
   const [evalType, setEvalType] = useState<EvalType>(
     isScore ? "vendor_evaluation" : "product_evaluation"
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [editedValue, setEditedValue] = useState<string>("");
-  const [editedCommentary, setEditedCommentary] = useState<string>(s.suggestedCommentary ?? "");
+  const [editedCommentary, setEditedCommentary] = useState<string>(s.currentCommentary ?? "");
   const [detailArticleId, setDetailArticleId] = useState<string | null>(null);
 
   // Fetch all criteria (global, not per-market)
@@ -319,6 +322,39 @@ function SuggestionCard({
     staleTime: 5 * 60 * 1000,
     enabled: isPending,
   });
+
+  // Fetch this market's existing vendor scores + feature support so we can
+  // look up the current value/commentary for whichever criteria/feature
+  // the admin picks from the dropdown.
+  type ScoreRow = { vendorId: string; criteriaId: string; score: string | number; notes: string | null };
+  type SupportRow = { vendorId: string; featureId: string; supportLevel: number; comments: string | null };
+  const { data: marketScores = [] } = useQuery<ScoreRow[]>({
+    queryKey: ["/api/markets", s.marketId, "scores"],
+    staleTime: 5 * 60 * 1000,
+    enabled: isPending,
+  });
+  const { data: marketSupport = [] } = useQuery<SupportRow[]>({
+    queryKey: ["/api/markets", s.marketId, "feature-support"],
+    staleTime: 5 * 60 * 1000,
+    enabled: isPending,
+  });
+
+  // Look up current row for the *selected* target (not the AI's original target)
+  const selectedScoreRow = isScore && evalType === "vendor_evaluation" && selectedSubjectId
+    ? marketScores.find(r => r.vendorId === s.vendorId && r.criteriaId === selectedSubjectId) ?? null
+    : null;
+  const selectedSupportRow = !isScore && selectedSubjectId
+    ? marketSupport.find(r => r.vendorId === s.vendorId && r.featureId === selectedSubjectId) ?? null
+    : null;
+
+  const selectedCurrentValue: number | null = selectedScoreRow
+    ? Number(selectedScoreRow.score)
+    : selectedSupportRow
+    ? selectedSupportRow.supportLevel
+    : null;
+  const selectedCurrentCommentary: string | null = selectedScoreRow?.notes
+    ?? selectedSupportRow?.comments
+    ?? null;
 
   // On data load, pre-select category + subject based on original suggestion
   useEffect(() => {
@@ -343,6 +379,36 @@ function SuggestionCard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCriteria, featureCatData]);
 
+  // Whenever the user picks a different criteria/feature, swap the editable
+  // value + commentary boxes to reflect THAT target's current state. The AI's
+  // original suggestion stays intact in the read-only "AI Suggested Addendum"
+  // panel so the admin can copy/paste it in.
+  useEffect(() => {
+    if (!isPending || !selectedSubjectId) return;
+    setEditedValue(selectedCurrentValue != null ? String(selectedCurrentValue) : "");
+    setEditedCommentary(selectedCurrentCommentary ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubjectId, selectedScoreRow?.vendorId, selectedScoreRow?.criteriaId, selectedSupportRow?.vendorId, selectedSupportRow?.featureId]);
+
+  const copyAddendum = async () => {
+    if (!s.suggestedCommentary) return;
+    try {
+      await navigator.clipboard.writeText(s.suggestedCommentary);
+      toast({ title: "Copied", description: "AI addendum copied to clipboard." });
+    } catch {
+      toast({ title: "Copy failed", description: "Couldn't access the clipboard.", variant: "destructive" });
+    }
+  };
+
+  const appendAddendum = () => {
+    if (!s.suggestedCommentary) return;
+    setEditedCommentary(prev =>
+      prev && prev.trim().length > 0
+        ? `${prev.trimEnd()}\n\n${s.suggestedCommentary}`
+        : s.suggestedCommentary ?? ""
+    );
+  };
+
   // Derived category lists
   const productCategories = featureCatData.filter(c => !c.isEcosystem);
   const ecosystemCategories = featureCatData.filter(c => c.isEcosystem);
@@ -361,12 +427,14 @@ function SuggestionCard({
     setSelectedCategoryId("");
     setSelectedSubjectId("");
     setEditedValue("");
+    setEditedCommentary("");
   };
 
   const handleCategoryChange = (val: string) => {
     setSelectedCategoryId(val);
     setSelectedSubjectId("");
     setEditedValue("");
+    setEditedCommentary("");
   };
 
   const handleApprove = () => {
@@ -695,25 +763,77 @@ function SuggestionCard({
               </div>
             )}
 
-            {/* Commentary — always visible, pre-filled with AI suggestion */}
+            {/* AI Suggested Addendum — read-only, independent of dropdown */}
+            {s.suggestedCommentary && (
+              <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Suggested Addendum
+                  </p>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[11px] gap-1 border-amber-300 text-amber-800 hover:bg-amber-100"
+                      onClick={copyAddendum}
+                    >
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[11px] border-amber-300 text-amber-800 hover:bg-amber-100"
+                      onClick={appendAddendum}
+                    >
+                      Append ↓
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {s.suggestedCommentary}
+                </p>
+                <p className="text-[10px] text-amber-700/80 italic">
+                  This addendum was generated for the AI-identified subject ({s.subjectName}).
+                  If you change the criteria/feature above, copy or append it manually if it still applies.
+                </p>
+              </div>
+            )}
+
+            {/* Commentary — editable, pre-filled with the SELECTED target's current commentary */}
             <div className="space-y-1">
-              <Label className="text-xs text-gray-600">Commentary</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-gray-600">
+                  Commentary for selected target
+                </Label>
+                {selectedSubjectId && selectedCurrentValue != null && (
+                  <span className="text-[10px] text-gray-500">
+                    Current value:{" "}
+                    <span className="font-semibold text-gray-700">
+                      {evalType === "vendor_evaluation"
+                        ? Number(selectedCurrentValue).toFixed(1)
+                        : `${selectedCurrentValue} — ${HARVEY_OPTIONS.find(o => o.value === String(selectedCurrentValue))?.label.split(" — ")[1] ?? ""}`}
+                    </span>
+                  </span>
+                )}
+              </div>
               <Textarea
                 value={editedCommentary}
                 onChange={e => setEditedCommentary(e.target.value)}
-                rows={5}
+                rows={6}
                 className="text-xs resize-y"
-                placeholder="Commentary that will be saved…"
+                placeholder={
+                  selectedSubjectId
+                    ? "No existing commentary — start typing or copy the AI addendum above…"
+                    : "Pick a criteria/feature above to load its current commentary…"
+                }
               />
-              {s.currentCommentary && (
-                <details className="mt-1">
-                  <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
-                    Show current commentary
-                  </summary>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap border-l-2 border-gray-200 pl-2">
-                    {s.currentCommentary}
-                  </p>
-                </details>
+              {selectedSubjectId && !selectedCurrentCommentary && (
+                <p className="text-[10px] text-gray-400 italic">
+                  No existing commentary on file for this target.
+                </p>
               )}
             </div>
 
@@ -1181,6 +1301,12 @@ export function AiSuggestionsAdmin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions/count"] });
+      // Invalidate market score / feature-support caches so the next card the
+      // admin opens against the same target sees the freshly-saved commentary.
+      queryClient.invalidateQueries({ queryKey: ["/api/markets"], predicate: (q) => {
+        const k = q.queryKey;
+        return Array.isArray(k) && (k[2] === "scores" || k[2] === "feature-support");
+      }});
       toast({ title: "Change approved and applied to the market data." });
     },
     onError: (err: any) =>
