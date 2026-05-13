@@ -794,8 +794,7 @@ function SuggestionCard({
                   {s.suggestedCommentary}
                 </p>
                 <p className="text-[10px] text-amber-700/80 italic">
-                  This addendum was generated for the AI-identified subject ({s.subjectName}).
-                  If you change the criteria/feature above, copy or append it manually if it still applies.
+                  Standalone sentence — copy and paste into any criterion or feature commentary.
                 </p>
               </div>
             )}

@@ -207,7 +207,13 @@ Based ONLY on the new articles listed above, identify specific data points that 
 STRICT RULES:
 1. CRITERION SCORES: Only suggest changes for HIGH-impact news with clear, direct business implications on that specific criterion (major funding, acquisitions, flagship launches, strategic partnerships, financial results). MEDIUM-impact news may justify a change only if it directly affects a criterion's definition.
 2. FEATURE SUPPORT: Only suggest changes when a Product Announcement article explicitly describes a newly launched capability, a significant capability upgrade, or a feature being discontinued. Strong evidence required — not inference.
-3. COMMENTARY: Provide a STANDALONE 1-3 sentence addendum that summarises ONLY the new development from the article. It must read as a self-contained statement that an analyst can copy-paste into ANY criterion or feature commentary verbatim. DO NOT reference, repeat, or quote the existing commentary. DO NOT use connector words like "additionally", "furthermore", "in addition", "moreover", or "the vendor also" that imply prior text. Start the sentence with the subject (e.g. "${vendorName} launched…", "${vendorName} acquired…", "On <date>, ${vendorName} reported…") and cite a date if relevant.
+3. COMMENTARY (suggested_commentary): Output ONE short sentence (two only if absolutely necessary) describing ONLY the brand-new fact reported in the article — nothing else. STRICT REQUIREMENTS:
+   • Must be a NET-NEW statement only. Do NOT restate any background, financials, market share, prior product positioning, or anything already in the current commentary above.
+   • Must be self-contained and copy-pasteable into ANY criterion or feature commentary as-is, by an admin who will choose where to paste it.
+   • Start with the vendor name and an active verb (e.g. "${vendorName} announced…", "${vendorName} launched…", "${vendorName} acquired…"). Include a date if material.
+   • DO NOT use connector words that imply prior text: no "additionally", "furthermore", "in addition", "moreover", "however", "also", "meanwhile", "the vendor also".
+   • DO NOT include analysis, implications, "this signals…", "this may impact…", or commentary about what it means. Just the fact.
+   • Hard cap: 50 words.
 4. Never suggest a score change without also providing the addendum.
 5. If a score or feature is not clearly affected by the news, do NOT include it.
 6. Do not suggest changes where current_value equals suggested_value.
@@ -222,7 +228,7 @@ Return ONLY valid JSON with no markdown fences:
       "current_value": 7.5,
       "suggested_value": 8.0,
       "current_commentary": "<copy of current notes, or null if none>",
-      "suggested_commentary": "<standalone 1-3 sentence addendum, self-contained, no references to prior commentary>",
+      "suggested_commentary": "<ONE short sentence stating the new fact only, ≤50 words, no background, no analysis>",
       "reasoning": "<specific explanation citing the article title and why it warrants this exact change>",
       "confidence": "HIGH",
       "article_ids": ["<article_id from the list above>"]
@@ -400,7 +406,13 @@ Based ONLY on the signal above, identify ONE specific data point that should cha
 STRICT RULES:
 1. CRITERION SCORES: Only suggest changes for HIGH-impact signals with clear, direct business implications on that specific criterion.
 2. FEATURE SUPPORT: Only suggest changes when the signal describes a concrete new capability launch, upgrade, or deprecation.
-3. COMMENTARY: Provide a STANDALONE 1-3 sentence addendum that summarises ONLY the new signal. It must read as a self-contained statement that an analyst can copy-paste into ANY criterion or feature commentary verbatim. DO NOT reference, repeat, or quote the existing commentary. DO NOT use connector words like "additionally", "furthermore", "in addition", "moreover", or "the vendor also" that imply prior text. Start the sentence with the subject (e.g. "${vendorRow.name} launched…", "${vendorRow.name} reported…").
+3. COMMENTARY (suggested_commentary): Output ONE short sentence (two only if absolutely necessary) describing ONLY the brand-new fact in the signal — nothing else. STRICT REQUIREMENTS:
+   • Must be NET-NEW only. Do NOT restate background, financials, market share, prior positioning, or anything already in the current commentary above.
+   • Must be self-contained and copy-pasteable into ANY criterion or feature commentary as-is.
+   • Start with the vendor name and an active verb (e.g. "${vendorRow.name} announced…", "${vendorRow.name} launched…").
+   • DO NOT use connector words: no "additionally", "furthermore", "in addition", "moreover", "however", "also", "meanwhile", "the vendor also".
+   • DO NOT include analysis or implications. Just the fact.
+   • Hard cap: 50 words.
 4. Never suggest a score change without also providing the addendum.
 5. If no score or feature is clearly affected, return {"suggestions": []}.
 6. Score changes should be modest (0.3-1.0 for criteria, 1 level for features).
@@ -414,7 +426,7 @@ Return ONLY valid JSON with no markdown fences:
       "current_value": 7.5,
       "suggested_value": 7.0,
       "current_commentary": "<copy of current notes, or null if none>",
-      "suggested_commentary": "<standalone 1-3 sentence addendum, self-contained, no references to prior commentary>",
+      "suggested_commentary": "<ONE short sentence stating the new fact only, ≤50 words, no background, no analysis>",
       "reasoning": "<specific explanation citing the signal and why it warrants this change>",
       "confidence": "MEDIUM"
     }
