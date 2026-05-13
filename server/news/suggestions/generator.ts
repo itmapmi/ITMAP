@@ -207,8 +207,8 @@ Based ONLY on the new articles listed above, identify specific data points that 
 STRICT RULES:
 1. CRITERION SCORES: Only suggest changes for HIGH-impact news with clear, direct business implications on that specific criterion (major funding, acquisitions, flagship launches, strategic partnerships, financial results). MEDIUM-impact news may justify a change only if it directly affects a criterion's definition.
 2. FEATURE SUPPORT: Only suggest changes when a Product Announcement article explicitly describes a newly launched capability, a significant capability upgrade, or a feature being discontinued. Strong evidence required — not inference.
-3. COMMENTARY: Provide the COMPLETE updated text — integrate the news as a concise addendum (1-3 sentences max). You may trim dated or weaker sentences to keep it tight. Result must read as a single coherent paragraph.
-4. Never suggest a score change without also providing updated commentary.
+3. COMMENTARY: Provide a STANDALONE 1-3 sentence addendum that summarises ONLY the new development from the article. It must read as a self-contained statement that an analyst can copy-paste into ANY criterion or feature commentary verbatim. DO NOT reference, repeat, or quote the existing commentary. DO NOT use connector words like "additionally", "furthermore", "in addition", "moreover", or "the vendor also" that imply prior text. Start the sentence with the subject (e.g. "${vendorName} launched…", "${vendorName} acquired…", "On <date>, ${vendorName} reported…") and cite a date if relevant.
+4. Never suggest a score change without also providing the addendum.
 5. If a score or feature is not clearly affected by the news, do NOT include it.
 6. Do not suggest changes where current_value equals suggested_value.
 7. Score changes should be modest (0.3-1.0 for criteria, 1 level for features) unless news is transformational.
@@ -222,7 +222,7 @@ Return ONLY valid JSON with no markdown fences:
       "current_value": 7.5,
       "suggested_value": 8.0,
       "current_commentary": "<copy of current notes, or null if none>",
-      "suggested_commentary": "<complete updated notes text>",
+      "suggested_commentary": "<standalone 1-3 sentence addendum, self-contained, no references to prior commentary>",
       "reasoning": "<specific explanation citing the article title and why it warrants this exact change>",
       "confidence": "HIGH",
       "article_ids": ["<article_id from the list above>"]
@@ -400,8 +400,8 @@ Based ONLY on the signal above, identify ONE specific data point that should cha
 STRICT RULES:
 1. CRITERION SCORES: Only suggest changes for HIGH-impact signals with clear, direct business implications on that specific criterion.
 2. FEATURE SUPPORT: Only suggest changes when the signal describes a concrete new capability launch, upgrade, or deprecation.
-3. COMMENTARY: Provide the COMPLETE updated text — integrate the signal as a concise addendum (1-3 sentences max).
-4. Never suggest a score change without also providing updated commentary.
+3. COMMENTARY: Provide a STANDALONE 1-3 sentence addendum that summarises ONLY the new signal. It must read as a self-contained statement that an analyst can copy-paste into ANY criterion or feature commentary verbatim. DO NOT reference, repeat, or quote the existing commentary. DO NOT use connector words like "additionally", "furthermore", "in addition", "moreover", or "the vendor also" that imply prior text. Start the sentence with the subject (e.g. "${vendorRow.name} launched…", "${vendorRow.name} reported…").
+4. Never suggest a score change without also providing the addendum.
 5. If no score or feature is clearly affected, return {"suggestions": []}.
 6. Score changes should be modest (0.3-1.0 for criteria, 1 level for features).
 
@@ -414,7 +414,7 @@ Return ONLY valid JSON with no markdown fences:
       "current_value": 7.5,
       "suggested_value": 7.0,
       "current_commentary": "<copy of current notes, or null if none>",
-      "suggested_commentary": "<complete updated notes text>",
+      "suggested_commentary": "<standalone 1-3 sentence addendum, self-contained, no references to prior commentary>",
       "reasoning": "<specific explanation citing the signal and why it warrants this change>",
       "confidence": "MEDIUM"
     }
