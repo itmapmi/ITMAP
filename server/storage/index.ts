@@ -156,6 +156,7 @@ export interface IStorage {
   updateAiSuggestionStatus(id: string, status: 'approved' | 'rejected'): Promise<AiSuggestion>;
   getPendingAiSuggestionsCount(): Promise<number>;
   hasPendingDuplicateSuggestion(vendorId: string, subjectId: string): Promise<boolean>;
+  hasRecentSuggestion(vendorId: string, subjectId: string, suggestedValue: string | null, windowDays?: number): Promise<boolean>;
 
   listExternalApiKeys(): Promise<ExternalApiKey[]>;
   getExternalApiKeyByHash(hash: string): Promise<ExternalApiKey | undefined>;

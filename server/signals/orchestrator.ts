@@ -14,7 +14,7 @@ import { collectGithubSignals } from './collectors/github';
 import { classifySignal } from './classifier';
 import {
   insertVendorSignal,
-  getVendorSignalByUrl,
+  findExistingVendorSignal,
   markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
 } from '../storage/signals';
@@ -90,11 +90,14 @@ export async function collectSignalsForVendor(
 
     // Process each signal: dedup, classify, store
     for (const raw of allRaw) {
-      // Dedup by URL + vendorId
-      if (raw.url) {
-        const existing = await getVendorSignalByUrl(raw.url, vendorId);
-        if (existing) continue;
-      }
+      // Dedup: exact URL → normalized URL → title fallback (60 days)
+      const existing = await findExistingVendorSignal({
+        vendorId,
+        sourceType: raw.sourceType,
+        url: raw.url,
+        title: raw.title,
+      });
+      if (existing) continue;
 
       // Classify with GPT-4o-mini
       const classification = await classifySignal(raw.sourceType, raw.title, raw.content);

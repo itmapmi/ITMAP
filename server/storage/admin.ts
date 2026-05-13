@@ -6,7 +6,7 @@ import {
   vendors, markets, vendorSignals, newsArticles,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, gte } from "drizzle-orm";
 
 export interface SourceArticle {
   id: string;
@@ -206,6 +206,37 @@ export async function hasPendingDuplicateSuggestion(vendorId: string, subjectId:
     .select({ id: aiSuggestions.id })
     .from(aiSuggestions)
     .where(and(eq(aiSuggestions.vendorId, vendorId), eq(aiSuggestions.subjectId, subjectId), eq(aiSuggestions.status, 'pending')))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * Cross-status dedup: returns true if a suggestion for the same vendor + subject
+ * (and same suggested value when provided) was already created within the last
+ * `windowDays` days, regardless of pending/approved/rejected status.
+ *
+ * This stops the same article/signal from re-triggering an identical suggestion
+ * the day after an admin clears the pipeline.
+ */
+export async function hasRecentSuggestion(
+  vendorId: string,
+  subjectId: string,
+  suggestedValue: string | null,
+  windowDays = 14,
+): Promise<boolean> {
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+  const conditions = [
+    eq(aiSuggestions.vendorId, vendorId),
+    eq(aiSuggestions.subjectId, subjectId),
+    gte(aiSuggestions.createdAt, since),
+  ];
+  if (suggestedValue != null) {
+    conditions.push(eq(aiSuggestions.suggestedValue, suggestedValue));
+  }
+  const rows = await db
+    .select({ id: aiSuggestions.id })
+    .from(aiSuggestions)
+    .where(and(...conditions))
     .limit(1);
   return rows.length > 0;
 }

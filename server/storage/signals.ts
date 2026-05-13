@@ -117,6 +117,73 @@ export async function getVendorSignalByUrl(url: string, vendorId: string): Promi
   return row;
 }
 
+/**
+ * Normalize a URL for dedup: strip protocol scheme noise, www., trailing slash,
+ * query string, fragment, and lowercase the host.
+ */
+export function normalizeUrlForDedup(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw.trim());
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    let path = u.pathname.replace(/\/+$/, '');
+    if (!path) path = '/';
+    return `${host}${path}`;
+  } catch {
+    return raw.trim().toLowerCase();
+  }
+}
+
+/**
+ * Stronger dedup that handles web_search nondeterminism:
+ * 1) exact URL match (legacy fast path)
+ * 2) normalized URL match (strip query/www/trailing-slash)
+ * 3) fallback by (vendorId + sourceType + normalized title) within last 60 days
+ */
+export async function findExistingVendorSignal(params: {
+  vendorId: string;
+  sourceType: string;
+  url: string | null | undefined;
+  title: string;
+}): Promise<VendorSignal | undefined> {
+  const { vendorId, sourceType, url, title } = params;
+
+  if (url) {
+    const exact = await getVendorSignalByUrl(url, vendorId);
+    if (exact) return exact;
+
+    const normalized = normalizeUrlForDedup(url);
+    if (normalized) {
+      const rows = await db
+        .select()
+        .from(vendorSignals)
+        .where(and(eq(vendorSignals.vendorId, vendorId), eq(vendorSignals.sourceType, sourceType)))
+        .orderBy(desc(vendorSignals.collectedAt))
+        .limit(200);
+      const match = rows.find(r => normalizeUrlForDedup(r.url) === normalized);
+      if (match) return match;
+    }
+  }
+
+  // Title-based fallback within last 60 days
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  const normTitle = title.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!normTitle) return undefined;
+
+  const candidates = await db
+    .select()
+    .from(vendorSignals)
+    .where(and(
+      eq(vendorSignals.vendorId, vendorId),
+      eq(vendorSignals.sourceType, sourceType),
+      gte(vendorSignals.collectedAt, sixtyDaysAgo),
+    ))
+    .orderBy(desc(vendorSignals.collectedAt))
+    .limit(200);
+
+  return candidates.find(r => (r.title ?? '').trim().toLowerCase().replace(/\s+/g, ' ') === normTitle);
+}
+
 export async function deleteVendorSignal(id: string): Promise<void> {
   await db.delete(vendorSignals).where(eq(vendorSignals.id, id));
 }

@@ -29,9 +29,9 @@ export async function collectLayoffsSignals(vendorName: string): Promise<Layoffs
     return [];
   }
 
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const prompt = `Search the web for layoff events at "${vendorName}" since ${ninetyDaysAgo}. Check sources including layoffs.fyi, TechCrunch, Bloomberg, Reuters, The Verge, and major business news outlets.
+  const prompt = `Search the web for layoff events at "${vendorName}" since ${thirtyDaysAgo}. Check sources including layoffs.fyi, TechCrunch, Bloomberg, Reuters, The Verge, and major business news outlets.
 
 Return ONLY valid JSON with no markdown fences:
 {
@@ -47,7 +47,7 @@ Return ONLY valid JSON with no markdown fences:
   ]
 }
 
-Only include confirmed layoffs or significant headcount reductions. Return up to 5 events. If no layoffs occurred at ${vendorName} in the last 90 days, return {"events": []}.`;
+Only include confirmed layoffs or significant headcount reductions. Return up to 5 events. If no layoffs occurred at ${vendorName} in the last 30 days, return {"events": []}.`;
 
   try {
     const response = await responseApi.create({

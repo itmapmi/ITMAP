@@ -285,9 +285,17 @@ If no changes are warranted: {"suggestions": []}`;
     if (!s.reasoning?.trim()) continue;
 
     // Skip duplicate pending suggestions
-    const isDuplicate = await storage.hasPendingDuplicateSuggestion(vendorId, s.subject_id);
-    if (isDuplicate) {
+    const isPendingDup = await storage.hasPendingDuplicateSuggestion(vendorId, s.subject_id);
+    if (isPendingDup) {
       console.log(`[Suggestions] Skipping duplicate pending for ${vendorName} / ${s.subject_id}`);
+      continue;
+    }
+
+    // Cross-status dedup: skip if same vendor+subject+suggestedValue was created in last 14 days
+    const suggestedValueStr = s.suggested_value != null ? String(s.suggested_value) : null;
+    const isRecent = await storage.hasRecentSuggestion(vendorId, s.subject_id, suggestedValueStr, 14);
+    if (isRecent) {
+      console.log(`[Suggestions] Skipping recent (≤14d) duplicate for ${vendorName} / ${s.subject_id} → ${suggestedValueStr}`);
       continue;
     }
 
@@ -470,9 +478,16 @@ Return ONLY valid JSON with no markdown fences:
   if (!s.subject_id || s.current_value === s.suggested_value) return null;
   if (s.type !== 'criterion_score' && s.type !== 'feature_support') return null;
 
-  const isDuplicate = await storage.hasPendingDuplicateSuggestion(vendorId, s.subject_id);
-  if (isDuplicate) {
+  const isPendingDup = await storage.hasPendingDuplicateSuggestion(vendorId, s.subject_id);
+  if (isPendingDup) {
     console.log(`[Suggestions] Skipping duplicate pending for ${vendorRow.name} / ${s.subject_id}`);
+    return null;
+  }
+
+  const suggestedValueStr = s.suggested_value != null ? String(s.suggested_value) : null;
+  const isRecent = await storage.hasRecentSuggestion(vendorId, s.subject_id, suggestedValueStr, 14);
+  if (isRecent) {
+    console.log(`[Suggestions] Skipping recent (≤14d) duplicate for ${vendorRow.name} / ${s.subject_id} → ${suggestedValueStr}`);
     return null;
   }
 
