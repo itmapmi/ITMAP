@@ -539,31 +539,29 @@ function SuggestionCard({
             marketName: s.marketName,
           };
           return (
-            <details className="group">
-              <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1.5 hover:text-gray-700 list-none">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-2">
                 <Radio className="h-3 w-3 text-cyan-500" />
-                Source signal
-                <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
-                <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
-              </summary>
-              <div className="mt-2 rounded border border-cyan-100 bg-cyan-50/40 px-2 py-1">
+                Announcement (signal)
+              </p>
+              <div className="rounded border border-cyan-100 bg-cyan-50/40 px-2 py-1">
                 <SignalCard signal={signalData} compact />
               </div>
-            </details>
+            </div>
           );
         })()}
 
-        {/* Source Articles — shown when suggestion was triggered by news articles */}
+        {/* Announcement — full text of the article(s) that triggered the suggestion */}
         {s.triggeredByArticleIds && s.triggeredByArticleIds.length > 0 && (
-          <details className="group">
-            <summary className="cursor-pointer text-xs font-semibold text-gray-500 flex items-center gap-1.5 hover:text-gray-700 list-none">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-2">
               <Newspaper className="h-3 w-3 text-violet-500" />
-              Source articles
-              <span className="text-[10px] text-gray-400 font-normal">({s.triggeredByArticleIds.length})</span>
-              <span className="ml-auto text-[10px] text-gray-400 group-open:hidden">show</span>
-              <span className="ml-auto text-[10px] text-gray-400 hidden group-open:inline">hide</span>
-            </summary>
-            <div className="mt-2 space-y-2">
+              Announcement
+              <span className="text-[10px] text-gray-400 font-normal">
+                ({s.triggeredByArticleIds.length} {s.triggeredByArticleIds.length === 1 ? "article" : "articles"})
+              </span>
+            </p>
+            <div className="space-y-2">
               {s.triggeredByArticleIds.map(articleId => {
                 const article = (s.sourceArticles ?? []).find(a => a.id === articleId);
                 if (!article) {
@@ -628,7 +626,7 @@ function SuggestionCard({
                 );
               })}
             </div>
-          </details>
+          </div>
         )}
 
         {/* ── Review & edit section (pending only) ── */}
