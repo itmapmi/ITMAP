@@ -212,15 +212,16 @@ export function registerRfpRoutes(app: Express): void {
       const market = await buildRfpMarketContext(rfp.marketId);
       const llm = await getRfpLlmClient(user.id);
 
-      let newProfile = { ...profile };
+      let newProfile: CustomerProfile = { ...profile };
       try {
-        const extracted = await llm.json<Record<string, any>>(
+        const extracted = await llm.json<Partial<CustomerProfile>>(
           buildExtractionPrompt(profile),
           `User just said: """${content}"""`,
         );
-        for (const k of Object.keys(extracted)) {
-          if (extracted[k] !== null && extracted[k] !== undefined && extracted[k] !== "") {
-            newProfile[k] = extracted[k];
+        for (const k of Object.keys(extracted) as (keyof CustomerProfile)[]) {
+          const v = extracted[k];
+          if (v !== null && v !== undefined && v !== "") {
+            (newProfile as Record<string, unknown>)[k] = v;
           }
         }
       } catch (e) {
