@@ -173,7 +173,6 @@ function buildDeterministicQaQuestions(reqs: RfpRequirement[], market: MarketCon
 function renderQaGrid(questions: string[], shortlist: ScoredVendor[], market: MarketContext): string {
   if (!questions.length) return "_No vendor questions generated._";
   const vendorNames = shortlist.map(s => market.vendors.find(v => v.id === s.vendorId)?.name || "?");
-  const header = ["| # | Question |", ...vendorNames.map(n => `| ${n} |`)].join("");
   const headerRow = `| # | Question | ${vendorNames.join(" | ")} |`;
   const sep = `|---|---|${vendorNames.map(() => "---").join("|")}|`;
   const rows = questions.map((q, i) => `| ${i + 1} | ${escapeMd(q)} | ${vendorNames.map(() => "_response_").join(" | ")} |`);

@@ -353,17 +353,17 @@ export default function MyRfpDetailPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <Input placeholder="Contact name" defaultValue={row?.contactName || ""}
+                          <Input key={`cn-${row?.id || "new"}`} placeholder="Contact name" defaultValue={row?.contactName || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))}
                             className="col-span-3 bg-slate-900 border-white/10 h-8 text-xs"
                             data-testid={`input-contact-name-${s.vendorId}`} />
-                          <Input placeholder="Email" defaultValue={row?.contactEmail || ""}
+                          <Input key={`ce-${row?.id || "new"}`} placeholder="Email" defaultValue={row?.contactEmail || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))}
                             className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
                             data-testid={`input-contact-email-${s.vendorId}`} />
                         </div>
                         <div className="grid grid-cols-12 gap-3 items-start">
-                          <Textarea placeholder="Paste vendor's response text here…"
+                          <Textarea key={`rt-${row?.id || "new"}`} placeholder="Paste vendor's response text here…"
                             defaultValue={row?.responseText || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))}
                             className="col-span-8 bg-slate-900 border-white/10 text-xs min-h-[60px]"
