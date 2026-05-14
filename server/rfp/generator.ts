@@ -57,7 +57,7 @@ export async function generateRfpSection(
 ): Promise<InsertRfpSection> {
   const meta = SECTION_META[key];
   let body = "";
-  let data: any = null;
+  let data: Record<string, unknown> | null = null;
 
   if (key === "executive_summary") {
     const llm = await getRfpLlmClient(project.ownerUserId);

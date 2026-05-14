@@ -94,7 +94,7 @@ export async function exportRfpDocx(inputs: ExportInputs): Promise<Buffer> {
   const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle } = await import("docx");
   const { project, sections, shortlist, marketName } = inputs;
 
-  const children: any[] = [
+  const children: unknown[] = [
     new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun(project.title)] }),
     new Paragraph({ children: [new TextRun({ text: `${marketName} · Generated ${new Date().toLocaleDateString()}`, italics: true, color: "64748B" })] }),
     new Paragraph({ children: [new TextRun("")] }),
@@ -120,9 +120,11 @@ export async function exportRfpDocx(inputs: ExportInputs): Promise<Buffer> {
   return Buffer.from(buf);
 }
 
-function renderMdToDocx(md: string, d: any): any[] {
+type DocxModule = typeof import("docx");
+type DocxKit = Pick<DocxModule, "Paragraph" | "Table" | "TableRow" | "TableCell" | "TextRun" | "WidthType" | "BorderStyle">;
+function renderMdToDocx(md: string, d: DocxKit): unknown[] {
   const { Paragraph, Table, TableRow, TableCell, TextRun, WidthType } = d;
-  const out: any[] = [];
+  const out: unknown[] = [];
   const lines = md.split(/\r?\n/);
   let i = 0;
   while (i < lines.length) {

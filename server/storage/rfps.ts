@@ -248,20 +248,16 @@ export async function upsertRfpOutreach(data: InsertRfpOutreachEntry): Promise<R
   const existing = await db.select().from(rfpOutreach)
     .where(and(eq(rfpOutreach.rfpId, data.rfpId), eq(rfpOutreach.vendorId, data.vendorId)))
     .limit(1);
-  // Auto-stamp lifecycle timestamps on first transition into each status —
-  // so the tracker UI can show a "Sent on" / "Responded on" date without the
-  // caller having to remember to pass the date.
+  // Auto-stamp invitedAt/respondedAt on first transition into each status.
   const now = new Date();
   if (existing[0]) {
     const nextStatus = data.status ?? existing[0].status;
     const justSent = nextStatus === "invited" && existing[0].status !== "invited";
     const justResponded = (nextStatus === "responded" || nextStatus === "awarded")
       && existing[0].status !== "responded" && existing[0].status !== "awarded";
-    // Distinguish "field omitted" (undefined → keep existing) from
-    // "field explicitly cleared" (null → write null) so buyers can wipe
-    // a contact email / uploaded response file once set.
-    const pick = <K extends keyof InsertRfpOutreachEntry>(k: K, fallback: any) =>
-      k in data ? (data[k] as any) : fallback;
+    // undefined → keep existing; null → clear.
+    const pick = <K extends keyof InsertRfpOutreachEntry>(k: K, fallback: InsertRfpOutreachEntry[K] | null | undefined) =>
+      (k in data ? data[k] : fallback) as InsertRfpOutreachEntry[K] | null | undefined;
     const [row] = await db.update(rfpOutreach)
       .set({
         status: nextStatus,

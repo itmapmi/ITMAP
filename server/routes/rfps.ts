@@ -7,6 +7,10 @@
  */
 import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
+
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 import { requireAuth, requireAdmin } from "../auth";
 import { storage } from "../storage";
 import {
@@ -75,7 +79,6 @@ const requirementSchema = z.object({
   displayOrder: z.number().int().optional(),
 });
 
-// Typed request helpers — avoid `as any` casts when reading auth/middleware state.
 type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
 type RfpRequest = AuthedRequest & { rfp: Awaited<ReturnType<typeof getRfpProject>> & {} };
 const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
@@ -85,7 +88,6 @@ async function requireRfpOwner(req: Request, res: Response, next: NextFunction):
   const userId = asAuthed(req).user.id;
   const rfp = await getRfpProjectForOwner(req.params.id, userId);
   if (!rfp) {
-    // Always 404 — never leak existence of RFPs the caller does not own.
     res.status(404).json({ error: "RFP not found" });
     return;
   }
@@ -94,8 +96,6 @@ async function requireRfpOwner(req: Request, res: Response, next: NextFunction):
 }
 
 export function registerRfpRoutes(app: Express): void {
-  // ── List / create / get / delete ──────────────────────────────────────
-
   app.get("/api/me/rfps", requireAuth, async (req, res) => {
     try {
       const user = asAuthed(req).user;
@@ -104,10 +104,9 @@ export function registerRfpRoutes(app: Express): void {
         ? await listRfpProjectsForUserAndMarket(user.id, marketId)
         : await listRfpProjectsForUser(user.id);
       res.json(rows);
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
-  // Status check — used by the UI to gate the "Start RFP" button.
   app.get("/api/me/rfps-status", requireAuth, async (req, res) => {
     try {
       const user = asAuthed(req).user;
@@ -123,7 +122,7 @@ export function registerRfpRoutes(app: Express): void {
         last24hCount: recent,
         dailyLimit: USER_MAX_RFPS_PER_24H,
       });
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.post("/api/me/rfps", requireAuth, async (req, res) => {
@@ -146,7 +145,6 @@ export function registerRfpRoutes(app: Express): void {
         ownerUserId: user.id,
         title: data.title,
       });
-      // Seed first assistant message
       await appendRfpMessage({
         rfpId: rfp.id,
         role: "assistant",
@@ -154,12 +152,10 @@ export function registerRfpRoutes(app: Express): void {
         extracted: null,
       });
       res.status(201).json(rfp);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
   app.get("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
-    // Include server-computed readiness so the UI never has to reimplement the
-    // slot-filled / critical / 10-of-14 predicate. Single source of truth.
     const rfp = asRfpReq(req).rfp;
     const readiness: ReadinessResult = profileReadiness((rfp.customerProfile || {}) as CustomerProfile);
     res.json({ ...rfp, readiness });
@@ -167,7 +163,7 @@ export function registerRfpRoutes(app: Express): void {
 
   app.delete("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
     try { await deleteRfpProject(req.params.id); res.status(204).end(); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.patch("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
@@ -175,20 +171,16 @@ export function registerRfpRoutes(app: Express): void {
       const data = z.object({ title: z.string().min(1).max(200).optional() }).parse(req.body);
       const updated = await updateRfpProject(req.params.id, data);
       res.json(updated);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
-  // ── Interview ─────────────────────────────────────────────────────────
-
-  // Per-user, per-operation throttle for high-cost LLM calls (interview reply,
-  // generation, regeneration). Tracks a sliding window of timestamps in-memory.
-  // Keeps abuse contained without needing a Redis dependency.
+  // Per-user sliding-window throttle for high-cost LLM calls.
   const LLM_RATE_WINDOW_MS = 60_000;
   const LLM_RATE_MAX_PER_WINDOW = 12;
   const llmHits = new Map<string, number[]>();
   function llmRateLimit(opName: string) {
-    return (req: any, res: any, next: any) => {
-      const userId = req.user?.id;
+    return (req: Request, res: Response, next: NextFunction) => {
+      const userId = (req as Request & { user?: { id: string } }).user?.id;
       if (!userId) return next();
       const key = `${userId}:${opName}`;
       const now = Date.now();
@@ -204,7 +196,7 @@ export function registerRfpRoutes(app: Express): void {
 
   app.get("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpMessages(req.params.id)); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.post("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, llmRateLimit("interview"), async (req, res) => {
@@ -213,7 +205,6 @@ export function registerRfpRoutes(app: Express): void {
       const rfp = asRfpReq(req).rfp;
       const { content } = messageSchema.parse(req.body);
 
-      // Save user message first
       await appendRfpMessage({ rfpId: rfp.id, role: "user", content, extracted: null });
       await updateRfpProject(rfp.id, { status: "interviewing" });
 
@@ -221,7 +212,6 @@ export function registerRfpRoutes(app: Express): void {
       const market = await buildRfpMarketContext(rfp.marketId);
       const llm = await getRfpLlmClient(user.id);
 
-      // 1. Extract any slot values from the user's message.
       let newProfile = { ...profile };
       try {
         const extracted = await llm.json<Record<string, any>>(
@@ -234,18 +224,12 @@ export function registerRfpRoutes(app: Express): void {
           }
         }
       } catch (e) {
-        // Swallow extraction failures — the assistant will simply ask again.
         console.warn("[RFP] slot extraction failed:", e);
       }
 
-      // Use the same readiness predicate everywhere (critical slots + 10/14)
-      // so chat clients and the generation gate agree.
       const readiness = profileReadiness(newProfile);
 
-      // 2. Generate next assistant turn. Short-circuit the LLM call once the
-      // server-side readiness gate is met — this guarantees deterministic
-      // "interview complete" behavior (no rogue follow-up questions) and
-      // also saves a generation hop on the user's BYO key.
+      // Short-circuit the LLM once readiness is met.
       let reply: string;
       if (readiness.ready) {
         reply = "Thanks — I have everything I need to draft your RFP. Click 'Generate RFP' to continue.";
@@ -268,31 +252,25 @@ export function registerRfpRoutes(app: Express): void {
       await updateRfpProject(rfp.id, { customerProfile: profileJson });
 
       res.json({ message: saved, profile: newProfile, ready: readiness.ready, readiness });
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
       console.error("[RFP] interview error:", err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: errMsg(err) });
     }
   });
 
-  // Skip the conversation: jump straight to generation using whatever profile
-  // exists today (the user may not want a full chat).
   app.post("/api/me/rfps/:id/skip-interview", requireAuth, requireRfpOwner, async (req, res) => {
     try {
       const rfp = asRfpReq(req).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
-      // Use the same readiness predicate as /generate so the API response
-      // honestly reflects whether the buyer can skip ahead.
       const readiness = profileReadiness(profile);
       res.json({ ready: readiness.ready, readiness, profile });
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
-
-  // ── Requirements ──────────────────────────────────────────────────────
 
   app.get("/api/me/rfps/:id/requirements", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpRequirements(req.params.id)); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.post("/api/me/rfps/:id/requirements", requireAuth, requireRfpOwner, async (req, res) => {
@@ -300,7 +278,7 @@ export function registerRfpRoutes(app: Express): void {
       const data = requirementSchema.parse(req.body);
       const created = await createRfpRequirement({ ...data, rfpId: req.params.id });
       res.status(201).json(created);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
   app.patch("/api/me/rfps/:id/requirements/:reqId", requireAuth, requireRfpOwner, async (req, res) => {
@@ -309,7 +287,7 @@ export function registerRfpRoutes(app: Express): void {
       const updated = await updateRfpRequirement(req.params.id, req.params.reqId, patch);
       if (!updated) return res.status(404).json({ error: "Requirement not found in this RFP" });
       res.json(updated);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
   app.delete("/api/me/rfps/:id/requirements/:reqId", requireAuth, requireRfpOwner, async (req, res) => {
@@ -317,10 +295,9 @@ export function registerRfpRoutes(app: Express): void {
       const ok = await deleteRfpRequirement(req.params.id, req.params.reqId);
       if (!ok) return res.status(404).json({ error: "Requirement not found in this RFP" });
       res.status(204).end();
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
-  // ── Generate (the big one) ────────────────────────────────────────────
 
   app.post("/api/me/rfps/:id/generate", requireAuth, requireRfpOwner, llmRateLimit("generate"), async (req, res) => {
     try {
@@ -338,7 +315,6 @@ export function registerRfpRoutes(app: Express): void {
       await updateRfpProject(rfp.id, { status: "generating", error: null });
       const market = await buildRfpMarketContext(rfp.marketId);
 
-      // Seed requirements from market features if none exist yet.
       let requirements = await listRfpRequirements(rfp.id);
       if (!requirements.length) {
         const seeded = seedRequirementsFromProfile(profile, market);
@@ -347,13 +323,9 @@ export function registerRfpRoutes(app: Express): void {
         requirements = await listRfpRequirements(rfp.id);
       }
 
-      // Score vendors deterministically and persist shortlist.
       const scoredRaw = scoreVendors(market, requirements);
       const scored = await enrichShortlistRationales(rfp.ownerUserId, market, profile, requirements, scoredRaw, 5);
       await clearRfpShortlist(rfp.id);
-      // Default top-5 prefers verified-fit vendors; vendors needing buyer
-      // verification (free-text compliance/SLA/integration must-haves) are
-      // ranked but left un-included so the buyer makes the explicit call.
       const verifiedTop5 = scored.filter(s => !s.excluded && !s.needsVerification).slice(0, 5);
       const verifiedIds = new Set(verifiedTop5.map(s => s.vendorId));
       await bulkCreateRfpShortlist(scored.map((s, i) => ({
@@ -365,7 +337,6 @@ export function registerRfpRoutes(app: Express): void {
         rank: i + 1,
       })));
 
-      // Generate the 8 sections via LLM + deterministic helpers.
       const { sections, markdown } = await generateRfp(rfp, profile, market, requirements, scored);
       await clearRfpSections(rfp.id);
       for (const sec of sections) {
@@ -378,17 +349,15 @@ export function registerRfpRoutes(app: Express): void {
         generatedAt: new Date(),
       });
       res.json({ rfp: updated, sectionCount: sections.length, shortlistCount: scored.length });
-    } catch (err: any) {
+    } catch (err) {
       console.error("[RFP] generate error:", err);
-      await updateRfpProject(req.params.id, { status: "draft", error: err.message }).catch(() => {});
+      await updateRfpProject(req.params.id, { status: "draft", error: errMsg(err) }).catch(() => {});
       if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: errMsg(err) });
     }
   });
 
-  // Per-section regenerate — rerun a single section without rebuilding the
-  // whole RFP. Useful when the user tweaks requirements or asks for a fresh
-  // exec summary. Does NOT re-score the shortlist.
+  // Per-section regenerate — does not re-score the shortlist.
   app.post("/api/me/rfps/:id/sections/:sectionKey/regenerate", requireAuth, requireRfpOwner, llmRateLimit("regenerate"), async (req, res) => {
     try {
       const rfp = asRfpReq(req).rfp;
@@ -400,9 +369,7 @@ export function registerRfpRoutes(app: Express): void {
       const market = await buildRfpMarketContext(rfp.marketId);
       const requirements = await listRfpRequirements(rfp.id);
       const shortlistRows = await listRfpShortlist(rfp.id);
-      // Honor the buyer's manual include/exclude choices: a vendor the user
-      // deselected in the Shortlist tab should not appear in the regenerated
-      // markdown preview/exports either.
+      // Honor manual include/exclude choices from the Shortlist tab.
       const shortlist: ScoredVendor[] = shortlistRows.map(r => ({
         vendorId: r.vendorId,
         fitScore: Number(r.fitScore ?? 0),
@@ -413,24 +380,21 @@ export function registerRfpRoutes(app: Express): void {
       }));
       const section = await generateRfpSection(key, rfp, profile, market, requirements, shortlist);
       const saved = await upsertRfpSection(section);
-      // Rebuild the project-level cached markdown so previews/exports stay in
-      // sync with the regenerated section.
       const allSections = await listRfpSections(rfp.id);
       const remix = renderFullMarkdown(rfp, profile, market, allSections, shortlist);
       await updateRfpProject(rfp.id, { generatedMarkdown: remix });
       res.json(saved);
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
       console.error("[RFP] regenerate section error:", err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: errMsg(err) });
     }
   });
 
-  // ── Sections (preview + editing) ──────────────────────────────────────
 
   app.get("/api/me/rfps/:id/sections", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpSections(req.params.id)); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.patch("/api/me/rfps/:id/sections/:sectionId", requireAuth, requireRfpOwner, async (req, res) => {
@@ -442,14 +406,13 @@ export function registerRfpRoutes(app: Express): void {
       const updated = await updateRfpSection(req.params.id, req.params.sectionId, patch);
       if (!updated) return res.status(404).json({ error: "Section not found in this RFP" });
       res.json(updated);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
-  // ── Shortlist + Outreach ──────────────────────────────────────────────
 
   app.get("/api/me/rfps/:id/shortlist", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpShortlist(req.params.id)); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.patch("/api/me/rfps/:id/shortlist/:entryId", requireAuth, requireRfpOwner, async (req, res) => {
@@ -462,12 +425,12 @@ export function registerRfpRoutes(app: Express): void {
       const updated = await updateRfpShortlistEntry(req.params.id, req.params.entryId, patch);
       if (!updated) return res.status(404).json({ error: "Shortlist entry not found in this RFP" });
       res.json(updated);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
   app.get("/api/me/rfps/:id/outreach", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpOutreach(req.params.id)); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
   app.post("/api/me/rfps/:id/outreach", requireAuth, requireRfpOwner, async (req, res) => {
@@ -483,17 +446,13 @@ export function registerRfpRoutes(app: Express): void {
         invitedAt: z.coerce.date().nullish(),
         respondedAt: z.coerce.date().nullish(),
       }).parse(req.body);
-      // Validate that the vendor actually belongs to this RFP's market — this
-      // prevents writing outreach rows for unrelated vendors and tightens
-      // referential integrity beyond raw FK constraints.
+      // Validate vendor membership in this RFP's market.
       const rfp = asRfpReq(req).rfp;
       const marketVendors = await storage.getVendorsByMarket(rfp.marketId);
       if (!marketVendors.some(v => v.id === data.vendorId)) {
         return res.status(400).json({ error: "Vendor is not part of this RFP's market." });
       }
-      // If the buyer uploaded a file via the ObjectUploader, the URL is a
-      // signed GCS upload URL. Normalize it to a stable /objects/... path
-      // before persisting so the link survives signature expiry.
+      // Normalize signed GCS upload URLs to stable /objects/... paths.
       let fileUrl: string | null = data.responseFileUrl || null;
       if (fileUrl && /storage\.googleapis\.com|googleusercontent\.com/.test(fileUrl)) {
         try {
@@ -515,7 +474,7 @@ export function registerRfpRoutes(app: Express): void {
         respondedAt: data.respondedAt ?? null,
       });
       res.json(row);
-    } catch (err: any) { res.status(400).json({ error: err.message }); }
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 
   app.delete("/api/me/rfps/:id/outreach/:entryId", requireAuth, requireRfpOwner, async (req, res) => {
@@ -523,18 +482,16 @@ export function registerRfpRoutes(app: Express): void {
       const ok = await deleteRfpOutreach(req.params.id, req.params.entryId);
       if (!ok) return res.status(404).json({ error: "Outreach entry not found in this RFP" });
       res.status(204).end();
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
-
-  // ── Exports (PDF / DOCX / XLSX) ───────────────────────────────────────
 
   class RfpNotFoundError extends Error {
     constructor() { super("RFP not found"); }
   }
-  function sendExportError(res: any, err: unknown, label: string) {
-    if (err instanceof RfpNotFoundError) return res.status(404).json({ error: err.message });
+  function sendExportError(res: Response, err: unknown, label: string) {
+    if (err instanceof RfpNotFoundError) return res.status(404).json({ error: errMsg(err) });
     console.error(`[RFP] ${label} error:`, err);
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: errMsg(err) });
   }
   async function gatherExportInputs(rfpId: string) {
     const project = await getRfpProject(rfpId);
@@ -551,7 +508,6 @@ export function registerRfpRoutes(app: Express): void {
         fitScore: Number(r.fitScore ?? 0),
         rationale: r.rationale || "",
       }));
-    // Build featureId → vendorId → supportLevel map for the XLSX scoring matrix.
     const supportRows = await storage.getVendorFeatureSupport(project.marketId);
     const support: Record<string, Record<string, number>> = {};
     for (const row of supportRows) {
@@ -602,18 +558,12 @@ export function registerRfpRoutes(app: Express): void {
     } catch (err) { sendExportError(res, err, "XLSX export"); }
   });
 
-  // ── Admin: User RFPs tab (READ-ONLY visibility into user activity) ────
-  // Admins can see what users are building but cannot modify or delete their
-  // RFPs — mirrors the User Markets tab pattern. Users own their data.
-
+  // Admin read-only RFP visibility.
   app.get("/api/admin/user-rfps", requireAdmin, async (_req, res) => {
     try { res.json(await listAllRfpProjectsWithMeta()); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
+    catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
-  // Admin read-only export — admins can download any user's generated RFP
-  // in PDF/DOCX/XLSX for review without being able to mutate the underlying
-  // data. No /api/admin/user-rfps/:id PATCH or DELETE is exposed.
   app.get("/api/admin/user-rfps/:id/export/:fmt", requireAdmin, async (req, res) => {
     try {
       const fmt = req.params.fmt;
