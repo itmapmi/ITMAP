@@ -257,14 +257,19 @@ export async function upsertRfpOutreach(data: InsertRfpOutreachEntry): Promise<R
     const justSent = nextStatus === "invited" && existing[0].status !== "invited";
     const justResponded = (nextStatus === "responded" || nextStatus === "awarded")
       && existing[0].status !== "responded" && existing[0].status !== "awarded";
+    // Distinguish "field omitted" (undefined → keep existing) from
+    // "field explicitly cleared" (null → write null) so buyers can wipe
+    // a contact email / uploaded response file once set.
+    const pick = <K extends keyof InsertRfpOutreachEntry>(k: K, fallback: any) =>
+      k in data ? (data[k] as any) : fallback;
     const [row] = await db.update(rfpOutreach)
       .set({
         status: nextStatus,
-        contactName: data.contactName ?? existing[0].contactName,
-        contactEmail: data.contactEmail ?? existing[0].contactEmail,
-        notes: data.notes ?? existing[0].notes,
-        responseText: data.responseText ?? existing[0].responseText,
-        responseFileUrl: data.responseFileUrl ?? existing[0].responseFileUrl,
+        contactName: pick("contactName", existing[0].contactName),
+        contactEmail: pick("contactEmail", existing[0].contactEmail),
+        notes: pick("notes", existing[0].notes),
+        responseText: pick("responseText", existing[0].responseText),
+        responseFileUrl: pick("responseFileUrl", existing[0].responseFileUrl),
         invitedAt: data.invitedAt ?? (justSent && !existing[0].invitedAt ? now : existing[0].invitedAt),
         respondedAt: data.respondedAt ?? (justResponded && !existing[0].respondedAt ? now : existing[0].respondedAt),
         updatedAt: now,
