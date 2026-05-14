@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,31 @@ export default function MyDatasheetMarketDetailPage() {
   const [vendorId, setVendorId] = useState("");
   const [productName, setProductName] = useState("");
   const [productSlug, setProductSlug] = useState("");
+
+  // Vendor creation dialog state (user-scoped vendors, slug auto-namespaced by API)
+  const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
+  const [newVendorName, setNewVendorName] = useState("");
+  const [newVendorSlug, setNewVendorSlug] = useState("");
+  const [newVendorWebsite, setNewVendorWebsite] = useState("");
+
+  const createVendorMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(`/api/me/datasheet-markets/${params.id}/vendors`, "POST", {
+        name: newVendorName, slug: newVendorSlug,
+        website: newVendorWebsite ? newVendorWebsite : null,
+      });
+      return res.json() as Promise<DatasheetVendor>;
+    },
+    onSuccess: (v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/datasheets/vendors"] });
+      setVendorDialogOpen(false);
+      setNewVendorName(""); setNewVendorSlug(""); setNewVendorWebsite("");
+      // Auto-select the newly created vendor in the add-product form.
+      setVendorId(v.id);
+      toast({ title: "Vendor created" });
+    },
+    onError: (err: unknown) => toast({ title: "Failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
 
   const createProductMut = useMutation({
     mutationFn: () => apiRequest(`/api/me/datasheet-markets/${params.id}/products`, "POST", { vendorId, name: productName, slug: productSlug }),
@@ -70,7 +96,42 @@ export default function MyDatasheetMarketDetailPage() {
               <Plus className="h-4 w-4 mr-1" /> Add
             </Button>
           </div>
-          <p className="text-xs text-slate-500 mt-2">Pick from the global vendor catalogue. Need a new vendor? An admin can add it from the admin Vendors tab.</p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-slate-500">Pick a vendor, or add your own — it will be scoped to your account.</p>
+            <Dialog open={vendorDialogOpen} onOpenChange={setVendorDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" data-testid="button-open-create-vendor">
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New vendor
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-slate-900 border-white/10 text-slate-100">
+                <DialogHeader><DialogTitle>Create a vendor</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-slate-400">Name</Label>
+                    <Input value={newVendorName} onChange={e => setNewVendorName(e.target.value)} placeholder="Acme Networks" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400">Slug</Label>
+                    <Input value={newVendorSlug} onChange={e => setNewVendorSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} placeholder="acme-networks" />
+                    <p className="text-[11px] text-slate-500 mt-1">We'll automatically namespace this to your account.</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400">Website (optional)</Label>
+                    <Input value={newVendorWebsite} onChange={e => setNewVendorWebsite(e.target.value)} placeholder="https://acme.com" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setVendorDialogOpen(false)}>Cancel</Button>
+                  <Button
+                    disabled={!newVendorName || !newVendorSlug || createVendorMut.isPending}
+                    onClick={() => createVendorMut.mutate()}
+                    data-testid="button-create-vendor"
+                  >Create</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </Card>
 
         <div className="space-y-3">
