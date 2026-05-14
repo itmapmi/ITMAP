@@ -32,7 +32,14 @@ import {
   type ForecastScenario, type InsertForecastScenario,
   type ForecastSource, type InsertForecastSource,
   type ForecastAuditLog, type InsertForecastAuditLog,
+  type RfpProject, type InsertRfpProject,
+  type RfpInterviewMessage, type InsertRfpInterviewMessage,
+  type RfpRequirement, type InsertRfpRequirement,
+  type RfpSection, type InsertRfpSection,
+  type RfpShortlistEntry, type InsertRfpShortlistEntry,
+  type RfpOutreachEntry, type InsertRfpOutreachEntry,
 } from "@shared/schema";
+import type { RfpProjectWithMeta } from "./rfps";
 
 export * from "./users";
 export * from "./markets";
@@ -258,6 +265,37 @@ export interface IStorage {
   deleteForecastSource(id: string): Promise<void>;
   getForecastAuditLog(forecastId: string): Promise<ForecastAuditLog[]>;
   appendForecastAuditEntry(data: InsertForecastAuditLog): Promise<ForecastAuditLog>;
+
+  // ── RFP Builder ────────────────────────────────────────────────────────
+  createRfpProject(data: InsertRfpProject): Promise<RfpProject>;
+  getRfpProject(id: string): Promise<RfpProject | undefined>;
+  getRfpProjectForOwner(id: string, ownerUserId: string): Promise<RfpProject | undefined>;
+  listRfpProjectsForUser(userId: string): Promise<RfpProject[]>;
+  listRfpProjectsForUserAndMarket(userId: string, marketId: string): Promise<RfpProject[]>;
+  updateRfpProject(id: string, data: Partial<Pick<RfpProject, "title" | "status" | "customerProfile" | "generatedMarkdown" | "generatedAt" | "error">>): Promise<RfpProject>;
+  deleteRfpProject(id: string): Promise<void>;
+  listAllRfpProjectsWithMeta(): Promise<RfpProjectWithMeta[]>;
+  countRfpsCreatedLast24hForUser(userId: string): Promise<number>;
+  countActiveRfpsForUser(userId: string): Promise<number>;
+  listRfpMessages(rfpId: string): Promise<RfpInterviewMessage[]>;
+  appendRfpMessage(data: InsertRfpInterviewMessage): Promise<RfpInterviewMessage>;
+  listRfpRequirements(rfpId: string): Promise<RfpRequirement[]>;
+  createRfpRequirement(data: InsertRfpRequirement): Promise<RfpRequirement>;
+  bulkCreateRfpRequirements(rows: InsertRfpRequirement[]): Promise<RfpRequirement[]>;
+  updateRfpRequirement(rfpId: string, id: string, data: Partial<Pick<RfpRequirement, "label" | "description" | "priority" | "weight" | "expectedValue" | "displayOrder" | "kind" | "featureId">>): Promise<RfpRequirement | undefined>;
+  deleteRfpRequirement(rfpId: string, id: string): Promise<boolean>;
+  clearRfpRequirements(rfpId: string): Promise<void>;
+  listRfpSections(rfpId: string): Promise<RfpSection[]>;
+  upsertRfpSection(data: InsertRfpSection): Promise<RfpSection>;
+  updateRfpSection(rfpId: string, id: string, data: Partial<Pick<RfpSection, "title" | "body" | "data" | "displayOrder">>): Promise<RfpSection | undefined>;
+  clearRfpSections(rfpId: string): Promise<void>;
+  listRfpShortlist(rfpId: string): Promise<(RfpShortlistEntry & { vendor: { id: string; name: string; website: string | null } | null })[]>;
+  clearRfpShortlist(rfpId: string): Promise<void>;
+  bulkCreateRfpShortlist(rows: InsertRfpShortlistEntry[]): Promise<RfpShortlistEntry[]>;
+  updateRfpShortlistEntry(rfpId: string, id: string, data: Partial<Pick<RfpShortlistEntry, "isIncluded" | "rationale" | "rank">>): Promise<RfpShortlistEntry | undefined>;
+  listRfpOutreach(rfpId: string): Promise<(RfpOutreachEntry & { vendor: { id: string; name: string } | null })[]>;
+  upsertRfpOutreach(data: InsertRfpOutreachEntry): Promise<RfpOutreachEntry>;
+  deleteRfpOutreach(rfpId: string, id: string): Promise<boolean>;
 }
 
 export const storage: IStorage = {

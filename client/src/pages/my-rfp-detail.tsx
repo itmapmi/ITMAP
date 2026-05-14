@@ -338,8 +338,8 @@ export default function MyRfpDetailPage() {
                             <Select value={row?.status || "not_started"} onValueChange={(v) => upsertOutreachMutation.mutate(base({ status: v }))}>
                               <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                                <SelectItem value="not_started">Not started</SelectItem>
-                                <SelectItem value="invited">Invited</SelectItem>
+                                <SelectItem value="not_started">Draft</SelectItem>
+                                <SelectItem value="invited">Sent</SelectItem>
                                 <SelectItem value="declined">Declined</SelectItem>
                                 <SelectItem value="responded">Responded</SelectItem>
                                 <SelectItem value="awarded">Awarded</SelectItem>

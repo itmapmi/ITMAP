@@ -225,8 +225,9 @@ export function registerRfpRoutes(app: Express): void {
       const systemPrompt = buildInterviewSystemPrompt(market, newProfile);
       const reply = await llm.chat(systemPrompt, chatHistory, { maxTokens: 400 });
 
-      const next = nextMissingSlot(newProfile);
-      const ready = !next;
+      // Use the same readiness predicate everywhere (critical slots + 10/14)
+      // so chat clients and the generation gate agree.
+      const readiness = profileReadiness(newProfile);
       const profileJson: Record<string, unknown> = { ...newProfile };
       const saved = await appendRfpMessage({
         rfpId: rfp.id,
@@ -236,7 +237,7 @@ export function registerRfpRoutes(app: Express): void {
       });
       await updateRfpProject(rfp.id, { customerProfile: profileJson });
 
-      res.json({ message: saved, profile: newProfile, ready });
+      res.json({ message: saved, profile: newProfile, ready: readiness.ready, readiness });
     } catch (err: any) {
       if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
       console.error("[RFP] interview error:", err);
