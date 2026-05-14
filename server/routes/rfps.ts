@@ -25,7 +25,7 @@ import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   type CustomerProfile,
 } from "../rfp/interview";
-import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales } from "../rfp/generator";
+import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales, renderFullMarkdown } from "../rfp/generator";
 import type { SectionKey } from "../rfp/generator";
 import { scoreVendors } from "../rfp/scorer";
 import { exportRfpPdf, exportRfpDocx, exportRfpXlsx } from "../rfp/exports";
@@ -349,6 +349,11 @@ export function registerRfpRoutes(app: Express): void {
       }));
       const section = await generateRfpSection(key, rfp, profile, market, requirements, shortlist);
       const saved = await upsertRfpSection(section);
+      // Rebuild the project-level cached markdown so previews/exports stay in
+      // sync with the regenerated section.
+      const allSections = await listRfpSections(rfp.id);
+      const remix = renderFullMarkdown(rfp, profile, market, allSections as any, shortlist);
+      await updateRfpProject(rfp.id, { generatedMarkdown: remix });
       res.json(saved);
     } catch (err: any) {
       if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);

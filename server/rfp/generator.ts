@@ -190,7 +190,7 @@ function renderCommercialTable(profile: CustomerProfile): string {
   ].join("\n");
 }
 
-function renderFullMarkdown(
+export function renderFullMarkdown(
   project: RfpProject,
   profile: CustomerProfile,
   market: MarketContext,
