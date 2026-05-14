@@ -20,16 +20,36 @@ import {
   listRfpOutreach, upsertRfpOutreach, deleteRfpOutreach,
 } from "../storage/rfps";
 import { buildRfpMarketContext } from "../rfp/context";
-import { getRfpLlmClient } from "../rfp/llm";
+import { getRfpLlmClient, MissingLlmKeyError, userHasOpenAiKey } from "../rfp/llm";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   type CustomerProfile,
 } from "../rfp/interview";
-import { generateRfp, seedRequirementsFromProfile } from "../rfp/generator";
+import { generateRfp, generateRfpSection, seedRequirementsFromProfile } from "../rfp/generator";
+import type { SectionKey } from "../rfp/generator";
 import { scoreVendors } from "../rfp/scorer";
 import { exportRfpPdf, exportRfpDocx, exportRfpXlsx } from "../rfp/exports";
+import {
+  countRfpsCreatedLast24hForUser,
+} from "../storage/rfps";
 
+// Per-user rate limits — mirror the User Market Builder pattern.
+// Active = drafts + in-flight runs (interviewing/generating). Daily = creates in 24h.
 const USER_MAX_ACTIVE_RFPS = 5;
+const USER_MAX_RFPS_PER_24H = 10;
+
+function sendLlmKeyError(res: Response) {
+  return res.status(412).json({
+    error: "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",
+    code: "MISSING_LLM_KEY",
+    settingsPath: "/me/settings/llm-keys",
+  });
+}
+
+const VALID_SECTION_KEYS: readonly SectionKey[] = [
+  "executive_summary", "scope", "functional", "quantitative",
+  "vendor_qa", "scoring_rubric", "commercial", "sla_security_compliance",
+];
 
 const createSchema = z.object({
   marketId: z.string().min(1),
@@ -76,13 +96,37 @@ export function registerRfpRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // Status check — used by the UI to gate the "Start RFP" button.
+  app.get("/api/me/rfps-status", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const [hasKey, active, recent] = await Promise.all([
+        userHasOpenAiKey(user.id),
+        countActiveRfpsForUser(user.id),
+        countRfpsCreatedLast24hForUser(user.id),
+      ]);
+      res.json({
+        hasOpenAiKey: hasKey,
+        activeCount: active,
+        activeLimit: USER_MAX_ACTIVE_RFPS,
+        last24hCount: recent,
+        dailyLimit: USER_MAX_RFPS_PER_24H,
+      });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   app.post("/api/me/rfps", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
       const data = createSchema.parse(req.body);
+      if (!(await userHasOpenAiKey(user.id))) return sendLlmKeyError(res);
       const active = await countActiveRfpsForUser(user.id);
       if (active >= USER_MAX_ACTIVE_RFPS) {
         return res.status(429).json({ error: `You already have ${active} active RFPs. Complete or delete one before starting another.` });
+      }
+      const recent = await countRfpsCreatedLast24hForUser(user.id);
+      if (recent >= USER_MAX_RFPS_PER_24H) {
+        return res.status(429).json({ error: `Daily limit reached (${USER_MAX_RFPS_PER_24H} RFPs / 24 hrs). Try again later.` });
       }
       const market = await storage.getMarketByIdForViewer(data.marketId, user.id);
       if (!market) return res.status(404).json({ error: "Market not found or not visible to you" });
@@ -179,6 +223,7 @@ export function registerRfpRoutes(app: Express): void {
 
       res.json({ message: saved, profile: newProfile, ready });
     } catch (err: any) {
+      if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
       console.error("[RFP] interview error:", err);
       res.status(500).json({ error: err.message });
     }
@@ -240,7 +285,7 @@ export function registerRfpRoutes(app: Express): void {
       // Seed requirements from market features if none exist yet.
       let requirements = await listRfpRequirements(rfp.id);
       if (!requirements.length) {
-        const seeded = seedRequirementsFromProfile(profile, market) as { requirements: any[] };
+        const seeded = seedRequirementsFromProfile(profile, market);
         const inserts = seeded.requirements.map(r => ({ ...r, rfpId: rfp.id }));
         await bulkCreateRfpRequirements(inserts);
         requirements = await listRfpRequirements(rfp.id);
@@ -274,6 +319,38 @@ export function registerRfpRoutes(app: Express): void {
     } catch (err: any) {
       console.error("[RFP] generate error:", err);
       await updateRfpProject(req.params.id, { status: "draft", error: err.message }).catch(() => {});
+      if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Per-section regenerate — rerun a single section without rebuilding the
+  // whole RFP. Useful when the user tweaks requirements or asks for a fresh
+  // exec summary. Does NOT re-score the shortlist.
+  app.post("/api/me/rfps/:id/sections/:sectionKey/regenerate", requireAuth, requireRfpOwner, async (req, res) => {
+    try {
+      const rfp = (req as any).rfp;
+      const key = req.params.sectionKey as SectionKey;
+      if (!VALID_SECTION_KEYS.includes(key)) {
+        return res.status(400).json({ error: `Unknown section key. Valid: ${VALID_SECTION_KEYS.join(", ")}` });
+      }
+      const profile = (rfp.customerProfile || {}) as CustomerProfile;
+      const market = await buildRfpMarketContext(rfp.marketId);
+      const requirements = await listRfpRequirements(rfp.id);
+      const shortlistRows = await listRfpShortlist(rfp.id);
+      const shortlist = shortlistRows.map(r => ({
+        vendorId: r.vendorId,
+        fitScore: Number(r.fitScore ?? 0),
+        matched: 0, total: 0,
+        rationale: r.rationale || "",
+        excluded: !r.isIncluded && Number(r.fitScore ?? 0) === 0,
+      }));
+      const section = await generateRfpSection(key, rfp, profile, market, requirements, shortlist);
+      const saved = await upsertRfpSection(section);
+      res.json(saved);
+    } catch (err: any) {
+      if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
+      console.error("[RFP] regenerate section error:", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -422,15 +499,12 @@ export function registerRfpRoutes(app: Express): void {
     }
   });
 
-  // ── Admin: User RFPs tab ──────────────────────────────────────────────
+  // ── Admin: User RFPs tab (READ-ONLY visibility into user activity) ────
+  // Admins can see what users are building but cannot modify or delete their
+  // RFPs — mirrors the User Markets tab pattern. Users own their data.
 
   app.get("/api/admin/user-rfps", requireAdmin, async (_req, res) => {
     try { res.json(await listAllRfpProjectsWithMeta()); }
-    catch (err: any) { res.status(500).json({ error: err.message }); }
-  });
-
-  app.delete("/api/admin/user-rfps/:id", requireAdmin, async (req, res) => {
-    try { await deleteRfpProject(req.params.id); res.status(204).end(); }
     catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 }

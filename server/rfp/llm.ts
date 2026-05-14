@@ -1,28 +1,33 @@
 /**
- * RFP Builder LLM client. Prefers the user's own OpenAI key (BYO from
- * /me/settings/llm-keys), falling back to the platform's Replit AI Integration
- * key if the user hasn't set one. This mirrors the User Market Builder pattern
- * but keeps the runtime model fixed (GPT-4.1 mini) since the user does not
- * choose models in this flow.
+ * RFP Builder LLM client. The RFP Builder is strictly BYO-key — there is no
+ * platform fallback. Users must add their OpenAI key at /me/settings/llm-keys
+ * before they can run the interview or generate the RFP. The route layer
+ * surfaces a `MissingLlmKeyError` as HTTP 412 with a hint to the settings page.
  */
 import OpenAI from "openai";
 import { getUserLlmApiKey } from "../storage/userLlmKeys";
+
+export class MissingLlmKeyError extends Error {
+  constructor() {
+    super("Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.");
+    this.name = "MissingLlmKeyError";
+  }
+}
 
 export interface RfpLlmClient {
   chat(systemPrompt: string, messages: Array<{ role: "user" | "assistant"; content: string }>, opts?: { jsonMode?: boolean; maxTokens?: number }): Promise<string>;
   json<T>(systemPrompt: string, userPrompt: string): Promise<T>;
 }
 
+export async function userHasOpenAiKey(userId: string): Promise<boolean> {
+  const k = await getUserLlmApiKey(userId, "openai");
+  return !!k?.apiKey;
+}
+
 export async function getRfpLlmClient(userId: string): Promise<RfpLlmClient> {
   const userKey = await getUserLlmApiKey(userId, "openai");
-  const apiKey = userKey?.apiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("No OpenAI API key available. Add one in Settings → LLM Keys.");
-  }
-  const client = new OpenAI({
-    apiKey,
-    baseURL: userKey?.apiKey ? undefined : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  });
+  if (!userKey?.apiKey) throw new MissingLlmKeyError();
+  const client = new OpenAI({ apiKey: userKey.apiKey });
   const model = "gpt-4.1-mini";
   return {
     async chat(systemPrompt, messages, opts) {

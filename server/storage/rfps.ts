@@ -69,6 +69,17 @@ export async function listAllRfpProjectsWithMeta(): Promise<RfpProjectWithMeta[]
   return rows.map(r => ({ ...r.rfp, owner: r.owner ?? null, marketName: r.marketName ?? null }));
 }
 
+export async function countRfpsCreatedLast24hForUser(userId: string): Promise<number> {
+  const [{ c }] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(rfpProjects)
+    .where(and(
+      eq(rfpProjects.ownerUserId, userId),
+      sql`${rfpProjects.createdAt} >= now() - interval '24 hours'`,
+    ));
+  return c ?? 0;
+}
+
 export async function countActiveRfpsForUser(userId: string): Promise<number> {
   const [{ c }] = await db
     .select({ c: sql<number>`count(*)::int` })

@@ -1,19 +1,24 @@
 /**
  * Deterministic vendor fit scorer. No LLM arithmetic — pure TypeScript.
  *
- * For each requirement of kind "functional" with a linked featureId, look up
- * the vendor's Harvey Ball support (0–4 → 0/25/50/75/100) and multiply by the
- * requirement's weight × priority multiplier. Sum, then normalize 0–100.
+ * Final fit = 0.65 × functional_fit + 0.20 × execution + 0.15 × viability,
+ *   then `must`-haves with 0 support hard-exclude the vendor (fitScore = 0,
+ *   `excluded` = true) — they cannot meet the buyer's basic requirements.
+ *   Compliance and integration requirements flagged as `must` follow the same
+ *   hard-exclude rule because they're typically deal-breakers in enterprise IT.
  *
- * Non-functional requirements (quantitative, commercial, sla, security,
- * compliance) are ignored by the scorer at this stage — they show up in the
- * RFP but vendor responses are needed to score them.
+ * - functional_fit: Σ (HarveyBall% × weight × priority) / Σ (weight × priority)
+ * - execution / viability: aggregate 0..5 scores from the market evaluation,
+ *   normalized to 0..100.
  */
 import type { RfpRequirement } from "@shared/schema";
 import type { MarketContext } from "./context";
 
 const PRIORITY_WEIGHT: Record<string, number> = { must: 3, should: 2, nice: 1 };
 const HARVEY_PCT = [0, 25, 50, 75, 100];
+const FUNCTIONAL_WEIGHT = 0.65;
+const EXECUTION_WEIGHT = 0.20;
+const VIABILITY_WEIGHT = 0.15;
 
 export interface ScoredVendor {
   vendorId: string;
@@ -21,53 +26,71 @@ export interface ScoredVendor {
   matched: number;
   total: number;
   rationale: string;
+  excluded: boolean;
 }
 
 export function scoreVendors(market: MarketContext, requirements: RfpRequirement[]): ScoredVendor[] {
   const functional = requirements.filter(r => r.kind === "functional" && r.featureId);
-  if (!functional.length) {
-    // No functional requirements: fall back to aggregate execution score from the market data.
-    return market.vendors.map(v => {
-      const agg = market.vendorAggScores.find(s => s.vendorId === v.id);
-      return {
-        vendorId: v.id,
-        fitScore: agg ? Math.round((agg.execution + agg.viability) / 2 * 100) / 100 : 50,
-        matched: 0,
-        total: 0,
-        rationale: "Scored on aggregate execution + viability — no functional requirements captured.",
-      };
-    }).sort((a, b) => b.fitScore - a.fitScore);
-  }
+  // Hard-exclude rules: must-haves on functional, compliance, or integration items
+  // with zero vendor support knock the vendor out of the running entirely.
+  const hardMustReqs = requirements.filter(r =>
+    r.priority === "must" && (r.kind === "functional" || r.kind === "compliance" || r.kind === "security")
+    && r.featureId,
+  );
 
-  const out: ScoredVendor[] = market.vendors.map(v => {
+  return market.vendors.map(v => {
+    const agg = market.vendorAggScores.find(s => s.vendorId === v.id);
+    // Execution + viability are stored on a 0..5 scale → normalize to 0..100.
+    const execNorm = agg ? Math.min(100, (agg.execution / 5) * 100) : 50;
+    const viabNorm = agg ? Math.min(100, (agg.viability / 5) * 100) : 50;
+
+    // Compute functional fit.
     let earned = 0;
     let possible = 0;
     let mustMisses = 0;
+    let hardExcludeReason: string | null = null;
     let matched = 0;
     for (const req of functional) {
       const w = (req.weight || 3) * (PRIORITY_WEIGHT[req.priority] ?? 2);
       const support = market.support[req.featureId!]?.[v.id];
-      const pct = support ? HARVEY_PCT[Math.min(4, Math.max(0, support.supportLevel))] : 0;
+      const level = support ? Math.min(4, Math.max(0, support.supportLevel)) : 0;
+      const pct = HARVEY_PCT[level];
       earned += (pct / 100) * w;
       possible += w;
       if (pct >= 50) matched += 1;
       if (req.priority === "must" && pct < 50) mustMisses += 1;
     }
-    let fit = possible > 0 ? (earned / possible) * 100 : 0;
-    // Penalty: each "must" miss subtracts 8 points, capped so vendors with many misses sink fast.
-    fit = Math.max(0, fit - mustMisses * 8);
-    const rationale = mustMisses > 0
-      ? `Misses ${mustMisses} of your must-haves — likely fit only with major caveats.`
-      : matched === functional.length
-        ? `Strong fit — covers all ${functional.length} functional requirements at ≥ 50% support.`
-        : `Covers ${matched} of ${functional.length} functional requirements at ≥ 50% support.`;
+    for (const req of hardMustReqs) {
+      const support = market.support[req.featureId!]?.[v.id];
+      const level = support ? Math.min(4, Math.max(0, support.supportLevel)) : 0;
+      if (level === 0) {
+        hardExcludeReason = `Zero support for must-have "${req.label}" — hard-excluded.`;
+        break;
+      }
+    }
+
+    const functionalFit = possible > 0 ? (earned / possible) * 100 : 50;
+    let fit = (functionalFit * FUNCTIONAL_WEIGHT) + (execNorm * EXECUTION_WEIGHT) + (viabNorm * VIABILITY_WEIGHT);
+    fit = Math.max(0, fit - mustMisses * 6);
+
+    const excluded = !!hardExcludeReason;
+    if (excluded) fit = 0;
+
+    const rationale = excluded
+      ? hardExcludeReason!
+      : functional.length === 0
+        ? `Scored on aggregate execution (${execNorm.toFixed(0)}) + viability (${viabNorm.toFixed(0)}) — no functional requirements captured.`
+        : mustMisses > 0
+          ? `Misses ${mustMisses} must-have${mustMisses === 1 ? "" : "s"} (≥ 50% support). Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.`
+          : `Covers ${matched}/${functional.length} functional requirements at ≥ 50% support. Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.`;
+
     return {
       vendorId: v.id,
       fitScore: Math.round(fit * 100) / 100,
       matched,
       total: functional.length,
       rationale,
+      excluded,
     };
-  });
-  return out.sort((a, b) => b.fitScore - a.fitScore);
+  }).sort((a, b) => b.fitScore - a.fitScore);
 }

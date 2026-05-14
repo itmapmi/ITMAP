@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ interface OutreachRow { id: string; vendorId: string; status: string; contactNam
 export default function MyRfpDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [tab, setTab] = useState("interview");
   const [draft, setDraft] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,15 @@ export default function MyRfpDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
     },
-    onError: (e: any) => toast({ title: "Could not send", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        setLocation("/me/settings/llm-keys");
+        return;
+      }
+      toast({ title: "Could not send", description: msg, variant: "destructive" });
+    },
   });
 
   const generateMutation = useMutation({
@@ -54,7 +63,15 @@ export default function MyRfpDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "requirements"] });
       setTab("preview");
     },
-    onError: (e: any) => toast({ title: "Generation failed", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        setLocation("/me/settings/llm-keys");
+        return;
+      }
+      toast({ title: "Generation failed", description: msg, variant: "destructive" });
+    },
   });
 
   const updateReqMutation = useMutation({

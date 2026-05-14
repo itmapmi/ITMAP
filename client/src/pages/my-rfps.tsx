@@ -9,9 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Trash2, ArrowRight } from "lucide-react";
+import { FileText, Plus, Trash2, ArrowRight, KeyRound, AlertCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
 import type { RfpProject, Market } from "@shared/schema";
+
+interface RfpStatus {
+  hasOpenAiKey: boolean;
+  activeCount: number;
+  activeLimit: number;
+  last24hCount: number;
+  dailyLimit: number;
+}
 
 function statusColor(s: string) {
   return ({
@@ -31,6 +39,11 @@ export default function MyRfpsPage() {
 
   const { data: rfps = [], isLoading } = useQuery<RfpProject[]>({ queryKey: ["/api/me/rfps"] });
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const { data: status } = useQuery<RfpStatus>({ queryKey: ["/api/me/rfps-status"] });
+
+  const needsKey = status && !status.hasOpenAiKey;
+  const atActiveLimit = status && status.activeCount >= status.activeLimit;
+  const atDailyLimit = status && status.last24hCount >= status.dailyLimit;
 
   // If we arrived from a market page with ?marketId=..., auto-open the
   // create dialog and pre-select that market.
@@ -55,7 +68,22 @@ export default function MyRfpsPage() {
       setOpen(false); setTitle(""); setMarketId("");
       setLocation(`/me/rfps/${rfp.id}`);
     },
-    onError: (e: any) => toast({ title: "Could not start RFP", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      // The server returns 412 with code:MISSING_LLM_KEY when the user has no
+      // OpenAI key on file — show a CTA instead of a raw error.
+      const msg = String(e?.message || "");
+      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+        toast({
+          title: "OpenAI key required",
+          description: "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",
+          variant: "destructive",
+        });
+        setOpen(false);
+        setLocation("/me/settings/llm-keys");
+        return;
+      }
+      toast({ title: "Could not start RFP", description: msg, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -75,10 +103,39 @@ export default function MyRfpsPage() {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">RFP Builder</h1>
             <p className="text-slate-400 mt-2">Run a conversational interview and produce a customer-specific RFP, grounded in real market data.</p>
           </div>
-          <Button onClick={() => setOpen(true)} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-new-rfp">
-            <Plus className="w-4 h-4 mr-2" /> New RFP
+          <Button
+            onClick={() => needsKey ? setLocation("/me/settings/llm-keys") : setOpen(true)}
+            className="bg-gradient-to-r from-cyan-500 to-violet-600"
+            data-testid="button-new-rfp"
+          >
+            {needsKey ? <><KeyRound className="w-4 h-4 mr-2" /> Add API key to start</> : <><Plus className="w-4 h-4 mr-2" /> New RFP</>}
           </Button>
         </div>
+
+        {needsKey && (
+          <Card className="bg-amber-500/10 border-amber-500/30 mb-6">
+            <CardContent className="py-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-400" />
+              <div className="flex-1 text-sm text-amber-100">
+                The RFP Builder uses your own OpenAI key — no platform fallback. Add a key to enable the interview and generation.
+              </div>
+              <Button size="sm" variant="outline" className="bg-amber-500/20 border-amber-500/40 text-amber-100 hover:bg-amber-500/30" onClick={() => setLocation("/me/settings/llm-keys")}>
+                Go to LLM Keys
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {(atActiveLimit || atDailyLimit) && status && (
+          <Card className="bg-slate-900 border-amber-500/20 mb-6">
+            <CardContent className="py-3 text-sm text-amber-200 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {atDailyLimit
+                ? `Daily limit reached (${status.last24hCount}/${status.dailyLimit} RFPs in 24 h). Try again tomorrow.`
+                : `You have ${status.activeCount}/${status.activeLimit} active RFPs. Complete or delete one before starting another.`}
+            </CardContent>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="text-slate-400">Loading…</div>
@@ -141,7 +198,7 @@ export default function MyRfpsPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
+            <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending || !!needsKey || !!atActiveLimit || !!atDailyLimit} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
               {createMutation.isPending ? "Starting…" : "Start interview"}
             </Button>
           </DialogFooter>
