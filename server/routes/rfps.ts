@@ -240,6 +240,22 @@ export function registerRfpRoutes(app: Express): void {
         }));
         const systemPrompt = buildInterviewSystemPrompt(market, newProfile);
         reply = await llm.chat(systemPrompt, chatHistory, { maxTokens: 400 });
+
+        // Guard against the LLM emitting the "I have everything I need"
+        // readiness phrase prematurely. If readiness is not actually met,
+        // override with the deterministic next-question so the user is
+        // never told to click a disabled button.
+        const looksReady = /I have everything I need/i.test(reply)
+          || /click\s+['"]?Generate RFP['"]?/i.test(reply);
+        if (looksReady) {
+          const next = nextMissingSlot(newProfile);
+          if (next) {
+            const missingLabel = readiness.missing.length
+              ? ` (still need: ${readiness.missing.join(", ")})`
+              : "";
+            reply = `Got it — a few more details before I can draft the RFP${missingLabel}. ${next.question}`;
+          }
+        }
       }
       const profileJson: Record<string, unknown> = { ...newProfile };
       const saved = await appendRfpMessage({
