@@ -281,7 +281,10 @@ export function registerRfpRoutes(app: Express): void {
     try {
       const rfp = asRfpReq(req).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
-      res.json({ ready: true, profile });
+      // Use the same readiness predicate as /generate so the API response
+      // honestly reflects whether the buyer can skip ahead.
+      const readiness = profileReadiness(profile);
+      res.json({ ready: readiness.ready, readiness, profile });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
@@ -480,6 +483,14 @@ export function registerRfpRoutes(app: Express): void {
         invitedAt: z.coerce.date().nullish(),
         respondedAt: z.coerce.date().nullish(),
       }).parse(req.body);
+      // Validate that the vendor actually belongs to this RFP's market — this
+      // prevents writing outreach rows for unrelated vendors and tightens
+      // referential integrity beyond raw FK constraints.
+      const rfp = asRfpReq(req).rfp;
+      const marketVendors = await storage.getVendorsByMarket(rfp.marketId);
+      if (!marketVendors.some(v => v.id === data.vendorId)) {
+        return res.status(400).json({ error: "Vendor is not part of this RFP's market." });
+      }
       // If the buyer uploaded a file via the ObjectUploader, the URL is a
       // signed GCS upload URL. Normalize it to a stable /objects/... path
       // before persisting so the link survives signature expiry.
