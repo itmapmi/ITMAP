@@ -1,8 +1,4 @@
-/**
- * Conversational interview engine. The AI asks one focused question at a time
- * to fill the customer profile slots needed to produce an RFP, then ends the
- * interview. Slot tracking is in `customerProfile` JSON on the RFP project.
- */
+// Conversational interview — fills customerProfile slots one question at a time.
 import type { MarketContext } from "./context";
 
 export const REQUIRED_SLOTS = [
@@ -23,12 +19,6 @@ export const REQUIRED_SLOTS = [
 ] as const;
 export type SlotKey = (typeof REQUIRED_SLOTS)[number]["key"];
 
-/**
- * Structured buying inputs captured by the interview. The interview is adaptive
- * but always covers: identity (company/industry/size/geography), commercial
- * (timeline/budget), functional (mustHaves/niceToHaves/dealBreakers),
- * quantitative (specs), integrations, compliance, and SLA.
- */
 export interface CustomerProfile {
   companyName?: string;
   industry?: string;

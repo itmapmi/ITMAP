@@ -1,8 +1,4 @@
-/**
- * Build the market intelligence context the RFP generator uses to ground its
- * output: vendors, features (by category, including Ecosystem Support entries),
- * and vendor feature support (Harvey Ball 0–4). Pure data — no LLM calls.
- */
+// Market context for RFP generation — vendors, features, support, scores.
 import { storage } from "../storage";
 
 export interface MarketContext {

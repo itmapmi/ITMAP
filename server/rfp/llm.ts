@@ -1,9 +1,4 @@
-/**
- * RFP Builder LLM client. The RFP Builder is strictly BYO-key — there is no
- * platform fallback. Users must add their OpenAI key at /me/settings/llm-keys
- * before they can run the interview or generate the RFP. The route layer
- * surfaces a `MissingLlmKeyError` as HTTP 412 with a hint to the settings page.
- */
+// BYO-key OpenAI client for the RFP Builder. No platform fallback.
 import OpenAI from "openai";
 import { getUserLlmApiKey } from "../storage/userLlmKeys";
 

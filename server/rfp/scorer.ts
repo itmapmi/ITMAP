@@ -1,24 +1,7 @@
-/**
- * Deterministic vendor fit scorer. No LLM arithmetic — pure TypeScript.
- *
- * Final fit = 0.65 × functional_fit + 0.20 × execution + 0.15 × viability,
- *   then `must`-haves with 0 support hard-exclude the vendor (fitScore = 0,
- *   `excluded` = true) — they cannot meet the buyer's basic requirements.
- *   Compliance and integration requirements flagged as `must` follow the same
- *   hard-exclude rule because they're typically deal-breakers in enterprise IT.
- *
- * - functional_fit: Σ (HarveyBall% × weight × priority) / Σ (weight × priority)
- * - execution / viability: aggregate 0..5 scores from the market evaluation,
- *   normalized to 0..100.
- */
+// Deterministic vendor fit scorer. Fit = 0.65 functional + 0.20 execution + 0.15 viability.
 import type { RfpRequirement } from "@shared/schema";
 import type { MarketContext } from "./context";
 
-/**
- * Try to map a free-text requirement (e.g. compliance/integration with no
- * featureId) to a market feature by tokenized substring match on the label.
- * Returns the matched featureId, or null when no plausible mapping exists.
- */
 function mapFreeTextToFeature(label: string, market: MarketContext): string | null {
   const norm = label.toLowerCase().replace(/^[a-z\-]+:\s*/i, "").trim();
   if (!norm) return null;

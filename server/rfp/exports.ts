@@ -1,7 +1,4 @@
-/**
- * RFP exports: PDF (via pdf-service / Puppeteer), DOCX (via docx), XLSX (via xlsx).
- * Each function returns a Buffer the route handler streams to the client.
- */
+// RFP exports: PDF / DOCX / XLSX. Each returns a Buffer.
 import type { RfpProject, RfpSection, RfpRequirement } from "@shared/schema";
 import { pdfService } from "../pdf-generator/pdf-service";
 

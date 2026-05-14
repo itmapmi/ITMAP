@@ -1,10 +1,6 @@
-/**
- * /api/me/rfps/* and /api/admin/user-rfps — RFP Builder.
- *
- * End users build private RFPs for any market they can see (public or owned).
- * Admins get a read-only view at /api/admin/user-rfps that mirrors
- * the User Markets tab pattern.
- */
+// RFP Builder — owner-scoped /api/me/rfps and admin read-only /api/admin/user-rfps.
+// Ownership contract: all storage queries are scoped through requireRfpOwner at the
+// route boundary. Any new route touching rfp_* tables MUST use this middleware.
 import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 

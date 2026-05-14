@@ -1,13 +1,4 @@
-/**
- * RFP generator — assembles the 8 customer-specific sections from:
- *   (a) the captured customer profile,
- *   (b) the market's deterministic data (features, ecosystem, vendor scores),
- *   (c) the deterministically-scored vendor shortlist.
- *
- * LLM is used ONLY for prose sections (executive summary, scope narrative,
- * vendor Q&A questions, SLA/security narrative). Numeric scoring and tables
- * are pure TypeScript — same separation pattern as the Forecast Builder.
- */
+// RFP generator: 8 sections. LLM for prose only; tables/numbers are pure TS.
 import type { RfpProject, RfpRequirement, InsertRfpSection } from "@shared/schema";
 import type { MarketContext } from "./context";
 import type { CustomerProfile } from "./interview";
@@ -42,11 +33,6 @@ const SECTION_META: Record<SectionKey, { title: string; order: number }> = {
   sla_security_compliance: { title: "SLA, Security & Compliance",   order: 8 },
 };
 
-/**
- * Generate a single RFP section. Used both by `generateRfp` (full build) and
- * by the per-section regenerate endpoint. Prose sections call the LLM, table
- * sections are pure TS.
- */
 export async function generateRfpSection(
   key: SectionKey,
   project: RfpProject,
