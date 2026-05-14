@@ -15,9 +15,6 @@ interface ExportInputs {
   support?: Record<string, Record<string, number>>;
 }
 
-// ── PDF ──────────────────────────────────────────────────────────────────
-// Render the cached markdown to a clean HTML page and let pdf-service produce
-// the PDF (reusing existing Puppeteer infrastructure).
 
 export async function exportRfpPdf(inputs: ExportInputs): Promise<Buffer> {
   return await pdfService.htmlToPdf(buildHtml(inputs), { format: "A4", margin: "15mm" });
@@ -55,15 +52,12 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Minimal markdown → HTML for the table-heavy sections we generate. Handles
-// pipe tables + paragraphs + bold; intentionally narrow scope.
 function markdownTablesToHtml(md: string): string {
   const lines = md.split(/\r?\n/);
   const out: string[] = [];
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    // Pipe table start: header line followed by separator line.
     if (/^\s*\|.*\|\s*$/.test(line) && /^\s*\|[\s|:-]+\|\s*$/.test(lines[i + 1] ?? "")) {
       const headers = line.trim().split("|").slice(1, -1).map(s => s.trim());
       const rows: string[][] = [];
@@ -88,7 +82,6 @@ function inlineMd(s: string): string {
     .replace(/_([^_]+)_/g, "<em>$1</em>");
 }
 
-// ── DOCX ─────────────────────────────────────────────────────────────────
 
 export async function exportRfpDocx(inputs: ExportInputs): Promise<Buffer> {
   const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle } = await import("docx");
@@ -157,7 +150,6 @@ function stripMd(s: string): string {
   return s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/<br\/>/g, " — ");
 }
 
-// ── XLSX ─────────────────────────────────────────────────────────────────
 
 export async function exportRfpXlsx(inputs: ExportInputs): Promise<Buffer> {
   const XLSX = await import("xlsx");
@@ -187,9 +179,7 @@ export async function exportRfpXlsx(inputs: ExportInputs): Promise<Buffer> {
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(slRows), "Shortlist");
 
-  // Sheet 4: Scoring Matrix — requirements × shortlisted vendors.
-  // Functional rows with a featureId show the vendor's Harvey-ball support level
-  // (0-4). Non-functional requirements show "—" because they aren't feature-scored.
+  // Sheet 4: Scoring Matrix — functional rows show 0-4 support, others show "—".
   if (shortlist.length) {
     const header = ["#", "Kind", "Priority", "Weight", "Requirement", ...shortlist.map(s => s.vendorName)];
     const matrixRows = requirements.map((r, i) => {

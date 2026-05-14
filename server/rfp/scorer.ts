@@ -53,14 +53,6 @@ export interface ScoredVendor {
 
 export function scoreVendors(market: MarketContext, requirements: RfpRequirement[]): ScoredVendor[] {
   const functional = requirements.filter(r => r.kind === "functional" && r.featureId);
-  // Hard-exclude rules. Two paths:
-  //  1) Must-haves already tied to a featureId (functional/compliance/security) →
-  //     direct lookup, hard-exclude on supportLevel=0.
-  //  2) Free-text must-haves without a featureId — try to deterministically map
-  //     the label to a market feature by tokenized substring match. If a map
-  //     exists, treat as path #1. If not, the requirement is genuinely
-  //     unverifiable from market data and the vendor is flagged
-  //     needsVerification (the buyer must score it via the Vendor Q&A grid).
   type HardReq = { label: string; featureId: string };
   const hardMustReqs: HardReq[] = [];
   const unverifiedMustReqs: RfpRequirement[] = [];
@@ -78,11 +70,9 @@ export function scoreVendors(market: MarketContext, requirements: RfpRequirement
 
   return market.vendors.map(v => {
     const agg = market.vendorAggScores.find(s => s.vendorId === v.id);
-    // Execution + viability are stored on a 0..5 scale → normalize to 0..100.
     const execNorm = agg ? Math.min(100, (agg.execution / 5) * 100) : 50;
     const viabNorm = agg ? Math.min(100, (agg.viability / 5) * 100) : 50;
 
-    // Compute functional fit.
     let earned = 0;
     let possible = 0;
     let mustMisses = 0;

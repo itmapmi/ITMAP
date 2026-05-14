@@ -11,7 +11,6 @@ import {
   type RfpOutreachEntry, type InsertRfpOutreachEntry,
 } from "@shared/schema";
 
-// ── Projects ─────────────────────────────────────────────────────────────
 
 export async function createRfpProject(data: InsertRfpProject): Promise<RfpProject> {
   const [row] = await db.insert(rfpProjects).values(data).returning();
@@ -23,9 +22,7 @@ export async function getRfpProject(id: string): Promise<RfpProject | undefined>
   return row;
 }
 
-// Owner-scoped fetch: returns the RFP only when it belongs to the supplied user.
-// Used by route middleware so ownership is enforced at the storage boundary,
-// not just at the route layer.
+// Owner-scoped fetch — returns the RFP only when it belongs to the user.
 export async function getRfpProjectForOwner(id: string, ownerUserId: string): Promise<RfpProject | undefined> {
   const [row] = await db.select().from(rfpProjects)
     .where(and(eq(rfpProjects.id, id), eq(rfpProjects.ownerUserId, ownerUserId)));
@@ -59,7 +56,6 @@ export async function deleteRfpProject(id: string): Promise<void> {
   await db.delete(rfpProjects).where(eq(rfpProjects.id, id));
 }
 
-// Admin view: every RFP with owner + market info.
 export type RfpProjectWithMeta = RfpProject & {
   owner: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null;
   marketName: string | null;
@@ -100,7 +96,6 @@ export async function countActiveRfpsForUser(userId: string): Promise<number> {
   return c ?? 0;
 }
 
-// ── Interview messages ───────────────────────────────────────────────────
 
 export async function listRfpMessages(rfpId: string): Promise<RfpInterviewMessage[]> {
   return await db.select().from(rfpInterviewMessages)
@@ -113,7 +108,6 @@ export async function appendRfpMessage(data: InsertRfpInterviewMessage): Promise
   return row;
 }
 
-// ── Requirements ─────────────────────────────────────────────────────────
 
 export async function listRfpRequirements(rfpId: string): Promise<RfpRequirement[]> {
   return await db.select().from(rfpRequirements)
@@ -131,8 +125,6 @@ export async function bulkCreateRfpRequirements(rows: InsertRfpRequirement[]): P
   return await db.insert(rfpRequirements).values(rows).returning();
 }
 
-// rfpId is required so a caller can only touch a requirement belonging to
-// the parent RFP they've already proved ownership of in the route layer.
 export async function updateRfpRequirement(
   rfpId: string,
   id: string,
@@ -155,7 +147,6 @@ export async function clearRfpRequirements(rfpId: string): Promise<void> {
   await db.delete(rfpRequirements).where(eq(rfpRequirements.rfpId, rfpId));
 }
 
-// ── Sections ─────────────────────────────────────────────────────────────
 
 export async function listRfpSections(rfpId: string): Promise<RfpSection[]> {
   return await db.select().from(rfpSections)
@@ -194,7 +185,6 @@ export async function clearRfpSections(rfpId: string): Promise<void> {
   await db.delete(rfpSections).where(eq(rfpSections.rfpId, rfpId));
 }
 
-// ── Shortlist ────────────────────────────────────────────────────────────
 
 export async function listRfpShortlist(rfpId: string): Promise<(RfpShortlistEntry & { vendor: { id: string; name: string; website: string | null } | null })[]> {
   const rows = await db
@@ -229,7 +219,6 @@ export async function updateRfpShortlistEntry(
   return row;
 }
 
-// ── Outreach ─────────────────────────────────────────────────────────────
 
 export async function listRfpOutreach(rfpId: string): Promise<(RfpOutreachEntry & { vendor: { id: string; name: string } | null })[]> {
   const rows = await db

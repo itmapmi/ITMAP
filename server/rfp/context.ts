@@ -15,12 +15,8 @@ export interface MarketContext {
     isEcosystem: boolean;
     features: Array<{ id: string; name: string; description: string | null }>;
   }>;
-  // Map: featureId -> vendorId -> { supportLevel 0-4, comments }
   support: Record<string, Record<string, { supportLevel: number; comments: string | null }>>;
-  // Aggregate viability/execution by vendor (decimal strings → numbers)
   vendorAggScores: Array<{ vendorId: string; execution: number; viability: number }>;
-  // Per-market criteria weights so the scoring rubric narrative reflects the
-  // market's own weighting model, not just generic execution/viability splits.
   criteriaWeights: Array<{ criteriaId: string; name: string; category: "execution" | "viability"; weight: number }>;
 }
 
@@ -42,7 +38,6 @@ export async function buildRfpMarketContext(marketId: string): Promise<MarketCon
     };
   }
 
-  // Aggregate scores: average score across all execution/viability criteria.
   const byVendor = new Map<string, { exSum: number; exN: number; viSum: number; viN: number }>();
   for (const r of scoreRows) {
     const v = byVendor.get(r.vendorId) ?? { exSum: 0, exN: 0, viSum: 0, viN: 0 };

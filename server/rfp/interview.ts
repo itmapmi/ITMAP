@@ -47,9 +47,6 @@ export interface CustomerProfile {
   [k: string]: string | string[] | undefined;
 }
 
-// Single source of truth for "is this slot filled?" — used by nextMissingSlot,
-// countFilledSlots, profileReadiness, AND the interview system prompt so all
-// four agree on what counts as captured.
 export function isSlotFilled(profile: CustomerProfile, key: SlotKey): boolean {
   const v = profile[key];
   if (v === null || v === undefined) return false;
@@ -85,8 +82,7 @@ export interface ReadinessResult { ready: boolean; missing: SlotKey[]; filled: n
 export function profileReadiness(profile: CustomerProfile): ReadinessResult {
   const missing = CRITICAL_SLOTS.filter(k => !isSlotFilled(profile, k));
   const filled = countFilledSlots(profile);
-  // Ready iff every critical slot is captured AND at least 10/14 total slots
-  // are filled — i.e. the interview has produced enough structured coverage.
+  // Ready iff every critical slot is captured AND ≥10/14 total filled.
   return { ready: missing.length === 0 && filled >= 10, missing, filled, total: REQUIRED_SLOTS.length };
 }
 

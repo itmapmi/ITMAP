@@ -84,9 +84,6 @@ export async function generateRfpSection(
       : "_No quantitative specs captured yet. Add measurable targets (latency, throughput, uptime) before sending._";
     data = { count: reqs.length };
   } else if (key === "vendor_qa") {
-    // Deterministic grid: one row per captured requirement + one row per
-    // market feature category (so traceability is guaranteed). No LLM
-    // arithmetic — this section is grounded in real market data.
     const top = shortlist.filter(s => !s.excluded).slice(0, 5);
     const questions = buildDeterministicQaQuestions(requirements, market);
     body = renderQaGrid(questions, top, market);
@@ -129,7 +126,6 @@ export async function generateRfp(
   return { sections, markdown };
 }
 
-// ── Rendering helpers ────────────────────────────────────────────────────
 
 function renderRequirementsTable(reqs: RfpRequirement[], market: MarketContext): string {
   if (!reqs.length) return "_No requirements captured in this category._";
@@ -145,36 +141,27 @@ function renderRequirementsTable(reqs: RfpRequirement[], market: MarketContext):
 
 function buildDeterministicQaQuestions(reqs: RfpRequirement[], market: MarketContext): string[] {
   const qs: string[] = [];
-  // Functional must/should rows — grounded to the exact requirement label.
   for (const r of reqs.filter(r => r.kind === "functional" && (r.priority === "must" || r.priority === "should"))) {
     qs.push(`[${r.priority.toUpperCase()}] How does your product support: ${r.label}? Cite product features, version, and any limitations.`);
   }
-  // Quantitative — ask for measured values, not marketing claims.
   for (const r of reqs.filter(r => r.kind === "quantitative")) {
     qs.push(`[QUANT] Provide the measured value for: ${r.label}. Include test methodology and conditions.`);
   }
-  // Integration — explicit, must list certified vs custom.
   for (const r of reqs.filter(r => r.kind === "functional" && r.label.toLowerCase().startsWith("integration:"))) {
     qs.push(`[INTEGRATION] Confirm support for ${r.label.replace(/^integration:\s*/i, "")}: certified, custom-built, or via partner? Include reference customers.`);
   }
-  // Compliance — required certificates and last audit date.
   for (const r of reqs.filter(r => r.kind === "compliance")) {
     qs.push(`[COMPLIANCE] Provide proof of: ${r.label}. Include certifying body, last audit date, and scope.`);
   }
-  // SLA — exact contractual commitments.
   for (const r of reqs.filter(r => r.kind === "sla")) {
     qs.push(`[SLA] State your contractual commitment for: ${r.label}. Include credits/remedies for breach.`);
   }
-  // Security — deal-breaker controls.
   for (const r of reqs.filter(r => r.kind === "security")) {
     qs.push(`[SECURITY] Confirm and evidence: ${r.label}.`);
   }
-  // Market feature categories — guarantee at least one row per category, even
-  // if no specific requirement was authored against it (traceability).
   for (const cat of market.featureCategories) {
     qs.push(`[${cat.isEcosystem ? "ECOSYSTEM" : "CATEGORY"}] Summarise your overall coverage of the "${cat.name}" capability area, citing the underlying market features by name.`);
   }
-  // Universal commercial / operational closers.
   qs.push(
     "[COMMERCIAL] Provide a 3-year TCO breakdown for the buyer's stated size band, including licenses, services, and renewals.",
     "[REFERENCES] Provide 3 reference customers in our industry and size band, with contact details.",
@@ -187,7 +174,6 @@ function renderQaGrid(questions: string[], shortlist: ScoredVendor[], market: Ma
   if (!questions.length) return "_No vendor questions generated._";
   const vendorNames = shortlist.map(s => market.vendors.find(v => v.id === s.vendorId)?.name || "?");
   const header = ["| # | Question |", ...vendorNames.map(n => `| ${n} |`)].join("");
-  // Use simple flat markdown — 1 column per vendor with " " placeholder.
   const headerRow = `| # | Question | ${vendorNames.join(" | ")} |`;
   const sep = `|---|---|${vendorNames.map(() => "---").join("|")}|`;
   const rows = questions.map((q, i) => `| ${i + 1} | ${escapeMd(q)} | ${vendorNames.map(() => "_response_").join(" | ")} |`);
@@ -213,8 +199,6 @@ function renderScoringRubric(reqs: RfpRequirement[], market: MarketContext): str
   Object.entries(grouped).forEach(([k, v]) => {
     lines.push(`| ${k.charAt(0).toUpperCase() + k.slice(1)} | ${((v / total) * 100).toFixed(1)}% |`);
   });
-  // Execution / Viability sub-weights drawn from the market's own criteria
-  // weights so the rubric matches how the underlying market is scored.
   if (market.criteriaWeights.length) {
     const exec = market.criteriaWeights.filter(w => w.category === "execution");
     const viab = market.criteriaWeights.filter(w => w.category === "viability");
@@ -306,8 +290,6 @@ export function seedRequirementsFromProfile(
   const allFeatures = market.featureCategories.flatMap(c =>
     c.features.map(f => ({ ...f, categoryName: c.name, isEcosystem: c.isEcosystem })),
   );
-  // 1. Functional requirements — one per market feature, with priority/weight
-  //    derived from the customer's must-haves and nice-to-haves.
   const functional: SeededRequirement[] = allFeatures.map((f, idx) => {
     const matchedMust = mustHaves.some(m =>
       f.name.toLowerCase().includes(m.toLowerCase()) || m.toLowerCase().includes(f.name.toLowerCase()),
@@ -326,7 +308,6 @@ export function seedRequirementsFromProfile(
       displayOrder: idx,
     };
   });
-  // 2. Free-text must-haves that did not map to any feature get their own row.
   let order = functional.length;
   const namedSlots = new Set(allFeatures.map(f => f.name.toLowerCase()));
   for (const m of mustHaves) {
@@ -338,7 +319,6 @@ export function seedRequirementsFromProfile(
       });
     }
   }
-  // 3. Structured non-functional requirements driven by the captured profile.
   const out: SeededRequirement[] = [...functional];
   const push = (kind: SeededRequirement["kind"], label: string, priority: "must" | "should" | "nice" = "must") => {
     out.push({ kind, featureId: null, label, description: null, priority, weight: priority === "must" ? 5 : 3, expectedValue: null, displayOrder: order++ });
@@ -351,10 +331,7 @@ export function seedRequirementsFromProfile(
   return { requirements: out };
 }
 
-// ── LLM-generated rationale for the top-N shortlist ──────────────────────
-// Numeric scoring stays deterministic; this layer adds a short qualitative
-// rationale per top vendor, grounded in the customer profile + captured
-// requirements + the deterministic match details.
+// LLM rationale for top-N — numeric scoring stays deterministic.
 
 export async function enrichShortlistRationales(
   ownerUserId: string,
