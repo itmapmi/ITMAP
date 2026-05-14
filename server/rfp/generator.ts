@@ -93,7 +93,7 @@ export async function generateRfpSection(
     body = renderQaGrid(qaQuestions.questions ?? [], top, market);
     data = { questions: qaQuestions.questions, vendorIds: top.map(s => s.vendorId) };
   } else if (key === "scoring_rubric") {
-    body = renderScoringRubric(requirements);
+    body = renderScoringRubric(requirements, market);
   } else if (key === "commercial") {
     body = renderCommercialTable(profile);
   } else if (key === "sla_security_compliance") {
@@ -155,11 +155,13 @@ function renderQaGrid(questions: string[], shortlist: ScoredVendor[], market: Ma
   return [headerRow, sep, ...rows].join("\n");
 }
 
-function renderScoringRubric(reqs: RfpRequirement[]): string {
+function renderScoringRubric(reqs: RfpRequirement[], market: MarketContext): string {
   const weighted = reqs.filter(r => r.kind === "functional" || r.kind === "quantitative");
   const total = weighted.reduce((s, r) => s + (r.weight || 3) * (r.priority === "must" ? 3 : r.priority === "should" ? 2 : 1), 0) || 1;
   const lines = [
-    "Scoring uses a 0–4 Harvey Ball scale per requirement, multiplied by the requirement weight and priority multiplier (must=3, should=2, nice=1). Fit score is normalized to 0–100.",
+    "Final fit score = 0.65 × Functional fit + 0.20 × Execution + 0.15 × Viability, with hard-exclusion for must-have / compliance / security gaps. Each requirement uses a 0–4 Harvey Ball scale, multiplied by requirement weight and priority multiplier (must=3, should=2, nice=1).",
+    "",
+    "**Requirement-category share of functional fit**",
     "",
     "| Category | Weight in total |",
     "|---|---|",
@@ -172,6 +174,21 @@ function renderScoringRubric(reqs: RfpRequirement[]): string {
   Object.entries(grouped).forEach(([k, v]) => {
     lines.push(`| ${k.charAt(0).toUpperCase() + k.slice(1)} | ${((v / total) * 100).toFixed(1)}% |`);
   });
+  // Execution / Viability sub-weights drawn from the market's own criteria
+  // weights so the rubric matches how the underlying market is scored.
+  if (market.criteriaWeights.length) {
+    const exec = market.criteriaWeights.filter(w => w.category === "execution");
+    const viab = market.criteriaWeights.filter(w => w.category === "viability");
+    const sum = (rows: typeof exec) => rows.reduce((s, r) => s + (r.weight || 0), 0) || 1;
+    const renderGroup = (label: string, rows: typeof exec) => {
+      if (!rows.length) return;
+      lines.push("", `**${label} sub-criteria (per market definition)**`, "", "| Criterion | Weight |", "|---|---|");
+      const t = sum(rows);
+      rows.forEach(r => lines.push(`| ${r.name} | ${((r.weight / t) * 100).toFixed(1)}% |`));
+    };
+    renderGroup("Execution", exec);
+    renderGroup("Viability", viab);
+  }
   return lines.join("\n");
 }
 

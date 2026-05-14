@@ -19,6 +19,9 @@ export interface MarketContext {
   support: Record<string, Record<string, { supportLevel: number; comments: string | null }>>;
   // Aggregate viability/execution by vendor (decimal strings → numbers)
   vendorAggScores: Array<{ vendorId: string; execution: number; viability: number }>;
+  // Per-market criteria weights so the scoring rubric narrative reflects the
+  // market's own weighting model, not just generic execution/viability splits.
+  criteriaWeights: Array<{ criteriaId: string; name: string; category: "execution" | "viability"; weight: number }>;
 }
 
 export async function buildRfpMarketContext(marketId: string): Promise<MarketContext> {
@@ -28,6 +31,7 @@ export async function buildRfpMarketContext(marketId: string): Promise<MarketCon
   const categories = await storage.getMarketFeatureCategories(marketId);
   const supportRows = await storage.getVendorFeatureSupport(marketId);
   const scoreRows = await storage.getMarketVendorScores(marketId);
+  const weightRows = await storage.getMarketCriteriaWeights(marketId);
 
   const support: MarketContext["support"] = {};
   for (const r of supportRows) {
@@ -65,5 +69,11 @@ export async function buildRfpMarketContext(marketId: string): Promise<MarketCon
     })),
     support,
     vendorAggScores,
+    criteriaWeights: weightRows.map(w => ({
+      criteriaId: w.criteriaId,
+      name: w.criteria.name,
+      category: w.criteria.category as "execution" | "viability",
+      weight: Number(w.weight ?? 1),
+    })),
   };
 }
