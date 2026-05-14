@@ -246,11 +246,17 @@ export function seedRequirementsFromProfile(
   market: MarketContext,
 ): { requirements: SeededRequirement[] } {
   const mustHaves = (Array.isArray(profile.mustHaves) ? profile.mustHaves : []) as string[];
+  const niceToHaves = (Array.isArray(profile.niceToHaves) ? profile.niceToHaves : []) as string[];
   const allFeatures = market.featureCategories.flatMap(c =>
     c.features.map(f => ({ ...f, categoryName: c.name, isEcosystem: c.isEcosystem })),
   );
-  const requirements: SeededRequirement[] = allFeatures.map((f, idx) => {
-    const matched = mustHaves.some(m =>
+  // 1. Functional requirements — one per market feature, with priority/weight
+  //    derived from the customer's must-haves and nice-to-haves.
+  const functional: SeededRequirement[] = allFeatures.map((f, idx) => {
+    const matchedMust = mustHaves.some(m =>
+      f.name.toLowerCase().includes(m.toLowerCase()) || m.toLowerCase().includes(f.name.toLowerCase()),
+    );
+    const matchedNice = !matchedMust && niceToHaves.some(m =>
       f.name.toLowerCase().includes(m.toLowerCase()) || m.toLowerCase().includes(f.name.toLowerCase()),
     );
     return {
@@ -258,11 +264,72 @@ export function seedRequirementsFromProfile(
       featureId: f.id,
       label: f.name,
       description: f.description ?? null,
-      priority: matched ? "must" : "should",
-      weight: matched ? 5 : 3,
+      priority: matchedMust ? "must" : matchedNice ? "nice" : "should",
+      weight: matchedMust ? 5 : matchedNice ? 2 : 3,
       expectedValue: null,
       displayOrder: idx,
     };
   });
-  return { requirements };
+  // 2. Free-text must-haves that did not map to any feature get their own row.
+  let order = functional.length;
+  const namedSlots = new Set(allFeatures.map(f => f.name.toLowerCase()));
+  for (const m of mustHaves) {
+    const has = [...namedSlots].some(n => n.includes(m.toLowerCase()) || m.toLowerCase().includes(n));
+    if (!has) {
+      functional.push({
+        kind: "functional", featureId: null, label: m, description: null,
+        priority: "must", weight: 5, expectedValue: null, displayOrder: order++,
+      });
+    }
+  }
+  // 3. Structured non-functional requirements driven by the captured profile.
+  const out: SeededRequirement[] = [...functional];
+  const push = (kind: SeededRequirement["kind"], label: string, priority: "must" | "should" | "nice" = "must") => {
+    out.push({ kind, featureId: null, label, description: null, priority, weight: priority === "must" ? 5 : 3, expectedValue: null, displayOrder: order++ });
+  };
+  for (const q of (profile.quantitativeSpecs ?? []) as string[]) push("quantitative", q, "must");
+  for (const i of (profile.integrations ?? []) as string[])       push("functional",   `Integration: ${i}`, "must");
+  for (const c of (profile.complianceRequirements ?? []) as string[]) push("compliance", c, "must");
+  for (const s of (profile.slaTargets ?? []) as string[])         push("sla",          s, "must");
+  for (const d of (profile.dealBreakers ?? []) as string[])       push("security",     `Deal-breaker: ${d}`, "must");
+  return { requirements: out };
+}
+
+// ── LLM-generated rationale for the top-N shortlist ──────────────────────
+// Numeric scoring stays deterministic; this layer adds a short qualitative
+// rationale per top vendor, grounded in the customer profile + captured
+// requirements + the deterministic match details.
+
+import type { ScoredVendor } from "./scorer";
+
+export async function enrichShortlistRationales(
+  ownerUserId: string,
+  market: MarketContext,
+  profile: CustomerProfile,
+  requirements: RfpRequirement[],
+  scored: ScoredVendor[],
+  topN = 5,
+): Promise<ScoredVendor[]> {
+  const top = scored.filter(s => !s.excluded).slice(0, topN);
+  if (!top.length) return scored;
+  let llm;
+  try { llm = await getRfpLlmClient(ownerUserId); }
+  catch { return scored; }
+  const reqSummary = requirements.slice(0, 25).map(r => `${r.priority.toUpperCase()} ${r.kind}: ${r.label}`).join("; ");
+  const payload = top.map(s => ({
+    vendorId: s.vendorId,
+    vendorName: market.vendors.find(v => v.id === s.vendorId)?.name || s.vendorId,
+    fitScore: s.fitScore,
+    matched: s.matched, total: s.total,
+  }));
+  try {
+    const result = await llm.json<{ rationales: { vendorId: string; rationale: string }[] }>(
+      `You write short, specific shortlist rationales for an enterprise IT RFP. Output strict JSON {"rationales":[{"vendorId":"...","rationale":"..."}]}. Each rationale: 1–2 sentences, grounded only in the deterministic fit score and the customer's profile + requirements. No invented vendor capabilities, no marketing fluff.`,
+      `Customer: ${JSON.stringify(profile)}.\nRequirements (subset): ${reqSummary}.\nTop vendors with deterministic match: ${JSON.stringify(payload)}.`,
+    );
+    const byId = new Map((result.rationales || []).map(r => [r.vendorId, r.rationale]));
+    return scored.map(s => byId.has(s.vendorId) ? { ...s, rationale: byId.get(s.vendorId)! } : s);
+  } catch {
+    return scored;
+  }
 }

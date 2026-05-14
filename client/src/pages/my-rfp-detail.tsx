@@ -109,10 +109,12 @@ export default function MyRfpDetailPage() {
   });
 
   const profile = (rfp?.customerProfile || {}) as Record<string, any>;
-  const filledSlots = ["companyName","industry","companySize","geography","timeline","budgetBand","mustHaves","dealBreakers","successMetrics"].filter(k => {
+  const SLOT_KEYS = ["companyName","industry","companySize","geography","timeline","budgetBand","mustHaves","niceToHaves","dealBreakers","quantitativeSpecs","integrations","complianceRequirements","slaTargets","successMetrics"];
+  const filledSlots = SLOT_KEYS.filter(k => {
     const v = profile[k]; return v && (typeof v !== "string" || v.trim()) && (!Array.isArray(v) || v.length > 0);
   }).length;
-  const interviewComplete = filledSlots >= 9;
+  const totalSlots = SLOT_KEYS.length;
+  const interviewComplete = filledSlots >= totalSlots;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -122,7 +124,7 @@ export default function MyRfpDetailPage() {
           <div>
             <h1 className="text-2xl font-bold">{rfp?.title || "RFP"}</h1>
             <p className="text-slate-400 text-sm mt-1">
-              {filledSlots}/9 interview slots captured · Status: <span className="font-medium text-slate-200">{rfp?.status}</span>
+              {filledSlots}/{totalSlots} interview slots captured · Status: <span className="font-medium text-slate-200">{rfp?.status}</span>
             </p>
           </div>
           <Button

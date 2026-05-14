@@ -2,7 +2,7 @@
  * /api/me/rfps/* and /api/admin/user-rfps — RFP Builder.
  *
  * End users build private RFPs for any market they can see (public or owned).
- * Admins get a read-only/delete-only view at /api/admin/user-rfps that mirrors
+ * Admins get a read-only view at /api/admin/user-rfps that mirrors
  * the User Markets tab pattern.
  */
 import type { Express, Request, Response, NextFunction } from "express";
@@ -25,7 +25,7 @@ import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   type CustomerProfile,
 } from "../rfp/interview";
-import { generateRfp, generateRfpSection, seedRequirementsFromProfile } from "../rfp/generator";
+import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales } from "../rfp/generator";
 import type { SectionKey } from "../rfp/generator";
 import { scoreVendors } from "../rfp/scorer";
 import { exportRfpPdf, exportRfpDocx, exportRfpXlsx } from "../rfp/exports";
@@ -293,7 +293,8 @@ export function registerRfpRoutes(app: Express): void {
       }
 
       // Score vendors deterministically and persist shortlist.
-      const scored = scoreVendors(market, requirements);
+      const scoredRaw = scoreVendors(market, requirements);
+      const scored = await enrichShortlistRationales(rfp.ownerUserId, market, profile, requirements, scoredRaw, 5);
       await clearRfpShortlist(rfp.id);
       await bulkCreateRfpShortlist(scored.map((s, i) => ({
         rfpId: rfp.id,

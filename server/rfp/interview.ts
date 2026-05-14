@@ -13,12 +13,37 @@ export const REQUIRED_SLOTS = [
   { key: "timeline",     question: "What's your target timeline — when do you want this in production?" },
   { key: "budgetBand",   question: "Roughly what budget band are you working with (e.g. <$50k, $50–250k, $250k–1M, $1M+)?" },
   { key: "mustHaves",    question: "What are the top 3–5 capabilities you absolutely must have?" },
+  { key: "niceToHaves",  question: "What are 2–4 nice-to-have capabilities — useful but not deal-breakers?" },
   { key: "dealBreakers", question: "Anything that would be a deal-breaker (compliance, geography, deployment model)?" },
+  { key: "quantitativeSpecs", question: "Any measurable performance targets? (e.g. peak throughput, latency, uptime %, capacity, concurrent users)" },
+  { key: "integrations", question: "Which existing systems must this integrate with? (e.g. Salesforce, Snowflake, Okta, ServiceNow)" },
+  { key: "complianceRequirements", question: "Which compliance or regulatory standards must be met? (e.g. SOC2, ISO27001, HIPAA, GDPR, FedRAMP)" },
+  { key: "slaTargets",   question: "What SLA targets matter — uptime, response/resolution times, recovery objectives?" },
   { key: "successMetrics", question: "How will you measure success in the first year — what KPIs matter most?" },
 ] as const;
 export type SlotKey = (typeof REQUIRED_SLOTS)[number]["key"];
 
+/**
+ * Structured buying inputs captured by the interview. The interview is adaptive
+ * but always covers: identity (company/industry/size/geography), commercial
+ * (timeline/budget), functional (mustHaves/niceToHaves/dealBreakers),
+ * quantitative (specs), integrations, compliance, and SLA.
+ */
 export interface CustomerProfile {
+  companyName?: string;
+  industry?: string;
+  companySize?: string;
+  geography?: string;
+  timeline?: string;
+  budgetBand?: string;
+  mustHaves?: string[];
+  niceToHaves?: string[];
+  dealBreakers?: string[];
+  quantitativeSpecs?: string[];
+  integrations?: string[];
+  complianceRequirements?: string[];
+  slaTargets?: string[];
+  successMetrics?: string[];
   [k: string]: string | string[] | undefined;
 }
 
@@ -68,7 +93,12 @@ Slots and the type each one expects:
 - timeline: string (e.g. "Q3 2026", "6 months")
 - budgetBand: one of "<50k", "50-250k", "250k-1M", "1M+"
 - mustHaves: string[] (3–7 short capability names)
+- niceToHaves: string[] (2–5 short capability names — useful but not deal-breakers)
 - dealBreakers: string[] (short list)
+- quantitativeSpecs: string[] (measurable targets, e.g. "uptime 99.9%", "p95 latency <200ms", "10k concurrent users")
+- integrations: string[] (named systems the solution must integrate with)
+- complianceRequirements: string[] (e.g. "SOC2", "HIPAA", "GDPR", "FedRAMP Moderate")
+- slaTargets: string[] (uptime %, response/resolution times, RTO/RPO)
 - successMetrics: string[] (short list of KPIs)
 
 Current profile (don't overwrite a filled slot unless the user gave a clearer answer): ${JSON.stringify(profile)}.
