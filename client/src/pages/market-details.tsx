@@ -369,7 +369,7 @@ export default function MarketDetails() {
               <FileDown className="mr-2 h-4 w-4" />
               {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
-            {isAuthenticated && (
+            {isAuthenticated && (market?.visibility !== "private" || (market as any)?.ownerUserId === user?.id || isAdmin) && (
               <Button
                 variant="outline"
                 size={isMobile ? "sm" : "default"}

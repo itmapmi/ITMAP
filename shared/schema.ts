@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1415,7 +1415,9 @@ export const rfpSections = pgTable("rfp_sections", {
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
-});
+}, (t) => ({
+  rfpSectionsRfpKeyUnique: uniqueIndex("rfp_sections_rfp_id_section_key_uniq").on(t.rfpId, t.sectionKey),
+}));
 
 export const rfpShortlist = pgTable("rfp_shortlist", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1427,7 +1429,9 @@ export const rfpShortlist = pgTable("rfp_shortlist", {
   isIncluded: boolean("is_included").notNull().default(true),
   rank: integer("rank").notNull().default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
-});
+}, (t) => ({
+  rfpShortlistRfpVendorUnique: uniqueIndex("rfp_shortlist_rfp_id_vendor_id_uniq").on(t.rfpId, t.vendorId),
+}));
 
 export const rfpOutreach = pgTable("rfp_outreach", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1444,7 +1448,9 @@ export const rfpOutreach = pgTable("rfp_outreach", {
   respondedAt: timestamp("responded_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
-});
+}, (t) => ({
+  rfpOutreachRfpVendorUnique: uniqueIndex("rfp_outreach_rfp_id_vendor_id_uniq").on(t.rfpId, t.vendorId),
+}));
 
 export const insertRfpProjectSchema = createInsertSchema(rfpProjects).omit({
   id: true, createdAt: true, updatedAt: true, generatedAt: true,

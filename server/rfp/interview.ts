@@ -98,9 +98,9 @@ Your job is a structured conversational interview. You must:
 - Ask ONE focused question at a time — never multi-part.
 - Use plain, everyday language. Be concise (≤2 short sentences).
 - Acknowledge the previous answer briefly, then ask the next question.
-- When all required slots are captured, say exactly: "Thanks — I have everything I need to draft your RFP. Click 'Generate RFP' to continue." and then stop asking questions.
+- When the readiness threshold is met (all critical slots captured and at least 10 of 14 slots filled overall — i.e. the buyer is ready to generate), say exactly: "Thanks — I have everything I need to draft your RFP. Click 'Generate RFP' to continue." and then stop asking questions.
 
-Required slots still to capture, in order: ${remaining.join(", ") || "(none — wrap up)"}.
+Slots still to capture, in order (critical ones first): ${remaining.join(", ") || "(none — wrap up)"}.
 
 Captured so far: ${JSON.stringify(profile)}.
 
