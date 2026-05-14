@@ -14,6 +14,27 @@
 import type { RfpRequirement } from "@shared/schema";
 import type { MarketContext } from "./context";
 
+/**
+ * Try to map a free-text requirement (e.g. compliance/integration with no
+ * featureId) to a market feature by tokenized substring match on the label.
+ * Returns the matched featureId, or null when no plausible mapping exists.
+ */
+function mapFreeTextToFeature(label: string, market: MarketContext): string | null {
+  const norm = label.toLowerCase().replace(/^[a-z\-]+:\s*/i, "").trim();
+  if (!norm) return null;
+  const tokens = norm.split(/[^a-z0-9]+/i).filter(t => t.length >= 3);
+  if (!tokens.length) return null;
+  for (const cat of market.featureCategories) {
+    for (const f of cat.features) {
+      const fn = f.name.toLowerCase();
+      if (fn.includes(norm) || norm.includes(fn)) return f.id;
+      const hits = tokens.filter(t => fn.includes(t)).length;
+      if (hits >= Math.min(2, tokens.length)) return f.id;
+    }
+  }
+  return null;
+}
+
 const PRIORITY_WEIGHT: Record<string, number> = { must: 3, should: 2, nice: 1 };
 const HARVEY_PCT = [0, 25, 50, 75, 100];
 const FUNCTIONAL_WEIGHT = 0.65;
@@ -32,20 +53,28 @@ export interface ScoredVendor {
 
 export function scoreVendors(market: MarketContext, requirements: RfpRequirement[]): ScoredVendor[] {
   const functional = requirements.filter(r => r.kind === "functional" && r.featureId);
-  // Hard-exclude rules: must-haves on functional, compliance, or security items
-  // with zero vendor support knock the vendor out of the running entirely.
-  const hardMustReqs = requirements.filter(r =>
-    r.priority === "must" && (r.kind === "functional" || r.kind === "compliance" || r.kind === "security")
-    && r.featureId,
-  );
-  // Free-text must-haves (compliance/security/integration items without a featureId)
-  // can't be auto-verified against vendor data, so they're surfaced as "unverified"
-  // in the shortlist rationale rather than silently passing. They MUST be answered
-  // in the Vendor Q&A grid before the buyer can rank vendors.
-  const unverifiedMustReqs = requirements.filter(r =>
-    r.priority === "must" && !r.featureId &&
-    (r.kind === "compliance" || r.kind === "security" || r.kind === "sla" || r.kind === "functional")
-  );
+  // Hard-exclude rules. Two paths:
+  //  1) Must-haves already tied to a featureId (functional/compliance/security) →
+  //     direct lookup, hard-exclude on supportLevel=0.
+  //  2) Free-text must-haves without a featureId — try to deterministically map
+  //     the label to a market feature by tokenized substring match. If a map
+  //     exists, treat as path #1. If not, the requirement is genuinely
+  //     unverifiable from market data and the vendor is flagged
+  //     needsVerification (the buyer must score it via the Vendor Q&A grid).
+  type HardReq = { label: string; featureId: string };
+  const hardMustReqs: HardReq[] = [];
+  const unverifiedMustReqs: RfpRequirement[] = [];
+  const enforcedKinds = new Set(["functional", "compliance", "security", "sla"]);
+  for (const r of requirements) {
+    if (r.priority !== "must" || !enforcedKinds.has(r.kind)) continue;
+    if (r.featureId) {
+      hardMustReqs.push({ label: r.label, featureId: r.featureId });
+      continue;
+    }
+    const mapped = mapFreeTextToFeature(r.label, market);
+    if (mapped) hardMustReqs.push({ label: r.label, featureId: mapped });
+    else unverifiedMustReqs.push(r);
+  }
 
   return market.vendors.map(v => {
     const agg = market.vendorAggScores.find(s => s.vendorId === v.id);
@@ -70,7 +99,7 @@ export function scoreVendors(market: MarketContext, requirements: RfpRequirement
       if (req.priority === "must" && pct < 50) mustMisses += 1;
     }
     for (const req of hardMustReqs) {
-      const support = market.support[req.featureId!]?.[v.id];
+      const support = market.support[req.featureId]?.[v.id];
       const level = support ? Math.min(4, Math.max(0, support.supportLevel)) : 0;
       if (level === 0) {
         hardExcludeReason = `Zero support for must-have "${req.label}" — hard-excluded.`;

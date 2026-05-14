@@ -84,14 +84,13 @@ export async function generateRfpSection(
       : "_No quantitative specs captured yet. Add measurable targets (latency, throughput, uptime) before sending._";
     data = { count: reqs.length };
   } else if (key === "vendor_qa") {
-    const llm = await getRfpLlmClient(project.ownerUserId);
-    const qaQuestions = await llm.json<{ questions: string[] }>(
-      `You generate Vendor Q&A questions for an enterprise RFP. Return JSON {"questions": string[]}. 10-14 sharp questions covering: deployment model, integration, security, support model, roadmap, references, total cost. Avoid generic filler.`,
-      `Customer: ${JSON.stringify(profile)}. Market: ${market.marketName}. Must-haves: ${JSON.stringify(profile.mustHaves ?? [])}.`,
-    );
+    // Deterministic grid: one row per captured requirement + one row per
+    // market feature category (so traceability is guaranteed). No LLM
+    // arithmetic — this section is grounded in real market data.
     const top = shortlist.filter(s => !s.excluded).slice(0, 5);
-    body = renderQaGrid(qaQuestions.questions ?? [], top, market);
-    data = { questions: qaQuestions.questions, vendorIds: top.map(s => s.vendorId) };
+    const questions = buildDeterministicQaQuestions(requirements, market);
+    body = renderQaGrid(questions, top, market);
+    data = { questions, vendorIds: top.map(s => s.vendorId) };
   } else if (key === "scoring_rubric") {
     body = renderScoringRubric(requirements, market);
   } else if (key === "commercial") {
@@ -142,6 +141,46 @@ function renderRequirementsTable(reqs: RfpRequirement[], market: MarketContext):
     lines.push(`| ${i + 1} | ${label}${desc} | ${r.priority.toUpperCase()} | ${r.weight} | ${escapeMd(r.expectedValue || "—")} |`);
   });
   return lines.join("\n");
+}
+
+function buildDeterministicQaQuestions(reqs: RfpRequirement[], market: MarketContext): string[] {
+  const qs: string[] = [];
+  // Functional must/should rows — grounded to the exact requirement label.
+  for (const r of reqs.filter(r => r.kind === "functional" && (r.priority === "must" || r.priority === "should"))) {
+    qs.push(`[${r.priority.toUpperCase()}] How does your product support: ${r.label}? Cite product features, version, and any limitations.`);
+  }
+  // Quantitative — ask for measured values, not marketing claims.
+  for (const r of reqs.filter(r => r.kind === "quantitative")) {
+    qs.push(`[QUANT] Provide the measured value for: ${r.label}. Include test methodology and conditions.`);
+  }
+  // Integration — explicit, must list certified vs custom.
+  for (const r of reqs.filter(r => r.kind === "functional" && r.label.toLowerCase().startsWith("integration:"))) {
+    qs.push(`[INTEGRATION] Confirm support for ${r.label.replace(/^integration:\s*/i, "")}: certified, custom-built, or via partner? Include reference customers.`);
+  }
+  // Compliance — required certificates and last audit date.
+  for (const r of reqs.filter(r => r.kind === "compliance")) {
+    qs.push(`[COMPLIANCE] Provide proof of: ${r.label}. Include certifying body, last audit date, and scope.`);
+  }
+  // SLA — exact contractual commitments.
+  for (const r of reqs.filter(r => r.kind === "sla")) {
+    qs.push(`[SLA] State your contractual commitment for: ${r.label}. Include credits/remedies for breach.`);
+  }
+  // Security — deal-breaker controls.
+  for (const r of reqs.filter(r => r.kind === "security")) {
+    qs.push(`[SECURITY] Confirm and evidence: ${r.label}.`);
+  }
+  // Market feature categories — guarantee at least one row per category, even
+  // if no specific requirement was authored against it (traceability).
+  for (const cat of market.featureCategories) {
+    qs.push(`[${cat.isEcosystem ? "ECOSYSTEM" : "CATEGORY"}] Summarise your overall coverage of the "${cat.name}" capability area, citing the underlying market features by name.`);
+  }
+  // Universal commercial / operational closers.
+  qs.push(
+    "[COMMERCIAL] Provide a 3-year TCO breakdown for the buyer's stated size band, including licenses, services, and renewals.",
+    "[REFERENCES] Provide 3 reference customers in our industry and size band, with contact details.",
+    "[ROADMAP] List committed roadmap items in the next 12 months relevant to our must-haves.",
+  );
+  return qs;
 }
 
 function renderQaGrid(questions: string[], shortlist: ScoredVendor[], market: MarketContext): string {
