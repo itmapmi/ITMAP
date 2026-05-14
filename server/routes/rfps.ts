@@ -528,9 +528,17 @@ export function registerRfpRoutes(app: Express): void {
 
   // ── Exports (PDF / DOCX / XLSX) ───────────────────────────────────────
 
+  class RfpNotFoundError extends Error {
+    constructor() { super("RFP not found"); }
+  }
+  function sendExportError(res: any, err: unknown, label: string) {
+    if (err instanceof RfpNotFoundError) return res.status(404).json({ error: err.message });
+    console.error(`[RFP] ${label} error:`, err);
+    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
   async function gatherExportInputs(rfpId: string) {
     const project = await getRfpProject(rfpId);
-    if (!project) throw new Error("RFP not found");
+    if (!project) throw new RfpNotFoundError();
     const market = await storage.getMarketById(project.marketId);
     const sections = await listRfpSections(rfpId);
     const requirements = await listRfpRequirements(rfpId);
@@ -571,10 +579,7 @@ export function registerRfpRoutes(app: Express): void {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${sanitizeFilename(inputs.project.title)}.pdf"`);
       res.send(buf);
-    } catch (err: any) {
-      console.error("[RFP] PDF export error:", err);
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendExportError(res, err, "PDF export"); }
   });
 
   app.get("/api/me/rfps/:id/export/docx", requireAuth, requireRfpOwner, async (req, res) => {
@@ -584,10 +589,7 @@ export function registerRfpRoutes(app: Express): void {
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${sanitizeFilename(inputs.project.title)}.docx"`);
       res.send(buf);
-    } catch (err: any) {
-      console.error("[RFP] DOCX export error:", err);
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendExportError(res, err, "DOCX export"); }
   });
 
   app.get("/api/me/rfps/:id/export/xlsx", requireAuth, requireRfpOwner, async (req, res) => {
@@ -597,10 +599,7 @@ export function registerRfpRoutes(app: Express): void {
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${sanitizeFilename(inputs.project.title)}.xlsx"`);
       res.send(buf);
-    } catch (err: any) {
-      console.error("[RFP] XLSX export error:", err);
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendExportError(res, err, "XLSX export"); }
   });
 
   // ── Admin: User RFPs tab (READ-ONLY visibility into user activity) ────
@@ -636,9 +635,6 @@ export function registerRfpRoutes(app: Express): void {
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}.xlsx"`);
       res.send(await exportRfpXlsx(inputs));
-    } catch (err: any) {
-      console.error("[RFP] admin export error:", err);
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendExportError(res, err, "admin export"); }
   });
 }
