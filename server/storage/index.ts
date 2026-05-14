@@ -66,6 +66,7 @@ import * as promptsStorage from "./prompts";
 import * as userLlmKeysStorage from "./userLlmKeys";
 import * as forecastsStorage from "./forecasts";
 import * as rfpsStorage from "./rfps";
+import * as datasheetsStorage from "./datasheets";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -299,7 +300,12 @@ export interface IStorage {
   deleteRfpOutreach(rfpId: string, id: string): Promise<boolean>;
 }
 
-export const storage: IStorage = {
+// Datasheet storage is composed into the singleton so any caller can reach
+// it via `storage.<fn>` even though the methods are intentionally not part
+// of the IStorage interface (the datasheet surface area is large and would
+// double the interface size for little type-safety gain — callers that
+// need typed access import from `./datasheets` directly).
+export const storage: IStorage & typeof datasheetsStorage = {
   ...userStorage,
   ...marketStorage,
   ...criteriaStorage,
@@ -311,4 +317,5 @@ export const storage: IStorage = {
   ...userLlmKeysStorage,
   ...forecastsStorage,
   ...rfpsStorage,
+  ...datasheetsStorage,
 };

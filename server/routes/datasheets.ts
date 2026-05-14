@@ -307,7 +307,7 @@ export function registerDatasheetRoutes(app: Express): void {
     try {
       const body = z.object({
         marketId: z.string().min(1),
-        productIds: z.array(z.string()).min(1).max(5),
+        productIds: z.array(z.string().min(1)).min(2).max(5),
         title: z.string().max(200).optional(),
       }).parse(req.body);
       const loaded = await loadPublicProducts(body.productIds);
@@ -611,7 +611,7 @@ export function registerDatasheetRoutes(app: Express): void {
   // ── Export: PDF + Excel ─────────────────────────────────────────────────
   app.post("/api/datasheets/export/excel", async (req, res) => {
     try {
-      const body = z.object({ productIds: z.array(z.string()).min(1).max(5) }).parse(req.body);
+      const body = z.object({ productIds: z.array(z.string().min(1)).min(2).max(5) }).parse(req.body);
       const loaded = await loadPublicProducts(body.productIds);
       if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
       const { products, market } = loaded;
@@ -652,7 +652,7 @@ export function registerDatasheetRoutes(app: Express): void {
 
   app.post("/api/datasheets/export/pdf", async (req, res) => {
     try {
-      const body = z.object({ productIds: z.array(z.string()).min(1).max(5) }).parse(req.body);
+      const body = z.object({ productIds: z.array(z.string().min(1)).min(2).max(5) }).parse(req.body);
       const loaded = await loadPublicProducts(body.productIds);
       if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
       const { products, market } = loaded;
