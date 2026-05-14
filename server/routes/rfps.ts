@@ -361,12 +361,15 @@ export function registerRfpRoutes(app: Express): void {
       const market = await buildRfpMarketContext(rfp.marketId);
       const requirements = await listRfpRequirements(rfp.id);
       const shortlistRows = await listRfpShortlist(rfp.id);
+      // Honor the buyer's manual include/exclude choices: a vendor the user
+      // deselected in the Shortlist tab should not appear in the regenerated
+      // markdown preview/exports either.
       const shortlist: ScoredVendor[] = shortlistRows.map(r => ({
         vendorId: r.vendorId,
         fitScore: Number(r.fitScore ?? 0),
         matched: 0, total: 0,
         rationale: r.rationale || "",
-        excluded: !r.isIncluded && Number(r.fitScore ?? 0) === 0,
+        excluded: !r.isIncluded,
         needsVerification: false,
       }));
       const section = await generateRfpSection(key, rfp, profile, market, requirements, shortlist);

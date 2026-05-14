@@ -47,12 +47,20 @@ export interface CustomerProfile {
   [k: string]: string | string[] | undefined;
 }
 
+// Single source of truth for "is this slot filled?" — used by nextMissingSlot,
+// countFilledSlots, profileReadiness, AND the interview system prompt so all
+// four agree on what counts as captured.
+export function isSlotFilled(profile: CustomerProfile, key: SlotKey): boolean {
+  const v = profile[key];
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
+}
+
 export function nextMissingSlot(profile: CustomerProfile): { key: SlotKey; question: string } | null {
   for (const s of REQUIRED_SLOTS) {
-    const v = profile[s.key];
-    if (!v || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && v.length === 0)) {
-      return { key: s.key, question: s.question };
-    }
+    if (!isSlotFilled(profile, s.key)) return { key: s.key, question: s.question };
   }
   return null;
 }
@@ -69,19 +77,13 @@ export const CRITICAL_SLOTS: SlotKey[] = [
 ];
 
 export function countFilledSlots(profile: CustomerProfile): number {
-  return REQUIRED_SLOTS.filter(s => {
-    const v = profile[s.key];
-    return !!v && (typeof v !== "string" || v.trim().length > 0) && (!Array.isArray(v) || v.length > 0);
-  }).length;
+  return REQUIRED_SLOTS.filter(s => isSlotFilled(profile, s.key)).length;
 }
 
 export interface ReadinessResult { ready: boolean; missing: SlotKey[]; filled: number; total: number; }
 
 export function profileReadiness(profile: CustomerProfile): ReadinessResult {
-  const missing = CRITICAL_SLOTS.filter(k => {
-    const v = profile[k];
-    return !v || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && v.length === 0);
-  });
+  const missing = CRITICAL_SLOTS.filter(k => !isSlotFilled(profile, k));
   const filled = countFilledSlots(profile);
   // Ready iff every critical slot is captured AND at least 10/14 total slots
   // are filled — i.e. the interview has produced enough structured coverage.
@@ -89,7 +91,7 @@ export function profileReadiness(profile: CustomerProfile): ReadinessResult {
 }
 
 export function buildInterviewSystemPrompt(market: MarketContext, profile: CustomerProfile): string {
-  const remaining = REQUIRED_SLOTS.filter(s => !profile[s.key]).map(s => s.key);
+  const remaining = REQUIRED_SLOTS.filter(s => !isSlotFilled(profile, s.key)).map(s => s.key);
   return `You are an experienced enterprise IT analyst helping a customer build an RFP for the ${market.marketName} market.
 
 Your job is a structured conversational interview. You must:
