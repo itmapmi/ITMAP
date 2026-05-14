@@ -27,6 +27,7 @@ export interface ScoredVendor {
   total: number;
   rationale: string;
   excluded: boolean;
+  needsVerification: boolean;
 }
 
 export function scoreVendors(market: MarketContext, requirements: RfpRequirement[]): ScoredVendor[] {
@@ -102,6 +103,7 @@ export function scoreVendors(market: MarketContext, requirements: RfpRequirement
       total: functional.length,
       rationale,
       excluded,
+      needsVerification: !excluded && unverifiedMustReqs.length > 0,
     };
   }).sort((a, b) => b.fitScore - a.fitScore);
 }

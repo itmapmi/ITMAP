@@ -27,7 +27,7 @@ import {
 } from "../rfp/interview";
 import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales, renderFullMarkdown } from "../rfp/generator";
 import type { SectionKey } from "../rfp/generator";
-import { scoreVendors } from "../rfp/scorer";
+import { scoreVendors, type ScoredVendor } from "../rfp/scorer";
 import { exportRfpPdf, exportRfpDocx, exportRfpXlsx } from "../rfp/exports";
 import {
   countRfpsCreatedLast24hForUser,
@@ -213,13 +213,14 @@ export function registerRfpRoutes(app: Express): void {
 
       const next = nextMissingSlot(newProfile);
       const ready = !next;
+      const profileJson: Record<string, unknown> = { ...newProfile };
       const saved = await appendRfpMessage({
         rfpId: rfp.id,
         role: "assistant",
         content: reply,
-        extracted: newProfile as any,
+        extracted: profileJson,
       });
-      await updateRfpProject(rfp.id, { customerProfile: newProfile as any });
+      await updateRfpProject(rfp.id, { customerProfile: profileJson });
 
       res.json({ message: saved, profile: newProfile, ready });
     } catch (err: any) {
@@ -296,12 +297,17 @@ export function registerRfpRoutes(app: Express): void {
       const scoredRaw = scoreVendors(market, requirements);
       const scored = await enrichShortlistRationales(rfp.ownerUserId, market, profile, requirements, scoredRaw, 5);
       await clearRfpShortlist(rfp.id);
+      // Default top-5 prefers verified-fit vendors; vendors needing buyer
+      // verification (free-text compliance/SLA/integration must-haves) are
+      // ranked but left un-included so the buyer makes the explicit call.
+      const verifiedTop5 = scored.filter(s => !s.excluded && !s.needsVerification).slice(0, 5);
+      const verifiedIds = new Set(verifiedTop5.map(s => s.vendorId));
       await bulkCreateRfpShortlist(scored.map((s, i) => ({
         rfpId: rfp.id,
         vendorId: s.vendorId,
         fitScore: s.fitScore.toFixed(2),
         rationale: s.rationale,
-        isIncluded: i < 5,
+        isIncluded: verifiedIds.has(s.vendorId),
         rank: i + 1,
       })));
 
@@ -340,19 +346,20 @@ export function registerRfpRoutes(app: Express): void {
       const market = await buildRfpMarketContext(rfp.marketId);
       const requirements = await listRfpRequirements(rfp.id);
       const shortlistRows = await listRfpShortlist(rfp.id);
-      const shortlist = shortlistRows.map(r => ({
+      const shortlist: ScoredVendor[] = shortlistRows.map(r => ({
         vendorId: r.vendorId,
         fitScore: Number(r.fitScore ?? 0),
         matched: 0, total: 0,
         rationale: r.rationale || "",
         excluded: !r.isIncluded && Number(r.fitScore ?? 0) === 0,
+        needsVerification: false,
       }));
       const section = await generateRfpSection(key, rfp, profile, market, requirements, shortlist);
       const saved = await upsertRfpSection(section);
       // Rebuild the project-level cached markdown so previews/exports stay in
       // sync with the regenerated section.
       const allSections = await listRfpSections(rfp.id);
-      const remix = renderFullMarkdown(rfp, profile, market, allSections as any, shortlist);
+      const remix = renderFullMarkdown(rfp, profile, market, allSections, shortlist);
       await updateRfpProject(rfp.id, { generatedMarkdown: remix });
       res.json(saved);
     } catch (err: any) {
@@ -428,8 +435,8 @@ export function registerRfpRoutes(app: Express): void {
         notes: data.notes ?? null,
         responseText: data.responseText ?? null,
         responseFileUrl: data.responseFileUrl || null,
-        invitedAt: (data.invitedAt as any) ?? null,
-        respondedAt: (data.respondedAt as any) ?? null,
+        invitedAt: data.invitedAt ?? null,
+        respondedAt: data.respondedAt ?? null,
       });
       res.json(row);
     } catch (err: any) { res.status(400).json({ error: err.message }); }

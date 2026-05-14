@@ -194,7 +194,7 @@ export function renderFullMarkdown(
   project: RfpProject,
   profile: CustomerProfile,
   market: MarketContext,
-  sections: InsertRfpSection[],
+  sections: Array<Pick<InsertRfpSection, "title" | "body" | "displayOrder">>,
   shortlist: ScoredVendor[],
 ): string {
   const top = [

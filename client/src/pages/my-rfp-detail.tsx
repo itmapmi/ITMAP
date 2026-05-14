@@ -10,6 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Send, Sparkles, FileDown, CheckCircle2, Clock } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Navigation from "@/components/navigation";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection } from "@shared/schema";
 
@@ -263,7 +265,9 @@ export default function MyRfpDetailPage() {
                       </Button>
                     </CardHeader>
                     <CardContent>
-                      <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200 font-sans">{s.body || "(empty)"}</pre>
+                      <div className="prose prose-invert prose-sm max-w-none prose-headings:text-slate-100 prose-p:text-slate-200 prose-li:text-slate-200 prose-strong:text-slate-100 prose-table:text-slate-200 prose-th:text-slate-100 prose-td:border-white/10 prose-th:border-white/10">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || "_(empty)_"}</ReactMarkdown>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
