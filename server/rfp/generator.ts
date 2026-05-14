@@ -300,8 +300,6 @@ export function seedRequirementsFromProfile(
 // rationale per top vendor, grounded in the customer profile + captured
 // requirements + the deterministic match details.
 
-import type { ScoredVendor } from "./scorer";
-
 export async function enrichShortlistRationales(
   ownerUserId: string,
   market: MarketContext,

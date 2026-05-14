@@ -31,11 +31,19 @@ export interface ScoredVendor {
 
 export function scoreVendors(market: MarketContext, requirements: RfpRequirement[]): ScoredVendor[] {
   const functional = requirements.filter(r => r.kind === "functional" && r.featureId);
-  // Hard-exclude rules: must-haves on functional, compliance, or integration items
+  // Hard-exclude rules: must-haves on functional, compliance, or security items
   // with zero vendor support knock the vendor out of the running entirely.
   const hardMustReqs = requirements.filter(r =>
     r.priority === "must" && (r.kind === "functional" || r.kind === "compliance" || r.kind === "security")
     && r.featureId,
+  );
+  // Free-text must-haves (compliance/security/integration items without a featureId)
+  // can't be auto-verified against vendor data, so they're surfaced as "unverified"
+  // in the shortlist rationale rather than silently passing. They MUST be answered
+  // in the Vendor Q&A grid before the buyer can rank vendors.
+  const unverifiedMustReqs = requirements.filter(r =>
+    r.priority === "must" && !r.featureId &&
+    (r.kind === "compliance" || r.kind === "security" || r.kind === "sla" || r.kind === "functional")
   );
 
   return market.vendors.map(v => {
@@ -76,13 +84,16 @@ export function scoreVendors(market: MarketContext, requirements: RfpRequirement
     const excluded = !!hardExcludeReason;
     if (excluded) fit = 0;
 
+    const unverifiedNote = unverifiedMustReqs.length
+      ? ` ${unverifiedMustReqs.length} unverified must-have${unverifiedMustReqs.length === 1 ? "" : "s"} (compliance / SLA / integration) need vendor Q&A response.`
+      : "";
     const rationale = excluded
       ? hardExcludeReason!
       : functional.length === 0
-        ? `Scored on aggregate execution (${execNorm.toFixed(0)}) + viability (${viabNorm.toFixed(0)}) — no functional requirements captured.`
+        ? `Scored on aggregate execution (${execNorm.toFixed(0)}) + viability (${viabNorm.toFixed(0)}) — no functional requirements captured.${unverifiedNote}`
         : mustMisses > 0
-          ? `Misses ${mustMisses} must-have${mustMisses === 1 ? "" : "s"} (≥ 50% support). Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.`
-          : `Covers ${matched}/${functional.length} functional requirements at ≥ 50% support. Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.`;
+          ? `Misses ${mustMisses} must-have${mustMisses === 1 ? "" : "s"} (≥ 50% support). Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.${unverifiedNote}`
+          : `Covers ${matched}/${functional.length} functional requirements at ≥ 50% support. Functional ${functionalFit.toFixed(0)}, execution ${execNorm.toFixed(0)}, viability ${viabNorm.toFixed(0)}.${unverifiedNote}`;
 
     return {
       vendorId: v.id,
