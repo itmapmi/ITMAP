@@ -77,8 +77,14 @@ function SendToRfpDialog({ comparisonId, onClose }: { comparisonId: string; onCl
 
   const sendMut = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest(`/api/me/datasheet-comparisons/${comparisonId}/send-to-rfp`, "POST", { rfpMarketId, title });
-      return await res.json() as { rfpId: string };
+      // Step 1: create the RFP through the canonical endpoint so all user
+      // limits, OpenAI key checks, market visibility checks, and the
+      // assistant kickoff message are applied.
+      const rfpRes = await apiRequest("/api/me/rfps", "POST", { marketId: rfpMarketId, title });
+      const rfp = await rfpRes.json() as { id: string };
+      // Step 2: seed the new RFP with datasheet-derived requirements.
+      await apiRequest(`/api/me/datasheet-comparisons/${comparisonId}/seed-rfp`, "POST", { rfpId: rfp.id });
+      return { rfpId: rfp.id };
     },
     onSuccess: (data) => {
       toast({ title: "RFP created" });

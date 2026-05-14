@@ -34,10 +34,13 @@ const SYSTEM_PROMPT = `You are an expert hardware analyst answering questions st
 
 RULES:
 1. Only use facts present in the provided datasheets. If a value is not present, say "The provided datasheets do not specify this."
-2. Cite every numeric or factual claim with the vendor name and page number, e.g. "Dell (p. 4): 12 TB raw capacity".
+2. EVERY factual or numeric claim in "answer" MUST be backed by a citation in the citations array (vendorName, productName, page, quote). The quote must be a verbatim snippet present in the provided context.
 3. Never invent or estimate values.
-4. Prefer markdown tables for side-by-side comparisons.
-5. When asked which is "better", use the schema's higherIsBetter hint; if absent, present the values without a verdict.`;
+4. Use markdown tables for side-by-side comparisons.
+5. When asked which is "better", use the schema's higherIsBetter hint; if absent, present the values without a verdict.
+
+Respond with strict JSON of shape:
+{ "answer": string, "citations": [ { "vendorName": string, "productName": string, "page": number|null, "quote": string } ] }`;
 
 function buildContextSummary(input: DatasheetChatInput, schema: DatasheetSchemaDefinition): string {
   const productById = new Map(input.products.map(p => [p.id, p]));
@@ -79,21 +82,23 @@ function buildContextSummary(input: DatasheetChatInput, schema: DatasheetSchemaD
   return lines.join("\n");
 }
 
-function pickCitations(input: DatasheetChatInput): DatasheetCitation[] {
-  const datasheetByProduct = new Map(input.datasheets.map(d => [d.productId, d]));
+function bindCitations(
+  raw: Array<{ vendorName?: string; productName?: string; page?: number | null; quote?: string }>,
+  input: DatasheetChatInput,
+): DatasheetCitation[] {
   const out: DatasheetCitation[] = [];
-  for (const s of input.specs) {
-    if (!s.sourceQuote) continue;
-    const ds = input.datasheets.find(d => d.id === s.datasheetId);
-    if (!ds) continue;
-    const product = input.products.find(p => p.id === ds.productId);
+  for (const c of raw) {
+    if (!c.vendorName || !c.productName || !c.quote) continue;
+    const product = input.products.find(
+      p => p.vendor.name === c.vendorName && p.name === c.productName,
+    );
     if (!product) continue;
     out.push({
       productId: product.id,
       productName: product.name,
       vendorName: product.vendor.name,
-      page: s.sourcePage ?? null,
-      quote: s.sourceQuote.slice(0, 240),
+      page: typeof c.page === "number" ? c.page : null,
+      quote: c.quote.slice(0, 240),
     });
     if (out.length >= 8) break;
   }
@@ -116,7 +121,12 @@ export async function generateDatasheetChatResponse(input: DatasheetChatInput): 
     messages,
     temperature: 0.2,
     max_tokens: 1800,
+    response_format: { type: "json_object" },
   });
-  const content = completion.choices[0]?.message?.content ?? "I couldn't generate a response.";
-  return { content, citations: pickCitations(input) };
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  let parsed: { answer?: string; citations?: Array<{ vendorName?: string; productName?: string; page?: number | null; quote?: string }> } = {};
+  try { parsed = JSON.parse(raw); } catch { parsed = { answer: raw, citations: [] }; }
+  const answer = (parsed.answer || "I couldn't generate a response.").trim();
+  const citations = bindCitations(parsed.citations ?? [], input);
+  return { content: answer, citations };
 }

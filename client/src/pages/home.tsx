@@ -598,6 +598,11 @@ export default function Home() {
                       Browse Markets
                     </Button>
                   </Link>
+                  <Link href="/datasheets">
+                    <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 bg-transparent px-10 py-6 text-base" data-testid="link-home-datasheets">
+                      Compare Datasheets
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -631,7 +636,7 @@ export default function Home() {
             <div>
               <h5 className="text-white font-medium text-sm mb-4">Platform</h5>
               <ul className="space-y-2.5">
-                {[["Markets", "/markets"], ["Platform", "/platform"], ["Market Builder", "/me/market-builder"]].map(([l, h]) => (
+                {[["Markets", "/markets"], ["Platform", "/platform"], ["Market Builder", "/me/market-builder"], ["Datasheet Comparison", "/datasheets"]].map(([l, h]) => (
                   <li key={l}><Link href={h}><span className="text-slate-500 text-sm hover:text-slate-300 cursor-pointer transition-colors">{l}</span></Link></li>
                 ))}
               </ul>

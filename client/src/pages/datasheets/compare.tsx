@@ -25,6 +25,9 @@ export default function DatasheetComparePage() {
   const { isAuthenticated } = useAuth();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewProductId, setPreviewProductId] = useState<string | null>(null);
+  const [filterVendor, setFilterVendor] = useState<string>("");
+  const [filterSubCategory, setFilterSubCategory] = useState<string>("");
+  const [filterFormFactor, setFilterFormFactor] = useState<string>("");
 
   const { data: marketDetail, isLoading } = useQuery<MarketDetail>({
     queryKey: ["/api/datasheets/markets", params.slug],
@@ -110,26 +113,60 @@ export default function DatasheetComparePage() {
           </div>
         </div>
 
-        {/* Zone 1: Selector */}
+        {/* Zone 1: Selector with filters */}
         <Card className="bg-slate-900 border-white/5 p-4 mb-6">
-          <div className="text-xs text-slate-400 mb-3">Choose up to 5 products to compare</div>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="text-xs text-slate-400">Choose up to 5 products to compare</div>
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const vendors = Array.from(new Set(marketDetail.products.map(p => p.vendor.name))).sort();
+                const subCats = Array.from(new Set(marketDetail.products.map(p => p.subCategory).filter(Boolean) as string[])).sort();
+                const formFactors = Array.from(new Set(marketDetail.products.map(p => p.formFactor).filter(Boolean) as string[])).sort();
+                const sel = "bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs text-slate-300";
+                return (
+                  <>
+                    <select className={sel} value={filterVendor} onChange={e => setFilterVendor(e.target.value)} data-testid="filter-vendor">
+                      <option value="">All vendors</option>
+                      {vendors.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    {subCats.length > 0 && (
+                      <select className={sel} value={filterSubCategory} onChange={e => setFilterSubCategory(e.target.value)} data-testid="filter-subcategory">
+                        <option value="">All sub-categories</option>
+                        {subCats.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )}
+                    {formFactors.length > 0 && (
+                      <select className={sel} value={filterFormFactor} onChange={e => setFilterFormFactor(e.target.value)} data-testid="filter-formfactor">
+                        <option value="">All form factors</option>
+                        {formFactors.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {marketDetail.products.map(p => {
-              const active = selectedIds.includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => toggle(p.id)}
-                  className={`px-3 py-2 rounded-full text-sm border transition ${
-                    active ? "bg-cyan-500 text-slate-950 border-cyan-500" : "border-white/10 hover:border-cyan-500/40 text-slate-300"
-                  }`}
-                  data-testid={`button-toggle-product-${p.slug}`}
-                >
-                  <span className="font-medium">{p.vendor.name}</span> <span className="opacity-80">{p.name}</span>
-                  {active && <X className="inline h-3 w-3 ml-1" />}
-                </button>
-              );
-            })}
+            {marketDetail.products
+              .filter(p => !filterVendor || p.vendor.name === filterVendor)
+              .filter(p => !filterSubCategory || p.subCategory === filterSubCategory)
+              .filter(p => !filterFormFactor || p.formFactor === filterFormFactor)
+              .map(p => {
+                const active = selectedIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => toggle(p.id)}
+                    className={`px-3 py-2 rounded-full text-sm border transition ${
+                      active ? "bg-cyan-500 text-slate-950 border-cyan-500" : "border-white/10 hover:border-cyan-500/40 text-slate-300"
+                    }`}
+                    data-testid={`button-toggle-product-${p.slug}`}
+                  >
+                    <span className="font-medium">{p.vendor.name}</span> <span className="opacity-80">{p.name}</span>
+                    {active && <X className="inline h-3 w-3 ml-1" />}
+                  </button>
+                );
+              })}
             {marketDetail.products.length === 0 && <div className="text-sm text-slate-500">No products in this market yet.</div>}
           </div>
         </Card>
@@ -149,11 +186,12 @@ export default function DatasheetComparePage() {
           </div>
         </div>
 
-        {/* Zone 3: PDF viewer modal */}
+        {/* Zone 3: PDF viewer modal — tabbed across selected products */}
         {previewProductId && data && (
           <PdfPreview
             datasheets={data.datasheets}
             productId={previewProductId}
+            products={data.products}
             onClose={() => setPreviewProductId(null)}
           />
         )}
@@ -174,19 +212,20 @@ function SpecMatrix({ data, schema, onProductClick }: { data: CompareData | unde
     }
     return m;
   }, [specs]);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   if (!data) return <Card className="bg-slate-900 border-white/5 p-6 text-slate-500">Select products to begin.</Card>;
   const { products, datasheets } = data;
   const dsByProduct = new Map(datasheets.map(d => [d.productId, d]));
 
   return (
     <Card className="bg-slate-900 border-white/5">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b border-white/5">
+      <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+        <table className="w-full text-sm border-separate border-spacing-0">
+          <thead>
             <tr>
-              <th className="text-left p-3 text-xs uppercase text-slate-500 font-medium">Attribute</th>
+              <th className="sticky top-0 left-0 z-30 text-left p-3 text-xs uppercase text-slate-500 font-medium bg-slate-900 border-b border-white/5 min-w-[180px]">Attribute</th>
               {products.map(p => (
-                <th key={p.id} className="text-left p-3 text-xs uppercase text-slate-300 font-semibold min-w-[160px]">
+                <th key={p.id} className="sticky top-0 z-20 text-left p-3 text-xs uppercase text-slate-300 font-semibold min-w-[160px] bg-slate-900 border-b border-white/5">
                   <button onClick={() => onProductClick(p.id)} className="hover:text-cyan-300 text-left" data-testid={`button-preview-${p.slug}`}>
                     <div className="text-cyan-400 text-[10px] mb-0.5">{p.vendor.name}</div>
                     <div>{p.name}</div>
@@ -197,35 +236,56 @@ function SpecMatrix({ data, schema, onProductClick }: { data: CompareData | unde
             </tr>
           </thead>
           <tbody>
-            {schema.groups.map(g => (
-              <Fragment key={g.key}>
-                <tr className="bg-slate-950/50">
-                  <td colSpan={products.length + 1} className="px-3 py-2 text-xs font-semibold text-violet-300 uppercase tracking-wider">{g.label}</td>
-                </tr>
-                {g.attributes.map(a => {
-                  const values = products.map(p => {
-                    const ds = dsByProduct.get(p.id);
-                    return ds ? specsByDs.get(ds.id)?.get(`${g.key}.${a.key}`) : undefined;
-                  });
-                  const isDiff = computeDiff(values);
-                  const winner = a.higherIsBetter ? computeWinnerIdx(values, true) : null;
-                  return (
-                    <tr key={`${g.key}-${a.key}`} className="border-t border-white/5">
-                      <td className="p-3 text-slate-300">
-                        <div className="font-medium">{a.label}</div>
-                        {a.unit && <div className="text-xs text-slate-500">{a.unit}</div>}
-                      </td>
-                      {values.map((sp, i) => (
-                        <td key={i} className={`p-3 ${isDiff ? "bg-amber-500/5" : ""} ${winner === i ? "text-emerald-400 font-semibold" : "text-slate-200"}`}>
-                          {sp?.rawValue ?? <span className="text-slate-600">—</span>}
-                          {sp?.sourcePage && <div className="text-[10px] text-slate-500 mt-0.5">p. {sp.sourcePage}</div>}
+            {schema.groups.map(g => {
+              const isCollapsed = !!collapsed[g.key];
+              return (
+                <Fragment key={g.key}>
+                  <tr>
+                    <td
+                      colSpan={products.length + 1}
+                      className="bg-slate-950/60 px-3 py-2 text-xs font-semibold text-violet-300 uppercase tracking-wider cursor-pointer hover:bg-slate-950/80"
+                      onClick={() => setCollapsed(prev => ({ ...prev, [g.key]: !prev[g.key] }))}
+                      data-testid={`group-toggle-${g.key}`}
+                    >
+                      <span className="inline-block w-3">{isCollapsed ? "▸" : "▾"}</span> {g.label}
+                    </td>
+                  </tr>
+                  {!isCollapsed && g.attributes.map(a => {
+                    const values = products.map(p => {
+                      const ds = dsByProduct.get(p.id);
+                      return ds ? specsByDs.get(ds.id)?.get(`${g.key}.${a.key}`) : undefined;
+                    });
+                    const isDiff = computeDiff(values);
+                    const winner = a.higherIsBetter !== undefined && a.type === "number" ? computeExtremumIdx(values, a.higherIsBetter, "best") : null;
+                    const loser = a.higherIsBetter !== undefined && a.type === "number" ? computeExtremumIdx(values, a.higherIsBetter, "worst") : null;
+                    return (
+                      <tr key={`${g.key}-${a.key}`}>
+                        <td className="sticky left-0 z-10 p-3 text-slate-300 bg-slate-900 border-t border-white/5">
+                          <div className="font-medium">{a.label}</div>
+                          {a.unit && <div className="text-xs text-slate-500">{a.unit}</div>}
                         </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </Fragment>
-            ))}
+                        {values.map((sp, i) => {
+                          const tone =
+                            winner === i ? "text-emerald-400 font-semibold" :
+                            loser === i ? "text-rose-400 font-semibold" :
+                            "text-slate-200";
+                          return (
+                            <td
+                              key={i}
+                              className={`p-3 border-t border-white/5 ${isDiff ? "bg-amber-500/5" : ""} ${tone}`}
+                              title={sp?.sourceQuote ? `“${sp.sourceQuote}”${sp.sourcePage ? ` — p. ${sp.sourcePage}` : ""}` : undefined}
+                            >
+                              {sp?.rawValue ?? <span className="text-slate-600">—</span>}
+                              {sp?.sourcePage && <div className="text-[10px] text-slate-500 mt-0.5">p. {sp.sourcePage}</div>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -239,30 +299,50 @@ function computeDiff(values: Array<DatasheetSpec | undefined>): boolean {
   return raws.some(r => r !== first);
 }
 
-function computeWinnerIdx(values: Array<DatasheetSpec | undefined>, higherIsBetter: boolean): number | null {
-  let bestIdx: number | null = null;
-  let bestNum = higherIsBetter ? -Infinity : Infinity;
+function computeExtremumIdx(values: Array<DatasheetSpec | undefined>, higherIsBetter: boolean, which: "best" | "worst"): number | null {
+  const nums: Array<{ i: number; n: number }> = [];
   values.forEach((v, i) => {
-    if (!v?.normalizedValue) return;
+    if (v?.normalizedValue === null || v?.normalizedValue === undefined) return;
     const n = Number(v.normalizedValue);
-    if (!Number.isFinite(n)) return;
-    if ((higherIsBetter && n > bestNum) || (!higherIsBetter && n < bestNum)) {
-      bestNum = n; bestIdx = i;
-    }
+    if (Number.isFinite(n)) nums.push({ i, n });
   });
-  return bestIdx;
+  if (nums.length < 2) return null;
+  const wantMax = (which === "best") === higherIsBetter; // best+higher=max, worst+higher=min, etc.
+  let chosen = nums[0];
+  for (const x of nums) {
+    if (wantMax ? x.n > chosen.n : x.n < chosen.n) chosen = x;
+  }
+  return chosen.i;
 }
 
-// ── PDF preview modal ────────────────────────────────────────────────────
-function PdfPreview({ datasheets, productId, onClose }: { datasheets: Datasheet[]; productId: string; onClose: () => void }) {
-  const ds = datasheets.find(d => d.productId === productId);
+// ── PDF preview modal (tabbed across selected products) ─────────────────
+function PdfPreview({ datasheets, productId, onClose, products }: { datasheets: Datasheet[]; productId: string; onClose: () => void; products?: ProductWithVendor[] }) {
+  const productList = (products ?? []).filter(p => datasheets.some(d => d.productId === p.id));
+  const [activeId, setActiveId] = useState<string>(productId);
+  const ds = datasheets.find(d => d.productId === activeId);
   if (!ds) return null;
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-white/5">
-          <div className="text-sm">Datasheet PDF · v{ds.version}</div>
-          <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
+      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-3 border-b border-white/5 gap-2">
+          <div className="flex gap-1 overflow-x-auto" data-testid="pdf-tabs">
+            {productList.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setActiveId(p.id)}
+                className={`px-3 py-1 rounded-md text-xs whitespace-nowrap border transition ${
+                  activeId === p.id ? "bg-cyan-500 text-slate-950 border-cyan-500" : "border-white/10 text-slate-300 hover:border-cyan-500/40"
+                }`}
+                data-testid={`pdf-tab-${p.slug}`}
+              >
+                <span className="font-medium">{p.vendor.name}</span> <span className="opacity-80">{p.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <a href={ds.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 hover:text-cyan-300">Open in new tab</a>
+            <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
+          </div>
         </div>
         <iframe src={ds.fileUrl} className="flex-1 rounded-b-2xl bg-white" title="Datasheet PDF" />
       </div>

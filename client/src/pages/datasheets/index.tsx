@@ -20,7 +20,7 @@ export default function DatasheetsIndexPage() {
             Compare hardware vendor datasheets side-by-side with AI-extracted specs, normalized units, and source citations from the original PDFs.
           </p>
           <div className="mt-6 flex gap-3">
-            <Link href="/datasheets/saved" className="inline-flex items-center text-sm text-cyan-400 hover:text-cyan-300 gap-1" data-testid="link-saved-comparisons">
+            <Link href="/me/comparisons" className="inline-flex items-center text-sm text-cyan-400 hover:text-cyan-300 gap-1" data-testid="link-saved-comparisons">
               <Database className="h-4 w-4" /> My saved comparisons →
             </Link>
           </div>

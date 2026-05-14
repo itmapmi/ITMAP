@@ -150,21 +150,27 @@ export function registerDatasheetRoutes(app: Express): void {
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
-  // ── USER: Send-to-RFP handoff ───────────────────────────────────────────
-  app.post("/api/me/datasheet-comparisons/:id/send-to-rfp", requireAuth, async (req, res) => {
+  // ── USER: Seed an existing RFP from a saved comparison ──────────────────
+  // Clients should first POST /api/me/rfps (canonical creation with all
+  // user limits, OpenAI key checks, market visibility checks, and seeding
+  // the assistant kickoff message). Then call this endpoint with the new
+  // rfpId so we can append datasheet-derived requirements + a reference
+  // message without forking RFP creation.
+  app.post("/api/me/datasheet-comparisons/:id/seed-rfp", requireAuth, async (req, res) => {
     try {
       const userId = asAuthed(req).user.id;
       const comparison = await getComparisonForOwner(req.params.id, userId);
       if (!comparison) return res.status(404).json({ error: "Comparison not found" });
-      const body = z.object({ rfpMarketId: z.string().min(1), title: z.string().min(1).max(200) }).parse(req.body);
+      const body = z.object({ rfpId: z.string().min(1) }).parse(req.body);
+
+      const { getRfpProject, bulkCreateRfpRequirements, appendRfpMessage } = await import("../storage/rfps");
+      const rfp = await getRfpProject(body.rfpId);
+      if (!rfp || rfp.ownerUserId !== userId) return res.status(404).json({ error: "RFP not found" });
 
       const products = await getProductsByIds(comparison.productIds);
       const market = await getDatasheetMarket(comparison.marketId);
       const datasheets = await getCurrentDatasheetsForProducts(products.map(p => p.id));
       const specs = await listSpecsForDatasheets(datasheets.map(d => d.id));
-
-      const { createRfpProject, bulkCreateRfpRequirements, appendRfpMessage } = await import("../storage/rfps");
-      const rfp = await createRfpProject({ ownerUserId: userId, marketId: body.rfpMarketId, title: body.title });
 
       // Derive must-have requirements from spec winners on "higher is better" attrs.
       const schema = (market?.schemaDefinition as DatasheetSchemaDefinition | undefined) ?? { groups: [] };
@@ -175,7 +181,7 @@ export function registerDatasheetRoutes(app: Express): void {
         arr.push(s);
         specsByDs.set(s.datasheetId, arr);
       }
-      const requirements: Parameters<typeof bulkCreateRfpRequirements>[1] = [];
+      const requirements: Parameters<typeof bulkCreateRfpRequirements>[0] = [];
       let order = 0;
       for (const g of schema.groups) {
         for (const a of g.attributes) {
@@ -212,11 +218,11 @@ export function registerDatasheetRoutes(app: Express): void {
       const productList = products.map(p => `- ${p.vendor.name} ${p.name}`).join("\n");
       await appendRfpMessage({
         rfpId: rfp.id,
-        role: "system",
-        content: `This RFP was seeded from a datasheet comparison: ${comparison.name}\n\nReference products:\n${productList}`,
+        role: "assistant",
+        content: `I've seeded this RFP from your saved comparison: ${comparison.name}.\n\nReference products:\n${productList}\n\nI've also added baseline "higher is better" requirements derived from the best-in-class datasheet values. Feel free to edit or remove any that don't apply.`,
       });
 
-      res.status(201).json({ rfpId: rfp.id });
+      res.status(200).json({ rfpId: rfp.id, requirementsAdded: requirements.length });
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 

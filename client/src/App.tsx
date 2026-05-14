@@ -95,6 +95,7 @@ function Router() {
         <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route path="/datasheets" component={DatasheetsIndexPage} />
+        <Route path="/me/comparisons" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
         <Route path="/datasheets/saved" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
         <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />
