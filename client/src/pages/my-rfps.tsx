@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
+import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -68,11 +69,11 @@ export default function MyRfpsPage() {
       setOpen(false); setTitle(""); setMarketId("");
       setLocation(`/me/rfps/${rfp.id}`);
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       // The server returns 412 with code:MISSING_LLM_KEY when the user has no
       // OpenAI key on file — show a CTA instead of a raw error.
-      const msg = String(e?.message || "");
-      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+      const msg = getErrorMessage(e);
+      if (isMissingLlmKeyError(e)) {
         toast({
           title: "OpenAI key required",
           description: "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",

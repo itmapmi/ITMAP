@@ -21,6 +21,7 @@ import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
+import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import type { Market, Vendor } from "@shared/schema";
@@ -38,14 +39,13 @@ function useCreateRfpForMarket() {
       return await apiRequestJson("/api/me/rfps", "POST", { marketId: vars.marketId, title }) as { id: string };
     },
     onSuccess: (created) => navigate(`/me/rfps/${created.id}`),
-    onError: (e: any) => {
-      const msg = String(e?.message || "");
-      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+    onError: (e: unknown) => {
+      if (isMissingLlmKeyError(e)) {
         toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
         navigate("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Could not start RFP", description: msg, variant: "destructive" });
+      toast({ title: "Could not start RFP", description: getErrorMessage(e), variant: "destructive" });
     },
   });
 }
@@ -369,7 +369,7 @@ export default function MarketDetails() {
               <FileDown className="mr-2 h-4 w-4" />
               {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
-            {isAuthenticated && (market?.visibility !== "private" || (market as any)?.ownerUserId === user?.id || isAdmin) && (
+            {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
               <Button
                 variant="outline"
                 size={isMobile ? "sm" : "default"}

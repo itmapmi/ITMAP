@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
+import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navigation from "@/components/navigation";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection } from "@shared/schema";
+import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpRequirement, InsertRfpOutreachEntry } from "@shared/schema";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
 interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; vendor: { id: string; name: string } | null }
@@ -45,14 +46,13 @@ export default function MyRfpDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
     },
-    onError: (e: any) => {
-      const msg = String(e?.message || "");
-      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+    onError: (e: unknown) => {
+      if (isMissingLlmKeyError(e)) {
         toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Could not send", description: msg, variant: "destructive" });
+      toast({ title: "Could not send", description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
@@ -66,19 +66,19 @@ export default function MyRfpDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "requirements"] });
       setTab("preview");
     },
-    onError: (e: any) => {
-      const msg = String(e?.message || "");
-      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+    onError: (e: unknown) => {
+      if (isMissingLlmKeyError(e)) {
         toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Generation failed", description: msg, variant: "destructive" });
+      toast({ title: "Generation failed", description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
+  type RequirementPatch = Partial<Pick<RfpRequirement, "label" | "description" | "priority" | "weight" | "expectedValue" | "displayOrder" | "kind" | "featureId">>;
   const updateReqMutation = useMutation({
-    mutationFn: async ({ reqId, body }: { reqId: string; body: any }) => apiRequestJson(`/api/me/rfps/${id}/requirements/${reqId}`, "PATCH", body),
+    mutationFn: async ({ reqId, body }: { reqId: string; body: RequirementPatch }) => apiRequestJson(`/api/me/rfps/${id}/requirements/${reqId}`, "PATCH", body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "requirements"] }),
   });
   const deleteReqMutation = useMutation({
@@ -89,8 +89,9 @@ export default function MyRfpDetailPage() {
     mutationFn: async ({ entryId, isIncluded }: { entryId: string; isIncluded: boolean }) => apiRequestJson(`/api/me/rfps/${id}/shortlist/${entryId}`, "PATCH", { isIncluded }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "shortlist"] }),
   });
+  type OutreachPayload = Omit<InsertRfpOutreachEntry, "rfpId">;
   const upsertOutreachMutation = useMutation({
-    mutationFn: async (body: any) => apiRequestJson(`/api/me/rfps/${id}/outreach`, "POST", body),
+    mutationFn: async (body: OutreachPayload) => apiRequestJson(`/api/me/rfps/${id}/outreach`, "POST", body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "outreach"] }),
   });
   const regenSectionMutation = useMutation({
@@ -100,18 +101,17 @@ export default function MyRfpDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "sections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
     },
-    onError: (e: any) => {
-      const msg = String(e?.message || "");
-      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+    onError: (e: unknown) => {
+      if (isMissingLlmKeyError(e)) {
         toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
         setLocation("/me/settings/llm-keys");
         return;
       }
-      toast({ title: "Regeneration failed", description: msg, variant: "destructive" });
+      toast({ title: "Regeneration failed", description: getErrorMessage(e), variant: "destructive" });
     },
   });
 
-  const profile = (rfp?.customerProfile || {}) as Record<string, any>;
+  const profile = (rfp?.customerProfile ?? {}) as Record<string, unknown>;
   // Readiness is computed server-side (single source of truth: `profileReadiness`).
   // The server returns it on GET /api/me/rfps/:id alongside the project row.
   const filledSlots = rfp?.readiness?.filled ?? 0;
@@ -320,7 +320,7 @@ export default function MyRfpDetailPage() {
                 <div className="space-y-2">
                   {shortlist.filter(s => s.isIncluded).map(s => {
                     const row = outreach.find(o => o.vendorId === s.vendorId);
-                    const base = (over: any) => ({
+                    const base = (over: Partial<OutreachPayload>): OutreachPayload => ({
                       vendorId: s.vendorId,
                       status: row?.status || "not_started",
                       contactName: row?.contactName,
