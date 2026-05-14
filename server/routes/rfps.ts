@@ -24,7 +24,7 @@ import { buildRfpMarketContext } from "../rfp/context";
 import { getRfpLlmClient, MissingLlmKeyError, userHasOpenAiKey } from "../rfp/llm";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
-  profileReadiness,
+  profileReadiness, normalizeCustomerProfile,
   type CustomerProfile,
   type ReadinessResult,
 } from "../rfp/interview";
@@ -224,6 +224,7 @@ export function registerRfpRoutes(app: Express): void {
         console.warn("[RFP] slot extraction failed:", e);
       }
 
+      newProfile = normalizeCustomerProfile(newProfile);
       const readiness = profileReadiness(newProfile);
 
       // Short-circuit the LLM once readiness is met.
