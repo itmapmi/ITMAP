@@ -248,24 +248,35 @@ export async function upsertRfpOutreach(data: InsertRfpOutreachEntry): Promise<R
   const existing = await db.select().from(rfpOutreach)
     .where(and(eq(rfpOutreach.rfpId, data.rfpId), eq(rfpOutreach.vendorId, data.vendorId)))
     .limit(1);
+  // Auto-stamp lifecycle timestamps on first transition into each status —
+  // so the tracker UI can show a "Sent on" / "Responded on" date without the
+  // caller having to remember to pass the date.
+  const now = new Date();
   if (existing[0]) {
+    const nextStatus = data.status ?? existing[0].status;
+    const justSent = nextStatus === "invited" && existing[0].status !== "invited";
+    const justResponded = (nextStatus === "responded" || nextStatus === "awarded")
+      && existing[0].status !== "responded" && existing[0].status !== "awarded";
     const [row] = await db.update(rfpOutreach)
       .set({
-        status: data.status ?? existing[0].status,
+        status: nextStatus,
         contactName: data.contactName ?? existing[0].contactName,
         contactEmail: data.contactEmail ?? existing[0].contactEmail,
         notes: data.notes ?? existing[0].notes,
         responseText: data.responseText ?? existing[0].responseText,
         responseFileUrl: data.responseFileUrl ?? existing[0].responseFileUrl,
-        invitedAt: data.invitedAt ?? existing[0].invitedAt,
-        respondedAt: data.respondedAt ?? existing[0].respondedAt,
-        updatedAt: new Date(),
+        invitedAt: data.invitedAt ?? (justSent && !existing[0].invitedAt ? now : existing[0].invitedAt),
+        respondedAt: data.respondedAt ?? (justResponded && !existing[0].respondedAt ? now : existing[0].respondedAt),
+        updatedAt: now,
       })
       .where(eq(rfpOutreach.id, existing[0].id))
       .returning();
     return row;
   }
-  const [row] = await db.insert(rfpOutreach).values(data).returning();
+  const seed: InsertRfpOutreachEntry = { ...data };
+  if (seed.status === "invited" && !seed.invitedAt) seed.invitedAt = now;
+  if ((seed.status === "responded" || seed.status === "awarded") && !seed.respondedAt) seed.respondedAt = now;
+  const [row] = await db.insert(rfpOutreach).values(seed).returning();
   return row;
 }
 

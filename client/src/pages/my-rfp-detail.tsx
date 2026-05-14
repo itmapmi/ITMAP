@@ -18,7 +18,8 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpRequirement, InsertRfpOutreachEntry } from "@shared/schema";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
-interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; vendor: { id: string; name: string } | null }
+interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; invitedAt: string | null; respondedAt: string | null; vendor: { id: string; name: string } | null }
+const fmtDate = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString() : null;
 
 export default function MyRfpDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -333,7 +334,13 @@ export default function MyRfpDetailPage() {
                     return (
                       <div key={s.id} className="p-3 rounded border border-white/5 bg-slate-800/50 space-y-2" data-testid={`outreach-row-${s.vendorId}`}>
                         <div className="grid grid-cols-12 gap-3 items-center">
-                          <div className="col-span-3 text-sm font-medium">{s.vendor?.name}</div>
+                          <div className="col-span-3 text-sm font-medium">
+                            {s.vendor?.name}
+                            <div className="text-[10px] text-slate-400 mt-0.5 space-x-2">
+                              {fmtDate(row?.invitedAt) && <span data-testid={`outreach-invited-${s.vendorId}`}>Sent {fmtDate(row?.invitedAt)}</span>}
+                              {fmtDate(row?.respondedAt) && <span data-testid={`outreach-responded-${s.vendorId}`}>Replied {fmtDate(row?.respondedAt)}</span>}
+                            </div>
+                          </div>
                           <div className="col-span-2">
                             <Select value={row?.status || "not_started"} onValueChange={(v) => upsertOutreachMutation.mutate(base({ status: v }))}>
                               <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
