@@ -554,21 +554,33 @@ function BulkImportTab() {
   const [marketId, setMarketId] = useState("");
   const [csv, setCsv] = useState("");
   const [plan, setPlan] = useState<{ vendors: { name: string; slug: string; action: string }[]; products: { vendorSlug: string; name: string; slug: string; datasheetUrl: string | null; action: string; error?: string }[]; warnings: string[] } | null>(null);
+  type CommitResult = { vendorsCreated: number; productsCreated: number; productsSkipped: number; datasheetsIngested: number; datasheetsFailed: number; errors: string[] };
+  const [commitSummary, setCommitSummary] = useState<CommitResult | null>(null);
 
   const dryMut = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("/api/admin/datasheets/import/csv", "POST", { marketId, csv, dryRun: true });
       return await res.json();
     },
-    onSuccess: (data) => setPlan(data),
+    onSuccess: (data) => { setPlan(data); setCommitSummary(null); },
     onError: (err: unknown) => toast({ title: "Plan failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
   });
   const commitMut = useMutation({
-    mutationFn: () => apiRequest("/api/admin/datasheets/import/csv", "POST", { marketId, csv, dryRun: false }),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const res = await apiRequest("/api/admin/datasheets/import/csv", "POST", { marketId, csv, dryRun: false });
+      return await res.json() as { result: CommitResult };
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/vendors"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/products", marketId] });
-      toast({ title: "Import complete" });
+      const r = data.result;
+      setCommitSummary(r);
+      const failed = r.datasheetsFailed > 0;
+      toast({
+        title: failed ? "Import finished with errors" : "Import complete",
+        description: `Vendors +${r.vendorsCreated} · Products +${r.productsCreated} (${r.productsSkipped} skipped) · Datasheets +${r.datasheetsIngested}${failed ? ` · ${r.datasheetsFailed} failed` : ""}`,
+        variant: failed ? "destructive" : "default",
+      });
       setCsv(""); setPlan(null);
     },
     onError: (err: unknown) => toast({ title: "Import failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
@@ -580,7 +592,7 @@ function BulkImportTab() {
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
           Columns: <code>vendor_name,vendor_slug,product_name,product_slug,datasheet_url</code>.
-          Vendor rows are upserted by slug; product rows are created in the selected market. A datasheet URL is fetched and extracted in the background (admin-assisted — only public, robots-allowed URLs).
+          Vendor rows are upserted by slug; product rows are created in the selected market. Each datasheet URL is downloaded and extracted inline as part of this request — only public, robots-allowed PDF URLs. Large imports may take a minute.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -614,6 +626,25 @@ function BulkImportTab() {
                 {p.action} · {p.vendorSlug}/{p.slug} {p.datasheetUrl ? `← ${p.datasheetUrl}` : ""} {p.error ? `(${p.error})` : ""}
               </div>
             ))}
+          </div>
+        )}
+        {commitSummary && (
+          <div className="rounded-md border p-3 text-xs space-y-1 bg-slate-50">
+            <div className="font-semibold">Import result</div>
+            <div>Vendors created: {commitSummary.vendorsCreated}</div>
+            <div>Products created: {commitSummary.productsCreated} (skipped {commitSummary.productsSkipped})</div>
+            <div>
+              Datasheets ingested: <span className="font-medium">{commitSummary.datasheetsIngested}</span>
+              {commitSummary.datasheetsFailed > 0 && <span className="text-rose-700"> · failed: {commitSummary.datasheetsFailed}</span>}
+            </div>
+            {commitSummary.errors.length > 0 && (
+              <div className="mt-2">
+                <div className="font-semibold text-rose-700">Per-row errors</div>
+                <ul className="list-disc pl-5 text-rose-700 space-y-0.5">
+                  {commitSummary.errors.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
