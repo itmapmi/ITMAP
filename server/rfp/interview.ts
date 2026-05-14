@@ -47,9 +47,31 @@ export interface CustomerProfile {
   [k: string]: string | string[] | undefined;
 }
 
+const ARRAY_SLOTS: ReadonlySet<SlotKey> = new Set<SlotKey>([
+  "mustHaves", "niceToHaves", "dealBreakers", "quantitativeSpecs",
+  "integrations", "complianceRequirements", "slaTargets", "successMetrics",
+]);
+
+export function normalizeCustomerProfile(profile: CustomerProfile): CustomerProfile {
+  const out: CustomerProfile = { ...profile };
+  for (const k of ARRAY_SLOTS) {
+    const v = out[k];
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(v)) {
+      out[k] = v.map(s => String(s).trim()).filter(s => s.length > 0);
+    } else if (typeof v === "string") {
+      out[k] = v.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+    } else {
+      out[k] = [];
+    }
+  }
+  return out;
+}
+
 export function isSlotFilled(profile: CustomerProfile, key: SlotKey): boolean {
   const v = profile[key];
   if (v === null || v === undefined) return false;
+  if (ARRAY_SLOTS.has(key)) return Array.isArray(v) && v.length > 0;
   if (typeof v === "string") return v.trim().length > 0;
   if (Array.isArray(v)) return v.length > 0;
   return true;
@@ -80,8 +102,9 @@ export function countFilledSlots(profile: CustomerProfile): number {
 export interface ReadinessResult { ready: boolean; missing: SlotKey[]; filled: number; total: number; }
 
 export function profileReadiness(profile: CustomerProfile): ReadinessResult {
-  const missing = CRITICAL_SLOTS.filter(k => !isSlotFilled(profile, k));
-  const filled = countFilledSlots(profile);
+  const norm = normalizeCustomerProfile(profile);
+  const missing = CRITICAL_SLOTS.filter(k => !isSlotFilled(norm, k));
+  const filled = countFilledSlots(norm);
   // Ready iff every critical slot is captured AND ≥10/14 total filled.
   return { ready: missing.length === 0 && filled >= 10, missing, filled, total: REQUIRED_SLOTS.length };
 }
