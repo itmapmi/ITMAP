@@ -171,8 +171,7 @@ export async function commitCsvImport(rows: CsvImportRow[]): Promise<{ vendorsCr
   const vendorCache = new Map<string, DatasheetVendor>();
   for (const v of await listDatasheetVendors({ includeUserScoped: true })) vendorCache.set(v.slug, v);
   const productSlugsByMarket = new Map<string, Map<string, DatasheetProduct>>();
-  const { createDatasheet, updateDatasheet, getNextVersionForProduct, replaceSpecsForDatasheet, unsetCurrentDatasheets, getCurrentDatasheetForProduct, getDatasheetMarket: _gm } = await import("../storage/datasheets");
-  void _gm;
+  const { createDatasheet, updateDatasheet, getNextVersionForProduct, replaceSpecsForDatasheet, unsetCurrentDatasheets, getCurrentDatasheetForProduct } = await import("../storage/datasheets");
 
   let vendorsCreated = 0, productsCreated = 0, productsSkipped = 0;
   let datasheetsIngested = 0, datasheetsFailed = 0;

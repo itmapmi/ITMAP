@@ -431,6 +431,12 @@ function ReviewTab() {
     onSuccess: (_, vars) => { refetch(); setSelected(new Set()); toast({ title: `${vars.ids.length} specs updated` }); },
     onError: (err: unknown) => toast({ title: "Bulk update failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
   });
+  const bulkRejectMut = useMutation({
+    mutationFn: ({ ids }: { ids: string[] }) =>
+      apiRequest(`/api/admin/datasheets/specs/bulk`, "DELETE", { ids }),
+    onSuccess: (_, vars) => { refetch(); setSelected(new Set()); toast({ title: `${vars.ids.length} specs rejected` }); },
+    onError: (err: unknown) => toast({ title: "Bulk reject failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
 
   // Keyboard navigation: ↑/↓ move focus, space toggles selection, A selects all,
   // Enter approves currently-focused row as-is.
@@ -476,6 +482,15 @@ function ReviewTab() {
               onClick={() => bulkMut.mutate({ ids, body: { needsReview: false } })}
               data-testid="button-bulk-approve">
               Approve {ids.length} as-is
+            </Button>
+            <Button size="sm" variant="destructive"
+              disabled={ids.length === 0 || bulkRejectMut.isPending}
+              onClick={() => {
+                if (!confirm(`Reject (delete) ${ids.length} spec(s)? This cannot be undone.`)) return;
+                bulkRejectMut.mutate({ ids });
+              }}
+              data-testid="button-bulk-reject">
+              Reject {ids.length}
             </Button>
           </div>
         </CardTitle>

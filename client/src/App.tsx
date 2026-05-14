@@ -102,6 +102,7 @@ function Router() {
         <Route path="/datasheets/saved" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
         <Route path="/me/datasheet-markets" component={() => <ProtectedRoute component={MyDatasheetMarketsPage} />} />
         <Route path="/me/datasheet-markets/:id" component={() => <ProtectedRoute component={MyDatasheetMarketDetailPage} />} />
+        <Route path="/me/datasheet-markets/:id/products" component={() => <ProtectedRoute component={MyDatasheetMarketDetailPage} />} />
         <Route path="/share/comparison/:token" component={DatasheetSharePage} />
         <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />

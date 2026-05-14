@@ -30,7 +30,7 @@ import {
   getComparisonByShareToken,
   createChangeAlert, listChangeAlertsForProductsSince, listRecentChangeAlerts,
   updateDatasheetVendor, getDatasheetVendor,
-  bulkAcceptSpecs, createAgentRun, listAgentRuns,
+  bulkAcceptSpecs, bulkRejectSpecs, createAgentRun, listAgentRuns,
 } from "../storage/datasheets";
 import type { DatasheetSchemaDefinition } from "@shared/schema";
 import { extractDatasheet } from "../datasheets/extractor";
@@ -522,6 +522,20 @@ export function registerDatasheetPhase2Routes(app: Express): void {
       if (list.length === 0) return res.status(400).json({ error: "ids or specIds required" });
       const updated = await bulkAcceptSpecs(list);
       res.json({ updated });
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
+  });
+
+  // ── ADMIN: bulk reject (delete) review-queue specs ──────────────────────
+  app.delete("/api/admin/datasheets/specs/bulk", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({
+        ids: z.array(z.string().min(1)).min(1).max(500).optional(),
+        specIds: z.array(z.string().min(1)).min(1).max(500).optional(),
+      }).parse(req.body);
+      const list = body.ids ?? body.specIds ?? [];
+      if (list.length === 0) return res.status(400).json({ error: "ids or specIds required" });
+      const deleted = await bulkRejectSpecs(list);
+      res.json({ deleted });
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
 

@@ -460,3 +460,12 @@ export async function bulkAcceptSpecs(specIds: string[]): Promise<number> {
     .returning({ id: datasheetSpecs.id });
   return rows.length;
 }
+// Bulk reject: drop the auto-extracted values entirely so they don't leak into
+// public output, and keep the row flagged so the admin can re-enter manually.
+export async function bulkRejectSpecs(specIds: string[]): Promise<number> {
+  if (specIds.length === 0) return 0;
+  const rows = await db.delete(datasheetSpecs)
+    .where(inArray(datasheetSpecs.id, specIds))
+    .returning({ id: datasheetSpecs.id });
+  return rows.length;
+}
