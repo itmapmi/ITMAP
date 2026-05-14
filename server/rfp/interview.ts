@@ -57,6 +57,37 @@ export function nextMissingSlot(profile: CustomerProfile): { key: SlotKey; quest
   return null;
 }
 
+/**
+ * Critical slots that MUST be captured before we let the user generate the RFP.
+ * Generation needs at least company identity, industry, timeline, must-haves,
+ * integrations, and compliance — without these the deterministic scorer and
+ * the section narratives have nothing meaningful to ground in.
+ */
+export const CRITICAL_SLOTS: SlotKey[] = [
+  "companyName", "industry", "timeline",
+  "mustHaves", "integrations", "complianceRequirements",
+];
+
+export function countFilledSlots(profile: CustomerProfile): number {
+  return REQUIRED_SLOTS.filter(s => {
+    const v = profile[s.key];
+    return !!v && (typeof v !== "string" || v.trim().length > 0) && (!Array.isArray(v) || v.length > 0);
+  }).length;
+}
+
+export interface ReadinessResult { ready: boolean; missing: SlotKey[]; filled: number; total: number; }
+
+export function profileReadiness(profile: CustomerProfile): ReadinessResult {
+  const missing = CRITICAL_SLOTS.filter(k => {
+    const v = profile[k];
+    return !v || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && v.length === 0);
+  });
+  const filled = countFilledSlots(profile);
+  // Ready iff every critical slot is captured AND at least 10/14 total slots
+  // are filled — i.e. the interview has produced enough structured coverage.
+  return { ready: missing.length === 0 && filled >= 10, missing, filled, total: REQUIRED_SLOTS.length };
+}
+
 export function buildInterviewSystemPrompt(market: MarketContext, profile: CustomerProfile): string {
   const remaining = REQUIRED_SLOTS.filter(s => !profile[s.key]).map(s => s.key);
   return `You are an experienced enterprise IT analyst helping a customer build an RFP for the ${market.marketName} market.

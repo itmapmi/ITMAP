@@ -112,11 +112,16 @@ export default function MyRfpDetailPage() {
 
   const profile = (rfp?.customerProfile || {}) as Record<string, any>;
   const SLOT_KEYS = ["companyName","industry","companySize","geography","timeline","budgetBand","mustHaves","niceToHaves","dealBreakers","quantitativeSpecs","integrations","complianceRequirements","slaTargets","successMetrics"];
-  const filledSlots = SLOT_KEYS.filter(k => {
+  const CRITICAL_SLOTS = ["companyName","industry","timeline","mustHaves","integrations","complianceRequirements"];
+  const isFilled = (k: string) => {
     const v = profile[k]; return v && (typeof v !== "string" || v.trim()) && (!Array.isArray(v) || v.length > 0);
-  }).length;
+  };
+  const filledSlots = SLOT_KEYS.filter(isFilled).length;
   const totalSlots = SLOT_KEYS.length;
-  const interviewComplete = filledSlots >= totalSlots;
+  const missingCritical = CRITICAL_SLOTS.filter(k => !isFilled(k));
+  // Mirrors server `profileReadiness`: every critical slot captured AND ≥10/14 total.
+  const interviewReady = missingCritical.length === 0 && filledSlots >= 10;
+  const interviewComplete = interviewReady;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -131,7 +136,8 @@ export default function MyRfpDetailPage() {
           </div>
           <Button
             onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending || filledSlots < 2}
+            disabled={generateMutation.isPending || !interviewReady}
+            title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
             className="bg-gradient-to-r from-cyan-500 to-violet-600"
             data-testid="button-generate-rfp"
           >

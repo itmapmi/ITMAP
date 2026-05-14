@@ -23,6 +23,7 @@ import { buildRfpMarketContext } from "../rfp/context";
 import { getRfpLlmClient, MissingLlmKeyError, userHasOpenAiKey } from "../rfp/llm";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
+  profileReadiness,
   type CustomerProfile,
 } from "../rfp/interview";
 import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales, renderFullMarkdown } from "../rfp/generator";
@@ -278,8 +279,14 @@ export function registerRfpRoutes(app: Express): void {
     try {
       const rfp = (req as any).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
-      if (!profile.companyName && !profile.industry) {
-        return res.status(400).json({ error: "Not enough customer context — answer at least a couple of interview questions first." });
+      const readiness = profileReadiness(profile);
+      if (!readiness.ready) {
+        return res.status(400).json({
+          error: `Interview not complete. ${readiness.filled}/${readiness.total} slots captured. Still missing: ${readiness.missing.join(", ")}.`,
+          missing: readiness.missing,
+          filled: readiness.filled,
+          total: readiness.total,
+        });
       }
       await updateRfpProject(rfp.id, { status: "generating", error: null });
       const market = await buildRfpMarketContext(rfp.marketId);
