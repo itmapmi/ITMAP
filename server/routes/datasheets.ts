@@ -96,7 +96,7 @@ export function registerDatasheetRoutes(app: Express): void {
 
   app.post("/api/datasheets/compare", async (req, res) => {
     try {
-      const body = z.object({ productIds: z.array(z.string()).min(1).max(5) }).parse(req.body);
+      const body = z.object({ productIds: z.array(z.string()).min(2).max(5) }).parse(req.body);
       const loaded = await loadPublicProducts(body.productIds);
       if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
       const { products } = loaded;
@@ -117,8 +117,15 @@ export function registerDatasheetRoutes(app: Express): void {
       const body = z.object({
         marketId: z.string().min(1),
         name: z.string().min(1).max(200),
-        productIds: z.array(z.string()).min(1).max(5),
+        productIds: z.array(z.string()).min(2).max(5),
       }).parse(req.body);
+      // Enforce same-market + visible + active before allowing persistence so
+      // saved comparisons cannot reference invalid or non-public product sets.
+      const loaded = await loadPublicProducts(body.productIds);
+      if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
+      if (!loaded.market || loaded.market.id !== body.marketId) {
+        return res.status(400).json({ error: "Products do not belong to the specified market" });
+      }
       const c = await createComparison({ ownerUserId: asAuthed(req).user.id, ...body });
       res.status(201).json(c);
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
@@ -128,13 +135,22 @@ export function registerDatasheetRoutes(app: Express): void {
     try {
       const body = z.object({
         name: z.string().min(1).max(200).optional(),
-        productIds: z.array(z.string()).min(1).max(5).optional(),
+        productIds: z.array(z.string()).min(2).max(5).optional(),
         touch: z.boolean().optional(),
       }).parse(req.body);
       const userId = asAuthed(req).user.id;
       const patch: Record<string, unknown> = {};
       if (body.name) patch.name = body.name;
-      if (body.productIds) patch.productIds = body.productIds;
+      if (body.productIds) {
+        const existing = await getComparisonForOwner(req.params.id, userId);
+        if (!existing) return res.status(404).json({ error: "Comparison not found" });
+        const loaded = await loadPublicProducts(body.productIds);
+        if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
+        if (!loaded.market || loaded.market.id !== existing.marketId) {
+          return res.status(400).json({ error: "Products do not belong to this comparison's market" });
+        }
+        patch.productIds = body.productIds;
+      }
       if (body.touch) patch.lastViewedAt = new Date();
       const updated = await updateComparisonForOwner(req.params.id, userId, patch as Parameters<typeof updateComparisonForOwner>[2]);
       if (!updated) return res.status(404).json({ error: "Comparison not found" });
@@ -167,8 +183,14 @@ export function registerDatasheetRoutes(app: Express): void {
       const rfp = await getRfpProject(body.rfpId);
       if (!rfp || rfp.ownerUserId !== userId) return res.status(404).json({ error: "RFP not found" });
 
-      const products = await getProductsByIds(comparison.productIds);
-      const market = await getDatasheetMarket(comparison.marketId);
+      // Re-validate that the stored productIds are still part of a single
+      // visible market and that all referenced products are active before
+      // letting them seed an RFP. This prevents stale or revoked product
+      // sets from influencing the new RFP.
+      const loaded = await loadPublicProducts(comparison.productIds);
+      if ("error" in loaded) return res.status(loaded.status).json({ error: loaded.error });
+      const products = loaded.products;
+      const market = loaded.market;
       const datasheets = await getCurrentDatasheetsForProducts(products.map(p => p.id));
       const specs = await listSpecsForDatasheets(datasheets.map(d => d.id));
 

@@ -6,13 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Send, Bookmark, Download, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink } from "lucide-react";
+import { Send, Bookmark, Download, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 import type {
   DatasheetMarket, DatasheetProduct, DatasheetVendor, Datasheet, DatasheetSpec,
-  DatasheetSchemaDefinition, DatasheetCitation, DatasheetChatConversation, DatasheetChatMessage,
+  DatasheetSchemaDefinition, DatasheetCitation, DatasheetChatConversation, DatasheetChatMessage, Market,
 } from "@shared/schema";
+
+// Set up pdf.js worker — use the CDN matching the installed pdfjs version.
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 type ProductWithVendor = DatasheetProduct & { vendor: DatasheetVendor };
 type MarketDetail = { market: DatasheetMarket; products: ProductWithVendor[] };
@@ -28,6 +36,7 @@ export default function DatasheetComparePage() {
   const [filterVendor, setFilterVendor] = useState<string>("");
   const [filterSubCategory, setFilterSubCategory] = useState<string>("");
   const [filterFormFactor, setFilterFormFactor] = useState<string>("");
+  const [showSendToRfp, setShowSendToRfp] = useState(false);
 
   const { data: marketDetail, isLoading } = useQuery<MarketDetail>({
     queryKey: ["/api/datasheets/markets", params.slug],
@@ -107,9 +116,18 @@ export default function DatasheetComparePage() {
             {market.description && <p className="text-slate-400 mt-1 max-w-2xl text-sm">{market.description}</p>}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={selectedIds.length === 0} data-testid="button-save-comparison"><Bookmark className="h-4 w-4 mr-1" />Save</Button>
-            <Button variant="outline" size="sm" onClick={() => downloadExport("pdf")} disabled={selectedIds.length === 0}><FileText className="h-4 w-4 mr-1" />PDF</Button>
-            <Button variant="outline" size="sm" onClick={() => downloadExport("excel")} disabled={selectedIds.length === 0}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+            <Button variant="outline" size="sm" onClick={() => saveMut.mutate()} disabled={selectedIds.length < 2} data-testid="button-save-comparison"><Bookmark className="h-4 w-4 mr-1" />Save</Button>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-cyan-500 to-violet-600 text-white border-0"
+              onClick={() => { if (!isAuthenticated) { setLocation("/login"); return; } setShowSendToRfp(true); }}
+              disabled={selectedIds.length < 2}
+              data-testid="button-send-to-rfp"
+            >
+              <Send className="h-4 w-4 mr-1" />Send to RFP
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadExport("pdf")} disabled={selectedIds.length < 2}><FileText className="h-4 w-4 mr-1" />PDF</Button>
+            <Button variant="outline" size="sm" onClick={() => downloadExport("excel")} disabled={selectedIds.length < 2}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
           </div>
         </div>
 
@@ -193,6 +211,14 @@ export default function DatasheetComparePage() {
             productId={previewProductId}
             products={data.products}
             onClose={() => setPreviewProductId(null)}
+          />
+        )}
+
+        {showSendToRfp && market && (
+          <SendToRfpInline
+            datasheetMarketName={market.name}
+            productIds={selectedIds}
+            onClose={() => setShowSendToRfp(false)}
           />
         )}
       </div>
@@ -315,38 +341,149 @@ function computeExtremumIdx(values: Array<DatasheetSpec | undefined>, higherIsBe
   return chosen.i;
 }
 
-// ── PDF preview modal (tabbed across selected products) ─────────────────
+// ── PDF preview modal (tabbed across selected products, react-pdf) ──────
+// Sync-scroll toggle: OFF = single active tab; ON = grid of all PDFs all
+// driven to the same page number so the user can compare matching pages
+// across vendors side-by-side.
 function PdfPreview({ datasheets, productId, onClose, products }: { datasheets: Datasheet[]; productId: string; onClose: () => void; products?: ProductWithVendor[] }) {
   const productList = (products ?? []).filter(p => datasheets.some(d => d.productId === p.id));
   const [activeId, setActiveId] = useState<string>(productId);
-  const ds = datasheets.find(d => d.productId === activeId);
-  if (!ds) return null;
+  const [syncScroll, setSyncScroll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageCounts, setPageCounts] = useState<Record<string, number>>({});
+
+  const visibleProducts = syncScroll ? productList : productList.filter(p => p.id === activeId);
+  const visibleDs = visibleProducts
+    .map(p => ({ p, ds: datasheets.find(d => d.productId === p.id) }))
+    .filter((x): x is { p: ProductWithVendor; ds: Datasheet } => !!x.ds);
+
+  const maxPages = Math.min(...visibleDs.map(({ p }) => pageCounts[p.id] ?? Infinity));
+  const canGoNext = Number.isFinite(maxPages) ? page < maxPages : false;
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6" onClick={onClose}>
-      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-6xl h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-6xl h-[88vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-3 border-b border-white/5 gap-2">
           <div className="flex gap-1 overflow-x-auto" data-testid="pdf-tabs">
             {productList.map(p => (
               <button
                 key={p.id}
-                onClick={() => setActiveId(p.id)}
+                onClick={() => { setActiveId(p.id); }}
                 className={`px-3 py-1 rounded-md text-xs whitespace-nowrap border transition ${
-                  activeId === p.id ? "bg-cyan-500 text-slate-950 border-cyan-500" : "border-white/10 text-slate-300 hover:border-cyan-500/40"
+                  activeId === p.id && !syncScroll ? "bg-cyan-500 text-slate-950 border-cyan-500" : "border-white/10 text-slate-300 hover:border-cyan-500/40"
                 }`}
                 data-testid={`pdf-tab-${p.slug}`}
+                disabled={syncScroll}
               >
                 <span className="font-medium">{p.vendor.name}</span> <span className="opacity-80">{p.name}</span>
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <a href={ds.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 hover:text-cyan-300">Open in new tab</a>
+          <div className="flex items-center gap-3 text-xs text-slate-300">
+            <label className="flex items-center gap-1 cursor-pointer" data-testid="sync-scroll-toggle">
+              <input type="checkbox" checked={syncScroll} onChange={e => setSyncScroll(e.target.checked)} />
+              Sync scroll
+            </label>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="tabular-nums">Page {page}{Number.isFinite(maxPages) ? ` / ${maxPages}` : ""}</span>
+              <Button variant="ghost" size="sm" onClick={() => setPage(p => p + 1)} disabled={!canGoNext}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
             <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
           </div>
         </div>
-        <iframe src={ds.fileUrl} className="flex-1 rounded-b-2xl bg-white" title="Datasheet PDF" />
+        <div className={`flex-1 overflow-auto bg-slate-950 p-4 ${syncScroll ? "grid gap-4" : "flex justify-center"}`}
+          style={syncScroll ? { gridTemplateColumns: `repeat(${visibleDs.length}, minmax(0, 1fr))` } : undefined}
+        >
+          {visibleDs.map(({ p, ds }) => (
+            <div key={p.id} className="bg-white rounded-md shadow-md overflow-auto">
+              <div className="px-2 py-1 text-[10px] bg-slate-100 text-slate-700 border-b">{p.vendor.name} · {p.name} · v{ds.version}</div>
+              <Document
+                file={ds.fileUrl}
+                onLoadSuccess={({ numPages }) => setPageCounts(prev => ({ ...prev, [p.id]: numPages }))}
+                loading={<div className="p-6 text-slate-500 text-xs">Loading PDF…</div>}
+                error={<div className="p-6 text-rose-600 text-xs">Failed to load datasheet PDF. <a href={ds.fileUrl} target="_blank" rel="noreferrer" className="underline">Open directly</a></div>}
+              >
+                <Page pageNumber={Math.min(page, pageCounts[p.id] ?? page)} width={syncScroll ? 380 : 720} renderTextLayer={false} renderAnnotationLayer={false} />
+              </Document>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+// ── Inline "Send to RFP" dialog from /datasheets/:slug ───────────────────
+// Does the two-step canonical flow:
+//   1. POST /api/me/rfps (existing endpoint with all user limits + checks)
+//   2. POST /api/me/datasheet-comparisons/_inline_/seed-rfp — except this
+//      endpoint is for saved comparisons, so we briefly persist one first.
+function SendToRfpInline({ datasheetMarketName, productIds, onClose }: { datasheetMarketName: string; productIds: string[]; onClose: () => void }) {
+  const { toast } = useToast();
+  const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const [rfpMarketId, setRfpMarketId] = useState("");
+  const [title, setTitle] = useState(`RFP — ${datasheetMarketName.replace(/^ITMAP for /i, "")}`);
+
+  const fullSendMut = useMutation({
+    mutationFn: async () => {
+      // Pull comparison context so we get the marketId server-side.
+      const compareRes = await apiRequest("/api/datasheets/compare", "POST", { productIds });
+      const compareData = await compareRes.json() as { products: Array<{ marketId: string }> };
+      const dsMarketId = compareData.products[0]?.marketId;
+      if (!dsMarketId) throw new Error("Could not resolve datasheet market");
+
+      // 1. Persist comparison (re-validated by server).
+      const savedRes = await apiRequest("/api/me/datasheet-comparisons", "POST", {
+        marketId: dsMarketId,
+        name: title,
+        productIds,
+      });
+      const saved = await savedRes.json() as { id: string };
+
+      // 2. Create the RFP through the canonical endpoint.
+      const rfpRes = await apiRequest("/api/me/rfps", "POST", { marketId: rfpMarketId, title });
+      const rfp = await rfpRes.json() as { id: string };
+
+      // 3. Seed requirements from spec deltas.
+      await apiRequest(`/api/me/datasheet-comparisons/${saved.id}/seed-rfp`, "POST", { rfpId: rfp.id });
+      return rfp.id;
+    },
+    onSuccess: (rfpId) => {
+      toast({ title: "RFP created" });
+      window.location.href = `/me/rfps/${rfpId}`;
+    },
+    onError: (err: unknown) => toast({ title: "Failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Send {productIds.length} products to RFP Builder</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm">RFP Market</label>
+            <Select value={rfpMarketId} onValueChange={setRfpMarketId}>
+              <SelectTrigger data-testid="select-rfp-market"><SelectValue placeholder="Select an RFP market" /></SelectTrigger>
+              <SelectContent>
+                {markets.map(m => <SelectItem key={m.id} value={m.id}>{m.name.replace(/^ITMAP for /i, "")}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">We'll seed quantitative must-have requirements from the best-in-class values in your spec matrix.</p>
+          </div>
+          <div>
+            <label className="text-sm">RFP Title</label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} data-testid="input-rfp-title" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => fullSendMut.mutate()} disabled={!rfpMarketId || !title || fullSendMut.isPending} data-testid="button-confirm-send-rfp">
+            {fullSendMut.isPending ? "Creating…" : "Create RFP"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
