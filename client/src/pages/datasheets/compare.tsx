@@ -62,7 +62,8 @@ export default function DatasheetComparePage() {
     },
   });
   useEffect(() => {
-    if (selectedIds.length >= 1) compareMut.mutate(selectedIds);
+    if (selectedIds.length >= 2) compareMut.mutate(selectedIds);
+    else compareMut.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds.join(",")]);
 
@@ -500,7 +501,7 @@ function ChatPanel({ market, selectedIds, isAuthenticated }: { market: Datasheet
   });
 
   const askMut = useMutation({
-    mutationFn: async (q: string) => {
+    mutationFn: async (q: string): Promise<{ conversationId: string }> => {
       let cid = conversationId;
       if (!cid) {
         const res = await apiRequest("/api/datasheets/chat/conversations", "POST", {
@@ -508,12 +509,17 @@ function ChatPanel({ market, selectedIds, isAuthenticated }: { market: Datasheet
         });
         const c = await res.json();
         cid = c.id as string;
-        setConversationId(cid);
       }
-      return await apiRequest(`/api/datasheets/chat/conversations/${cid}/messages`, "POST", { question: q });
+      await apiRequest(`/api/datasheets/chat/conversations/${cid}/messages`, "POST", { question: q });
+      return { conversationId: cid };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/datasheets/chat/conversations", conversationId] });
+    onSuccess: ({ conversationId: cid }) => {
+      // Resolve to the actual conversation id returned from the mutation —
+      // the local state may not yet reflect a brand-new conversation, so
+      // setting state AND invalidating the resolved key both ensure the
+      // assistant's reply appears after the first ask.
+      if (conversationId !== cid) setConversationId(cid);
+      queryClient.invalidateQueries({ queryKey: ["/api/datasheets/chat/conversations", cid] });
       setQuestion("");
     },
     onError: (err: unknown) => toast({ title: "Chat failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
@@ -521,7 +527,7 @@ function ChatPanel({ market, selectedIds, isAuthenticated }: { market: Datasheet
 
   const send = () => {
     if (!isAuthenticated) { toast({ title: "Sign in to chat", description: "Log in or create an account to use the datasheet chat." }); return; }
-    if (selectedIds.length === 0) { toast({ title: "Select products first" }); return; }
+    if (selectedIds.length < 2) { toast({ title: "Select at least 2 products" }); return; }
     if (!question.trim()) return;
     askMut.mutate(question.trim());
   };

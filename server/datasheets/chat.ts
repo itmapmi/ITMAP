@@ -116,17 +116,50 @@ export async function generateDatasheetChatResponse(input: DatasheetChatInput): 
     { role: "user", content: input.question },
   ];
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4.1",
-    messages,
-    temperature: 0.2,
-    max_tokens: 1800,
-    response_format: { type: "json_object" },
-  });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const call = async () =>
+    getOpenAI().chat.completions.create({
+      model: "gpt-4.1",
+      messages,
+      temperature: 0.2,
+      max_tokens: 1800,
+      response_format: { type: "json_object" },
+    });
+
+  let completion = await call();
+  let raw = completion.choices[0]?.message?.content ?? "{}";
   let parsed: { answer?: string; citations?: Array<{ vendorName?: string; productName?: string; page?: number | null; quote?: string }> } = {};
   try { parsed = JSON.parse(raw); } catch { parsed = { answer: raw, citations: [] }; }
-  const answer = (parsed.answer || "I couldn't generate a response.").trim();
-  const citations = bindCitations(parsed.citations ?? [], input);
+  let answer = (parsed.answer || "").trim();
+  let citations = bindCitations(parsed.citations ?? [], input);
+
+  // Citation contract: every factual answer must carry at least one
+  // vendor + page citation. Treat known "no data available" answers as
+  // an acceptable no-citation case; otherwise retry once asking the model
+  // to add citations, and if it still fails refuse to surface the answer.
+  const looksLikeNoData = /do not specify|not available|not present|no data|cannot answer/i.test(answer);
+  if (answer && citations.length === 0 && !looksLikeNoData) {
+    messages.push({ role: "assistant", content: raw });
+    messages.push({
+      role: "user",
+      content:
+        "Your previous JSON answer contained factual claims but no citations. Resend the SAME answer as JSON, but include at least one citation per factual claim, each with vendorName, productName, page, and a verbatim quote from the provided context. Only return JSON.",
+    });
+    completion = await call();
+    raw = completion.choices[0]?.message?.content ?? "{}";
+    try { parsed = JSON.parse(raw); } catch { /* keep previous parsed */ }
+    answer = (parsed.answer || answer).trim();
+    citations = bindCitations(parsed.citations ?? [], input);
+  }
+
+  if (!answer) {
+    return { content: "I couldn't generate a response.", citations: [] };
+  }
+  if (citations.length === 0 && !looksLikeNoData) {
+    return {
+      content:
+        "I couldn't ground that answer in the provided datasheets with a verifiable citation. Try rephrasing or asking about a specific spec.",
+      citations: [],
+    };
+  }
   return { content: answer, citations };
 }
