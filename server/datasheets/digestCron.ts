@@ -14,12 +14,29 @@ import {
 } from "../storage/datasheets";
 import { sendWeeklyDigestEmail } from "./email";
 
+// Hardened base-URL resolution for emailed share/digest links. Treats empty
+// strings as missing (not just undefined), strips trailing slashes, and falls
+// back to the production hostname so emailed links are never malformed even
+// if PUBLIC_BASE_URL is misconfigured.
+function resolveDigestBaseUrl(): string {
+  const FALLBACK = "https://spectio.ai";
+  const explicit = (process.env.PUBLIC_BASE_URL ?? "").trim();
+  if (explicit) {
+    try { return new URL(explicit).origin; }
+    catch { /* fall through */ }
+  }
+  const replit = (process.env.REPLIT_DEV_DOMAIN ?? "").trim();
+  if (replit) {
+    try { return new URL(`https://${replit}`).origin; }
+    catch { /* fall through */ }
+  }
+  return FALLBACK;
+}
+
 export async function runWeeklyDatasheetDigest(): Promise<{ sent: number; skipped: number; failed: number }> {
   const out = { sent: 0, skipped: 0, failed: 0 };
   const comparisons = await listDigestEnabledComparisons();
-  const baseUrl = process.env.PUBLIC_BASE_URL || process.env.REPLIT_DEV_DOMAIN
-    ? (process.env.PUBLIC_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`)
-    : "https://spectio.ai";
+  const baseUrl = resolveDigestBaseUrl();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   for (const c of comparisons) {
