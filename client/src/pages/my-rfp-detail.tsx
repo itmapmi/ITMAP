@@ -181,7 +181,7 @@ export default function MyRfpDetailPage() {
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder="Type your answer…"
                     onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) sendMutation.mutate(draft); }}
-                    className="bg-slate-800 border-white/10"
+                    className="bg-slate-800 border-white/10 text-slate-100 placeholder:text-slate-500"
                     data-testid="input-interview-message"
                   />
                   <Button
