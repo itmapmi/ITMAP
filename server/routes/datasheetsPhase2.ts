@@ -19,6 +19,8 @@ import { ObjectStorageService } from "../objectStorage";
 import {
   listDatasheetMarkets, getDatasheetMarket, createDatasheetMarket, updateDatasheetMarket, deleteDatasheetMarket,
   listPrivateDatasheetMarketsForUser, countPrivateMarketsForUser, countPrivateMarketsForUserSince,
+  countUserPrivateProductsSince, countUserPrivateDatasheetsSince, countProductsInMarket,
+  createDatasheetVendor,
   listProductsByMarket, getProduct, createProduct, updateProduct, deleteProduct,
   getCurrentDatasheetForProduct, createDatasheet, updateDatasheet,
   unsetCurrentDatasheets, getNextVersionForProduct, getDatasheet,
@@ -39,6 +41,9 @@ import { rediscoverDatasheetCandidates, downloadUrlToBuffer } from "../datasheet
 
 const PRIVATE_MAX_TOTAL = 10;
 const PRIVATE_MAX_PER_24H = 5;
+const PRIVATE_PRODUCTS_PER_MARKET = 50;
+const PRIVATE_PRODUCTS_PER_24H = 100;
+const PRIVATE_DATASHEETS_PER_24H = 50;
 
 type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
 const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
@@ -135,12 +140,48 @@ export function registerDatasheetPhase2Routes(app: Express): void {
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
+  // ── USER: create a vendor scoped to their account ────────────────────────
+  // Vendors don't have an ownerUserId column, so we namespace the slug with a
+  // per-user prefix to avoid collisions and make the user-origin auditable.
+  app.post("/api/me/datasheet-markets/:id/vendors", requireAuth, async (req, res) => {
+    try {
+      const userId = asAuthed(req).user.id;
+      const m = await getDatasheetMarket(req.params.id);
+      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
+      const body = z.object({
+        name: z.string().min(1).max(200),
+        slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
+        website: z.string().url().nullish(),
+      }).parse(req.body);
+      const namespacedSlug = `u-${userId.slice(0, 8)}-${body.slug}`;
+      const v = await createDatasheetVendor({
+        name: body.name,
+        slug: namespacedSlug,
+        website: body.website ?? null,
+      });
+      res.status(201).json(v);
+    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
+  });
+
   // ── USER: products within their private market ───────────────────────────
   app.post("/api/me/datasheet-markets/:id/products", requireAuth, async (req, res) => {
     try {
       const userId = asAuthed(req).user.id;
       const m = await getDatasheetMarket(req.params.id);
       if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
+
+      // Per-market product cap.
+      const perMarket = await countProductsInMarket(m.id);
+      if (perMarket >= PRIVATE_PRODUCTS_PER_MARKET) {
+        return res.status(429).json({ error: `Limit reached (${PRIVATE_PRODUCTS_PER_MARKET} products per private market).` });
+      }
+      // Per-user 24-hour product creation cap.
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await countUserPrivateProductsSince(userId, since);
+      if (recent >= PRIVATE_PRODUCTS_PER_24H) {
+        return res.status(429).json({ error: `Daily limit reached (${PRIVATE_PRODUCTS_PER_24H} products / 24 hrs).` });
+      }
+
       const body = z.object({
         vendorId: z.string().min(1),
         name: z.string().min(1).max(200),
@@ -195,6 +236,14 @@ export function registerDatasheetPhase2Routes(app: Express): void {
       if (!market || market.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
       const product = await getProduct(req.params.productId);
       if (!product || product.marketId !== market.id) return res.status(404).json({ error: "Product not found" });
+
+      // Per-user 24-hour datasheet upload cap.
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await countUserPrivateDatasheetsSince(userId, since);
+      if (recent >= PRIVATE_DATASHEETS_PER_24H) {
+        return res.status(429).json({ error: `Daily limit reached (${PRIVATE_DATASHEETS_PER_24H} datasheet uploads / 24 hrs).` });
+      }
+
       const body = z.object({ uploadURL: z.string().url() }).parse(req.body);
 
       const objectStorage = new ObjectStorageService();

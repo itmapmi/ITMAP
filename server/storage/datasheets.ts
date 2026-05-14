@@ -51,6 +51,40 @@ export async function countPrivateMarketsForUserSince(userId: string, since: Dat
     ));
   return c;
 }
+// Phase 2 rate limits: count products in any private market owned by `userId`
+// created since `since`. Used by /api/me product-creation rate limiter.
+export async function countUserPrivateProductsSince(userId: string, since: Date): Promise<number> {
+  const [{ c }] = await db.select({ c: sql<number>`count(*)::int` })
+    .from(datasheetProducts)
+    .innerJoin(datasheetMarkets, eq(datasheetMarkets.id, datasheetProducts.marketId))
+    .where(and(
+      eq(datasheetMarkets.ownerUserId, userId),
+      eq(datasheetMarkets.visibility, "private"),
+      gt(datasheetProducts.createdAt, since),
+    ));
+  return c;
+}
+// Phase 2 rate limits: count datasheets uploaded for any product in a private
+// market owned by `userId` since `since`. Used by upload route rate limiter.
+export async function countUserPrivateDatasheetsSince(userId: string, since: Date): Promise<number> {
+  const [{ c }] = await db.select({ c: sql<number>`count(*)::int` })
+    .from(datasheets)
+    .innerJoin(datasheetProducts, eq(datasheetProducts.id, datasheets.productId))
+    .innerJoin(datasheetMarkets, eq(datasheetMarkets.id, datasheetProducts.marketId))
+    .where(and(
+      eq(datasheetMarkets.ownerUserId, userId),
+      eq(datasheetMarkets.visibility, "private"),
+      gt(datasheets.uploadedAt, since),
+    ));
+  return c;
+}
+// Phase 2: count products in a specific market (used for per-market caps).
+export async function countProductsInMarket(marketId: string): Promise<number> {
+  const [{ c }] = await db.select({ c: sql<number>`count(*)::int` })
+    .from(datasheetProducts)
+    .where(eq(datasheetProducts.marketId, marketId));
+  return c;
+}
 export async function getDatasheetMarket(id: string): Promise<DatasheetMarket | undefined> {
   const [row] = await db.select().from(datasheetMarkets).where(eq(datasheetMarkets.id, id));
   return row;

@@ -1,23 +1,24 @@
 /**
  * Phase 2: Weekly datasheet re-extraction cron.
  *
- * For every vendor with rediscoveryOptIn=true + productIndexUrl, ask GPT-4.1
- * for likely current datasheet URLs for each of its products, then for each
- * matched product compare hashes against the currently stored datasheet and
- * re-extract+swap if the file changed. Always writes a datasheet_agent_runs
- * row so the admin panel can audit every cron pass.
+ * Per architect review: cron may ONLY re-fetch source URLs that were
+ * previously admin-approved (i.e. persisted as `datasheets.sourceUrl` via the
+ * admin /rediscover/approve flow). It does NOT run fresh Puppeteer/GPT
+ * discovery — discovery is admin-initiated only.
+ *
+ * For each opted-in vendor's product whose current datasheet has a
+ * `sourceUrl`, re-download, hash-compare, and (if changed) re-extract + swap.
+ * Always writes a `datasheet_agent_runs` row for audit.
  */
-import crypto from "crypto";
 import {
   listVendorsWithRediscoveryOptIn,
-  listProductsByMarket,
   getCurrentDatasheetForProduct,
   getNextVersionForProduct,
   createDatasheet, updateDatasheet, unsetCurrentDatasheets,
   replaceSpecsForDatasheet, listSpecsForDatasheet, createChangeAlert,
-  getDatasheetMarket, createAgentRun, getDatasheetVendor,
+  getDatasheetMarket, createAgentRun,
 } from "../storage/datasheets";
-import { rediscoverDatasheetCandidates, downloadUrlToBuffer } from "./rediscovery";
+import { downloadUrlToBuffer } from "./rediscovery";
 import { extractDatasheet } from "./extractor";
 import { diffSpecs } from "./diff";
 import { ObjectStorageService } from "../objectStorage";
@@ -27,67 +28,30 @@ import { db } from "../db";
 import { datasheetProducts } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-function bestCandidateForProduct(productName: string, candidates: Array<{ productName: string; candidateDatasheetUrl: string; confidence: number }>): string | null {
-  const lc = productName.toLowerCase();
-  const matches = candidates
-    .map(c => ({ ...c, score: similarity(lc, c.productName.toLowerCase()) * 0.6 + c.confidence * 0.4 }))
-    .sort((a, b) => b.score - a.score);
-  if (matches.length === 0) return null;
-  if (matches[0].score < 0.45) return null;
-  return matches[0].candidateDatasheetUrl;
-}
-function similarity(a: string, b: string): number {
-  if (a === b) return 1;
-  const setA = new Set(a.split(/[^a-z0-9]+/).filter(Boolean));
-  const setB = new Set(b.split(/[^a-z0-9]+/).filter(Boolean));
-  if (setA.size === 0 || setB.size === 0) return 0;
-  let common = 0;
-  for (const t of setA) if (setB.has(t)) common++;
-  return common / Math.max(setA.size, setB.size);
-}
-
-export async function runWeeklyReextract(): Promise<{ checked: number; changed: number; failed: number }> {
-  const out = { checked: 0, changed: 0, failed: 0 };
+export async function runWeeklyReextract(): Promise<{ checked: number; changed: number; failed: number; skipped: number }> {
+  const out = { checked: 0, changed: 0, failed: 0, skipped: 0 };
   const vendors = await listVendorsWithRediscoveryOptIn();
   for (const vendor of vendors) {
-    if (!vendor.productIndexUrl) continue;
-    let candidates: Awaited<ReturnType<typeof rediscoverDatasheetCandidates>>["candidates"] = [];
-    try {
-      const result = await rediscoverDatasheetCandidates({ vendorId: vendor.id, productIndexUrl: vendor.productIndexUrl });
-      candidates = result.candidates;
-    } catch (err) {
-      console.warn(`[reextractCron] rediscover failed for ${vendor.name}:`, err);
-      continue;
-    }
-    // All products for this vendor across markets.
     const vendorProducts = await db.select().from(datasheetProducts).where(eq(datasheetProducts.vendorId, vendor.id));
     for (const product of vendorProducts) {
       out.checked++;
       const start = Date.now();
-      const candidateUrl = bestCandidateForProduct(product.name, candidates);
-      if (!candidateUrl) {
+      const previous = await getCurrentDatasheetForProduct(product.id);
+      // SECURITY/POLICY: only act on admin-approved source URLs.
+      if (!previous || !previous.sourceUrl) {
         await createAgentRun({
           runType: "reextract_cron", vendorId: vendor.id, productId: product.id,
-          status: "skipped", inputUrl: vendor.productIndexUrl,
-          errorMessage: "No candidate URL matched", durationMs: Date.now() - start,
+          status: "skipped", inputUrl: null,
+          errorMessage: "No admin-approved sourceUrl on current datasheet",
+          durationMs: Date.now() - start,
         });
+        out.skipped++;
         continue;
       }
+      const candidateUrl = previous.sourceUrl;
       try {
-        const previous = await getCurrentDatasheetForProduct(product.id);
-        // Short-circuit: if the discovered source URL matches the one already
-        // on file (set by previous rediscovery / approve / cron), no need to fetch.
-        if (previous && previous.sourceUrl && previous.sourceUrl === candidateUrl) {
-          await createAgentRun({
-            runType: "reextract_cron", vendorId: vendor.id, productId: product.id,
-            status: "no_change", inputUrl: candidateUrl,
-            outputJson: { reason: "source_url_unchanged" },
-            durationMs: Date.now() - start,
-          });
-          continue;
-        }
         const { buffer, hash } = await downloadUrlToBuffer(candidateUrl);
-        if (previous && previous.fileHash === hash) {
+        if (previous.fileHash === hash) {
           await createAgentRun({
             runType: "reextract_cron", vendorId: vendor.id, productId: product.id,
             status: "no_change", inputUrl: candidateUrl,
@@ -103,6 +67,7 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
             status: "failed", inputUrl: candidateUrl, errorMessage: "Market not found",
             durationMs: Date.now() - start,
           });
+          out.failed++;
           continue;
         }
         const objectStorage = new ObjectStorageService();
@@ -113,7 +78,7 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
         const version = await getNextVersionForProduct(product.id);
         const ds = await createDatasheet({
           productId: product.id, fileUrl, sourceUrl: candidateUrl, fileHash: hash, version,
-          previousDatasheetId: previous?.id ?? null,
+          previousDatasheetId: previous.id,
           extractionStatus: "extracting", isCurrent: false,
         });
         const result = await extractDatasheet({
@@ -121,28 +86,26 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
           productName: product.name, datasheetId: ds.id,
         });
         await replaceSpecsForDatasheet(ds.id, result.specs);
-        if (previous) await unsetCurrentDatasheets(product.id);
+        await unsetCurrentDatasheets(product.id);
         await updateDatasheet(ds.id, {
           extractionStatus: "extracted", isCurrent: true,
           rawText: result.rawText.slice(0, 200_000),
           pageCount: result.pageCount, extractedAt: new Date(),
         });
-        if (previous) {
-          const prev = await listSpecsForDatasheet(previous.id);
-          const next = await listSpecsForDatasheet(ds.id);
-          const diff = diffSpecs(prev, next);
-          if (diff) {
-            const alert = await createChangeAlert({
-              datasheetId: ds.id, productId: product.id,
-              changeType: diff.changeType, severity: diff.severity, changedFields: diff.changedFields,
-            });
-            const admins = getAdminAlertRecipients();
-            if (admins.length > 0 && (diff.severity === "high" || diff.severity === "medium")) {
-              await sendChangeAlertEmail({
-                alert, productName: product.name, vendorName: vendor.name,
-                marketName: market.name, recipients: admins,
-              }).catch(e => console.warn("[reextractCron] email failed:", e));
-            }
+        const prev = await listSpecsForDatasheet(previous.id);
+        const next = await listSpecsForDatasheet(ds.id);
+        const diff = diffSpecs(prev, next);
+        if (diff) {
+          const alert = await createChangeAlert({
+            datasheetId: ds.id, productId: product.id,
+            changeType: diff.changeType, severity: diff.severity, changedFields: diff.changedFields,
+          });
+          const admins = getAdminAlertRecipients();
+          if (admins.length > 0 && (diff.severity === "high" || diff.severity === "medium")) {
+            await sendChangeAlertEmail({
+              alert, productName: product.name, vendorName: vendor.name,
+              marketName: market.name, recipients: admins,
+            }).catch(e => console.warn("[reextractCron] email failed:", e));
           }
         }
         await createAgentRun({
@@ -163,6 +126,5 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
       }
     }
   }
-  void crypto; // used implicitly by downloadUrlToBuffer
   return out;
 }
