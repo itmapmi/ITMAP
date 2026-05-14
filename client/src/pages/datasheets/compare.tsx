@@ -43,17 +43,27 @@ export default function DatasheetComparePage() {
     queryFn: async () => (await apiRequest(`/api/datasheets/markets/${params.slug}`, "GET")).json(),
   });
 
-  // Initialize default selection from ?ids= query string, or first 2 products
+  // Initialize default selection from ?ids= query string, or first 2 products.
+  // Also bump lastViewedAt when a saved comparison is opened (?comparisonId=)
+  // so the saved-comparisons list reflects real usage.
   useEffect(() => {
     if (marketDetail && selectedIds.length === 0) {
-      const qs = new URLSearchParams(window.location.search).get("ids");
+      const qs = new URLSearchParams(window.location.search);
+      const ids = qs.get("ids");
       const validIds = new Set(marketDetail.products.map(p => p.id));
-      const fromQs = qs ? qs.split(",").filter(id => validIds.has(id)).slice(0, 5) : [];
-      if (fromQs.length > 0) { setSelectedIds(fromQs); return; }
-      const defaults = marketDetail.products.slice(0, Math.min(2, marketDetail.products.length)).map(p => p.id);
-      if (defaults.length) setSelectedIds(defaults);
+      const fromQs = ids ? ids.split(",").filter(id => validIds.has(id)).slice(0, 5) : [];
+      if (fromQs.length > 0) { setSelectedIds(fromQs); }
+      else {
+        const defaults = marketDetail.products.slice(0, Math.min(2, marketDetail.products.length)).map(p => p.id);
+        if (defaults.length) setSelectedIds(defaults);
+      }
+      const comparisonId = qs.get("comparisonId");
+      if (comparisonId && isAuthenticated) {
+        // Fire-and-forget — failures don't affect viewing.
+        apiRequest(`/api/me/datasheet-comparisons/${comparisonId}`, "PATCH", { touch: true }).catch(() => {});
+      }
     }
-  }, [marketDetail, selectedIds.length]);
+  }, [marketDetail, selectedIds.length, isAuthenticated]);
 
   const compareMut = useMutation({
     mutationFn: async (ids: string[]) => {

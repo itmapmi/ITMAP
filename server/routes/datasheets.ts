@@ -190,7 +190,7 @@ export function registerDatasheetRoutes(app: Express): void {
       if (!comparison) return res.status(404).json({ error: "Comparison not found" });
       const body = z.object({ rfpId: z.string().min(1) }).parse(req.body);
 
-      const { getRfpProject, bulkCreateRfpRequirements, appendRfpMessage } = await import("../storage/rfps");
+      const { getRfpProject, bulkCreateRfpRequirements, appendRfpMessage, updateRfpProject } = await import("../storage/rfps");
       const rfp = await getRfpProject(body.rfpId);
       if (!rfp || rfp.ownerUserId !== userId) return res.status(404).json({ error: "RFP not found" });
 
@@ -253,6 +253,26 @@ export function registerDatasheetRoutes(app: Express): void {
         }
       }
       if (requirements.length > 0) await bulkCreateRfpRequirements(requirements);
+
+      // Also mirror the seeded must-haves into the RFP's customerProfile so
+      // downstream consumers reading the structured profile (rather than the
+      // requirements table) see the same baseline. Preserve any existing
+      // mustHaves the user may have already authored.
+      if (requirements.length > 0) {
+        const existingProfile = (rfp.customerProfile ?? {}) as Record<string, unknown>;
+        const existingMustHaves = Array.isArray(existingProfile.mustHaves)
+          ? (existingProfile.mustHaves as unknown[])
+          : [];
+        const newMustHaves = requirements.map(r => ({
+          label: r.label,
+          expectedValue: r.expectedValue,
+          source: "datasheet",
+          description: r.description,
+        }));
+        await updateRfpProject(rfp.id, {
+          customerProfile: { ...existingProfile, mustHaves: [...existingMustHaves, ...newMustHaves] },
+        });
+      }
 
       const productList = products.map(p => `- ${p.vendor.name} ${p.name}`).join("\n");
       await appendRfpMessage({

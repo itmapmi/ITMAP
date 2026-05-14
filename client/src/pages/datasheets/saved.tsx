@@ -56,7 +56,13 @@ export default function DatasheetSavedPage() {
                   <Button variant="outline" size="sm" onClick={() => setSendingId(c.id)} data-testid={`button-send-rfp-${c.id}`}>
                     <FileText className="h-4 w-4 mr-1" />Send to RFP
                   </Button>
-                  {slug && <Link href={`/datasheets/${slug}?ids=${(c.productIds as string[]).join(",")}`}><Button variant="outline" size="sm" asChild><span>Open<ArrowRight className="h-4 w-4 ml-1" /></span></Button></Link>}
+                  {slug && (
+                    <Link href={`/datasheets/${slug}?ids=${(c.productIds as string[]).join(",")}&comparisonId=${c.id}`}>
+                      <Button variant="outline" size="sm" asChild>
+                        <span>Open<ArrowRight className="h-4 w-4 ml-1" /></span>
+                      </Button>
+                    </Link>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Delete ${c.name}?`)) delMut.mutate(c.id); }}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               </Card>
