@@ -180,12 +180,34 @@ export function registerRfpRoutes(app: Express): void {
 
   // ── Interview ─────────────────────────────────────────────────────────
 
+  // Per-user, per-operation throttle for high-cost LLM calls (interview reply,
+  // generation, regeneration). Tracks a sliding window of timestamps in-memory.
+  // Keeps abuse contained without needing a Redis dependency.
+  const LLM_RATE_WINDOW_MS = 60_000;
+  const LLM_RATE_MAX_PER_WINDOW = 12;
+  const llmHits = new Map<string, number[]>();
+  function llmRateLimit(opName: string) {
+    return (req: any, res: any, next: any) => {
+      const userId = req.user?.id;
+      if (!userId) return next();
+      const key = `${userId}:${opName}`;
+      const now = Date.now();
+      const recent = (llmHits.get(key) ?? []).filter(t => now - t < LLM_RATE_WINDOW_MS);
+      if (recent.length >= LLM_RATE_MAX_PER_WINDOW) {
+        return res.status(429).json({ error: `Too many ${opName} requests. Wait a moment before trying again.` });
+      }
+      recent.push(now);
+      llmHits.set(key, recent);
+      next();
+    };
+  }
+
   app.get("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, async (req, res) => {
     try { res.json(await listRfpMessages(req.params.id)); }
     catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  app.post("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, async (req, res) => {
+  app.post("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, llmRateLimit("interview"), async (req, res) => {
     try {
       const user = asAuthed(req).user;
       const rfp = asRfpReq(req).rfp;
@@ -216,18 +238,26 @@ export function registerRfpRoutes(app: Express): void {
         console.warn("[RFP] slot extraction failed:", e);
       }
 
-      // 2. Generate next assistant turn using the conversation history.
-      const history = await listRfpMessages(rfp.id);
-      const chatHistory = history.map(m => ({
-        role: m.role === "user" ? ("user" as const) : ("assistant" as const),
-        content: m.content,
-      }));
-      const systemPrompt = buildInterviewSystemPrompt(market, newProfile);
-      const reply = await llm.chat(systemPrompt, chatHistory, { maxTokens: 400 });
-
       // Use the same readiness predicate everywhere (critical slots + 10/14)
       // so chat clients and the generation gate agree.
       const readiness = profileReadiness(newProfile);
+
+      // 2. Generate next assistant turn. Short-circuit the LLM call once the
+      // server-side readiness gate is met — this guarantees deterministic
+      // "interview complete" behavior (no rogue follow-up questions) and
+      // also saves a generation hop on the user's BYO key.
+      let reply: string;
+      if (readiness.ready) {
+        reply = "Thanks — I have everything I need to draft your RFP. Click 'Generate RFP' to continue.";
+      } else {
+        const history = await listRfpMessages(rfp.id);
+        const chatHistory = history.map(m => ({
+          role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+          content: m.content,
+        }));
+        const systemPrompt = buildInterviewSystemPrompt(market, newProfile);
+        reply = await llm.chat(systemPrompt, chatHistory, { maxTokens: 400 });
+      }
       const profileJson: Record<string, unknown> = { ...newProfile };
       const saved = await appendRfpMessage({
         rfpId: rfp.id,
@@ -289,7 +319,7 @@ export function registerRfpRoutes(app: Express): void {
 
   // ── Generate (the big one) ────────────────────────────────────────────
 
-  app.post("/api/me/rfps/:id/generate", requireAuth, requireRfpOwner, async (req, res) => {
+  app.post("/api/me/rfps/:id/generate", requireAuth, requireRfpOwner, llmRateLimit("generate"), async (req, res) => {
     try {
       const rfp = asRfpReq(req).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
@@ -356,7 +386,7 @@ export function registerRfpRoutes(app: Express): void {
   // Per-section regenerate — rerun a single section without rebuilding the
   // whole RFP. Useful when the user tweaks requirements or asks for a fresh
   // exec summary. Does NOT re-score the shortlist.
-  app.post("/api/me/rfps/:id/sections/:sectionKey/regenerate", requireAuth, requireRfpOwner, async (req, res) => {
+  app.post("/api/me/rfps/:id/sections/:sectionKey/regenerate", requireAuth, requireRfpOwner, llmRateLimit("regenerate"), async (req, res) => {
     try {
       const rfp = asRfpReq(req).rfp;
       const key = req.params.sectionKey as SectionKey;
