@@ -442,9 +442,11 @@ export function registerDatasheetRoutes(app: Express): void {
       const fileHash = crypto.createHash("sha256").update(buffer).digest("hex");
 
       const previous = await getCurrentDatasheetForProduct(product.id);
-      if (previous) await unsetCurrentDatasheets(product.id);
       const version = await getNextVersionForProduct(product.id);
 
+      // Create the new datasheet as non-current first. The previous version
+      // stays "current" until the new one successfully extracts — that way
+      // a failed extraction never leaves the product with no usable specs.
       const datasheet = await createDatasheet({
         productId: product.id,
         fileUrl,
@@ -452,7 +454,7 @@ export function registerDatasheetRoutes(app: Express): void {
         version,
         previousDatasheetId: previous?.id ?? null,
         extractionStatus: "extracting",
-        isCurrent: true,
+        isCurrent: false,
       });
 
       // Run extraction synchronously (Phase 1) — typical PDFs <2MB and OpenAI
@@ -466,8 +468,12 @@ export function registerDatasheetRoutes(app: Express): void {
           datasheetId: datasheet.id,
         });
         await replaceSpecsForDatasheet(datasheet.id, result.specs);
+        // Atomic-ish flip: demote previous, promote new. Both writes scoped
+        // to this product so other products are unaffected.
+        if (previous) await unsetCurrentDatasheets(product.id);
         await updateDatasheet(datasheet.id, {
           extractionStatus: "extracted",
+          isCurrent: true,
           rawText: result.rawText.slice(0, 200_000),
           pageCount: result.pageCount,
           extractedAt: new Date(),

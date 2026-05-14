@@ -423,7 +423,20 @@ function PdfPreview({ datasheets, productId, onClose, products }: { datasheets: 
 function SendToRfpInline({ datasheetMarketName, productIds, onClose }: { datasheetMarketName: string; productIds: string[]; onClose: () => void }) {
   const { toast } = useToast();
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const cleanName = datasheetMarketName.replace(/^ITMAP for /i, "").trim().toLowerCase();
+  // Auto-default the RFP market by best-match against the datasheet market
+  // name so the dialog is effectively one-click — the user can still edit
+  // before confirming if the auto-match isn't right.
+  const autoMarket = useMemo(() => {
+    if (markets.length === 0) return "";
+    const norm = (s: string) => s.replace(/^ITMAP for /i, "").trim().toLowerCase();
+    const exact = markets.find(m => norm(m.name) === cleanName);
+    if (exact) return exact.id;
+    const partial = markets.find(m => norm(m.name).includes(cleanName) || cleanName.includes(norm(m.name)));
+    return partial?.id ?? markets[0].id;
+  }, [markets, cleanName]);
   const [rfpMarketId, setRfpMarketId] = useState("");
+  useEffect(() => { if (!rfpMarketId && autoMarket) setRfpMarketId(autoMarket); }, [autoMarket, rfpMarketId]);
   const [title, setTitle] = useState(`RFP — ${datasheetMarketName.replace(/^ITMAP for /i, "")}`);
 
   const fullSendMut = useMutation({

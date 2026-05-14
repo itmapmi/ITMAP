@@ -137,6 +137,10 @@ export async function generateDatasheetChatResponse(input: DatasheetChatInput): 
   // an acceptable no-citation case; otherwise retry once asking the model
   // to add citations, and if it still fails refuse to surface the answer.
   const looksLikeNoData = /do not specify|not available|not present|no data|cannot answer/i.test(answer);
+  // Page-strict citation contract: every binding citation MUST carry a
+  // non-null page number so users can verify the claim in the source PDF.
+  // Citations without a usable page are dropped before the gate check.
+  citations = citations.filter(c => typeof c.page === "number" && (c.page as number) > 0);
   if (answer && citations.length === 0 && !looksLikeNoData) {
     messages.push({ role: "assistant", content: raw });
     messages.push({
@@ -148,7 +152,8 @@ export async function generateDatasheetChatResponse(input: DatasheetChatInput): 
     raw = completion.choices[0]?.message?.content ?? "{}";
     try { parsed = JSON.parse(raw); } catch { /* keep previous parsed */ }
     answer = (parsed.answer || answer).trim();
-    citations = bindCitations(parsed.citations ?? [], input);
+    citations = bindCitations(parsed.citations ?? [], input)
+      .filter(c => typeof c.page === "number" && (c.page as number) > 0);
   }
 
   if (!answer) {
