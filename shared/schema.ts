@@ -1542,6 +1542,9 @@ export const datasheets = pgTable("datasheets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").notNull().references(() => datasheetProducts.id, { onDelete: "cascade" }),
   fileUrl: text("file_url").notNull(),
+  // Public source URL (when fetched via rediscovery/reextract) — used to detect
+  // source URL changes on weekly re-extraction. Null for admin-uploaded files.
+  sourceUrl: text("source_url"),
   fileHash: text("file_hash"),
   version: integer("version").notNull().default(1),
   pageCount: integer("page_count"),

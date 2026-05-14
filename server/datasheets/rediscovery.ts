@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import crypto from "crypto";
 import { createAgentRun } from "../storage/datasheets";
+import { assertPublicUrl } from "./ssrfGuard";
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -29,7 +30,9 @@ async function isAllowedByRobots(url: string, userAgent = "spectio-rediscovery")
   try {
     const u = new URL(url);
     const robotsUrl = `${u.protocol}//${u.host}/robots.txt`;
-    const resp = await fetch(robotsUrl, { signal: AbortSignal.timeout(5000) });
+    // SSRF: validate robots URL host before fetching.
+    await assertPublicUrl(robotsUrl);
+    const resp = await safeFetch(robotsUrl, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) return true;
     const text = await resp.text();
     const lines = text.split(/\r?\n/);
@@ -56,6 +59,7 @@ async function isAllowedByRobots(url: string, userAgent = "spectio-rediscovery")
 
 // Render page HTML using puppeteer (reuses pdf-service's Chromium discovery).
 async function renderPageHtml(url: string): Promise<string> {
+  await assertPublicUrl(url);
   const { default: puppeteer } = await import("puppeteer");
   const { pdfService } = await import("../pdf-generator/pdf-service");
   const launchOpts: Record<string, unknown> = {
@@ -171,11 +175,32 @@ export async function rediscoverDatasheetCandidates(opts: {
   }
 }
 
+// Manual-redirect fetch that re-validates every hop against the SSRF guard.
+// Prevents private-IP bypass via redirect chains (e.g. http://evil.example →
+// http://10.0.0.5).
+export async function safeFetch(url: string, init: RequestInit = {}, maxHops = 5): Promise<Response> {
+  let current = url;
+  for (let hop = 0; hop <= maxHops; hop++) {
+    await assertPublicUrl(current);
+    const resp = await fetch(current, { ...init, redirect: "manual" });
+    const status = resp.status;
+    if (status >= 300 && status < 400) {
+      const loc = resp.headers.get("location");
+      if (!loc) return resp;
+      current = new URL(loc, current).toString();
+      continue;
+    }
+    return resp;
+  }
+  throw new Error(`Too many redirects (>${maxHops})`);
+}
+
 // Download a remote URL into a buffer with size cap (default 20 MB).
 export async function downloadUrlToBuffer(url: string, maxBytes = 20 * 1024 * 1024): Promise<{ buffer: Buffer; contentType: string; hash: string }> {
+  await assertPublicUrl(url);
   if (!await isAllowedByRobots(url)) throw new Error("URL is blocked by robots.txt");
   await politeWait(url);
-  const resp = await fetch(url, { signal: AbortSignal.timeout(60_000), redirect: "follow" });
+  const resp = await safeFetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!resp.ok) throw new Error(`Fetch failed ${resp.status} for ${url}`);
   const lenHeader = resp.headers.get("content-length");
   if (lenHeader && parseInt(lenHeader, 10) > maxBytes) throw new Error(`File too large (${lenHeader} bytes)`);

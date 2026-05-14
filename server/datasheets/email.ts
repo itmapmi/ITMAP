@@ -13,6 +13,39 @@ function transport() {
   return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
 }
 
+// Resend fallback: used when SMTP isn't configured but RESEND_API_KEY is.
+async function sendViaResend(opts: { to: string; subject: string; html: string }): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY not configured");
+  const from = process.env.ALERT_FROM_EMAIL || "alerts@noreply.local";
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ from, to: opts.to, subject: opts.subject, html: opts.html }),
+  });
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => "");
+    throw new Error(`Resend ${resp.status}: ${t.slice(0, 200)}`);
+  }
+}
+
+async function sendEmail(opts: { to: string; subject: string; html: string }): Promise<void> {
+  const tx = transport();
+  if (tx) {
+    await tx.sendMail({ from: fromAddr(), to: opts.to, subject: opts.subject, html: opts.html });
+    return;
+  }
+  if (process.env.RESEND_API_KEY) {
+    await sendViaResend(opts);
+    return;
+  }
+  throw new Error("No email transport configured (SMTP or RESEND_API_KEY)");
+}
+
+function hasEmailTransport(): boolean {
+  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) || !!process.env.RESEND_API_KEY;
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -45,9 +78,8 @@ export interface ChangeAlertEmailInput {
 export async function sendChangeAlertEmail(input: ChangeAlertEmailInput): Promise<{ sent: number; skipped: number; failed: number }> {
   const out = { sent: 0, skipped: 0, failed: 0 };
   if (input.recipients.length === 0) return out;
-  const tx = transport();
-  if (!tx) {
-    console.warn("[Datasheet email] SMTP not configured; skipping change-alert email");
+  if (!hasEmailTransport()) {
+    console.warn("[Datasheet email] No transport configured (SMTP or RESEND_API_KEY); skipping change-alert email");
     return out;
   }
   const subject = `Datasheet change: ${input.vendorName} ${input.productName} (${input.alert.severity.toUpperCase()})`;
@@ -64,7 +96,7 @@ export async function sendChangeAlertEmail(input: ChangeAlertEmailInput): Promis
       continue;
     }
     try {
-      await tx.sendMail({ from: fromAddr(), to: recipient, subject, html });
+      await sendEmail({ to: recipient, subject, html });
       await logEmailSent({ emailType: "change_alert", changeAlertId: input.alert.id, recipientEmail: recipient, status: "sent" });
       out.sent++;
     } catch (err) {
@@ -93,8 +125,7 @@ export async function sendWeeklyDigestEmail(
   baseUrl: string,
 ): Promise<{ sent: boolean; error?: string }> {
   if (!comparison.digestEmail) return { sent: false, error: "no recipient" };
-  const tx = transport();
-  if (!tx) return { sent: false, error: "SMTP not configured" };
+  if (!hasEmailTransport()) return { sent: false, error: "No email transport configured" };
   const recipient = comparison.digestEmail;
   if (await hasEmailBeenSent({ emailType: "weekly_digest", comparisonId: comparison.id, recipientEmail: recipient })) {
     return { sent: false, error: "already sent" };
@@ -116,7 +147,7 @@ export async function sendWeeklyDigestEmail(
   </body></html>`;
   const subject = `Datasheet digest: ${comparison.name} (${alerts.length} change${alerts.length === 1 ? "" : "s"})`;
   try {
-    await tx.sendMail({ from: fromAddr(), to: recipient, subject, html });
+    await sendEmail({ to: recipient, subject, html });
     await logEmailSent({ emailType: "weekly_digest", comparisonId: comparison.id, recipientEmail: recipient, status: "sent" });
     return { sent: true };
   } catch (err) {

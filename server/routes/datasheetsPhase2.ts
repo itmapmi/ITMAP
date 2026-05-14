@@ -392,7 +392,7 @@ export function registerDatasheetPhase2Routes(app: Express): void {
         const fileUrl = objectStorage.normalizeObjectEntityPath(uploadURL);
         const version = await getNextVersionForProduct(product.id);
         const datasheet = await createDatasheet({
-          productId: product.id, fileUrl, fileHash: hash, version,
+          productId: product.id, fileUrl, sourceUrl: body.datasheetUrl, fileHash: hash, version,
           previousDatasheetId: previous?.id ?? null,
           extractionStatus: "extracting", isCurrent: false,
         });

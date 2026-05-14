@@ -74,12 +74,25 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
         continue;
       }
       try {
-        const { buffer, hash } = await downloadUrlToBuffer(candidateUrl);
         const previous = await getCurrentDatasheetForProduct(product.id);
+        // Short-circuit: if the discovered source URL matches the one already
+        // on file (set by previous rediscovery / approve / cron), no need to fetch.
+        if (previous && previous.sourceUrl && previous.sourceUrl === candidateUrl) {
+          await createAgentRun({
+            runType: "reextract_cron", vendorId: vendor.id, productId: product.id,
+            status: "no_change", inputUrl: candidateUrl,
+            outputJson: { reason: "source_url_unchanged" },
+            durationMs: Date.now() - start,
+          });
+          continue;
+        }
+        const { buffer, hash } = await downloadUrlToBuffer(candidateUrl);
         if (previous && previous.fileHash === hash) {
           await createAgentRun({
             runType: "reextract_cron", vendorId: vendor.id, productId: product.id,
-            status: "no_change", inputUrl: candidateUrl, durationMs: Date.now() - start,
+            status: "no_change", inputUrl: candidateUrl,
+            outputJson: { reason: "hash_unchanged" },
+            durationMs: Date.now() - start,
           });
           continue;
         }
@@ -99,7 +112,7 @@ export async function runWeeklyReextract(): Promise<{ checked: number; changed: 
         const fileUrl = objectStorage.normalizeObjectEntityPath(uploadURL);
         const version = await getNextVersionForProduct(product.id);
         const ds = await createDatasheet({
-          productId: product.id, fileUrl, fileHash: hash, version,
+          productId: product.id, fileUrl, sourceUrl: candidateUrl, fileHash: hash, version,
           previousDatasheetId: previous?.id ?? null,
           extractionStatus: "extracting", isCurrent: false,
         });

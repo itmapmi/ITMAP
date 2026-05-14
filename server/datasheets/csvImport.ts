@@ -167,12 +167,15 @@ export async function planCsvImport(rows: CsvImportRow[]): Promise<ImportPlan> {
   return plan;
 }
 
-export async function commitCsvImport(rows: CsvImportRow[]): Promise<{ vendorsCreated: number; productsCreated: number; productsSkipped: number; errors: string[] }> {
+export async function commitCsvImport(rows: CsvImportRow[]): Promise<{ vendorsCreated: number; productsCreated: number; productsSkipped: number; datasheetsIngested: number; datasheetsFailed: number; errors: string[] }> {
   const vendorCache = new Map<string, DatasheetVendor>();
   for (const v of await listDatasheetVendors()) vendorCache.set(v.slug, v);
-  const productSlugsByMarket = new Map<string, Set<string>>();
+  const productSlugsByMarket = new Map<string, Map<string, DatasheetProduct>>();
+  const { createDatasheet, updateDatasheet, getNextVersionForProduct, replaceSpecsForDatasheet, unsetCurrentDatasheets, getCurrentDatasheetForProduct, getDatasheetMarket: _gm } = await import("../storage/datasheets");
+  void _gm;
 
   let vendorsCreated = 0, productsCreated = 0, productsSkipped = 0;
+  let datasheetsIngested = 0, datasheetsFailed = 0;
   const errors: string[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -186,30 +189,76 @@ export async function commitCsvImport(rows: CsvImportRow[]): Promise<{ vendorsCr
         vendorCache.set(row.vendorSlug, vendor);
         vendorsCreated++;
       }
-      let existingSlugs = productSlugsByMarket.get(row.marketId);
-      if (!existingSlugs) {
+      let existingMap = productSlugsByMarket.get(row.marketId);
+      if (!existingMap) {
         const prods = await listProductsByMarket(row.marketId);
-        existingSlugs = new Set(prods.map(p => p.slug));
-        productSlugsByMarket.set(row.marketId, existingSlugs);
+        existingMap = new Map(prods.map(p => [p.slug, p]));
+        productSlugsByMarket.set(row.marketId, existingMap);
       }
-      if (existingSlugs.has(row.productSlug)) {
+      let product: DatasheetProduct;
+      if (existingMap.has(row.productSlug)) {
         productsSkipped++;
-        continue;
+        product = existingMap.get(row.productSlug)!;
+      } else {
+        product = await createProduct({
+          marketId: row.marketId,
+          vendorId: vendor.id,
+          name: row.productName,
+          slug: row.productSlug,
+          subCategory: row.subCategory ?? null,
+          formFactor: row.formFactor ?? null,
+          productPageUrl: row.productPageUrl ?? null,
+        });
+        existingMap.set(row.productSlug, product);
+        productsCreated++;
       }
-      await createProduct({
-        marketId: row.marketId,
-        vendorId: vendor.id,
-        name: row.productName,
-        slug: row.productSlug,
-        subCategory: row.subCategory ?? null,
-        formFactor: row.formFactor ?? null,
-        productPageUrl: row.productPageUrl ?? null,
-      });
-      existingSlugs.add(row.productSlug);
-      productsCreated++;
+      // Optional: download + extract datasheet URL if provided. Best-effort —
+      // failures are logged per-row but never abort the rest of the import.
+      if (row.datasheetUrl) {
+        try {
+          const { downloadUrlToBuffer } = await import("./rediscovery");
+          const { extractDatasheet } = await import("./extractor");
+          const { ObjectStorageService } = await import("../objectStorage");
+          const { buffer, hash } = await downloadUrlToBuffer(row.datasheetUrl);
+          const previous = await getCurrentDatasheetForProduct(product.id);
+          if (previous && previous.fileHash === hash) {
+            // Same file already current — skip silently.
+          } else {
+            const objectStorage = new ObjectStorageService();
+            const uploadURL = await objectStorage.getObjectEntityUploadURL();
+            const putResp = await fetch(uploadURL, { method: "PUT", body: new Uint8Array(buffer), headers: { "Content-Type": "application/pdf" } });
+            if (!putResp.ok) throw new Error(`Upload failed: ${putResp.status}`);
+            const fileUrl = objectStorage.normalizeObjectEntityPath(uploadURL);
+            const version = await getNextVersionForProduct(product.id);
+            const ds = await createDatasheet({
+              productId: product.id, fileUrl, sourceUrl: row.datasheetUrl, fileHash: hash, version,
+              previousDatasheetId: previous?.id ?? null,
+              extractionStatus: "extracting", isCurrent: false,
+            });
+            const result = await extractDatasheet({
+              fileBuffer: buffer,
+              schema: market.schemaDefinition as Parameters<typeof extractDatasheet>[0]["schema"],
+              productName: product.name, datasheetId: ds.id,
+            });
+            await replaceSpecsForDatasheet(ds.id, result.specs);
+            // Demote any prior current datasheet before promoting the new one
+            // to preserve the "exactly one current per product" invariant.
+            await unsetCurrentDatasheets(product.id);
+            await updateDatasheet(ds.id, {
+              extractionStatus: "extracted", isCurrent: true,
+              rawText: result.rawText.slice(0, 200_000),
+              pageCount: result.pageCount, extractedAt: new Date(),
+            });
+            datasheetsIngested++;
+          }
+        } catch (err) {
+          datasheetsFailed++;
+          errors.push(`Row ${i + 2}: datasheet ingest failed — ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     } catch (err) {
       errors.push(`Row ${i + 2}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  return { vendorsCreated, productsCreated, productsSkipped, errors };
+  return { vendorsCreated, productsCreated, productsSkipped, datasheetsIngested, datasheetsFailed, errors };
 }
