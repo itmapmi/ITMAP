@@ -20,6 +20,8 @@ interface ExportInputs {
   requirements: RfpRequirement[];
   shortlist: Array<{ vendorId: string; vendorName: string; fitScore: number; rationale: string }>;
   marketName: string;
+  // featureId -> vendorId -> supportLevel (0-4). Optional; absent => exports skip the scoring-matrix sheet.
+  support?: Record<string, Record<string, number>>;
 }
 
 // ── PDF ──────────────────────────────────────────────────────────────────
@@ -206,7 +208,23 @@ export async function exportRfpXlsx(inputs: ExportInputs): Promise<Buffer> {
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(slRows), "Shortlist");
 
-  // Sheet 4: Vendor Q&A grid (from vendor_qa section data)
+  // Sheet 4: Scoring Matrix — requirements × shortlisted vendors.
+  // Functional rows with a featureId show the vendor's Harvey-ball support level
+  // (0-4). Non-functional requirements show "—" because they aren't feature-scored.
+  if (shortlist.length) {
+    const header = ["#", "Kind", "Priority", "Weight", "Requirement", ...shortlist.map(s => s.vendorName)];
+    const matrixRows = requirements.map((r, i) => {
+      const cells = shortlist.map(s => {
+        if (r.kind !== "functional" || !r.featureId) return "—";
+        const level = inputs.support?.[r.featureId]?.[s.vendorId];
+        return typeof level === "number" ? level : 0;
+      });
+      return [i + 1, r.kind, r.priority, r.weight, r.label, ...cells];
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...matrixRows]), "Scoring Matrix");
+  }
+
+  // Sheet 5: Vendor Q&A grid (from vendor_qa section data)
   const qa = sections.find(s => s.sectionKey === "vendor_qa");
   const qaData = (qa?.data ?? {}) as { questions?: string[]; vendorIds?: string[] };
   if (qaData.questions?.length) {

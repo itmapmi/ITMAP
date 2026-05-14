@@ -1438,6 +1438,8 @@ export const rfpOutreach = pgTable("rfp_outreach", {
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),
   notes: text("notes"),
+  responseText: text("response_text"),
+  responseFileUrl: text("response_file_url"),
   invitedAt: timestamp("invited_at"),
   respondedAt: timestamp("responded_at"),
   createdAt: timestamp("created_at").default(sql`now()`),

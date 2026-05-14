@@ -14,7 +14,7 @@ import Navigation from "@/components/navigation";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection } from "@shared/schema";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
-interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; vendor: { id: string; name: string } | null }
+interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; vendor: { id: string; name: string } | null }
 
 export default function MyRfpDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -89,6 +89,23 @@ export default function MyRfpDetailPage() {
   const upsertOutreachMutation = useMutation({
     mutationFn: async (body: any) => apiRequestJson(`/api/me/rfps/${id}/outreach`, "POST", body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "outreach"] }),
+  });
+  const regenSectionMutation = useMutation({
+    mutationFn: async (sectionKey: string) => apiRequestJson(`/api/me/rfps/${id}/sections/${sectionKey}/regenerate`, "POST"),
+    onSuccess: () => {
+      toast({ title: "Section regenerated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id, "sections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/rfps", id] });
+    },
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        setLocation("/me/settings/llm-keys");
+        return;
+      }
+      toast({ title: "Regeneration failed", description: msg, variant: "destructive" });
+    },
   });
 
   const profile = (rfp?.customerProfile || {}) as Record<string, any>;
@@ -217,17 +234,39 @@ export default function MyRfpDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* ── Preview ───────────────────────────────────────────── */}
+          {/* ── Preview (per-section, each with a Regenerate button) ─ */}
           <TabsContent value="preview">
-            <Card className="bg-slate-900 border-white/5">
-              <CardContent className="p-6">
-                {!rfp?.generatedMarkdown ? (
+            {sections.length === 0 ? (
+              <Card className="bg-slate-900 border-white/5">
+                <CardContent className="p-6">
                   <p className="text-sm text-slate-400">Click <span className="font-medium">Generate RFP</span> above to produce the document.</p>
-                ) : (
-                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200 font-sans">{rfp.generatedMarkdown}</pre>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {[...sections].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)).map(s => (
+                  <Card key={s.id} className="bg-slate-900 border-white/5" data-testid={`section-${s.sectionKey}`}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                      <CardTitle className="text-base">{s.title}</CardTitle>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => regenSectionMutation.mutate(s.sectionKey)}
+                        disabled={regenSectionMutation.isPending}
+                        className="bg-slate-800 border-white/10 hover:bg-slate-700"
+                        data-testid={`button-regenerate-${s.sectionKey}`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                        {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? "Regenerating…" : "Regenerate"}
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200 font-sans">{s.body || "(empty)"}</pre>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* ── Shortlist ─────────────────────────────────────────── */}
@@ -272,43 +311,77 @@ export default function MyRfpDetailPage() {
                 <div className="space-y-2">
                   {shortlist.filter(s => s.isIncluded).map(s => {
                     const row = outreach.find(o => o.vendorId === s.vendorId);
+                    const base = (over: any) => ({
+                      vendorId: s.vendorId,
+                      status: row?.status || "not_started",
+                      contactName: row?.contactName,
+                      contactEmail: row?.contactEmail,
+                      notes: row?.notes,
+                      responseText: row?.responseText,
+                      responseFileUrl: row?.responseFileUrl,
+                      ...over,
+                    });
                     return (
-                      <div key={s.id} className="grid grid-cols-12 gap-3 items-center p-3 rounded border border-white/5 bg-slate-800/50">
-                        <div className="col-span-3 text-sm font-medium">{s.vendor?.name}</div>
-                        <div className="col-span-2">
-                          <Select
-                            value={row?.status || "not_started"}
-                            onValueChange={(v) => upsertOutreachMutation.mutate({ vendorId: s.vendorId, status: v, contactName: row?.contactName, contactEmail: row?.contactEmail, notes: row?.notes })}
-                          >
-                            <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                              <SelectItem value="not_started">Not started</SelectItem>
-                              <SelectItem value="invited">Invited</SelectItem>
-                              <SelectItem value="declined">Declined</SelectItem>
-                              <SelectItem value="responded">Responded</SelectItem>
-                              <SelectItem value="awarded">Awarded</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      <div key={s.id} className="p-3 rounded border border-white/5 bg-slate-800/50 space-y-2" data-testid={`outreach-row-${s.vendorId}`}>
+                        <div className="grid grid-cols-12 gap-3 items-center">
+                          <div className="col-span-3 text-sm font-medium">{s.vendor?.name}</div>
+                          <div className="col-span-2">
+                            <Select value={row?.status || "not_started"} onValueChange={(v) => upsertOutreachMutation.mutate(base({ status: v }))}>
+                              <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
+                                <SelectItem value="not_started">Not started</SelectItem>
+                                <SelectItem value="invited">Invited</SelectItem>
+                                <SelectItem value="declined">Declined</SelectItem>
+                                <SelectItem value="responded">Responded</SelectItem>
+                                <SelectItem value="awarded">Awarded</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input placeholder="Contact name" defaultValue={row?.contactName || ""}
+                            onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))}
+                            className="col-span-3 bg-slate-900 border-white/10 h-8 text-xs"
+                            data-testid={`input-contact-name-${s.vendorId}`} />
+                          <Input placeholder="Email" defaultValue={row?.contactEmail || ""}
+                            onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))}
+                            className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
+                            data-testid={`input-contact-email-${s.vendorId}`} />
                         </div>
-                        <Input
-                          placeholder="Contact name"
-                          defaultValue={row?.contactName || ""}
-                          onBlur={(e) => upsertOutreachMutation.mutate({ vendorId: s.vendorId, status: row?.status || "not_started", contactName: e.target.value, contactEmail: row?.contactEmail, notes: row?.notes })}
-                          className="col-span-3 bg-slate-900 border-white/10 h-8 text-xs"
-                          data-testid={`input-contact-name-${s.vendorId}`}
-                        />
-                        <Input
-                          placeholder="Email"
-                          defaultValue={row?.contactEmail || ""}
-                          onBlur={(e) => upsertOutreachMutation.mutate({ vendorId: s.vendorId, status: row?.status || "not_started", contactName: row?.contactName, contactEmail: e.target.value, notes: row?.notes })}
-                          className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
-                          data-testid={`input-contact-email-${s.vendorId}`}
-                        />
+                        <div className="grid grid-cols-12 gap-3 items-start">
+                          <Textarea placeholder="Paste vendor's response text here…"
+                            defaultValue={row?.responseText || ""}
+                            onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))}
+                            className="col-span-8 bg-slate-900 border-white/10 text-xs min-h-[60px]"
+                            data-testid={`input-response-text-${s.vendorId}`} />
+                          <Input placeholder="Response file URL (https://…)"
+                            defaultValue={row?.responseFileUrl || ""}
+                            onBlur={(e) => upsertOutreachMutation.mutate(base({ responseFileUrl: e.target.value }))}
+                            className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
+                            data-testid={`input-response-file-${s.vendorId}`} />
+                        </div>
                       </div>
                     );
                   })}
                   {!shortlist.some(s => s.isIncluded) && (
                     <p className="text-sm text-slate-400">Include vendors in the Shortlist tab to track outreach.</p>
+                  )}
+                  {/* Compare-view: side-by-side response snippets */}
+                  {outreach.some(o => o.responseText || o.responseFileUrl) && (
+                    <div className="mt-6 pt-4 border-t border-white/5">
+                      <div className="text-sm font-medium mb-2">Response comparison</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {outreach.filter(o => o.responseText || o.responseFileUrl).map(o => (
+                          <div key={o.id} className="p-3 rounded border border-white/5 bg-slate-900/70" data-testid={`compare-card-${o.vendorId}`}>
+                            <div className="text-xs font-semibold text-cyan-300 mb-1">{o.vendor?.name}</div>
+                            {o.responseFileUrl && (
+                              <a href={o.responseFileUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 underline break-all">{o.responseFileUrl}</a>
+                            )}
+                            {o.responseText && (
+                              <pre className="whitespace-pre-wrap text-xs text-slate-300 mt-2 max-h-40 overflow-y-auto font-sans">{o.responseText}</pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>

@@ -246,6 +246,8 @@ export async function upsertRfpOutreach(data: InsertRfpOutreachEntry): Promise<R
         contactName: data.contactName ?? existing[0].contactName,
         contactEmail: data.contactEmail ?? existing[0].contactEmail,
         notes: data.notes ?? existing[0].notes,
+        responseText: data.responseText ?? existing[0].responseText,
+        responseFileUrl: data.responseFileUrl ?? existing[0].responseFileUrl,
         invitedAt: data.invitedAt ?? existing[0].invitedAt,
         respondedAt: data.respondedAt ?? existing[0].respondedAt,
         updatedAt: new Date(),

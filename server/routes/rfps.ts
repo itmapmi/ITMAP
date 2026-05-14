@@ -75,7 +75,7 @@ async function requireRfpOwner(req: Request, res: Response, next: NextFunction):
   const user = req.user as any;
   const rfp = await getRfpProject(req.params.id);
   if (!rfp) { res.status(404).json({ error: "RFP not found" }); return; }
-  if (user.role !== "admin" && rfp.ownerUserId !== user.id) {
+  if (rfp.ownerUserId !== user.id) {
     res.status(403).json({ error: "You do not own this RFP" }); return;
   }
   (req as any).rfp = rfp;
@@ -405,6 +405,8 @@ export function registerRfpRoutes(app: Express): void {
         contactName: z.string().nullish(),
         contactEmail: z.string().email().nullish().or(z.literal("")),
         notes: z.string().nullish(),
+        responseText: z.string().nullish(),
+        responseFileUrl: z.string().url().nullish().or(z.literal("")),
         invitedAt: z.coerce.date().nullish(),
         respondedAt: z.coerce.date().nullish(),
       }).parse(req.body);
@@ -415,6 +417,8 @@ export function registerRfpRoutes(app: Express): void {
         contactName: data.contactName ?? null,
         contactEmail: data.contactEmail || null,
         notes: data.notes ?? null,
+        responseText: data.responseText ?? null,
+        responseFileUrl: data.responseFileUrl || null,
         invitedAt: (data.invitedAt as any) ?? null,
         respondedAt: (data.respondedAt as any) ?? null,
       });
@@ -447,12 +451,20 @@ export function registerRfpRoutes(app: Express): void {
         fitScore: Number(r.fitScore ?? 0),
         rationale: r.rationale || "",
       }));
+    // Build featureId → vendorId → supportLevel map for the XLSX scoring matrix.
+    const supportRows = await storage.getVendorFeatureSupport(project.marketId);
+    const support: Record<string, Record<string, number>> = {};
+    for (const row of supportRows) {
+      if (!support[row.featureId]) support[row.featureId] = {};
+      support[row.featureId][row.vendorId] = row.supportLevel ?? 0;
+    }
     return {
       project,
       sections,
       requirements,
       shortlist,
       marketName: (market?.name || "").replace(/^ITMAP for /i, ""),
+      support,
     };
   }
 
