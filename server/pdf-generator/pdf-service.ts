@@ -165,6 +165,31 @@ export class PDFService {
     }
   }
 
+  // Generic HTML → PDF helper. Used by feature exports (e.g. RFP Builder)
+  // that need their own page layout but want to reuse the shared chromium
+  // discovery + launch flags rather than reimplementing them.
+  async htmlToPdf(html: string, opts?: { format?: "A4" | "Letter"; margin?: string }): Promise<Buffer> {
+    const chromiumPath = await findChromiumPath();
+    const browser = await puppeteer.launch({
+      headless: true,
+      ...(chromiumPath ? { executablePath: chromiumPath } : {}),
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    });
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+      const m = opts?.margin ?? "15mm";
+      const out = await page.pdf({
+        format: opts?.format ?? "A4",
+        printBackground: true,
+        margin: { top: m, bottom: m, left: m, right: m },
+      });
+      return Buffer.from(out);
+    } finally {
+      await browser.close();
+    }
+  }
+
   generateVendorEvaluationContent(market: Market, vendors: any[], scores: any[]): string {
     let content = `
       <div class="content-section">

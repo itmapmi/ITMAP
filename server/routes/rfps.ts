@@ -26,6 +26,7 @@ import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   profileReadiness,
   type CustomerProfile,
+  type ReadinessResult,
 } from "../rfp/interview";
 import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichShortlistRationales, renderFullMarkdown } from "../rfp/generator";
 import type { SectionKey } from "../rfp/generator";
@@ -157,7 +158,11 @@ export function registerRfpRoutes(app: Express): void {
   });
 
   app.get("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
-    res.json(asRfpReq(req).rfp);
+    // Include server-computed readiness so the UI never has to reimplement the
+    // slot-filled / critical / 10-of-14 predicate. Single source of truth.
+    const rfp = asRfpReq(req).rfp;
+    const readiness: ReadinessResult = profileReadiness((rfp.customerProfile || {}) as CustomerProfile);
+    res.json({ ...rfp, readiness });
   });
 
   app.delete("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {

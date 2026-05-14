@@ -20,18 +20,42 @@ import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import type { Market, Vendor } from "@shared/schema";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
 
+function useCreateRfpForMarket() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (vars: { marketId: string; marketName: string }) => {
+      const title = `${vars.marketName.replace(/^ITMAP for /i, "")} RFP — ${new Date().toLocaleDateString()}`;
+      return await apiRequestJson("/api/me/rfps", "POST", { marketId: vars.marketId, title }) as { id: string };
+    },
+    onSuccess: (created) => navigate(`/me/rfps/${created.id}`),
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      if (msg.includes("MISSING_LLM_KEY") || msg.startsWith("412")) {
+        toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
+        navigate("/me/settings/llm-keys");
+        return;
+      }
+      toast({ title: "Could not start RFP", description: msg, variant: "destructive" });
+    },
+  });
+}
+
 export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
   const { isAuthenticated, user, isAdmin } = useAuth();
+  const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
   const isFreeMarket = marketId === FREE_MARKET_ID;
 
@@ -346,17 +370,17 @@ export default function MarketDetails() {
               {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
             {isAuthenticated && (
-              <Link href={`/me/rfps?marketId=${market.id}`}>
-                <Button
-                  variant="outline"
-                  size={isMobile ? "sm" : "default"}
-                  className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
-                  data-testid="button-generate-rfp"
-                >
-                  <FileDown className="mr-2 h-4 w-4" />
-                  {isMobile ? 'RFP' : 'Generate RFP'}
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                size={isMobile ? "sm" : "default"}
+                className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
+                data-testid="button-generate-rfp"
+                disabled={createRfpMutation.isPending}
+                onClick={() => createRfpMutation.mutate({ marketId: market.id, marketName: market.name })}
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
+              </Button>
             )}
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>

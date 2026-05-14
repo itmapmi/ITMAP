@@ -27,7 +27,7 @@ export default function MyRfpDetailPage() {
   const [draft, setDraft] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: rfp } = useQuery<RfpProject>({ queryKey: ["/api/me/rfps", id] });
+  const { data: rfp } = useQuery<RfpProject & { readiness?: { ready: boolean; missing: string[]; filled: number; total: number } }>({ queryKey: ["/api/me/rfps", id] });
   const { data: messages = [] } = useQuery<RfpInterviewMessage[]>({ queryKey: ["/api/me/rfps", id, "messages"] });
   const { data: requirements = [] } = useQuery<RfpRequirement[]>({ queryKey: ["/api/me/rfps", id, "requirements"] });
   const { data: sections = [] } = useQuery<RfpSection[]>({ queryKey: ["/api/me/rfps", id, "sections"] });
@@ -112,16 +112,12 @@ export default function MyRfpDetailPage() {
   });
 
   const profile = (rfp?.customerProfile || {}) as Record<string, any>;
-  const SLOT_KEYS = ["companyName","industry","companySize","geography","timeline","budgetBand","mustHaves","niceToHaves","dealBreakers","quantitativeSpecs","integrations","complianceRequirements","slaTargets","successMetrics"];
-  const CRITICAL_SLOTS = ["companyName","industry","timeline","mustHaves","integrations","complianceRequirements"];
-  const isFilled = (k: string) => {
-    const v = profile[k]; return v && (typeof v !== "string" || v.trim()) && (!Array.isArray(v) || v.length > 0);
-  };
-  const filledSlots = SLOT_KEYS.filter(isFilled).length;
-  const totalSlots = SLOT_KEYS.length;
-  const missingCritical = CRITICAL_SLOTS.filter(k => !isFilled(k));
-  // Mirrors server `profileReadiness`: every critical slot captured AND ≥10/14 total.
-  const interviewReady = missingCritical.length === 0 && filledSlots >= 10;
+  // Readiness is computed server-side (single source of truth: `profileReadiness`).
+  // The server returns it on GET /api/me/rfps/:id alongside the project row.
+  const filledSlots = rfp?.readiness?.filled ?? 0;
+  const totalSlots = rfp?.readiness?.total ?? 14;
+  const missingCritical = rfp?.readiness?.missing ?? [];
+  const interviewReady = !!rfp?.readiness?.ready;
   const interviewComplete = interviewReady;
 
   return (

@@ -3,16 +3,7 @@
  * Each function returns a Buffer the route handler streams to the client.
  */
 import type { RfpProject, RfpSection, RfpRequirement } from "@shared/schema";
-import puppeteer from "puppeteer";
-import { access } from "fs/promises";
-
-async function findChromium(): Promise<string | undefined> {
-  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
-  for (const p of ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]) {
-    try { await access(p); return p; } catch {}
-  }
-  return undefined;
-}
+import { pdfService } from "../pdf-generator/pdf-service";
 
 interface ExportInputs {
   project: RfpProject;
@@ -29,21 +20,7 @@ interface ExportInputs {
 // the PDF (reusing existing Puppeteer infrastructure).
 
 export async function exportRfpPdf(inputs: ExportInputs): Promise<Buffer> {
-  const html = buildHtml(inputs);
-  const executablePath = await findChromium();
-  const browser = await puppeteer.launch({
-    headless: true,
-    ...(executablePath ? { executablePath } : {}),
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-  });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "15mm", bottom: "15mm", left: "15mm", right: "15mm" } });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
-  }
+  return await pdfService.htmlToPdf(buildHtml(inputs), { format: "A4", margin: "15mm" });
 }
 
 function buildHtml(inputs: ExportInputs): string {
