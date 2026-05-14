@@ -45,6 +45,7 @@ export * from "./prompts";
 export * from "./userLlmKeys";
 export * from "./signals";
 export * from "./forecasts";
+export * from "./rfps";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -56,6 +57,7 @@ import * as marketBuilderStorage from "./marketBuilder";
 import * as promptsStorage from "./prompts";
 import * as userLlmKeysStorage from "./userLlmKeys";
 import * as forecastsStorage from "./forecasts";
+import * as rfpsStorage from "./rfps";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -269,4 +271,5 @@ export const storage: IStorage = {
   ...promptsStorage,
   ...userLlmKeysStorage,
   ...forecastsStorage,
+  ...rfpsStorage,
 };

@@ -1348,3 +1348,131 @@ export type InsertForecastSource = z.infer<typeof insertForecastSourceSchema>;
 
 export type ForecastAuditLog = typeof forecastAuditLog.$inferSelect;
 export type InsertForecastAuditLog = z.infer<typeof insertForecastAuditLogSchema>;
+
+// ── RFP Builder ──────────────────────────────────────────────────────────
+// Lets a logged-in user run a conversational AI interview on a given market
+// and produce a fully-formed RFP grounded in that market's product features,
+// ecosystem, and vendor evaluation data. All RFP rows are private to their
+// owner (admins see them in the User RFPs tab for visibility only).
+
+export const rfpProjects = pgTable("rfp_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  // draft → interviewing → generating → ready
+  status: text("status").notNull().default("draft"),
+  // Snapshot of the customer profile distilled from the interview (company name,
+  // industry, size, geography, budget band, timeline, must-haves, deal-breakers).
+  customerProfile: jsonb("customer_profile").$type<Record<string, unknown>>().default({}),
+  // Markdown preview last generated (cached for export + display).
+  generatedMarkdown: text("generated_markdown"),
+  generatedAt: timestamp("generated_at"),
+  error: text("error"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const rfpInterviewMessages = pgTable("rfp_interview_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpId: varchar("rfp_id").notNull().references(() => rfpProjects.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'system' | 'assistant' | 'user'
+  content: text("content").notNull(),
+  // Optional structured slots extracted from this user turn (industry, size, etc.)
+  extracted: jsonb("extracted").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const rfpRequirements = pgTable("rfp_requirements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpId: varchar("rfp_id").notNull().references(() => rfpProjects.id, { onDelete: "cascade" }),
+  // 'functional' (linked to a feature) | 'quantitative' | 'commercial' | 'sla' | 'security' | 'compliance'
+  kind: text("kind").notNull(),
+  // For functional requirements: which feature row in the market it ties back to.
+  featureId: varchar("feature_id").references(() => features.id, { onDelete: "set null" }),
+  label: text("label").notNull(),
+  description: text("description"),
+  // 'must' | 'should' | 'nice'
+  priority: text("priority").notNull().default("should"),
+  // 1-5 weight used by the deterministic scoring engine.
+  weight: integer("weight").notNull().default(3),
+  // Free-form expected value (e.g. ">= 99.9% uptime", "<= 100ms p95").
+  expectedValue: text("expected_value"),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const rfpSections = pgTable("rfp_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpId: varchar("rfp_id").notNull().references(() => rfpProjects.id, { onDelete: "cascade" }),
+  // 'executive_summary' | 'scope' | 'functional' | 'quantitative' | 'vendor_qa' |
+  // 'scoring_rubric' | 'commercial' | 'sla_security_compliance'
+  sectionKey: text("section_key").notNull(),
+  title: text("title").notNull(),
+  // Markdown body for prose sections; structured payload for table sections.
+  body: text("body"),
+  data: jsonb("data").$type<Record<string, unknown>>(),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const rfpShortlist = pgTable("rfp_shortlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpId: varchar("rfp_id").notNull().references(() => rfpProjects.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  // Deterministic fit score (0-100) computed from feature support × weighted requirements.
+  fitScore: decimal("fit_score", { precision: 5, scale: 2 }),
+  rationale: text("rationale"),
+  isIncluded: boolean("is_included").notNull().default(true),
+  rank: integer("rank").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const rfpOutreach = pgTable("rfp_outreach", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpId: varchar("rfp_id").notNull().references(() => rfpProjects.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  // 'not_started' | 'invited' | 'declined' | 'responded' | 'awarded'
+  status: text("status").notNull().default("not_started"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  notes: text("notes"),
+  invitedAt: timestamp("invited_at"),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const insertRfpProjectSchema = createInsertSchema(rfpProjects).omit({
+  id: true, createdAt: true, updatedAt: true, generatedAt: true,
+  generatedMarkdown: true, error: true, status: true, customerProfile: true,
+});
+export const insertRfpInterviewMessageSchema = createInsertSchema(rfpInterviewMessages).omit({
+  id: true, createdAt: true,
+});
+export const insertRfpRequirementSchema = createInsertSchema(rfpRequirements).omit({
+  id: true, createdAt: true,
+});
+export const insertRfpSectionSchema = createInsertSchema(rfpSections).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertRfpShortlistSchema = createInsertSchema(rfpShortlist).omit({
+  id: true, createdAt: true,
+});
+export const insertRfpOutreachSchema = createInsertSchema(rfpOutreach).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type RfpProject = typeof rfpProjects.$inferSelect;
+export type InsertRfpProject = z.infer<typeof insertRfpProjectSchema>;
+export type RfpInterviewMessage = typeof rfpInterviewMessages.$inferSelect;
+export type InsertRfpInterviewMessage = z.infer<typeof insertRfpInterviewMessageSchema>;
+export type RfpRequirement = typeof rfpRequirements.$inferSelect;
+export type InsertRfpRequirement = z.infer<typeof insertRfpRequirementSchema>;
+export type RfpSection = typeof rfpSections.$inferSelect;
+export type InsertRfpSection = z.infer<typeof insertRfpSectionSchema>;
+export type RfpShortlistEntry = typeof rfpShortlist.$inferSelect;
+export type InsertRfpShortlistEntry = z.infer<typeof insertRfpShortlistSchema>;
+export type RfpOutreachEntry = typeof rfpOutreach.$inferSelect;
+export type InsertRfpOutreachEntry = z.infer<typeof insertRfpOutreachSchema>;

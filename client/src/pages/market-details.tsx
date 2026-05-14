@@ -345,6 +345,19 @@ export default function MarketDetails() {
               <FileDown className="mr-2 h-4 w-4" />
               {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
+            {isAuthenticated && (
+              <Link href={`/me/rfps?marketId=${market.id}`}>
+                <Button
+                  variant="outline"
+                  size={isMobile ? "sm" : "default"}
+                  className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
+                  data-testid="button-generate-rfp"
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  {isMobile ? 'RFP' : 'Generate RFP'}
+                </Button>
+              </Link>
+            )}
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
