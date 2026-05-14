@@ -494,6 +494,12 @@ function ChatPanel({ market, selectedIds, isAuthenticated }: { market: Datasheet
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
 
+  // When the user changes the pinned products, reset the conversation so
+  // every subsequent answer is grounded in the current product scope rather
+  // than the products pinned at conversation creation time.
+  const selectedKey = selectedIds.join(",");
+  useEffect(() => { setConversationId(null); }, [selectedKey]);
+
   const { data: convoData } = useQuery<{ conversation: DatasheetChatConversation; messages: DatasheetChatMessage[] }>({
     queryKey: ["/api/datasheets/chat/conversations", conversationId],
     queryFn: async () => (await apiRequest(`/api/datasheets/chat/conversations/${conversationId}`, "GET")).json(),

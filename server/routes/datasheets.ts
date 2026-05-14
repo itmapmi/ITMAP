@@ -26,8 +26,19 @@ type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
 const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
 
 async function loadPublicProducts(productIds: string[]): Promise<{ products: ProductWithVendor[]; market: Awaited<ReturnType<typeof getDatasheetMarket>> } | { error: string; status: number }> {
-  const products = await getProductsByIds(productIds);
-  if (products.length === 0) return { error: "No products found", status: 404 };
+  // De-duplicate IDs but preserve order for predictable response shapes.
+  const seen = new Set<string>();
+  const uniqueIds = productIds.filter(id => (seen.has(id) ? false : (seen.add(id), true)));
+  if (uniqueIds.length < 2 || uniqueIds.length > 5) {
+    return { error: "Select between 2 and 5 distinct products", status: 400 };
+  }
+  const products = await getProductsByIds(uniqueIds);
+  // Require exact resolution — every requested ID must come back, otherwise
+  // the caller passed an unknown/deleted product and we should fail loudly
+  // rather than silently shrinking the comparison.
+  if (products.length !== uniqueIds.length) {
+    return { error: "One or more products could not be found", status: 404 };
+  }
   const marketIds = new Set(products.map(p => p.marketId));
   if (marketIds.size > 1) return { error: "Products must be from the same market", status: 400 };
   if (products.some(p => !p.isActive)) return { error: "Inactive product in selection", status: 400 };
@@ -203,36 +214,42 @@ export function registerDatasheetRoutes(app: Express): void {
         arr.push(s);
         specsByDs.set(s.datasheetId, arr);
       }
+      // Clear-winner threshold: only seed a must-have requirement when the
+      // best-in-class value is at least 10% better than the runner-up and
+      // there is no tie at the top. This avoids creating noisy requirements
+      // off near-identical specs.
+      const CLEAR_WINNER_MIN_DELTA = 0.10;
       const requirements: Parameters<typeof bulkCreateRfpRequirements>[0] = [];
       let order = 0;
       for (const g of schema.groups) {
         for (const a of g.attributes) {
           if (!a.higherIsBetter || a.type !== "number") continue;
-          let bestNum = -Infinity;
-          let bestRaw: string | null = null;
-          let bestProduct: ProductWithVendor | undefined;
+          const candidates: Array<{ product: ProductWithVendor; n: number; raw: string }> = [];
           for (const p of products) {
             const ds = dsByProduct.get(p.id);
             if (!ds) continue;
             const sp = (specsByDs.get(ds.id) ?? []).find(s => s.categoryKey === g.key && s.attributeKey === a.key);
             if (!sp || sp.normalizedValue === null) continue;
             const n = Number(sp.normalizedValue);
-            if (Number.isFinite(n) && n > bestNum) {
-              bestNum = n; bestRaw = sp.rawValue; bestProduct = p;
-            }
+            if (Number.isFinite(n)) candidates.push({ product: p, n, raw: sp.rawValue });
           }
-          if (bestProduct && bestRaw) {
-            requirements.push({
-              rfpId: rfp.id,
-              kind: "quantitative",
-              label: `${a.label} ≥ ${bestRaw}`,
-              description: `Derived from ${bestProduct.vendor.name} ${bestProduct.name} datasheet (baseline best-in-class).`,
-              priority: "must",
-              weight: 4,
-              expectedValue: bestRaw,
-              displayOrder: order++,
-            });
-          }
+          if (candidates.length < 2) continue;
+          candidates.sort((a2, b2) => b2.n - a2.n);
+          const [best, runnerUp] = candidates;
+          if (best.n === runnerUp.n) continue;                  // tie → skip
+          if (best.n <= 0 || runnerUp.n <= 0) continue;          // can't compute relative delta safely
+          const delta = (best.n - runnerUp.n) / Math.abs(runnerUp.n);
+          if (delta < CLEAR_WINNER_MIN_DELTA) continue;          // not a clear winner
+          requirements.push({
+            rfpId: rfp.id,
+            kind: "quantitative",
+            label: `${a.label} ≥ ${best.raw}`,
+            description: `Derived from ${best.product.vendor.name} ${best.product.name} datasheet (clear winner: ${(delta * 100).toFixed(0)}% above runner-up).`,
+            priority: "must",
+            weight: 4,
+            expectedValue: best.raw,
+            displayOrder: order++,
+          });
         }
       }
       if (requirements.length > 0) await bulkCreateRfpRequirements(requirements);
