@@ -157,6 +157,14 @@ export default function MyRfpsPage() {
                     <CardTitle className="text-base">{rfp.title}</CardTitle>
                     <span className={`text-[10px] uppercase tracking-wide px-2 py-1 rounded ${statusColor(rfp.status)}`}>{rfp.status}</span>
                   </div>
+                  {(() => {
+                    const m = markets.find(x => x.id === rfp.marketId);
+                    return m ? (
+                      <p className="text-xs text-cyan-300/80 mt-1" data-testid={`text-rfp-market-${rfp.id}`}>
+                        {m.name.replace(/^ITMAP for /i, "")}
+                      </p>
+                    ) : null;
+                  })()}
                 </CardHeader>
                 <CardContent>
                   <p className="text-xs text-slate-500 mb-4">Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}</p>
