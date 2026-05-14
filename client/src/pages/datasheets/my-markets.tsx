@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ArrowRight, FileText } from "lucide-react";
+import { Plus, Trash2, ArrowRight, FileText, Pencil } from "lucide-react";
 import type { DatasheetMarket, DatasheetSchemaDefinition } from "@shared/schema";
 
 function defaultSchema(): DatasheetSchemaDefinition {
@@ -27,6 +27,7 @@ export default function MyDatasheetMarketsPage() {
   const { toast } = useToast();
   const { data: markets = [], isLoading } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/me/datasheet-markets"] });
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<DatasheetMarket | null>(null);
   const delMut = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/me/datasheet-markets/${id}`, "DELETE"),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/me/datasheet-markets"] }); toast({ title: "Deleted" }); },
@@ -69,6 +70,9 @@ export default function MyDatasheetMarketsPage() {
                     <span>Manage <ArrowRight className="h-4 w-4 ml-1" /></span>
                   </Button>
                 </Link>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(m)} data-testid={`button-edit-my-market-${m.slug}`}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Delete ${m.name} and all its uploads?`)) delMut.mutate(m.id); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -78,7 +82,83 @@ export default function MyDatasheetMarketsPage() {
         </div>
       </div>
       {creating && <CreateMarketDialog onClose={() => setCreating(false)} />}
+      {editing && <EditMarketDialog market={editing} onClose={() => setEditing(null)} />}
     </div>
+  );
+}
+
+function EditMarketDialog({ market, onClose }: { market: DatasheetMarket; onClose: () => void }) {
+  const { toast } = useToast();
+  const [name, setName] = useState(market.name);
+  const [category, setCategory] = useState(market.category ?? "");
+  const [description, setDescription] = useState(market.description ?? "");
+  const [schemaText, setSchemaText] = useState(JSON.stringify(market.schemaDefinition, null, 2));
+  const [schemaErr, setSchemaErr] = useState<string | null>(null);
+
+  const updateMut = useMutation({
+    mutationFn: async () => {
+      let schemaDefinition: DatasheetSchemaDefinition;
+      try { schemaDefinition = JSON.parse(schemaText); }
+      catch { throw new Error("Schema JSON is invalid"); }
+      if (!schemaDefinition.groups || !Array.isArray(schemaDefinition.groups) || schemaDefinition.groups.length === 0) {
+        throw new Error("Schema must have at least one group");
+      }
+      for (const g of schemaDefinition.groups) {
+        if (!g.key || !g.label || !Array.isArray(g.attributes)) throw new Error(`Group "${g.label ?? g.key ?? "?"}" is malformed`);
+        for (const a of g.attributes) {
+          if (!a.key || !a.label || !a.type) throw new Error(`Attribute in "${g.label}" is missing key/label/type`);
+          if (!["number","text","boolean","enum"].includes(a.type)) throw new Error(`Attribute "${a.label}" has invalid type "${a.type}"`);
+        }
+      }
+      return await apiRequest(`/api/me/datasheet-markets/${market.id}`, "PATCH", {
+        name,
+        category: category || null,
+        description: description || null,
+        schemaDefinition,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/datasheet-markets"] });
+      toast({ title: "Market updated" });
+      onClose();
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Update failed";
+      setSchemaErr(msg);
+      toast({ title: "Update failed", description: msg, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit market — {market.name}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Name</Label><Input value={name} onChange={e => setName(e.target.value)} data-testid="input-edit-market-name" /></div>
+          <div><Label>Slug (locked)</Label><Input value={market.slug} disabled /></div>
+          <div><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
+          <div><Label>Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} /></div>
+          <div>
+            <Label>Schema definition (JSON)</Label>
+            <Textarea
+              value={schemaText}
+              onChange={e => { setSchemaText(e.target.value); setSchemaErr(null); }}
+              rows={18}
+              className="font-mono text-xs"
+              data-testid="textarea-edit-schema"
+            />
+            {schemaErr && <p className="text-xs text-red-500 mt-1">{schemaErr}</p>}
+            <p className="text-xs text-muted-foreground mt-1">Editing the schema does not retro-extract existing datasheets. New uploads will use the updated schema.</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => updateMut.mutate()} disabled={!name || updateMut.isPending} data-testid="button-save-edit-market">
+            {updateMut.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

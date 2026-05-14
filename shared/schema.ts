@@ -1592,6 +1592,12 @@ export const datasheetComparisons = pgTable("datasheet_comparisons", {
   digestEnabled: boolean("digest_enabled").notNull().default(false),
   digestEmail: text("digest_email"),
   digestLastSentAt: timestamp("digest_last_sent_at"),
+  // Phase 2: immutable snapshot captured at the moment a share token is
+  // issued/rotated. Public share reads serve THIS payload so they never drift
+  // as underlying datasheets/specs change. Shape:
+  // { market, products, datasheets, specs, capturedAt }
+  shareSnapshot: jsonb("share_snapshot"),
+  shareSnapshotAt: timestamp("share_snapshot_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

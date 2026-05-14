@@ -360,6 +360,18 @@ export async function appendChatMessage(data: InsertDatasheetChatMessage): Promi
 }
 
 // ── Phase 2: share + digest helpers ────────────────────────────────────────
+export async function setComparisonShareSnapshot(id: string, userId: string, snapshot: unknown): Promise<DatasheetComparison | undefined> {
+  const [row] = await db.update(datasheetComparisons)
+    .set({ shareSnapshot: snapshot as never, shareSnapshotAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(datasheetComparisons.id, id), eq(datasheetComparisons.ownerUserId, userId)))
+    .returning();
+  return row;
+}
+export async function clearComparisonShareSnapshot(id: string, userId: string): Promise<void> {
+  await db.update(datasheetComparisons)
+    .set({ shareSnapshot: null, shareSnapshotAt: null, updatedAt: new Date() })
+    .where(and(eq(datasheetComparisons.id, id), eq(datasheetComparisons.ownerUserId, userId)));
+}
 export async function setComparisonShareToken(id: string, userId: string, token: string | null): Promise<DatasheetComparison | undefined> {
   const [row] = await db.update(datasheetComparisons)
     .set({ shareToken: token, updatedAt: new Date() })

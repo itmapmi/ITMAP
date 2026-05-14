@@ -27,6 +27,7 @@ import {
   listSpecsForDatasheet, listSpecsForDatasheets, replaceSpecsForDatasheet,
   getCurrentDatasheetsForProducts, getProductsByIds,
   getComparisonForOwner, setComparisonShareToken, setComparisonDigest,
+  setComparisonShareSnapshot, clearComparisonShareSnapshot,
   getComparisonByShareToken,
   createChangeAlert, listChangeAlertsForProductsSince, listRecentChangeAlerts,
   updateDatasheetVendor, getDatasheetVendor,
@@ -38,12 +39,15 @@ import { diffSpecs } from "../datasheets/diff";
 import { sendChangeAlertEmail, getAdminAlertRecipients } from "../datasheets/email";
 import { parseCsv, planCsvImport, commitCsvImport } from "../datasheets/csvImport";
 import { rediscoverDatasheetCandidates, downloadUrlToBuffer } from "../datasheets/rediscovery";
+import { withConcurrencySlot } from "../datasheets/concurrency";
 
 const PRIVATE_MAX_TOTAL = 10;
 const PRIVATE_MAX_PER_24H = 5;
 const PRIVATE_PRODUCTS_PER_MARKET = 50;
 const PRIVATE_PRODUCTS_PER_24H = 100;
 const PRIVATE_DATASHEETS_PER_24H = 50;
+// Match the per-user concurrent cap used by the end-user Market Builder.
+const PRIVATE_CONCURRENT_OPS = 3;
 
 type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
 const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
@@ -240,12 +244,24 @@ export function registerDatasheetPhase2Routes(app: Express): void {
 
   // ── USER: upload + extract datasheet for own product ────────────────────
   app.post("/api/me/datasheet-markets/:id/products/:productId/datasheets", requireAuth, async (req, res) => {
+    // Per-user concurrent op cap. Heavy extraction runs INSIDE the slot so the
+    // server cannot be saturated by a single user spamming uploads.
+    const userIdForSlot = asAuthed(req).user.id;
+    try {
+      await withConcurrencySlot(userIdForSlot, PRIVATE_CONCURRENT_OPS, () => handleMeDatasheetUpload(req, res));
+    } catch (err) {
+      const status = (err as Error & { status?: number }).status ?? 500;
+      if (!res.headersSent) res.status(status).json({ error: errMsg(err) });
+    }
+  });
+
+  async function handleMeDatasheetUpload(req: Request, res: import("express").Response): Promise<void> {
     try {
       const userId = asAuthed(req).user.id;
       const market = await getDatasheetMarket(req.params.id);
-      if (!market || market.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
+      if (!market || market.ownerUserId !== userId) { res.status(404).json({ error: "Market not found" }); return; }
       const product = await getProduct(req.params.productId);
-      if (!product || product.marketId !== market.id) return res.status(404).json({ error: "Product not found" });
+      if (!product || product.marketId !== market.id) { res.status(404).json({ error: "Product not found" }); return; }
 
       // Per-user 24-hour datasheet upload cap.
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -305,7 +321,7 @@ export function registerDatasheetPhase2Routes(app: Express): void {
       }
       res.status(201).json(await getDatasheet(datasheet.id));
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
+  }
 
   // ── USER: share + digest on comparison ──────────────────────────────────
   app.post("/api/me/datasheet-comparisons/:id/share", requireAuth, async (req, res) => {
@@ -324,6 +340,22 @@ export function registerDatasheetPhase2Routes(app: Express): void {
       const updated = await setComparisonShareToken(existing.id, userId, token);
       if (body.digestEnabled !== undefined) {
         await setComparisonDigest(existing.id, userId, body.digestEnabled, body.digestEmail ?? null);
+      }
+      // Build and persist an immutable snapshot so /api/share/comparison/:token
+      // serves the exact state at share-time and never drifts as the underlying
+      // datasheets/specs change. Rotation refreshes the snapshot.
+      if (!existing.shareToken || body.rotate) {
+        try {
+          const products = await getProductsByIds(existing.productIds);
+          const market = await getDatasheetMarket(existing.marketId);
+          const datasheets = await getCurrentDatasheetsForProducts(existing.productIds);
+          const specs = await listSpecsForDatasheets(datasheets.map(d => d.id));
+          await setComparisonShareSnapshot(existing.id, userId, {
+            market, products, datasheets, specs, capturedAt: new Date().toISOString(),
+          });
+        } catch (snapErr) {
+          console.error("[share snapshot] failed to capture:", snapErr);
+        }
       }
       const origin = `${req.protocol}://${req.get("host")}`;
       const shareUrl = `${origin}/share/comparison/${token}`;
@@ -344,6 +376,7 @@ export function registerDatasheetPhase2Routes(app: Express): void {
       if (!existing) return res.status(404).json({ error: "Comparison not found" });
       await setComparisonShareToken(existing.id, userId, null);
       await setComparisonDigest(existing.id, userId, false, null);
+      await clearComparisonShareSnapshot(existing.id, userId);
       res.status(204).send();
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
@@ -353,19 +386,24 @@ export function registerDatasheetPhase2Routes(app: Express): void {
     try {
       const c = await getComparisonByShareToken(req.params.token);
       if (!c) return res.status(404).json({ error: "Shared comparison not found" });
-      const products = await getProductsByIds(c.productIds);
-      if (products.length === 0) return res.status(404).json({ error: "No products in comparison" });
-      const market = await getDatasheetMarket(c.marketId);
-      if (!market) return res.status(404).json({ error: "Market not found" });
-      const datasheets = await getCurrentDatasheetsForProducts(c.productIds);
-      const specs = await listSpecsForDatasheets(datasheets.map(d => d.id));
+      // Serve the immutable snapshot captured at share-time. The snapshot is
+      // ALWAYS the source of truth for public share reads — no live reads of
+      // datasheets/specs — so the public view never drifts after the owner
+      // rotates pricing or uploads a new datasheet.
+      const snap = c.shareSnapshot as null | {
+        market?: unknown; products?: unknown; datasheets?: unknown; specs?: unknown; capturedAt?: string;
+      };
+      if (!snap || !snap.market || !snap.products) {
+        return res.status(410).json({ error: "Shared snapshot is unavailable. Ask the owner to re-share." });
+      }
       res.json({
         comparison: { id: c.id, name: c.name, createdAt: c.createdAt, productIds: c.productIds },
         comparisonName: c.name,
-        market,
-        products,
-        datasheets,
-        specs,
+        market: snap.market,
+        products: snap.products,
+        datasheets: snap.datasheets ?? [],
+        specs: snap.specs ?? [],
+        snapshotAt: snap.capturedAt ?? c.shareSnapshotAt,
       });
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
