@@ -1,0 +1,344 @@
+Build a production-grade Datasheet Comparison module for Spectio.ai, an AI-native 
+IT market research platform. This module is one component of a larger platform that 
+already has: vendor evaluation, product evaluation, ecosystem evaluation, custom 
+market builder, AI-based scoring, forecast builder, and RFP generator.
+
+═══════════════════════════════════════════════════════════════════
+PROJECT OVERVIEW
+═══════════════════════════════════════════════════════════════════
+
+Build a web application that allows buyers of enterprise IT hardware (storage 
+arrays, servers, networking equipment) to compare product datasheets side-by-side. 
+The system automatically discovers, downloads, extracts, and normalizes datasheet 
+content from vendor websites on a weekly basis using AI agents.
+
+PRIMARY USERS: Enterprise IT buyers, procurement teams, solution architects 
+evaluating hardware purchases.
+
+CORE VALUE PROP: Replace the manual process of downloading 8+ PDFs from vendor 
+sites and comparing specs in spreadsheets. Provide normalized, sourced, current 
+comparisons with diff highlighting and change alerts.
+
+═══════════════════════════════════════════════════════════════════
+TECH STACK
+═══════════════════════════════════════════════════════════════════
+
+- Frontend: Next.js 14 (App Router) + TypeScript + Tailwind CSS + shadcn/ui
+- Backend: Next.js API routes + tRPC for type-safe APIs
+- Database: PostgreSQL via Prisma ORM (use Replit's built-in PostgreSQL)
+- Authentication: Clerk or NextAuth (pick simplest to set up on Replit)
+- File Storage: Replit Object Storage for PDF files
+- Background Jobs: Inngest or a simple cron-based system using Replit's always-on
+- LLM Integration: Anthropic Claude API (claude-sonnet-4-5 for extraction, 
+  claude-opus-4-5 for validation). Use the ANTHROPIC_API_KEY environment variable.
+- PDF Processing: pdf-parse for text, pdf-lib for manipulation, Claude vision 
+  for complex layouts
+- Web Scraping: Playwright for JS-heavy sites, Cheerio for static HTML
+- PDF Viewer: react-pdf for in-app viewing
+- Charts: Recharts for any data visualization
+- State Management: Zustand for client state, TanStack Query for server state
+
+═══════════════════════════════════════════════════════════════════
+DATABASE SCHEMA (Prisma)
+═══════════════════════════════════════════════════════════════════
+
+Create the following models:
+
+1. Market
+   - id, name, slug, category (storage/networking/server/firewall/custom)
+   - schemaDefinition (JSON - the spec schema for this market)
+   - createdBy, createdAt, updatedAt
+   - isPublic (boolean)
+
+2. Vendor
+   - id, name, slug, websiteUrl, logoUrl
+   - datasheetDiscoveryConfig (JSON - URLs, selectors, patterns)
+   - lastScannedAt, scanHealthStatus (healthy/degraded/failed)
+
+3. Product
+   - id, vendorId, marketId, name, slug, subcategory
+   - productPageUrl, currentDatasheetUrl
+   - description, isActive
+   - createdAt, updatedAt
+
+4. Datasheet
+   - id, productId, fileUrl (Replit Object Storage), fileHash
+   - downloadedAt, fileSize, pageCount
+   - extractionStatus (pending/processing/completed/failed)
+   - extractedData (JSON - normalized specs per market schema)
+   - rawText (full PDF text for search)
+   - version (incremented on each new version)
+   - previousDatasheetId (for diff tracking)
+
+5. ExtractedSpec
+   - id, datasheetId, category, attributeName
+   - rawValue, normalizedValue, unit
+   - sourcePageNumber, sourceQuote
+   - confidence (0-1), needsReview (boolean)
+   - validationStatus
+
+6. Comparison (saved user comparisons)
+   - id, userId, name, marketId
+   - pinnedProductIds (array)
+   - createdAt, lastViewedAt
+
+7. ChangeAlert
+   - id, datasheetId, changeType (new/updated/spec_changed)
+   - changedFields (JSON), severity
+   - createdAt, notifiedUsers (array)
+
+8. AgentRun
+   - id, vendorId, runType (discovery/extraction/validation)
+   - startedAt, completedAt, status
+   - logsJson, errorMessage
+
+9. User
+   - id, email, name, role (admin/analyst/buyer)
+   - subscribedMarkets (array), subscribedProducts (array)
+
+═══════════════════════════════════════════════════════════════════
+PAGE STRUCTURE & FEATURES
+═══════════════════════════════════════════════════════════════════
+
+PAGE 1: /markets — Market Selection
+- Grid of available markets (Storage Arrays, Network Switches, Rack Servers, etc.)
+- Each card shows: market name, # vendors, # products tracked, last update
+- "Create Custom Market" button → opens market builder
+- Search/filter markets
+
+PAGE 2: /markets/[slug] — Datasheet Comparison Page (MAIN PAGE)
+Four zones as follows:
+
+ZONE 1 — Market Context Bar (top, sticky):
+- Market name, breadcrumb
+- Stats: "X vendors • Y products • Updated Z hours ago"
+- Agent health badge: "12 of 14 vendors scanned successfully this week"
+- "Run Agent Now" button (admin only)
+- "Subscribe to changes" button
+
+ZONE 2 — Product Selector:
+- Horizontal scrollable strip of product cards
+- Each card: vendor logo, product name, sub-category tag, 
+  "Updated N days ago" badge, checkbox to pin
+- Filters: sub-category (multi-select), vendor (multi-select), 
+  capacity range, form factor
+- "Compare Selected" button (enables when 2-5 selected)
+- Selected products show in a "pinned" tray at bottom
+
+ZONE 3 — Comparison Matrix (the main view):
+- Rows: spec attributes grouped by category (collapsible groups: 
+  Performance, Capacity, Connectivity, Power/Thermal, Form Factor, 
+  Software/Management, Certifications, Pricing/Licensing)
+- Columns: pinned products (2-5)
+- First column shows attribute name with info tooltip
+- Cell highlighting:
+  * Green border = best in row (configurable: higher is better, lower is better)
+  * Red border = worst in row
+  * Yellow background = "vendor-reported, not directly comparable"
+  * Gray = not specified
+- Hover any cell to see: source PDF page, exact quote, extraction confidence
+- Sticky first column (attribute names) and sticky header row
+- "Export comparison" → PDF or Excel
+- "Send to RFP Generator" button (integrate with existing feature #7)
+- "Ask the datasheets" floating chat button → opens chat scoped to selected PDFs
+
+ZONE 4 — Source Datasheets Panel (bottom, expandable):
+- Tabbed PDF viewer using react-pdf
+- One tab per pinned product
+- "Sync scroll" toggle for side-by-side mode
+- Download original PDF button
+- "View version history" → shows previous datasheet versions with diff
+
+PAGE 3: /markets/[slug]/build — Custom Market Builder
+- Form to define a new market
+- Schema designer: add attribute groups, then attributes within each
+- Each attribute has: name, type (number/text/boolean/enum), 
+  unit, "higher is better" flag, extraction hint (text shown to LLM)
+- Save schema, then add vendors and products
+
+PAGE 4: /vendors — Vendor Management (admin)
+- List of all tracked vendors
+- Per vendor: scan health, products tracked, last successful scan
+- Configure discovery: URLs, selectors, scan frequency
+- "Trigger scan" button per vendor
+- View scan history and logs
+
+PAGE 5: /alerts — Change Alerts
+- Feed of recent datasheet changes
+- Filter by market, vendor, severity
+- Each alert shows: what changed, before/after values, link to comparison
+- Mark as read, dismiss
+
+PAGE 6: /comparisons — Saved Comparisons
+- User's saved comparison sets
+- Share comparison via link
+- Schedule "compare every Monday" email digest
+
+═══════════════════════════════════════════════════════════════════
+AGENT PIPELINE (CRITICAL - BUILD CAREFULLY)
+═══════════════════════════════════════════════════════════════════
+
+Build a multi-stage pipeline that runs weekly via cron. Each stage is a 
+separate job that can be retried independently.
+
+STAGE 1 — Discovery Agent (per vendor):
+- Load vendor's datasheetDiscoveryConfig
+- Use Playwright to visit product pages (handles JS-rendered sites)
+- Find datasheet links via:
+  * Configured CSS selectors (preferred)
+  * Heuristic search for "datasheet", "spec sheet", "product brief", 
+    "tech specs" link text or URLs containing these terms
+  * Fallback to LLM-based extraction: pass page HTML to Claude and ask 
+    "find datasheet PDF links for these products: [list]"
+- Output: list of {productId, datasheetUrl} pairs
+- Log all discovery attempts to AgentRun
+
+STAGE 2 — Download Agent:
+- For each datasheet URL, download the PDF
+- Compute SHA-256 hash
+- If hash matches existing datasheet for this product → skip, mark "verified current"
+- If hash differs or new → upload to Replit Object Storage
+- Create new Datasheet record with version = previous + 1
+- Extract raw text using pdf-parse
+
+STAGE 3 — Extraction Agent:
+- Load market schema for the product's market
+- Build extraction prompt:
+  * System: "You are extracting structured specs from a product datasheet. 
+    Extract ONLY values explicitly stated. Mark anything ambiguous. Include 
+    page number and exact quote for each value."
+  * User: market schema (attributes to extract) + datasheet text (and 
+    images if needed via Claude vision)
+- Use Claude Sonnet 4.5 with structured output (JSON schema)
+- For complex tables/layouts, render specific PDF pages as images and use 
+  Claude's vision capability
+- Store extracted values in ExtractedSpec table
+- Each spec includes: rawValue, normalizedValue (after unit conversion), 
+  sourcePageNumber, sourceQuote, confidence
+
+STAGE 4 — Normalization Agent:
+- For each ExtractedSpec, normalize units (TB to GB, Gbps to Mbps, etc.)
+- Detect "non-comparable" values: e.g., "up to 2M IOPS" vs "sustained 800K IOPS"
+- For attributes flagged as having different measurement conditions, mark 
+  needsReview = true and add explanation
+- Compute comparative rankings within the market
+
+STAGE 5 — Validation Agent:
+- Use Claude Opus 4.5 (more capable) to sanity-check extractions
+- Prompt: "Here is an extracted spec for [product class]. Does this value 
+  make sense? Flag if it seems wrong by an order of magnitude or contradicts 
+  known product class norms."
+- Anything flagged → needsReview = true → queue for human review
+
+STAGE 6 — Diff & Alert Agent:
+- Compare new Datasheet against previousDatasheet
+- For each attribute, detect changes
+- Create ChangeAlert records for material changes
+- Notify subscribed users via email (use Resend or similar)
+
+═══════════════════════════════════════════════════════════════════
+AI FEATURES
+═══════════════════════════════════════════════════════════════════
+
+1. "Ask the Datasheets" Chat:
+   - Floating chat widget on comparison page
+   - Context: pinned product datasheets (full text + extracted specs)
+   - Use Claude with tool calls to cite specific datasheets
+   - Each answer must include citations to source PDFs and page numbers
+   - System prompt enforces: "Only answer from provided datasheets. If 
+     information not present, say so. Always cite source."
+
+2. Auto-mapping for Custom Markets:
+   - When user adds a vendor/product to custom market, agent suggests 
+     existing datasheet URLs by searching vendor's site
+   - LLM suggests attribute mappings if user is adopting a similar schema
+
+3. RFP Integration:
+   - "Send to RFP Generator" passes selected products and the comparison 
+     context to existing RFP generator
+   - Pre-populate RFP requirements from the spec differences
+
+═══════════════════════════════════════════════════════════════════
+SEED DATA
+═══════════════════════════════════════════════════════════════════
+
+Pre-populate one fully-working market: "Enterprise All-Flash Storage Arrays"
+
+Vendors and products to seed:
+- Pure Storage: FlashArray//X90, FlashArray//XL170
+- Dell Technologies: PowerStore 9200T, PowerMax 2500
+- NetApp: AFF A900, AFF C800
+- HPE: Alletra 9080, Primera A670
+- IBM: FlashSystem 9500
+- Hitachi Vantara: VSP 5600
+
+Schema for this market should include:
+- Performance: Max IOPS, Sustained IOPS, Latency (μs), Throughput (GB/s)
+- Capacity: Raw capacity (TB), Effective capacity (TB), Max drives
+- Connectivity: FC ports, Ethernet ports, NVMe-oF support
+- Data Services: Inline dedup, compression, snapshots, replication
+- Form Factor: Rack units, Power (W), Cooling (BTU/hr)
+- Software: OS version, Management interface, REST API
+
+For initial seed, you can use placeholder data and one real datasheet PDF 
+per product (instruct me to upload them, or use publicly available PDFs 
+from vendor sites).
+
+═══════════════════════════════════════════════════════════════════
+DESIGN & UX REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+- Dark mode by default with light mode toggle
+- Color palette: deep blue/slate primary, electric blue accents, 
+  semantic colors for diff highlighting
+- Use shadcn/ui components throughout (Table, Sheet, Dialog, Command, etc.)
+- Comparison table must handle 5 products on a 1440px screen without 
+  horizontal scroll for the matrix itself (only allow scroll within 
+  table if more than 5)
+- Loading states: skeleton screens, not spinners
+- Empty states: helpful, not generic
+- Mobile: comparison page should gracefully degrade to single-product view 
+  with swipe to compare
+- All interactions feel fast: optimistic updates, prefetching, edge caching 
+  where possible
+
+═══════════════════════════════════════════════════════════════════
+ENVIRONMENT VARIABLES NEEDED
+═══════════════════════════════════════════════════════════════════
+
+- DATABASE_URL (Replit Postgres)
+- ANTHROPIC_API_KEY
+- CLERK_SECRET_KEY / CLERK_PUBLISHABLE_KEY (or NextAuth secret)
+- REPLIT_OBJECT_STORAGE_BUCKET
+- RESEND_API_KEY (for email alerts)
+- CRON_SECRET (to authenticate cron job triggers)
+
+═══════════════════════════════════════════════════════════════════
+DELIVERY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+1. Set up the full project structure with all dependencies installed.
+2. Create the Prisma schema and run initial migration.
+3. Build all 6 pages with full UI, using mock data initially.
+4. Implement the agent pipeline as background jobs.
+5. Seed the storage arrays market with the vendors/products listed.
+6. Implement at least Stages 1-3 of the agent pipeline end-to-end so a 
+   weekly scan can actually populate the comparison table.
+7. Build the "Ask the Datasheets" chat with Claude integration.
+8. Add a README with setup instructions, env vars, and how to trigger 
+   manual scans.
+9. Make sure the app actually runs on Replit with the development server 
+   accessible via Replit's preview.
+
+Build this as production-quality code: TypeScript everywhere, proper error 
+handling, input validation with Zod, loading and error states for every 
+async operation, logging for the agent pipeline, and clean separation 
+between UI, business logic, and data layers.
+
+Do not stub features. Build them fully. If something cannot be completed 
+in one shot, prioritize: (1) the comparison page UI, (2) the database 
+schema, (3) one working end-to-end agent run for one vendor, (4) the 
+"Ask the Datasheets" chat. Skip auth complexity if needed — use a single 
+hardcoded admin user for now and flag it in README.
+
+Start now. Show me progress as you go.
