@@ -20,6 +20,7 @@ import { AiSuggestionsAdmin } from "@/components/admin/ai-suggestions-admin";
 import { SignalFeedAdmin } from "@/components/admin/signal-feed-admin";
 import { UserMarketsAdmin } from "@/components/admin/user-markets-admin";
 import { UserRfpsAdmin } from "@/components/admin/user-rfps-admin";
+import DatasheetsAdmin from "@/components/admin/datasheets-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight } from "lucide-react";
@@ -131,6 +132,7 @@ export default function Admin() {
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="datasheets">Datasheets</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           </TabsList>
 
@@ -211,6 +213,10 @@ export default function Admin() {
 
           <TabsContent value="operations" className="mt-6">
             <OperationsManagement />
+          </TabsContent>
+
+          <TabsContent value="datasheets" className="mt-6">
+            <DatasheetsAdmin />
           </TabsContent>
 
           <TabsContent value="api-keys" className="mt-6">

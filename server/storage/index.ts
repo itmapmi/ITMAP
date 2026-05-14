@@ -53,6 +53,7 @@ export * from "./userLlmKeys";
 export * from "./signals";
 export * from "./forecasts";
 export * from "./rfps";
+export * from "./datasheets";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";

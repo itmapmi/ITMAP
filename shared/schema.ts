@@ -1484,3 +1484,210 @@ export type RfpShortlistEntry = typeof rfpShortlist.$inferSelect;
 export type InsertRfpShortlistEntry = z.infer<typeof insertRfpShortlistSchema>;
 export type RfpOutreachEntry = typeof rfpOutreach.$inferSelect;
 export type InsertRfpOutreachEntry = z.infer<typeof insertRfpOutreachSchema>;
+
+
+// ── Datasheet Comparison ─────────────────────────────────────────────────
+// Separate from `markets` — these tables model SKU-level hardware vendors
+// (e.g. storage arrays, switches) whose data is extracted from PDF
+// datasheets via OpenAI. All tables are admin-curated except saved
+// comparisons and chat conversations which are user-owned.
+
+export const datasheetMarkets = pgTable("datasheet_markets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  category: text("category"),
+  description: text("description"),
+  // Schema definition: { groups: [{ key, label, attributes: [{ key, label, type, unit, higherIsBetter, options? }] }] }
+  schemaDefinition: jsonb("schema_definition").$type<DatasheetSchemaDefinition>().notNull().default(sql`'{"groups":[]}'::jsonb`),
+  isVisible: boolean("is_visible").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const datasheetVendors = pgTable("datasheet_vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  website: text("website"),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const datasheetProducts = pgTable("datasheet_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => datasheetMarkets.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => datasheetVendors.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  subCategory: text("sub_category"),
+  formFactor: text("form_factor"),
+  productPageUrl: text("product_page_url"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (t) => ({
+  datasheetProductsMarketSlug: uniqueIndex("datasheet_products_market_slug_uniq").on(t.marketId, t.slug),
+}));
+
+export const datasheets = pgTable("datasheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => datasheetProducts.id, { onDelete: "cascade" }),
+  fileUrl: text("file_url").notNull(),
+  fileHash: text("file_hash"),
+  version: integer("version").notNull().default(1),
+  pageCount: integer("page_count"),
+  // 'pending' | 'extracting' | 'extracted' | 'failed'
+  extractionStatus: text("extraction_status").notNull().default("pending"),
+  extractionError: text("extraction_error"),
+  rawText: text("raw_text"),
+  previousDatasheetId: varchar("previous_datasheet_id"),
+  isCurrent: boolean("is_current").notNull().default(true),
+  uploadedAt: timestamp("uploaded_at").default(sql`now()`),
+  extractedAt: timestamp("extracted_at"),
+});
+
+export const datasheetSpecs = pgTable("datasheet_specs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasheetId: varchar("datasheet_id").notNull().references(() => datasheets.id, { onDelete: "cascade" }),
+  categoryKey: text("category_key").notNull(),
+  attributeKey: text("attribute_key").notNull(),
+  rawValue: text("raw_value"),
+  // Canonical numeric value after unit normalization. Null for text attributes.
+  normalizedValue: decimal("normalized_value", { precision: 20, scale: 4 }),
+  unit: text("unit"),
+  sourcePage: integer("source_page"),
+  sourceQuote: text("source_quote"),
+  // 0.0 – 1.0
+  confidence: decimal("confidence", { precision: 3, scale: 2 }),
+  needsReview: boolean("needs_review").notNull().default(false),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (t) => ({
+  datasheetSpecsDsAttrUniq: uniqueIndex("datasheet_specs_ds_attr_uniq").on(t.datasheetId, t.categoryKey, t.attributeKey),
+}));
+
+export const datasheetComparisons = pgTable("datasheet_comparisons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => datasheetMarkets.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  productIds: text("product_ids").array().notNull().default(sql`ARRAY[]::text[]`),
+  lastViewedAt: timestamp("last_viewed_at").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const datasheetChangeAlerts = pgTable("datasheet_change_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasheetId: varchar("datasheet_id").notNull().references(() => datasheets.id, { onDelete: "cascade" }),
+  productId: varchar("product_id").notNull().references(() => datasheetProducts.id, { onDelete: "cascade" }),
+  // 'added' | 'removed' | 'changed'
+  changeType: text("change_type").notNull(),
+  // 'low' | 'medium' | 'high'
+  severity: text("severity").notNull().default("low"),
+  changedFields: jsonb("changed_fields").$type<DatasheetChangedField[]>().notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const datasheetChatConversations = pgTable("datasheet_chat_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => datasheetMarkets.id, { onDelete: "cascade" }),
+  // Pinned product IDs that scope this chat's RAG context.
+  productIds: text("product_ids").array().notNull().default(sql`ARRAY[]::text[]`),
+  title: text("title").notNull().default("New conversation"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const datasheetChatMessages = pgTable("datasheet_chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => datasheetChatConversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'user' | 'assistant'
+  content: text("content").notNull(),
+  citations: jsonb("citations").$type<DatasheetCitation[]>().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type DatasheetAttributeType = "number" | "text" | "boolean" | "enum";
+export interface DatasheetAttributeDef {
+  key: string;
+  label: string;
+  type: DatasheetAttributeType;
+  unit?: string;
+  higherIsBetter?: boolean;
+  options?: string[];
+  description?: string;
+}
+export interface DatasheetAttributeGroup {
+  key: string;
+  label: string;
+  attributes: DatasheetAttributeDef[];
+}
+export interface DatasheetSchemaDefinition {
+  groups: DatasheetAttributeGroup[];
+}
+export interface DatasheetChangedField {
+  categoryKey: string;
+  attributeKey: string;
+  before: string | null;
+  after: string | null;
+  beforeNormalized: number | null;
+  afterNormalized: number | null;
+}
+export interface DatasheetCitation {
+  productId: string;
+  productName: string;
+  vendorName: string;
+  page: number | null;
+  quote: string;
+}
+
+export const insertDatasheetMarketSchema = createInsertSchema(datasheetMarkets).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertDatasheetVendorSchema = createInsertSchema(datasheetVendors).omit({
+  id: true, createdAt: true,
+});
+export const insertDatasheetProductSchema = createInsertSchema(datasheetProducts).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertDatasheetSchema = createInsertSchema(datasheets).omit({
+  id: true, uploadedAt: true, extractedAt: true,
+});
+export const insertDatasheetSpecSchema = createInsertSchema(datasheetSpecs).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertDatasheetComparisonSchema = createInsertSchema(datasheetComparisons).omit({
+  id: true, createdAt: true, updatedAt: true, lastViewedAt: true,
+});
+export const insertDatasheetChangeAlertSchema = createInsertSchema(datasheetChangeAlerts).omit({
+  id: true, createdAt: true,
+});
+export const insertDatasheetChatConversationSchema = createInsertSchema(datasheetChatConversations).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertDatasheetChatMessageSchema = createInsertSchema(datasheetChatMessages).omit({
+  id: true, createdAt: true,
+});
+
+export type DatasheetMarket = typeof datasheetMarkets.$inferSelect;
+export type InsertDatasheetMarket = z.infer<typeof insertDatasheetMarketSchema>;
+export type DatasheetVendor = typeof datasheetVendors.$inferSelect;
+export type InsertDatasheetVendor = z.infer<typeof insertDatasheetVendorSchema>;
+export type DatasheetProduct = typeof datasheetProducts.$inferSelect;
+export type InsertDatasheetProduct = z.infer<typeof insertDatasheetProductSchema>;
+export type Datasheet = typeof datasheets.$inferSelect;
+export type InsertDatasheet = z.infer<typeof insertDatasheetSchema>;
+export type DatasheetSpec = typeof datasheetSpecs.$inferSelect;
+export type InsertDatasheetSpec = z.infer<typeof insertDatasheetSpecSchema>;
+export type DatasheetComparison = typeof datasheetComparisons.$inferSelect;
+export type InsertDatasheetComparison = z.infer<typeof insertDatasheetComparisonSchema>;
+export type DatasheetChangeAlert = typeof datasheetChangeAlerts.$inferSelect;
+export type InsertDatasheetChangeAlert = z.infer<typeof insertDatasheetChangeAlertSchema>;
+export type DatasheetChatConversation = typeof datasheetChatConversations.$inferSelect;
+export type InsertDatasheetChatConversation = z.infer<typeof insertDatasheetChatConversationSchema>;
+export type DatasheetChatMessage = typeof datasheetChatMessages.$inferSelect;
+export type InsertDatasheetChatMessage = z.infer<typeof insertDatasheetChatMessageSchema>;

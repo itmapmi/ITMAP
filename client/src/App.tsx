@@ -30,6 +30,9 @@ import ReportViewer from "@/pages/report-viewer";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import NotFound from "@/pages/not-found";
+import DatasheetsIndexPage from "@/pages/datasheets/index";
+import DatasheetComparePage from "@/pages/datasheets/compare";
+import DatasheetSavedPage from "@/pages/datasheets/saved";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -91,6 +94,9 @@ function Router() {
         <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
         <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
+        <Route path="/datasheets" component={DatasheetsIndexPage} />
+        <Route path="/datasheets/saved" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
+        <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />
       </Switch>
     </div>

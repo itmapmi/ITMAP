@@ -41,6 +41,7 @@ export default function Navigation() {
     { href: "/markets",           label: "Markets" },
     { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive },
     { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive },
+    { href: "/datasheets",        label: "Datasheets" },
     { href: "/licensing",         label: "Licensing" },
     { href: "/about",             label: "About Us" },
   ];

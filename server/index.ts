@@ -79,6 +79,14 @@ app.use((req, res, next) => {
     log("Warning: Could not seed Market Builder system prompts:", String(err));
   }
 
+  // Seed Datasheet Comparison demo market (idempotent)
+  try {
+    const { seedDatasheets } = await import("./datasheets/seed");
+    await seedDatasheets();
+  } catch (err) {
+    log("Warning: Could not seed datasheet market:", String(err));
+  }
+
   // Verify Forecast calculation engine is functional (deterministic, no DB/LLM)
   try {
     const { smokeTest } = await import("./forecast/engine");
