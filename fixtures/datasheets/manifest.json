@@ -1,1 +1,135 @@
-[]
+[
+  {
+    "name": "acme-switch-x100",
+    "pdf": "acme-switch-x100.pdf",
+    "marketSchema": {
+      "groups": [
+        {
+          "key": "performance",
+          "label": "Performance",
+          "attributes": [
+            {
+              "key": "throughput",
+              "label": "Throughput",
+              "type": "number",
+              "unit": "Gbps",
+              "higherIsBetter": true
+            },
+            {
+              "key": "latency",
+              "label": "Latency",
+              "type": "number",
+              "unit": "ns",
+              "higherIsBetter": false
+            }
+          ]
+        },
+        {
+          "key": "power",
+          "label": "Power",
+          "attributes": [
+            {
+              "key": "max_power",
+              "label": "Max power",
+              "type": "number",
+              "unit": "W",
+              "higherIsBetter": false
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "minSpecs": 3,
+      "specs": [
+        {
+          "categoryKey": "performance",
+          "attributeKey": "throughput",
+          "rawValueIncludes": "10"
+        },
+        {
+          "categoryKey": "performance",
+          "attributeKey": "latency",
+          "rawValueIncludes": "800"
+        },
+        {
+          "categoryKey": "power",
+          "attributeKey": "max_power",
+          "rawValueIncludes": "130"
+        }
+      ]
+    }
+  },
+  {
+    "name": "nimbus-nx9000",
+    "pdf": "nimbus-nx9000.pdf",
+    "marketSchema": {
+      "groups": [
+        {
+          "key": "capacity",
+          "label": "Capacity",
+          "attributes": [
+            {
+              "key": "max_raw",
+              "label": "Max raw capacity",
+              "type": "number",
+              "unit": "TB",
+              "higherIsBetter": true
+            }
+          ]
+        },
+        {
+          "key": "performance",
+          "label": "Performance",
+          "attributes": [
+            {
+              "key": "read_iops",
+              "label": "Read IOPS",
+              "type": "number",
+              "higherIsBetter": true
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "minSpecs": 2,
+      "specs": [
+        {
+          "categoryKey": "capacity",
+          "attributeKey": "max_raw",
+          "rawValueIncludes": "1024"
+        },
+        {
+          "categoryKey": "performance",
+          "attributeKey": "read_iops",
+          "rawValueIncludes": "2"
+        }
+      ]
+    }
+  },
+  {
+    "name": "obscure-on7-edge",
+    "pdf": "obscure-on7.pdf",
+    "marketSchema": {
+      "groups": [
+        {
+          "key": "performance",
+          "label": "Performance",
+          "attributes": [
+            {
+              "key": "throughput",
+              "label": "Throughput",
+              "type": "number",
+              "unit": "Gbps",
+              "higherIsBetter": true
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "minSpecs": 0
+    }
+  }
+]
