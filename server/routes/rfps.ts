@@ -416,6 +416,32 @@ export function registerRfpRoutes(app: Express): void {
     catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
+  app.post("/api/me/rfps/:id/shortlist/regenerate", requireAuth, requireRfpOwner, llmRateLimit("regenerate"), async (req, res) => {
+    try {
+      const rfp = asRfpReq(req).rfp;
+      const profile = (rfp.customerProfile || {}) as CustomerProfile;
+      const market = await buildRfpMarketContext(rfp.marketId);
+      const requirements = await listRfpRequirements(rfp.id);
+      const scoredRaw = scoreVendors(market, requirements);
+      const scored = await enrichShortlistRationales(rfp.ownerUserId, market, profile, requirements, scoredRaw, 5);
+      await clearRfpShortlist(rfp.id);
+      const verifiedTop5 = scored.filter(s => !s.excluded && !s.needsVerification).slice(0, 5);
+      const verifiedIds = new Set(verifiedTop5.map(s => s.vendorId));
+      await bulkCreateRfpShortlist(scored.map((s, i) => ({
+        rfpId: rfp.id,
+        vendorId: s.vendorId,
+        fitScore: s.fitScore.toString(),
+        rationale: s.rationale ?? null,
+        isIncluded: verifiedIds.has(s.vendorId),
+        rank: i + 1,
+      })));
+      res.json(await listRfpShortlist(rfp.id));
+    } catch (err) {
+      if (err instanceof MissingLlmKeyError) return sendLlmKeyError(res);
+      res.status(500).json({ error: errMsg(err) });
+    }
+  });
+
   app.patch("/api/me/rfps/:id/shortlist/:entryId", requireAuth, requireRfpOwner, async (req, res) => {
     try {
       const patch = z.object({
