@@ -108,8 +108,23 @@ export async function deleteDatasheetMarket(id: string): Promise<void> {
 }
 
 // ── Vendors ────────────────────────────────────────────────────────────────
-export async function listDatasheetVendors(): Promise<DatasheetVendor[]> {
-  return await db.select().from(datasheetVendors).orderBy(datasheetVendors.name);
+// User-created vendors are namespaced with a `u-` slug prefix. Public callers
+// must never see them, so the default listing filters them out. Admin/internal
+// callers can pass { includeUserScoped: true } to get every vendor.
+export async function listDatasheetVendors(opts?: { includeUserScoped?: boolean }): Promise<DatasheetVendor[]> {
+  if (opts?.includeUserScoped) {
+    return await db.select().from(datasheetVendors).orderBy(datasheetVendors.name);
+  }
+  return await db.select().from(datasheetVendors)
+    .where(sql`${datasheetVendors.slug} NOT LIKE 'u-%'`)
+    .orderBy(datasheetVendors.name);
+}
+// List vendors created by a specific user (slug prefix `u-${userId8}-`).
+export async function listDatasheetVendorsForUser(userId: string): Promise<DatasheetVendor[]> {
+  const prefix = `u-${userId.slice(0, 8)}-%`;
+  return await db.select().from(datasheetVendors)
+    .where(sql`${datasheetVendors.slug} LIKE ${prefix}`)
+    .orderBy(datasheetVendors.name);
 }
 export async function getDatasheetVendor(id: string): Promise<DatasheetVendor | undefined> {
   const [row] = await db.select().from(datasheetVendors).where(eq(datasheetVendors.id, id));

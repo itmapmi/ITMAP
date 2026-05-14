@@ -136,7 +136,7 @@ export async function planCsvImport(rows: CsvImportRow[]): Promise<ImportPlan> {
     }
     let vendors = vendorCache.get("__all__");
     if (vendors === undefined) {
-      vendors = await listDatasheetVendors();
+      vendors = await listDatasheetVendors({ includeUserScoped: true });
       vendorCache.set("__all__", vendors);
     }
     const existingVendor = vendors!.find(v => v.slug === row.vendorSlug);
@@ -169,7 +169,7 @@ export async function planCsvImport(rows: CsvImportRow[]): Promise<ImportPlan> {
 
 export async function commitCsvImport(rows: CsvImportRow[]): Promise<{ vendorsCreated: number; productsCreated: number; productsSkipped: number; datasheetsIngested: number; datasheetsFailed: number; errors: string[] }> {
   const vendorCache = new Map<string, DatasheetVendor>();
-  for (const v of await listDatasheetVendors()) vendorCache.set(v.slug, v);
+  for (const v of await listDatasheetVendors({ includeUserScoped: true })) vendorCache.set(v.slug, v);
   const productSlugsByMarket = new Map<string, Map<string, DatasheetProduct>>();
   const { createDatasheet, updateDatasheet, getNextVersionForProduct, replaceSpecsForDatasheet, unsetCurrentDatasheets, getCurrentDatasheetForProduct, getDatasheetMarket: _gm } = await import("../storage/datasheets");
   void _gm;

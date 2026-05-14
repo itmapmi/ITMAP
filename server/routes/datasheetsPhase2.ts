@@ -208,10 +208,20 @@ export function registerDatasheetPhase2Routes(app: Express): void {
   });
 
   // ── PUBLIC: list vendors (used by user market-detail product form) ──────
-  app.get("/api/datasheets/vendors", async (_req, res) => {
+  // Returns only public (non-user-scoped) vendors. Authenticated callers also
+  // get their own user-scoped vendors merged in, so the /me UI can pick from
+  // both the global catalogue and vendors they created.
+  app.get("/api/datasheets/vendors", async (req, res) => {
     try {
-      const { listDatasheetVendors } = await import("../storage/datasheets");
-      res.json(await listDatasheetVendors());
+      const { listDatasheetVendors, listDatasheetVendorsForUser } = await import("../storage/datasheets");
+      const publicVendors = await listDatasheetVendors();
+      const user = (req as Request & { user?: { id?: string } }).user;
+      if (user?.id) {
+        const own = await listDatasheetVendorsForUser(user.id);
+        const seen = new Set(publicVendors.map(v => v.id));
+        for (const v of own) if (!seen.has(v.id)) publicVendors.push(v);
+      }
+      res.json(publicVendors);
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 

@@ -43,7 +43,12 @@ async function loadPublicProducts(productIds: string[]): Promise<{ products: Pro
   if (marketIds.size > 1) return { error: "Products must be from the same market", status: 400 };
   if (products.some(p => !p.isActive)) return { error: "Inactive product in selection", status: 400 };
   const market = await getDatasheetMarket(products[0].marketId);
-  if (!market || !market.isVisible) return { error: "Market not available", status: 404 };
+  // Phase 2: enforce visibility on every public read path. Private markets
+  // (owned by an end user) must NEVER leak through public endpoints, regardless
+  // of the legacy `isVisible` flag.
+  if (!market || !market.isVisible || market.visibility !== "public") {
+    return { error: "Market not available", status: 404 };
+  }
   return { products, market };
 }
 
@@ -99,7 +104,9 @@ export function registerDatasheetRoutes(app: Express): void {
   app.get("/api/datasheets/markets/:slug", async (req, res) => {
     try {
       const market = await getDatasheetMarketBySlug(req.params.slug);
-      if (!market || !market.isVisible) return res.status(404).json({ error: "Market not found" });
+      if (!market || !market.isVisible || market.visibility !== "public") {
+        return res.status(404).json({ error: "Market not found" });
+      }
       const products = await listProductsByMarket(market.id, { activeOnly: true });
       res.json({ market, products });
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
@@ -392,7 +399,7 @@ export function registerDatasheetRoutes(app: Express): void {
 
   // ── ADMIN: Vendors ──────────────────────────────────────────────────────
   app.get("/api/admin/datasheets/vendors", requireAdmin, async (_req, res) => {
-    try { res.json(await listDatasheetVendors()); }
+    try { res.json(await listDatasheetVendors({ includeUserScoped: true })); }
     catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
   app.post("/api/admin/datasheets/vendors", requireAdmin, async (req, res) => {
