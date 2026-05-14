@@ -84,9 +84,8 @@ async function requireRfpOwner(req: Request, res: Response, next: NextFunction):
   const userId = asAuthed(req).user.id;
   const rfp = await getRfpProjectForOwner(req.params.id, userId);
   if (!rfp) {
-    // Don't leak existence to non-owners — treat unknown and unowned identically.
-    const exists = await getRfpProject(req.params.id);
-    res.status(exists ? 403 : 404).json({ error: exists ? "You do not own this RFP" : "RFP not found" });
+    // Always 404 — never leak existence of RFPs the caller does not own.
+    res.status(404).json({ error: "RFP not found" });
     return;
   }
   (req as RfpRequest).rfp = rfp;
