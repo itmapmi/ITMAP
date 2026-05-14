@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Trash2, ArrowRight, KeyRound, AlertCircle } from "lucide-react";
+import { FileText, Plus, Trash2, ArrowRight, AlertCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
 import type { RfpProject, Market } from "@shared/schema";
 
@@ -42,7 +42,6 @@ export default function MyRfpsPage() {
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
   const { data: status } = useQuery<RfpStatus>({ queryKey: ["/api/me/rfps-status"] });
 
-  const needsKey = status && !status.hasOpenAiKey;
   const atActiveLimit = status && status.activeCount >= status.activeLimit;
   const atDailyLimit = status && status.last24hCount >= status.dailyLimit;
 
@@ -105,27 +104,13 @@ export default function MyRfpsPage() {
             <p className="text-slate-400 mt-2">Run a conversational interview and produce a customer-specific RFP, grounded in real market data.</p>
           </div>
           <Button
-            onClick={() => needsKey ? setLocation("/me/settings/llm-keys") : setOpen(true)}
+            onClick={() => setOpen(true)}
             className="bg-gradient-to-r from-cyan-500 to-violet-600"
             data-testid="button-new-rfp"
           >
-            {needsKey ? <><KeyRound className="w-4 h-4 mr-2" /> Add API key to start</> : <><Plus className="w-4 h-4 mr-2" /> New RFP</>}
+            <Plus className="w-4 h-4 mr-2" /> New RFP
           </Button>
         </div>
-
-        {needsKey && (
-          <Card className="bg-amber-500/10 border-amber-500/30 mb-6">
-            <CardContent className="py-4 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
-              <div className="flex-1 text-sm text-amber-100">
-                The RFP Builder uses your own OpenAI key — no platform fallback. Add a key to enable the interview and generation.
-              </div>
-              <Button size="sm" variant="outline" className="bg-amber-500/20 border-amber-500/40 text-amber-100 hover:bg-amber-500/30" onClick={() => setLocation("/me/settings/llm-keys")}>
-                Go to LLM Keys
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {(atActiveLimit || atDailyLimit) && status && (
           <Card className="bg-slate-900 border-amber-500/20 mb-6">

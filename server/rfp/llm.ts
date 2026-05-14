@@ -1,10 +1,13 @@
-// BYO-key OpenAI client for the RFP Builder. No platform fallback.
+// Platform-managed OpenAI client for the RFP Builder.
+// End users do NOT bring their own key — we use the same Replit AI Integrations
+// credentials (AI_INTEGRATIONS_OPENAI_API_KEY + AI_INTEGRATIONS_OPENAI_BASE_URL)
+// the rest of the platform uses. MissingLlmKeyError is retained only for the
+// (extremely unlikely) case the platform env vars are absent at boot.
 import OpenAI from "openai";
-import { getUserLlmApiKey } from "../storage/userLlmKeys";
 
 export class MissingLlmKeyError extends Error {
   constructor() {
-    super("Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.");
+    super("RFP Builder is temporarily unavailable: platform OpenAI credentials are not configured. Please contact support.");
     this.name = "MissingLlmKeyError";
   }
 }
@@ -14,15 +17,18 @@ export interface RfpLlmClient {
   json<T>(systemPrompt: string, userPrompt: string): Promise<T>;
 }
 
-export async function userHasOpenAiKey(userId: string): Promise<boolean> {
-  const k = await getUserLlmApiKey(userId, "openai");
-  return !!k?.apiKey;
+// End users no longer manage their own keys for the RFP Builder.
+// Kept for API back-compat; always returns true unless the platform itself
+// is misconfigured (which would also surface as a 500 elsewhere).
+export async function userHasOpenAiKey(_userId: string): Promise<boolean> {
+  return !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 }
 
-export async function getRfpLlmClient(userId: string): Promise<RfpLlmClient> {
-  const userKey = await getUserLlmApiKey(userId, "openai");
-  if (!userKey?.apiKey) throw new MissingLlmKeyError();
-  const client = new OpenAI({ apiKey: userKey.apiKey });
+export async function getRfpLlmClient(_userId: string): Promise<RfpLlmClient> {
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  if (!apiKey) throw new MissingLlmKeyError();
+  const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
   const model = "gpt-4.1-mini";
   return {
     async chat(systemPrompt, messages, opts) {

@@ -21,7 +21,7 @@ import {
   listRfpOutreach, upsertRfpOutreach, deleteRfpOutreach,
 } from "../storage/rfps";
 import { buildRfpMarketContext } from "../rfp/context";
-import { getRfpLlmClient, MissingLlmKeyError, userHasOpenAiKey } from "../rfp/llm";
+import { getRfpLlmClient, MissingLlmKeyError } from "../rfp/llm";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   profileReadiness, normalizeCustomerProfile,
@@ -43,10 +43,11 @@ const USER_MAX_ACTIVE_RFPS = 5;
 const USER_MAX_RFPS_PER_24H = 10;
 
 function sendLlmKeyError(res: Response) {
-  return res.status(412).json({
-    error: "Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.",
-    code: "MISSING_LLM_KEY",
-    settingsPath: "/me/settings/llm-keys",
+  // The RFP Builder now uses platform-managed OpenAI credentials. This handler
+  // only fires if the platform env vars are missing — treat it as a 503.
+  return res.status(503).json({
+    error: "RFP Builder is temporarily unavailable. Please try again later.",
+    code: "PLATFORM_LLM_UNAVAILABLE",
   });
 }
 
@@ -106,13 +107,14 @@ export function registerRfpRoutes(app: Express): void {
   app.get("/api/me/rfps-status", requireAuth, async (req, res) => {
     try {
       const user = asAuthed(req).user;
-      const [hasKey, active, recent] = await Promise.all([
-        userHasOpenAiKey(user.id),
+      const [active, recent] = await Promise.all([
         countActiveRfpsForUser(user.id),
         countRfpsCreatedLast24hForUser(user.id),
       ]);
       res.json({
-        hasOpenAiKey: hasKey,
+        // Platform-managed credentials — always true for clients. Field kept
+        // for backward compatibility with older client builds.
+        hasOpenAiKey: true,
         activeCount: active,
         activeLimit: USER_MAX_ACTIVE_RFPS,
         last24hCount: recent,
@@ -125,7 +127,6 @@ export function registerRfpRoutes(app: Express): void {
     try {
       const user = asAuthed(req).user;
       const data = createSchema.parse(req.body);
-      if (!(await userHasOpenAiKey(user.id))) return sendLlmKeyError(res);
       const active = await countActiveRfpsForUser(user.id);
       if (active >= USER_MAX_ACTIVE_RFPS) {
         return res.status(429).json({ error: `You already have ${active} active RFPs. Complete or delete one before starting another.` });
