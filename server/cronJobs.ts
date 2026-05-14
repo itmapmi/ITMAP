@@ -185,6 +185,36 @@ export class CronJobManager {
 
     this.jobs.set('signalCollection', signalCollectionJob);
 
+    // Phase 2: Weekly datasheet digest emails — Mondays 8:00 UTC
+    const weeklyDatasheetDigestJob = cron.schedule('0 8 * * 1', async () => {
+      console.log('[Cron] Starting weekly datasheet digest...');
+      try {
+        const { runWeeklyDatasheetDigest } = await import('./datasheets/digestCron');
+        const summary = await runWeeklyDatasheetDigest();
+        console.log(`[Cron] Datasheet digest done: ${summary.sent} sent, ${summary.skipped} skipped, ${summary.failed} failed`);
+        this.lastRun.set('weeklyDatasheetDigest', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in weekly datasheet digest:', error);
+        this.lastRun.set('weeklyDatasheetDigest', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+    this.jobs.set('weeklyDatasheetDigest', weeklyDatasheetDigestJob);
+
+    // Phase 2: Weekly datasheet re-extraction for opted-in vendors — Sundays 3:30 UTC
+    const weeklyDatasheetReextractJob = cron.schedule('30 3 * * 0', async () => {
+      console.log('[Cron] Starting weekly datasheet re-extraction...');
+      try {
+        const { runWeeklyReextract } = await import('./datasheets/reextractCron');
+        const summary = await runWeeklyReextract();
+        console.log(`[Cron] Datasheet re-extract done: ${summary.checked} checked, ${summary.changed} updated, ${summary.failed} failed`);
+        this.lastRun.set('weeklyDatasheetReextract', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in weekly datasheet re-extract:', error);
+        this.lastRun.set('weeklyDatasheetReextract', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+    this.jobs.set('weeklyDatasheetReextract', weeklyDatasheetReextractJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 

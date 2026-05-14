@@ -1501,6 +1501,10 @@ export const datasheetMarkets = pgTable("datasheet_markets", {
   // Schema definition: { groups: [{ key, label, attributes: [{ key, label, type, unit, higherIsBetter, options? }] }] }
   schemaDefinition: jsonb("schema_definition").$type<DatasheetSchemaDefinition>().notNull().default(sql`'{"groups":[]}'::jsonb`),
   isVisible: boolean("is_visible").notNull().default(true),
+  // Phase 2: ownership for end-user private markets. null = platform-owned (admin).
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  // 'public' | 'private' — private markets are only visible to owner + admins.
+  visibility: text("visibility").notNull().default("public"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -1511,6 +1515,10 @@ export const datasheetVendors = pgTable("datasheet_vendors", {
   slug: text("slug").notNull().unique(),
   website: text("website"),
   logoUrl: text("logo_url"),
+  // Phase 2: admin-controlled opt-in for weekly re-extraction cron.
+  rediscoveryOptIn: boolean("rediscovery_opt_in").notNull().default(false),
+  // Vendor product-index page (e.g. /products) used by admin-assisted rediscovery.
+  productIndexUrl: text("product_index_url"),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -1575,8 +1583,44 @@ export const datasheetComparisons = pgTable("datasheet_comparisons", {
   name: text("name").notNull(),
   productIds: text("product_ids").array().notNull().default(sql`ARRAY[]::text[]`),
   lastViewedAt: timestamp("last_viewed_at").default(sql`now()`),
+  // Phase 2: public share token (random url-safe string). Null = not shared.
+  shareToken: text("share_token").unique(),
+  // Phase 2: opt-in weekly digest of change-alerts for this comparison's products.
+  digestEnabled: boolean("digest_enabled").notNull().default(false),
+  digestEmail: text("digest_email"),
+  digestLastSentAt: timestamp("digest_last_sent_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Phase 2: audit log for admin-assisted rediscovery + weekly re-extraction cron.
+export const datasheetAgentRuns = pgTable("datasheet_agent_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // 'rediscover_candidates' | 'rediscover_approve' | 'reextract_cron'
+  runType: text("run_type").notNull(),
+  vendorId: varchar("vendor_id").references(() => datasheetVendors.id, { onDelete: "set null" }),
+  productId: varchar("product_id").references(() => datasheetProducts.id, { onDelete: "set null" }),
+  triggeredByUserId: varchar("triggered_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  // 'success' | 'failed' | 'skipped' | 'no_change'
+  status: text("status").notNull(),
+  inputUrl: text("input_url"),
+  outputJson: jsonb("output_json").default(sql`'{}'::jsonb`),
+  errorMessage: text("error_message"),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Phase 2: dedup record for sent change-alert emails (per alert per recipient).
+export const datasheetEmailLog = pgTable("datasheet_email_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // 'change_alert' | 'weekly_digest'
+  emailType: text("email_type").notNull(),
+  changeAlertId: varchar("change_alert_id").references(() => datasheetChangeAlerts.id, { onDelete: "cascade" }),
+  comparisonId: varchar("comparison_id").references(() => datasheetComparisons.id, { onDelete: "cascade" }),
+  recipientEmail: text("recipient_email").notNull(),
+  status: text("status").notNull(), // 'sent' | 'failed' | 'skipped'
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
 });
 
 export const datasheetChangeAlerts = pgTable("datasheet_change_alerts", {
@@ -1672,6 +1716,12 @@ export const insertDatasheetChatConversationSchema = createInsertSchema(datashee
 export const insertDatasheetChatMessageSchema = createInsertSchema(datasheetChatMessages).omit({
   id: true, createdAt: true,
 });
+export const insertDatasheetAgentRunSchema = createInsertSchema(datasheetAgentRuns).omit({
+  id: true, createdAt: true,
+});
+export const insertDatasheetEmailLogSchema = createInsertSchema(datasheetEmailLog).omit({
+  id: true, createdAt: true,
+});
 
 export type DatasheetMarket = typeof datasheetMarkets.$inferSelect;
 export type InsertDatasheetMarket = z.infer<typeof insertDatasheetMarketSchema>;
@@ -1691,3 +1741,7 @@ export type DatasheetChatConversation = typeof datasheetChatConversations.$infer
 export type InsertDatasheetChatConversation = z.infer<typeof insertDatasheetChatConversationSchema>;
 export type DatasheetChatMessage = typeof datasheetChatMessages.$inferSelect;
 export type InsertDatasheetChatMessage = z.infer<typeof insertDatasheetChatMessageSchema>;
+export type DatasheetAgentRun = typeof datasheetAgentRuns.$inferSelect;
+export type InsertDatasheetAgentRun = z.infer<typeof insertDatasheetAgentRunSchema>;
+export type DatasheetEmailLog = typeof datasheetEmailLog.$inferSelect;
+export type InsertDatasheetEmailLog = z.infer<typeof insertDatasheetEmailLogSchema>;

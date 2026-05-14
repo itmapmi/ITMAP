@@ -8,14 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Bookmark, Trash2, ArrowRight, FileText } from "lucide-react";
+import { Bookmark, Trash2, ArrowRight, FileText, Share2, Copy, Mail } from "lucide-react";
 import type { DatasheetComparison, DatasheetMarket, Market } from "@shared/schema";
+
+type ShareResult = { shareToken: string; shareUrl: string; digestEnabled: boolean; digestEmail: string | null };
 
 export default function DatasheetSavedPage() {
   const { toast } = useToast();
   const { data: comparisons = [], isLoading } = useQuery<DatasheetComparison[]>({ queryKey: ["/api/me/datasheet-comparisons"] });
   const { data: dsMarkets = [] } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/datasheets/markets"] });
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
   const delMut = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/me/datasheet-comparisons/${id}`, "DELETE"),
@@ -53,6 +56,9 @@ export default function DatasheetSavedPage() {
                   <div className="text-xs text-slate-500 mt-1">{c.productIds.length} products · last viewed {c.lastViewedAt ? new Date(c.lastViewedAt).toLocaleDateString() : "—"}</div>
                 </div>
                 <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSharingId(c.id)} data-testid={`button-share-${c.id}`}>
+                    <Share2 className="h-4 w-4 mr-1" />{c.shareToken ? "Sharing" : "Share"}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setSendingId(c.id)} data-testid={`button-send-rfp-${c.id}`}>
                     <FileText className="h-4 w-4 mr-1" />Send to RFP
                   </Button>
@@ -71,7 +77,94 @@ export default function DatasheetSavedPage() {
         </div>
       </div>
       {sendingId && <SendToRfpDialog comparisonId={sendingId} onClose={() => setSendingId(null)} />}
+      {sharingId && (
+        <ShareDialog
+          comparison={comparisons.find(x => x.id === sharingId)!}
+          onClose={() => setSharingId(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ShareDialog({ comparison, onClose }: { comparison: DatasheetComparison; onClose: () => void }) {
+  const { toast } = useToast();
+  const [digestEnabled, setDigestEnabled] = useState(!!comparison.digestEnabled);
+  const [digestEmail, setDigestEmail] = useState(comparison.digestEmail ?? "");
+  const existingUrl = comparison.shareToken
+    ? `${window.location.origin}/share/comparison/${comparison.shareToken}`
+    : null;
+
+  const shareMut = useMutation({
+    mutationFn: async (): Promise<ShareResult> => {
+      const res = await apiRequest(`/api/me/datasheet-comparisons/${comparison.id}/share`, "POST", {
+        digestEnabled, digestEmail: digestEnabled ? digestEmail : null,
+      });
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/datasheet-comparisons"] });
+      navigator.clipboard?.writeText(data.shareUrl).catch(() => {});
+      toast({ title: "Share link copied", description: data.shareUrl });
+    },
+    onError: (err: unknown) => toast({ title: "Failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+  const revokeMut = useMutation({
+    mutationFn: () => apiRequest(`/api/me/datasheet-comparisons/${comparison.id}/share`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/datasheet-comparisons"] });
+      toast({ title: "Share link revoked" });
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Share "{comparison.name}"</DialogTitle></DialogHeader>
+        <div className="space-y-4 text-sm">
+          {existingUrl && (
+            <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 p-3">
+              <div className="text-xs text-cyan-300 mb-1 flex items-center gap-1"><Share2 className="h-3 w-3" />Active link</div>
+              <div className="flex gap-2 items-center">
+                <Input value={existingUrl} readOnly className="font-mono text-xs" />
+                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(existingUrl); toast({ title: "Copied" }); }}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Anyone with the link can view this comparison read-only.</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={digestEnabled} onChange={e => setDigestEnabled(e.target.checked)} data-testid="checkbox-digest" />
+              <span className="font-medium flex items-center gap-1"><Mail className="h-4 w-4" />Email me a weekly digest</span>
+            </label>
+            {digestEnabled && (
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={digestEmail}
+                onChange={e => setDigestEmail(e.target.value)}
+                data-testid="input-digest-email"
+              />
+            )}
+            <p className="text-xs text-muted-foreground">Sent every Monday morning summarising any datasheet changes for products in this comparison.</p>
+          </div>
+        </div>
+        <DialogFooter>
+          {existingUrl && <Button variant="ghost" onClick={() => revokeMut.mutate()} disabled={revokeMut.isPending}>Revoke link</Button>}
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button
+            onClick={() => shareMut.mutate()}
+            disabled={shareMut.isPending || (digestEnabled && !digestEmail)}
+            data-testid="button-create-share"
+          >
+            {existingUrl ? "Update + copy link" : "Create + copy link"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -419,7 +419,12 @@ export function registerDatasheetRoutes(app: Express): void {
   app.get("/api/admin/datasheets/products", requireAdmin, async (req, res) => {
     try {
       const marketId = req.query.marketId as string | undefined;
-      if (!marketId) return res.status(400).json({ error: "marketId is required" });
+      const vendorId = req.query.vendorId as string | undefined;
+      if (vendorId) {
+        const { listProductsByVendor } = await import("../storage/datasheets");
+        return res.json(await listProductsByVendor(vendorId));
+      }
+      if (!marketId) return res.status(400).json({ error: "marketId or vendorId is required" });
       res.json(await listProductsByMarket(marketId));
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
@@ -504,13 +509,31 @@ export function registerDatasheetRoutes(app: Express): void {
           const nextSpecs = await listSpecsForDatasheet(datasheet.id);
           const diff = diffSpecs(prevSpecs, nextSpecs);
           if (diff) {
-            await createChangeAlert({
+            const alert = await createChangeAlert({
               datasheetId: datasheet.id,
               productId: product.id,
               changeType: diff.changeType,
               severity: diff.severity,
               changedFields: diff.changedFields,
             });
+            // Phase 2: notify admins for medium/high severity changes.
+            try {
+              const { getDatasheetVendor } = await import("../storage/datasheets");
+              const vendor = await getDatasheetVendor(product.vendorId);
+              const { emailAdminsForChangeAlert } = await import("./datasheetsPhase2");
+              await emailAdminsForChangeAlert({
+                alertId: alert.id,
+                changedFieldCount: diff.changedFields.length,
+                changeType: diff.changeType,
+                severity: diff.severity,
+                productName: product.name,
+                vendorName: vendor?.name ?? "Unknown vendor",
+                marketName: market.name,
+                productId: product.id,
+              });
+            } catch (e) {
+              console.warn("[datasheet email] dispatch failed:", e);
+            }
           }
         }
       } catch (err) {
@@ -570,7 +593,8 @@ export function registerDatasheetRoutes(app: Express): void {
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
 
-  app.patch("/api/admin/datasheets/specs/:id", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/datasheets/specs/:id", requireAdmin, async (req, res, next) => {
+    if (req.params.id === "bulk") return next();
     try {
       const body = z.object({
         rawValue: z.string().nullish(),

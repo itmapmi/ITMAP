@@ -12,6 +12,7 @@ import { registerMeRoutes } from "./routes/me";
 import { registerForecastBuilderRoutes } from "./routes/forecastBuilder";
 import { registerRfpRoutes } from "./routes/rfps";
 import { registerDatasheetRoutes } from "./routes/datasheets";
+import { registerDatasheetPhase2Routes } from "./routes/datasheetsPhase2";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // External partner API (API-key auth, no session required) — must come first
@@ -29,6 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerForecastBuilderRoutes(app);
   registerRfpRoutes(app);
   registerDatasheetRoutes(app);
+  registerDatasheetPhase2Routes(app);
 
   return createServer(app);
 }

@@ -1,9 +1,10 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   datasheetMarkets, datasheetVendors, datasheetProducts, datasheets,
   datasheetSpecs, datasheetComparisons, datasheetChangeAlerts,
   datasheetChatConversations, datasheetChatMessages,
+  datasheetAgentRuns, datasheetEmailLog,
   type DatasheetMarket, type InsertDatasheetMarket,
   type DatasheetVendor, type InsertDatasheetVendor,
   type DatasheetProduct, type InsertDatasheetProduct,
@@ -13,15 +14,42 @@ import {
   type DatasheetChangeAlert, type InsertDatasheetChangeAlert,
   type DatasheetChatConversation, type InsertDatasheetChatConversation,
   type DatasheetChatMessage, type InsertDatasheetChatMessage,
+  type DatasheetAgentRun, type InsertDatasheetAgentRun,
+  type DatasheetEmailLog, type InsertDatasheetEmailLog,
 } from "@shared/schema";
 
 // ── Markets ────────────────────────────────────────────────────────────────
+// Public listing: visibility='public' (or null legacy rows) AND isVisible=true.
+// Private user-owned markets are filtered out here.
 export async function listDatasheetMarkets(opts?: { visibleOnly?: boolean }): Promise<DatasheetMarket[]> {
-  const q = db.select().from(datasheetMarkets);
-  const rows = opts?.visibleOnly
-    ? await q.where(eq(datasheetMarkets.isVisible, true)).orderBy(datasheetMarkets.name)
-    : await q.orderBy(datasheetMarkets.name);
-  return rows;
+  if (opts?.visibleOnly) {
+    return await db.select().from(datasheetMarkets)
+      .where(and(eq(datasheetMarkets.isVisible, true), eq(datasheetMarkets.visibility, "public")))
+      .orderBy(datasheetMarkets.name);
+  }
+  return await db.select().from(datasheetMarkets).orderBy(datasheetMarkets.name);
+}
+// Phase 2: list private datasheet markets owned by a user.
+export async function listPrivateDatasheetMarketsForUser(userId: string): Promise<DatasheetMarket[]> {
+  return await db.select().from(datasheetMarkets)
+    .where(and(eq(datasheetMarkets.ownerUserId, userId), eq(datasheetMarkets.visibility, "private")))
+    .orderBy(desc(datasheetMarkets.updatedAt));
+}
+export async function countPrivateMarketsForUser(userId: string): Promise<number> {
+  const [{ c }] = await db.select({ c: sql<number>`count(*)::int` })
+    .from(datasheetMarkets)
+    .where(and(eq(datasheetMarkets.ownerUserId, userId), eq(datasheetMarkets.visibility, "private")));
+  return c;
+}
+export async function countPrivateMarketsForUserSince(userId: string, since: Date): Promise<number> {
+  const [{ c }] = await db.select({ c: sql<number>`count(*)::int` })
+    .from(datasheetMarkets)
+    .where(and(
+      eq(datasheetMarkets.ownerUserId, userId),
+      eq(datasheetMarkets.visibility, "private"),
+      gt(datasheetMarkets.createdAt, since),
+    ));
+  return c;
 }
 export async function getDatasheetMarket(id: string): Promise<DatasheetMarket | undefined> {
   const [row] = await db.select().from(datasheetMarkets).where(eq(datasheetMarkets.id, id));
@@ -77,6 +105,16 @@ export async function listProductsByMarket(marketId: string, opts?: { activeOnly
       ? and(eq(datasheetProducts.marketId, marketId), eq(datasheetProducts.isActive, true))
       : eq(datasheetProducts.marketId, marketId))
     .orderBy(datasheetVendors.name, datasheetProducts.name);
+  return rows.map(r => ({ ...r.p, vendor: r.v }));
+}
+
+export async function listProductsByVendor(vendorId: string): Promise<ProductWithVendor[]> {
+  const rows = await db
+    .select({ p: datasheetProducts, v: datasheetVendors })
+    .from(datasheetProducts)
+    .innerJoin(datasheetVendors, eq(datasheetVendors.id, datasheetProducts.vendorId))
+    .where(eq(datasheetProducts.vendorId, vendorId))
+    .orderBy(datasheetProducts.name);
   return rows.map(r => ({ ...r.p, vendor: r.v }));
 }
 export async function getProduct(id: string): Promise<DatasheetProduct | undefined> {
@@ -270,4 +308,106 @@ export async function listChatMessages(conversationId: string): Promise<Datashee
 export async function appendChatMessage(data: InsertDatasheetChatMessage): Promise<DatasheetChatMessage> {
   const [row] = await db.insert(datasheetChatMessages).values(data).returning();
   return row;
+}
+
+// ── Phase 2: share + digest helpers ────────────────────────────────────────
+export async function setComparisonShareToken(id: string, userId: string, token: string | null): Promise<DatasheetComparison | undefined> {
+  const [row] = await db.update(datasheetComparisons)
+    .set({ shareToken: token, updatedAt: new Date() })
+    .where(and(eq(datasheetComparisons.id, id), eq(datasheetComparisons.ownerUserId, userId)))
+    .returning();
+  return row;
+}
+export async function setComparisonDigest(id: string, userId: string, enabled: boolean, email: string | null): Promise<DatasheetComparison | undefined> {
+  const [row] = await db.update(datasheetComparisons)
+    .set({ digestEnabled: enabled, digestEmail: email, updatedAt: new Date() })
+    .where(and(eq(datasheetComparisons.id, id), eq(datasheetComparisons.ownerUserId, userId)))
+    .returning();
+  return row;
+}
+export async function getComparisonByShareToken(token: string): Promise<DatasheetComparison | undefined> {
+  const [row] = await db.select().from(datasheetComparisons)
+    .where(eq(datasheetComparisons.shareToken, token));
+  return row;
+}
+export async function listDigestEnabledComparisons(): Promise<DatasheetComparison[]> {
+  return await db.select().from(datasheetComparisons)
+    .where(and(eq(datasheetComparisons.digestEnabled, true), isNotNull(datasheetComparisons.digestEmail)));
+}
+export async function markComparisonDigestSent(id: string): Promise<void> {
+  await db.update(datasheetComparisons)
+    .set({ digestLastSentAt: new Date() })
+    .where(eq(datasheetComparisons.id, id));
+}
+
+// Phase 2: list change alerts in window for products
+export async function listChangeAlertsForProductsSince(productIds: string[], since: Date): Promise<Array<DatasheetChangeAlert & { productName: string; vendorName: string }>> {
+  if (productIds.length === 0) return [];
+  const rows = await db
+    .select({ alert: datasheetChangeAlerts, productName: datasheetProducts.name, vendorName: datasheetVendors.name })
+    .from(datasheetChangeAlerts)
+    .innerJoin(datasheetProducts, eq(datasheetProducts.id, datasheetChangeAlerts.productId))
+    .innerJoin(datasheetVendors, eq(datasheetVendors.id, datasheetProducts.vendorId))
+    .where(and(inArray(datasheetChangeAlerts.productId, productIds), gt(datasheetChangeAlerts.createdAt, since)))
+    .orderBy(desc(datasheetChangeAlerts.createdAt));
+  return rows.map(r => ({ ...r.alert, productName: r.productName, vendorName: r.vendorName }));
+}
+export async function listRecentChangeAlerts(limit = 50): Promise<Array<DatasheetChangeAlert & { productName: string; vendorName: string }>> {
+  const rows = await db
+    .select({ alert: datasheetChangeAlerts, productName: datasheetProducts.name, vendorName: datasheetVendors.name })
+    .from(datasheetChangeAlerts)
+    .innerJoin(datasheetProducts, eq(datasheetProducts.id, datasheetChangeAlerts.productId))
+    .innerJoin(datasheetVendors, eq(datasheetVendors.id, datasheetProducts.vendorId))
+    .orderBy(desc(datasheetChangeAlerts.createdAt))
+    .limit(limit);
+  return rows.map(r => ({ ...r.alert, productName: r.productName, vendorName: r.vendorName }));
+}
+
+// ── Phase 2: agent run audit ───────────────────────────────────────────────
+export async function createAgentRun(data: InsertDatasheetAgentRun): Promise<DatasheetAgentRun> {
+  const [row] = await db.insert(datasheetAgentRuns).values(data).returning();
+  return row;
+}
+export async function listAgentRuns(opts?: { limit?: number; vendorId?: string }): Promise<DatasheetAgentRun[]> {
+  const q = db.select().from(datasheetAgentRuns);
+  const rows = await (opts?.vendorId
+    ? q.where(eq(datasheetAgentRuns.vendorId, opts.vendorId)).orderBy(desc(datasheetAgentRuns.createdAt)).limit(opts.limit ?? 50)
+    : q.orderBy(desc(datasheetAgentRuns.createdAt)).limit(opts?.limit ?? 50));
+  return rows;
+}
+
+// ── Phase 2: email log (de-dup) ────────────────────────────────────────────
+export async function hasEmailBeenSent(opts: { emailType: string; changeAlertId?: string; comparisonId?: string; recipientEmail: string; sinceMs?: number }): Promise<boolean> {
+  const conds = [eq(datasheetEmailLog.emailType, opts.emailType), eq(datasheetEmailLog.recipientEmail, opts.recipientEmail), eq(datasheetEmailLog.status, "sent")];
+  if (opts.changeAlertId) conds.push(eq(datasheetEmailLog.changeAlertId, opts.changeAlertId));
+  if (opts.comparisonId) conds.push(eq(datasheetEmailLog.comparisonId, opts.comparisonId));
+  // Weekly digests recur; treat any send within the lookback window (default 6 days)
+  // as a dup so we never send twice in a 7-day cycle, while still allowing next-week sends.
+  if (opts.emailType === "weekly_digest") {
+    const sinceMs = opts.sinceMs ?? 6 * 24 * 60 * 60 * 1000;
+    const since = new Date(Date.now() - sinceMs);
+    conds.push(gte(datasheetEmailLog.createdAt, since));
+  }
+  const [row] = await db.select({ id: datasheetEmailLog.id }).from(datasheetEmailLog).where(and(...conds)).limit(1);
+  return !!row;
+}
+export async function logEmailSent(data: InsertDatasheetEmailLog): Promise<DatasheetEmailLog> {
+  const [row] = await db.insert(datasheetEmailLog).values(data).returning();
+  return row;
+}
+
+// ── Phase 2: vendors with rediscovery opt-in ───────────────────────────────
+export async function listVendorsWithRediscoveryOptIn(): Promise<DatasheetVendor[]> {
+  return await db.select().from(datasheetVendors)
+    .where(and(eq(datasheetVendors.rediscoveryOptIn, true), isNotNull(datasheetVendors.productIndexUrl)));
+}
+
+// ── Phase 2: bulk spec review ──────────────────────────────────────────────
+export async function bulkAcceptSpecs(specIds: string[]): Promise<number> {
+  if (specIds.length === 0) return 0;
+  const rows = await db.update(datasheetSpecs)
+    .set({ needsReview: false, reviewedAt: new Date(), updatedAt: new Date() })
+    .where(inArray(datasheetSpecs.id, specIds))
+    .returning({ id: datasheetSpecs.id });
+  return rows.length;
 }

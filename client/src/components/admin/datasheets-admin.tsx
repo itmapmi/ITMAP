@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Plus, Trash2, FileText, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { Upload, Plus, Trash2, FileText, AlertTriangle, CheckCircle2, RefreshCw, FileUp, Radar, CheckSquare, Square } from "lucide-react";
+import { useEffect } from "react";
 import type {
   DatasheetMarket, DatasheetVendor, DatasheetProduct,
   DatasheetSchemaDefinition, DatasheetSpec, Datasheet,
@@ -33,11 +34,15 @@ export default function DatasheetsAdmin() {
           <TabsTrigger value="vendors">Vendors</TabsTrigger>
           <TabsTrigger value="products">Products & Uploads</TabsTrigger>
           <TabsTrigger value="review">Review Queue</TabsTrigger>
+          <TabsTrigger value="import">Bulk Import</TabsTrigger>
+          <TabsTrigger value="rediscover">Rediscovery</TabsTrigger>
         </TabsList>
         <TabsContent value="markets"><MarketsTab /></TabsContent>
         <TabsContent value="vendors"><VendorsTab /></TabsContent>
         <TabsContent value="products"><ProductsTab /></TabsContent>
         <TabsContent value="review"><ReviewTab /></TabsContent>
+        <TabsContent value="import"><BulkImportTab /></TabsContent>
+        <TabsContent value="rediscover"><RediscoveryTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -185,6 +190,12 @@ function VendorsTab() {
     mutationFn: (id: string) => apiRequest(`/api/admin/datasheets/vendors/${id}`, "DELETE"),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/vendors"] }),
   });
+  const optInMut = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { rediscoveryOptIn?: boolean; productIndexUrl?: string | null } }) =>
+      apiRequest(`/api/admin/datasheets/vendors/${id}/rediscovery`, "PATCH", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/vendors"] }),
+    onError: (err: unknown) => toast({ title: "Failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
 
   return (
     <Card>
@@ -196,16 +207,48 @@ function VendorsTab() {
           <Input placeholder="Website (optional)" value={website} onChange={e => setWebsite(e.target.value)} />
           <Button onClick={() => createMut.mutate()} disabled={!name || !slug || createMut.isPending}><Plus className="h-4 w-4 mr-1" />Add</Button>
         </div>
+        <p className="text-xs text-muted-foreground mb-2">
+          Toggle <strong>Auto-rediscover</strong> + paste the vendor's product index URL to enrol them in the weekly re-extraction cron.
+        </p>
         <div className="space-y-2">
           {vendors.map(v => (
-            <div key={v.id} className="flex items-center justify-between p-2 border rounded">
-              <div><span className="font-medium">{v.name}</span> <span className="text-xs text-muted-foreground">/{v.slug}</span></div>
-              <Button variant="ghost" size="sm" onClick={() => { if (confirm(`Delete ${v.name}?`)) delMut.mutate(v.id); }}><Trash2 className="h-4 w-4" /></Button>
-            </div>
+            <VendorRow key={v.id} vendor={v}
+              onDelete={() => { if (confirm(`Delete ${v.name}?`)) delMut.mutate(v.id); }}
+              onSave={(body) => optInMut.mutate({ id: v.id, body })}
+            />
           ))}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function VendorRow({ vendor, onDelete, onSave }: {
+  vendor: DatasheetVendor;
+  onDelete: () => void;
+  onSave: (body: { rediscoveryOptIn?: boolean; productIndexUrl?: string | null }) => void;
+}) {
+  const [optIn, setOptIn] = useState(!!vendor.rediscoveryOptIn);
+  const [url, setUrl] = useState(vendor.productIndexUrl ?? "");
+  useEffect(() => { setOptIn(!!vendor.rediscoveryOptIn); setUrl(vendor.productIndexUrl ?? ""); }, [vendor.id, vendor.rediscoveryOptIn, vendor.productIndexUrl]);
+  const dirty = optIn !== !!vendor.rediscoveryOptIn || (url || "") !== (vendor.productIndexUrl ?? "");
+  return (
+    <div className="border rounded p-2">
+      <div className="flex items-center justify-between">
+        <div><span className="font-medium">{vendor.name}</span> <span className="text-xs text-muted-foreground">/{vendor.slug}</span></div>
+        <Button variant="ghost" size="sm" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+      </div>
+      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center mt-2">
+        <label className="text-xs flex items-center gap-1 cursor-pointer">
+          <input type="checkbox" checked={optIn} onChange={e => setOptIn(e.target.checked)} data-testid={`checkbox-optin-${vendor.slug}`} />
+          Auto-rediscover
+        </label>
+        <Input placeholder="Product index URL (e.g. https://vendor.com/products)" value={url} onChange={e => setUrl(e.target.value)} disabled={!optIn} />
+        <Button variant="outline" size="sm" disabled={!dirty} onClick={() => onSave({ rediscoveryOptIn: optIn, productIndexUrl: optIn ? (url || null) : null })}>
+          Save
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -363,20 +406,93 @@ type ReviewSpec = DatasheetSpec & { productName: string; vendorName: string; mar
 function ReviewTab() {
   const { toast } = useToast();
   const { data: specs = [], refetch } = useQuery<ReviewSpec[]>({ queryKey: ["/api/admin/datasheets/review-queue"] });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focused, setFocused] = useState(0);
+
+  // Drop selections that are no longer in the queue (e.g. after approve refetch).
+  useEffect(() => {
+    setSelected(prev => {
+      const stillThere = new Set(specs.map(s => s.id));
+      const next = new Set<string>();
+      prev.forEach(id => { if (stillThere.has(id)) next.add(id); });
+      return next;
+    });
+    if (focused >= specs.length) setFocused(Math.max(0, specs.length - 1));
+  }, [specs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateMut = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Partial<DatasheetSpec> }) =>
       apiRequest(`/api/admin/datasheets/specs/${id}`, "PATCH", body),
     onSuccess: () => { refetch(); toast({ title: "Spec approved" }); },
   });
+  const bulkMut = useMutation({
+    mutationFn: ({ ids, body }: { ids: string[]; body: Partial<DatasheetSpec> }) =>
+      apiRequest(`/api/admin/datasheets/specs/bulk`, "PATCH", { ids, body }),
+    onSuccess: (_, vars) => { refetch(); setSelected(new Set()); toast({ title: `${vars.ids.length} specs updated` }); },
+    onError: (err: unknown) => toast({ title: "Bulk update failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  // Keyboard navigation: ↑/↓ move focus, space toggles selection, A selects all,
+  // Enter approves currently-focused row as-is.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (specs.length === 0) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocused(f => Math.min(f + 1, specs.length - 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setFocused(f => Math.max(0, f - 1)); }
+      else if (e.key === " ") {
+        e.preventDefault();
+        const id = specs[focused]?.id; if (!id) return;
+        setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      } else if ((e.key === "a" || e.key === "A") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSelected(new Set(specs.map(s => s.id)));
+      } else if (e.key === "Enter") {
+        const s = specs[focused]; if (!s) return;
+        updateMut.mutate({ id: s.id, body: { rawValue: s.rawValue, unit: s.unit, needsReview: false } });
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [specs, focused, updateMut]);
+
+  const toggle = (id: string) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const ids = Array.from(selected);
 
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" />Specs needing review ({specs.length})</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-amber-600" />Specs needing review ({specs.length})</span>
+          <div className="flex items-center gap-2 text-xs font-normal">
+            <Button variant="outline" size="sm" onClick={() => setSelected(new Set(specs.map(s => s.id)))} data-testid="button-select-all">
+              <CheckSquare className="h-4 w-4 mr-1" />Select all
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSelected(new Set())} disabled={ids.length === 0}>
+              <Square className="h-4 w-4 mr-1" />Clear
+            </Button>
+            <Button size="sm" disabled={ids.length === 0 || bulkMut.isPending}
+              onClick={() => bulkMut.mutate({ ids, body: { needsReview: false } })}
+              data-testid="button-bulk-approve">
+              Approve {ids.length} as-is
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
       <CardContent>
         {specs.length === 0 && <p className="text-sm text-muted-foreground">No specs need review.</p>}
+        <p className="text-xs text-muted-foreground mb-2">Keyboard: ↑/↓ navigate · Space toggle · Cmd/Ctrl+A select all · Enter approve focused row.</p>
         <div className="space-y-2">
-          {specs.map(s => (
-            <ReviewRow key={s.id} spec={s} onApprove={(body) => updateMut.mutate({ id: s.id, body })} />
+          {specs.map((s, i) => (
+            <ReviewRow key={s.id}
+              spec={s}
+              focused={i === focused}
+              selected={selected.has(s.id)}
+              onToggleSelect={() => toggle(s.id)}
+              onFocus={() => setFocused(i)}
+              onApprove={(body) => updateMut.mutate({ id: s.id, body })}
+            />
           ))}
         </div>
       </CardContent>
@@ -384,13 +500,27 @@ function ReviewTab() {
   );
 }
 
-function ReviewRow({ spec, onApprove }: { spec: ReviewSpec; onApprove: (body: Partial<DatasheetSpec>) => void }) {
+function ReviewRow({ spec, focused, selected, onToggleSelect, onFocus, onApprove }: {
+  spec: ReviewSpec; focused: boolean; selected: boolean;
+  onToggleSelect: () => void; onFocus: () => void;
+  onApprove: (body: Partial<DatasheetSpec>) => void;
+}) {
   const [rawValue, setRawValue] = useState(spec.rawValue ?? "");
   const [unit, setUnit] = useState(spec.unit ?? "");
   return (
-    <div className="border rounded-md p-3">
-      <div className="text-xs text-muted-foreground mb-1">{spec.marketName} · {spec.vendorName} — {spec.productName}</div>
-      <div className="font-medium text-sm mb-2">{spec.categoryKey}.{spec.attributeKey} <span className="text-xs text-muted-foreground">(confidence {spec.confidence})</span></div>
+    <div
+      onClick={onFocus}
+      className={`border rounded-md p-3 ${focused ? "ring-2 ring-cyan-500/40 border-cyan-500/40" : ""} ${selected ? "bg-cyan-500/5" : ""}`}
+      data-testid={`row-review-${spec.id}`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={selected} onChange={onToggleSelect} onClick={e => e.stopPropagation()} data-testid={`checkbox-review-${spec.id}`} />
+          <div className="text-xs text-muted-foreground">{spec.marketName} · {spec.vendorName} — {spec.productName}</div>
+        </div>
+        <div className="text-xs text-muted-foreground">confidence {spec.confidence}</div>
+      </div>
+      <div className="font-medium text-sm mb-2">{spec.categoryKey}.{spec.attributeKey}</div>
       {spec.sourceQuote && <div className="text-xs italic text-muted-foreground mb-2">"{spec.sourceQuote}" {spec.sourcePage && `(p. ${spec.sourcePage})`}</div>}
       <div className="grid grid-cols-4 gap-2">
         <Input value={rawValue} onChange={e => setRawValue(e.target.value)} placeholder="Value" />
@@ -398,6 +528,185 @@ function ReviewRow({ spec, onApprove }: { spec: ReviewSpec; onApprove: (body: Pa
         <Button onClick={() => onApprove({ rawValue, unit, needsReview: false })}>Approve</Button>
         <Button variant="ghost" onClick={() => onApprove({ rawValue: null, needsReview: false })}>Mark not-found</Button>
       </div>
+    </div>
+  );
+}
+
+// ── Bulk CSV import ──────────────────────────────────────────────────────
+function BulkImportTab() {
+  const { toast } = useToast();
+  const { data: markets = [] } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/admin/datasheets/markets"] });
+  const [marketId, setMarketId] = useState("");
+  const [csv, setCsv] = useState("");
+  const [plan, setPlan] = useState<{ vendors: { name: string; slug: string; action: string }[]; products: { vendorSlug: string; name: string; slug: string; datasheetUrl: string | null; action: string; error?: string }[]; warnings: string[] } | null>(null);
+
+  const dryMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("/api/admin/datasheets/import/csv", "POST", { marketId, csv, dryRun: true });
+      return await res.json();
+    },
+    onSuccess: (data) => setPlan(data),
+    onError: (err: unknown) => toast({ title: "Plan failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+  const commitMut = useMutation({
+    mutationFn: () => apiRequest("/api/admin/datasheets/import/csv", "POST", { marketId, csv, dryRun: false }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/products", marketId] });
+      toast({ title: "Import complete" });
+      setCsv(""); setPlan(null);
+    },
+    onError: (err: unknown) => toast({ title: "Import failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><FileUp className="h-5 w-5" />Bulk CSV import</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Columns: <code>vendor_name,vendor_slug,product_name,product_slug,datasheet_url</code>.
+          Vendor rows are upserted by slug; product rows are created in the selected market. A datasheet URL is fetched and extracted in the background (admin-assisted — only public, robots-allowed URLs).
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Market</Label>
+            <Select value={marketId} onValueChange={setMarketId}>
+              <SelectTrigger><SelectValue placeholder="Select a market" /></SelectTrigger>
+              <SelectContent>{markets.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label>CSV content</Label>
+          <Textarea value={csv} onChange={e => setCsv(e.target.value)} rows={10} className="font-mono text-xs"
+            placeholder={`vendor_name,vendor_slug,product_name,product_slug,datasheet_url\nAcme,acme,Acme Switch X100,switch-x100,https://acme.com/sw/x100.pdf`} />
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => dryMut.mutate()} disabled={!marketId || !csv || dryMut.isPending}>Preview plan</Button>
+          <Button onClick={() => commitMut.mutate()} disabled={!plan || commitMut.isPending}
+            className="bg-gradient-to-r from-cyan-500 to-violet-600 text-white border-0" data-testid="button-commit-import">
+            {commitMut.isPending ? "Importing…" : "Commit import"}
+          </Button>
+        </div>
+        {plan && (
+          <div className="rounded-md border p-3 text-xs space-y-2 bg-slate-50">
+            {plan.warnings.length > 0 && <div className="text-amber-700">Warnings: {plan.warnings.join("; ")}</div>}
+            <div className="font-semibold">Vendors ({plan.vendors.length})</div>
+            {plan.vendors.map((v, i) => <div key={i}>{v.action} · {v.name} ({v.slug})</div>)}
+            <div className="font-semibold mt-2">Products ({plan.products.length})</div>
+            {plan.products.map((p, i) => (
+              <div key={i} className={p.error ? "text-rose-700" : ""}>
+                {p.action} · {p.vendorSlug}/{p.slug} {p.datasheetUrl ? `← ${p.datasheetUrl}` : ""} {p.error ? `(${p.error})` : ""}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Admin-assisted rediscovery ───────────────────────────────────────────
+type AgentRun = {
+  id: string; runType: string; vendorId: string; productId: string | null;
+  status: string; inputUrl: string | null; outputJson: unknown;
+  errorMessage: string | null; durationMs: number | null; createdAt: string;
+};
+type Candidate = { productName: string; candidateDatasheetUrl: string; confidence: number };
+
+function RediscoveryTab() {
+  const { toast } = useToast();
+  const { data: vendors = [] } = useQuery<DatasheetVendor[]>({ queryKey: ["/api/admin/datasheets/vendors"] });
+  const { data: runs = [] } = useQuery<AgentRun[]>({ queryKey: ["/api/admin/datasheets/agent-runs"] });
+  const [vendorId, setVendorId] = useState("");
+  const [productIndexUrl, setProductIndexUrl] = useState("");
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+
+  const runMut = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("/api/admin/datasheets/rediscover", "POST", { vendorId, productIndexUrl });
+      return await res.json() as { candidates: Candidate[] };
+    },
+    onSuccess: (data) => {
+      setCandidates(data.candidates);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/agent-runs"] });
+      toast({ title: `Found ${data.candidates.length} candidates` });
+    },
+    onError: (err: unknown) => toast({ title: "Failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  const approveMut = useMutation({
+    mutationFn: ({ productId, url }: { productId: string; url: string }) =>
+      apiRequest("/api/admin/datasheets/rediscover/approve", "POST", { vendorId, productId, url }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/datasheets/agent-runs"] });
+      toast({ title: "Datasheet ingested" });
+    },
+    onError: (err: unknown) => toast({ title: "Ingest failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  const { data: vendorProducts = [] } = useQuery<ProductWithVendor[]>({
+    queryKey: ["/api/admin/datasheets/products-for-vendor", vendorId],
+    queryFn: async () => vendorId ? (await apiRequest(`/api/admin/datasheets/products?vendorId=${vendorId}`, "GET")).json() : [],
+    enabled: !!vendorId,
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Radar className="h-5 w-5" />Admin-assisted rediscovery</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Fetches the vendor's product index page (robots.txt is honoured + a polite per-host delay is enforced), asks GPT-4.1 to surface likely datasheet URLs, then lets you assign each candidate to one of your existing products. Approval downloads and extracts via the standard pipeline.
+          </p>
+          <div className="grid grid-cols-[1fr_2fr_auto] gap-2">
+            <Select value={vendorId} onValueChange={setVendorId}>
+              <SelectTrigger><SelectValue placeholder="Vendor" /></SelectTrigger>
+              <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Input placeholder="https://vendor.com/products" value={productIndexUrl} onChange={e => setProductIndexUrl(e.target.value)} />
+            <Button onClick={() => runMut.mutate()} disabled={!vendorId || !productIndexUrl || runMut.isPending} data-testid="button-rediscover">
+              {runMut.isPending ? "Running…" : "Discover"}
+            </Button>
+          </div>
+          {candidates && (
+            <div className="border rounded-md p-3 space-y-2 text-sm">
+              <div className="font-semibold text-xs text-muted-foreground">Candidates</div>
+              {candidates.length === 0 && <div className="text-xs text-muted-foreground">No candidates returned.</div>}
+              {candidates.map((c, i) => (
+                <div key={i} className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-center">
+                  <div className="text-xs truncate" title={c.productName}>{c.productName}</div>
+                  <a href={c.candidateDatasheetUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-700 truncate underline">{c.candidateDatasheetUrl}</a>
+                  <Select onValueChange={(productId) => approveMut.mutate({ productId, url: c.candidateDatasheetUrl })}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Assign to product" /></SelectTrigger>
+                    <SelectContent>{vendorProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Badge variant="outline" className="text-xs">{Math.round(c.confidence * 100)}%</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="text-sm">Recent agent runs</CardTitle></CardHeader>
+        <CardContent>
+          {runs.length === 0 && <div className="text-xs text-muted-foreground">No runs yet.</div>}
+          <div className="space-y-1 text-xs">
+            {runs.slice(0, 30).map(r => (
+              <div key={r.id} className="flex items-center justify-between border-b py-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant={r.status === "success" ? "default" : r.status === "failed" ? "destructive" : "secondary"} className="text-xs">{r.status}</Badge>
+                  <span className="text-muted-foreground">{r.runType}</span>
+                  {r.inputUrl && <span className="truncate max-w-[480px]">{r.inputUrl}</span>}
+                  {r.errorMessage && <span className="text-rose-600 truncate max-w-[280px]">{r.errorMessage}</span>}
+                </div>
+                <span className="text-muted-foreground">{new Date(r.createdAt).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
