@@ -256,7 +256,8 @@ export function registerRfpRoutes(app: Express): void {
 
   app.patch("/api/me/rfps/:id/requirements/:reqId", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const updated = await updateRfpRequirement(req.params.id, req.params.reqId, req.body);
+      const patch = requirementSchema.partial().parse(req.body);
+      const updated = await updateRfpRequirement(req.params.id, req.params.reqId, patch);
       if (!updated) return res.status(404).json({ error: "Requirement not found in this RFP" });
       res.json(updated);
     } catch (err: any) { res.status(400).json({ error: err.message }); }
@@ -364,10 +365,11 @@ export function registerRfpRoutes(app: Express): void {
 
   app.patch("/api/me/rfps/:id/sections/:sectionId", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const updated = await updateRfpSection(req.params.id, req.params.sectionId, {
-        title: req.body.title,
-        body: req.body.body,
-      });
+      const patch = z.object({
+        title: z.string().min(1).max(200).optional(),
+        body: z.string().max(50000).optional(),
+      }).parse(req.body);
+      const updated = await updateRfpSection(req.params.id, req.params.sectionId, patch);
       if (!updated) return res.status(404).json({ error: "Section not found in this RFP" });
       res.json(updated);
     } catch (err: any) { res.status(400).json({ error: err.message }); }
@@ -382,11 +384,12 @@ export function registerRfpRoutes(app: Express): void {
 
   app.patch("/api/me/rfps/:id/shortlist/:entryId", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const updated = await updateRfpShortlistEntry(req.params.id, req.params.entryId, {
-        isIncluded: req.body.isIncluded,
-        rationale: req.body.rationale,
-        rank: req.body.rank,
-      });
+      const patch = z.object({
+        isIncluded: z.boolean().optional(),
+        rationale: z.string().max(2000).nullish(),
+        rank: z.number().int().min(1).max(999).optional(),
+      }).parse(req.body);
+      const updated = await updateRfpShortlistEntry(req.params.id, req.params.entryId, patch);
       if (!updated) return res.status(404).json({ error: "Shortlist entry not found in this RFP" });
       res.json(updated);
     } catch (err: any) { res.status(400).json({ error: err.message }); }
@@ -518,5 +521,35 @@ export function registerRfpRoutes(app: Express): void {
   app.get("/api/admin/user-rfps", requireAdmin, async (_req, res) => {
     try { res.json(await listAllRfpProjectsWithMeta()); }
     catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // Admin read-only export — admins can download any user's generated RFP
+  // in PDF/DOCX/XLSX for review without being able to mutate the underlying
+  // data. No /api/admin/user-rfps/:id PATCH or DELETE is exposed.
+  app.get("/api/admin/user-rfps/:id/export/:fmt", requireAdmin, async (req, res) => {
+    try {
+      const fmt = req.params.fmt;
+      if (!["pdf", "docx", "xlsx"].includes(fmt)) {
+        return res.status(400).json({ error: "Unknown export format" });
+      }
+      const inputs = await gatherExportInputs(req.params.id);
+      const filename = sanitizeFilename(inputs.project.title);
+      if (fmt === "pdf") {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}.pdf"`);
+        return res.send(await exportRfpPdf(inputs));
+      }
+      if (fmt === "docx") {
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}.docx"`);
+        return res.send(await exportRfpDocx(inputs));
+      }
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}.xlsx"`);
+      res.send(await exportRfpXlsx(inputs));
+    } catch (err: any) {
+      console.error("[RFP] admin export error:", err);
+      res.status(500).json({ error: err.message });
+    }
   });
 }

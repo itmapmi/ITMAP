@@ -249,6 +249,103 @@ export async function runStartupMigrations(): Promise<void> {
       END $$
     `);
 
+    // 19. RFP Builder tables (additive, IF NOT EXISTS so safe across envs).
+    //     Drizzle definitions live in shared/schema.ts; this mirrors the
+    //     authoritative shape so first-boot environments without a manual
+    //     db:push can still serve /api/me/rfps* without relation-not-found.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rfp_projects (
+        id                 varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_user_id      varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        market_id          varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        title              text NOT NULL,
+        status             text NOT NULL DEFAULT 'draft',
+        customer_profile   jsonb NOT NULL DEFAULT '{}'::jsonb,
+        generated_markdown text,
+        generated_at       timestamp,
+        error              text,
+        created_at         timestamp DEFAULT now(),
+        updated_at         timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS rfp_projects_owner_idx ON rfp_projects(owner_user_id);
+      CREATE INDEX IF NOT EXISTS rfp_projects_market_idx ON rfp_projects(market_id);
+
+      CREATE TABLE IF NOT EXISTS rfp_interview_messages (
+        id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        rfp_id      varchar NOT NULL REFERENCES rfp_projects(id) ON DELETE CASCADE,
+        role        text NOT NULL,
+        content     text NOT NULL,
+        extracted   jsonb,
+        created_at  timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS rfp_messages_rfp_idx ON rfp_interview_messages(rfp_id);
+
+      CREATE TABLE IF NOT EXISTS rfp_requirements (
+        id             varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        rfp_id         varchar NOT NULL REFERENCES rfp_projects(id) ON DELETE CASCADE,
+        kind           text NOT NULL,
+        feature_id     varchar,
+        label          text NOT NULL,
+        description    text,
+        priority       text NOT NULL DEFAULT 'should',
+        weight         integer NOT NULL DEFAULT 3,
+        expected_value text,
+        display_order  integer NOT NULL DEFAULT 0,
+        created_at     timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS rfp_requirements_rfp_idx ON rfp_requirements(rfp_id);
+
+      CREATE TABLE IF NOT EXISTS rfp_sections (
+        id            varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        rfp_id        varchar NOT NULL REFERENCES rfp_projects(id) ON DELETE CASCADE,
+        section_key   text NOT NULL,
+        title         text NOT NULL,
+        body          text,
+        data          jsonb,
+        display_order integer NOT NULL DEFAULT 0,
+        created_at    timestamp DEFAULT now(),
+        updated_at    timestamp DEFAULT now(),
+        CONSTRAINT rfp_sections_rfp_key_unique UNIQUE (rfp_id, section_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS rfp_shortlist (
+        id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        rfp_id      varchar NOT NULL REFERENCES rfp_projects(id) ON DELETE CASCADE,
+        vendor_id   varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        fit_score   numeric,
+        rationale   text,
+        is_included boolean NOT NULL DEFAULT true,
+        rank        integer NOT NULL DEFAULT 0,
+        created_at  timestamp DEFAULT now(),
+        CONSTRAINT rfp_shortlist_rfp_vendor_unique UNIQUE (rfp_id, vendor_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rfp_outreach (
+        id                varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        rfp_id            varchar NOT NULL REFERENCES rfp_projects(id) ON DELETE CASCADE,
+        vendor_id         varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        status            text NOT NULL DEFAULT 'not_started',
+        contact_name      text,
+        contact_email     text,
+        notes             text,
+        response_text     text,
+        response_file_url text,
+        invited_at        timestamp,
+        responded_at      timestamp,
+        created_at        timestamp DEFAULT now(),
+        updated_at        timestamp DEFAULT now(),
+        CONSTRAINT rfp_outreach_rfp_vendor_unique UNIQUE (rfp_id, vendor_id)
+      );
+    `);
+
+    // 20. Backfill response columns on rfp_outreach if the table pre-existed
+    //     from an earlier rollout that lacked these columns.
+    await client.query(`
+      ALTER TABLE rfp_outreach
+        ADD COLUMN IF NOT EXISTS response_text text,
+        ADD COLUMN IF NOT EXISTS response_file_url text
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
