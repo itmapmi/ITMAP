@@ -33,8 +33,6 @@ import NotFound from "@/pages/not-found";
 import DatasheetsIndexPage from "@/pages/datasheets/index";
 import DatasheetComparePage from "@/pages/datasheets/compare";
 import DatasheetSavedPage from "@/pages/datasheets/saved";
-import MyDatasheetMarketsPage from "@/pages/datasheets/my-markets";
-import MyDatasheetMarketDetailPage from "@/pages/datasheets/my-market-detail";
 import DatasheetSharePage from "@/pages/datasheets/share-view";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
@@ -100,9 +98,6 @@ function Router() {
         <Route path="/datasheets" component={DatasheetsIndexPage} />
         <Route path="/me/comparisons" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
         <Route path="/datasheets/saved" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
-        <Route path="/me/datasheet-markets" component={() => <ProtectedRoute component={MyDatasheetMarketsPage} />} />
-        <Route path="/me/datasheet-markets/:id" component={() => <ProtectedRoute component={MyDatasheetMarketDetailPage} />} />
-        <Route path="/me/datasheet-markets/:id/products" component={() => <ProtectedRoute component={MyDatasheetMarketDetailPage} />} />
         <Route path="/share/comparison/:token" component={DatasheetSharePage} />
         <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />

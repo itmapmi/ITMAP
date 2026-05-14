@@ -3,7 +3,6 @@
  *
  * Additive module registered alongside the original /server/routes/datasheets.ts
  * to keep that file from getting too large. Adds:
- *   - End-user custom markets (/api/me/datasheet-markets/*)
  *   - Share + digest endpoints on saved comparisons
  *   - Public share-by-token GET
  *   - Admin CSV bulk import
@@ -17,19 +16,16 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../auth";
 import { ObjectStorageService } from "../objectStorage";
 import {
-  listDatasheetMarkets, getDatasheetMarket, createDatasheetMarket, updateDatasheetMarket, deleteDatasheetMarket,
-  listPrivateDatasheetMarketsForUser, countPrivateMarketsForUser, countPrivateMarketsForUserSince,
-  countUserPrivateProductsSince, countUserPrivateDatasheetsSince, countProductsInMarket,
-  createDatasheetVendor,
-  listProductsByMarket, getProduct, createProduct, updateProduct, deleteProduct,
+  getDatasheetMarket,
+  getProduct,
   getCurrentDatasheetForProduct, createDatasheet, updateDatasheet,
-  unsetCurrentDatasheets, getNextVersionForProduct, getDatasheet,
+  unsetCurrentDatasheets, getNextVersionForProduct,
   listSpecsForDatasheet, listSpecsForDatasheets, replaceSpecsForDatasheet,
   getCurrentDatasheetsForProducts, getProductsByIds,
   getComparisonForOwner, setComparisonShareToken, setComparisonDigest,
   setComparisonShareSnapshot, clearComparisonShareSnapshot,
   getComparisonByShareToken,
-  createChangeAlert, listChangeAlertsForProductsSince, listRecentChangeAlerts,
+  createChangeAlert, listRecentChangeAlerts,
   updateDatasheetVendor, getDatasheetVendor,
   bulkAcceptSpecs, bulkRejectSpecs, createAgentRun, listAgentRuns,
 } from "../storage/datasheets";
@@ -39,289 +35,17 @@ import { diffSpecs } from "../datasheets/diff";
 import { sendChangeAlertEmail, getAdminAlertRecipients } from "../datasheets/email";
 import { parseCsv, planCsvImport, commitCsvImport } from "../datasheets/csvImport";
 import { rediscoverDatasheetCandidates, downloadUrlToBuffer } from "../datasheets/rediscovery";
-import { withConcurrencySlot } from "../datasheets/concurrency";
-
-const PRIVATE_MAX_TOTAL = 10;
-const PRIVATE_MAX_PER_24H = 5;
-const PRIVATE_PRODUCTS_PER_MARKET = 50;
-const PRIVATE_PRODUCTS_PER_24H = 100;
-const PRIVATE_DATASHEETS_PER_24H = 50;
-// Match the per-user concurrent cap used by the end-user Market Builder.
-const PRIVATE_CONCURRENT_OPS = 3;
 
 type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
 const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
 const errMsg = (err: unknown): string => err instanceof Error ? err.message : String(err);
 
-const schemaDefSchema: z.ZodType<DatasheetSchemaDefinition> = z.object({
-  groups: z.array(z.object({
-    key: z.string().min(1),
-    label: z.string().min(1),
-    attributes: z.array(z.object({
-      key: z.string().min(1),
-      label: z.string().min(1),
-      type: z.enum(["number", "text", "boolean", "enum"]),
-      unit: z.string().optional(),
-      higherIsBetter: z.boolean().optional(),
-      options: z.array(z.string()).optional(),
-      description: z.string().optional(),
-    })),
-  })),
-});
-
-const meMarketBodySchema = z.object({
-  name: z.string().min(1).max(200),
-  slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
-  category: z.string().nullish(),
-  description: z.string().nullish(),
-  schemaDefinition: schemaDefSchema,
-});
-
 export function registerDatasheetPhase2Routes(app: Express): void {
 
-  // ── USER: list/create/get/patch/delete private datasheet markets ─────────
-  app.get("/api/me/datasheet-markets", requireAuth, async (req, res) => {
-    try { res.json(await listPrivateDatasheetMarketsForUser(asAuthed(req).user.id)); }
-    catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  app.post("/api/me/datasheet-markets", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const totalCount = await countPrivateMarketsForUser(userId);
-      if (totalCount >= PRIVATE_MAX_TOTAL) {
-        return res.status(429).json({ error: `Limit reached (${PRIVATE_MAX_TOTAL} private datasheet markets per user).` });
-      }
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const recent = await countPrivateMarketsForUserSince(userId, since);
-      if (recent >= PRIVATE_MAX_PER_24H) {
-        return res.status(429).json({ error: `Daily limit reached (${PRIVATE_MAX_PER_24H} markets / 24 hrs).` });
-      }
-      const body = meMarketBodySchema.parse(req.body);
-      // Namespace the slug per-user so two users can both pick e.g. "switches".
-      const namespacedSlug = `u-${userId.slice(0, 8)}-${body.slug}`;
-      const m = await createDatasheetMarket({
-        ...body,
-        slug: namespacedSlug,
-        ownerUserId: userId,
-        visibility: "private",
-        isVisible: true,
-      });
-      res.status(201).json(m);
-    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
-  });
-
-  app.get("/api/me/datasheet-markets/:id", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId || m.visibility !== "private") {
-        return res.status(404).json({ error: "Market not found" });
-      }
-      const products = await listProductsByMarket(m.id);
-      res.json({ market: m, products });
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  app.patch("/api/me/datasheet-markets/:id", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-      const body = meMarketBodySchema.partial().omit({ slug: true }).parse(req.body);
-      const updated = await updateDatasheetMarket(req.params.id, body);
-      res.json(updated);
-    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
-  });
-
-  app.delete("/api/me/datasheet-markets/:id", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-      await deleteDatasheetMarket(req.params.id);
-      res.status(204).send();
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  // ── USER: create a vendor scoped to their account ────────────────────────
-  // Vendors don't have an ownerUserId column, so we namespace the slug with a
-  // per-user prefix to avoid collisions and make the user-origin auditable.
-  app.post("/api/me/datasheet-markets/:id/vendors", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-      const body = z.object({
-        name: z.string().min(1).max(200),
-        slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
-        website: z.string().url().nullish(),
-      }).parse(req.body);
-      const namespacedSlug = `u-${userId.slice(0, 8)}-${body.slug}`;
-      const v = await createDatasheetVendor({
-        name: body.name,
-        slug: namespacedSlug,
-        website: body.website ?? null,
-      });
-      res.status(201).json(v);
-    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
-  });
-
-  // ── USER: products within their private market ───────────────────────────
-  app.post("/api/me/datasheet-markets/:id/products", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-
-      // Per-market product cap.
-      const perMarket = await countProductsInMarket(m.id);
-      if (perMarket >= PRIVATE_PRODUCTS_PER_MARKET) {
-        return res.status(429).json({ error: `Limit reached (${PRIVATE_PRODUCTS_PER_MARKET} products per private market).` });
-      }
-      // Per-user 24-hour product creation cap.
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const recent = await countUserPrivateProductsSince(userId, since);
-      if (recent >= PRIVATE_PRODUCTS_PER_24H) {
-        return res.status(429).json({ error: `Daily limit reached (${PRIVATE_PRODUCTS_PER_24H} products / 24 hrs).` });
-      }
-
-      const body = z.object({
-        vendorId: z.string().min(1),
-        name: z.string().min(1).max(200),
-        slug: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/),
-        subCategory: z.string().nullish(),
-        formFactor: z.string().nullish(),
-        productPageUrl: z.string().url().nullish(),
-      }).parse(req.body);
-      const p = await createProduct({ ...body, marketId: m.id });
-      res.status(201).json(p);
-    } catch (err) { res.status(400).json({ error: errMsg(err) }); }
-  });
-
-  app.delete("/api/me/datasheet-markets/:id/products/:productId", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const m = await getDatasheetMarket(req.params.id);
-      if (!m || m.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-      const product = await getProduct(req.params.productId);
-      if (!product || product.marketId !== m.id) return res.status(404).json({ error: "Product not found" });
-      await deleteProduct(product.id);
-      res.status(204).send();
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  // ── PUBLIC: list vendors (used by user market-detail product form) ──────
-  // Returns only public (non-user-scoped) vendors. Authenticated callers also
-  // get their own user-scoped vendors merged in, so the /me UI can pick from
-  // both the global catalogue and vendors they created.
-  app.get("/api/datasheets/vendors", async (req, res) => {
-    try {
-      const { listDatasheetVendors, listDatasheetVendorsForUser } = await import("../storage/datasheets");
-      const publicVendors = await listDatasheetVendors();
-      const user = (req as Request & { user?: { id?: string } }).user;
-      if (user?.id) {
-        const own = await listDatasheetVendorsForUser(user.id);
-        const seen = new Set(publicVendors.map(v => v.id));
-        for (const v of own) if (!seen.has(v.id)) publicVendors.push(v);
-      }
-      res.json(publicVendors);
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  // ── USER: list datasheets for own product ───────────────────────────────
-  app.get("/api/me/datasheet-markets/:id/products/:productId/datasheets", requireAuth, async (req, res) => {
-    try {
-      const userId = asAuthed(req).user.id;
-      const market = await getDatasheetMarket(req.params.id);
-      if (!market || market.ownerUserId !== userId) return res.status(404).json({ error: "Market not found" });
-      const product = await getProduct(req.params.productId);
-      if (!product || product.marketId !== market.id) return res.status(404).json({ error: "Product not found" });
-      const { listDatasheetsForProduct } = await import("../storage/datasheets");
-      res.json(await listDatasheetsForProduct(product.id));
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  });
-
-  // ── USER: upload + extract datasheet for own product ────────────────────
-  app.post("/api/me/datasheet-markets/:id/products/:productId/datasheets", requireAuth, async (req, res) => {
-    // Per-user concurrent op cap. Heavy extraction runs INSIDE the slot so the
-    // server cannot be saturated by a single user spamming uploads.
-    const userIdForSlot = asAuthed(req).user.id;
-    try {
-      await withConcurrencySlot(userIdForSlot, PRIVATE_CONCURRENT_OPS, () => handleMeDatasheetUpload(req, res));
-    } catch (err) {
-      const status = (err as Error & { status?: number }).status ?? 500;
-      if (!res.headersSent) res.status(status).json({ error: errMsg(err) });
-    }
-  });
-
-  async function handleMeDatasheetUpload(req: Request, res: import("express").Response): Promise<void> {
-    try {
-      const userId = asAuthed(req).user.id;
-      const market = await getDatasheetMarket(req.params.id);
-      if (!market || market.ownerUserId !== userId) { res.status(404).json({ error: "Market not found" }); return; }
-      const product = await getProduct(req.params.productId);
-      if (!product || product.marketId !== market.id) { res.status(404).json({ error: "Product not found" }); return; }
-
-      // Per-user 24-hour datasheet upload cap.
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const recent = await countUserPrivateDatasheetsSince(userId, since);
-      if (recent >= PRIVATE_DATASHEETS_PER_24H) {
-        return res.status(429).json({ error: `Daily limit reached (${PRIVATE_DATASHEETS_PER_24H} datasheet uploads / 24 hrs).` });
-      }
-
-      const body = z.object({ uploadURL: z.string().url() }).parse(req.body);
-
-      const objectStorage = new ObjectStorageService();
-      const fileUrl = objectStorage.normalizeObjectEntityPath(body.uploadURL);
-      const objectFile = await objectStorage.getObjectEntityFile(fileUrl);
-      const [buffer] = await objectFile.download();
-      const fileHash = crypto.createHash("sha256").update(buffer).digest("hex");
-      const previous = await getCurrentDatasheetForProduct(product.id);
-      const version = await getNextVersionForProduct(product.id);
-      const datasheet = await createDatasheet({
-        productId: product.id,
-        fileUrl,
-        fileHash,
-        version,
-        previousDatasheetId: previous?.id ?? null,
-        extractionStatus: "extracting",
-        isCurrent: false,
-      });
-      try {
-        const result = await extractDatasheet({
-          fileBuffer: buffer,
-          schema: market.schemaDefinition as DatasheetSchemaDefinition,
-          productName: product.name,
-          datasheetId: datasheet.id,
-        });
-        await replaceSpecsForDatasheet(datasheet.id, result.specs);
-        if (previous) await unsetCurrentDatasheets(product.id);
-        await updateDatasheet(datasheet.id, {
-          extractionStatus: "extracted",
-          isCurrent: true,
-          rawText: result.rawText.slice(0, 200_000),
-          pageCount: result.pageCount,
-          extractedAt: new Date(),
-        });
-        if (previous) {
-          const prevSpecs = await listSpecsForDatasheet(previous.id);
-          const nextSpecs = await listSpecsForDatasheet(datasheet.id);
-          const diff = diffSpecs(prevSpecs, nextSpecs);
-          if (diff) {
-            await createChangeAlert({
-              datasheetId: datasheet.id, productId: product.id,
-              changeType: diff.changeType, severity: diff.severity, changedFields: diff.changedFields,
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[Me datasheet extract] failed:", err);
-        await updateDatasheet(datasheet.id, { extractionStatus: "failed", extractionError: errMsg(err) });
-      }
-      res.status(201).json(await getDatasheet(datasheet.id));
-    } catch (err) { res.status(500).json({ error: errMsg(err) }); }
-  }
+  // NOTE: End-user-built datasheet markets were removed. The Datasheet
+  // Selector is now admin-curated only. End users browse public markets,
+  // run comparisons on them, and can save/share those comparisons via the
+  // endpoints below.
 
   // ── USER: share + digest on comparison ──────────────────────────────────
   app.post("/api/me/datasheet-comparisons/:id/share", requireAuth, async (req, res) => {
