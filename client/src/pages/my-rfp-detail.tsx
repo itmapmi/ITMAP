@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Sparkles, FileDown, CheckCircle2, Clock } from "lucide-react";
+import { Send, Sparkles, FileDown, CheckCircle2, Clock, Upload } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navigation from "@/components/navigation";
+import { ObjectUploader } from "@/components/ObjectUploader";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection } from "@shared/schema";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
@@ -364,11 +365,34 @@ export default function MyRfpDetailPage() {
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))}
                             className="col-span-8 bg-slate-900 border-white/10 text-xs min-h-[60px]"
                             data-testid={`input-response-text-${s.vendorId}`} />
-                          <Input placeholder="Response file URL (https://…)"
-                            defaultValue={row?.responseFileUrl || ""}
-                            onBlur={(e) => upsertOutreachMutation.mutate(base({ responseFileUrl: e.target.value }))}
-                            className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
-                            data-testid={`input-response-file-${s.vendorId}`} />
+                          <div className="col-span-4 space-y-1">
+                            <ObjectUploader
+                              maxNumberOfFiles={1}
+                              maxFileSize={26214400}
+                              onGetUploadParameters={async () => {
+                                const r = await apiRequestJson("/api/objects/upload", "POST") as { uploadURL: string };
+                                return { method: "PUT" as const, url: r.uploadURL };
+                              }}
+                              onComplete={(result) => {
+                                const url = result?.successful?.[0]?.uploadURL;
+                                if (!url) return;
+                                upsertOutreachMutation.mutate(base({ responseFileUrl: url }));
+                                toast({ title: "Response file uploaded" });
+                              }}
+                              buttonClassName="w-full bg-slate-900 border border-white/10 hover:bg-slate-800 h-8 text-xs px-2"
+                            >
+                              <span className="flex items-center gap-1 text-xs" data-testid={`button-upload-response-${s.vendorId}`}>
+                                <Upload className="w-3 h-3" /> Upload response file
+                              </span>
+                            </ObjectUploader>
+                            {row?.responseFileUrl && (
+                              <a href={row.responseFileUrl} target="_blank" rel="noreferrer"
+                                className="block text-[10px] text-cyan-400 underline truncate"
+                                data-testid={`link-response-file-${s.vendorId}`}>
+                                View uploaded file
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

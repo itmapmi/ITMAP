@@ -23,6 +23,15 @@ export async function getRfpProject(id: string): Promise<RfpProject | undefined>
   return row;
 }
 
+// Owner-scoped fetch: returns the RFP only when it belongs to the supplied user.
+// Used by route middleware so ownership is enforced at the storage boundary,
+// not just at the route layer.
+export async function getRfpProjectForOwner(id: string, ownerUserId: string): Promise<RfpProject | undefined> {
+  const [row] = await db.select().from(rfpProjects)
+    .where(and(eq(rfpProjects.id, id), eq(rfpProjects.ownerUserId, ownerUserId)));
+  return row;
+}
+
 export async function listRfpProjectsForUser(userId: string): Promise<RfpProject[]> {
   return await db.select().from(rfpProjects)
     .where(eq(rfpProjects.ownerUserId, userId))

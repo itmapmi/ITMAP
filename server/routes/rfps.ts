@@ -10,7 +10,8 @@ import { z } from "zod";
 import { requireAuth, requireAdmin } from "../auth";
 import { storage } from "../storage";
 import {
-  createRfpProject, getRfpProject, listRfpProjectsForUser, listRfpProjectsForUserAndMarket,
+  createRfpProject, getRfpProject, getRfpProjectForOwner,
+  listRfpProjectsForUser, listRfpProjectsForUserAndMarket,
   updateRfpProject, deleteRfpProject, countActiveRfpsForUser, listAllRfpProjectsWithMeta,
   listRfpMessages, appendRfpMessage,
   listRfpRequirements, createRfpRequirement, updateRfpRequirement, deleteRfpRequirement,
@@ -30,6 +31,7 @@ import { generateRfp, generateRfpSection, seedRequirementsFromProfile, enrichSho
 import type { SectionKey } from "../rfp/generator";
 import { scoreVendors, type ScoredVendor } from "../rfp/scorer";
 import { exportRfpPdf, exportRfpDocx, exportRfpXlsx } from "../rfp/exports";
+import { ObjectStorageService } from "../objectStorage";
 import {
   countRfpsCreatedLast24hForUser,
 } from "../storage/rfps";
@@ -72,14 +74,22 @@ const requirementSchema = z.object({
   displayOrder: z.number().int().optional(),
 });
 
+// Typed request helpers — avoid `as any` casts when reading auth/middleware state.
+type AuthedRequest = Request & { user: NonNullable<Request["user"]> };
+type RfpRequest = AuthedRequest & { rfp: Awaited<ReturnType<typeof getRfpProject>> & {} };
+const asAuthed = (req: Request): AuthedRequest => req as AuthedRequest;
+const asRfpReq = (req: Request): RfpRequest => req as RfpRequest;
+
 async function requireRfpOwner(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const user = req.user as any;
-  const rfp = await getRfpProject(req.params.id);
-  if (!rfp) { res.status(404).json({ error: "RFP not found" }); return; }
-  if (rfp.ownerUserId !== user.id) {
-    res.status(403).json({ error: "You do not own this RFP" }); return;
+  const userId = asAuthed(req).user.id;
+  const rfp = await getRfpProjectForOwner(req.params.id, userId);
+  if (!rfp) {
+    // Don't leak existence to non-owners — treat unknown and unowned identically.
+    const exists = await getRfpProject(req.params.id);
+    res.status(exists ? 403 : 404).json({ error: exists ? "You do not own this RFP" : "RFP not found" });
+    return;
   }
-  (req as any).rfp = rfp;
+  (req as RfpRequest).rfp = rfp;
   next();
 }
 
@@ -88,7 +98,7 @@ export function registerRfpRoutes(app: Express): void {
 
   app.get("/api/me/rfps", requireAuth, async (req, res) => {
     try {
-      const user = req.user as any;
+      const user = asAuthed(req).user;
       const marketId = (req.query.marketId as string) || undefined;
       const rows = marketId
         ? await listRfpProjectsForUserAndMarket(user.id, marketId)
@@ -100,7 +110,7 @@ export function registerRfpRoutes(app: Express): void {
   // Status check — used by the UI to gate the "Start RFP" button.
   app.get("/api/me/rfps-status", requireAuth, async (req, res) => {
     try {
-      const user = req.user as any;
+      const user = asAuthed(req).user;
       const [hasKey, active, recent] = await Promise.all([
         userHasOpenAiKey(user.id),
         countActiveRfpsForUser(user.id),
@@ -118,7 +128,7 @@ export function registerRfpRoutes(app: Express): void {
 
   app.post("/api/me/rfps", requireAuth, async (req, res) => {
     try {
-      const user = req.user as any;
+      const user = asAuthed(req).user;
       const data = createSchema.parse(req.body);
       if (!(await userHasOpenAiKey(user.id))) return sendLlmKeyError(res);
       const active = await countActiveRfpsForUser(user.id);
@@ -148,8 +158,7 @@ export function registerRfpRoutes(app: Express): void {
   });
 
   app.get("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
-    const rfp = (req as any).rfp;
-    res.json(rfp);
+    res.json(asRfpReq(req).rfp);
   });
 
   app.delete("/api/me/rfps/:id", requireAuth, requireRfpOwner, async (req, res) => {
@@ -174,8 +183,8 @@ export function registerRfpRoutes(app: Express): void {
 
   app.post("/api/me/rfps/:id/messages", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const user = req.user as any;
-      const rfp = (req as any).rfp;
+      const user = asAuthed(req).user;
+      const rfp = asRfpReq(req).rfp;
       const { content } = messageSchema.parse(req.body);
 
       // Save user message first
@@ -235,7 +244,7 @@ export function registerRfpRoutes(app: Express): void {
   // exists today (the user may not want a full chat).
   app.post("/api/me/rfps/:id/skip-interview", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const rfp = (req as any).rfp;
+      const rfp = asRfpReq(req).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
       res.json({ ready: true, profile });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -277,7 +286,7 @@ export function registerRfpRoutes(app: Express): void {
 
   app.post("/api/me/rfps/:id/generate", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const rfp = (req as any).rfp;
+      const rfp = asRfpReq(req).rfp;
       const profile = (rfp.customerProfile || {}) as CustomerProfile;
       const readiness = profileReadiness(profile);
       if (!readiness.ready) {
@@ -344,7 +353,7 @@ export function registerRfpRoutes(app: Express): void {
   // exec summary. Does NOT re-score the shortlist.
   app.post("/api/me/rfps/:id/sections/:sectionKey/regenerate", requireAuth, requireRfpOwner, async (req, res) => {
     try {
-      const rfp = (req as any).rfp;
+      const rfp = asRfpReq(req).rfp;
       const key = req.params.sectionKey as SectionKey;
       if (!VALID_SECTION_KEYS.includes(key)) {
         return res.status(400).json({ error: `Unknown section key. Valid: ${VALID_SECTION_KEYS.join(", ")}` });
@@ -429,10 +438,21 @@ export function registerRfpRoutes(app: Express): void {
         contactEmail: z.string().email().nullish().or(z.literal("")),
         notes: z.string().nullish(),
         responseText: z.string().nullish(),
-        responseFileUrl: z.string().url().nullish().or(z.literal("")),
+        responseFileUrl: z.string().nullish().or(z.literal("")),
         invitedAt: z.coerce.date().nullish(),
         respondedAt: z.coerce.date().nullish(),
       }).parse(req.body);
+      // If the buyer uploaded a file via the ObjectUploader, the URL is a
+      // signed GCS upload URL. Normalize it to a stable /objects/... path
+      // before persisting so the link survives signature expiry.
+      let fileUrl: string | null = data.responseFileUrl || null;
+      if (fileUrl && /storage\.googleapis\.com|googleusercontent\.com/.test(fileUrl)) {
+        try {
+          fileUrl = new ObjectStorageService().normalizeObjectEntityPath(fileUrl);
+        } catch (e) {
+          console.warn("[RFP] failed to normalize outreach file URL:", e);
+        }
+      }
       const row = await upsertRfpOutreach({
         rfpId: req.params.id,
         vendorId: data.vendorId,
@@ -441,7 +461,7 @@ export function registerRfpRoutes(app: Express): void {
         contactEmail: data.contactEmail || null,
         notes: data.notes ?? null,
         responseText: data.responseText ?? null,
-        responseFileUrl: data.responseFileUrl || null,
+        responseFileUrl: fileUrl,
         invitedAt: data.invitedAt ?? null,
         respondedAt: data.respondedAt ?? null,
       });
