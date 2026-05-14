@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import type { Market, Vendor } from '@shared/schema';
 
-async function findChromiumPath(): Promise<string | undefined> {
+export async function findChromiumPath(): Promise<string | undefined> {
   if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
 
   const candidates = [
