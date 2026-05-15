@@ -57,9 +57,28 @@ export function registerFileRoutes(app: Express): void {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ error: "Failed to get upload URL" });
+    } catch (error: any) {
+      // Surface the full underlying failure to the deployment logs so prod
+      // misconfigurations (missing PRIVATE_OBJECT_DIR, sidecar 401 when the
+      // Object Storage integration isn't linked to the deployment, etc.) are
+      // diagnosable without code changes.
+      console.error("[POST /api/objects/upload] FAILED", {
+        message: error?.message,
+        sidecarStatus: error?.sidecarStatus,
+        sidecarBody: error?.sidecarBody,
+        bucketName: error?.bucketName,
+        envSummary: {
+          PRIVATE_OBJECT_DIR_set: Boolean(process.env.PRIVATE_OBJECT_DIR),
+          PUBLIC_OBJECT_SEARCH_PATHS_set: Boolean(process.env.PUBLIC_OBJECT_SEARCH_PATHS),
+          DEFAULT_OBJECT_STORAGE_BUCKET_ID_set: Boolean(process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID),
+          NODE_ENV: process.env.NODE_ENV,
+        },
+        stack: error?.stack,
+      });
+      res.status(500).json({
+        error: "Failed to get upload URL",
+        detail: error?.message ?? String(error),
+      });
     }
   });
 

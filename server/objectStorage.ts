@@ -323,10 +323,19 @@ async function signObjectURL({
     }
   );
   if (!response.ok) {
-    throw new Error(
+    // Capture the sidecar response body for diagnostics — when the Object
+    // Storage integration is not linked to the runtime (common in deployments
+    // missing the integration), the sidecar returns details in the body.
+    let sidecarBody = "";
+    try { sidecarBody = (await response.text()).slice(0, 2000); } catch { /* ignore */ }
+    const err = new Error(
       `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
+        `bucket=${bucketName}, method=${method}, sidecar_body=${sidecarBody || "<empty>"}`
     );
+    (err as any).sidecarStatus = response.status;
+    (err as any).sidecarBody = sidecarBody;
+    (err as any).bucketName = bucketName;
+    throw err;
   }
 
   const { signed_url: signedURL } = await response.json();
