@@ -36,9 +36,12 @@ const STORAGE_ARRAYS_SCHEMA: DatasheetSchemaDefinition = {
 };
 
 export async function seedDatasheets(): Promise<void> {
+  // Only seed on a brand-new install. Once the admin has any datasheet market
+  // (including ones they created themselves), never re-create the demo content
+  // — even if they deleted the original seed market on purpose.
   const existing = await listDatasheetMarkets();
-  if (existing.some(m => m.slug === "enterprise-storage-arrays")) {
-    console.log("[Datasheet seed] Market already seeded — skipping.");
+  if (existing.length > 0) {
+    console.log("[Datasheet seed] Datasheet markets already exist — skipping seed.");
     return;
   }
   const market = await createDatasheetMarket({
