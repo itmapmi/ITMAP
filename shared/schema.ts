@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -46,6 +46,9 @@ export const markets = pgTable("markets", {
   shortDescription: text("short_description"),
   category: text("category"),
   imageUrl: text("image_url"),
+  // Legacy Vendor Evaluation chart image (kept to preserve historical data; not actively populated)
+  quadrantImageUrl: text("quadrant_image_url"),
+  quadrantImageUpdatedAt: timestamp("quadrant_image_updated_at"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   // Ownership: null = platform-owned (admin-created public market).
   ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
@@ -218,6 +221,11 @@ export const newsArticles = pgTable("news_articles", {
   opinion: text("opinion"), // Full editorial analysis
   vendorContext: text("vendor_context"), // Competitive context paragraphs
   keyTakeaway: text("key_takeaway"), // One-sentence actionable insight
+  // Legacy impact-scoring fields (kept to preserve 326 rows of historical analysis; not actively populated)
+  impactScore: integer("impact_score"),
+  impactConfidence: numeric("impact_confidence"),
+  impactReasons: text("impact_reasons").array(),
+  citationId: text("citation_id"),
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
