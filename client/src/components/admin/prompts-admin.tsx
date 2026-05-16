@@ -58,7 +58,7 @@ export function PromptsAdmin() {
   );
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/prompts/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/admin/prompts/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/prompts"] });
       toast({ title: "Prompt deleted" });
@@ -239,9 +239,9 @@ function PromptDialog({
   const saveMut = useMutation({
     mutationFn: async () => {
       if (creating || !prompt?.id) {
-        return apiRequest("POST", "/api/admin/prompts", { name, description, stage, promptType, content });
+        return apiRequest("/api/admin/prompts", "POST", { name, description, stage, promptType, content });
       }
-      return apiRequest("PATCH", `/api/admin/prompts/${prompt.id}`, { name, description, content });
+      return apiRequest(`/api/admin/prompts/${prompt.id}`, "PATCH", { name, description, content });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/prompts"] });
