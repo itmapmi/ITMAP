@@ -1983,8 +1983,12 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   apiBase={apiBase}
                 />
 
-                {/* Prompt customization — commentary stages only */}
-                {activeStage === 3 && (
+                {/* Prompt customization — Vendor Evaluation: shown on both
+                    Stage 2 (scoring) and Stage 3 (commentary) so the user can
+                    pick a custom prompt from the repository at either step.
+                    The per-criterion selections (scoring + commentary) are
+                    stored per-job and apply when the respective stage runs. */}
+                {(activeStage === 2 || activeStage === 3) && (
                   <PromptSelector
                     jobId={activeJob!.id}
                     stageKind="vendor_evaluation"
