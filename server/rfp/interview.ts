@@ -42,6 +42,40 @@ const ARRAY_SLOTS: ReadonlySet<SlotKey> = new Set<SlotKey>([
   "integrations", "complianceRequirements", "slaTargets", "successMetrics",
 ]);
 
+export function isArraySlot(key: SlotKey): boolean {
+  return ARRAY_SLOTS.has(key);
+}
+
+/**
+ * Matches buyer answers that explicitly decline to provide a value
+ * (no, none, n/a, unsure, skip, idk, etc.). Used to mark a slot as
+ * acknowledged-empty so the interview can move on instead of looping
+ * on the same question.
+ */
+const NEGATION_RE = /^\s*(no|none|n\/?a|nothing|unsure|not\s+sure|skip|idk|i\s+don'?t\s+know|don'?t\s+know|n)\s*[.!]?\s*$/i;
+export function isNegationAnswer(text: string): boolean {
+  if (!text) return false;
+  return NEGATION_RE.test(text.trim());
+}
+
+/**
+ * Apply a negation answer to the slot the assistant just asked about,
+ * marking it filled with a sentinel value so readiness can advance.
+ * Returns a new profile (does not mutate input).
+ */
+export function applyNegationToSlot(
+  profile: CustomerProfile,
+  slotKey: SlotKey,
+): CustomerProfile {
+  const next: CustomerProfile = { ...profile };
+  if (ARRAY_SLOTS.has(slotKey)) {
+    (next as Record<string, unknown>)[slotKey] = ["none"];
+  } else {
+    (next as Record<string, unknown>)[slotKey] = "unspecified";
+  }
+  return next;
+}
+
 export function normalizeCustomerProfile(profile: CustomerProfile): CustomerProfile {
   const out: CustomerProfile = { ...profile };
   for (const k of ARRAY_SLOTS) {

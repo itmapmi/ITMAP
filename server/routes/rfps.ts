@@ -25,6 +25,7 @@ import { getRfpLlmClient, MissingLlmKeyError } from "../rfp/llm";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   profileReadiness, normalizeCustomerProfile,
+  isNegationAnswer, applyNegationToSlot, isSlotFilled,
   type CustomerProfile,
   type ReadinessResult,
 } from "../rfp/interview";
@@ -205,9 +206,15 @@ export function registerRfpRoutes(app: Express): void {
       await appendRfpMessage({ rfpId: rfp.id, role: "user", content, extracted: null });
       await updateRfpProject(rfp.id, { status: "interviewing" });
 
-      const profile = (rfp.customerProfile || {}) as CustomerProfile;
+      const profile = normalizeCustomerProfile((rfp.customerProfile || {}) as CustomerProfile);
       const market = await buildRfpMarketContext(rfp.marketId);
       const llm = await getRfpLlmClient(user.id);
+
+      // The slot the assistant most likely just asked about (the system
+      // prompt instructs the LLM to ask the next missing slot in order).
+      // We capture this BEFORE extraction so we can apply a negation
+      // sentinel below if the buyer's reply is "no/none/unsure/etc.".
+      const slotJustAsked = nextMissingSlot(profile);
 
       let newProfile: CustomerProfile = { ...profile };
       try {
@@ -226,6 +233,16 @@ export function registerRfpRoutes(app: Express): void {
       }
 
       newProfile = normalizeCustomerProfile(newProfile);
+
+      // If the buyer explicitly declined to answer (no, none, unsure, n/a,
+      // idk, skip) AND the LLM extractor couldn't fill the slot that was
+      // just asked, mark it acknowledged-empty so the interview can move
+      // on. Without this, "None"/"No"/"Unsure" answers leave critical
+      // array slots (integrations, complianceRequirements, mustHaves, …)
+      // permanently empty and the assistant loops on the same question.
+      if (slotJustAsked && isNegationAnswer(content) && !isSlotFilled(newProfile, slotJustAsked.key)) {
+        newProfile = applyNegationToSlot(newProfile, slotJustAsked.key);
+      }
       const readiness = profileReadiness(newProfile);
 
       // Short-circuit the LLM once readiness is met.
