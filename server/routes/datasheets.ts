@@ -18,6 +18,7 @@ import {
 } from "../storage/datasheets";
 import type { DatasheetSchemaDefinition } from "@shared/schema";
 import { extractDatasheet } from "../datasheets/extractor";
+import { inferSchemaFromPdfs } from "../datasheets/schemaInference";
 import { diffSpecs } from "../datasheets/diff";
 import { generateDatasheetChatResponse } from "../datasheets/chat";
 
@@ -395,6 +396,44 @@ export function registerDatasheetRoutes(app: Express): void {
   app.delete("/api/admin/datasheets/markets/:id", requireAdmin, async (req, res) => {
     try { await deleteDatasheetMarket(req.params.id); res.status(204).send(); }
     catch (err) { res.status(500).json({ error: errMsg(err) }); }
+  });
+
+  // ── ADMIN: Schema inference from sample PDFs ────────────────────────────
+  // Accepts 1–3 PDFs as base64 in JSON (Express body limit is 50MB, so a
+  // typical PDF set fits). Returns a proposed schema + a suggested category
+  // and the product names the AI detected in each PDF for sanity-checking.
+  // This is a *suggestion* — the admin reviews and saves it via the normal
+  // POST /api/admin/datasheets/markets endpoint.
+  const inferSchemaBodySchema = z.object({
+    pdfs: z.array(z.object({
+      filename: z.string().min(1).max(300),
+      base64: z.string().min(1),
+    })).min(1).max(3),
+    marketHint: z.string().max(200).optional(),
+  });
+
+  app.post("/api/admin/datasheets/markets/infer-schema", requireAdmin, async (req, res) => {
+    try {
+      const body = inferSchemaBodySchema.parse(req.body);
+      const pdfs = body.pdfs.map(p => {
+        // Strip any data-URL prefix the client might have included.
+        const b64 = p.base64.replace(/^data:[^;]+;base64,/, "");
+        const buf = Buffer.from(b64, "base64");
+        // Light sanity check: PDFs start with "%PDF-".
+        if (buf.length < 100 || buf.slice(0, 5).toString() !== "%PDF-") {
+          throw new Error(`${p.filename} does not look like a valid PDF`);
+        }
+        if (buf.length > 25 * 1024 * 1024) {
+          throw new Error(`${p.filename} exceeds 25MB limit`);
+        }
+        return { filename: p.filename, buffer: buf };
+      });
+      const result = await inferSchemaFromPdfs({ pdfs, marketHint: body.marketHint });
+      res.json(result);
+    } catch (err) {
+      console.error("[Datasheet Schema Inference] failed:", err);
+      res.status(400).json({ error: errMsg(err) });
+    }
   });
 
   // ── ADMIN: Vendors ──────────────────────────────────────────────────────

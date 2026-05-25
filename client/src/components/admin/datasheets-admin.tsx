@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Plus, Trash2, FileText, AlertTriangle, CheckCircle2, RefreshCw, FileUp, Radar, CheckSquare, Square } from "lucide-react";
+import { Upload, Plus, Trash2, FileText, AlertTriangle, CheckCircle2, RefreshCw, FileUp, Radar, CheckSquare, Square, Sparkles, X } from "lucide-react";
 import { useEffect } from "react";
 import type {
   DatasheetMarket, DatasheetVendor, DatasheetProduct,
@@ -143,9 +143,13 @@ function MarketDialog({ market, open, onClose }: { market: DatasheetMarket | nul
             <Label htmlFor="visible">Visible to users</Label>
           </div>
           <div>
-            <Label>Schema definition (JSON)</Label>
-            <Textarea value={schemaText} onChange={e => setSchemaText(e.target.value)} rows={16} className="font-mono text-xs" />
-            <p className="text-xs text-muted-foreground mt-1">Shape: {`{ groups: [{ key, label, attributes: [{ key, label, type: "number"|"text"|"boolean"|"enum", unit?, higherIsBetter?, options? }] }] }`}</p>
+            <Label>Schema definition</Label>
+            <SchemaEditor
+              schemaText={schemaText}
+              onChange={setSchemaText}
+              marketHint={category || name}
+              onCategorySuggested={(c) => { if (!category && c) setCategory(c); }}
+            />
           </div>
         </div>
         <DialogFooter>
@@ -154,6 +158,163 @@ function MarketDialog({ market, open, onClose }: { market: DatasheetMarket | nul
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── Schema editor with AI-from-PDF inference ────────────────────────────
+interface InferResult {
+  schema: DatasheetSchemaDefinition;
+  suggestedMarketName: string | null;
+  suggestedCategory: string | null;
+  sourceCount: number;
+  detectedProducts: string[];
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const result = r.result as string;
+      resolve(result.replace(/^data:[^;]+;base64,/, ""));
+    };
+    r.onerror = () => reject(new Error("Failed to read file"));
+    r.readAsDataURL(file);
+  });
+}
+
+function SchemaEditor({ schemaText, onChange, marketHint, onCategorySuggested }: {
+  schemaText: string;
+  onChange: (v: string) => void;
+  marketHint?: string;
+  onCategorySuggested?: (category: string) => void;
+}) {
+  const { toast } = useToast();
+  const [tab, setTab] = useState<"infer" | "json">("infer");
+  const [files, setFiles] = useState<File[]>([]);
+  const [lastResult, setLastResult] = useState<InferResult | null>(null);
+
+  const inferMut = useMutation({
+    mutationFn: async () => {
+      if (files.length === 0) throw new Error("Add at least one sample PDF");
+      const pdfs = await Promise.all(files.map(async f => ({
+        filename: f.name,
+        base64: await fileToBase64(f),
+      })));
+      const res = await apiRequest("/api/admin/datasheets/markets/infer-schema", "POST", {
+        pdfs, marketHint: marketHint || undefined,
+      });
+      return await res.json() as InferResult;
+    },
+    onSuccess: (result) => {
+      setLastResult(result);
+      onChange(JSON.stringify(result.schema, null, 2));
+      if (result.suggestedCategory) onCategorySuggested?.(result.suggestedCategory);
+      const attrCount = result.schema.groups.reduce((n, g) => n + g.attributes.length, 0);
+      toast({ title: "Schema inferred", description: `${result.schema.groups.length} groups, ${attrCount} attributes from ${result.sourceCount} PDF${result.sourceCount > 1 ? "s" : ""}` });
+    },
+    onError: (err: unknown) => toast({ title: "Inference failed", description: err instanceof Error ? err.message : "", variant: "destructive" }),
+  });
+
+  const parsed = (() => {
+    try { return JSON.parse(schemaText) as DatasheetSchemaDefinition; } catch { return null; }
+  })();
+  const groupCount = parsed?.groups?.length ?? 0;
+  const attrCount = parsed?.groups?.reduce((n, g) => n + g.attributes.length, 0) ?? 0;
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    const incoming = Array.from(list).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    const merged = [...files, ...incoming].slice(0, 3);
+    setFiles(merged);
+  }
+
+  return (
+    <Tabs value={tab} onValueChange={(v) => setTab(v as "infer" | "json")} className="mt-1">
+      <TabsList>
+        <TabsTrigger value="infer" data-testid="tab-schema-infer">
+          <Sparkles className="h-3 w-3 mr-1" /> From sample PDF
+        </TabsTrigger>
+        <TabsTrigger value="json" data-testid="tab-schema-json">Manual JSON</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="infer" className="space-y-3 pt-2">
+        <p className="text-xs text-muted-foreground">
+          Upload 1–3 vendor datasheet PDFs from this category. The AI will propose a comparable schema (groups, attributes, units, higher-is-better) you can edit in the JSON tab.
+        </p>
+
+        <label className="block border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-slate-50 transition">
+          <input type="file" accept="application/pdf,.pdf" multiple className="hidden"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+            data-testid="input-infer-pdfs" />
+          <FileUp className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+          <div className="text-sm">Click to add PDFs ({files.length}/3 selected)</div>
+        </label>
+
+        {files.length > 0 && (
+          <div className="space-y-1">
+            {files.map((f, i) => (
+              <div key={i} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded">
+                <span className="flex items-center gap-2 truncate">
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="text-muted-foreground shrink-0">({(f.size / 1024 / 1024).toFixed(1)} MB)</span>
+                </span>
+                <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                  className="text-muted-foreground hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Button
+          type="button"
+          onClick={() => inferMut.mutate()}
+          disabled={files.length === 0 || inferMut.isPending}
+          className="w-full"
+          data-testid="button-infer-schema"
+        >
+          {inferMut.isPending
+            ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Inferring schema (10–30s)…</>
+            : <><Sparkles className="h-4 w-4 mr-2" />Infer schema from {files.length || "…"} PDF{files.length === 1 ? "" : "s"}</>}
+        </Button>
+
+        {lastResult && (
+          <div className="border rounded-md p-3 bg-emerald-50 text-xs space-y-1">
+            <div className="flex items-center gap-1 font-medium text-emerald-900">
+              <CheckCircle2 className="h-3 w-3" /> Schema applied
+            </div>
+            {lastResult.suggestedCategory && (
+              <div><span className="text-muted-foreground">Suggested category:</span> {lastResult.suggestedCategory}</div>
+            )}
+            {lastResult.detectedProducts.length > 0 && (
+              <div><span className="text-muted-foreground">Detected products:</span> {lastResult.detectedProducts.join(", ")}</div>
+            )}
+            <div className="text-muted-foreground">Switch to <strong>Manual JSON</strong> tab to review or edit before saving.</div>
+          </div>
+        )}
+
+        {parsed && groupCount > 0 && !lastResult && (
+          <div className="text-xs text-muted-foreground">
+            Current schema: {groupCount} group{groupCount === 1 ? "" : "s"}, {attrCount} attribute{attrCount === 1 ? "" : "s"}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="json" className="space-y-1 pt-2">
+        <Textarea
+          value={schemaText}
+          onChange={e => onChange(e.target.value)}
+          rows={16}
+          className="font-mono text-xs"
+          data-testid="textarea-schema-json"
+        />
+        <p className="text-xs text-muted-foreground">
+          Shape: {`{ groups: [{ key, label, attributes: [{ key, label, type: "number"|"text"|"boolean"|"enum", unit?, higherIsBetter?, options? }] }] }`}
+        </p>
+      </TabsContent>
+    </Tabs>
   );
 }
 
