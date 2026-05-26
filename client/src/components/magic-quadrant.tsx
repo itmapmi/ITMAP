@@ -987,35 +987,56 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       // Leader line from dot to label. Inserted before the circle so the dot
       // visually covers the line's tip. The label end of the line lands just
       // outside the text bounding box so it doesn't pierce the glyphs.
-      // `side` is determined at render time; when the user drags the label,
-      // we treat it as "custom" and pick the nearest edge of the text box.
+      // For dragged ("custom") labels we compute the actual text bounding box
+      // and attach the line to whichever EDGE of that box faces the dot, so
+      // the line shortens when the label is dragged toward the dot and
+      // lengthens when dragged away — and never overlaps the text.
+      const textWidth = vendor.name.length * 7.5; // matches calculateLabelPosition
       const leaderEndpointFor = (
         side: string,
         labelX: number,
         labelY: number,
         dotX: number,
         dotY: number,
+        anchor: string,
       ): { x: number, y: number } => {
+        // Resolve the actual text bounding box from (labelX, labelY) + anchor.
+        // labelY is the text baseline; the visible box sits roughly from
+        // labelY - 12 (top) to labelY + 2 (bottom).
+        let boxLeft: number, boxRight: number;
+        if (anchor === "end") {
+          boxRight = labelX;
+          boxLeft  = labelX - textWidth;
+        } else if (anchor === "middle") {
+          boxLeft  = labelX - textWidth / 2;
+          boxRight = labelX + textWidth / 2;
+        } else { // "start" (default, used for custom/right)
+          boxLeft  = labelX;
+          boxRight = labelX + textWidth;
+        }
+        const boxTop    = labelY - 12;
+        const boxBottom = labelY + 2;
+        const boxMidY   = (boxTop + boxBottom) / 2;
+        const boxMidX   = (boxLeft + boxRight) / 2;
+
         switch (side) {
-          case "right":  return { x: labelX - 3,  y: labelY - 3 };
-          case "left":   return { x: labelX + 3,  y: labelY - 3 };
-          case "top":    return { x: labelX,      y: labelY + 4 };
-          case "bottom": return { x: labelX,      y: labelY - 14 };
+          case "right":  return { x: boxLeft - 3,   y: boxMidY }; // dot sits left of label
+          case "left":   return { x: boxRight + 3,  y: boxMidY }; // dot sits right of label
+          case "top":    return { x: boxMidX,       y: boxBottom + 3 }; // dot sits below label
+          case "bottom": return { x: boxMidX,       y: boxTop - 3 };    // dot sits above label
           default: {
-            // Dragged / custom: connect to whichever side of the text box
-            // faces the dot, treating the label center as (labelX, labelY-5).
-            const cx = labelX;
-            const cy = labelY - 5;
-            const dx = dotX - cx;
-            const dy = dotY - cy;
+            // Dragged / custom: attach to whichever edge of the actual text
+            // box faces the dot.
+            const dx = dotX - boxMidX;
+            const dy = dotY - boxMidY;
             if (Math.abs(dx) > Math.abs(dy)) {
               return dx > 0
-                ? { x: labelX + 3, y: cy }   // dot is to the right
-                : { x: labelX - 3, y: cy };  // dot is to the left
+                ? { x: boxRight + 3, y: boxMidY }   // dot to the right of label
+                : { x: boxLeft  - 3, y: boxMidY };  // dot to the left of label
             } else {
               return dy > 0
-                ? { x: labelX, y: labelY + 4 }   // dot is below
-                : { x: labelX, y: labelY - 14 }; // dot is above
+                ? { x: boxMidX, y: boxBottom + 3 }  // dot below label
+                : { x: boxMidX, y: boxTop    - 3 }; // dot above label
             }
           }
         }
@@ -1026,6 +1047,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         labelPos.labelY,
         labelPos.dotX,
         labelPos.dotY,
+        labelPos.anchor,
       );
       const leaderLine = labelGroup.insert("line", ".vendor-dot")
         .attr("class", "vendor-leader")
@@ -1072,6 +1094,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
               newY,
               labelPos.dotX,
               labelPos.dotY,
+              "start", // dragged labels are always left-anchored
             );
             leaderLine.attr("x1", endpoint.x).attr("y1", endpoint.y);
           })
