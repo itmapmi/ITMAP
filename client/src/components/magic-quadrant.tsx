@@ -1041,6 +1041,13 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
           }
         }
       };
+      // The leader is only meaningful when the label sits visibly away from
+      // its dot. If the label is touching the dot (or worse, overlapping it)
+      // we hide the line entirely so we don't get a stub poking out the
+      // "wrong" side of the dot. ~8px ≈ dot radius (6) + a small gap.
+      const DOT_RADIUS = 6;
+      const LEADER_MIN_VISIBLE = 8;
+
       const leaderStart = leaderEndpointFor(
         labelPos.side,
         labelPos.labelX,
@@ -1049,6 +1056,15 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         labelPos.dotY,
         labelPos.anchor,
       );
+      const computeLeaderVisibility = (
+        endpointX: number,
+        endpointY: number,
+      ): "visible" | "hidden" => {
+        const dx = labelPos.dotX - endpointX;
+        const dy = labelPos.dotY - endpointY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        return length >= DOT_RADIUS + LEADER_MIN_VISIBLE ? "visible" : "hidden";
+      };
       const leaderLine = labelGroup.insert("line", ".vendor-dot")
         .attr("class", "vendor-leader")
         .attr("x1", leaderStart.x)
@@ -1058,7 +1074,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         .attr("stroke", "#94a3b8")
         .attr("stroke-width", 1)
         .attr("stroke-linecap", "round")
-        .style("pointer-events", "none");
+        .style("pointer-events", "none")
+        .style("visibility", computeLeaderVisibility(leaderStart.x, leaderStart.y));
 
       // Add the text label positioned around the dot
       const fontSize = isMobile ? 9 : 11;
@@ -1096,7 +1113,10 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
               labelPos.dotY,
               "start", // dragged labels are always left-anchored
             );
-            leaderLine.attr("x1", endpoint.x).attr("y1", endpoint.y);
+            leaderLine
+              .attr("x1", endpoint.x)
+              .attr("y1", endpoint.y)
+              .style("visibility", computeLeaderVisibility(endpoint.x, endpoint.y));
           })
           .on("end", function(event) {
             // Save the new position locally
