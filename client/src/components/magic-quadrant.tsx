@@ -795,110 +795,15 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .style("text-shadow", textShadow)
       .text("Evolving Players");
 
-    // Enhanced collision detection with stronger separation for overlapping vendors
-    const applyCollisionDetection = (vendors: VendorWithScores[]): Array<VendorWithScores & { adjustedX: number, adjustedY: number }> => {
-      const minDistance = 45; // Increased minimum distance for better separation
-      const iterations = 20; // More iterations for better convergence
-      
-      const vendorsWithPositions = vendors.map(vendor => ({
-        ...vendor,
-        adjustedX: vendor.executionScore,
-        adjustedY: vendor.viabilityScore,
-        originalX: vendor.executionScore,
-        originalY: vendor.viabilityScore,
-      }));
-
-      // Multi-pass collision detection with stronger forces
-      for (let iter = 0; iter < iterations; iter++) {
-        let hasChanges = false;
-        
-        for (let i = 0; i < vendorsWithPositions.length; i++) {
-          for (let j = i + 1; j < vendorsWithPositions.length; j++) {
-            const v1 = vendorsWithPositions[i];
-            const v2 = vendorsWithPositions[j];
-            
-            const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
-            const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance < minDistance && distance > 0) {
-              hasChanges = true;
-              const angle = Math.atan2(dy, dx);
-              
-              // Use stronger force for closer vendors
-              const overlap = minDistance - distance;
-              const force = Math.min(overlap / minDistance * 0.6, 0.8); // Stronger force, capped at 0.8
-              
-              const offsetX = Math.cos(angle) * force * minDistance / 2;
-              const offsetY = Math.sin(angle) * force * minDistance / 2;
-              
-              // Convert back to data coordinates
-              const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
-              const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
-              
-              // Increased maximum deviation for better separation
-              const maxDeviation = 15; // Allow larger deviation to avoid overlaps
-              const newX1 = v1.adjustedX + offsetXData;
-              const newY1 = v1.adjustedY + offsetYData;
-              const newX2 = v2.adjustedX - offsetXData;
-              const newY2 = v2.adjustedY - offsetYData;
-              
-              // Apply constraints with bias towards original positions and preserve quadrant boundaries
-              const constrainToQuadrant = (originalVal: number, newVal: number, maxDev: number): number => {
-                // Determine which side of 50 the original value is on and constrain to same side
-                const boundedVal = Math.min(originalVal + maxDev, Math.max(originalVal - maxDev, newVal));
-                if (originalVal < 50) {
-                  return Math.min(49.5, Math.max(0, boundedVal)); // Keep in left/bottom quadrant
-                } else {
-                  return Math.min(100, Math.max(50.5, boundedVal)); // Keep in right/top quadrant
-                }
-              };
-              
-              v1.adjustedX = constrainToQuadrant(v1.originalX, newX1, maxDeviation);
-              v1.adjustedY = constrainToQuadrant(v1.originalY, newY1, maxDeviation);
-              v2.adjustedX = constrainToQuadrant(v2.originalX, newX2, maxDeviation);
-              v2.adjustedY = constrainToQuadrant(v2.originalY, newY2, maxDeviation);
-            }
-          }
-        }
-        
-        // Early termination if no changes
-        if (!hasChanges) break;
-      }
-      
-      // Final pass: ensure no vendor is completely hidden
-      for (let i = 0; i < vendorsWithPositions.length; i++) {
-        for (let j = i + 1; j < vendorsWithPositions.length; j++) {
-          const v1 = vendorsWithPositions[i];
-          const v2 = vendorsWithPositions[j];
-          
-          const dx = xScale(v1.adjustedX) - xScale(v2.adjustedX);
-          const dy = yScale(v1.adjustedY) - yScale(v2.adjustedY);
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          // If still too close, apply emergency separation
-          if (distance < 20) {
-            const angle = Math.random() * 2 * Math.PI; // Random direction
-            const emergencyOffset = 25; // Minimum emergency separation
-            
-            const offsetX = Math.cos(angle) * emergencyOffset / 2;
-            const offsetY = Math.sin(angle) * emergencyOffset / 2;
-            
-            const offsetXData = (offsetX / (width - margin.left - margin.right)) * 100;
-            const offsetYData = -(offsetY / (height - margin.top - margin.bottom)) * 100;
-            
-            v1.adjustedX = Math.min(100, Math.max(0, v1.adjustedX + offsetXData));
-            v1.adjustedY = Math.min(100, Math.max(0, v1.adjustedY + offsetYData));
-            v2.adjustedX = Math.min(100, Math.max(0, v2.adjustedX - offsetXData));
-            v2.adjustedY = Math.min(100, Math.max(0, v2.adjustedY - offsetYData));
-          }
-        }
-      }
-      
-      return vendorsWithPositions;
-    };
-
-    const adjustedVendors = applyCollisionDetection(vendorsWithScores);
+    // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
+    // No layout fudging — labels move to avoid overlap, dots never do. A thin
+    // leader line is drawn from each label back to its dot so the association
+    // stays obvious even when the label sits a little distance away.
+    const adjustedVendors = vendorsWithScores.map(vendor => ({
+      ...vendor,
+      adjustedX: vendor.executionScore,
+      adjustedY: vendor.viabilityScore,
+    }));
 
     // Add enhanced vendor dots with collision detection
     const vendorGroups = svg.selectAll(".vendor-group")
@@ -1078,7 +983,61 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         : calculateLabelPosition(vendor, index, adjustedVendors);
       
       const labelGroup = vendorGroups.filter((d, i) => i === index);
-      
+
+      // Leader line from dot to label. Inserted before the circle so the dot
+      // visually covers the line's tip. The label end of the line lands just
+      // outside the text bounding box so it doesn't pierce the glyphs.
+      // `side` is determined at render time; when the user drags the label,
+      // we treat it as "custom" and pick the nearest edge of the text box.
+      const leaderEndpointFor = (
+        side: string,
+        labelX: number,
+        labelY: number,
+        dotX: number,
+        dotY: number,
+      ): { x: number, y: number } => {
+        switch (side) {
+          case "right":  return { x: labelX - 3,  y: labelY - 3 };
+          case "left":   return { x: labelX + 3,  y: labelY - 3 };
+          case "top":    return { x: labelX,      y: labelY + 4 };
+          case "bottom": return { x: labelX,      y: labelY - 14 };
+          default: {
+            // Dragged / custom: connect to whichever side of the text box
+            // faces the dot, treating the label center as (labelX, labelY-5).
+            const cx = labelX;
+            const cy = labelY - 5;
+            const dx = dotX - cx;
+            const dy = dotY - cy;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              return dx > 0
+                ? { x: labelX + 3, y: cy }   // dot is to the right
+                : { x: labelX - 3, y: cy };  // dot is to the left
+            } else {
+              return dy > 0
+                ? { x: labelX, y: labelY + 4 }   // dot is below
+                : { x: labelX, y: labelY - 14 }; // dot is above
+            }
+          }
+        }
+      };
+      const leaderStart = leaderEndpointFor(
+        labelPos.side,
+        labelPos.labelX,
+        labelPos.labelY,
+        labelPos.dotX,
+        labelPos.dotY,
+      );
+      const leaderLine = labelGroup.insert("line", ".vendor-dot")
+        .attr("class", "vendor-leader")
+        .attr("x1", leaderStart.x)
+        .attr("y1", leaderStart.y)
+        .attr("x2", labelPos.dotX)
+        .attr("y2", labelPos.dotY)
+        .attr("stroke", "#94a3b8")
+        .attr("stroke-width", 1)
+        .attr("stroke-linecap", "round")
+        .style("pointer-events", "none");
+
       // Add the text label positioned around the dot
       const fontSize = isMobile ? 9 : 11;
       const labelText = labelGroup.append("text")
@@ -1104,6 +1063,17 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             
             // Update text position
             labelText.attr("x", newX).attr("y", newY);
+            // Recompute leader endpoint side-aware so it attaches to the
+            // edge of the text box facing the dot, not the same spot we
+            // first rendered it at.
+            const endpoint = leaderEndpointFor(
+              "custom",
+              newX,
+              newY,
+              labelPos.dotX,
+              labelPos.dotY,
+            );
+            leaderLine.attr("x1", endpoint.x).attr("y1", endpoint.y);
           })
           .on("end", function(event) {
             // Save the new position locally
