@@ -283,6 +283,60 @@ async function commentCriterion(
   return allCommentary;
 }
 
+// ── Spread enforcement ────────────────────────────────────────────────────
+// LLMs frequently return clustered scores (e.g. everyone at 7.0–7.5) even
+// when explicitly told to differentiate. When that happens, we stretch the
+// scores apart around their mean while preserving rank order so the chart
+// shows meaningful vendor separation. Anchor vendors (Phase 2) are skipped.
+
+const MIN_STD_DEV = 1.2;       // below this, scores are considered too clustered
+const MAX_STRETCH_FACTOR = 4;  // cap so we never over-stretch tiny variations
+
+function computeStdDev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function enforceSpread(
+  scores: Array<{ vendorName: string; score: number }>,
+  criterionName: string,
+): Array<{ vendorName: string; score: number }> {
+  if (scores.length < 3) return scores; // need ≥3 points to meaningfully stretch
+
+  const values = scores.map(s => s.score);
+  const stdDev = computeStdDev(values);
+
+  if (stdDev >= MIN_STD_DEV) {
+    console.log(`[Stage2 spread] "${criterionName}": std-dev ${stdDev.toFixed(2)} ≥ ${MIN_STD_DEV} — no stretch needed`);
+    return scores;
+  }
+
+  // Stretch factor needed to reach MIN_STD_DEV, capped at MAX_STRETCH_FACTOR.
+  // If stdDev is effectively zero, we can't stretch meaningfully — return as-is.
+  if (stdDev < 0.01) {
+    console.warn(`[Stage2 spread] "${criterionName}": all scores identical (std-dev ${stdDev.toFixed(2)}) — cannot stretch; leaving untouched`);
+    return scores;
+  }
+
+  const stretchFactor = Math.min(MIN_STD_DEV / stdDev, MAX_STRETCH_FACTOR);
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+
+  const stretched = scores.map(s => {
+    const stretchedScore = mean + (s.score - mean) * stretchFactor;
+    const clamped = Math.max(0, Math.min(10, stretchedScore));
+    return { vendorName: s.vendorName, score: Math.round(clamped * 10) / 10 };
+  });
+
+  const newStdDev = computeStdDev(stretched.map(s => s.score));
+  console.log(
+    `[Stage2 spread] "${criterionName}": stretched ×${stretchFactor.toFixed(2)} ` +
+    `(mean ${mean.toFixed(2)}, std-dev ${stdDev.toFixed(2)} → ${newStdDev.toFixed(2)})`
+  );
+  return stretched;
+}
+
 // ── Auto-computed criteria — never sent to LLM ────────────────────────────
 
 const AUTO_COMPUTED = new Set(["Product Capabilities", "ISV Ecosystem"]);
@@ -330,8 +384,12 @@ export async function runStage2Scoring(
       marketName, stage1, criterion, rationale, scoringPrompt, llmConfig, sourceContext
     );
 
+    // Enforce minimum spread so clustered LLM output doesn't pile dots on the chart.
+    // Order is preserved; only the distance between scores is widened.
+    const spread = enforceSpread(raw, criterion.name);
+
     for (const v of stage1.vendors) {
-      const s = matchByVendorName(raw, v.name);
+      const s = matchByVendorName(spread, v.name);
       if (!s) console.warn(`[Stage2Scoring] No score match for vendor "${v.name}" in criterion "${criterion.name}"`);
       scores.push({ vendorName: v.name, criterionName: criterion.name, score: s?.score ?? 0 });
     }
