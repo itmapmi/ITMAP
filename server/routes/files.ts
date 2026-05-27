@@ -423,7 +423,7 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/research-reports", async (req, res) => {
+  app.post("/api/research-reports", requireAdmin, async (req, res) => {
     try {
       const report = insertResearchReportSchema.parse(req.body);
       const newReport = await storage.createResearchReport(report);
@@ -434,7 +434,7 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/research-reports/:reportId", async (req, res) => {
+  app.put("/api/research-reports/:reportId", requireAdmin, async (req, res) => {
     try {
       const reportData = insertResearchReportSchema.partial().parse(req.body);
       const updatedReport = await storage.updateResearchReport(req.params.reportId, reportData);
@@ -446,7 +446,7 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
-  app.delete("/api/research-reports/:reportId", async (req, res) => {
+  app.delete("/api/research-reports/:reportId", requireAdmin, async (req, res) => {
     try {
       await storage.deleteResearchReport(req.params.reportId);
       res.status(204).send();

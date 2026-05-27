@@ -14,6 +14,7 @@ import EcosystemSupport from "@/components/ecosystem-support";
 import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
+import { ResearchReports } from "@/components/research-reports";
 import { MarketNews } from "@/components/market-news";
 import { VendorSelectionModal } from "@/components/vendor-selection-modal";
 import { Chat } from "@/components/Chat";
@@ -408,6 +409,9 @@ export default function MarketDetails() {
             <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-new-players">
               {isMobile ? 'Players' : 'New Players'}
             </TabsTrigger>
+            <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
+              {isMobile ? 'Reports' : 'Research Reports'}
+            </TabsTrigger>
             <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-news">
               News
             </TabsTrigger>
@@ -506,6 +510,10 @@ export default function MarketDetails() {
 
           <TabsContent value="new-players" className="mt-6">
             <NewPlayers marketId={marketId!} />
+          </TabsContent>
+
+          <TabsContent value="research-reports" className="mt-6">
+            <ResearchReports marketId={marketId!} />
           </TabsContent>
 
           <TabsContent value="news" className="mt-6">

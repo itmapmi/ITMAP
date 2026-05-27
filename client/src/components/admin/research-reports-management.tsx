@@ -247,13 +247,13 @@ export default function ResearchReportsManagement() {
               </CardTitle>
               <CardDescription>
                 Upload research reports for <strong>{selectedMarket?.name}</strong>. 
-                Supported formats: PDF, Word, PowerPoint, Excel (max 30MB)
+                Supported formats: PDF, Excel, ZIP, and Video (max 500MB)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ObjectUploader
                 maxNumberOfFiles={1}
-                maxFileSize={30 * 1024 * 1024} // 30MB
+                maxFileSize={500 * 1024 * 1024} // 500MB
                 onGetUploadParameters={handleGetUploadParameters}
                 onComplete={handleUploadComplete}
                 buttonClassName="w-full"
