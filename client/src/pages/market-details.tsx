@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink, Move, Save, X } from "lucide-react";
+import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink, Move, Save, X, ChevronDown, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { FREE_MARKET_ID } from "@/pages/markets";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
 import SupportMatrix from "@/components/support-matrix";
@@ -62,6 +65,8 @@ export default function MarketDetails() {
 
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState("vendor-evaluation");
+  const [chatOpen, setChatOpen] = useState(false);
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
@@ -392,43 +397,83 @@ export default function MarketDetails() {
           </motion.div>
         </FadeInSection>
 
-        <Tabs defaultValue="vendor-evaluation" className="w-full">
-          <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto w-full justify-start' : 'flex flex-wrap w-full'}`}>
-            <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-vendor-evaluation">
-              {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
-            </TabsTrigger>
-            <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-support-matrix">
-              {isMobile ? 'Product Eval' : 'Product Evaluation'}
-            </TabsTrigger>
-            <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-ecosystem-support">
-              {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
-            </TabsTrigger>
-            <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
-              {isMobile ? 'Method' : 'Methodology'}
-            </TabsTrigger>
-            <TabsTrigger value="new-players" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-new-players">
-              {isMobile ? 'Players' : 'New Players'}
-            </TabsTrigger>
-            <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
-              {isMobile ? 'Reports' : 'Research Reports'}
-            </TabsTrigger>
-            <TabsTrigger value="news" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-news">
-              News
-            </TabsTrigger>
-            {canManageVendors && (
-              <TabsTrigger value="vendors" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-vendors">
-                {isMobile ? 'Vendors' : 'Vendor Newsroom URLs'}
-              </TabsTrigger>
-            )}
-            {isAuthenticated && (
-              <TabsTrigger value="intelligence-feed" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-intelligence-feed">
-                {isMobile ? 'Signals' : 'Intelligence Feed'}
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="ai-chat" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-ai-chat">
-              {isMobile ? 'AI Chat' : 'AI Chat'}
-            </TabsTrigger>
-          </TabsList>
+        {(() => {
+          const evaluationsItems = [
+            { value: "vendor-evaluation", label: "Vendor Evaluation" },
+            { value: "support-matrix", label: "Product Evaluation" },
+            { value: "ecosystem-support", label: "Ecosystem Support" },
+          ];
+          const intelligenceItems = [
+            { value: "news", label: "News" },
+            ...(isAuthenticated ? [{ value: "intelligence-feed", label: "Intelligence Feed" }] : []),
+            { value: "new-players", label: "New Players" },
+            ...(canManageVendors ? [{ value: "vendors", label: "Vendor Newsroom URLs" }] : []),
+          ];
+          const isInGroup = (items: { value: string }[]) => items.some(i => i.value === activeTab);
+          const activeChildLabel = (items: { value: string; label: string }[]) =>
+            items.find(i => i.value === activeTab)?.label;
+
+          const groupTriggerClass = (active: boolean) =>
+            cn(
+              "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              isMobile && "flex-shrink-0 px-2 text-[10px]"
+            );
+
+          return (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className={isMobile ? 'inline-flex overflow-x-auto w-full justify-start' : 'inline-flex w-auto'}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={groupTriggerClass(isInGroup(evaluationsItems))}
+                    data-testid="tab-group-evaluations"
+                  >
+                    {isInGroup(evaluationsItems) ? (isMobile ? activeChildLabel(evaluationsItems) : `Evaluations: ${activeChildLabel(evaluationsItems)}`) : 'Evaluations'}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {evaluationsItems.map(item => (
+                      <DropdownMenuItem
+                        key={item.value}
+                        onSelect={() => setActiveTab(item.value)}
+                        className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
+                        data-testid={`tab-${item.value}`}
+                      >
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={groupTriggerClass(isInGroup(intelligenceItems))}
+                    data-testid="tab-group-intelligence"
+                  >
+                    {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {intelligenceItems.map(item => (
+                      <DropdownMenuItem
+                        key={item.value}
+                        onSelect={() => setActiveTab(item.value)}
+                        className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
+                        data-testid={`tab-${item.value}`}
+                      >
+                        {item.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
+                  {isMobile ? 'Reports' : 'Research Reports'}
+                </TabsTrigger>
+                <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
+                  {isMobile ? 'Method' : 'Methodology'}
+                </TabsTrigger>
+              </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
             {canManageVendors && (
@@ -545,13 +590,34 @@ export default function MarketDetails() {
             </TabsContent>
           )}
 
-          <TabsContent value="ai-chat" className="mt-6">
-            <div className="bg-white dark:bg-gray-900 rounded-lg border h-[600px]">
-              <Chat marketId={marketId!} />
-            </div>
-          </TabsContent>
-        </Tabs>
+            </Tabs>
+          );
+        })()}
       </motion.div>
+
+      {/* Floating AI Chat button — available from every tab */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2"
+        aria-label="Open AI Chat"
+        data-testid="button-open-ai-chat"
+      >
+        <MessageSquare className="h-6 w-6" />
+      </button>
+
+      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+          <SheetHeader className="px-4 py-3 border-b">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <MessageSquare className="h-4 w-4 text-cyan-600" />
+              AI Chat — {market.name}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
+            <Chat marketId={marketId!} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <VendorSelectionModal
         open={showVendorModal}
