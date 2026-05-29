@@ -12,6 +12,7 @@ export type ClientEventType =
   | "vendor_viewed"
   | "page_dwell"
   | "vendor_selected"
+  | "rfp_clicked"
   | "search_performed"
   | "filter_applied"
   | "chart_interacted"

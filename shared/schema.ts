@@ -1088,6 +1088,7 @@ export const LEAD_GEN_EVENT_DEFS = {
   vendor_viewed:            { label: "Viewed vendor",           weight: 3,  origin: "client" },
   page_dwell:               { label: "Time on page",            weight: 1,  origin: "client" },
   vendor_selected:          { label: "Selected vendor",         weight: 4,  origin: "client" },
+  rfp_clicked:              { label: "Clicked Generate RFP",     weight: 13, origin: "client" },
   search_performed:         { label: "Searched",                weight: 2,  origin: "client" },
   filter_applied:           { label: "Applied filter",          weight: 2,  origin: "client" },
   chart_interacted:         { label: "Explored evaluation chart", weight: 3, origin: "client" },

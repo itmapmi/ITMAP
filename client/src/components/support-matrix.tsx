@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
+import { track } from "@/lib/track";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -245,6 +246,15 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
 
   const handleProceedWithSelection = () => {
     if (selectedVendors.size > 0) {
+      (allVendors ?? [])
+        .filter((v) => selectedVendors.has(v.id))
+        .forEach((v) =>
+          track("vendor_selected", {
+            marketId,
+            vendorId: v.id,
+            metadata: { context: "product_evaluation", vendorName: v.name },
+          }),
+        );
       setShowVendorSelection(false);
     }
   };

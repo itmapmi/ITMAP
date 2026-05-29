@@ -406,7 +406,10 @@ export default function MarketDetails() {
                   className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
                   data-testid="button-generate-rfp"
                   disabled={createRfpMutation.isPending}
-                  onClick={() => createRfpMutation.mutate({ marketId: market.id, marketName: market.name })}
+                  onClick={() => {
+                    track("rfp_clicked", { marketId, metadata: { marketName: market.name } });
+                    createRfpMutation.mutate({ marketId: market.id, marketName: market.name });
+                  }}
                 >
                   <FileDown className="mr-2 h-4 w-4" />
                   {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}

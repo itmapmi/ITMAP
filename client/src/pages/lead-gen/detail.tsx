@@ -29,7 +29,7 @@ const EVENT_LABELS: Record<string, string> = {
   chat_question_asked: "Asked AI chat", comparison_run: "Ran comparison", comparison_saved: "Saved comparison",
   report_downloaded: "Downloaded report", datasheet_exported: "Exported datasheet", rfp_created: "Created RFP",
   rfp_generated: "Generated RFP", market_viewed: "Viewed market", vendor_viewed: "Viewed vendor",
-  page_dwell: "Time on page", vendor_selected: "Selected vendor", search_performed: "Searched",
+  page_dwell: "Time on page", vendor_selected: "Selected vendor", rfp_clicked: "Clicked Generate RFP", search_performed: "Searched",
   filter_applied: "Applied filter", chart_interacted: "Explored chart", news_viewed: "Read news",
 };
 

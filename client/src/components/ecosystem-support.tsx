@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, Award, TrendingUp, Sparkles, Info, FileDown } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
+import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -195,6 +196,15 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
 
   const handleProceedWithSelection = () => {
     if (selectedVendors.size > 0) {
+      (allVendors ?? [])
+        .filter((v) => selectedVendors.has(v.id))
+        .forEach((v) =>
+          track("vendor_selected", {
+            marketId,
+            vendorId: v.id,
+            metadata: { context: "ecosystem_evaluation", vendorName: v.name },
+          }),
+        );
       setShowVendorSelection(false);
     }
   };
