@@ -346,6 +346,14 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS response_file_url text
     `);
 
+    // 21. feature_access on users (RBAC) — per-user granted lockable features.
+    //     Additive + idempotent so existing/production DBs gain the column
+    //     without breaking user/auth queries that select full user rows.
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS feature_access text[] NOT NULL DEFAULT '{}'::text[]
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
