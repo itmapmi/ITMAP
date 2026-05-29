@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Send, Bookmark, Download, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -30,7 +31,7 @@ export default function DatasheetComparePage() {
   const params = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasFeature, isLoading: authLoading } = useAuth();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewProductId, setPreviewProductId] = useState<string | null>(null);
   const [filterVendor, setFilterVendor] = useState<string>("");
@@ -41,6 +42,7 @@ export default function DatasheetComparePage() {
   const { data: marketDetail, isLoading } = useQuery<MarketDetail>({
     queryKey: ["/api/datasheets/markets", params.slug],
     queryFn: async () => (await apiRequest(`/api/datasheets/markets/${params.slug}`, "GET")).json(),
+    enabled: hasFeature("datasheets"),
   });
 
   // Initialize default selection from ?ids= query string, or first 2 products.
@@ -92,6 +94,10 @@ export default function DatasheetComparePage() {
     onSuccess: () => toast({ title: "Comparison saved" }),
     onError: (err: unknown) => { if (err instanceof Error && err.message !== "Cancelled" && err.message !== "Login required") toast({ title: "Failed", description: err.message, variant: "destructive" }); },
   });
+
+  if (!authLoading && !hasFeature("datasheets")) {
+    return <LockedFeaturePanel featureKey="datasheets" variant="dark" />;
+  }
 
   if (isLoading) return <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">Loading…</div>;
   if (!marketDetail || !market || !schema) return <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">Market not found.</div>;

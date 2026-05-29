@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Bookmark, Trash2, ArrowRight, FileText, Share2, Copy, Mail } from "lucide-react";
 import type { DatasheetComparison, DatasheetMarket, Market } from "@shared/schema";
 
@@ -15,8 +17,9 @@ type ShareResult = { shareToken: string; shareUrl: string; digestEnabled: boolea
 
 export default function DatasheetSavedPage() {
   const { toast } = useToast();
-  const { data: comparisons = [], isLoading } = useQuery<DatasheetComparison[]>({ queryKey: ["/api/me/datasheet-comparisons"] });
-  const { data: dsMarkets = [] } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/datasheets/markets"] });
+  const { hasFeature, isLoading: authLoading } = useAuth();
+  const { data: comparisons = [], isLoading } = useQuery<DatasheetComparison[]>({ queryKey: ["/api/me/datasheet-comparisons"], enabled: hasFeature("datasheets") });
+  const { data: dsMarkets = [] } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/datasheets/markets"], enabled: hasFeature("datasheets") });
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
 
@@ -29,6 +32,10 @@ export default function DatasheetSavedPage() {
   });
 
   const slugByMarketId = new Map(dsMarkets.map(m => [m.id, m.slug]));
+
+  if (!authLoading && !hasFeature("datasheets")) {
+    return <LockedFeaturePanel featureKey="datasheets" variant="dark" />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pt-20 pb-24">

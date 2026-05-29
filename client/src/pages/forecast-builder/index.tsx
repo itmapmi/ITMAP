@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import {
   Dialog,
   DialogContent,
@@ -81,7 +82,7 @@ function StatusBadge({ status }: { status: ForecastStatus }) {
 }
 
 export default function ForecastBuilderPage() {
-  const { user } = useAuth();
+  const { user, hasFeature, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -122,6 +123,10 @@ export default function ForecastBuilderPage() {
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  if (!authLoading && !hasFeature("forecast_builder")) {
+    return <LockedFeaturePanel featureKey="forecast_builder" variant="dark" />;
   }
 
   return (

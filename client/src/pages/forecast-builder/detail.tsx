@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1809,6 +1811,7 @@ export default function ForecastDetailPage() {
   const [, params] = useRoute("/forecast-builder/:id");
   const id = params?.id;
   const { toast } = useToast();
+  const { hasFeature, isLoading: authLoading } = useAuth();
   const [wizardStep, setWizardStep] = useState<"boundary" | "interview" | "review" | "debate" | "debate_results" | "building" | "complete" | null>(null);
   const [debateSummary, setDebateSummary] = useState<DebateSummaryData | null>(null);
 
@@ -1841,6 +1844,10 @@ export default function ForecastDetailPage() {
       setWizardStep("debate_results");
     }
   }, [forecast, wizardStep]);
+
+  if (!authLoading && !hasFeature("forecast_builder")) {
+    return <LockedFeaturePanel featureKey="forecast_builder" variant="dark" />;
+  }
 
   if (isLoading) {
     return (

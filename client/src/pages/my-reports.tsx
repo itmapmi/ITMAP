@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import type { Market } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 
 type JobStatus = "idle" | "running" | "completed" | "failed" | "published";
 type JobRow = {
@@ -36,7 +37,7 @@ const STATUS_BADGE: Record<JobStatus, { label: string; cls: string; Icon: any }>
 };
 
 export default function MyReportsPage() {
-  const { user } = useAuth();
+  const { user, hasFeature, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [exportingId, setExportingId] = useState<string | null>(null);
 
@@ -75,7 +76,12 @@ export default function MyReportsPage() {
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobRow[]>({
     queryKey: ["/api/market-builder/jobs"],
     staleTime: 0, // always re-fetch on mount so deletions/completions are reflected immediately
+    enabled: hasFeature("market_builder"),
   });
+
+  if (!authLoading && !hasFeature("market_builder")) {
+    return <LockedFeaturePanel featureKey="market_builder" variant="light" />;
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

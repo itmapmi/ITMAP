@@ -4,6 +4,8 @@ import { Sparkles, Lock, Key, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketBuilderWizard } from "@/components/admin/market-builder-wizard";
 import { MyPromptsRepository } from "@/components/me/my-prompts-repository";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 
 type TabKey = "builder" | "prompts";
 
@@ -19,6 +21,7 @@ export default function MyMarketBuilderPage() {
   // pathname changes, not query-string changes, which is why clicking
   // the tab used to do nothing visible.
   const [tab, setTab] = useState<TabKey>(() => readTabFromUrl());
+  const { hasFeature, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     const onPop = () => setTab(readTabFromUrl());
@@ -35,6 +38,10 @@ export default function MyMarketBuilderPage() {
     const url = `/me/market-builder${qs ? `?${qs}` : ""}`;
     window.history.replaceState(null, "", url);
   };
+
+  if (!authLoading && !hasFeature("market_builder")) {
+    return <LockedFeaturePanel featureKey="market_builder" variant="light" />;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

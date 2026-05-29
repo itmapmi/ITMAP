@@ -24,6 +24,8 @@ import {
   Activity,
 } from "lucide-react";
 import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -1873,6 +1875,11 @@ export function ForecastReportContent({ id }: { id: string }) {
 export default function ForecastReportPage() {
   const [, params] = useRoute("/forecast-builder/:id/report");
   const id = params?.id ?? "";
+  const { hasFeature, isLoading: authLoading } = useAuth();
+
+  if (!authLoading && !hasFeature("forecast_builder")) {
+    return <LockedFeaturePanel featureKey="forecast_builder" variant="dark" />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 py-10 px-4">

@@ -2,9 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ArrowRight, Database, FileText } from "lucide-react";
 import type { DatasheetMarket } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 
 export default function DatasheetsIndexPage() {
-  const { data: markets = [], isLoading } = useQuery<DatasheetMarket[]>({ queryKey: ["/api/datasheets/markets"] });
+  const { hasFeature, isLoading: authLoading } = useAuth();
+  const { data: markets = [], isLoading } = useQuery<DatasheetMarket[]>({
+    queryKey: ["/api/datasheets/markets"],
+    enabled: hasFeature("datasheets"),
+  });
+
+  if (!authLoading && !hasFeature("datasheets")) {
+    return <LockedFeaturePanel featureKey="datasheets" variant="dark" />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pt-20 pb-24">
