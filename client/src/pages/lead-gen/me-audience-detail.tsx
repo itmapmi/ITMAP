@@ -23,6 +23,7 @@ interface AudienceDetail {
     eventType: string;
     marketName: string | null;
     vendorName: string | null;
+    metadata: unknown;
     createdAt: string;
   }[];
 }
@@ -37,6 +38,11 @@ const WINDOWS = [
 const stripMarket = (n: string | null) => (n ?? "").replace(/^ITMAP for /i, "");
 const eventLabel = (t: string) =>
   LEAD_GEN_EVENT_DEFS[t as LeadGenEventType]?.label ?? t;
+const eventDetail = (eventType: string, metadata: unknown): string | null => {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  if (eventType === "report_downloaded" && typeof m.title === "string") return m.title;
+  return null;
+};
 
 export default function LeadGenAudienceDetailPage() {
   const params = useParams<{ marketId: string; endUserId: string }>();
@@ -166,7 +172,7 @@ export default function LeadGenAudienceDetailPage() {
                   <div key={t.id} className="flex items-center gap-4 px-5 py-2.5 text-sm">
                     <span className="w-32 shrink-0 text-xs text-slate-500">{timeAgo(t.createdAt)}</span>
                     <span className="flex-1 text-slate-200">{eventLabel(t.eventType)}</span>
-                    <span className="hidden truncate text-xs text-slate-500 sm:block">{t.vendorName ?? ""}</span>
+                    <span className="hidden truncate text-xs text-slate-500 sm:block">{eventDetail(t.eventType, t.metadata) ?? t.vendorName ?? ""}</span>
                   </div>
                 ))}
               </div>

@@ -33,6 +33,14 @@ const EVENT_LABELS: Record<string, string> = {
   filter_applied: "Applied filter", chart_interacted: "Explored chart", news_viewed: "Read news",
 };
 
+// Surfaces a human-readable detail from an event's metadata (e.g. the report
+// title for a download), when present.
+function eventDetail(eventType: string, metadata: unknown): string | null {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  if (eventType === "report_downloaded" && typeof m.title === "string") return m.title;
+  return null;
+}
+
 export default function LeadGenDetailPage() {
   const [, params] = useRoute("/lead-gen/:userId");
   const userId = params?.userId;
@@ -165,7 +173,7 @@ export default function LeadGenDetailPage() {
                     <span className="shrink-0 text-[11px] text-slate-500">{timeAgo(t.createdAt)}</span>
                   </div>
                   <div className="text-xs text-slate-500">
-                    {[t.marketName?.replace(/^ITMAP for /i, ""), t.vendorName].filter(Boolean).join(" · ")}
+                    {[t.marketName?.replace(/^ITMAP for /i, ""), t.vendorName, eventDetail(t.eventType, t.metadata)].filter(Boolean).join(" · ")}
                     {t.durationMs ? ` · ${Math.round(t.durationMs / 1000)}s` : ""}
                   </div>
                 </div>
