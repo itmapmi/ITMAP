@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 
 /**
  * Centralized read-authorization for any /api/markets/:marketId/* endpoint.
@@ -693,7 +694,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Vendor Signals (market-scoped, auth-gated) ────────────────────────────
 
-  app.get("/api/markets/:marketId/vendor-signals", requireMarketAccess, async (req, res) => {
+  app.get("/api/markets/:marketId/vendor-signals", requireFeature("intelligence_feed"), requireMarketAccess, async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
         return res.status(401).json({ error: "Authentication required" });
@@ -726,7 +727,7 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Research Reports (market-scoped listing) ───────────────────────────────
 
-  app.get("/api/markets/:marketId/reports", requireMarketAccess, async (req, res) => {
+  app.get("/api/markets/:marketId/reports", requireFeature("research_reports"), requireMarketAccess, async (req, res) => {
     try {
       const reports = await storage.getMarketResearchReports(req.params.marketId);
       res.json(reports);

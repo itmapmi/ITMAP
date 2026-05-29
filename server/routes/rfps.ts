@@ -8,6 +8,7 @@ function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 import { requireAuth, requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 import { storage } from "../storage";
 import {
   createRfpProject, getRfpProject, getRfpProjectForOwner,
@@ -94,6 +95,11 @@ async function requireRfpOwner(req: Request, res: Response, next: NextFunction):
 }
 
 export function registerRfpRoutes(app: Express): void {
+  // RBAC: RFP Generation is a locked feature. Covers all owner-scoped
+  // /api/me/rfps and /api/me/rfps/* routes. Admin read-only routes live under
+  // /api/admin/user-rfps and are unaffected.
+  app.use("/api/me/rfps", requireFeature("rfp"));
+
   app.get("/api/me/rfps", requireAuth, async (req, res) => {
     try {
       const user = asAuthed(req).user;

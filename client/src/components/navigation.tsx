@@ -7,12 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import SpectioLogo from "@/components/spectio-logo";
+import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
+import { Lock } from "lucide-react";
+import type { LockableFeatureKey } from "@shared/features";
 
 const ADMIN_PATHS = ["/admin", "/market-builder"];
 
 export default function Navigation() {
   const [location] = useLocation();
-  const { user, isAdmin, logout, isAuthenticated } = useAuth();
+  const { user, isAdmin, logout, isAuthenticated, hasFeature } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -36,12 +39,12 @@ export default function Navigation() {
   const isMarketBuilderActive = location.includes("market-builder") && !location.includes("forecast");
   const isForecastBuilderActive = location.includes("forecast-builder");
 
-  const navItems = [
+  const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey }[] = [
     { href: "/platform",          label: "Platform" },
     { href: "/markets",           label: "Markets" },
-    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive },
-    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive },
-    { href: "/datasheets",        label: "Datasheets" },
+    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive, featureKey: "market_builder" },
+    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder" },
+    { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets" },
     { href: "/licensing",         label: "Licensing" },
     { href: "/about",             label: "About Us" },
   ];
@@ -93,8 +96,18 @@ export default function Navigation() {
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1">
-              {navItems.map(({ href, label, active }) => {
+              {navItems.map(({ href, label, active, featureKey }) => {
                 const isActive = active !== undefined ? active : location === href;
+                const locked = featureKey ? !hasFeature(featureKey) : false;
+                if (locked) {
+                  return (
+                    <LockedFeatureTooltip key={label}>
+                      <span className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
+                        {label}<Lock className="h-3 w-3" />
+                      </span>
+                    </LockedFeatureTooltip>
+                  );
+                }
                 return (
                   <Link key={label} href={href}>
                     <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
@@ -171,8 +184,18 @@ export default function Navigation() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden bg-[#1e2130] border-t border-white/5 px-4 py-4 space-y-1">
-            {navItems.map(({ href, label, active }) => {
+            {navItems.map(({ href, label, active, featureKey }) => {
               const isActive = active !== undefined ? active : location === href;
+              const locked = featureKey ? !hasFeature(featureKey) : false;
+              if (locked) {
+                return (
+                  <LockedFeatureTooltip key={label}>
+                    <div className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
+                      {label}<Lock className="h-3 w-3" />
+                    </div>
+                  </LockedFeatureTooltip>
+                );
+              }
               return (
                 <Link key={label} href={href}>
                   <div

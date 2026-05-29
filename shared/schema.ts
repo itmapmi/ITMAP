@@ -3,6 +3,10 @@ import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Re-export the RBAC feature-access constants/helpers so consumers can import
+// everything from "@shared/schema".
+export * from "./features";
+
 // Session storage table for express-session
 export const sessions = pgTable("sessions", {
   sid: varchar("sid").primaryKey(),
@@ -18,7 +22,11 @@ export const users = pgTable("users", {
   password: text("password"), // Only for email/password auth
   profileImageUrl: text("profile_image_url"),
   role: text("role").notNull().default("user"), // 'user' or 'admin'
-  
+
+  // RBAC feature access: list of granted lockable feature keys (see
+  // shared/features.ts). Empty = only baseline features. Admins ignore this.
+  featureAccess: text("feature_access").array().notNull().default(sql`'{}'::text[]`),
+
   // OAuth provider info
   googleId: text("google_id").unique(),
   linkedinId: text("linkedin_id").unique(),

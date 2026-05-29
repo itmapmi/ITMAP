@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAdmin, requireAuth } from "../auth";
+import { requireFeature } from "../featureAccess";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
 import { initSSE, sendEvent, runSingleStage, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
@@ -52,6 +53,11 @@ async function requireJobOwner(req: Request, res: Response, next: NextFunction):
 }
 
 export function registerMarketBuilderRoutes(app: Express): void {
+
+  // RBAC: end-user Market Builder (/api/market-builder/*) is a locked feature.
+  // Admin routes live under /api/admin/market-builder and are unaffected.
+  app.use("/api/market-builder", requireFeature("market_builder"));
+
 
   // ── Jobs: list / get / create / delete ───────────────────────────────────
 

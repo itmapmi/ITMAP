@@ -1,10 +1,15 @@
 import type { Express } from "express";
 import { requireAuth, requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 import { newsStorage } from "../news/storage";
 import { scrapeAllVendors, scrapeSingleVendor } from "../news/ingestion/scraper";
 import { analyzeAllPending, analyzeSingleArticle } from "../news/impact/analyzer";
 
 export function registerNewsRoutes(app: Express): void {
+
+  // RBAC: News is a locked feature. Admins always pass (requireFeature allows
+  // admins), so the admin-only ingest/analyze/delete routes still work.
+  app.use("/api/news", requireFeature("news"));
 
   app.get("/api/news", requireAuth, async (req, res) => {
     try {

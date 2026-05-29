@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { pdfService } from "../pdf-generator/pdf-service";
 import { insertResearchReportSchema, insertResearchMethodologySchema } from "@shared/schema";
@@ -397,7 +398,7 @@ export function registerFileRoutes(app: Express): void {
 
   // ── Research Reports ──────────────────────────────────────────────────────
 
-  app.get("/api/markets/:marketId/research-reports", async (req, res) => {
+  app.get("/api/markets/:marketId/research-reports", requireFeature("research_reports"), async (req, res) => {
     try {
       // Gate by market visibility — private-market reports are
       // owner/admin only.
@@ -412,10 +413,15 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/research-reports/:reportId", async (req, res) => {
+  app.get("/api/research-reports/:reportId", requireFeature("research_reports"), async (req, res) => {
     try {
       const report = await storage.getResearchReportById(req.params.reportId);
       if (!report) return res.status(404).json({ error: "Research report not found" });
+      // Enforce market visibility — private-market reports are owner/admin only.
+      const market = await storage.getMarketById(report.marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Research report not found" });
+      }
       res.json(report);
     } catch (error) {
       console.error("Error fetching research report:", error);

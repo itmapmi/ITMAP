@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 import { ObjectStorageService } from "../objectStorage";
 import {
   listDatasheetMarkets, getDatasheetMarket, getDatasheetMarketBySlug, createDatasheetMarket, updateDatasheetMarket, deleteDatasheetMarket,
@@ -95,6 +96,12 @@ const productBodySchema = z.object({
 });
 
 export function registerDatasheetRoutes(app: Express): void {
+
+  // RBAC: Datasheets is a locked feature. Gate the buyer-facing read/compare/
+  // chat routes and saved comparisons. Admin routes live under
+  // /api/admin/datasheets and are unaffected (admins also pass requireFeature).
+  app.use("/api/datasheets", requireFeature("datasheets"));
+  app.use("/api/me/datasheet-comparisons", requireFeature("datasheets"));
 
   // ── PUBLIC: Markets / Products / Specs ──────────────────────────────────
   app.get("/api/datasheets/markets", async (_req, res) => {

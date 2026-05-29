@@ -4,7 +4,8 @@ import { pool, db } from "../db";
 import { sql } from "drizzle-orm";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
-import { insertPromptRepositorySchema } from "@shared/schema";
+import { z } from "zod";
+import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
 
 interface CollectionLogEntry {
@@ -37,6 +38,38 @@ function pushCollectionLog(scope: string, results: SignalCollectionResult[]): vo
 }
 
 export function registerAdminRoutes(app: Express): void {
+
+  // ── User Feature Access (RBAC) ───────────────────────────────────────────
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Never leak password hashes to the admin UI.
+      const safe = users.map(({ password, ...rest }) => rest);
+      res.json(safe);
+    } catch (error) {
+      console.error("Error listing users:", error);
+      res.status(500).json({ error: "Failed to list users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/feature-access", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        featureAccess: z.array(z.enum(LOCKABLE_FEATURE_KEYS as [string, ...string[]])),
+      });
+      const { featureAccess } = schema.parse(req.body);
+      // De-duplicate before persisting.
+      const unique = Array.from(new Set(featureAccess));
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      const updated = await storage.updateUserFeatureAccess(req.params.id, unique);
+      const { password, ...safe } = updated;
+      res.json(safe);
+    } catch (error) {
+      console.error("Error updating user feature access:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update feature access" });
+    }
+  });
 
   // ── Prompt Repository ────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { promises as dns } from "dns";
 import { z } from "zod";
 import { requireAuth, requireAdmin } from "../auth";
+import { requireFeature } from "../featureAccess";
 import {
   createForecast,
   listForecasts,
@@ -108,6 +109,11 @@ async function guardForecastAccess(
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function registerForecastBuilderRoutes(app: Express): void {
+
+  // RBAC: Forecast Builder (/api/forecast-builder/*) is a locked feature.
+  // Admin routes live under /api/admin/forecast-builder and are unaffected.
+  app.use("/api/forecast-builder", requireFeature("forecast_builder"));
+
 
   // ── List all forecasts (scoped to user unless admin) ────────────────────
   app.get("/api/forecast-builder/forecasts", requireAuth, async (req: Request, res: Response) => {

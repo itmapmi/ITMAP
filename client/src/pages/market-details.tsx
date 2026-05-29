@@ -23,6 +23,7 @@ import { VendorSelectionModal } from "@/components/vendor-selection-modal";
 import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
+import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
@@ -58,7 +59,7 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
-  const { isAuthenticated, user, isAdmin } = useAuth();
+  const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
   const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
   const isFreeMarket = marketId === FREE_MARKET_ID;
@@ -376,17 +377,32 @@ export default function MarketDetails() {
               {isMobile ? 'Report' : 'Generate Reports'}
             </Button>
             {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
-              <Button
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
-                data-testid="button-generate-rfp"
-                disabled={createRfpMutation.isPending}
-                onClick={() => createRfpMutation.mutate({ marketId: market.id, marketName: market.name })}
-              >
-                <FileDown className="mr-2 h-4 w-4" />
-                {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
-              </Button>
+              hasFeature("rfp") ? (
+                <Button
+                  variant="outline"
+                  size={isMobile ? "sm" : "default"}
+                  className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
+                  data-testid="button-generate-rfp"
+                  disabled={createRfpMutation.isPending}
+                  onClick={() => createRfpMutation.mutate({ marketId: market.id, marketName: market.name })}
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
+                </Button>
+              ) : (
+                <LockedFeatureTooltip>
+                  <Button
+                    variant="outline"
+                    size={isMobile ? "sm" : "default"}
+                    className="border-gray-300 text-gray-400 cursor-not-allowed"
+                    data-testid="button-generate-rfp-locked"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    {isMobile ? 'RFP' : 'Generate RFP'}
+                  </Button>
+                </LockedFeatureTooltip>
+              )
             )}
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>
@@ -403,12 +419,13 @@ export default function MarketDetails() {
             { value: "support-matrix", label: "Product Evaluation" },
             { value: "ecosystem-support", label: "Ecosystem Support" },
           ];
-          const intelligenceItems = [
-            { value: "news", label: "News" },
-            ...(isAuthenticated ? [{ value: "intelligence-feed", label: "Intelligence Feed" }] : []),
+          const intelligenceItems: { value: string; label: string; locked?: boolean }[] = [
+            { value: "news", label: "News", locked: !hasFeature("news") },
+            ...(isAuthenticated ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") }] : []),
             { value: "new-players", label: "New Players" },
             ...(canManageVendors ? [{ value: "vendors", label: "Vendor Newsroom URLs" }] : []),
           ];
+          const researchReportsLocked = !hasFeature("research_reports");
           const isInGroup = (items: { value: string }[]) => items.some(i => i.value === activeTab);
           const activeChildLabel = (items: { value: string; label: string }[]) =>
             items.find(i => i.value === activeTab)?.label;
@@ -455,21 +472,48 @@ export default function MarketDetails() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     {intelligenceItems.map(item => (
-                      <DropdownMenuItem
-                        key={item.value}
-                        onSelect={() => setActiveTab(item.value)}
-                        className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
-                        data-testid={`tab-${item.value}`}
-                      >
-                        {item.label}
-                      </DropdownMenuItem>
+                      item.locked ? (
+                        <LockedFeatureTooltip key={item.value}>
+                          <div
+                            className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
+                            data-testid={`tab-${item.value}-locked`}
+                          >
+                            <span>{item.label}</span>
+                            <Lock className="h-3 w-3" />
+                          </div>
+                        </LockedFeatureTooltip>
+                      ) : (
+                        <DropdownMenuItem
+                          key={item.value}
+                          onSelect={() => setActiveTab(item.value)}
+                          className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
+                          data-testid={`tab-${item.value}`}
+                        >
+                          {item.label}
+                        </DropdownMenuItem>
+                      )
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
-                  {isMobile ? 'Reports' : 'Research Reports'}
-                </TabsTrigger>
+                {researchReportsLocked ? (
+                  <LockedFeatureTooltip>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
+                        isMobile && "flex-shrink-0 px-2 text-[10px]"
+                      )}
+                      data-testid="tab-research-reports-locked"
+                    >
+                      {isMobile ? 'Reports' : 'Research Reports'}
+                      <Lock className="h-3 w-3" />
+                    </span>
+                  </LockedFeatureTooltip>
+                ) : (
+                  <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
+                    {isMobile ? 'Reports' : 'Research Reports'}
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
                   {isMobile ? 'Method' : 'Methodology'}
                 </TabsTrigger>

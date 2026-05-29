@@ -157,6 +157,8 @@ export interface IStorage {
   createMessage(message: InsertChatMessage): Promise<ChatMessage>;
 
   getAdminUsers(): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
+  updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
 
   getAlertSettings(): Promise<AdminAlertSettings | null>;
   upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;

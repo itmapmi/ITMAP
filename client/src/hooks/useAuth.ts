@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
+import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
@@ -54,6 +55,8 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user && !error,
     isAdmin: user?.role === 'admin',
+    hasFeature: (featureKey: LockableFeatureKey) =>
+      hasFeatureAccess(user?.role, user?.featureAccess, featureKey),
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

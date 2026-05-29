@@ -21,6 +21,7 @@ import { SignalFeedAdmin } from "@/components/admin/signal-feed-admin";
 import { UserMarketsAdmin } from "@/components/admin/user-markets-admin";
 import { UserRfpsAdmin } from "@/components/admin/user-rfps-admin";
 import DatasheetsAdmin from "@/components/admin/datasheets-admin";
+import { UserAccessAdmin } from "@/components/admin/user-access-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight } from "lucide-react";
@@ -114,6 +115,7 @@ export default function Admin() {
         <Tabs value={activeTab} onValueChange={(tab) => { if (tab !== "signal-feed") setPendingSignalFeedVendor(null); setActiveTab(tab); }} className="w-full">
           <TabsList className="flex w-full overflow-x-auto flex-wrap gap-0 h-auto">
             <TabsTrigger value="market-management">Markets</TabsTrigger>
+            <TabsTrigger value="user-access">User Access</TabsTrigger>
             <TabsTrigger value="user-markets">User Markets</TabsTrigger>
             <TabsTrigger value="user-rfps">User RFPs</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
@@ -138,6 +140,10 @@ export default function Admin() {
 
           <TabsContent value="market-management" className="mt-6">
             <MarketManagement />
+          </TabsContent>
+
+          <TabsContent value="user-access" className="mt-6">
+            <UserAccessAdmin />
           </TabsContent>
 
           <TabsContent value="user-markets" className="mt-6">

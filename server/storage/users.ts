@@ -48,6 +48,19 @@ export async function getAdminUsers(): Promise<User[]> {
   return await db.select().from(users).where(eq(users.role, 'admin'));
 }
 
+export async function getAllUsers(): Promise<User[]> {
+  return await db.select().from(users).orderBy(desc(users.createdAt));
+}
+
+export async function updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ featureAccess, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 // ── User Activity Logs ─────────────────────────────────────────────────────
 
 export async function recordUserLogin(log: InsertUserActivityLog): Promise<UserActivityLog> {
