@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,6 +62,29 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
   };
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
+
+  // Record a comparison once the user settles on 2+ vendors. Debounced so a
+  // run of checkbox toggles produces one event, and de-duplicated so the same
+  // selection set isn't recorded twice in a session.
+  const lastRecordedRef = useRef<string>("");
+  useEffect(() => {
+    if (selectedVendors.length < 2) return;
+    const signature = [...selectedVendors].sort().join(",");
+    if (signature === lastRecordedRef.current) return;
+    const timer = setTimeout(() => {
+      lastRecordedRef.current = signature;
+      fetch(`/api/markets/${marketId}/track-vendor-comparison`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ vendorIds: [...selectedVendors] }),
+      }).catch(() => {
+        // Best-effort tracking — never disrupt the comparison experience.
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [selectedVendors, marketId]);
 
   return (
     <Card>

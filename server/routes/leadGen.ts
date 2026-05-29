@@ -92,6 +92,17 @@ function fullName(r: { firstName: string | null; lastName: string | null; email:
   return name || r.email || "Unknown user";
 }
 
+// Private markets are only readable by their owner or an admin; public markets
+// are readable by anyone.
+function canReadMarket(market: any, req: Request): boolean {
+  if (!market) return false;
+  if (market.visibility !== "private") return true;
+  const user = req.user as any;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return market.ownerUserId === user.id;
+}
+
 // ── Server-side capture helper (imported by other route modules) ─────────────
 
 export async function recordEvent(
@@ -273,6 +284,45 @@ export function registerLeadGenRoutes(app: Express): void {
     } catch (err) {
       console.error("[lead-gen] beacon error:", err);
       res.status(500).json({ error: "Failed to record events" });
+    }
+  });
+
+  // Records a vendor-evaluation comparison. The compare section below the
+  // evaluation chart is purely client-side, so the client calls this when a
+  // user has 2+ vendors selected. comparison_run is a trusted server-origin
+  // event, hence a dedicated endpoint rather than the client beacon.
+  app.post("/api/markets/:marketId/track-vendor-comparison", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const body = z
+        .object({ vendorIds: z.array(z.string().min(1)).min(2).max(50) })
+        .safeParse(req.body);
+      if (!body.success) {
+        return res.status(400).json({ error: "At least two vendor ids are required" });
+      }
+      // Authorize against the target market (private markets are owner/admin only).
+      const market = await storage.getMarketById(req.params.marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+      // Only count distinct vendors that actually belong to this market, so the
+      // trusted comparison_run signal can't be forged with bogus/foreign ids.
+      const marketVendorIds = new Set((await storage.getVendorsByMarket(req.params.marketId)).map((v) => v.id));
+      const vendorIds = Array.from(new Set(body.data.vendorIds)).filter((id) => marketVendorIds.has(id));
+      if (vendorIds.length < 2) {
+        return res.status(400).json({ error: "At least two distinct vendors from this market are required" });
+      }
+      await recordEvent(req, "comparison_run", {
+        marketId: req.params.marketId,
+        metadata: {
+          context: "vendor_evaluation",
+          vendorIds,
+          vendorCount: vendorIds.length,
+        },
+      });
+      res.json({ recorded: true });
+    } catch (err) {
+      console.error("[lead-gen] vendor comparison tracking error:", err);
+      res.status(500).json({ error: "Failed to record comparison" });
     }
   });
 
