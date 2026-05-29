@@ -430,6 +430,28 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
+  // Records a download then redirects to the stored file. Used by the public
+  // research-reports list so downloads are captured as lead-gen activity.
+  app.get("/api/research-reports/:reportId/download", requireFeature("research_reports"), async (req, res) => {
+    try {
+      const report = await storage.getResearchReportById(req.params.reportId);
+      if (!report) return res.status(404).json({ error: "Research report not found" });
+      const market = await storage.getMarketById(report.marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Research report not found" });
+      }
+      if (!report.fileUrl) return res.status(404).json({ error: "No file attached to this report" });
+      void recordEvent(req, "report_downloaded", {
+        marketId: report.marketId,
+        metadata: { reportType: "research_report", reportId: report.id, title: report.title },
+      });
+      res.redirect(report.fileUrl);
+    } catch (error) {
+      console.error("Error downloading research report:", error);
+      res.status(500).json({ error: "Failed to download research report" });
+    }
+  });
+
   app.post("/api/research-reports", requireAdmin, async (req, res) => {
     try {
       const report = insertResearchReportSchema.parse(req.body);

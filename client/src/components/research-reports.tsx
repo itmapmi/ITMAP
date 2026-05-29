@@ -140,7 +140,7 @@ export function ResearchReports({ marketId }: ResearchReportsProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => report.fileUrl && window.open(report.fileUrl, "_blank")}
+                    onClick={() => window.open(`/api/research-reports/${report.id}/download`, "_blank")}
                     className="flex items-center gap-2"
                     data-testid={`report-download-${report.id}`}
                   >
