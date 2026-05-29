@@ -12,7 +12,7 @@ import {
   vendorSeatAudience,
 } from "@shared/schema";
 import { db } from "../db";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 
 export interface SeatAudienceRow {
   id: string;
@@ -151,5 +151,5 @@ export async function getMarketScopedProfile(
 // Lightweight user lookups for building summaries.
 export async function getUsersByIdsForAudience(ids: string[]): Promise<User[]> {
   if (ids.length === 0) return [];
-  return await db.select().from(users).where(sql`${users.id} = ANY(${ids})`);
+  return await db.select().from(users).where(inArray(users.id, ids));
 }
