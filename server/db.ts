@@ -354,6 +354,29 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS feature_access text[] NOT NULL DEFAULT '{}'::text[]
     `);
 
+    // 22. user_events — append-only activity log powering Lead-Gen Activity
+    //     Intelligence (buyer-intent scoring). Idempotent + additive.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_events (
+        id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        session_id  text,
+        event_type  text NOT NULL,
+        market_id   varchar REFERENCES markets(id) ON DELETE SET NULL,
+        vendor_id   varchar REFERENCES vendors(id) ON DELETE SET NULL,
+        metadata    jsonb,
+        duration_ms integer,
+        source      text NOT NULL DEFAULT 'server',
+        created_at  timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS user_events_user_idx ON user_events (user_id);
+      CREATE INDEX IF NOT EXISTS user_events_vendor_idx ON user_events (vendor_id);
+      CREATE INDEX IF NOT EXISTS user_events_market_idx ON user_events (market_id);
+      CREATE INDEX IF NOT EXISTS user_events_type_idx ON user_events (event_type);
+      CREATE INDEX IF NOT EXISTS user_events_created_idx ON user_events (created_at);
+      CREATE INDEX IF NOT EXISTS user_events_user_created_idx ON user_events (user_id, created_at);
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

@@ -34,6 +34,9 @@ import DatasheetsIndexPage from "@/pages/datasheets/index";
 import DatasheetComparePage from "@/pages/datasheets/compare";
 import DatasheetSavedPage from "@/pages/datasheets/saved";
 import DatasheetSharePage from "@/pages/datasheets/share-view";
+import LeadGenOverviewPage from "@/pages/lead-gen/index";
+import LeadGenDetailPage from "@/pages/lead-gen/detail";
+import LeadGenVendorPage from "@/pages/lead-gen/vendor";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -83,6 +86,9 @@ function Router() {
         {/* /market-builder is shared: admins see the admin wizard, end users
             are redirected to /me/market-builder via the page itself. */}
         <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
+        <Route path="/lead-gen" component={() => <ProtectedRoute component={LeadGenOverviewPage} requireAdmin={true} />} />
+        <Route path="/lead-gen/vendors/:vendorId" component={() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />} />
+        <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />
         <Route path="/forecast-builder/:id/report" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastReportPage} /></ForecastThemeProvider>} />

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { track, trackDwell } from "@/lib/track";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink, Move, Save, X, ChevronDown, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -85,6 +86,24 @@ export default function MarketDetails() {
   const isOwner = !!(market?.ownerUserId && user?.id === market.ownerUserId);
   const showOwnerControls = isOwner && market?.visibility === "private";
   const canManageVendors = isAdmin || showOwnerControls;
+
+  // Track market view + dwell time once the market resolves.
+  useEffect(() => {
+    if (!marketId || !market) return;
+    track("market_viewed", { marketId, metadata: { name: market.name } });
+    const endDwell = trackDwell({ marketId });
+    return endDwell;
+  }, [marketId, market?.id]);
+
+  // Tab switches are meaningful intent signals (e.g. opening News).
+  useEffect(() => {
+    if (!marketId) return;
+    if (activeTab === "news") {
+      track("news_viewed", { marketId, metadata: { tab: activeTab } });
+    } else {
+      track("filter_applied", { marketId, metadata: { tab: activeTab } });
+    }
+  }, [activeTab, marketId]);
 
   // Inline label-position editor state for the Vendor Evaluation chart
   const [editingLabels, setEditingLabels] = useState(false);

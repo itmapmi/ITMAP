@@ -23,6 +23,7 @@ import {
 } from "../storage/rfps";
 import { buildRfpMarketContext } from "../rfp/context";
 import { getRfpLlmClient, MissingLlmKeyError } from "../rfp/llm";
+import { recordEvent } from "./leadGen";
 import {
   REQUIRED_SLOTS, nextMissingSlot, buildInterviewSystemPrompt, buildExtractionPrompt,
   profileReadiness, normalizeCustomerProfile,
@@ -155,6 +156,7 @@ export function registerRfpRoutes(app: Express): void {
         content: `Hi — I'll help you build an RFP for the ${market.name.replace(/^ITMAP for /i, "")} market. ${REQUIRED_SLOTS[0].question}`,
         extracted: null,
       });
+      void recordEvent(req, "rfp_created", { marketId: data.marketId, metadata: { rfpId: rfp.id, title: data.title } });
       res.status(201).json(rfp);
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
@@ -385,6 +387,10 @@ export function registerRfpRoutes(app: Express): void {
         status: "ready",
         generatedMarkdown: markdown,
         generatedAt: new Date(),
+      });
+      void recordEvent(req, "rfp_generated", {
+        marketId: rfp.marketId,
+        metadata: { rfpId: rfp.id, sectionCount: sections.length, shortlistCount: scored.length },
       });
       res.json({ rfp: updated, sectionCount: sections.length, shortlistCount: scored.length });
     } catch (err) {

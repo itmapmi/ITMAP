@@ -54,6 +54,7 @@ export * from "./signals";
 export * from "./forecasts";
 export * from "./rfps";
 export * from "./datasheets";
+export * from "./leadGen";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -67,6 +68,7 @@ import * as userLlmKeysStorage from "./userLlmKeys";
 import * as forecastsStorage from "./forecasts";
 import * as rfpsStorage from "./rfps";
 import * as datasheetsStorage from "./datasheets";
+import * as leadGenStorage from "./leadGen";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -307,7 +309,7 @@ export interface IStorage {
 // of the IStorage interface (the datasheet surface area is large and would
 // double the interface size for little type-safety gain — callers that
 // need typed access import from `./datasheets` directly).
-export const storage: IStorage & typeof datasheetsStorage = {
+export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorage = {
   ...userStorage,
   ...marketStorage,
   ...criteriaStorage,
@@ -320,4 +322,5 @@ export const storage: IStorage & typeof datasheetsStorage = {
   ...forecastsStorage,
   ...rfpsStorage,
   ...datasheetsStorage,
+  ...leadGenStorage,
 };

@@ -18,6 +18,7 @@ import {
   type ProductWithVendor,
 } from "../storage/datasheets";
 import type { DatasheetSchemaDefinition } from "@shared/schema";
+import { recordEvent } from "./leadGen";
 import { extractDatasheet } from "../datasheets/extractor";
 import { inferSchemaFromPdfs } from "../datasheets/schemaInference";
 import { diffSpecs } from "../datasheets/diff";
@@ -128,6 +129,10 @@ export function registerDatasheetRoutes(app: Express): void {
       const { products } = loaded;
       const datasheets = await getCurrentDatasheetsForProducts(products.map(p => p.id));
       const specs = await listSpecsForDatasheets(datasheets.map(d => d.id));
+      void recordEvent(req, "comparison_run", {
+        marketId: loaded.market?.id ?? null,
+        metadata: { productIds: body.productIds, productCount: body.productIds.length },
+      });
       res.json({ products, datasheets, specs });
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
@@ -153,6 +158,10 @@ export function registerDatasheetRoutes(app: Express): void {
         return res.status(400).json({ error: "Products do not belong to the specified market" });
       }
       const c = await createComparison({ ownerUserId: asAuthed(req).user.id, ...body });
+      void recordEvent(req, "comparison_saved", {
+        marketId: body.marketId,
+        metadata: { comparisonId: c.id, name: body.name, productIds: body.productIds },
+      });
       res.status(201).json(c);
     } catch (err) { res.status(400).json({ error: errMsg(err) }); }
   });
@@ -723,6 +732,7 @@ export function registerDatasheetRoutes(app: Express): void {
       const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
       res.setHeader("Content-Disposition", `attachment; filename="${market.slug}_comparison.xlsx"`);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      void recordEvent(req, "datasheet_exported", { marketId: market.id, metadata: { format: "excel", productIds: body.productIds } });
       res.send(buf);
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });
@@ -768,6 +778,7 @@ export function registerDatasheetRoutes(app: Express): void {
       const pdf = await pdfService.htmlToPdf(html, { format: "A4", margin: "15mm" });
       res.setHeader("Content-Disposition", `attachment; filename="${market.slug}_comparison.pdf"`);
       res.setHeader("Content-Type", "application/pdf");
+      void recordEvent(req, "datasheet_exported", { marketId: market.id, metadata: { format: "pdf", productIds: body.productIds } });
       res.send(pdf);
     } catch (err) { res.status(500).json({ error: errMsg(err) }); }
   });

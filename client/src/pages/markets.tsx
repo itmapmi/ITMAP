@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
+import { track } from "@/lib/track";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -244,7 +245,7 @@ export default function Markets() {
             {["all", ...categories].map(cat => (
               <button
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => { setSelectedCategory(cat); track("filter_applied", { metadata: { category: cat } }); }}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                   selectedCategory === cat
                     ? "bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]"

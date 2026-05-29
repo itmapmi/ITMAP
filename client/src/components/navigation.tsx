@@ -11,7 +11,7 @@ import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { Lock } from "lucide-react";
 import type { LockableFeatureKey } from "@shared/features";
 
-const ADMIN_PATHS = ["/admin", "/market-builder"];
+const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
 
 export default function Navigation() {
   const [location] = useLocation();

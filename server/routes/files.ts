@@ -6,6 +6,7 @@ import { requireFeature } from "../featureAccess";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { pdfService } from "../pdf-generator/pdf-service";
 import { insertResearchReportSchema, insertResearchMethodologySchema } from "@shared/schema";
+import { recordEvent } from "./leadGen";
 
 /**
  * Returns true if the request user may read this market.
@@ -612,6 +613,7 @@ export function registerFileRoutes(app: Express): void {
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName}.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`, 'Content-Length': pdfBuffer.length.toString(), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, must-revalidate', 'Pragma': 'no-cache' });
+      void recordEvent(req, "report_downloaded", { marketId, metadata: { reportType: "full" } });
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating full PDF report:", error);
@@ -635,6 +637,7 @@ export function registerFileRoutes(app: Express): void {
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName} - Vendor Evaluation.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`, 'Content-Length': pdfBuffer.length.toString(), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, must-revalidate', 'Pragma': 'no-cache' });
+      void recordEvent(req, "report_downloaded", { marketId, metadata: { reportType: "vendor_evaluation", vendorIds: vendorIds ?? null } });
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating vendor evaluation PDF:", error);
@@ -666,6 +669,7 @@ export function registerFileRoutes(app: Express): void {
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName} - Product Evaluation.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`, 'Content-Length': pdfBuffer.length.toString(), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, must-revalidate', 'Pragma': 'no-cache' });
+      void recordEvent(req, "report_downloaded", { marketId, metadata: { reportType: "product_evaluation", vendorIds: vendorIds ?? null } });
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating product evaluation PDF:", error);
@@ -694,6 +698,7 @@ export function registerFileRoutes(app: Express): void {
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName} - ISV Ecosystem.pdf`;
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`, 'Content-Length': pdfBuffer.length.toString(), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, must-revalidate', 'Pragma': 'no-cache' });
+      void recordEvent(req, "report_downloaded", { marketId, metadata: { reportType: "ecosystem", vendorIds: vendorIds ?? null } });
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating ecosystem PDF:", error);

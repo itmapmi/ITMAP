@@ -24,7 +24,7 @@ import DatasheetsAdmin from "@/components/admin/datasheets-admin";
 import { UserAccessAdmin } from "@/components/admin/user-access-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Wand2, ArrowRight } from "lucide-react";
+import { Wand2, ArrowRight, Radar } from "lucide-react";
 import { FadeInSection } from "@/components/ui/animated-card";
 
 function PendingBadge() {
@@ -102,6 +102,30 @@ export default function Admin() {
               </div>
             </div>
             <ArrowRight className="h-5 w-5 text-blue-400 group-hover:text-blue-600 transition-colors shrink-0" />
+          </a>
+        </Link>
+      </motion.div>
+
+      <motion.div
+        className="mb-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <Link href="/lead-gen">
+          <a className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 hover:bg-violet-100 transition-colors group">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 p-2">
+                <Radar className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-violet-900 text-sm">Lead-Gen Activity Intelligence</p>
+                <p className="text-xs text-violet-600 mt-0.5">
+                  Track buyer activity and surface high-intent leads with deterministic scoring, timelines and exports
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 text-violet-400 group-hover:text-violet-600 transition-colors shrink-0" />
           </a>
         </Link>
       </motion.div>

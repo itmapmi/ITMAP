@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
+import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
@@ -854,6 +855,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
           vendor: d,
           position: { x: d.adjustedX, y: d.adjustedY }
         });
+        track("chart_interacted", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
+        track("vendor_selected", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
       });
 
     // Enhanced four-direction label positioning with collision detection

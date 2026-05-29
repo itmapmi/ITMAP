@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
+import { recordEvent } from "./leadGen";
 
 export function registerChatRoutes(app: Express): void {
 
@@ -42,6 +43,11 @@ export function registerChatRoutes(app: Express): void {
       await storage.updateConversation(conversation.id, {});
       const duration = Date.now() - startTime;
       console.log(`[Chat API] Request completed in ${duration}ms`);
+      void recordEvent(req, "chat_question_asked", {
+        marketId,
+        metadata: { conversationId: conversation.id, questionLength: question.length },
+        durationMs: duration,
+      });
       res.json({ conversationId: conversation.id, answer: response.content, sources: response.sources });
     } catch (error: any) {
       const duration = Date.now() - startTime;

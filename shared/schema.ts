@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -987,6 +987,91 @@ export const insertVendorSignalSchema = createInsertSchema(vendorSignals).omit({
 
 export type InsertVendorSignal = z.infer<typeof insertVendorSignalSchema>;
 export type VendorSignal = typeof vendorSignals.$inferSelect;
+
+// ── Lead-Gen Activity Intelligence ───────────────────────────────────────
+// Append-only stream of granular authenticated-user activity used to derive
+// buyer-intent signals. Kept separate from `user_activity_logs` (which stays
+// the source of login/session frequency). Each row is a single event.
+//
+// `eventType` is constrained to a server-side allowlist (LEAD_GEN_EVENT_TYPES)
+// — the client beacon is treated as untrusted and validated against it.
+export const userEvents = pgTable("user_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sessionId: text("session_id"),
+  eventType: text("event_type").notNull(),
+  // Optional context — set when an event relates to a market / vendor. Use
+  // "set null" so deleting a market/vendor preserves the historical event.
+  marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
+  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  // Flexible payload (search query, filter values, report id, page path, etc.)
+  metadata: jsonb("metadata"),
+  // Dwell time in milliseconds for view/dwell events.
+  durationMs: integer("duration_ms"),
+  // Where it was captured: 'server' (trusted) | 'client' (beacon).
+  source: text("source").notNull().default("server"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (t) => ({
+  userIdx: index("user_events_user_idx").on(t.userId),
+  vendorIdx: index("user_events_vendor_idx").on(t.vendorId),
+  marketIdx: index("user_events_market_idx").on(t.marketId),
+  typeIdx: index("user_events_type_idx").on(t.eventType),
+  createdIdx: index("user_events_created_idx").on(t.createdAt),
+  userCreatedIdx: index("user_events_user_created_idx").on(t.userId, t.createdAt),
+}));
+
+export const userEventsRelations = relations(userEvents, ({ one }) => ({
+  user: one(users, { fields: [userEvents.userId], references: [users.id] }),
+  market: one(markets, { fields: [userEvents.marketId], references: [markets.id] }),
+  vendor: one(vendors, { fields: [userEvents.vendorId], references: [vendors.id] }),
+}));
+
+export const insertUserEventSchema = createInsertSchema(userEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type UserEvent = typeof userEvents.$inferSelect;
+export type InsertUserEvent = z.infer<typeof insertUserEventSchema>;
+
+/**
+ * Allowlist of lead-gen event types. The client beacon is validated against
+ * this set; anything else is rejected. `source` notes where a type is
+ * normally produced — server (trusted, billable/high-value) vs client beacon
+ * (views, dwell, chart clicks, search/filter that can't be seen server-side).
+ *
+ * `weight` feeds the deterministic intent engine's "depth" component: higher
+ * weight = stronger purchase-intent signal.
+ */
+export const LEAD_GEN_EVENT_DEFS = {
+  // ── Server-captured (trusted, high value) ──
+  chat_question_asked:      { label: "AI chat question",        weight: 5,  origin: "server" },
+  comparison_run:           { label: "Vendor comparison",       weight: 8,  origin: "server" },
+  comparison_saved:         { label: "Saved comparison",        weight: 10, origin: "server" },
+  report_downloaded:        { label: "Report downloaded",       weight: 12, origin: "server" },
+  datasheet_exported:       { label: "Datasheet exported",      weight: 9,  origin: "server" },
+  rfp_created:              { label: "RFP created",             weight: 14, origin: "server" },
+  rfp_generated:            { label: "RFP generated",           weight: 16, origin: "server" },
+  // ── Client beacon (lower value, can't be observed server-side) ──
+  market_viewed:            { label: "Viewed market",           weight: 2,  origin: "client" },
+  vendor_viewed:            { label: "Viewed vendor",           weight: 3,  origin: "client" },
+  page_dwell:               { label: "Time on page",            weight: 1,  origin: "client" },
+  vendor_selected:          { label: "Selected vendor",         weight: 4,  origin: "client" },
+  search_performed:         { label: "Searched",                weight: 2,  origin: "client" },
+  filter_applied:           { label: "Applied filter",          weight: 2,  origin: "client" },
+  chart_interacted:         { label: "Explored evaluation chart", weight: 3, origin: "client" },
+  news_viewed:              { label: "Read vendor news",        weight: 4,  origin: "client" },
+} as const;
+
+export type LeadGenEventType = keyof typeof LEAD_GEN_EVENT_DEFS;
+
+export const LEAD_GEN_EVENT_TYPES = Object.keys(LEAD_GEN_EVENT_DEFS) as LeadGenEventType[];
+
+// Event types the client beacon is permitted to emit. Server-origin events
+// are rejected if they arrive via the beacon (they must be captured server-side).
+export const CLIENT_BEACON_EVENT_TYPES = LEAD_GEN_EVENT_TYPES.filter(
+  (t) => LEAD_GEN_EVENT_DEFS[t].origin === "client",
+);
 
 // ── User BYO LLM API Keys ────────────────────────────────────────────────
 // Stores per-user API keys for end-user Market Builder runs. The platform
