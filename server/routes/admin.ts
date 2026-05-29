@@ -71,6 +71,27 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // Assign (or clear) a user's vendor seat. A vendor-scoped user can only see
+  // buyer-intent leads for this one vendor via the vendor-facing Lead-Gen panel.
+  app.patch("/api/admin/users/:id/vendor-scope", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({ vendorScopeId: z.string().min(1).nullable() });
+      const { vendorScopeId } = schema.parse(req.body);
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (vendorScopeId) {
+        const vendor = await storage.getVendorBrief(vendorScopeId);
+        if (!vendor) return res.status(404).json({ error: "Vendor not found" });
+      }
+      const updated = await storage.updateUserVendorScope(req.params.id, vendorScopeId);
+      const { password, ...safe } = updated;
+      res.json(safe);
+    } catch (error) {
+      console.error("Error updating user vendor scope:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update vendor scope" });
+    }
+  });
+
   // ── Prompt Repository ────────────────────────────────────────────────────
 
   app.get("/api/admin/prompts", requireAdmin, async (req, res) => {

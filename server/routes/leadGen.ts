@@ -38,6 +38,26 @@ function resolveScope(req: Request): { vendorId?: string; marketId?: string } {
   return { vendorId, marketId };
 }
 
+// The vendor a request is scoped to. Admins have no scope (they see everything
+// via query filters); a vendor-side seat is hard-pinned to its own vendor.
+function vendorScopeId(req: Request): string | null {
+  const user = req.user as any;
+  return user?.vendorScopeId ?? null;
+}
+
+// Gate for the vendor-facing surface: only authenticated users that have a
+// vendor seat assigned. Admins are not vendor-scoped, so they use the admin
+// panel rather than this self-service variant.
+function requireVendorScope(req: Request, res: Response, next: () => void) {
+  if (!req.isAuthenticated?.()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  if (!vendorScopeId(req)) {
+    return res.status(403).json({ error: "No vendor seat assigned to this account" });
+  }
+  next();
+}
+
 function parseSince(req: Request): Date | undefined {
   const days = req.query.days ? Number(req.query.days) : undefined;
   if (!days || Number.isNaN(days) || days <= 0) return undefined;
@@ -249,6 +269,67 @@ export function registerLeadGenRoutes(app: Express): void {
     } catch (err) {
       console.error("[lead-gen] vendor leads error:", err);
       res.status(500).json({ error: "Failed to load vendor leads" });
+    }
+  });
+
+  // ── Vendor-facing self-service surface (vendor seats only) ──
+  // These mirror the admin per-vendor routes but hard-pin the vendor to the
+  // signed-in seat's `vendorScopeId`, so a vendor can only ever see buyers
+  // showing intent toward their own product.
+
+  // Scope info for the signed-in vendor seat (used to render the panel header).
+  app.get("/api/lead-gen/me/scope", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const vendorId = vendorScopeId(req)!;
+      const vendor = await storage.getVendorBrief(vendorId);
+      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      res.json({ vendor });
+    } catch (err) {
+      console.error("[lead-gen] me scope error:", err);
+      res.status(500).json({ error: "Failed to load vendor scope" });
+    }
+  });
+
+  // Ranked leads for the signed-in vendor seat.
+  app.get("/api/lead-gen/me/leads", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const vendorId = vendorScopeId(req)!;
+      const vendor = await storage.getVendorBrief(vendorId);
+      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      const since = parseSince(req);
+      const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
+      const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
+      const offset = req.query.offset ? Number(req.query.offset) : 0;
+      const minIntent = parseMinIntent(req);
+      const result = await buildRankedLeads({ vendorId, since, sort, limit, offset, minIntent });
+      res.json({ vendor, ...result });
+    } catch (err) {
+      console.error("[lead-gen] me leads error:", err);
+      res.status(500).json({ error: "Failed to load leads" });
+    }
+  });
+
+  // Export the signed-in vendor seat's leads.
+  app.get("/api/lead-gen/me/leads/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const vendorId = vendorScopeId(req)!;
+      const vendor = await storage.getVendorBrief(vendorId);
+      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      const since = parseSince(req);
+      const minIntent = parseMinIntent(req);
+      const { rows } = await buildRankedLeads({ vendorId, since, limit: 1000, offset: 0, minIntent });
+      const safe = vendor.name.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+      if (req.params.fmt === "excel") {
+        return await sendLeadsExcel(res, `spectio_${safe}_leads`, rows);
+      }
+      const html = leadsTableHtml(`Buyers interested in ${vendor.name}`, rows);
+      const pdf = await pdfService.htmlToPdf(html, { format: "A4" });
+      res.setHeader("Content-Disposition", `attachment; filename="spectio_${safe}_leads.pdf"`);
+      res.setHeader("Content-Type", "application/pdf");
+      res.send(pdf);
+    } catch (err) {
+      console.error("[lead-gen] me export error:", err);
+      res.status(500).json({ error: "Failed to export leads" });
     }
   });
 

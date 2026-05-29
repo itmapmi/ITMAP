@@ -30,6 +30,11 @@ export function UserAccessAdmin() {
     queryKey: ["/api/admin/users"],
   });
 
+  const { data: filters } = useQuery<{ vendors: { id: string; name: string; marketId: string | null }[] }>({
+    queryKey: ["/api/lead-gen/filters"],
+  });
+  const vendors = filters?.vendors ?? [];
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, featureAccess }: { id: string; featureAccess: string[] }) => {
       return apiRequest(`/api/admin/users/${id}/feature-access`, "PATCH", { featureAccess });
@@ -47,6 +52,29 @@ export function UserAccessAdmin() {
         queryClient.setQueryData(["/api/admin/users"], context.previous);
       }
       toast({ title: "Failed to update access", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+
+  const vendorScopeMutation = useMutation({
+    mutationFn: async ({ id, vendorScopeId }: { id: string; vendorScopeId: string | null }) => {
+      return apiRequest(`/api/admin/users/${id}/vendor-scope`, "PATCH", { vendorScopeId });
+    },
+    onMutate: async ({ id, vendorScopeId }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/users"] });
+      const previous = queryClient.getQueryData<AdminUser[]>(["/api/admin/users"]);
+      queryClient.setQueryData<AdminUser[]>(["/api/admin/users"], (old) =>
+        (old ?? []).map((u) => (u.id === id ? { ...u, vendorScopeId } : u)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/admin/users"], context.previous);
+      }
+      toast({ title: "Failed to update vendor seat", variant: "destructive" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -113,12 +141,13 @@ export function UserAccessAdmin() {
                   {f.label}
                 </TableHead>
               ))}
+              <TableHead className="min-w-[200px] whitespace-nowrap">Vendor seat (leads)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={LOCKABLE_FEATURES.length + 1} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={LOCKABLE_FEATURES.length + 2} className="text-center text-gray-500 py-8">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -151,6 +180,29 @@ export function UserAccessAdmin() {
                         />
                       </TableCell>
                     ))}
+                    <TableCell>
+                      {isAdminUser ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <select
+                          value={user.vendorScopeId ?? ""}
+                          disabled={vendorScopeMutation.isPending}
+                          onChange={(e) =>
+                            vendorScopeMutation.mutate({
+                              id: user.id,
+                              vendorScopeId: e.target.value || null,
+                            })
+                          }
+                          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                          data-testid={`select-vendor-scope-${user.id}`}
+                        >
+                          <option value="">No vendor seat</option>
+                          {vendors.map((v) => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })

@@ -61,6 +61,16 @@ export async function updateUserFeatureAccess(id: string, featureAccess: string[
   return updated!;
 }
 
+// Pin (or clear) a user's vendor-scoped seat for the Lead-Gen panel.
+export async function updateUserVendorScope(id: string, vendorScopeId: string | null): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ vendorScopeId, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 // ── User Activity Logs ─────────────────────────────────────────────────────
 
 export async function recordUserLogin(log: InsertUserActivityLog): Promise<UserActivityLog> {

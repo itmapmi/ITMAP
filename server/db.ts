@@ -354,6 +354,14 @@ export async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS feature_access text[] NOT NULL DEFAULT '{}'::text[]
     `);
 
+    // 21b. vendor_scope_id on users — pins a vendor-side seat to a single
+    //      vendor for the Lead-Gen buyer-intent panel. Additive + idempotent.
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS vendor_scope_id varchar
+          REFERENCES vendors(id) ON DELETE SET NULL
+    `);
+
     // 22. user_events — append-only activity log powering Lead-Gen Activity
     //     Intelligence (buyer-intent scoring). Idempotent + additive.
     await client.query(`

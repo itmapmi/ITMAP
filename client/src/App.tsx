@@ -37,6 +37,7 @@ import DatasheetSharePage from "@/pages/datasheets/share-view";
 import LeadGenOverviewPage from "@/pages/lead-gen/index";
 import LeadGenDetailPage from "@/pages/lead-gen/detail";
 import LeadGenVendorPage from "@/pages/lead-gen/vendor";
+import LeadGenMyVendorPage from "@/pages/lead-gen/me";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -88,6 +89,7 @@ function Router() {
         <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
         <Route path="/lead-gen" component={() => <ProtectedRoute component={LeadGenOverviewPage} requireAdmin={true} />} />
         <Route path="/lead-gen/vendors/:vendorId" component={() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />} />
+        <Route path="/lead-gen/me" component={() => <ProtectedRoute component={LeadGenMyVendorPage} />} />
         <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />

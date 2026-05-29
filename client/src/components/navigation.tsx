@@ -15,7 +15,7 @@ const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
 
 export default function Navigation() {
   const [location] = useLocation();
-  const { user, isAdmin, logout, isAuthenticated, hasFeature } = useAuth();
+  const { user, isAdmin, logout, isAuthenticated, hasFeature, isVendorScoped } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -123,6 +123,13 @@ export default function Navigation() {
                       location.includes("reports") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
                     }`}>My Reports</span>
                   </Link>
+                  {isVendorScoped && !isAdmin && (
+                    <Link href="/lead-gen/me">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>My Leads</span>
+                    </Link>
+                  )}
                   {isAdmin && (
                     <Link href="/admin">
                       <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
@@ -216,6 +223,16 @@ export default function Navigation() {
                   onClick={() => setMobileOpen(false)}
                 >
                   My Reports
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && (
+              <Link href="/lead-gen/me">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  My Leads
                 </div>
               </Link>
             )}

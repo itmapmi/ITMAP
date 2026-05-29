@@ -27,6 +27,11 @@ export const users = pgTable("users", {
   // shared/features.ts). Empty = only baseline features. Admins ignore this.
   featureAccess: text("feature_access").array().notNull().default(sql`'{}'::text[]`),
 
+  // Vendor-scoped account: when set, this user is a vendor-side seat that may
+  // only see buyer-intent leads for this one vendor (the Lead-Gen panel is
+  // pinned to it). Null = a normal buyer/admin account. Admins ignore this.
+  vendorScopeId: varchar("vendor_scope_id").references((): any => vendors.id, { onDelete: "set null" }),
+
   // OAuth provider info
   googleId: text("google_id").unique(),
   linkedinId: text("linkedin_id").unique(),

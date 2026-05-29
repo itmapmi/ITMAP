@@ -55,6 +55,8 @@ export function useAuth() {
     isLoading,
     isAuthenticated: !!user && !error,
     isAdmin: user?.role === 'admin',
+    vendorScopeId: user?.vendorScopeId ?? null,
+    isVendorScoped: !!user?.vendorScopeId,
     hasFeature: (featureKey: LockableFeatureKey) =>
       hasFeatureAccess(user?.role, user?.featureAccess, featureKey),
     login: loginMutation.mutateAsync,
