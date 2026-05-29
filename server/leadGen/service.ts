@@ -256,3 +256,118 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     timeline,
   };
 }
+
+// ── Watched audience (vendor seat) ───────────────────────────────────────────
+// An admin pins a set of end users + a market to a vendor seat. The seat sees
+// those users' activity on that market only — independent of the seat's own
+// vendor. Intent here is market-scoped (logins are account-level, so excluded).
+
+export interface AudienceSummaryRow {
+  endUserId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  marketId: string;
+  marketName: string | null;
+  totalEvents: number;
+  lastActivityAt: string | null;
+  intent: IntentResult;
+  topVendor: { vendorId: string; vendorName: string; events: number } | null;
+}
+
+export async function buildAudienceSummaries(
+  seatUserId: string,
+  since?: Date,
+): Promise<{ total: number; rows: AudienceSummaryRow[] }> {
+  const windowSince = since ?? windowStart();
+  const audience = await storage.getSeatAudience(seatUserId);
+  const now = new Date();
+
+  const rows: AudienceSummaryRow[] = await Promise.all(
+    audience.map(async (a) => {
+      const profile = await storage.getMarketScopedProfile(a.endUserId, a.marketId, windowSince);
+      const intent = scoreLead(
+        {
+          userId: a.endUserId,
+          eventCounts: profile.eventCounts as Partial<Record<LeadGenEventType, number>>,
+          loginActiveDays: 0,
+          lastActivityAt: profile.lastActivityAt,
+        },
+        now,
+      );
+      return {
+        endUserId: a.endUserId,
+        firstName: a.firstName,
+        lastName: a.lastName,
+        email: a.email,
+        marketId: a.marketId,
+        marketName: a.marketName,
+        totalEvents: profile.totalEvents,
+        lastActivityAt: profile.lastActivityAt ? profile.lastActivityAt.toISOString() : null,
+        intent,
+        topVendor: profile.topVendor,
+      };
+    }),
+  );
+
+  rows.sort((a, b) => b.intent.score - a.intent.score);
+  return { total: rows.length, rows };
+}
+
+export interface AudienceUserDetail {
+  user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  market: { id: string; name: string | null };
+  intent: IntentResult;
+  totalEvents: number;
+  lastActivityAt: string | null;
+  vendorBreakdown: Awaited<ReturnType<typeof storage.getUserVendorBreakdown>>;
+  typeBreakdown: { eventType: string; count: number }[];
+  activityByDay: { day: string; count: number }[];
+  timeline: Awaited<ReturnType<typeof storage.getUserTimeline>>;
+}
+
+export async function buildAudienceUserDetail(
+  endUserId: string,
+  marketId: string,
+  marketName: string | null,
+  since?: Date,
+): Promise<AudienceUserDetail | null> {
+  const windowSince = since ?? windowStart();
+  const [usersList, typeBreakdown, vendorBreakdown, activityByDay, timeline] = await Promise.all([
+    storage.getUsersByIds([endUserId]),
+    storage.getUserTypeBreakdownForUser(endUserId, windowSince, marketId),
+    storage.getUserVendorBreakdown(endUserId, windowSince, marketId),
+    storage.getUserActivityByDay(endUserId, windowSince, marketId),
+    storage.getUserTimeline(endUserId, 150, windowSince, marketId),
+  ]);
+
+  const user = usersList[0];
+  if (!user) return null;
+
+  const eventCounts: Record<string, number> = {};
+  let totalEvents = 0;
+  for (const t of typeBreakdown) {
+    eventCounts[t.eventType] = t.count;
+    totalEvents += t.count;
+  }
+
+  const lastActivityAt = timeline[0]?.createdAt ? new Date(timeline[0].createdAt) : null;
+  const intent = scoreLead({
+    userId: endUserId,
+    eventCounts: eventCounts as Partial<Record<LeadGenEventType, number>>,
+    loginActiveDays: 0,
+    lastActivityAt,
+  });
+
+  return {
+    user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email },
+    market: { id: marketId, name: marketName },
+    intent,
+    totalEvents,
+    lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+    vendorBreakdown,
+    typeBreakdown,
+    activityByDay,
+    timeline,
+  };
+}
