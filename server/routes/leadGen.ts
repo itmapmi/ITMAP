@@ -46,6 +46,14 @@ function parseSince(req: Request): Date | undefined {
   return d;
 }
 
+// Parse + clamp the minIntent threshold so tampered query params can't pass NaN.
+function parseMinIntent(req: Request): number | undefined {
+  if (!req.query.minIntent) return undefined;
+  const n = Number(req.query.minIntent);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(100, Math.max(0, n));
+}
+
 function fullName(r: { firstName: string | null; lastName: string | null; email: string | null }): string {
   const name = [r.firstName, r.lastName].filter(Boolean).join(" ").trim();
   return name || r.email || "Unknown user";
@@ -217,7 +225,7 @@ export function registerLeadGenRoutes(app: Express): void {
       const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
       const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
-      const minIntent = req.query.minIntent ? Number(req.query.minIntent) : undefined;
+      const minIntent = parseMinIntent(req);
       const result = await buildRankedLeads({ ...scope, since, sort, limit, offset, minIntent });
       res.json(result);
     } catch (err) {
@@ -235,7 +243,8 @@ export function registerLeadGenRoutes(app: Express): void {
       const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
       const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
-      const result = await buildRankedLeads({ vendorId: req.params.vendorId, since, sort, limit, offset });
+      const minIntent = parseMinIntent(req);
+      const result = await buildRankedLeads({ vendorId: req.params.vendorId, since, sort, limit, offset, minIntent });
       res.json({ vendor, ...result });
     } catch (err) {
       console.error("[lead-gen] vendor leads error:", err);
@@ -250,7 +259,7 @@ export function registerLeadGenRoutes(app: Express): void {
       const scope = resolveScope(req);
       const since = parseSince(req);
       const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
-      const minIntent = req.query.minIntent ? Number(req.query.minIntent) : undefined;
+      const minIntent = parseMinIntent(req);
       const { rows } = await buildRankedLeads({ ...scope, since, sort, limit: 1000, offset: 0, minIntent });
 
       if (req.params.fmt === "excel") {
@@ -273,7 +282,8 @@ export function registerLeadGenRoutes(app: Express): void {
       const vendor = await storage.getVendorBrief(req.params.vendorId);
       if (!vendor) return res.status(404).json({ error: "Vendor not found" });
       const since = parseSince(req);
-      const { rows } = await buildRankedLeads({ vendorId: req.params.vendorId, since, limit: 1000, offset: 0 });
+      const minIntent = parseMinIntent(req);
+      const { rows } = await buildRankedLeads({ vendorId: req.params.vendorId, since, limit: 1000, offset: 0, minIntent });
       const safe = vendor.name.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
       if (req.params.fmt === "excel") {
         return await sendLeadsExcel(res, `spectio_${safe}_leads`, rows);

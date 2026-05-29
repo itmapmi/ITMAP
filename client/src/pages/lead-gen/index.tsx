@@ -51,6 +51,8 @@ export default function LeadGenOverviewPage() {
   const [sort, setSort] = useState<string>("intent");
   const [days, setDays] = useState<number>(90);
   const [marketId, setMarketId] = useState<string>("");
+  const [vendorId, setVendorId] = useState<string>("");
+  const [minIntent, setMinIntent] = useState<number>(0);
   const [search, setSearch] = useState("");
 
   const qs = new URLSearchParams();
@@ -63,13 +65,21 @@ export default function LeadGenOverviewPage() {
     queryFn: async () => (await fetch(`/api/lead-gen/overview?${qs.toString()}`, { credentials: "include" })).json(),
   });
 
+  // Vendor filter switches to the vendor-scoped leads endpoint so the list is
+  // narrowed to buyers showing intent toward that vendor.
   const leadsQs = new URLSearchParams(qs);
   leadsQs.set("sort", sort);
-  leadsQs.set("limit", "100");
+  leadsQs.set("limit", "200");
+  if (minIntent > 0) leadsQs.set("minIntent", String(minIntent));
+  const leadsUrl = vendorId
+    ? `/api/lead-gen/vendors/${vendorId}/leads?${leadsQs.toString()}`
+    : `/api/lead-gen/leads?${leadsQs.toString()}`;
   const { data: leads, isLoading: leadsLoading } = useQuery<LeadsResponse>({
-    queryKey: ["/api/lead-gen/leads", days, marketId, sort],
-    queryFn: async () => (await fetch(`/api/lead-gen/leads?${leadsQs.toString()}`, { credentials: "include" })).json(),
+    queryKey: ["/api/lead-gen/leads", days, marketId, vendorId, sort, minIntent],
+    queryFn: async () => (await fetch(leadsUrl, { credentials: "include" })).json(),
   });
+
+  const vendorOptions = (filters?.vendors ?? []).filter((v) => !marketId || v.marketId === marketId);
 
   const rows = (leads?.rows ?? []).filter((r) => {
     if (!search.trim()) return true;
@@ -80,7 +90,10 @@ export default function LeadGenOverviewPage() {
   const trend = overview?.eventsByDay.map((d) => d.count) ?? [];
   const hotCount = rows.filter((r) => r.intent.band === "hot").length;
 
-  const exportUrl = (fmt: string) => `/api/lead-gen/leads/export/${fmt}?${leadsQs.toString()}`;
+  const exportUrl = (fmt: string) =>
+    vendorId
+      ? `/api/lead-gen/vendors/${vendorId}/leads/export/${fmt}?${leadsQs.toString()}`
+      : `/api/lead-gen/leads/export/${fmt}?${leadsQs.toString()}`;
 
   return (
     <PanelShell>
@@ -148,9 +161,19 @@ export default function LeadGenOverviewPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search buyers…" className="border-white/10 bg-slate-900/60 pl-9 text-sm text-white placeholder:text-slate-500" />
         </div>
-        <select value={marketId} onChange={(e) => setMarketId(e.target.value)} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200">
+        <select value={marketId} onChange={(e) => { setMarketId(e.target.value); setVendorId(""); }} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200">
           <option value="">All markets</option>
           {filters?.markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200">
+          <option value="">All vendors</option>
+          {vendorOptions.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+        <select value={minIntent} onChange={(e) => setMinIntent(Number(e.target.value))} className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200">
+          <option value={0}>Any intent</option>
+          <option value={25}>25+ (warm)</option>
+          <option value={50}>50+ (engaged)</option>
+          <option value={75}>75+ (hot)</option>
         </select>
         <div className="flex rounded-lg border border-white/10 bg-slate-900/60 p-0.5">
           {WINDOWS.map((w) => (

@@ -174,6 +174,9 @@ export interface LeadDetail {
   logins: number;
   lastActivityAt: string | null;
   vendorBreakdown: { vendorId: string; vendorName: string; events: number; lastAt: string }[];
+  // Per-vendor intent scores for this user — a vendor-scoped view of the same
+  // deterministic engine, so admins see which vendor the buyer is hottest on.
+  vendorIntent: { vendorId: string; vendorName: string; events: number; intent: IntentResult }[];
   typeBreakdown: { eventType: string; count: number }[];
   activityByDay: { day: string; count: number }[];
   timeline: Awaited<ReturnType<typeof storage.getUserTimeline>>;
@@ -181,10 +184,11 @@ export interface LeadDetail {
 
 export async function buildLeadDetail(userId: string): Promise<LeadDetail | null> {
   const since = windowStart();
-  const [usersList, typeBreakdown, vendorBreakdown, activityByDay, timeline, loginStats] = await Promise.all([
+  const [usersList, typeBreakdown, vendorBreakdown, vendorTypeBreakdown, activityByDay, timeline, loginStats] = await Promise.all([
     storage.getUsersByIds([userId]),
     storage.getUserTypeBreakdownForUser(userId, since),
     storage.getUserVendorBreakdown(userId, since),
+    storage.getUserVendorEventTypeBreakdown(userId, since),
     storage.getUserActivityByDay(userId, since),
     storage.getUserTimeline(userId, 150, since),
     storage.getLoginStatsByUser(since),
@@ -213,6 +217,32 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     lastActivityAt,
   });
 
+  // Build per-vendor intent: group the vendor/event-type rows, then run the same
+  // engine scoped to each vendor's events (logins are account-level, so 0 here).
+  const byVendor = new Map<string, { vendorName: string; counts: Record<string, number>; events: number; lastAt: Date }>();
+  for (const r of vendorTypeBreakdown) {
+    if (!r.vendorId) continue;
+    const v = byVendor.get(r.vendorId) ?? { vendorName: r.vendorName, counts: {}, events: 0, lastAt: new Date(0) };
+    v.counts[r.eventType] = (v.counts[r.eventType] ?? 0) + r.count;
+    v.events += r.count;
+    const last = new Date(r.lastAt);
+    if (last > v.lastAt) v.lastAt = last;
+    byVendor.set(r.vendorId, v);
+  }
+  const vendorIntent = Array.from(byVendor.entries())
+    .map(([vendorId, v]) => ({
+      vendorId,
+      vendorName: v.vendorName,
+      events: v.events,
+      intent: scoreLead({
+        userId,
+        eventCounts: v.counts as Partial<Record<LeadGenEventType, number>>,
+        loginActiveDays: 0,
+        lastActivityAt: v.lastAt.getTime() > 0 ? v.lastAt : null,
+      }),
+    }))
+    .sort((a, b) => b.intent.score - a.intent.score);
+
   return {
     user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email },
     intent,
@@ -220,6 +250,7 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     logins: login?.logins ?? 0,
     lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
     vendorBreakdown,
+    vendorIntent,
     typeBreakdown,
     activityByDay,
     timeline,

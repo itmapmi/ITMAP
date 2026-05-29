@@ -16,6 +16,7 @@ interface LeadDetail {
   logins: number;
   lastActivityAt: string | null;
   vendorBreakdown: { vendorId: string; vendorName: string; events: number; lastAt: string }[];
+  vendorIntent: { vendorId: string; vendorName: string; events: number; intent: IntentResult }[];
   typeBreakdown: { eventType: string; count: number }[];
   activityByDay: { day: string; count: number }[];
   timeline: {
@@ -117,24 +118,28 @@ export default function LeadGenDetailPage() {
       </GlassCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Vendors of interest */}
+        {/* Per-vendor intent */}
         <GlassCard className="p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-white"><Star className="h-4 w-4 text-amber-400" /> Vendors of interest</h2>
-          {data.vendorBreakdown.length === 0 ? (
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-white"><Star className="h-4 w-4 text-amber-400" /> Vendor intent breakdown</h2>
+          {data.vendorIntent.length === 0 ? (
             <p className="text-xs text-slate-500">No vendor-specific activity.</p>
           ) : (
-            <div className="space-y-2">
-              {data.vendorBreakdown.slice(0, 12).map((v) => {
-                const max = data.vendorBreakdown[0]?.events || 1;
+            <div className="space-y-2.5">
+              {data.vendorIntent.slice(0, 12).map((v) => {
+                const vm = BAND_META[v.intent.band];
                 return (
                   <Link key={v.vendorId} href={`/lead-gen/vendors/${v.vendorId}`}>
-                    <a className="block rounded-lg px-2 py-1.5 hover:bg-white/5">
-                      <div className="flex items-center justify-between text-sm">
+                    <a className="block rounded-lg px-2 py-2 hover:bg-white/5">
+                      <div className="flex items-center justify-between gap-2 text-sm">
                         <span className="truncate text-slate-200">{v.vendorName}</span>
-                        <span className="text-xs text-slate-400">{v.events}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="text-xs text-slate-500">{v.events} events</span>
+                          <BandBadge band={v.intent.band} />
+                          <span className={`w-7 text-right text-sm font-bold tabular-nums ${vm.text}`}>{Math.round(v.intent.score)}</span>
+                        </span>
                       </div>
-                      <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-600" style={{ width: `${(v.events / max) * 100}%` }} />
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full" style={{ width: `${v.intent.score}%`, background: vm.stroke }} />
                       </div>
                     </a>
                   </Link>

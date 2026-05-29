@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { track } from "@/lib/track";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Send, Bookmark, Download, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -160,18 +161,18 @@ export default function DatasheetComparePage() {
                 const sel = "bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs text-slate-300";
                 return (
                   <>
-                    <select className={sel} value={filterVendor} onChange={e => setFilterVendor(e.target.value)} data-testid="filter-vendor">
+                    <select className={sel} value={filterVendor} onChange={e => { setFilterVendor(e.target.value); if (e.target.value) track("vendor_viewed", { metadata: { vendorName: e.target.value, context: "datasheets" } }); }} data-testid="filter-vendor">
                       <option value="">All vendors</option>
                       {vendors.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                     {subCats.length > 0 && (
-                      <select className={sel} value={filterSubCategory} onChange={e => setFilterSubCategory(e.target.value)} data-testid="filter-subcategory">
+                      <select className={sel} value={filterSubCategory} onChange={e => { setFilterSubCategory(e.target.value); if (e.target.value) track("search_performed", { metadata: { facet: "subCategory", query: e.target.value, context: "datasheets" } }); }} data-testid="filter-subcategory">
                         <option value="">All sub-categories</option>
                         {subCats.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     )}
                     {formFactors.length > 0 && (
-                      <select className={sel} value={filterFormFactor} onChange={e => setFilterFormFactor(e.target.value)} data-testid="filter-formfactor">
+                      <select className={sel} value={filterFormFactor} onChange={e => { setFilterFormFactor(e.target.value); if (e.target.value) track("search_performed", { metadata: { facet: "formFactor", query: e.target.value, context: "datasheets" } }); }} data-testid="filter-formfactor">
                         <option value="">All form factors</option>
                         {formFactors.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>

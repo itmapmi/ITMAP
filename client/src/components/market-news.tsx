@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import type { NewsArticle, Vendor } from "@shared/schema";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { track } from "@/lib/track";
 
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
@@ -180,6 +181,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                               rel="noopener noreferrer"
                               className="hover:text-blue-600 transition-colors"
                               data-testid={`link-article-${article.id}`}
+                              onClick={() => track("news_viewed", { marketId, vendorId: article.vendorId ?? null, metadata: { articleId: article.id, title: article.title } })}
                             >
                               {article.title}
                               <ExternalLink className="inline h-4 w-4 ml-1" />

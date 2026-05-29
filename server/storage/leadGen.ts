@@ -239,6 +239,27 @@ export async function getUserVendorBreakdown(userId: string, since?: Date): Prom
     .orderBy(sql`count(*) desc`);
 }
 
+// Per-vendor, per-event-type counts for one user — drives per-vendor intent scoring.
+export async function getUserVendorEventTypeBreakdown(
+  userId: string,
+  since?: Date,
+): Promise<{ vendorId: string; vendorName: string; eventType: string; count: number; lastAt: string }[]> {
+  const conds = [eq(userEvents.userId, userId)];
+  if (since) conds.push(gte(userEvents.createdAt, since));
+  return await db
+    .select({
+      vendorId: sql<string>`${userEvents.vendorId}`,
+      vendorName: vendors.name,
+      eventType: userEvents.eventType,
+      count: sql<number>`count(*)::int`,
+      lastAt: sql<string>`max(${userEvents.createdAt})`,
+    })
+    .from(userEvents)
+    .innerJoin(vendors, eq(userEvents.vendorId, vendors.id))
+    .where(and(...conds))
+    .groupBy(userEvents.vendorId, vendors.name, userEvents.eventType);
+}
+
 export async function getUserTypeBreakdownForUser(userId: string, since?: Date): Promise<{ eventType: string; count: number }[]> {
   const conds = [eq(userEvents.userId, userId)];
   if (since) conds.push(gte(userEvents.createdAt, since));

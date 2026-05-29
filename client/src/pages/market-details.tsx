@@ -185,6 +185,9 @@ export default function MarketDetails() {
 
   const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
     setIsGenerating(true);
+    for (const vid of selectedVendorIds) {
+      track("vendor_selected", { marketId, vendorId: vid, metadata: { context: "report" } });
+    }
     try {
       const response = await apiRequest(
         `/api/markets/${marketId}/generate-full-pdf-report`,

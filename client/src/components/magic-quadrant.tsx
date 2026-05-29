@@ -856,7 +856,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
           position: { x: d.adjustedX, y: d.adjustedY }
         });
         track("chart_interacted", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
-        track("vendor_selected", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
+        track("vendor_viewed", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
       });
 
     // Enhanced four-direction label positioning with collision detection
