@@ -30,9 +30,12 @@ export default function Login() {
         title: "Success",
         description: "Logged in successfully",
       });
-      // Redirect admin users to admin portal, others to home
+      // Redirect admin users to admin portal, vendor seats to their leads
+      // dashboard, and everyone else to home.
       if (user?.role === 'admin') {
         setLocation("/admin");
+      } else if (user?.vendorScopeId) {
+        setLocation("/lead-gen/me");
       } else {
         setLocation("/");
       }

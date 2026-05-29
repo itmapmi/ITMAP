@@ -8,6 +8,15 @@ import path from "path";
 
 const loggedSessions = new Set<string>();
 
+// Decide where a user lands after a successful login. Admins go to the admin
+// portal, vendor-scoped seats go straight to their leads dashboard, and
+// everyone else lands on the home page.
+function loginLandingPath(user: any): string {
+  if (user?.role === 'admin') return '/admin';
+  if (user?.vendorScopeId) return '/lead-gen/me';
+  return '/';
+}
+
 export function registerAuthRoutes(app: Express): void {
   setupSession(app);
   setupPassport(app);
@@ -129,11 +138,11 @@ export function registerAuthRoutes(app: Express): void {
           userAgent: req.get('user-agent') || 'unknown',
           loginAt: new Date(),
         });
-        res.redirect(user?.role === 'admin' ? '/admin' : '/');
+        res.redirect(loginLandingPath(user));
       } catch (error) {
         console.error("Error recording OAuth login:", error);
         const user = req.user as any;
-        res.redirect(user?.role === 'admin' ? '/admin' : '/');
+        res.redirect(loginLandingPath(user));
       }
     }
   );
@@ -151,11 +160,11 @@ export function registerAuthRoutes(app: Express): void {
           userAgent: req.get('user-agent') || 'unknown',
           loginAt: new Date(),
         });
-        res.redirect(user?.role === 'admin' ? '/admin' : '/');
+        res.redirect(loginLandingPath(user));
       } catch (error) {
         console.error("Error recording OAuth login:", error);
         const user = req.user as any;
-        res.redirect(user?.role === 'admin' ? '/admin' : '/');
+        res.redirect(loginLandingPath(user));
       }
     }
   );

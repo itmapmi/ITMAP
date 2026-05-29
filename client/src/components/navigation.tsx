@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
-import { LogOut, User, Settings, Menu, X, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut, User, Settings, Menu, X, ChevronRight, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +19,14 @@ export default function Navigation() {
   const { user, isAdmin, logout, isAuthenticated, hasFeature, isVendorScoped } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: vendorScope } = useQuery<{ vendor: { name?: string } }>({
+    queryKey: ["/api/lead-gen/me/scope"],
+    enabled: isVendorScoped && !isAdmin,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const vendorSeatName = vendorScope?.vendor?.name;
 
   const isAdminArea = ADMIN_PATHS.some(p => location.startsWith(p));
 
@@ -155,6 +164,12 @@ export default function Navigation() {
                     <div className="p-2 border-b border-white/10">
                       <p className="font-medium text-sm text-white">{user?.firstName} {user?.lastName}</p>
                       <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                      {isVendorScoped && !isAdmin && (
+                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500/15 to-violet-600/15 border border-cyan-400/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                          <Store className="h-3 w-3" />
+                          Vendor seat{vendorSeatName ? ` · ${vendorSeatName}` : ""}
+                        </span>
+                      )}
                     </div>
                     <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
                       <Link href="/me/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
