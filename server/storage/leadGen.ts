@@ -192,9 +192,10 @@ export interface TimelineEvent {
   createdAt: Date;
 }
 
-export async function getUserTimeline(userId: string, limit = 100, since?: Date): Promise<TimelineEvent[]> {
+export async function getUserTimeline(userId: string, limit = 100, since?: Date, marketId?: string): Promise<TimelineEvent[]> {
   const conds = [eq(userEvents.userId, userId)];
   if (since) conds.push(gte(userEvents.createdAt, since));
+  if (marketId) conds.push(eq(userEvents.marketId, marketId));
   return await db
     .select({
       id: userEvents.id,
@@ -222,9 +223,10 @@ export interface UserVendorBreakdown {
   lastAt: string;
 }
 
-export async function getUserVendorBreakdown(userId: string, since?: Date): Promise<UserVendorBreakdown[]> {
+export async function getUserVendorBreakdown(userId: string, since?: Date, marketId?: string): Promise<UserVendorBreakdown[]> {
   const conds = [eq(userEvents.userId, userId)];
   if (since) conds.push(gte(userEvents.createdAt, since));
+  if (marketId) conds.push(eq(userEvents.marketId, marketId));
   return await db
     .select({
       vendorId: sql<string>`${userEvents.vendorId}`,
@@ -260,9 +262,10 @@ export async function getUserVendorEventTypeBreakdown(
     .groupBy(userEvents.vendorId, vendors.name, userEvents.eventType);
 }
 
-export async function getUserTypeBreakdownForUser(userId: string, since?: Date): Promise<{ eventType: string; count: number }[]> {
+export async function getUserTypeBreakdownForUser(userId: string, since?: Date, marketId?: string): Promise<{ eventType: string; count: number }[]> {
   const conds = [eq(userEvents.userId, userId)];
   if (since) conds.push(gte(userEvents.createdAt, since));
+  if (marketId) conds.push(eq(userEvents.marketId, marketId));
   return await db
     .select({
       eventType: userEvents.eventType,
@@ -274,9 +277,10 @@ export async function getUserTypeBreakdownForUser(userId: string, since?: Date):
 }
 
 // Day-by-day activity counts for one user (sparkline / activity trend).
-export async function getUserActivityByDay(userId: string, since?: Date): Promise<{ day: string; count: number }[]> {
+export async function getUserActivityByDay(userId: string, since?: Date, marketId?: string): Promise<{ day: string; count: number }[]> {
   const conds = [eq(userEvents.userId, userId)];
   if (since) conds.push(gte(userEvents.createdAt, since));
+  if (marketId) conds.push(eq(userEvents.marketId, marketId));
   return await db
     .select({
       day: sql<string>`date_trunc('day', ${userEvents.createdAt})::date`,

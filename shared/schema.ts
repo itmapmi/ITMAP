@@ -1039,6 +1039,32 @@ export const insertUserEventSchema = createInsertSchema(userEvents).omit({
 export type UserEvent = typeof userEvents.$inferSelect;
 export type InsertUserEvent = z.infer<typeof insertUserEventSchema>;
 
+// Vendor-seat "watched audience": an admin hand-picks a set of end users and a
+// market for a vendor seat. The seat can then see those users' activity on that
+// market only — independent of whether the user engaged with the seat's own
+// vendor. Sits alongside the existing intent-toward-my-vendor leads view.
+export const vendorSeatAudience = pgTable("vendor_seat_audience", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // The vendor seat (a user that has a vendorScopeId) this audience belongs to.
+  seatUserId: varchar("seat_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // The market the watched activity is scoped to.
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  // The end user being watched.
+  endUserId: varchar("end_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (t) => ({
+  seatIdx: index("vsa_seat_idx").on(t.seatUserId),
+  uniq: uniqueIndex("vsa_unique_idx").on(t.seatUserId, t.marketId, t.endUserId),
+}));
+
+export const insertVendorSeatAudienceSchema = createInsertSchema(vendorSeatAudience).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type VendorSeatAudience = typeof vendorSeatAudience.$inferSelect;
+export type InsertVendorSeatAudience = z.infer<typeof insertVendorSeatAudienceSchema>;
+
 /**
  * Allowlist of lead-gen event types. The client beacon is validated against
  * this set; anything else is rejected. `source` notes where a type is

@@ -385,6 +385,20 @@ export async function runStartupMigrations(): Promise<void> {
       CREATE INDEX IF NOT EXISTS user_events_user_created_idx ON user_events (user_id, created_at);
     `);
 
+    // 23. vendor_seat_audience — admin-defined "watched audience" linking a
+    //     vendor seat to a set of end users on a specific market. Idempotent.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vendor_seat_audience (
+        id           varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        seat_user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        market_id    varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        end_user_id  varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at   timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS vsa_seat_idx ON vendor_seat_audience (seat_user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS vsa_unique_idx ON vendor_seat_audience (seat_user_id, market_id, end_user_id);
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
