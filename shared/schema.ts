@@ -429,6 +429,8 @@ export const insertResearchReportSchema = createInsertSchema(researchReports).om
   createdAt: true,
   publishedAt: true,
   uploadedAt: true,
+}).extend({
+  publishedAt: z.coerce.date().optional(),
 });
 
 export const insertResearchMethodologySchema = createInsertSchema(researchMethodology).omit({

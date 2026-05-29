@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +20,8 @@ export default function ResearchReportsManagement() {
   const [selectedMarketId, setSelectedMarketId] = useState<string>("");
   const [showEditor, setShowEditor] = useState(false);
   const [editingReport, setEditingReport] = useState<ResearchReport | undefined>(undefined);
+  const [reportTitle, setReportTitle] = useState<string>("");
+  const [reportDate, setReportDate] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch markets for selection
@@ -97,11 +101,12 @@ export default function ResearchReportsManagement() {
         },
         body: JSON.stringify({
           marketId: selectedMarketId,
-          title: uploadedFile.name,
+          title: reportTitle.trim() || uploadedFile.name,
           description: `Research report for ${markets?.find(m => m.id === selectedMarketId)?.name || "market"}`,
           fileUrl: uploadedFile.uploadURL,
           fileSize: uploadedFile.size,
           mimeType: uploadedFile.type,
+          ...(reportDate ? { publishedAt: new Date(`${reportDate}T12:00:00`).toISOString() } : {}),
         }),
       });
 
@@ -110,6 +115,8 @@ export default function ResearchReportsManagement() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId, "research-reports"] });
+      setReportTitle("");
+      setReportDate("");
       toast({
         title: "Success",
         description: "Research report uploaded successfully",
@@ -250,7 +257,33 @@ export default function ResearchReportsManagement() {
                 Supported formats: PDF, Excel, ZIP, and Video (max 500MB)
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="report-title">Report Name</Label>
+                <Input
+                  id="report-title"
+                  placeholder="e.g. Q2 2026 Market Outlook"
+                  value={reportTitle}
+                  onChange={(e) => setReportTitle(e.target.value)}
+                  data-testid="input-report-title"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Shown as the report title on the public market page. If left blank, the file name is used.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="report-date">Report Date</Label>
+                <Input
+                  id="report-date"
+                  type="date"
+                  value={reportDate}
+                  onChange={(e) => setReportDate(e.target.value)}
+                  data-testid="input-report-date"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Date displayed with the report. Defaults to today if left blank.
+                </p>
+              </div>
               <ObjectUploader
                 maxNumberOfFiles={1}
                 maxFileSize={500 * 1024 * 1024} // 500MB
