@@ -36,6 +36,23 @@ const EXPORT_RANGES = [
   { value: "365", label: "Past 12 months" },
 ] as const;
 
+const LIVE_RANGES = [
+  { value: "all", label: "All time" },
+  { value: "30", label: "Past 30 days" },
+  { value: "90", label: "Past 90 days" },
+  { value: "180", label: "Past 180 days" },
+  { value: "365", label: "Past 12 months" },
+] as const;
+
+function sinceFromRange(range: string): string | undefined {
+  if (range === "all") return undefined;
+  const days = Number(range);
+  if (!days) return undefined;
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
   opinion?: string | null;
@@ -62,6 +79,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedRange, setSelectedRange] = useState<string>("all");
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
@@ -128,6 +146,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       vendor_id: selectedVendor !== 'all' ? selectedVendor : undefined,
       impact: selectedImpact !== 'all' ? selectedImpact : undefined,
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      range: selectedRange !== 'all' ? selectedRange : undefined,
       limit: 50
     }],
     queryFn: async ({ queryKey }) => {
@@ -138,6 +157,8 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       if (params.vendor_id) queryParams.append('vendor_id', String(params.vendor_id));
       if (params.impact) queryParams.append('impact', String(params.impact));
       if (params.category) queryParams.append('category', String(params.category));
+      const since = sinceFromRange(params.range ? String(params.range) : 'all');
+      if (since) queryParams.append('since', since);
       if (params.limit) queryParams.append('limit', String(params.limit));
 
       const response = await fetch(`/api/news?${queryParams}`);
@@ -205,7 +226,20 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                 Latest news and announcements from market vendors, with AI-powered analysis
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Select value={selectedRange} onValueChange={setSelectedRange}>
+                <SelectTrigger className="w-40" data-testid="select-timeline-filter">
+                  <SelectValue placeholder="All time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LIVE_RANGES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={selectedVendor} onValueChange={setSelectedVendor}>
                 <SelectTrigger className="w-48" data-testid="select-vendor-filter">
                   <SelectValue placeholder="All Vendors" />
