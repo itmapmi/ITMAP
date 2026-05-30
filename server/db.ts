@@ -189,6 +189,7 @@ export async function runStartupMigrations(): Promise<void> {
       SET llm_model = 'claude-sonnet-4-6'
       WHERE llm_provider = 'anthropic'
         AND llm_model NOT IN (
+          'claude-opus-4-8',
           'claude-opus-4-7',
           'claude-opus-4-6',
           'claude-sonnet-4-6',

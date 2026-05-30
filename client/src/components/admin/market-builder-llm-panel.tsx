@@ -32,7 +32,8 @@ const MODELS: Record<string, { id: string; label: string }[]> = {
     { id: "o4-mini",       label: "o4-mini" },
   ],
   anthropic: [
-    { id: "claude-opus-4-7",            label: "Claude Opus 4.7 (Most Capable)" },
+    { id: "claude-opus-4-8",            label: "Claude Opus 4.8 (Most Capable)" },
+    { id: "claude-opus-4-7",            label: "Claude Opus 4.7" },
     { id: "claude-opus-4-6",            label: "Claude Opus 4.6" },
     { id: "claude-sonnet-4-6",          label: "Claude Sonnet 4.6 (Recommended)" },
     { id: "claude-haiku-4-5-20251001",  label: "Claude Haiku 4.5 (Fastest)" },
