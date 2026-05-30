@@ -7,7 +7,7 @@ import type {
   NewsFetchLog,
   Vendor,
 } from "@shared/schema";
-import { eq, desc, and, or, gte, lte, sql, isNull, type SQL } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, isNull, inArray, type SQL } from "drizzle-orm";
 
 export class NewsStorage {
   // ==================== News Articles ====================
@@ -15,6 +15,7 @@ export class NewsStorage {
   async getArticles(filters: {
     sourceId?: string;
     vendorId?: string;
+    vendorIds?: string[];
     marketIds?: string[];
     impactLabel?: string;
     category?: string;
@@ -30,6 +31,9 @@ export class NewsStorage {
     }
     if (filters.vendorId) {
       conditions.push(eq(newsArticles.vendorId, filters.vendorId));
+    }
+    if (filters.vendorIds && filters.vendorIds.length > 0) {
+      conditions.push(inArray(newsArticles.vendorId, filters.vendorIds));
     }
     if (filters.impactLabel) {
       conditions.push(eq(newsArticles.impactLabel, filters.impactLabel));

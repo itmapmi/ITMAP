@@ -446,7 +446,7 @@ export class CronJobManager {
   }
 
   /**
-   * Cleanup old news items and fetch logs (keep last 90 days)
+   * Cleanup old news items and fetch logs (keep last 12 months)
    */
   public async cleanupOldNews(): Promise<void> {
     try {
@@ -454,19 +454,19 @@ export class CronJobManager {
       
       const { newsStorage } = await import('./news/storage');
       
-      // Calculate cutoff date (90 days ago)
+      // Calculate cutoff date (12 months / 365 days ago)
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 90);
+      cutoffDate.setDate(cutoffDate.getDate() - 365);
       
       console.log(`Cleaning up news articles and fetch logs older than ${cutoffDate.toISOString()}`);
       
       // Delete old articles
       const deletedArticles = await newsStorage.deleteArticlesOlderThan(cutoffDate);
-      console.log(`Deleted ${deletedArticles} articles older than 90 days`);
+      console.log(`Deleted ${deletedArticles} articles older than 12 months`);
 
       // Delete old fetch logs
       const deletedLogs = await newsStorage.deleteFetchLogsOlderThan(cutoffDate);
-      console.log(`Deleted ${deletedLogs} fetch logs older than 90 days`);
+      console.log(`Deleted ${deletedLogs} fetch logs older than 12 months`);
       
       console.log('News cleanup completed successfully');
     } catch (error) {

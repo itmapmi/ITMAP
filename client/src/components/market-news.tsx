@@ -10,12 +10,31 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Newspaper, Calendar, TrendingUp, TrendingDown, Minus, ExternalLink, Lightbulb, Tag, ChevronDown, ChevronUp, BookOpen, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import type { NewsArticle, Vendor } from "@shared/schema";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { track } from "@/lib/track";
+import { useToast } from "@/hooks/use-toast";
+
+const EXPORT_RANGES = [
+  { value: "30", label: "Past 30 days" },
+  { value: "90", label: "Past 90 days" },
+  { value: "180", label: "Past 180 days" },
+  { value: "365", label: "Past 12 months" },
+] as const;
 
 type NewsArticleExtended = NewsArticle & {
   category?: string | null;
@@ -44,10 +63,64 @@ export function MarketNews({ marketId }: MarketNewsProps) {
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
+
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportVendorIds, setExportVendorIds] = useState<string[]>([]);
+  const [exportCategory, setExportCategory] = useState<string>("all");
+  const [exportDays, setExportDays] = useState<string>("90");
+  const [exporting, setExporting] = useState(false);
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['/api/markets', marketId, 'vendors']
   });
+
+  const toggleExportVendor = (vendorId: string) => {
+    setExportVendorIds((prev) =>
+      prev.includes(vendorId) ? prev.filter((id) => id !== vendorId) : [...prev, vendorId]
+    );
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch('/api/news/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          marketId,
+          vendorIds: exportVendorIds,
+          category: exportCategory,
+          days: Number(exportDays),
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to export news');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const rangeLabel = EXPORT_RANGES.find((r) => r.value === exportDays)?.value ?? exportDays;
+      link.download = `news_export_${rangeLabel}d.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setExportOpen(false);
+      toast({ title: 'Export ready', description: 'Your news PDF has been downloaded.' });
+    } catch (e) {
+      toast({
+        title: 'Export failed',
+        description: e instanceof Error ? e.message : 'Could not generate the PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const { data: articles, isLoading } = useQuery<NewsArticleExtended[]>({
     queryKey: ['/api/news', {
@@ -172,6 +245,117 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                   ))}
                 </SelectContent>
               </Select>
+
+              <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2" data-testid="button-export-news">
+                    <Download className="h-4 w-4" />
+                    Export PDF
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Export News to PDF</DialogTitle>
+                    <DialogDescription>
+                      Choose vendors, an announcement category, and a time range. Leave vendors
+                      unchecked to include all vendors in this market.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>Time range</Label>
+                      <Select value={exportDays} onValueChange={setExportDays}>
+                        <SelectTrigger data-testid="select-export-range">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EXPORT_RANGES.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={exportCategory} onValueChange={setExportCategory}>
+                        <SelectTrigger data-testid="select-export-category">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          {NEWS_CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Vendors</Label>
+                        {exportVendorIds.length > 0 && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground hover:underline"
+                            onClick={() => setExportVendorIds([])}
+                          >
+                            Clear ({exportVendorIds.length})
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
+                        {vendors && vendors.length > 0 ? (
+                          vendors.map((vendor) => (
+                            <label
+                              key={vendor.id}
+                              className="flex items-center gap-2 text-sm cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={exportVendorIds.includes(vendor.id)}
+                                onCheckedChange={() => toggleExportVendor(vendor.id)}
+                                data-testid={`checkbox-export-vendor-${vendor.id}`}
+                              />
+                              {vendor.name}
+                            </label>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No vendors available.</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {exportVendorIds.length === 0
+                          ? "All vendors will be included."
+                          : `${exportVendorIds.length} vendor${exportVendorIds.length > 1 ? "s" : ""} selected.`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setExportOpen(false)} disabled={exporting}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleExport} disabled={exporting} className="gap-2" data-testid="button-confirm-export">
+                      {exporting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Generating…
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4" />
+                          Download PDF
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </CardHeader>

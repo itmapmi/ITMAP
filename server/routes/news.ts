@@ -1,9 +1,29 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { requireAuth, requireAdmin } from "../auth";
 import { requireFeature } from "../featureAccess";
 import { newsStorage } from "../news/storage";
+import { storage } from "../storage";
+import { PDFService } from "../pdf-generator/pdf-service";
 import { scrapeAllVendors, scrapeSingleVendor } from "../news/ingestion/scraper";
 import { analyzeAllPending, analyzeSingleArticle } from "../news/impact/analyzer";
+
+const NEWS_EXPORT_RANGES: Record<number, string> = {
+  30: "past 30 days",
+  90: "past 90 days",
+  180: "past 180 days",
+  365: "past 12 months",
+};
+
+// Mirror of the read-access rule used elsewhere: public markets are readable by
+// any authenticated user; private markets only by their owner or an admin.
+function canReadMarket(market: any, req: Request): boolean {
+  if (!market) return false;
+  if (market.visibility !== "private") return true;
+  const user = req.user as any;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return market.ownerUserId === user.id;
+}
 
 export function registerNewsRoutes(app: Express): void {
 
@@ -31,6 +51,83 @@ export function registerNewsRoutes(app: Express): void {
     } catch (error) {
       console.error("Error fetching news articles:", error);
       res.status(500).json({ error: "Failed to fetch news articles" });
+    }
+  });
+
+  // Export filtered market news as a formatted PDF.
+  app.post("/api/news/export", requireAuth, async (req, res) => {
+    try {
+      const { marketId, vendorIds, category, days } = req.body ?? {};
+
+      if (!marketId || typeof marketId !== "string") {
+        return res.status(400).json({ error: "marketId is required" });
+      }
+      const numDays = Number(days);
+      if (!NEWS_EXPORT_RANGES[numDays]) {
+        return res.status(400).json({ error: "days must be one of 30, 90, 180, 365" });
+      }
+      const vendorIdList: string[] = Array.isArray(vendorIds)
+        ? vendorIds.filter((v: unknown): v is string => typeof v === "string")
+        : [];
+
+      const market = await storage.getMarketById(marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Market not found" });
+      }
+
+      const marketVendors = await storage.getVendorsByMarket(marketId);
+      const vendorsById: Record<string, { name: string }> = {};
+      for (const v of marketVendors) vendorsById[v.id] = { name: v.name };
+
+      // If specific vendors were requested, keep only those that belong to this
+      // market. If the caller asked for vendors but none are valid for this
+      // market, reject rather than silently widening to all vendors.
+      const validVendorIds = vendorIdList.filter((id) => vendorsById[id]);
+      if (vendorIdList.length > 0 && validVendorIds.length === 0) {
+        return res.status(400).json({ error: "None of the requested vendors belong to this market" });
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - numDays);
+
+      const filters: any = {
+        marketIds: [marketId],
+        since,
+        limit: 1000,
+      };
+      if (validVendorIds.length > 0) filters.vendorIds = validVendorIds;
+      if (category && category !== "all") filters.category = category as string;
+
+      const articles = await newsStorage.getArticles(filters);
+
+      const cleanMarketName = market.name.replace(/^ITMAP for /i, "");
+      const categoryLabel = category && category !== "all" ? String(category) : "All categories";
+      const pdfService = new PDFService();
+      const content = pdfService.generateNewsExportContent(articles, vendorsById, {
+        marketName: cleanMarketName,
+        rangeLabel: NEWS_EXPORT_RANGES[numDays],
+        categoryLabel,
+      });
+      const pdfBuffer = await pdfService.generatePDF({
+        marketName: cleanMarketName,
+        reportTitle: `${cleanMarketName} — News Export`,
+        reportType: "Vendor News Export",
+        content,
+      });
+
+      const filename = `${cleanMarketName.replace(/[^a-z0-9]/gi, "_")}_news_${numDays}d.pdf`;
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+        "Content-Length": pdfBuffer.length.toString(),
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-store, must-revalidate",
+        "Pragma": "no-cache",
+      });
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error exporting news PDF:", error);
+      res.status(500).json({ error: "Failed to export news PDF" });
     }
   });
 

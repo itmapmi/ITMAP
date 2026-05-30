@@ -87,14 +87,20 @@ export class PDFService {
       day: 'numeric' 
     });
 
+    // Escape plain-text fields before interpolation. The article HTML is the
+    // only intentional HTML and is injected separately via {{{content}}}.
+    const safeReportTitle = this.escapeHtml(options.reportTitle);
+    const safeMarketName = this.escapeHtml(options.marketName);
+    const safeReportType = this.escapeHtml(options.reportType);
+
     const html = template
-      .replace(/{{reportTitle}}/g, options.reportTitle)
-      .replace(/{{marketName}}/g, options.marketName)
-      .replace(/{{reportType}}/g, options.reportType)
+      .replace(/{{reportTitle}}/g, safeReportTitle)
+      .replace(/{{marketName}}/g, safeMarketName)
+      .replace(/{{reportType}}/g, safeReportType)
       .replace(/{{generatedDate}}/g, generatedDate)
       .replace(/{{year}}/g, now.getFullYear().toString())
       .replace(/{{logoPath}}/g, logoData)
-      .replace(/{{title}}/g, `${options.marketName} - ${options.reportType}`)
+      .replace(/{{title}}/g, `${safeMarketName} - ${safeReportType}`)
       .replace('{{{content}}}', options.content);
 
     const chromiumPath = await findChromiumPath();
@@ -478,6 +484,96 @@ export class PDFService {
         </div>
       `;
     });
+
+    return content;
+  }
+
+  generateNewsExportContent(
+    articles: any[],
+    vendorsById: Record<string, { name: string }>,
+    opts: { marketName: string; rangeLabel: string; categoryLabel: string }
+  ): string {
+    const impactColor: Record<string, string> = {
+      HIGH: '#c53030',
+      MEDIUM: '#b7791f',
+      LOW: '#276749',
+    };
+
+    let content = `
+      <div class="content-section">
+        <h2 class="section-title">Vendor News Export</h2>
+        <p class="section-description">
+          News for <strong>${this.escapeHtml(opts.marketName)}</strong> over the ${this.escapeHtml(opts.rangeLabel)}.
+          Category: ${this.escapeHtml(opts.categoryLabel)}. Total articles: ${articles.length}.
+        </p>
+      </div>
+    `;
+
+    if (articles.length === 0) {
+      content += `
+        <div class="content-section">
+          <p style="padding: 16px; background: #f8fafc; border-left: 4px solid #94a3b8; color: #475569; font-style: italic;">
+            No news articles match the selected vendors, category, and time range.
+          </p>
+        </div>`;
+      return content;
+    }
+
+    // Group articles by vendor.
+    const byVendor: Record<string, any[]> = {};
+    const noVendor: any[] = [];
+    for (const a of articles) {
+      if (a.vendorId && vendorsById[a.vendorId]) {
+        (byVendor[a.vendorId] ??= []).push(a);
+      } else {
+        noVendor.push(a);
+      }
+    }
+
+    const renderGroup = (heading: string, list: any[]) => {
+      const rows = list.map(a => {
+        const impact = (a.impactLabel ?? '').toUpperCase();
+        const color = impactColor[impact] ?? '#4a5568';
+        const date = a.publishedAt
+          ? new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : '—';
+        const takeaway = (a.keyTakeaway ?? a.summary ?? '').toString();
+        return `
+          <tr>
+            <td style="white-space: nowrap;">${date}</td>
+            <td>${this.escapeHtml(a.category ?? '—')}</td>
+            <td style="text-align: center;"><strong style="color: ${color};">${this.escapeHtml(impact || '—')}</strong></td>
+            <td>
+              <strong>${this.escapeHtml(a.title ?? '')}</strong>
+              ${takeaway ? `<div style="margin-top: 4px; font-size: 11px; color: #4a5568;">${this.escapeHtml(takeaway.slice(0, 220))}${takeaway.length > 220 ? '…' : ''}</div>` : ''}
+              ${a.url ? `<div style="margin-top: 4px; font-size: 10px;"><a href="${this.escapeHtml(a.url)}" style="color: #0EA5E9;">${this.escapeHtml(a.url.slice(0, 80))}</a></div>` : ''}
+            </td>
+          </tr>`;
+      }).join('');
+
+      return `
+        <div class="content-section">
+          <h3 class="section-subtitle">${this.escapeHtml(heading)} <span style="font-size: 12px; font-weight: 400; color: #718096;">(${list.length})</span></h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 14%;">Date</th>
+                <th style="width: 18%;">Category</th>
+                <th style="width: 12%; text-align: center;">Impact</th>
+                <th style="width: 56%;">Headline & Takeaway</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    };
+
+    for (const vendorId of Object.keys(byVendor)) {
+      content += renderGroup(vendorsById[vendorId].name, byVendor[vendorId]);
+    }
+    if (noVendor.length > 0) {
+      content += renderGroup('Other / Unattributed', noVendor);
+    }
 
     return content;
   }

@@ -1,0 +1,1 @@
+- [Market-scoped endpoint read auth](market-read-auth.md) — any new marketId endpoint must enforce canReadMarket (leadGen helper); 404 on fail. Also PDF template fields are escaped, only {{{content}}} is raw.
