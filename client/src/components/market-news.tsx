@@ -28,9 +28,21 @@ interface MarketNewsProps {
   marketId: string;
 }
 
+// Fixed set of tagging categories the news pipeline assigns to each article.
+const NEWS_CATEGORIES = [
+  "Product Announcement",
+  "M&A",
+  "Financial Results",
+  "Partnership",
+  "Customer Success",
+  "Leadership Changes",
+  "General",
+] as const;
+
 export function MarketNews({ marketId }: MarketNewsProps) {
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
 
   const { data: vendors } = useQuery<Vendor[]>({
@@ -42,6 +54,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       market: marketId,
       vendor_id: selectedVendor !== 'all' ? selectedVendor : undefined,
       impact: selectedImpact !== 'all' ? selectedImpact : undefined,
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
       limit: 50
     }],
     queryFn: async ({ queryKey }) => {
@@ -51,6 +64,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       if (params.market) queryParams.append('market', String(params.market));
       if (params.vendor_id) queryParams.append('vendor_id', String(params.vendor_id));
       if (params.impact) queryParams.append('impact', String(params.impact));
+      if (params.category) queryParams.append('category', String(params.category));
       if (params.limit) queryParams.append('limit', String(params.limit));
 
       const response = await fetch(`/api/news?${queryParams}`);
@@ -142,6 +156,20 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                   <SelectItem value="HIGH">High Impact</SelectItem>
                   <SelectItem value="MEDIUM">Medium Impact</SelectItem>
                   <SelectItem value="LOW">Low Impact</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48" data-testid="select-category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {NEWS_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

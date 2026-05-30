@@ -13,7 +13,7 @@ export function registerNewsRoutes(app: Express): void {
 
   app.get("/api/news", requireAuth, async (req, res) => {
     try {
-      const { q, market, source_id, vendor_id, since, until, impact, limit = '20', offset = '0' } = req.query;
+      const { q, market, source_id, vendor_id, since, until, impact, category, limit = '20', offset = '0' } = req.query;
       if (q && typeof q === 'string') {
         const articles = await newsStorage.searchArticles(q, parseInt(limit as string));
         return res.json(articles);
@@ -23,6 +23,7 @@ export function registerNewsRoutes(app: Express): void {
       if (vendor_id) filters.vendorId = vendor_id as string;
       if (market) filters.marketIds = [market as string];
       if (impact) filters.impactLabel = (impact as string).toUpperCase();
+      if (category) filters.category = category as string;
       if (since) filters.since = new Date(since as string);
       if (until) filters.until = new Date(until as string);
       const articles = await newsStorage.getArticles(filters);

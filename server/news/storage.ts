@@ -17,6 +17,7 @@ export class NewsStorage {
     vendorId?: string;
     marketIds?: string[];
     impactLabel?: string;
+    category?: string;
     since?: Date;
     until?: Date;
     limit?: number;
@@ -32,6 +33,9 @@ export class NewsStorage {
     }
     if (filters.impactLabel) {
       conditions.push(eq(newsArticles.impactLabel, filters.impactLabel));
+    }
+    if (filters.category) {
+      conditions.push(eq(newsArticles.category, filters.category));
     }
     if (filters.since) {
       conditions.push(gte(newsArticles.publishedAt, filters.since));
