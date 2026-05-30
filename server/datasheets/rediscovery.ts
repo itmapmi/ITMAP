@@ -57,22 +57,14 @@ async function isAllowedByRobots(url: string, userAgent = "spectio-rediscovery")
   }
 }
 
-// Render page HTML using puppeteer. Reuses the SAME Chromium resolution path
-// as the PDF service (CHROMIUM_PATH env, fixed Nix path candidates, and Nix
-// store probing) so admin rediscovery succeeds in every environment where PDF
-// generation already works. Without this, the default puppeteer launch fails
-// in the Replit/Nix runtime that this repo targets.
+// Render page HTML using puppeteer. Reuses launchBrowser() from the PDF service,
+// which tries each Chromium candidate (project-local downloaded Chrome first,
+// then env overrides and Nix discovery) and actually probes launch so admin
+// rediscovery succeeds in every environment where PDF generation works.
 async function renderPageHtml(url: string): Promise<string> {
   await assertPublicUrl(url);
-  const { default: puppeteer } = await import("puppeteer");
-  const { findChromiumPath } = await import("../pdf-generator/pdf-service");
-  const chromiumPath = await findChromiumPath();
-  const launchOpts: Record<string, unknown> = {
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    headless: true,
-    ...(chromiumPath ? { executablePath: chromiumPath } : {}),
-  };
-  const browser = await puppeteer.launch(launchOpts as Parameters<typeof puppeteer.launch>[0]);
+  const { launchBrowser } = await import("../pdf-generator/pdf-service");
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setUserAgent("Mozilla/5.0 spectio-rediscovery/1.0");

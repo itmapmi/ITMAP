@@ -1,25 +1,52 @@
 import puppeteer from 'puppeteer';
+import type { Browser, LaunchOptions } from 'puppeteer';
 import { readFile, access } from 'fs/promises';
 import { execSync } from 'child_process';
 import path from 'path';
 import type { Market, Vendor } from '@shared/schema';
 import { REPORT_TEMPLATE } from './report-template';
 
-export async function findChromiumPath(): Promise<string | undefined> {
-  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+// Build an ordered list of Chromium executable candidates to try.
+//
+// IMPORTANT: a path existing on disk does NOT mean it can be spawned. In the
+// deployed environment the nix-store chromium passes `access()` but fails to
+// exec with "spawn EIO" (its closure isn't fully readable in the deployment
+// image). So we collect every plausible candidate and actually attempt to
+// launch each one — see launchBrowser() below.
+//
+// The Puppeteer-managed Chrome (downloaded into the project-local .cache via
+// .puppeteerrc.cjs) is preferred first because it ships inside the project
+// tree like node_modules and is reliably readable in deployments.
+async function chromiumCandidates(): Promise<(string | undefined)[]> {
+  const list: (string | undefined)[] = [];
+  const push = (p?: string) => {
+    if (p && !list.includes(p)) list.push(p);
+  };
 
-  const candidates = [
-    '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+  // 1. Puppeteer-managed Chrome (project-local cache) — most reliable in prod.
+  try {
+    const p = puppeteer.executablePath();
+    if (p) {
+      try { await access(p); push(p); } catch { /* not downloaded */ }
+    }
+  } catch { /* ignore */ }
+
+  // 2. Explicit overrides.
+  push(process.env.PUPPETEER_EXECUTABLE_PATH);
+  push(process.env.CHROMIUM_PATH);
+
+  // 3. Well-known fixed locations.
+  for (const p of [
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
-  ];
-
-  for (const p of candidates) {
-    try { await access(p); return p; } catch { /* not found */ }
+    '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+  ]) {
+    try { await access(p); push(p); } catch { /* not found */ }
   }
 
+  // 4. Nix-store discovery (covers a different chromium hash in the deployment).
   try {
     const nixChromium = execSync(
       'ls /nix/store/ 2>/dev/null | grep "^[a-z0-9]*-chromium-[0-9]" | grep -v "unwrapped\\|bsu\\|drv\\|dict\\|codec\\|sandbox\\|ungoogled\\|playwright" | sort -r | head -1',
@@ -27,11 +54,57 @@ export async function findChromiumPath(): Promise<string | undefined> {
     ).trim();
     if (nixChromium) {
       const candidate = `/nix/store/${nixChromium}/bin/chromium`;
-      try { await access(candidate); return candidate; } catch { /* not found */ }
+      try { await access(candidate); push(candidate); } catch { /* not found */ }
     }
   } catch { /* ignore */ }
 
-  return undefined;
+  // 5. Final fallback: let Puppeteer decide on its own.
+  list.push(undefined);
+
+  return list;
+}
+
+// Backwards-compatible single-path resolver (kept for any external callers).
+export async function findChromiumPath(): Promise<string | undefined> {
+  const candidates = await chromiumCandidates();
+  return candidates.find((c) => c !== undefined);
+}
+
+const CHROMIUM_LAUNCH_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+];
+
+// Launch Chromium resiliently: try each candidate's actual launch and fall
+// through on failure (existence alone is not enough — see chromiumCandidates).
+export async function launchBrowser(
+  extra?: Partial<LaunchOptions>,
+): Promise<Browser> {
+  const candidates = await chromiumCandidates();
+  let lastErr: unknown;
+  for (const exe of candidates) {
+    try {
+      const browser = await puppeteer.launch({
+        headless: true,
+        ...(exe ? { executablePath: exe } : {}),
+        args: CHROMIUM_LAUNCH_ARGS,
+        ...extra,
+      });
+      console.log('[PDF] Launched Chromium via:', exe ?? '(puppeteer default)');
+      return browser;
+    } catch (err) {
+      lastErr = err;
+      console.warn(
+        '[PDF] Chromium launch failed for',
+        exe ?? '(puppeteer default)',
+        '-',
+        (err as Error)?.message,
+      );
+    }
+  }
+  throw lastErr ?? new Error('No launchable Chromium executable was found');
 }
 
 interface ReportOptions {
@@ -121,18 +194,7 @@ export class PDFService {
       .replace(/{{title}}/g, `${safeMarketName} - ${safeReportType}`)
       .replace('{{{content}}}', options.content);
 
-    const chromiumPath = await findChromiumPath();
-    console.log('[PDF] Chromium path:', chromiumPath ?? '(puppeteer bundled)');
-    const browser = await puppeteer.launch({
-      headless: true,
-      ...(chromiumPath ? { executablePath: chromiumPath } : {}),
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-    });
+    const browser = await launchBrowser();
 
     try {
       const page = await browser.newPage();
@@ -193,12 +255,7 @@ export class PDFService {
   // that need their own page layout but want to reuse the shared chromium
   // discovery + launch flags rather than reimplementing them.
   async htmlToPdf(html: string, opts?: { format?: "A4" | "Letter"; margin?: string }): Promise<Buffer> {
-    const chromiumPath = await findChromiumPath();
-    const browser = await puppeteer.launch({
-      headless: true,
-      ...(chromiumPath ? { executablePath: chromiumPath } : {}),
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-    });
+    const browser = await launchBrowser();
     try {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
