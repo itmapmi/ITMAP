@@ -3,6 +3,7 @@ import { readFile, access } from 'fs/promises';
 import { execSync } from 'child_process';
 import path from 'path';
 import type { Market, Vendor } from '@shared/schema';
+import { REPORT_TEMPLATE } from './report-template';
 
 export async function findChromiumPath(): Promise<string | undefined> {
   if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
@@ -44,10 +45,27 @@ export class PDFService {
   private templatePath: string;
   private logoPath: string;
   private logoBase64: string | null = null;
+  private templateCache: string | null = null;
 
   constructor() {
     this.templatePath = path.join(process.cwd(), 'server/pdf-generator/report-template.html');
     this.logoPath = path.join(process.cwd(), 'attached_assets/spectio_logo.png');
+  }
+
+  // Prefer the on-disk template (lets devs edit the .html), but fall back to
+  // the bundled constant when the file isn't readable (e.g. production builds
+  // where esbuild doesn't copy the .html — previously caused EIO/ENOENT 500s).
+  private async getTemplate(): Promise<string> {
+    if (this.templateCache) {
+      return this.templateCache;
+    }
+    try {
+      this.templateCache = await readFile(this.templatePath, 'utf-8');
+    } catch (error) {
+      console.warn('[PDF] Template file unavailable, using bundled template:', (error as Error)?.message);
+      this.templateCache = REPORT_TEMPLATE;
+    }
+    return this.templateCache;
   }
 
   private async getLogoBase64(): Promise<string> {
@@ -77,7 +95,7 @@ export class PDFService {
   }
 
   async generatePDF(options: ReportOptions): Promise<Buffer> {
-    const template = await readFile(this.templatePath, 'utf-8');
+    const template = await this.getTemplate();
     const logoData = await this.getLogoBase64();
     
     const now = new Date();

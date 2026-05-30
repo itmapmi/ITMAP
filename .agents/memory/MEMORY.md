@@ -1,1 +1,2 @@
 - [Market-scoped endpoint read auth](market-read-auth.md) — new marketId endpoints must enforce canReadMarket (404 on fail).
+- [PDF template bundling](pdf-template-bundling.md) — bundle the report HTML into TS; do not readFile it at runtime (esbuild skips .html → prod EIO 500).

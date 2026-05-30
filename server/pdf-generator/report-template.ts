@@ -1,0 +1,337 @@
+// Bundled copy of report-template.html so PDF generation never depends on
+// reading a non-bundled file off disk at runtime (esbuild does not copy the
+// .html into dist/, which caused EIO/ENOENT failures in production).
+// Keep this in sync with report-template.html (the .html is used as a
+// dev-time override when present).
+export const REPORT_TEMPLATE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #1a202c;
+      line-height: 1.6;
+      background: white;
+      font-size: 12px;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      background: white;
+      color: #1a202c;
+      page-break-after: always;
+      padding: 50px;
+    }
+
+    .cover-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 50px;
+    }
+
+    .cover-logo-wordmark {
+      font-size: 38px;
+      font-weight: 700;
+      color: #1a202c;
+      letter-spacing: -0.5px;
+    }
+
+    .cover-title {
+      font-size: 42px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
+      color: #1a202c;
+    }
+
+    .cover-subtitle {
+      font-size: 22px;
+      font-weight: 400;
+      margin-bottom: 30px;
+      color: #4a5568;
+    }
+
+    .cover-meta {
+      font-size: 15px;
+      color: #718096;
+      margin-top: 50px;
+    }
+
+    .cover-divider {
+      width: 80px;
+      height: 3px;
+      background: #0EA5E9;
+      margin: 25px auto;
+    }
+
+    /* Content Sections */
+    .content-section {
+      margin-bottom: 35px;
+      page-break-inside: avoid; /* Keep sections together when possible */
+    }
+
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a202c;
+      margin: 30px 0 20px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #0EA5E9;
+    }
+
+    .section-subtitle {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 20px 0 12px;
+    }
+
+    .section-description {
+      font-size: 13px;
+      color: #4a5568;
+      margin-bottom: 15px;
+      line-height: 1.7;
+    }
+
+    /* Table Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0 25px;
+      font-size: 11px;
+      table-layout: fixed; /* Prevents tables from stretching beyond page width */
+    }
+
+    thead {
+      background: #0EA5E9;
+      color: white;
+      display: table-header-group; /* Ensures headers repeat on each page */
+    }
+
+    th {
+      padding: 10px 8px;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid #0EA5E9;
+      font-size: 11px;
+      word-wrap: break-word; /* Wrap long words */
+      overflow-wrap: break-word;
+    }
+
+    td {
+      padding: 8px;
+      border: 1px solid #cbd5e0;
+      vertical-align: top;
+      word-wrap: break-word; /* Wrap long words */
+      overflow-wrap: break-word;
+      max-width: 0; /* Works with table-layout: fixed to enforce wrapping */
+    }
+
+    tbody {
+      display: table-row-group; /* Works with repeating headers */
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7fafc;
+    }
+
+    tr {
+      page-break-inside: avoid; /* Avoid breaking table rows across pages */
+    }
+
+    /* Vendor Card */
+    .vendor-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .vendor-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .vendor-position {
+      font-size: 13px;
+      color: #4a5568;
+      margin-bottom: 12px;
+    }
+
+    .vendor-scores {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .score-item {
+      background: #f7fafc;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .score-label {
+      font-size: 11px;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .score-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0EA5E9;
+    }
+
+    /* Support Badge */
+    .support-yes {
+      background: #48bb78;
+      color: white;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .support-no {
+      background: #e53e3e;
+      color: white;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .support-partial {
+      background: #ed8936;
+      color: white;
+      padding: 3px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    /* Executive Summary */
+    .executive-summary {
+      background: #edf2f7;
+      padding: 20px;
+      border-left: 4px solid #0EA5E9;
+      margin: 25px 0;
+      border-radius: 3px;
+    }
+
+    .summary-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 12px;
+    }
+
+    .summary-text {
+      font-size: 13px;
+      color: #2d3748;
+      line-height: 1.7;
+    }
+
+    /* Header and Footer */
+    .page-header {
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #0EA5E9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo {
+      height: 30px;
+      width: auto;
+    }
+
+    .header-title {
+      font-size: 13px;
+      color: #4a5568;
+      font-weight: 600;
+    }
+
+    .page-footer {
+      margin-top: 40px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #718096;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Cover Page -->
+  <div class="cover-page">
+    <div class="cover-logo">
+      <svg width="80" height="80" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="csg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0EA5E9" />
+            <stop offset="100%" stop-color="#7C3AED" />
+          </linearGradient>
+          <linearGradient id="csg2" x1="36" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.4" />
+            <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.4" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="16" stroke="url(#csg2)" stroke-width="1.5" />
+        <circle cx="18" cy="18" r="10" stroke="url(#csg1)" stroke-width="2" />
+        <circle cx="18" cy="18" r="4.5" fill="url(#csg1)" />
+        <circle cx="18" cy="18" r="2" fill="white" />
+        <line x1="18" y1="2" x2="18" y2="7" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="18" y1="29" x2="18" y2="34" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="2" y1="18" x2="7" y2="18" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+        <line x1="29" y1="18" x2="34" y2="18" stroke="url(#csg1)" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+      <div class="cover-logo-wordmark">spectio<span style="color: #0EA5E9;">.ai</span></div>
+    </div>
+    <h1 class="cover-title">{{reportTitle}}</h1>
+    <p class="cover-subtitle">{{marketName}}</p>
+    <div class="cover-divider"></div>
+    <div class="cover-meta">
+      <p>Generated on {{generatedDate}}</p>
+      <p style="margin-top: 10px;">{{reportType}}</p>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div style="padding: 20px 0;">
+    <!-- Dynamic Content -->
+    {{{content}}}
+  </div>
+</body>
+</html>
+`;
