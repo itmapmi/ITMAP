@@ -1,10 +1,10 @@
 import OpenAI from 'openai';
 import { newsStorage } from '../storage';
 import { db } from '../../db';
+import { generateSuggestionsForVendorById } from '../suggestions/generator';
 import { vendors } from '@shared/schema';
 import { isNotNull, eq } from 'drizzle-orm';
 import crypto from 'crypto';
-import { generateSuggestionsForVendorById } from '../suggestions/generator';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -267,7 +267,10 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
         duration: Date.now() - startTime,
       });
 
-      // Trigger AI suggestion generation for new articles (fire-and-forget with logging)
+      // Trigger AI suggestion generation for new scraped articles (these are
+      // saved with an impact label inline, so the deep analyzer won't re-pick
+      // them up). Feed articles that arrive WITHOUT an impact label are handled
+      // separately by the analyzer (see analyzer.triggerSuggestionsFromAnalysis).
       if (newArticleIds.length > 0) {
         generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
           console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);
@@ -330,7 +333,9 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
       duration: Date.now() - startTime,
     });
 
-    // Trigger AI suggestion generation (fire-and-forget)
+    // Trigger AI suggestion generation for new scraped articles (saved with an
+    // impact label inline; feed articles without a label are handled by the
+    // analyzer — see analyzer.triggerSuggestionsFromAnalysis).
     if (newArticleIds.length > 0) {
       generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
         console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);

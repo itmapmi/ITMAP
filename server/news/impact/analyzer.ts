@@ -2,15 +2,41 @@ import OpenAI from 'openai';
 import * as cheerio from 'cheerio';
 import { fetchPageHtml } from '../ingestion/browser';
 import { newsStorage } from '../storage';
+import { generateSuggestionsForVendorById } from '../suggestions/generator';
 import type { NewsArticle } from '@shared/schema';
 
 type ArticleWithVendor = NewsArticle & { vendorName?: string };
 
 interface AnalyzedResult {
   id: string;
+  vendorId: string | null;
   title: string;
   impact: string;
   category: string;
+}
+
+/**
+ * Feed analyzed news into the AI suggestion pipeline using the AUTHORITATIVE
+ * post-analysis impact label (the same label shown in the news feed) rather than
+ * the scraper's first-pass guess. Groups HIGH/MEDIUM articles by vendor and fires
+ * suggestion generation (fire-and-forget). The generator re-filters HIGH/MEDIUM
+ * and dedupes against pending/recent suggestions, so this is safe to call after
+ * every analysis pass.
+ */
+function triggerSuggestionsFromAnalysis(results: AnalyzedResult[]): void {
+  const byVendor = new Map<string, string[]>();
+  for (const r of results) {
+    if (!r.vendorId) continue;
+    if (r.impact !== 'HIGH' && r.impact !== 'MEDIUM') continue;
+    const list = byVendor.get(r.vendorId) ?? [];
+    list.push(r.id);
+    byVendor.set(r.vendorId, list);
+  }
+  for (const [vendorId, articleIds] of byVendor) {
+    generateSuggestionsForVendorById(vendorId, articleIds).catch(err => {
+      console.error(`[Suggestions] Background generation failed for vendor ${vendorId}: ${err.message}`);
+    });
+  }
 }
 
 let _openai: OpenAI | null = null;
@@ -365,11 +391,14 @@ export async function analyzeAllPending(batchSize = 20): Promise<{ analyzed: num
         keyTakeaway: analysis.keyTakeaway,
       });
 
-      results.push({ id: article.id, title: article.title, impact: analysis.impactLabel, category: analysis.category });
+      results.push({ id: article.id, vendorId: article.vendorId, title: article.title, impact: analysis.impactLabel, category: analysis.category });
     } catch (err: any) {
       console.error(`[Analyzer] Failed to analyze article ${article.id}:`, err.message);
     }
   }
+
+  // Feed the freshly-analyzed (authoritative) HIGH/MEDIUM news into AI suggestions.
+  triggerSuggestionsFromAnalysis(results);
 
   return { analyzed: results.length, results };
 }
@@ -393,6 +422,11 @@ export async function analyzeSingleArticle(articleId: string): Promise<AnalysisR
     vendorContext: analysis.vendorContext,
     keyTakeaway: analysis.keyTakeaway,
   });
+
+  // Feed this article into AI suggestions using its authoritative impact label.
+  triggerSuggestionsFromAnalysis([
+    { id: articleId, vendorId: article.vendorId, title: article.title, impact: analysis.impactLabel, category: analysis.category },
+  ]);
 
   return analysis;
 }
