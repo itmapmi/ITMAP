@@ -163,8 +163,12 @@ async function generateSuggestionsForVendor(
 
   if (!articles.length) return;
 
-  // Filter to HIGH and MEDIUM impact only — LOW impact articles rarely warrant data changes
-  const actionableArticles = articles.filter(a => a.impact === 'HIGH' || a.impact === 'MEDIUM');
+  // Filter to HIGH and MEDIUM impact only — LOW impact articles rarely warrant data changes.
+  // Impact labels are stored in mixed case (e.g. "HIGH" and legacy "high"), so compare case-insensitively.
+  const actionableArticles = articles.filter(a => {
+    const impact = (a.impact ?? '').toUpperCase();
+    return impact === 'HIGH' || impact === 'MEDIUM';
+  });
   if (!actionableArticles.length) {
     console.log(`[Suggestions] ${vendorName}: no HIGH/MEDIUM impact articles — skipping`);
     return;

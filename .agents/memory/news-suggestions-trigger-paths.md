@@ -29,3 +29,20 @@ accidental overlap is safe.
 **How to apply:** if asked to make suggestions "also come from the news feed",
 the fix is **additive** — keep the scrape-time trigger, ADD an analyzer-time trigger.
 Do not replace one with the other.
+
+## Real root cause of "feed news not reaching suggestions": mixed-case impact labels
+
+There is only ONE writer to `news_articles` (the scraper's `createArticle`); there is
+no separate scraper. The actual reason feed articles weren't producing AI suggestions
+was a **case-sensitivity bug**: `impactLabel` is stored in **mixed case** — current
+scraper writes uppercase `HIGH`/`MEDIUM`/`LOW`, but legacy rows are lowercase
+`high`/`medium`/`low`. The suggestion generator filtered with `a.impact === 'HIGH' ||
+a.impact === 'MEDIUM'` (exact uppercase), silently dropping ~all lowercase
+high/medium articles even though the feed displayed them.
+
+**Fix:** compare case-insensitively (`(a.impact ?? '').toUpperCase()`). Did NOT mutate
+the stored labels (keeps the news feed untouched) — fixed the consumer instead.
+
+**Why:** the feed display is case-tolerant but the suggestion filter was not, so the
+two diverged. Any new consumer of `impactLabel` must normalize case.
+
