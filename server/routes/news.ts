@@ -112,17 +112,14 @@ export function registerNewsRoutes(app: Express): void {
       const cleanMarketName = market.name.replace(/^ITMAP for /i, "");
       const categoryLabel = category && category !== "all" ? String(category) : "All categories";
       const pdfService = new PDFService();
-      const content = pdfService.generateNewsExportContent(articles, vendorsById, {
+      const genStart = Date.now();
+      // Browser-free generation (pdf-lib) — same approach as the market
+      // "generate report" path, so it works in deployment where Chromium
+      // cannot launch.
+      const pdfBuffer = await pdfService.generateNewsExportPdf(articles, vendorsById, {
         marketName: cleanMarketName,
         rangeLabel: NEWS_EXPORT_RANGES[numDays],
         categoryLabel,
-      });
-      const genStart = Date.now();
-      const pdfBuffer = await pdfService.generatePDF({
-        marketName: cleanMarketName,
-        reportTitle: `${cleanMarketName} — News Export`,
-        reportType: "Vendor News Export",
-        content,
       });
       console.log(
         `[NewsExport ${traceId}] PDF generated: ${pdfBuffer.length} bytes in ${Date.now() - genStart}ms ` +

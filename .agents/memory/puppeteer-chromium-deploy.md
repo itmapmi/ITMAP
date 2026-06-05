@@ -41,3 +41,16 @@ on each, falling through on failure**. All Puppeteer callers (PDF generation,
 datasheet page rendering) should go through it. See
 `server/pdf-generator/pdf-service.ts`. Tradeoff: adds ~360MB Chrome to the
 deploy image — acceptable for reliability.
+
+**UPDATE — Chromium still did not launch in this deployment even after the build
+installs Chrome (nix chromium times out waiting for WS endpoint; puppeteer Chrome
+still reported missing in `.cache/puppeteer` at runtime). The build-step download
+did NOT reliably persist into the running VM image.** The durable fix that worked:
+**avoid the browser entirely for PDFs when possible.** `pdf-lib` is already a dep
+and renders pure-JS PDFs with no Chromium — the market "generate report" path
+(`/api/markets/:id/generate-report`) uses it and works in prod while every
+Puppeteer/`generatePDF()` path fails. Prefer a `pdf-lib` generator (manual
+pagination + text wrapping + WinAnsi `sanitize()` to strip non-ASCII + per-token
+char-breaking for long URLs) for tabular/text exports. News export now uses
+`PDFService.generateNewsExportPdf()` (pdf-lib). Only keep Puppeteer for PDFs that
+genuinely need full HTML/CSS fidelity.

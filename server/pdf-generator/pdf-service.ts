@@ -653,6 +653,211 @@ export class PDFService {
     return content;
   }
 
+  // Browser-free news export. Renders directly with pdf-lib (pure JS, no
+  // Chromium) so it works reliably in deployment, matching the approach used
+  // by the market "generate report" path. The Puppeteer/HTML path above
+  // (generateNewsExportContent + generatePDF) cannot launch Chromium in prod.
+  async generateNewsExportPdf(
+    articles: any[],
+    vendorsById: Record<string, { name: string }>,
+    opts: { marketName: string; rangeLabel: string; categoryLabel: string },
+  ): Promise<Buffer> {
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    const PAGE_W = 612;
+    const PAGE_H = 792;
+    const MARGIN_X = 50;
+    const TOP_Y = PAGE_H - 50;
+    const BOTTOM_Y = 55;
+    const MAX_W = PAGE_W - MARGIN_X * 2;
+
+    let page = doc.addPage([PAGE_W, PAGE_H]);
+    let y = TOP_Y;
+
+    const newPage = () => {
+      page = doc.addPage([PAGE_W, PAGE_H]);
+      y = TOP_Y;
+    };
+    const ensure = (needed: number) => {
+      if (y - needed < BOTTOM_Y) newPage();
+    };
+
+    // Standard PDF fonts use WinAnsi encoding and can't render arbitrary
+    // unicode (smart quotes, em dashes, emoji). Normalize then strip.
+    const sanitize = (s: unknown): string =>
+      (s ?? '')
+        .toString()
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/\u2026/g, '...')
+        .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+
+    // Break a single token that is wider than maxW into character chunks so
+    // long unbroken strings (e.g. URLs) never overflow the page edge.
+    const breakToken = (token: string, size: number, f: typeof font, maxW: number): string[] => {
+      if (f.widthOfTextAtSize(token, size) <= maxW) return [token];
+      const chunks: string[] = [];
+      let chunk = '';
+      for (const ch of token) {
+        const test = chunk + ch;
+        if (f.widthOfTextAtSize(test, size) > maxW && chunk) {
+          chunks.push(chunk);
+          chunk = ch;
+        } else {
+          chunk = test;
+        }
+      }
+      if (chunk) chunks.push(chunk);
+      return chunks;
+    };
+
+    const wrap = (text: string, size: number, f: typeof font, maxW: number): string[] => {
+      const words = sanitize(text).split(/\s+/).filter(Boolean);
+      const lines: string[] = [];
+      let line = '';
+      for (const word of words) {
+        for (const w of breakToken(word, size, f, maxW)) {
+          const test = line ? line + ' ' + w : w;
+          if (f.widthOfTextAtSize(test, size) > maxW && line) {
+            lines.push(line);
+            line = w;
+          } else {
+            line = test;
+          }
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    };
+
+    const drawLines = (
+      text: string,
+      size: number,
+      o?: { f?: typeof font; color?: ReturnType<typeof rgb>; indent?: number; gap?: number },
+    ) => {
+      const f = o?.f ?? font;
+      const color = o?.color ?? rgb(0.1, 0.1, 0.1);
+      const indent = o?.indent ?? 0;
+      const gap = o?.gap ?? 3;
+      const lines = wrap(text, size, f, MAX_W - indent);
+      for (const ln of lines) {
+        ensure(size + gap);
+        page.drawText(ln, { x: MARGIN_X + indent, y, size, font: f, color });
+        y -= size + gap;
+      }
+    };
+
+    // Header
+    drawLines('Vendor News Export', 20, { f: fontBold });
+    y -= 6;
+    drawLines(`Market: ${opts.marketName}`, 11, { f: fontBold });
+    drawLines(
+      `Period: ${opts.rangeLabel}    Category: ${opts.categoryLabel}    Total articles: ${articles.length}`,
+      10,
+      { color: rgb(0.3, 0.3, 0.3) },
+    );
+    y -= 10;
+
+    if (articles.length === 0) {
+      drawLines(
+        'No news articles match the selected vendors, category, and time range.',
+        11,
+        { color: rgb(0.4, 0.4, 0.4) },
+      );
+    } else {
+      const byVendor: Record<string, any[]> = {};
+      const noVendor: any[] = [];
+      for (const a of articles) {
+        if (a.vendorId && vendorsById[a.vendorId]) (byVendor[a.vendorId] ??= []).push(a);
+        else noVendor.push(a);
+      }
+
+      const impactColor: Record<string, ReturnType<typeof rgb>> = {
+        HIGH: rgb(0.77, 0.18, 0.18),
+        MEDIUM: rgb(0.72, 0.47, 0.12),
+        LOW: rgb(0.15, 0.41, 0.29),
+      };
+
+      const renderGroup = (heading: string, list: any[]) => {
+        ensure(32);
+        y -= 8;
+        drawLines(`${heading} (${list.length})`, 14, { f: fontBold });
+        y -= 2;
+        for (const a of list) {
+          const impact = (a.impactLabel ?? a.impact ?? '').toString().toUpperCase();
+          const date = a.publishedAt
+            ? new Date(a.publishedAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            : '-';
+          // Meta row: date + category on the left, impact badge on the right.
+          ensure(14);
+          page.drawText(sanitize(`${date}    ${a.category ?? '-'}`), {
+            x: MARGIN_X,
+            y,
+            size: 9,
+            font,
+            color: rgb(0.45, 0.45, 0.45),
+          });
+          if (impact) {
+            const w = fontBold.widthOfTextAtSize(impact, 9);
+            page.drawText(impact, {
+              x: PAGE_W - MARGIN_X - w,
+              y,
+              size: 9,
+              font: fontBold,
+              color: impactColor[impact] ?? rgb(0.3, 0.3, 0.3),
+            });
+          }
+          y -= 13;
+
+          drawLines(a.title ?? '', 11, { f: fontBold });
+
+          const takeaway = (a.keyTakeaway ?? a.summary ?? '').toString();
+          if (takeaway) {
+            const t = takeaway.length > 320 ? takeaway.slice(0, 320) + '...' : takeaway;
+            drawLines(t, 9.5, { color: rgb(0.29, 0.33, 0.41) });
+          }
+          if (a.url) {
+            drawLines(a.url.toString(), 8.5, { color: rgb(0.05, 0.55, 0.85) });
+          }
+          y -= 8;
+        }
+      };
+
+      for (const vendorId of Object.keys(byVendor)) {
+        renderGroup(vendorsById[vendorId].name, byVendor[vendorId]);
+      }
+      if (noVendor.length > 0) {
+        renderGroup('Other / Unattributed', noVendor);
+      }
+    }
+
+    // Footer with page numbers on every page.
+    const pages = doc.getPages();
+    const total = pages.length;
+    pages.forEach((p, i) => {
+      const txt = `© ${new Date().getFullYear()} Spectio  —  Page ${i + 1} of ${total}`;
+      const w = font.widthOfTextAtSize(txt, 8);
+      p.drawText(txt, {
+        x: (PAGE_W - w) / 2,
+        y: 30,
+        size: 8,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    });
+
+    const bytes = await doc.save();
+    return Buffer.from(bytes);
+  }
+
   generateIntelligenceFeedContent(vendors: any[], signalsByVendor: Record<string, any[]>): string {
     const vendorsWithSignals = vendors.filter(v => (signalsByVendor[v.id] ?? []).length > 0);
 
