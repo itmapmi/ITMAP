@@ -56,10 +56,14 @@ export function registerNewsRoutes(app: Express): void {
 
   // Export filtered market news as a formatted PDF.
   app.post("/api/news/export", requireAuth, async (req, res) => {
+    const traceId = Math.random().toString(36).slice(2, 8);
+    const startedAt = Date.now();
+    console.log(`[NewsExport ${traceId}] start — body:`, JSON.stringify(req.body ?? {}));
     try {
       const { marketId, vendorIds, category, days } = req.body ?? {};
 
       if (!marketId || typeof marketId !== "string") {
+        console.warn(`[NewsExport ${traceId}] rejected: missing marketId`);
         return res.status(400).json({ error: "marketId is required" });
       }
       const numDays = Number(days);
@@ -72,6 +76,7 @@ export function registerNewsRoutes(app: Express): void {
 
       const market = await storage.getMarketById(marketId);
       if (!market || !canReadMarket(market, req)) {
+        console.warn(`[NewsExport ${traceId}] market not readable/found: ${marketId}`);
         return res.status(404).json({ error: "Market not found" });
       }
 
@@ -99,6 +104,10 @@ export function registerNewsRoutes(app: Express): void {
       if (category && category !== "all") filters.category = category as string;
 
       const articles = await newsStorage.getArticles(filters);
+      console.log(
+        `[NewsExport ${traceId}] market="${market.name}" days=${numDays} category="${category ?? "all"}" ` +
+        `vendors=${validVendorIds.length || "all"} articles=${articles.length} — generating PDF`,
+      );
 
       const cleanMarketName = market.name.replace(/^ITMAP for /i, "");
       const categoryLabel = category && category !== "all" ? String(category) : "All categories";
@@ -108,12 +117,17 @@ export function registerNewsRoutes(app: Express): void {
         rangeLabel: NEWS_EXPORT_RANGES[numDays],
         categoryLabel,
       });
+      const genStart = Date.now();
       const pdfBuffer = await pdfService.generatePDF({
         marketName: cleanMarketName,
         reportTitle: `${cleanMarketName} — News Export`,
         reportType: "Vendor News Export",
         content,
       });
+      console.log(
+        `[NewsExport ${traceId}] PDF generated: ${pdfBuffer.length} bytes in ${Date.now() - genStart}ms ` +
+        `(total ${Date.now() - startedAt}ms)`,
+      );
 
       const filename = `${cleanMarketName.replace(/[^a-z0-9]/gi, "_")}_news_${numDays}d.pdf`;
       res.set({
@@ -125,8 +139,13 @@ export function registerNewsRoutes(app: Express): void {
         "Pragma": "no-cache",
       });
       res.send(pdfBuffer);
+      console.log(`[NewsExport ${traceId}] success — sent ${filename} (${pdfBuffer.length} bytes)`);
     } catch (error) {
-      console.error("Error exporting news PDF:", error);
+      const err = error as Error;
+      console.error(
+        `[NewsExport ${traceId}] FAILED after ${Date.now() - startedAt}ms: ${err?.message}`,
+      );
+      console.error(`[NewsExport ${traceId}] stack:`, err?.stack);
       res.status(500).json({ error: "Failed to export news PDF" });
     }
   });
