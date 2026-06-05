@@ -12,11 +12,18 @@ not the same as it being launchable.**
 
 The reliable approach:
 1. Pin Puppeteer's browser download into the **project tree** via
-   `.puppeteerrc.cjs` (`cacheDirectory: ./.cache/puppeteer`). It then ships with
-   the deploy image like `node_modules` (gitignored files still deploy), and
-   Puppeteer's `postinstall` re-downloads it on the deploy build (works unless
-   `PUPPETEER_SKIP_DOWNLOAD` is set).
-2. Declare Chromium's ~29 shared libs (glib, nss, nspr, atk, at-spi2, cups,
+   `.puppeteerrc.cjs` (`cacheDirectory: ./.cache/puppeteer`).
+2. **Install Chrome explicitly in the deployment BUILD command** — do NOT rely on
+   Puppeteer's `postinstall` to re-download it. In practice the deploy build did
+   NOT have Chrome in `.cache/puppeteer` at runtime (prod error: `Could not find
+   Chrome (ver. 140.x)` + the gitignored dev `.cache/` does not reliably ship).
+   Fix: set the deploy build to
+   `["sh","-c","npx puppeteer browsers install chrome && npm run build"]` via the
+   deployment skill's `deployConfig` (you CANNOT edit `.replit` directly — it is
+   tool-owned; `deployConfig({deploymentTarget:"vm", build:[...], run:["npm","run","start"]})`).
+   On VM/gce deploys the build writes to the same persistent disk the run uses, so
+   the downloaded Chrome (matching the puppeteer pkg version) is present at runtime.
+3. Declare Chromium's ~29 shared libs (glib, nss, nspr, atk, at-spi2, cups,
    dbus, gtk3, pango, cairo, mesa, alsa-lib, fontconfig, freetype, xorg.* …) as
    nix system deps in `replit.nix`. Once declared, Replit's runtime loader finds
    them — the downloaded Chrome launches with the **default env**, no custom

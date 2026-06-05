@@ -7,8 +7,8 @@ channel = "stable-24_05"
 packages = ["chromium", "jq"]
 
 [deployment]
-deploymentTarget = "gce"
-build = ["npm", "run", "build"]
+deploymentTarget = "vm"
+build = ["sh", "-c", "npx puppeteer browsers install chrome && npm run build"]
 run = ["npm", "run", "start"]
 
 [[ports]]
