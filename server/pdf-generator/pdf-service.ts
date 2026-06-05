@@ -194,7 +194,18 @@ export class PDFService {
       .replace(/{{title}}/g, `${safeMarketName} - ${safeReportType}`)
       .replace('{{{content}}}', options.content);
 
-    const browser = await launchBrowser();
+    let browser;
+    try {
+      browser = await launchBrowser();
+    } catch (launchErr) {
+      console.error('[PDF] Chromium unavailable, using browser-free renderer:', (launchErr as Error)?.message);
+      const headerHtml = `
+        <h1>${safeReportTitle}</h1>
+        <p><b>${safeMarketName}</b> &mdash; ${safeReportType}</p>
+        <p style="color:#718096;">Generated ${generatedDate}</p>
+      `;
+      return this.renderHtmlWithPdfmake(headerHtml + options.content);
+    }
 
     try {
       const page = await browser.newPage();
@@ -247,7 +258,7 @@ export class PDFService {
 
       return Buffer.from(pdfUint8Array);
     } finally {
-      await browser.close();
+      await browser?.close();
     }
   }
 
@@ -255,7 +266,13 @@ export class PDFService {
   // that need their own page layout but want to reuse the shared chromium
   // discovery + launch flags rather than reimplementing them.
   async htmlToPdf(html: string, opts?: { format?: "A4" | "Letter"; margin?: string }): Promise<Buffer> {
-    const browser = await launchBrowser();
+    let browser;
+    try {
+      browser = await launchBrowser();
+    } catch (launchErr) {
+      console.error('[PDF] Chromium unavailable, using browser-free renderer:', (launchErr as Error)?.message);
+      return this.renderHtmlWithPdfmake(html, { format: opts?.format });
+    }
     try {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
@@ -267,8 +284,96 @@ export class PDFService {
       });
       return Buffer.from(out);
     } finally {
-      await browser.close();
+      await browser?.close();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Browser-free rendering fallback.
+  //
+  // Chromium cannot be launched reliably in the deployed environment (the nix
+  // store binary fails to exec with "spawn EIO" and the puppeteer-managed Chrome
+  // is not present at runtime). When launchBrowser() throws, we render the same
+  // HTML to a PDF with a pure-JS pipeline (pdfmake + html-to-pdfmake + jsdom),
+  // which has no native browser dependency and works everywhere. Output is
+  // plainer than the Chromium-rendered template, but the content is complete.
+  // ---------------------------------------------------------------------------
+  private static pdfmakeConfigured = false;
+  private static readonly STANDARD_FONTS = [
+    'Helvetica',
+    'Helvetica-Bold',
+    'Helvetica-Oblique',
+    'Helvetica-BoldOblique',
+  ];
+
+  private async getPdfmake(): Promise<any> {
+    const pm = (await import('pdfmake')).default as any;
+    if (!PDFService.pdfmakeConfigured) {
+      pm.setFonts({
+        Helvetica: {
+          normal: 'Helvetica',
+          bold: 'Helvetica-Bold',
+          italics: 'Helvetica-Oblique',
+          bolditalics: 'Helvetica-BoldOblique',
+        },
+      });
+      // Allow only the built-in standard fonts; deny any other local file access.
+      pm.setLocalAccessPolicy((p: string) => PDFService.STANDARD_FONTS.includes(p));
+      // Never fetch remote resources while rendering.
+      pm.setUrlAccessPolicy(() => false);
+      PDFService.pdfmakeConfigured = true;
+    }
+    return pm;
+  }
+
+  // Strip elements that the browser-free renderer cannot handle (styles,
+  // scripts) or that would trigger blocked resource fetches (images).
+  private sanitizeHtmlForPdfmake(html: string): string {
+    return html
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<img[^>]*>/gi, '');
+  }
+
+  async renderHtmlWithPdfmake(
+    bodyHtml: string,
+    opts?: { format?: 'A4' | 'Letter'; pageMargins?: [number, number, number, number] },
+  ): Promise<Buffer> {
+    const pm = await this.getPdfmake();
+    const htmlToPdfmake = (await import('html-to-pdfmake')).default as any;
+    const { JSDOM } = await import('jsdom');
+    const { window } = new JSDOM('');
+
+    const content = htmlToPdfmake(this.sanitizeHtmlForPdfmake(bodyHtml), { window });
+    const year = new Date().getFullYear();
+
+    const docDefinition = {
+      pageSize: opts?.format ?? 'A4',
+      pageMargins: opts?.pageMargins ?? [40, 45, 40, 60],
+      defaultStyle: { font: 'Helvetica', fontSize: 10, lineHeight: 1.25 },
+      content,
+      footer: (currentPage: number, pageCount: number) => ({
+        columns: [
+          {
+            text: `© ${year} Spectio — All Rights Reserved`,
+            alignment: 'left',
+            fontSize: 8,
+            color: '#718096',
+            margin: [40, 0, 0, 0],
+          },
+          {
+            text: `Page ${currentPage} of ${pageCount}`,
+            alignment: 'right',
+            fontSize: 8,
+            color: '#718096',
+            margin: [0, 0, 40, 0],
+          },
+        ],
+      }),
+    };
+
+    const doc = pm.createPdf(docDefinition, {});
+    return await doc.getBuffer();
   }
 
   generateVendorEvaluationContent(market: Market, vendors: any[], scores: any[]): string {
