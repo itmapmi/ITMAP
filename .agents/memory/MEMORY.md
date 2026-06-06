@@ -3,3 +3,4 @@
 - [Puppeteer Chromium in deploy](puppeteer-chromium-deploy.md) — path existing != launchable; ship project-local Chrome + declare nix libs; launch-probe candidates, don't trust access().
 - [PDF browser-free fallback](pdf-browser-free-fallback.md) — generatePDF/htmlToPdf fall back to pdfmake+jsdom when Chromium can't launch; route new reports through them.
 - [News → AI suggestion trigger paths](news-suggestions-trigger-paths.md) — fire suggestions from BOTH scraper (non-null label) AND analyzer (null label); disjoint sets, additive not replacement.
+- [Market Builder republish gate](market-builder-republish-gate.md) — publish gate must accept status "published" too (not just "completed"), or republishing an already-published job deadlocks.

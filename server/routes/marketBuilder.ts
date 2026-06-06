@@ -33,12 +33,6 @@ function phaseStatus(
   return "partial";
 }
 
-async function jobIsEndUser(job: { createdBy: string | null }): Promise<boolean> {
-  if (!job.createdBy) return false;
-  const owner = await storage.getUser(job.createdBy);
-  return !!owner && owner.role !== "admin";
-}
-
 // Middleware: ensure the authenticated user owns the job in :id (or is admin).
 // Usage: app.get("/api/market-builder/jobs/:id", requireAuth, requireJobOwner, handler)
 async function requireJobOwner(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -431,18 +425,15 @@ export function registerMarketBuilderRoutes(app: Express): void {
   > {
     const job = await storage.getMarketBuilderJobWithStages(jobId);
     if (!job) return { ok: false, status: 404, error: "Job not found" };
-    const endUser = await jobIsEndUser(job);
-    // End-user jobs may republish (they own the market and can refresh phases
-    // or add new ones after the initial publish). Admin jobs are still strict
-    // single-publish.
-    if (endUser) {
-      if (job.status !== "completed" && job.status !== "published") {
-        return { ok: false, status: 400, error: "Job must be completed before publishing" };
-      }
-    } else {
-      if (job.status !== "completed") {
-        return { ok: false, status: 400, error: "Job must be completed before publishing" };
-      }
+    // Both admin and end-user jobs may republish: they own the resulting market
+    // and can refresh phases or add new vendors after the initial publish. The
+    // republish path in publishJobInner reuses the existing marketId in place,
+    // so re-publishing an already-"published" job refreshes it rather than
+    // creating a duplicate. The /complete route intentionally preserves the
+    // "published" status (it won't downgrade to "completed"), so the gate must
+    // accept "published" too — otherwise a published job can never be updated.
+    if (job.status !== "completed" && job.status !== "published") {
+      return { ok: false, status: 400, error: "Job must be completed before publishing" };
     }
     return await publishJobInner(job, isVisibleRequested);
   }
