@@ -1702,6 +1702,17 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   const currentPhase = stagePhases[activeStage];
   const currentResult = stageResults[activeStage];
 
+  // Per-vendor stages that support an incremental "new vendors only" re-run.
+  const isPerVendorStage = [2, 3, 5, 6, 8, 9].includes(activeStage);
+  // Whether this stage already has existing vendor data to preserve — true when
+  // refreshing a published market, or when a prior result is loaded for the stage.
+  const stageHasExistingData =
+    activeJob?.status === "published" ||
+    (currentResult && ((currentResult.scores?.length ?? 0) > 0 || (currentResult.support?.length ?? 0) > 0));
+  // Offer the "Update new vendors only" choice in the ready state too, not just
+  // when the stage is already marked done in this session.
+  const offerNewVendorsOnly = isPerVendorStage && stageHasExistingData;
+
   // ── Published view ────────────────────────────────────────────────────
 
   if (view === "published") {
@@ -2051,9 +2062,34 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   {activeStage > 1 ? (
                     <Button variant="outline" className="gap-2" onClick={() => setActiveStage(s => s - 1)}><ChevronLeft className="h-4 w-4" />Stage {activeStage - 1}</Button>
                   ) : <div />}
-                  <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
-                    <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
-                  </Button>
+                  {offerNewVendorsOnly ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex gap-2">
+                        <Button
+                          className="gap-2 bg-violet-600 hover:bg-violet-700 px-5"
+                          onClick={() => runStage(activeJob!.id, activeStage, true)}
+                          data-testid={`update-new-vendors-${activeStage}`}
+                        >
+                          <Plus className="h-4 w-4" />Update new vendors only
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="gap-2 px-5"
+                          onClick={() => runStage(activeJob!.id, activeStage, false)}
+                          data-testid={`run-all-${activeStage}`}
+                        >
+                          <RefreshCw className="h-4 w-4" />Re-run all vendors
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-gray-400 text-right max-w-xs">
+                        "Update new vendors only" processes just the vendors you added — existing vendors stay untouched.
+                      </p>
+                    </div>
+                  ) : (
+                    <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
+                      <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
+                    </Button>
+                  )}
                 </div>
               </>
             )}

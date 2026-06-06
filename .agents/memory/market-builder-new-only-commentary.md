@@ -15,3 +15,11 @@ Market Builder per-vendor stages come in two flavors with very different reliabi
 **Why:** see prod job for "Object Storage Platforms" — adding one vendor (Huawei) re-ran Dell/NetApp commentary because the checkpoint only had 581 of the expected comments. Scoring for the same job worked perfectly.
 
 **How to apply:** any future per-vendor commentary stage must drive vendor selection in the runner for new-only; never rely on the internal completion-based skip to implement new-only.
+
+## UI: the "Update new vendors only" buttons must show in the ready phase too
+
+The wizard's dual run buttons ("Update new vendors only" / "Re-run all vendors") originally rendered only when `currentPhase === "done"`. When refreshing a **published** market, an admin can land on a per-vendor stage in the `ready` phase (e.g. Stage 9 after approving Stage 8), and the done-only gate hid the incremental option, leaving just a single "Run Stage X".
+
+**Rule:** the new-vendors-only choice must be available whenever the market already has existing data, regardless of phase. Gate it on `offerNewVendorsOnly = isPerVendorStage([2,3,5,6,8,9]) && (activeJob.status === "published" || currentResult has scores/support)` and render the dual buttons in the ready-state action row, not only in the done state.
+
+**Why:** `handleResume` sends admin published jobs to the publish panel (stage 10); navigating back into stages sets the next stage to `ready`, so per-vendor stages on a published refresh are frequently `ready`, not `done`.
