@@ -4,3 +4,4 @@
 - [PDF browser-free fallback](pdf-browser-free-fallback.md) — generatePDF/htmlToPdf fall back to pdfmake+jsdom when Chromium can't launch; route new reports through them.
 - [News → AI suggestion trigger paths](news-suggestions-trigger-paths.md) — fire suggestions from BOTH scraper (non-null label) AND analyzer (null label); disjoint sets, additive not replacement.
 - [Market Builder republish gate](market-builder-republish-gate.md) — publish gate must accept status "published" too (not just "completed"), or republishing an already-published job deadlocks.
+- [MB new-only commentary scoping](market-builder-new-only-commentary.md) — commentary stages must scope new-only by vendor presence in runner, not by comment-completeness skip (scoring is fine; commentary isn't).

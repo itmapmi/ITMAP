@@ -431,17 +431,29 @@ export async function runSingleStage(
         // Load checkpoint from any previous failed run so we can resume mid-vendor
         const existingStage6 = await storage.getMarketBuilderStage(jobId, 6);
         const checkpoint6 = (existingStage6?.result as any) ?? undefined;
-        // Per-vendor resume (also covers "new vendors only"): seeds from this
-        // checkpoint, skips vendors that already have commentary and processes
-        // the rest — new vendors get commentary, existing ones are preserved.
-        if (checkpoint6?.support?.length > 0) {
+        // "New vendors only": process just the vendors not yet present in the
+        // saved commentary. Existing vendors stay untouched — preserved via the
+        // checkpoint seed — regardless of whether their prior commentary was
+        // 100% complete. (A normal re-run uses completion-based resume, which
+        // re-processes any vendor that is missing even one comment; that is why
+        // new-only must scope by vendor presence here, not by completeness.)
+        const scope6 = scopeNewVendors(stage1, checkpoint6, newOnly);
+        if (scope6.isNoop) {
+          await progress("No newly added vendors to comment on — existing product commentary left unchanged.");
+          result = checkpoint6;
+          break;
+        }
+        const stage1ForRun6 = newOnly ? { ...stage1, vendors: scope6.vendors } : stage1;
+        if (newOnly) {
+          await progress(`Incremental run — writing product commentary for ${scope6.vendors.length} new vendor(s) across ${totalFeatures} features…`);
+        } else if (checkpoint6?.support?.length > 0) {
           const doneSoFar = checkpoint6.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
           await progress(`↩ Resuming from checkpoint — ${doneSoFar} feature comments already saved`);
         } else {
           await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
         }
         result = await runStage4Commentary(
-          inputName, stage1, stage4, stage5, llmConfig, sourceContext,
+          inputName, stage1ForRun6, stage4, stage5, llmConfig, sourceContext,
           {
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "commentary", categoryName, featureName }),
@@ -512,17 +524,29 @@ export async function runSingleStage(
         // Load checkpoint from any previous failed run so we can resume mid-vendor
         const existingStage9 = await storage.getMarketBuilderStage(jobId, 9);
         const checkpoint9 = (existingStage9?.result as any) ?? undefined;
-        // Per-vendor resume (also covers "new vendors only"): seeds from this
-        // checkpoint, skips vendors that already have commentary and processes
-        // the rest — new vendors get commentary, existing ones are preserved.
-        if (checkpoint9?.support?.length > 0) {
+        // "New vendors only": process just the vendors not yet present in the
+        // saved commentary. Existing vendors stay untouched — preserved via the
+        // checkpoint seed — regardless of whether their prior commentary was
+        // 100% complete. (A normal re-run uses completion-based resume, which
+        // re-processes any vendor that is missing even one comment; that is why
+        // new-only must scope by vendor presence here, not by completeness.)
+        const scope9 = scopeNewVendors(stage1, checkpoint9, newOnly);
+        if (scope9.isNoop) {
+          await progress("No newly added vendors to comment on — existing ecosystem commentary left unchanged.");
+          result = checkpoint9;
+          break;
+        }
+        const stage1ForRun9 = newOnly ? { ...stage1, vendors: scope9.vendors } : stage1;
+        if (newOnly) {
+          await progress(`Incremental run — writing ecosystem commentary for ${scope9.vendors.length} new vendor(s) across ${totalEcoFeatures} integrations…`);
+        } else if (checkpoint9?.support?.length > 0) {
           const doneSoFar = checkpoint9.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
           await progress(`↩ Resuming from checkpoint — ${doneSoFar} ecosystem comments already saved`);
         } else {
           await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
         }
         result = await runStage9Commentary(
-          inputName, stage1, stage7, stage8, llmConfig, sourceContext,
+          inputName, stage1ForRun9, stage7, stage8, llmConfig, sourceContext,
           {
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
