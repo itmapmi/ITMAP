@@ -1245,9 +1245,11 @@ function ProjectCard({ job, onResume, onDelete, mode = "admin" }: {
                 {done === 9 ? <><CheckCircle2 className="h-3.5 w-3.5" />Publish</> : <><ArrowRight className="h-3.5 w-3.5" />Continue — Stage {next}</>}
               </Button>
             )}
-            {/* End-user published markets stay editable: refresh a phase or add
-                an optional phase. Admin published markets stay locked. */}
-            {isPublished && mode === "user" && (
+            {/* Published markets stay editable for both admin and end users:
+                reopen the wizard to add vendors or re-run any of the 9 phases.
+                The run endpoints are published-aware and keep the live market
+                link stable while refreshing data. */}
+            {isPublished && (
               <Button size="sm" variant="outline" className="h-7 px-3 text-xs gap-1.5" onClick={() => onResume(job)}>
                 <RefreshCw className="h-3.5 w-3.5" />
                 {done === 9 ? "Refresh" : `Add / Refresh phase`}
