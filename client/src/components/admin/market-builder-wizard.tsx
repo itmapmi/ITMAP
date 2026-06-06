@@ -1392,7 +1392,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
   // ── SSE: run a single stage ───────────────────────────────────────────
 
-  const runStage = (jobId: string, stageNum: number) => {
+  const runStage = (jobId: string, stageNum: number, newVendorsOnly = false) => {
     esRef.current?.close();
     setStreamError(null);
     // Reset cached progress log so the new run starts fresh in the UI
@@ -1401,7 +1401,8 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
     });
     setStagePhases(prev => ({ ...prev, [stageNum]: "running" }));
 
-    const es = new EventSource(`${apiBase}/jobs/${jobId}/stream?stage=${stageNum}`);
+    const modeParam = newVendorsOnly ? "&mode=new-only" : "";
+    const es = new EventSource(`${apiBase}/jobs/${jobId}/stream?stage=${stageNum}${modeParam}`);
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -1914,18 +1915,46 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
               </p>
             </div>
             {currentPhase === "done" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs gap-1.5 shrink-0"
-                onClick={() => runStage(activeJob!.id, activeStage)}
-                data-testid={`refresh-stage-${activeStage}`}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {activeStage === 2 ? "Refresh Vendor Scoring"
-                  : activeStage === 3 ? "Refresh Vendor Commentary"
-                  : "Re-run Stage"}
-              </Button>
+              [2, 3, 5, 6, 8, 9].includes(activeStage) ? (
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                      onClick={() => runStage(activeJob!.id, activeStage, true)}
+                      data-testid={`update-new-vendors-${activeStage}`}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Update new vendors only
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => runStage(activeJob!.id, activeStage, false)}
+                      data-testid={`refresh-stage-${activeStage}`}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Re-run all vendors
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 text-right max-w-xs">
+                    "Update new vendors only" processes just the vendors you added — existing vendors stay untouched.
+                  </p>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 shrink-0"
+                  onClick={() => runStage(activeJob!.id, activeStage)}
+                  data-testid={`refresh-stage-${activeStage}`}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Re-run Stage
+                </Button>
+              )
             )}
           </div>
 

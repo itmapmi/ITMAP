@@ -164,7 +164,10 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       const job = await storage.getMarketBuilderJob(req.params.id);
       if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-      if (job.status === "published") { res.status(400).json({ error: "Already published" }); return; }
+      // Published markets may be re-run to refresh data or add newly-added
+      // vendors incrementally (?mode=new-only). runSingleStage is published-aware
+      // and keeps job.status = "published" throughout so the live market link
+      // stays stable — so we no longer reject published jobs here.
 
       // Preflight LLM config before opening SSE so missing-key errors get a
       // clean 412 with a structured error code the UI can recognise (rather
@@ -186,7 +189,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
       initSSE(res);
       req.on("close", () => {});
 
-      runSingleStage(res, job, stageNum).catch(err => {
+      runSingleStage(res, job, stageNum, { newVendorsOnly: req.query.mode === "new-only" }).catch(err => {
         console.error(`[MarketBuilder] Stage ${stageNum} error for ${job.id}:`, err);
         try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
       });
@@ -907,7 +910,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
       initSSE(res);
       req.on("close", () => {});
-      runSingleStage(res, job, stageNum).catch(err => {
+      runSingleStage(res, job, stageNum, { newVendorsOnly: req.query.mode === "new-only" }).catch(err => {
         console.error(`[MarketBuilder] Stage ${stageNum} error for ${job.id}:`, err);
         try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
       });

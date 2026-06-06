@@ -47,6 +47,12 @@ export interface Stage2Result {
 export interface Stage2ScoringHooks {
   resolveScoringPrompt?: (criterionName: string) => Promise<string>;
   onProgress?: (msg: string) => Promise<void>;
+  /** Incremental ("new vendors only") run: reuse these existing market weights
+   *  instead of regenerating them from scratch. */
+  reuseWeights?: Stage2CriterionWeight[];
+  /** Incremental run: seed the scores array with existing vendors' scores so
+   *  they are preserved; only the vendors passed in stage1 are (re)scored. */
+  seedScores?: Array<{ vendorName: string; criterionName: string; score: number }>;
 }
 
 export interface Stage2CommentaryHooks {
@@ -54,6 +60,9 @@ export interface Stage2CommentaryHooks {
   onProgress?: (msg: string) => Promise<void>;
   /** Partial result from a previous failed run — skip already-done criteria */
   checkpoint?: Stage2Result;
+  /** Incremental run: seed with existing vendors' commentary so they are
+   *  preserved; only the vendors passed in stage1 get fresh commentary. */
+  seedScores?: Stage2Score[];
   /** Called after each criterion completes so the caller can persist partial results */
   onCriterionComplete?: (partial: Stage2Result) => Promise<void>;
 }
@@ -357,12 +366,21 @@ export async function runStage2Scoring(
 ): Promise<Stage2ScoringResult> {
   const progress = hooks?.onProgress ?? (async () => {});
 
-  await progress("Computing market-specific criterion weights and rationale…");
-  const criteriaWeights = await generateWeights(
-    marketName, stage1, predefinedCriteria, llmConfig, sourceContext
-  );
+  let criteriaWeights: Stage2CriterionWeight[];
+  if (hooks?.reuseWeights && hooks.reuseWeights.length > 0) {
+    await progress("Reusing existing market criterion weights (incremental run)…");
+    criteriaWeights = hooks.reuseWeights;
+  } else {
+    await progress("Computing market-specific criterion weights and rationale…");
+    criteriaWeights = await generateWeights(
+      marketName, stage1, predefinedCriteria, llmConfig, sourceContext
+    );
+  }
 
-  const scores: Array<{ vendorName: string; criterionName: string; score: number }> = [];
+  // Seed with existing vendors' scores when running incrementally so they are
+  // preserved; the loop below only adds scores for the vendors in stage1.
+  const scores: Array<{ vendorName: string; criterionName: string; score: number }> =
+    hooks?.seedScores ? hooks.seedScores.map(s => ({ ...s })) : [];
 
   for (const criterion of predefinedCriteria) {
     if (AUTO_COMPUTED.has(criterion.name)) {
@@ -410,7 +428,9 @@ export async function runStage2Commentary(
   hooks?: Stage2CommentaryHooks,
 ): Promise<Stage2Result> {
   const progress = hooks?.onProgress ?? (async () => {});
-  const allScores: Stage2Score[] = [];
+  // Seed with existing vendors' commentary when running incrementally so they
+  // are preserved; each criterion loop below only appends the vendors in stage1.
+  const allScores: Stage2Score[] = hooks?.seedScores ? hooks.seedScores.map(s => ({ ...s })) : [];
 
   for (const criterion of predefinedCriteria) {
     // Auto-computed criteria: carry forward with placeholder commentary
