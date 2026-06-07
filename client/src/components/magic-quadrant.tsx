@@ -984,7 +984,25 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const labelPos = customPos 
         ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX: xScale(vendor.adjustedX), dotY: yScale(vendor.adjustedY) }
         : calculateLabelPosition(vendor, index, adjustedVendors);
-      
+
+      // Keep every label inside the drawable chart area. Saved/auto positions
+      // can land outside the box (e.g. after the chart was made smaller), which
+      // clips the text off-screen — the dot stays but its label "disappears".
+      // Clamping is a no-op for labels already in bounds, so nothing else moves.
+      const lblWidth = vendor.name.length * 7.5;
+      const minLabelX = margin.left + 2;
+      const maxLabelX = width - margin.right - 2;
+      const minLabelY = margin.top + 10;
+      const maxLabelY = height - margin.bottom - 2;
+      if (labelPos.anchor === "end") {
+        labelPos.labelX = Math.min(maxLabelX, Math.max(labelPos.labelX, minLabelX + lblWidth));
+      } else if (labelPos.anchor === "middle") {
+        labelPos.labelX = Math.max(minLabelX + lblWidth / 2, Math.min(labelPos.labelX, maxLabelX - lblWidth / 2));
+      } else {
+        labelPos.labelX = Math.max(minLabelX, Math.min(labelPos.labelX, maxLabelX - lblWidth));
+      }
+      labelPos.labelY = Math.max(minLabelY, Math.min(labelPos.labelY, maxLabelY));
+
       const labelGroup = vendorGroups.filter((d, i) => i === index);
 
       // Add the text label positioned around the dot
