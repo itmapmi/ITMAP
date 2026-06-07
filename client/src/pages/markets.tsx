@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
-import { track } from "@/lib/track";
+import { useState, useMemo, useEffect } from "react";
+import { track, trackDwell } from "@/lib/track";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +53,14 @@ export default function Markets() {
   const filtered = useMemo(() => {
     return publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
   }, [publicMarkets, selectedCategory]);
+
+  // Track page visit and dwell time so the intent engine picks up browse activity.
+  // market_viewed without a specific marketId signals general market browsing.
+  useEffect(() => {
+    track("market_viewed", { metadata: { context: "markets_listing" } });
+    const endDwell = trackDwell({ metadata: { page: "markets" } });
+    return endDwell;
+  }, []);
 
   if (error) {
     return (

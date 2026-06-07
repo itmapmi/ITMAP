@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { track, trackDwell } from "@/lib/track";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,14 @@ export default function MyRfpDetailPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  // Track intent when the user opens an RFP — viewing a market RFP is a strong research signal.
+  useEffect(() => {
+    if (!rfp) return;
+    track("market_viewed", { marketId: rfp.marketId, metadata: { context: "rfp_detail", rfpId: rfp.id, status: rfp.status } });
+    const endDwell = trackDwell({ marketId: rfp.marketId, metadata: { rfpId: rfp.id } });
+    return endDwell;
+  }, [rfp?.id]);
 
   const sendMutation = useMutation({
     mutationFn: async (content: string) => apiRequestJson(`/api/me/rfps/${id}/messages`, "POST", { content }),

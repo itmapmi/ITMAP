@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { track, trackDwell } from "@/lib/track";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,12 @@ export default function MyRfpsPage() {
 
   const atActiveLimit = status && status.activeCount >= status.activeLimit;
   const atDailyLimit = status && status.last24hCount >= status.dailyLimit;
+
+  // Track dwell time — visiting the RFP list signals active research engagement.
+  useEffect(() => {
+    const endDwell = trackDwell({ metadata: { page: "my_rfps" } });
+    return endDwell;
+  }, []);
 
   // If we arrived from a market page with ?marketId=..., auto-open the
   // create dialog and pre-select that market.

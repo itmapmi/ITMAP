@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { track } from "@/lib/track";
+import { track, trackDwell } from "@/lib/track";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Send, Bookmark, Download, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -82,6 +82,15 @@ export default function DatasheetComparePage() {
 
   const data = compareMut.data;
   const market = marketDetail?.market;
+
+  // Track page visit and dwell time once the market is resolved.
+  // Declared after `market` to avoid temporal dead zone issues.
+  useEffect(() => {
+    if (!market) return;
+    track("market_viewed", { metadata: { name: market.name, context: "datasheets" } });
+    const endDwell = trackDwell({ metadata: { page: "datasheets_compare", marketSlug: params.slug } });
+    return endDwell;
+  }, [market?.id]);
   const schema = market?.schemaDefinition as DatasheetSchemaDefinition | undefined;
 
   const saveMut = useMutation({

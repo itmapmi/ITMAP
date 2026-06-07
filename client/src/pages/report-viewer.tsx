@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
+import { track, trackDwell } from "@/lib/track";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,14 @@ export default function ReportViewer() {
     queryKey: ["/api/research-reports", reportId],
     enabled: !!reportId,
   });
+
+  // Track market research intent when the user opens a report.
+  useEffect(() => {
+    if (!report) return;
+    track("market_viewed", { marketId: report.marketId, metadata: { context: "report_viewer", reportId: report.id, reportType: report.reportType } });
+    const endDwell = trackDwell({ marketId: report.marketId, metadata: { reportId: report.id } });
+    return endDwell;
+  }, [report?.id]);
 
   const getReportTypeColor = (type: string | null) => {
     if (!type) return 'bg-gray-100 text-gray-800';
