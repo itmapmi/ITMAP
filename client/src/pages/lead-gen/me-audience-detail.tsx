@@ -36,8 +36,28 @@ const WINDOWS = [
 ] as const;
 
 const stripMarket = (n: string | null) => (n ?? "").replace(/^ITMAP for /i, "");
-const eventLabel = (t: string) =>
-  LEAD_GEN_EVENT_DEFS[t as LeadGenEventType]?.label ?? t;
+
+const PAGE_VIEW_LABELS: Record<string, string> = {
+  markets_listing:    "Browsed the markets listing",
+  rfps_listing:       "Browsed the RFP listing",
+  rfp_detail:         "Reviewed an RFP",
+  datasheets_compare: "Compared datasheets",
+  report_viewer:      "Opened a research report",
+};
+
+const eventLabel = (t: string, metadata?: unknown): string => {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  if (t === "market_viewed") {
+    const ctx = typeof m.context === "string" ? m.context : null;
+    if (ctx && PAGE_VIEW_LABELS[ctx]) return PAGE_VIEW_LABELS[ctx];
+  }
+  if (t === "page_dwell") {
+    const page = typeof m.page === "string" ? m.page : null;
+    if (page === "datasheets_compare") return "Time on datasheets comparison";
+  }
+  return LEAD_GEN_EVENT_DEFS[t as LeadGenEventType]?.label ?? t;
+};
+
 const eventDetail = (eventType: string, metadata: unknown): string | null => {
   const m = (metadata ?? {}) as Record<string, unknown>;
   if (eventType === "report_downloaded" && typeof m.title === "string") return m.title;
@@ -171,7 +191,7 @@ export default function LeadGenAudienceDetailPage() {
                 {data.timeline.map((t) => (
                   <div key={t.id} className="flex items-center gap-4 px-5 py-2.5 text-sm">
                     <span className="w-32 shrink-0 text-xs text-slate-500">{timeAgo(t.createdAt)}</span>
-                    <span className="flex-1 text-slate-200">{eventLabel(t.eventType)}</span>
+                    <span className="flex-1 text-slate-200">{eventLabel(t.eventType, t.metadata)}</span>
                     <span className="hidden truncate text-xs text-slate-500 sm:block">{eventDetail(t.eventType, t.metadata) ?? t.vendorName ?? ""}</span>
                   </div>
                 ))}

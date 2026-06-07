@@ -35,6 +35,27 @@ const EVENT_LABELS: Record<string, string> = {
   filter_applied: "Applied filter", chart_interacted: "Explored chart", news_viewed: "Read news",
 };
 
+const PAGE_VIEW_LABELS: Record<string, string> = {
+  markets_listing:    "Browsed the markets listing",
+  rfps_listing:       "Browsed the RFP listing",
+  rfp_detail:         "Reviewed an RFP",
+  datasheets_compare: "Compared datasheets",
+  report_viewer:      "Opened a research report",
+};
+
+function resolveEventLabel(eventType: string, metadata: unknown): string {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  if (eventType === "market_viewed") {
+    const ctx = typeof m.context === "string" ? m.context : null;
+    if (ctx && PAGE_VIEW_LABELS[ctx]) return PAGE_VIEW_LABELS[ctx];
+  }
+  if (eventType === "page_dwell") {
+    const page = typeof m.page === "string" ? m.page : null;
+    if (page === "datasheets_compare") return "Time on datasheets comparison";
+  }
+  return EVENT_LABELS[eventType] ?? LEAD_GEN_EVENT_DEFS[eventType as keyof typeof LEAD_GEN_EVENT_DEFS]?.label ?? eventType;
+}
+
 function eventDetail(eventType: string, metadata: unknown): string | null {
   const m = (metadata ?? {}) as Record<string, unknown>;
   if (eventType === "report_downloaded" && typeof m.title === "string") return m.title;
@@ -279,7 +300,7 @@ export default function LeadGenDetailPage() {
                 </div>
                 <div className="min-w-0 flex-1 pb-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-slate-200">{EVENT_LABELS[t.eventType] ?? t.eventType}</span>
+                    <span className="text-sm text-slate-200">{resolveEventLabel(t.eventType, t.metadata)}</span>
                     <span className="shrink-0 text-[11px] text-slate-500">{timeAgo(t.createdAt)}</span>
                   </div>
                   <div className="text-xs text-slate-500">
