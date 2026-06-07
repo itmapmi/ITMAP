@@ -667,6 +667,38 @@ export function registerLeadGenRoutes(app: Express): void {
           ]),
           "Timeline",
         );
+
+        const sortedBreakdown = [...detail.typeBreakdown].sort((a, b) => {
+          const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
+          const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
+          return (wB * b.count) - (wA * a.count);
+        });
+        xlsx.utils.book_append_sheet(
+          wb,
+          xlsx.utils.aoa_to_sheet([
+            ["Event type", "Count", "Weight", "Contribution"],
+            ...sortedBreakdown.map((t) => {
+              const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
+              const weight = def?.weight ?? 0;
+              return [def?.label ?? t.eventType, t.count, weight, weight * t.count];
+            }),
+          ]),
+          "Activity breakdown",
+        );
+        xlsx.utils.book_append_sheet(
+          wb,
+          xlsx.utils.aoa_to_sheet([
+            ["Market", "Events", "Dwell time (ms)", "Last visited"],
+            ...detail.marketViews.map((m) => [
+              m.marketName.replace(/^ITMAP for /i, ""),
+              m.events,
+              m.dwellMs,
+              new Date(m.lastAt).toISOString(),
+            ]),
+          ]),
+          "Markets visited",
+        );
+
         const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
         res.setHeader("Content-Disposition", `attachment; filename="spectio_lead_${safe}.xlsx"`);
         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -714,6 +746,31 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
       (t) => `<tr><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ""}</td><td>${escapeHtml(LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType]?.label ?? t.eventType)}</td><td>${escapeHtml(t.marketName ?? "")}</td><td>${escapeHtml(t.vendorName ?? "")}</td></tr>`,
     )
     .join("");
+
+  // Sort type breakdown by contribution descending (weight × count).
+  const sortedTypeBreakdown = [...d.typeBreakdown].sort((a, b) => {
+    const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
+    const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
+    return (wB * b.count) - (wA * a.count);
+  });
+  const activityBreakdown = sortedTypeBreakdown
+    .map((t) => {
+      const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
+      const label = def?.label ?? t.eventType;
+      const weight = def?.weight ?? 0;
+      const contribution = weight * t.count;
+      return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${t.count}</td><td style="text-align:right">${weight}</td><td style="text-align:right">${contribution}</td></tr>`;
+    })
+    .join("");
+
+  const marketsVisited = d.marketViews
+    .map((m) => {
+      const mName = m.marketName.replace(/^ITMAP for /i, "");
+      const dwell = m.dwellMs > 0 ? formatDwell(m.dwellMs) : "—";
+      return `<tr><td>${escapeHtml(mName)}</td><td style="text-align:right">${m.events}</td><td>${escapeHtml(dwell)}</td><td>${new Date(m.lastAt).toLocaleString()}</td></tr>`;
+    })
+    .join("");
+
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;padding:32px}
     h1{font-size:24px;margin:0}
@@ -724,6 +781,7 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
     table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
     th{background:#0f172a;color:#fff;text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase}
     td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
+    tr:nth-child(even) td{background:#f8fafc}
   </style></head><body>
     <h1>${escapeHtml(name)}</h1>
     <div class="sub">${escapeHtml(d.user.email ?? "")} · spectio.ai Buyer-Intent Report · ${new Date().toLocaleString()}</div>
@@ -733,7 +791,22 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
     <table><thead><tr><th>Factor</th><th>Score</th><th>Weight</th><th>Points</th><th>Detail</th></tr></thead><tbody>${factors}</tbody></table>
     <h2>Vendors of interest</h2>
     <table><thead><tr><th>Vendor</th><th>Events</th><th>Last activity</th></tr></thead><tbody>${vendors || `<tr><td colspan="3" style="color:#94a3b8">No vendor-specific activity</td></tr>`}</tbody></table>
+    <h2>Activity breakdown</h2>
+    <table><thead><tr><th>Event type</th><th style="text-align:right">Count</th><th style="text-align:right">Weight</th><th style="text-align:right">Contribution</th></tr></thead><tbody>${activityBreakdown || `<tr><td colspan="4" style="color:#94a3b8">No events recorded</td></tr>`}</tbody></table>
+    <h2>Markets visited</h2>
+    <table><thead><tr><th>Market</th><th style="text-align:right">Events</th><th>Dwell time</th><th>Last visited</th></tr></thead><tbody>${marketsVisited || `<tr><td colspan="4" style="color:#94a3b8">No market visits recorded</td></tr>`}</tbody></table>
     <h2>Activity timeline</h2>
     <table><thead><tr><th>When</th><th>Event</th><th>Market</th><th>Vendor</th></tr></thead><tbody>${timeline || `<tr><td colspan="4" style="color:#94a3b8">No activity</td></tr>`}</tbody></table>
   </body></html>`;
+}
+
+function formatDwell(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
 }
