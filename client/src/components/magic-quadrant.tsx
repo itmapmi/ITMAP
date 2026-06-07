@@ -525,7 +525,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
 
     // Responsive dimensions based on container and device
     const containerWidth = containerRef.current.offsetWidth;
-    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 660);
+    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
     // Square grid on desktop: margins are symmetric (L+R = T+B = 80),
     // so an equal width/height yields a perfect square quadrant area.
     const height = isMobile ? 350 : width;
