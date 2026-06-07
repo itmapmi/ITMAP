@@ -297,7 +297,7 @@ export async function getVendorNamesByIds(ids: string[]): Promise<Map<string, st
   const rows = await db
     .select({ id: vendors.id, name: vendors.name })
     .from(vendors)
-    .where(sql`${vendors.id} = ANY(${ids})`);
+    .where(inArray(vendors.id, ids));
   return new Map(rows.map((r) => [r.id, r.name]));
 }
 
