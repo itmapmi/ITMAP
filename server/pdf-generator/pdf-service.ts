@@ -168,9 +168,6 @@ export class PDFService {
   }
 
   async generatePDF(options: ReportOptions): Promise<Buffer> {
-    const template = await this.getTemplate();
-    const logoData = await this.getLogoBase64();
-    
     const now = new Date();
     const generatedDate = now.toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -184,82 +181,17 @@ export class PDFService {
     const safeMarketName = this.escapeHtml(options.marketName);
     const safeReportType = this.escapeHtml(options.reportType);
 
-    const html = template
-      .replace(/{{reportTitle}}/g, safeReportTitle)
-      .replace(/{{marketName}}/g, safeMarketName)
-      .replace(/{{reportType}}/g, safeReportType)
-      .replace(/{{generatedDate}}/g, generatedDate)
-      .replace(/{{year}}/g, now.getFullYear().toString())
-      .replace(/{{logoPath}}/g, logoData)
-      .replace(/{{title}}/g, `${safeMarketName} - ${safeReportType}`)
-      .replace('{{{content}}}', options.content);
-
-    let browser;
-    try {
-      browser = await launchBrowser();
-    } catch (launchErr) {
-      console.error('[PDF] Chromium unavailable, using browser-free renderer:', (launchErr as Error)?.message);
-      const headerHtml = `
-        <h1>${safeReportTitle}</h1>
-        <p><b>${safeMarketName}</b> &mdash; ${safeReportType}</p>
-        <p style="color:#718096;">Generated ${generatedDate}</p>
-      `;
-      return this.renderHtmlWithPdfmake(headerHtml + options.content);
-    }
-
-    try {
-      const page = await browser.newPage();
-      await page.setContent(html, {
-        waitUntil: 'networkidle0',
-      });
-
-      const pdfUint8Array = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '1cm',
-          right: '20mm',
-          bottom: '2cm',
-          left: '20mm',
-        },
-        displayHeaderFooter: true,
-        headerTemplate: `
-          <div style="width: 100%; padding: 0 20mm; font-size: 10px; margin: 0; display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
-            <svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="hsg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#0EA5E9" />
-                  <stop offset="100%" stop-color="#7C3AED" />
-                </linearGradient>
-                <linearGradient id="hsg2" x1="36" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#0EA5E9" stop-opacity="0.4" />
-                  <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.4" />
-                </linearGradient>
-              </defs>
-              <circle cx="18" cy="18" r="16" stroke="url(#hsg2)" stroke-width="1.5" />
-              <circle cx="18" cy="18" r="10" stroke="url(#hsg1)" stroke-width="2" />
-              <circle cx="18" cy="18" r="4.5" fill="url(#hsg1)" />
-              <circle cx="18" cy="18" r="2" fill="white" />
-              <line x1="18" y1="2" x2="18" y2="7" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
-              <line x1="18" y1="29" x2="18" y2="34" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
-              <line x1="2" y1="18" x2="7" y2="18" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
-              <line x1="29" y1="18" x2="34" y2="18" stroke="url(#hsg1)" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            <span style="font-size: 13px; font-weight: 700; color: #1a202c; margin-top: 5px;">spectio<span style="color: #0EA5E9;">.ai</span></span>
-          </div>
-        `,
-        footerTemplate: `
-          <div style="width: 100%; padding: 0 20mm; font-size: 9px; color: #718096; text-align: center; margin-bottom: 10px;">
-            <span>© ${now.getFullYear()} Spectio — All Rights Reserved</span>
-            <span style="margin-left: 20px;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-          </div>
-        `,
-      });
-
-      return Buffer.from(pdfUint8Array);
-    } finally {
-      await browser?.close();
-    }
+    // Browser-free rendering only. Chromium cannot be relied on in the deployed
+    // environment: even when launchBrowser() succeeds, page.setContent/page.pdf
+    // can crash mid-render and 500 the request. The news export avoids this by
+    // rendering purely in JS — we use the same browser-free pipeline here so the
+    // report PDFs work identically in development and production.
+    const headerHtml = `
+      <h1>${safeReportTitle}</h1>
+      <p><b>${safeMarketName}</b> &mdash; ${safeReportType}</p>
+      <p style="color:#718096;">Generated ${generatedDate}</p>
+    `;
+    return this.renderHtmlWithPdfmake(headerHtml + options.content);
   }
 
   // Generic HTML → PDF helper. Used by feature exports (e.g. RFP Builder)
@@ -283,6 +215,11 @@ export class PDFService {
         margin: { top: m, bottom: m, left: m, right: m },
       });
       return Buffer.from(out);
+    } catch (renderErr) {
+      // Chromium launched but crashed mid-render (a common deploy failure mode).
+      // Fall back to the browser-free renderer instead of 500-ing.
+      console.error('[PDF] Chromium render failed, using browser-free renderer:', (renderErr as Error)?.message);
+      return this.renderHtmlWithPdfmake(html, { format: opts?.format });
     } finally {
       await browser?.close();
     }

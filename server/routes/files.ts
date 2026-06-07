@@ -730,7 +730,7 @@ export function registerFileRoutes(app: Express): void {
 
   // AI-summarized, compact report (~2-3 pages per vendor). Reads all current
   // data for the selected vendors, summarizes each section with the LLM, and
-  // renders a short PDF via the same generatePDF (Chromium → pdfmake fallback).
+  // renders a short PDF via the same browser-free generatePDF pipeline.
   app.post("/api/markets/:marketId/generate-summary-pdf", requireAuth, async (req, res) => {
     try {
       const marketId = req.params.marketId;
