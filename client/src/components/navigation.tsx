@@ -111,8 +111,8 @@ export default function Navigation() {
                 if (locked) {
                   return (
                     <LockedFeatureTooltip key={label}>
-                      <span className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
-                        {label}<Lock className="h-3 w-3" />
+                      <span className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-400 hover:text-slate-300 cursor-not-allowed select-none transition-colors">
+                        {label}<Lock className="h-3 w-3 text-amber-400/90" />
                       </span>
                     </LockedFeatureTooltip>
                   );
@@ -212,8 +212,8 @@ export default function Navigation() {
               if (locked) {
                 return (
                   <LockedFeatureTooltip key={label}>
-                    <div className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
-                      {label}<Lock className="h-3 w-3" />
+                    <div className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-400 cursor-not-allowed select-none">
+                      {label}<Lock className="h-3 w-3 text-amber-400/90" />
                     </div>
                   </LockedFeatureTooltip>
                 );
