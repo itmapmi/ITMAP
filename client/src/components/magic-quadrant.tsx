@@ -370,7 +370,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   };
 
   // Min-max normalization function
-  const normalizeToRange = (values: number[], min: number = 25, max: number = 75): number[] => {
+  const normalizeToRange = (values: number[], min: number = 10, max: number = 90): number[] => {
     if (values.length === 0) return [];
     
     const rawMin = Math.min(...values);
@@ -525,8 +525,8 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
 
     // Responsive dimensions based on container and device
     const containerWidth = containerRef.current.offsetWidth;
-    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
-    const height = isMobile ? 350 : 400;
+    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 860);
+    const height = isMobile ? 350 : 640;
     const margin = isMobile 
       ? { top: 15, right: 15, bottom: 50, left: 50 }
       : { top: 20, right: 20, bottom: 60, left: 60 };
