@@ -799,9 +799,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .text("Evolving Players");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
-    // No layout fudging — labels move to avoid overlap, dots never do. A thin
-    // leader line is drawn from each label back to its dot so the association
-    // stays obvious even when the label sits a little distance away.
+    // No layout fudging — labels move to avoid overlap, dots never do.
     const adjustedVendors = vendorsWithScores.map(vendor => ({
       ...vendor,
       adjustedX: vendor.executionScore,
@@ -989,99 +987,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       
       const labelGroup = vendorGroups.filter((d, i) => i === index);
 
-      // Leader line from dot to label. Inserted before the circle so the dot
-      // visually covers the line's tip. The label end of the line lands just
-      // outside the text bounding box so it doesn't pierce the glyphs.
-      // For dragged ("custom") labels we compute the actual text bounding box
-      // and attach the line to whichever EDGE of that box faces the dot, so
-      // the line shortens when the label is dragged toward the dot and
-      // lengthens when dragged away — and never overlaps the text.
-      const textWidth = vendor.name.length * 7.5; // matches calculateLabelPosition
-      const leaderEndpointFor = (
-        side: string,
-        labelX: number,
-        labelY: number,
-        dotX: number,
-        dotY: number,
-        anchor: string,
-      ): { x: number, y: number } => {
-        // Resolve the actual text bounding box from (labelX, labelY) + anchor.
-        // labelY is the text baseline; the visible box sits roughly from
-        // labelY - 12 (top) to labelY + 2 (bottom).
-        let boxLeft: number, boxRight: number;
-        if (anchor === "end") {
-          boxRight = labelX;
-          boxLeft  = labelX - textWidth;
-        } else if (anchor === "middle") {
-          boxLeft  = labelX - textWidth / 2;
-          boxRight = labelX + textWidth / 2;
-        } else { // "start" (default, used for custom/right)
-          boxLeft  = labelX;
-          boxRight = labelX + textWidth;
-        }
-        const boxTop    = labelY - 12;
-        const boxBottom = labelY + 2;
-        const boxMidY   = (boxTop + boxBottom) / 2;
-        const boxMidX   = (boxLeft + boxRight) / 2;
-
-        switch (side) {
-          case "right":  return { x: boxLeft - 3,   y: boxMidY }; // dot sits left of label
-          case "left":   return { x: boxRight + 3,  y: boxMidY }; // dot sits right of label
-          case "top":    return { x: boxMidX,       y: boxBottom + 3 }; // dot sits below label
-          case "bottom": return { x: boxMidX,       y: boxTop - 3 };    // dot sits above label
-          default: {
-            // Dragged / custom: attach to whichever edge of the actual text
-            // box faces the dot.
-            const dx = dotX - boxMidX;
-            const dy = dotY - boxMidY;
-            if (Math.abs(dx) > Math.abs(dy)) {
-              return dx > 0
-                ? { x: boxRight + 3, y: boxMidY }   // dot to the right of label
-                : { x: boxLeft  - 3, y: boxMidY };  // dot to the left of label
-            } else {
-              return dy > 0
-                ? { x: boxMidX, y: boxBottom + 3 }  // dot below label
-                : { x: boxMidX, y: boxTop    - 3 }; // dot above label
-            }
-          }
-        }
-      };
-      // The leader is only meaningful when the label sits visibly away from
-      // its dot. If the label is touching the dot (or worse, overlapping it)
-      // we hide the line entirely so we don't get a stub poking out the
-      // "wrong" side of the dot. ~8px ≈ dot radius (6) + a small gap.
-      const DOT_RADIUS = 6;
-      const LEADER_MIN_VISIBLE = 8;
-
-      const leaderStart = leaderEndpointFor(
-        labelPos.side,
-        labelPos.labelX,
-        labelPos.labelY,
-        labelPos.dotX,
-        labelPos.dotY,
-        labelPos.anchor,
-      );
-      const computeLeaderVisibility = (
-        endpointX: number,
-        endpointY: number,
-      ): "visible" | "hidden" => {
-        const dx = labelPos.dotX - endpointX;
-        const dy = labelPos.dotY - endpointY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        return length >= DOT_RADIUS + LEADER_MIN_VISIBLE ? "visible" : "hidden";
-      };
-      const leaderLine = labelGroup.insert("line", ".vendor-dot")
-        .attr("class", "vendor-leader")
-        .attr("x1", leaderStart.x)
-        .attr("y1", leaderStart.y)
-        .attr("x2", labelPos.dotX)
-        .attr("y2", labelPos.dotY)
-        .attr("stroke", "#94a3b8")
-        .attr("stroke-width", 1)
-        .attr("stroke-linecap", "round")
-        .style("pointer-events", "none")
-        .style("visibility", computeLeaderVisibility(leaderStart.x, leaderStart.y));
-
       // Add the text label positioned around the dot
       const fontSize = isMobile ? 9 : 11;
       const labelText = labelGroup.append("text")
@@ -1107,21 +1012,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
             
             // Update text position
             labelText.attr("x", newX).attr("y", newY);
-            // Recompute leader endpoint side-aware so it attaches to the
-            // edge of the text box facing the dot, not the same spot we
-            // first rendered it at.
-            const endpoint = leaderEndpointFor(
-              "custom",
-              newX,
-              newY,
-              labelPos.dotX,
-              labelPos.dotY,
-              "start", // dragged labels are always left-anchored
-            );
-            leaderLine
-              .attr("x1", endpoint.x)
-              .attr("y1", endpoint.y)
-              .style("visibility", computeLeaderVisibility(endpoint.x, endpoint.y));
           })
           .on("end", function(event) {
             // Save the new position locally
