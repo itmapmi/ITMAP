@@ -292,6 +292,34 @@ export async function getUserActivityByDay(userId: string, since?: Date, marketI
     .orderBy(sql`date_trunc('day', ${userEvents.createdAt})`);
 }
 
+// Per-market page view aggregates for one user — shows which markets/pages
+// they visited and how long they spent there.
+export interface UserMarketView {
+  marketId: string;
+  marketName: string;
+  events: number;
+  dwellMs: number;
+  lastAt: string;
+}
+
+export async function getUserMarketBreakdown(userId: string, since?: Date): Promise<UserMarketView[]> {
+  const conds = [eq(userEvents.userId, userId), isNotNull(userEvents.marketId)];
+  if (since) conds.push(gte(userEvents.createdAt, since));
+  return await db
+    .select({
+      marketId: sql<string>`${userEvents.marketId}`,
+      marketName: markets.name,
+      events: sql<number>`count(*)::int`,
+      dwellMs: sql<number>`coalesce(sum(${userEvents.durationMs}), 0)::int`,
+      lastAt: sql<string>`max(${userEvents.createdAt})`,
+    })
+    .from(userEvents)
+    .innerJoin(markets, eq(userEvents.marketId, markets.id))
+    .where(and(...conds))
+    .groupBy(userEvents.marketId, markets.name)
+    .orderBy(sql`count(*) desc`);
+}
+
 export async function getVendorNamesByIds(ids: string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const rows = await db

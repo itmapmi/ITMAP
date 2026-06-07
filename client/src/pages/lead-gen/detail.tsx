@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, FileDown, Activity, LogIn, Clock, Star, Mail,
+  ArrowLeft, FileDown, Activity, LogIn, Clock, Star, Mail, Map, BarChart2, Timer,
 } from "lucide-react";
 import {
   PanelShell, GlassCard, IntentGauge, Sparkline, BandBadge, fullName, timeAgo,
   BAND_META, type IntentResult,
 } from "./_shared";
+import { LEAD_GEN_EVENT_DEFS } from "@shared/schema";
 
 interface LeadDetail {
   user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
@@ -18,6 +19,7 @@ interface LeadDetail {
   vendorBreakdown: { vendorId: string; vendorName: string; events: number; lastAt: string }[];
   vendorIntent: { vendorId: string; vendorName: string; events: number; intent: IntentResult }[];
   typeBreakdown: { eventType: string; count: number }[];
+  marketViews: { marketId: string; marketName: string; events: number; dwellMs: number; lastAt: string }[];
   activityByDay: { day: string; count: number }[];
   timeline: {
     id: string; eventType: string; marketId: string | null; marketName: string | null;
@@ -33,13 +35,23 @@ const EVENT_LABELS: Record<string, string> = {
   filter_applied: "Applied filter", chart_interacted: "Explored chart", news_viewed: "Read news",
 };
 
-// Surfaces a human-readable detail from an event's metadata (e.g. the report
-// title for a download), when present.
 function eventDetail(eventType: string, metadata: unknown): string | null {
   const m = (metadata ?? {}) as Record<string, unknown>;
   if (eventType === "report_downloaded" && typeof m.title === "string") return m.title;
   return null;
 }
+
+function formatDwell(ms: number): string {
+  if (ms <= 0) return "";
+  const secs = Math.round(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+// Max weight across all event defs — used to normalise bar widths.
+const MAX_EVENT_WEIGHT = Math.max(...Object.values(LEAD_GEN_EVENT_DEFS).map((d) => d.weight));
 
 export default function LeadGenDetailPage() {
   const [, params] = useRoute("/lead-gen/:userId");
@@ -64,6 +76,14 @@ export default function LeadGenDetailPage() {
   const m = BAND_META[data.intent.band];
   const name = fullName(data.user);
   const sparkData = data.activityByDay.map((d) => d.count);
+
+  // Sort type breakdown by intent weight (high-value actions first), then count.
+  const sortedTypeBreakdown = [...data.typeBreakdown].sort((a, b) => {
+    const wA = LEAD_GEN_EVENT_DEFS[a.eventType as keyof typeof LEAD_GEN_EVENT_DEFS]?.weight ?? 0;
+    const wB = LEAD_GEN_EVENT_DEFS[b.eventType as keyof typeof LEAD_GEN_EVENT_DEFS]?.weight ?? 0;
+    return wB - wA || b.count - a.count;
+  });
+  const maxTypeCount = Math.max(...data.typeBreakdown.map((t) => t.count), 1);
 
   return (
     <PanelShell>
@@ -124,6 +144,96 @@ export default function LeadGenDetailPage() {
           ))}
         </div>
       </GlassCard>
+
+      {/* Activity breakdown + Markets visited */}
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        {/* Activity breakdown by event type */}
+        <GlassCard className="p-6">
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-medium text-white">
+            <BarChart2 className="h-4 w-4 text-violet-400" /> Activity breakdown
+          </h2>
+          <p className="mb-4 text-xs text-slate-500">What actions drove this score — higher-weight actions contribute more to intent</p>
+          {sortedTypeBreakdown.length === 0 ? (
+            <p className="text-xs text-slate-500">No events recorded.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {sortedTypeBreakdown.map((t) => {
+                const def = LEAD_GEN_EVENT_DEFS[t.eventType as keyof typeof LEAD_GEN_EVENT_DEFS];
+                const weight = def?.weight ?? 0;
+                const label = def?.label ?? EVENT_LABELS[t.eventType] ?? t.eventType;
+                const barPct = (t.count / maxTypeCount) * 100;
+                const weightPct = (weight / MAX_EVENT_WEIGHT) * 100;
+                const contribution = weight * t.count;
+                return (
+                  <div key={t.eventType}>
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-slate-300">{label}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-slate-500 tabular-nums">{t.count}×</span>
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                          style={{
+                            background: `rgba(139,92,246,${0.1 + (weightPct / 100) * 0.3})`,
+                            color: weight >= 10 ? "#c4b5fd" : weight >= 5 ? "#a78bfa" : "#7c3aed",
+                          }}
+                          title={`Weight: ${weight} — higher = more impact on intent score`}
+                        >
+                          w{weight}
+                        </span>
+                        <span className="w-8 text-right text-[10px] text-cyan-400 tabular-nums">+{contribution}</span>
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/5">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-cyan-500/70 to-violet-600/70"
+                        style={{ width: `${barPct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Markets / pages visited */}
+        <GlassCard className="p-6">
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-medium text-white">
+            <Map className="h-4 w-4 text-cyan-400" /> Markets visited
+          </h2>
+          <p className="mb-4 text-xs text-slate-500">Which market pages this buyer explored and when</p>
+          {data.marketViews.length === 0 ? (
+            <p className="text-xs text-slate-500">No market pages visited.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.marketViews.map((mv) => {
+                const dwell = formatDwell(mv.dwellMs);
+                const marketName = mv.marketName.replace(/^ITMAP for /i, "");
+                return (
+                  <div key={mv.marketId} className="rounded-lg border border-white/5 bg-slate-950/40 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-200">{marketName}</span>
+                      <span className="shrink-0 text-[11px] text-slate-500">{timeAgo(mv.lastAt)}</span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Activity className="h-3 w-3" />
+                        {mv.events} {mv.events === 1 ? "event" : "events"}
+                      </span>
+                      {dwell && (
+                        <span className="flex items-center gap-1">
+                          <Timer className="h-3 w-3" />
+                          {dwell} dwell
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </GlassCard>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Per-vendor intent */}

@@ -178,17 +178,20 @@ export interface LeadDetail {
   // deterministic engine, so admins see which vendor the buyer is hottest on.
   vendorIntent: { vendorId: string; vendorName: string; events: number; intent: IntentResult }[];
   typeBreakdown: { eventType: string; count: number }[];
+  // Markets / pages this buyer visited with event counts and dwell time.
+  marketViews: { marketId: string; marketName: string; events: number; dwellMs: number; lastAt: string }[];
   activityByDay: { day: string; count: number }[];
   timeline: Awaited<ReturnType<typeof storage.getUserTimeline>>;
 }
 
 export async function buildLeadDetail(userId: string): Promise<LeadDetail | null> {
   const since = windowStart();
-  const [usersList, typeBreakdown, vendorBreakdown, vendorTypeBreakdown, activityByDay, timeline, loginStats] = await Promise.all([
+  const [usersList, typeBreakdown, vendorBreakdown, vendorTypeBreakdown, marketViews, activityByDay, timeline, loginStats] = await Promise.all([
     storage.getUsersByIds([userId]),
     storage.getUserTypeBreakdownForUser(userId, since),
     storage.getUserVendorBreakdown(userId, since),
     storage.getUserVendorEventTypeBreakdown(userId, since),
+    storage.getUserMarketBreakdown(userId, since),
     storage.getUserActivityByDay(userId, since),
     storage.getUserTimeline(userId, 150, since),
     storage.getLoginStatsByUser(since),
@@ -252,6 +255,7 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     vendorBreakdown,
     vendorIntent,
     typeBreakdown,
+    marketViews,
     activityByDay,
     timeline,
   };
