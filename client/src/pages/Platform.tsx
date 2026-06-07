@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useSeo } from "@/hooks/use-seo";
+import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import {
   BarChart3, TrendingUp, Shield, Zap, Search, FileText, Target,
@@ -95,6 +97,13 @@ export default function Platform() {
     description: "Explore the spectio.ai platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
     path: "/platform",
   });
+
+  useEffect(() => {
+    track("filter_applied", { metadata: { context: "platform" } });
+    const endDwell = trackDwell({ metadata: { page: "platform" } });
+    return endDwell;
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}

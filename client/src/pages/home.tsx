@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useSeo } from "@/hooks/use-seo";
+import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import type { Market } from "@shared/schema";
 import {
@@ -113,6 +115,12 @@ export default function Home() {
   });
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: markets, isLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+
+  useEffect(() => {
+    track("filter_applied", { metadata: { context: "home" } });
+    const endDwell = trackDwell({ metadata: { page: "home" } });
+    return endDwell;
+  }, []);
 
   if (authLoading) {
     return (
