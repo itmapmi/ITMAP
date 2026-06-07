@@ -727,4 +727,83 @@ export function registerFileRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to generate ecosystem PDF" });
     }
   });
+
+  // AI-summarized, compact report (~2-3 pages per vendor). Reads all current
+  // data for the selected vendors, summarizes each section with the LLM, and
+  // renders a short PDF via the same generatePDF (Chromium → pdfmake fallback).
+  app.post("/api/markets/:marketId/generate-summary-pdf", requireAuth, async (req, res) => {
+    try {
+      const marketId = req.params.marketId;
+      const { vendorIds } = req.body;
+      const market = await storage.getMarketById(marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
+      if (!canReadMarket(market, req)) return res.status(403).json({ error: "Forbidden" });
+
+      let vendors = await storage.getVendorsByMarket(marketId);
+      if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
+      if (vendors.length === 0) {
+        return res.status(400).json({ error: "No vendors selected for the summary report." });
+      }
+
+      const allScores = await storage.getMarketVendorScores(marketId);
+      const scores = allScores.map(s => ({ ...s, category: s.criteria.category }));
+      const allCategories = await storage.getMarketFeatureCategories(marketId);
+      const ecosystemCategory = allCategories.find((c: any) => c.name.toLowerCase().includes('ecosystem') || c.name.toLowerCase().includes('isv'));
+      const productCategories = allCategories.filter((c: any) => c.id !== ecosystemCategory?.id);
+      const allFeatures = await storage.getMarketFeatures(marketId);
+      const productFeatures = ecosystemCategory ? allFeatures.filter((f: any) => f.categoryId !== ecosystemCategory.id) : allFeatures;
+      const ecosystemFeatures = ecosystemCategory ? allFeatures.filter((f: any) => f.categoryId === ecosystemCategory.id) : [];
+      const allSupport = await storage.getVendorFeatureSupport(marketId);
+
+      const { summarizeVendors } = await import('../agents/report-summarizer');
+
+      const inputs = vendors.map((vendor) => {
+        const vendorScores = scores.filter((s: any) => s.vendorId === vendor.id);
+        const executionScores = vendorScores
+          .filter((s: any) => s.category === 'execution')
+          .map((s: any) => ({ name: s.criteria.name, score: s.score, notes: s.notes || '' }));
+        const viabilityScores = vendorScores
+          .filter((s: any) => s.category === 'viability')
+          .map((s: any) => ({ name: s.criteria.name, score: s.score, notes: s.notes || '' }));
+
+        const productCats = productCategories
+          .map((cat: any) => {
+            const catFeatures = productFeatures.filter((f: any) => f.categoryId === cat.id);
+            const features = catFeatures.map((f: any) => {
+              const support = allSupport.find((s: any) => s.featureId === f.id && s.vendorId === vendor.id);
+              return { featureName: f.name, supportLevel: support?.supportLevel ?? 0, comments: support?.comments || '' };
+            });
+            return { categoryName: cat.name, features };
+          })
+          .filter((c: any) => c.features.length > 0);
+
+        const ecoFeatures = ecosystemFeatures.map((f: any) => {
+          const support = allSupport.find((s: any) => s.featureId === f.id && s.vendorId === vendor.id);
+          return { featureName: f.name, supportLevel: support?.supportLevel ?? 0, comments: support?.comments || '' };
+        });
+
+        return {
+          vendorId: vendor.id,
+          vendorName: vendor.name,
+          vendorDescription: vendor.description || undefined,
+          executionScores,
+          viabilityScores,
+          productCategories: productCats,
+          ecosystemFeatures: ecoFeatures,
+        };
+      });
+
+      const summaries = await summarizeVendors(market, inputs);
+      const content = pdfService.generateSummaryContent(market, summaries);
+      const pdfBuffer = await pdfService.generatePDF({ marketName: market.name, reportTitle: 'Executive Summary Report', reportType: 'AI Summary', content });
+      const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      const filename = `Spectio Summary for ${cleanMarketName}.pdf`;
+      res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`, 'Content-Length': pdfBuffer.length.toString(), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, must-revalidate', 'Pragma': 'no-cache' });
+      void recordEvent(req, "report_downloaded", { marketId, metadata: { reportType: "summary", vendorIds: vendorIds ?? null } });
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating summary PDF report:", error);
+      res.status(500).json({ error: "Failed to generate summary PDF report" });
+    }
+  });
 }

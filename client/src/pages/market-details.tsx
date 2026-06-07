@@ -67,6 +67,8 @@ export default function MarketDetails() {
 
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [activeTab, setActiveTab] = useState("vendor-evaluation");
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -225,6 +227,51 @@ export default function MarketDetails() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateSummary = async (selectedVendorIds: string[]) => {
+    setIsGeneratingSummary(true);
+    for (const vid of selectedVendorIds) {
+      track("vendor_selected", { marketId, vendorId: vid, metadata: { context: "summary" } });
+    }
+    try {
+      const response = await apiRequest(
+        `/api/markets/${marketId}/generate-summary-pdf`,
+        "POST",
+        { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate summary");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
+      a.download = `Spectio Summary for ${cleanMarketName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Success",
+        description: "Summary report generated successfully",
+      });
+
+      setShowSummaryModal(false);
+    } catch (error) {
+      console.error("Error generating summary report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate summary report",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSummary(false);
     }
   };
 
@@ -397,6 +444,16 @@ export default function MarketDetails() {
             >
               <FileDown className="mr-2 h-4 w-4" />
               {isMobile ? 'Report' : 'Generate Reports'}
+            </Button>
+            <Button
+              onClick={() => setShowSummaryModal(true)}
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              className="border-violet-500/50 text-violet-700 hover:bg-violet-50"
+              data-testid="button-download-summary"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {isMobile ? 'Summary' : 'Download Summary'}
             </Button>
             {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
               hasFeature("rfp") ? (
@@ -696,6 +753,16 @@ export default function MarketDetails() {
         title="Generate Full Market Report"
         description="Select vendors to include in the full market report (all sections combined)"
         isGenerating={isGenerating}
+      />
+
+      <VendorSelectionModal
+        open={showSummaryModal}
+        onOpenChange={setShowSummaryModal}
+        vendors={vendors}
+        onGenerate={handleGenerateSummary}
+        title="Download Summary Report"
+        description="Select vendors for a short AI-generated summary (~2-3 pages per vendor). This may take a moment while the AI condenses each section."
+        isGenerating={isGeneratingSummary}
       />
     </div>
   );

@@ -613,6 +613,63 @@ export class PDFService {
     return content;
   }
 
+  // Compact, AI-summarized report. `summaries` is the output of the report
+  // summarizer agent — one entry per selected vendor. Targets ~2-3 pages/vendor.
+  generateSummaryContent(market: Market, summaries: any[]): string {
+    const marketName = (market.name || '').replace(/^ITMAP for /i, '');
+
+    let content = `
+      <div class="content-section">
+        <h2 class="section-title">Executive Summary Report</h2>
+        <p class="section-description">
+          A concise, AI-generated summary of the ${this.escapeHtml(marketName)} market for
+          ${summaries.length} selected vendor${summaries.length !== 1 ? 's' : ''}. Each vendor is
+          summarized across Vendor Evaluation, Product Evaluation (by feature category), and
+          the ISV Ecosystem. For full scores and detailed commentary, use the complete report.
+        </p>
+      </div>
+    `;
+
+    summaries.forEach((vendor, index) => {
+      content += `
+        <div class="content-section" style="${index > 0 ? 'page-break-before: always;' : ''} margin-top: 30px;">
+          <h2 class="section-subtitle" style="font-size: 22px; color: #0EA5E9; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">${this.escapeHtml(vendor.vendorName)}</h2>
+          ${vendor.vendorDescription ? `<p class="section-description">${this.escapeHtml(vendor.vendorDescription)}</p>` : ''}
+
+          <h3 style="font-size: 16px; font-weight: 600; color: #2d3748; margin: 22px 0 8px;">Vendor Evaluation</h3>
+          <p style="font-size: 13px; line-height: 1.6; color: #2d3748; text-align: justify;">${this.escapeHtml(vendor.vendorEvaluation || '')}</p>
+      `;
+
+      content += `<h3 style="font-size: 16px; font-weight: 600; color: #2d3748; margin: 22px 0 8px;">Product Evaluation</h3>`;
+      if (Array.isArray(vendor.productCategories) && vendor.productCategories.length > 0) {
+        vendor.productCategories.forEach((cat: any) => {
+          content += `
+            <h4 style="font-size: 14px; font-weight: 600; color: #4a5568; margin: 16px 0 6px;">${this.escapeHtml(cat.category || '')}</h4>
+            <p style="font-size: 13px; line-height: 1.6; color: #2d3748; text-align: justify;">${this.escapeHtml(cat.summary || '')}</p>
+          `;
+        });
+      } else {
+        content += `<p style="font-size: 13px; color: #718096; font-style: italic;">No product evaluation data available for this vendor.</p>`;
+      }
+
+      content += `<h3 style="font-size: 16px; font-weight: 600; color: #2d3748; margin: 22px 0 8px;">Ecosystem Evaluation</h3>`;
+      if (Array.isArray(vendor.ecosystemFeatures) && vendor.ecosystemFeatures.length > 0) {
+        vendor.ecosystemFeatures.forEach((feat: any) => {
+          content += `
+            <h4 style="font-size: 14px; font-weight: 600; color: #4a5568; margin: 16px 0 6px;">${this.escapeHtml(feat.feature || '')}</h4>
+            <p style="font-size: 13px; line-height: 1.6; color: #2d3748; text-align: justify;">${this.escapeHtml(feat.summary || '')}</p>
+          `;
+        });
+      } else {
+        content += `<p style="font-size: 13px; color: #718096; font-style: italic;">No ecosystem data available for this vendor.</p>`;
+      }
+
+      content += `</div>`;
+    });
+
+    return content;
+  }
+
   generateVendorNewsContent(vendors: any[], newsByVendor: Record<string, any[]>): string {
     const vendorsWithNews = vendors.filter(v => (newsByVendor[v.id] ?? []).length > 0);
     if (vendorsWithNews.length === 0) return '';
