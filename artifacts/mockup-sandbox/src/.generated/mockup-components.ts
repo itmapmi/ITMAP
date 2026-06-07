@@ -6,6 +6,7 @@ export const modules: ModuleMap = {
   "./components/mockups/quadrant-spacing/Middle.tsx": () => import("../components/mockups/quadrant-spacing/Middle.tsx"),
   "./components/mockups/quadrant-spacing/MiddleCompact.tsx": () => import("../components/mockups/quadrant-spacing/MiddleCompact.tsx"),
   "./components/mockups/quadrant-spacing/MiddleSmall.tsx": () => import("../components/mockups/quadrant-spacing/MiddleSmall.tsx"),
+  "./components/mockups/quadrant-spacing/MiddleSquare.tsx": () => import("../components/mockups/quadrant-spacing/MiddleSquare.tsx"),
   "./components/mockups/quadrant-spacing/RankBased.tsx": () => import("../components/mockups/quadrant-spacing/RankBased.tsx"),
   "./components/mockups/quadrant-spacing/WiderSpread.tsx": () => import("../components/mockups/quadrant-spacing/WiderSpread.tsx")
 };

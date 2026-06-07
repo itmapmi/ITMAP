@@ -64,7 +64,7 @@ export function QuadrantChart({
   const nx = mode === "rank" ? rankPositions(xs, normMin, normMax) : normalizeToRange(xs, normMin, normMax);
   const ny = mode === "rank" ? rankPositions(ys, normMin, normMax) : normalizeToRange(ys, normMin, normMax);
 
-  const margin = { top: 20, right: 24, bottom: 44, left: 52 };
+  const margin = { top: 20, right: 20, bottom: 60, left: 60 };
   const sx = (val: number) => margin.left + (val / 100) * (width - margin.left - margin.right);
   const sy = (val: number) => height - margin.bottom - (val / 100) * (height - margin.top - margin.bottom);
 
