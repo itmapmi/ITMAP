@@ -176,6 +176,27 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
 
+const PAGE_VIEW_LABELS: Record<string, string> = {
+  markets_listing:    "Browsed the markets listing",
+  rfps_listing:       "Browsed the RFP listing",
+  rfp_detail:         "Reviewed an RFP",
+  datasheets_compare: "Compared datasheets",
+  report_viewer:      "Opened a research report",
+};
+
+function resolveEventLabel(eventType: string, metadata: unknown): string {
+  const m = (metadata ?? {}) as Record<string, unknown>;
+  if (eventType === "market_viewed") {
+    const ctx = typeof m.context === "string" ? m.context : null;
+    if (ctx && PAGE_VIEW_LABELS[ctx]) return PAGE_VIEW_LABELS[ctx];
+  }
+  if (eventType === "page_dwell") {
+    const page = typeof m.page === "string" ? m.page : null;
+    if (page === "datasheets_compare") return "Time on datasheets comparison";
+  }
+  return LEAD_GEN_EVENT_DEFS[eventType as LeadGenEventType]?.label ?? eventType;
+}
+
 async function sendLeadsExcel(res: Response, filename: string, rows: LeadRow[]): Promise<void> {
   const xlsx = await import("xlsx");
   const header = ["Buyer", "Email", "Intent score", "Band", "Top vendor", "Total events", "Logins", "Last active"];
@@ -660,7 +681,7 @@ export function registerLeadGenRoutes(app: Express): void {
             ["When", "Event", "Market", "Vendor"],
             ...detail.timeline.map((t) => [
               t.createdAt ? new Date(t.createdAt).toISOString() : "",
-              LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType]?.label ?? t.eventType,
+              resolveEventLabel(t.eventType, t.metadata),
               t.marketName ?? "",
               t.vendorName ?? "",
             ]),
@@ -743,7 +764,7 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
   const timeline = d.timeline
     .slice(0, 60)
     .map(
-      (t) => `<tr><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ""}</td><td>${escapeHtml(LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType]?.label ?? t.eventType)}</td><td>${escapeHtml(t.marketName ?? "")}</td><td>${escapeHtml(t.vendorName ?? "")}</td></tr>`,
+      (t) => `<tr><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ""}</td><td>${escapeHtml(resolveEventLabel(t.eventType, t.metadata))}</td><td>${escapeHtml(t.marketName ?? "")}</td><td>${escapeHtml(t.vendorName ?? "")}</td></tr>`,
     )
     .join("");
 
