@@ -276,6 +276,35 @@ export async function getUserTypeBreakdownForUser(userId: string, since?: Date, 
     .groupBy(userEvents.eventType);
 }
 
+// Same as above but also extracts a sub-type key from JSONB metadata for
+// context-aware events (market_viewed uses metadata.context; page_dwell uses
+// metadata.page). Used by the per-lead activity-breakdown export sheet so
+// admins can see granular intent rows like "market_viewed › markets_listing".
+export async function getUserContextBreakdownForUser(
+  userId: string,
+  since?: Date,
+  marketId?: string,
+): Promise<{ eventType: string; subType: string | null; count: number }[]> {
+  const conds = [eq(userEvents.userId, userId)];
+  if (since) conds.push(gte(userEvents.createdAt, since));
+  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const subTypeExpr = sql<string | null>`
+    CASE
+      WHEN ${userEvents.eventType} = 'market_viewed' THEN ${userEvents.metadata}->>'context'
+      WHEN ${userEvents.eventType} = 'page_dwell'    THEN ${userEvents.metadata}->>'page'
+      ELSE NULL
+    END`;
+  return await db
+    .select({
+      eventType: userEvents.eventType,
+      subType: subTypeExpr,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(userEvents)
+    .where(and(...conds))
+    .groupBy(userEvents.eventType, subTypeExpr);
+}
+
 // Day-by-day activity counts for one user (sparkline / activity trend).
 export async function getUserActivityByDay(userId: string, since?: Date, marketId?: string): Promise<{ day: string; count: number }[]> {
   const conds = [eq(userEvents.userId, userId)];

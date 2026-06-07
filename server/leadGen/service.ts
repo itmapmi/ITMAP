@@ -178,6 +178,9 @@ export interface LeadDetail {
   // deterministic engine, so admins see which vendor the buyer is hottest on.
   vendorIntent: { vendorId: string; vendorName: string; events: number; intent: IntentResult }[];
   typeBreakdown: { eventType: string; count: number }[];
+  // Same as typeBreakdown but split by sub-type (metadata context / page) for
+  // use in the activity-breakdown export sheet.
+  contextBreakdown: { eventType: string; subType: string | null; count: number }[];
   // Markets / pages this buyer visited with event counts and dwell time.
   marketViews: { marketId: string; marketName: string; events: number; dwellMs: number; lastAt: string }[];
   activityByDay: { day: string; count: number }[];
@@ -186,9 +189,10 @@ export interface LeadDetail {
 
 export async function buildLeadDetail(userId: string): Promise<LeadDetail | null> {
   const since = windowStart();
-  const [usersList, typeBreakdown, vendorBreakdown, vendorTypeBreakdown, marketViews, activityByDay, timeline, loginStats] = await Promise.all([
+  const [usersList, typeBreakdown, contextBreakdown, vendorBreakdown, vendorTypeBreakdown, marketViews, activityByDay, timeline, loginStats] = await Promise.all([
     storage.getUsersByIds([userId]),
     storage.getUserTypeBreakdownForUser(userId, since),
+    storage.getUserContextBreakdownForUser(userId, since),
     storage.getUserVendorBreakdown(userId, since),
     storage.getUserVendorEventTypeBreakdown(userId, since),
     storage.getUserMarketBreakdown(userId, since),
@@ -255,6 +259,7 @@ export async function buildLeadDetail(userId: string): Promise<LeadDetail | null
     vendorBreakdown,
     vendorIntent,
     typeBreakdown,
+    contextBreakdown,
     marketViews,
     activityByDay,
     timeline,

@@ -689,7 +689,7 @@ export function registerLeadGenRoutes(app: Express): void {
           "Timeline",
         );
 
-        const sortedBreakdown = [...detail.typeBreakdown].sort((a, b) => {
+        const sortedBreakdown = [...detail.contextBreakdown].sort((a, b) => {
           const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
           const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
           return (wB * b.count) - (wA * a.count);
@@ -697,11 +697,14 @@ export function registerLeadGenRoutes(app: Express): void {
         xlsx.utils.book_append_sheet(
           wb,
           xlsx.utils.aoa_to_sheet([
-            ["Event type", "Count", "Weight", "Contribution"],
+            ["Event type", "Sub-type", "Count", "Weight", "Contribution"],
             ...sortedBreakdown.map((t) => {
               const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
               const weight = def?.weight ?? 0;
-              return [def?.label ?? t.eventType, t.count, weight, weight * t.count];
+              const subLabel = t.subType ? (PAGE_VIEW_LABELS[t.subType] ?? t.subType) : "";
+              const baseLabel = def?.label ?? t.eventType;
+              const label = subLabel || baseLabel;
+              return [label, t.subType ?? "", t.count, weight, weight * t.count];
             }),
           ]),
           "Activity breakdown",
@@ -768,8 +771,8 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
     )
     .join("");
 
-  // Sort type breakdown by contribution descending (weight × count).
-  const sortedTypeBreakdown = [...d.typeBreakdown].sort((a, b) => {
+  // Sort context breakdown by contribution descending (weight × count).
+  const sortedTypeBreakdown = [...d.contextBreakdown].sort((a, b) => {
     const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
     const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
     return (wB * b.count) - (wA * a.count);
@@ -777,10 +780,14 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
   const activityBreakdown = sortedTypeBreakdown
     .map((t) => {
       const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
-      const label = def?.label ?? t.eventType;
       const weight = def?.weight ?? 0;
       const contribution = weight * t.count;
-      return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${t.count}</td><td style="text-align:right">${weight}</td><td style="text-align:right">${contribution}</td></tr>`;
+      const subLabel = t.subType ? (PAGE_VIEW_LABELS[t.subType] ?? t.subType) : null;
+      const label = subLabel ?? def?.label ?? t.eventType;
+      const subBadge = t.subType
+        ? ` <span style="font-size:10px;color:#94a3b8;margin-left:4px">${escapeHtml(t.eventType)} › ${escapeHtml(t.subType)}</span>`
+        : "";
+      return `<tr><td>${escapeHtml(label)}${subBadge}</td><td style="text-align:right">${t.count}</td><td style="text-align:right">${weight}</td><td style="text-align:right">${contribution}</td></tr>`;
     })
     .join("");
 
