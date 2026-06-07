@@ -46,8 +46,9 @@ export default function MyRfpsPage() {
   const atActiveLimit = status && status.activeCount >= status.activeLimit;
   const atDailyLimit = status && status.last24hCount >= status.dailyLimit;
 
-  // Track dwell time — visiting the RFP list signals active research engagement.
+  // Track page view + dwell time — visiting the RFP list signals active research engagement.
   useEffect(() => {
+    track("market_viewed", { metadata: { context: "rfps_listing" } });
     const endDwell = trackDwell({ metadata: { page: "my_rfps" } });
     return endDwell;
   }, []);
