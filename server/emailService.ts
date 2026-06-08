@@ -139,7 +139,7 @@ export interface WatchlistInviteOptions {
   marketName: string;
 }
 
-function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string, signInUrl: string): string {
+export function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string, signInUrl: string): string {
   const { vendorName, marketName } = opts;
   return `<!DOCTYPE html>
 <html>

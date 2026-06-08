@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, vendorSeatAudience, markets, vendors, users as usersTable } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
-import { sendWatchlistInviteEmail } from "../emailService";
+import { sendWatchlistInviteEmail, buildInviteHtml } from "../emailService";
 
 interface CollectionLogEntry {
   id: string;
@@ -146,6 +146,45 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error resending invite:", error);
       res.status(500).json({ error: "Failed to resend invite" });
+    }
+  });
+
+  // Preview the watchlist invite email HTML for a given user (looks up their vendor/market context).
+  // Falls back to placeholder names if the user has no audience entry.
+  app.get("/api/admin/watchlist-invite/preview/:userId", requireAdmin, async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.userId);
+      if (!target) return res.status(404).json({ error: "User not found" });
+
+      const [audienceRow] = await db
+        .select({
+          marketName: markets.name,
+          vendorName: vendors.name,
+        })
+        .from(vendorSeatAudience)
+        .leftJoin(markets, eq(vendorSeatAudience.marketId, markets.id))
+        .leftJoin(usersTable, eq(vendorSeatAudience.seatUserId, usersTable.id))
+        .leftJoin(vendors, eq(usersTable.vendorScopeId, vendors.id))
+        .where(eq(vendorSeatAudience.endUserId, target.id))
+        .limit(1);
+
+      const vendorName = audienceRow?.vendorName ?? "Example Vendor";
+      const rawMarket = audienceRow?.marketName ?? "Enterprise IT";
+      const marketName = rawMarket.replace(/^ITMAP for /i, "");
+
+      const base = process.env.APP_BASE_URL?.replace(/\/$/, "")
+        ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://spectio.ai");
+      const html = buildInviteHtml(
+        { recipientEmail: target.email ?? "recipient@example.com", vendorName, marketName },
+        `${base}/register`,
+        `${base}/login`,
+      );
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(html);
+    } catch (error) {
+      console.error("Error generating invite preview:", error);
+      res.status(500).json({ error: "Failed to generate preview" });
     }
   });
 

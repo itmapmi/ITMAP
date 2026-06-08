@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Eye, Trash2, Upload, Mail } from "lucide-react";
+import { Eye, Trash2, Upload, Mail, Loader2 } from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -424,6 +424,9 @@ export function UserAccessAdmin() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const { data: users, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
@@ -466,6 +469,23 @@ export function UserAccessAdmin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
   });
+
+  async function openPreview(userId: string) {
+    setPreviewUserId(userId);
+    setPreviewHtml(null);
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(`/api/admin/watchlist-invite/preview/${userId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load preview");
+      const html = await res.text();
+      setPreviewHtml(html);
+    } catch {
+      toast({ title: "Could not load email preview", variant: "destructive" });
+      setPreviewUserId(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   const resendInviteMutation = useMutation({
     mutationFn: async (id: string) =>
@@ -567,6 +587,7 @@ export function UserAccessAdmin() {
   }
 
   return (
+    <>
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
@@ -669,17 +690,29 @@ export function UserAccessAdmin() {
                           </span>
                         )}
                         {isInvited && !isAdminUser && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 gap-1 text-xs w-fit mt-0.5"
-                            disabled={resendInviteMutation.isPending}
-                            onClick={() => resendInviteMutation.mutate(user.id)}
-                            data-testid={`button-resend-invite-${user.id}`}
-                          >
-                            <Mail className="h-3 w-3" />
-                            {resendInviteMutation.isPending ? "Sending…" : "Resend invite"}
-                          </Button>
+                          <div className="flex gap-1 flex-wrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 gap-1 text-xs w-fit mt-0.5"
+                              onClick={() => openPreview(user.id)}
+                              data-testid={`button-preview-invite-${user.id}`}
+                            >
+                              <Eye className="h-3 w-3" />
+                              Preview email
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 gap-1 text-xs w-fit mt-0.5"
+                              disabled={resendInviteMutation.isPending}
+                              onClick={() => resendInviteMutation.mutate(user.id)}
+                              data-testid={`button-resend-invite-${user.id}`}
+                            >
+                              <Mail className="h-3 w-3" />
+                              {resendInviteMutation.isPending ? "Sending…" : "Resend invite"}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </TableCell>
@@ -768,5 +801,37 @@ export function UserAccessAdmin() {
         </Table>
       </div>
     </div>
+
+    {/* Invite email preview modal */}
+    <Dialog open={!!previewUserId} onOpenChange={(open) => { if (!open) { setPreviewUserId(null); setPreviewHtml(null); } }}>
+      <DialogContent className="max-w-2xl w-full p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b">
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-gray-500" />
+            Invite email preview
+          </DialogTitle>
+          <DialogDescription>
+            This is exactly what the recipient will see. Links are real but sending is disabled in preview mode.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="h-[520px] w-full overflow-hidden bg-white">
+          {previewLoading && (
+            <div className="flex items-center justify-center h-full gap-2 text-gray-400">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Loading preview…</span>
+            </div>
+          )}
+          {!previewLoading && previewHtml && (
+            <iframe
+              srcDoc={previewHtml}
+              title="Invite email preview"
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin"
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
