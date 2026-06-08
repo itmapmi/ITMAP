@@ -139,7 +139,7 @@ export interface WatchlistInviteOptions {
   marketName: string;
 }
 
-function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string): string {
+function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string, signInUrl: string): string {
   const { vendorName, marketName } = opts;
   return `<!DOCTYPE html>
 <html>
@@ -174,6 +174,12 @@ function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string): strin
     Create your account →
   </a>
 
+  <!-- Secondary sign-in link -->
+  <p style="margin:16px 0 0;font-size:13px;color:#64748b;">
+    Already have a Google or LinkedIn account?
+    <a href="${escapeHtml(signInUrl)}" style="color:#06b6d4;text-decoration:none;font-weight:600;">Sign in instead →</a>
+  </p>
+
   <!-- Divider -->
   <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0;">
 
@@ -201,7 +207,9 @@ export async function sendWatchlistInviteEmail(
   }
 
   const transport = createTransport()!;
-  const signUpUrl = `${appBaseUrl()}/register`;
+  const base = appBaseUrl();
+  const signUpUrl = `${base}/register`;
+  const signInUrl = `${base}/login`;
   const subject = `You've been added to a watchlist on spectio.ai`;
 
   try {
@@ -209,7 +217,7 @@ export async function sendWatchlistInviteEmail(
       from: fromAddr(),
       to: opts.recipientEmail,
       subject,
-      html: buildInviteHtml(opts, signUpUrl),
+      html: buildInviteHtml(opts, signUpUrl, signInUrl),
     });
     console.log(`[EmailService] Watchlist invite sent to ${opts.recipientEmail}`);
     return { sent: true };
