@@ -164,6 +164,7 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
   updateUserVendorScope(id: string, vendorScopeId: string | null): Promise<User>;
+  deleteInvitedUser(id: string): Promise<boolean>;
 
   getAlertSettings(): Promise<AdminAlertSettings | null>;
   upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;

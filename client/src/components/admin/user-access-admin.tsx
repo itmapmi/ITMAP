@@ -24,7 +24,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, Upload } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Eye, Trash2, Upload, Mail } from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -32,6 +43,8 @@ import {
 import type { User } from "@shared/schema";
 
 type AdminUser = Omit<User, "password">;
+
+type FilterTab = "all" | "invited" | "active";
 
 const stripMarket = (name: string | null | undefined) =>
   (name ?? "").replace(/^ITMAP for /i, "");
@@ -366,6 +379,7 @@ function ManageAudienceDialog({
 export function UserAccessAdmin() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
+  const [filterTab, setFilterTab] = useState<FilterTab>("all");
 
   const { data: users, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
@@ -380,6 +394,11 @@ export function UserAccessAdmin() {
   const vendors = filters?.vendors ?? [];
   const markets = filters?.markets ?? [];
   const endUsers = useMemo(() => (users ?? []).filter((u) => u.role !== "admin"), [users]);
+
+  const invitedCount = useMemo(
+    () => (users ?? []).filter((u) => u.invitedAt && !u.role?.includes("admin")).length,
+    [users],
+  );
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, featureAccess }: { id: string; featureAccess: string[] }) => {
@@ -427,18 +446,44 @@ export function UserAccessAdmin() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/admin/users/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Invited user removed" });
+    },
+    onError: () => toast({ title: "Failed to remove user", variant: "destructive" }),
+  });
+
   const filtered = useMemo(() => {
     const list = users ?? [];
     const q = search.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter((u) => {
-      const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
-      return (
-        name.includes(q) ||
-        (u.email ?? "").toLowerCase().includes(q)
-      );
+
+    // Apply tab filter
+    let tabFiltered = list;
+    if (filterTab === "invited") {
+      tabFiltered = list.filter((u) => !!u.invitedAt);
+    } else if (filterTab === "active") {
+      tabFiltered = list.filter((u) => !u.invitedAt);
+    }
+
+    // Apply text search
+    const searched = q
+      ? tabFiltered.filter((u) => {
+          const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
+          return name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
+        })
+      : tabFiltered;
+
+    // Sort: invited placeholders first, then by createdAt desc
+    return [...searched].sort((a, b) => {
+      const aInvited = !!a.invitedAt;
+      const bInvited = !!b.invitedAt;
+      if (aInvited !== bInvited) return aInvited ? -1 : 1;
+      return 0;
     });
-  }, [users, search]);
+  }, [users, search, filterTab]);
 
   const toggleFeature = (user: AdminUser, key: LockableFeatureKey, enabled: boolean) => {
     const current = (user.featureAccess ?? []) as string[];
@@ -476,6 +521,33 @@ export function UserAccessAdmin() {
         />
       </div>
 
+      {/* Filter tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {(["all", "active", "invited"] as FilterTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setFilterTab(tab)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${
+              filterTab === tab
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+            data-testid={`tab-users-${tab}`}
+          >
+            {tab === "invited" && invitedCount > 0 ? (
+              <span className="flex items-center gap-1.5">
+                Invited
+                <span className="inline-flex items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 min-w-[18px]">
+                  {invitedCount}
+                </span>
+              </span>
+            ) : (
+              tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1)
+            )}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-x-auto border rounded-lg">
         <Table>
           <TableHeader>
@@ -488,21 +560,27 @@ export function UserAccessAdmin() {
               ))}
               <TableHead className="min-w-[200px] whitespace-nowrap">Vendor seat (leads)</TableHead>
               <TableHead className="min-w-[140px] whitespace-nowrap">Watched audience</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={LOCKABLE_FEATURES.length + 3} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={LOCKABLE_FEATURES.length + 4} className="text-center text-gray-500 py-8">
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((user) => {
                 const isAdminUser = user.role === "admin";
+                const isInvited = !!user.invitedAt;
                 const granted = (user.featureAccess ?? []) as string[];
                 return (
-                  <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                  <TableRow
+                    key={user.id}
+                    data-testid={`row-user-${user.id}`}
+                    className={isInvited ? "bg-amber-50/40" : undefined}
+                  >
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium text-gray-900 flex items-center gap-2">
@@ -510,15 +588,26 @@ export function UserAccessAdmin() {
                             ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
                             : (user.email ?? "—")}
                           {isAdminUser && <Badge variant="secondary">Admin</Badge>}
+                          {isInvited && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                              <Mail className="h-2.5 w-2.5" />
+                              Invited
+                            </span>
+                          )}
                         </span>
                         <span className="text-xs text-gray-500">{user.email}</span>
+                        {isInvited && user.invitedAt && (
+                          <span className="text-[10px] text-gray-400 mt-0.5">
+                            Invited {new Date(user.invitedAt).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     {LOCKABLE_FEATURES.map((f) => (
                       <TableCell key={f.key} className="text-center">
                         <Switch
                           checked={isAdminUser || granted.includes(f.key)}
-                          disabled={isAdminUser || updateMutation.isPending}
+                          disabled={isAdminUser || isInvited || updateMutation.isPending}
                           onCheckedChange={(checked) =>
                             toggleFeature(user, f.key as LockableFeatureKey, checked)
                           }
@@ -527,7 +616,7 @@ export function UserAccessAdmin() {
                       </TableCell>
                     ))}
                     <TableCell>
-                      {isAdminUser ? (
+                      {isAdminUser || isInvited ? (
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
                         <select
@@ -550,10 +639,45 @@ export function UserAccessAdmin() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isAdminUser || !user.vendorScopeId ? (
+                      {isAdminUser || isInvited || !user.vendorScopeId ? (
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
                         <ManageAudienceDialog seat={user} markets={markets} endUsers={endUsers} />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isInvited && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-red-400 hover:text-red-600"
+                              data-testid={`button-delete-invited-${user.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove invited user?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the placeholder account for{" "}
+                                <strong>{user.email}</strong>. They will no longer appear in any
+                                watched audience lists. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(user.id)}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </TableCell>
                   </TableRow>
