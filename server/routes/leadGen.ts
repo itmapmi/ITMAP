@@ -19,6 +19,7 @@ import {
   LEAD_GEN_EVENT_DEFS,
   type LeadGenEventType,
 } from "@shared/schema";
+import { sendWatchlistInviteEmail } from "../emailService";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -697,6 +698,24 @@ export function registerLeadGenRoutes(app: Express): void {
         const skipped = existingEligible.length - added + ineligible;
 
         res.json({ added, invited, skipped, invalid });
+
+        // Fire-and-forget invite emails to newly-created placeholder accounts.
+        // We do this after responding so it never blocks the HTTP request.
+        if (newEligible.length > 0) {
+          const vendorName = seat.vendorScopeId
+            ? (await storage.getVendorById(seat.vendorScopeId))?.name ?? "A vendor"
+            : "A vendor";
+          const marketDisplayName = market.name.replace(/^ITMAP for /i, "");
+          for (const { email } of newEligible) {
+            sendWatchlistInviteEmail({
+              recipientEmail: email,
+              vendorName,
+              marketName: marketDisplayName,
+            }).catch((err) =>
+              console.error(`[lead-gen] watchlist invite email failed for ${email}:`, err),
+            );
+          }
+        }
       } catch (err) {
         console.error("[lead-gen] audience import error:", err);
         res.status(500).json({ error: "Failed to import audience" });
