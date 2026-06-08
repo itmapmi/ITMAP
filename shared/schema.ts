@@ -41,6 +41,10 @@ export const users = pgTable("users", {
   // normal self-registered accounts.
   invitedAt: timestamp("invited_at"),
 
+  // Updated each time an admin resends the invite email. Used to enforce the
+  // 10-minute resend rate-limit and to display "Resent X ago" in the UI.
+  lastInviteSentAt: timestamp("last_invite_sent_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

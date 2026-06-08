@@ -102,6 +102,18 @@ export function registerAdminRoutes(app: Express): void {
         return res.status(400).json({ error: "User has no email address" });
       }
 
+      // Rate-limit: block if an invite was sent within the last 10 minutes.
+      if (target.lastInviteSentAt) {
+        const msSinceLast = Date.now() - new Date(target.lastInviteSentAt).getTime();
+        const tenMinutes = 10 * 60 * 1000;
+        if (msSinceLast < tenMinutes) {
+          const waitSecs = Math.ceil((tenMinutes - msSinceLast) / 1000);
+          return res.status(429).json({
+            error: `An invite was just sent. Please wait ${waitSecs} seconds before resending.`,
+          });
+        }
+      }
+
       // Find context (vendor + market) from their first audience entry.
       const [audienceRow] = await db
         .select({
@@ -126,6 +138,7 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       if (result.sent) {
+        await storage.updateUserLastInviteSentAt(req.params.id);
         res.json({ sent: true });
       } else {
         res.status(500).json({ error: result.reason ?? "Failed to send email" });

@@ -49,6 +49,18 @@ type FilterTab = "all" | "invited" | "active";
 const stripMarket = (name: string | null | undefined) =>
   (name ?? "").replace(/^ITMAP for /i, "");
 
+function formatRelativeTime(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
 interface MarketOption {
   id: string;
   name: string;
@@ -460,6 +472,7 @@ export function UserAccessAdmin() {
       apiRequestJson(`/api/admin/users/${id}/resend-invite`, "POST"),
     onSuccess: (_data, id) => {
       const u = (users ?? []).find((x) => x.id === id);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({
         title: "Invite resent",
         description: `Invite email sent to ${u?.email ?? "user"}.`,
@@ -650,6 +663,9 @@ export function UserAccessAdmin() {
                         {isInvited && user.invitedAt && (
                           <span className="text-[10px] text-gray-400 mt-0.5">
                             Invited {new Date(user.invitedAt).toLocaleDateString()}
+                            {user.lastInviteSentAt && (
+                              <> · Resent {formatRelativeTime(new Date(user.lastInviteSentAt))}</>
+                            )}
                           </span>
                         )}
                         {isInvited && !isAdminUser && (

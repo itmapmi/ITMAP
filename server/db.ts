@@ -400,6 +400,13 @@ export async function runStartupMigrations(): Promise<void> {
       CREATE UNIQUE INDEX IF NOT EXISTS vsa_unique_idx ON vendor_seat_audience (seat_user_id, market_id, end_user_id);
     `);
 
+    // 24. users.last_invite_sent_at — stamped on every successful resend-invite.
+    //     Used for the 10-minute rate-limit guard and the admin UI "Resent X ago"
+    //     display. Added as an additive column so existing rows default to NULL.
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_invite_sent_at timestamp;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

@@ -116,6 +116,16 @@ export async function deleteInvitedUser(id: string): Promise<boolean> {
   return true;
 }
 
+// Stamp the last-invite-sent time (used by resend-invite rate-limit + UI).
+export async function updateUserLastInviteSentAt(id: string): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ lastInviteSentAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 // Pin (or clear) a user's vendor-scoped seat for the Lead-Gen panel.
 export async function updateUserVendorScope(id: string, vendorScopeId: string | null): Promise<User> {
   const [updated] = await db
