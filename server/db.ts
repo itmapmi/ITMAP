@@ -407,6 +407,13 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_invite_sent_at timestamp;
     `);
 
+    // 25. users.invited_at — set when a placeholder account is created via CSV
+    //     audience import; cleared when the user completes registration.
+    //     NULL for all normal self-registered accounts.
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_at timestamp;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
