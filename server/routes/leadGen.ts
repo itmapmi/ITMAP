@@ -603,6 +603,10 @@ export function registerLeadGenRoutes(app: Express): void {
   );
 
   // CSV import: find-or-create users by email list, then bulk-add to audience.
+  // Applies the same eligibility rules as the manual POST audience route:
+  //   - not the seat user themselves
+  //   - not an admin
+  //   - not another vendor seat
   app.post(
     "/api/lead-gen/seats/:seatUserId/audience/import",
     requireAdmin,
@@ -613,31 +617,43 @@ export function registerLeadGenRoutes(app: Express): void {
           return res.status(400).json({ error: "marketId and emails array are required" });
         }
 
-        const seat = await storage.getUser(req.params.seatUserId);
+        const seatUserId = req.params.seatUserId;
+        const seat = await storage.getUser(seatUserId);
         if (!seat?.vendorScopeId) {
           return res.status(400).json({ error: "User is not a vendor seat" });
         }
         const market = await storage.getMarketById(marketId);
         if (!market) return res.status(400).json({ error: "Market not found" });
 
+        // Server-side email validation & dedup — count invalids explicitly.
         const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const validEmails = [...new Set(
-          (emails as string[])
-            .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
-            .filter((e) => EMAIL_RE.test(e)),
-        )];
+        const raw = (emails as unknown[]).map((e) =>
+          typeof e === "string" ? e.trim().toLowerCase() : "",
+        );
+        const invalid = raw.filter((e) => !EMAIL_RE.test(e)).length;
+        const validEmails = [...new Set(raw.filter((e) => EMAIL_RE.test(e)))];
 
         if (validEmails.length === 0) {
-          return res.json({ added: 0, invited: 0, skipped: 0 });
+          return res.json({ added: 0, invited: 0, skipped: 0, invalid });
         }
 
         const resolved = await storage.findOrCreateUsersByEmails(validEmails);
         const invited = resolved.filter((r) => r.isNew).length;
-        const userIds = resolved.map((r) => r.user.id);
-        const added = await storage.addSeatAudience(req.params.seatUserId, marketId, userIds);
-        const skipped = userIds.length - added;
 
-        res.json({ added, invited, skipped });
+        // Apply same eligibility filter as manual add route.
+        const eligible = resolved.filter(
+          (r) => r.user.id !== seatUserId && r.user.role !== "admin" && !r.user.vendorScopeId,
+        );
+        const ineligible = resolved.length - eligible.length;
+        const eligibleIds = eligible.map((r) => r.user.id);
+
+        const added = eligibleIds.length > 0
+          ? await storage.addSeatAudience(seatUserId, marketId, eligibleIds)
+          : 0;
+        // "skipped" = already in audience + ineligible (admins/other seats/self)
+        const skipped = eligibleIds.length - added + ineligible;
+
+        res.json({ added, invited, skipped, invalid });
       } catch (err) {
         console.error("[lead-gen] audience import error:", err);
         res.status(500).json({ error: "Failed to import audience" });

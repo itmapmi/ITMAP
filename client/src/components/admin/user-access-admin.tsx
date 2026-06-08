@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequestJson, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -104,7 +104,7 @@ function ManageAudienceDialog({
 
   const addMutation = useMutation({
     mutationFn: async () =>
-      apiRequest(`/api/lead-gen/seats/${seat.id}/audience`, "POST", {
+      apiRequestJson(`/api/lead-gen/seats/${seat.id}/audience`, "POST", {
         marketId,
         endUserIds: Array.from(picked),
       }),
@@ -123,7 +123,7 @@ function ManageAudienceDialog({
 
   const importMutation = useMutation({
     mutationFn: async (emails: string[]) =>
-      apiRequest(`/api/lead-gen/seats/${seat.id}/audience/import`, "POST", {
+      apiRequestJson(`/api/lead-gen/seats/${seat.id}/audience/import`, "POST", {
         marketId,
         emails,
       }),
@@ -132,13 +132,15 @@ function ManageAudienceDialog({
       const added = res?.added ?? 0;
       const invited = res?.invited ?? 0;
       const skipped = res?.skipped ?? 0;
+      const invalid = res?.invalid ?? 0;
       const parts: string[] = [];
       if (added > 0) parts.push(`${added} added`);
       if (invited > 0) parts.push(`${invited} invited (not yet registered)`);
-      if (skipped > 0) parts.push(`${skipped} already in audience`);
+      if (skipped > 0) parts.push(`${skipped} skipped`);
+      if (invalid > 0) parts.push(`${invalid} invalid email(s)`);
       toast({
         title: "CSV import complete",
-        description: parts.join(" · ") || "No changes made",
+        description: parts.join(" · ") || "No new users to add",
       });
     },
     onError: () => toast({ title: "CSV import failed", variant: "destructive" }),
@@ -146,7 +148,7 @@ function ManageAudienceDialog({
 
   const removeMutation = useMutation({
     mutationFn: async (rowId: string) =>
-      apiRequest(`/api/lead-gen/seats/${seat.id}/audience/${rowId}`, "DELETE"),
+      apiRequestJson(`/api/lead-gen/seats/${seat.id}/audience/${rowId}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: audienceKey });
       toast({ title: "Removed from watched audience" });
