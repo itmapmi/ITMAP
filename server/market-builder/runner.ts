@@ -326,9 +326,14 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage2 = await loadStageResult(jobId, 2);
         const allCriteria = await storage.getAllCriteria();
-        // Load checkpoint from any previous failed run so we can resume mid-criteria
+        // Load checkpoint from any previous failed/interrupted run so we can
+        // resume mid-criteria. IMPORTANT: only use the checkpoint when the stage
+        // was not yet "completed". If the stage is already done and the admin
+        // clicks "Re-run all vendors", we must start fresh — passing the
+        // completed result as a checkpoint would cause every vendor to be skipped.
         const existingStage3 = await storage.getMarketBuilderStage(jobId, 3);
         const checkpoint3 = (existingStage3?.result as any) ?? undefined;
+        const resumeCheckpoint3 = existingStage3?.status !== "completed" ? checkpoint3 : undefined;
         // "New vendors only" mode is completion-aware: a vendor is "done" only
         // when it has a commentary row for EVERY criterion. New + partially-
         // completed vendors get (re)processed; fully-complete vendors are
@@ -353,8 +358,8 @@ export async function runSingleStage(
           stage1ForRun = { ...stage1, vendors: toProcess };
           seedScores3 = (checkpoint3?.scores ?? []).filter((r: any) => isDone(r?.vendorName));
           await progress(`Incremental run — writing commentary for ${toProcess.length} new/incomplete vendor(s) × ${criteriaCount} criteria…`);
-        } else if (checkpoint3?.scores?.length > 0) {
-          await progress(`↩ Resuming from checkpoint — ${checkpoint3.scores.length} vendor × criterion scores already saved`);
+        } else if (resumeCheckpoint3?.scores?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint3.scores.length} vendor × criterion scores already saved`);
         } else {
           await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors × ${allCriteria.length} criteria (${llmConfig.provider}/${llmConfig.model})…`);
         }
@@ -365,7 +370,7 @@ export async function runSingleStage(
           // In incremental mode we drive vendor selection ourselves (above) and
           // seed complete vendors — so skip the criterion-level checkpoint which
           // would wrongly skip new vendors when existingCount >= newCount.
-          checkpoint: newOnly ? undefined : checkpoint3,
+          checkpoint: newOnly ? undefined : resumeCheckpoint3,
           seedScores: newOnly ? seedScores3 : undefined,
           onCriterionComplete: async (partial) => {
             await storage.upsertMarketBuilderStage(jobId, 3, { result: partial as any });
@@ -392,15 +397,15 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage4 = await loadStageResult(jobId, 4);
         const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        // Load checkpoint from any previous failed run so fully-scored vendors are skipped
+        // Load checkpoint from any previous failed/interrupted run so fully-scored
+        // vendors can be skipped on resume. Only use it when the stage was NOT
+        // already completed — a "Re-run all vendors" on a completed stage must
+        // start fresh, not skip vendors that were scored in the previous run.
         const existingStage5 = await storage.getMarketBuilderStage(jobId, 5);
         const checkpoint5 = (existingStage5?.result as any) ?? undefined;
-        // Per-vendor resume (also covers "new vendors only"): the stage seeds
-        // from this checkpoint, skips fully-scored vendors and processes the
-        // rest — so newly-added vendors get scored while existing ones are
-        // preserved, in both modes.
-        if (checkpoint5?.support?.length > 0) {
-          await progress(`↩ Resuming from checkpoint — ${checkpoint5.support.length} feature scores already saved`);
+        const resumeCheckpoint5 = existingStage5?.status !== "completed" ? checkpoint5 : undefined;
+        if (resumeCheckpoint5?.support?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint5.support.length} feature scores already saved`);
         } else {
           await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features (numeric scores only)…`);
         }
@@ -412,7 +417,7 @@ export async function runSingleStage(
             onBatchComplete: async (done, total, vendorName, featureRange) => {
               await progress(`Batch ${done}/${total} — Scoring: ${vendorName} | Features ${featureRange}`);
             },
-            checkpoint: checkpoint5,
+            checkpoint: resumeCheckpoint5,
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 5, { result: partial as any });
             },
@@ -428,9 +433,12 @@ export async function runSingleStage(
         const stage4 = await loadStageResult(jobId, 4);
         const stage5 = await loadStageResult(jobId, 5);
         const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        // Load checkpoint from any previous failed run so we can resume mid-vendor
+        // Load checkpoint from any previous failed/interrupted run so we can
+        // resume mid-vendor. Only use it when the stage was NOT already completed
+        // — a "Re-run all vendors" on a completed stage must start fresh.
         const existingStage6 = await storage.getMarketBuilderStage(jobId, 6);
         const checkpoint6 = (existingStage6?.result as any) ?? undefined;
+        const resumeCheckpoint6 = existingStage6?.status !== "completed" ? checkpoint6 : undefined;
         // "New vendors only": process just the vendors not yet present in the
         // saved commentary. Existing vendors stay untouched — preserved via the
         // checkpoint seed — regardless of whether their prior commentary was
@@ -446,8 +454,8 @@ export async function runSingleStage(
         const stage1ForRun6 = newOnly ? { ...stage1, vendors: scope6.vendors } : stage1;
         if (newOnly) {
           await progress(`Incremental run — writing product commentary for ${scope6.vendors.length} new vendor(s) across ${totalFeatures} features…`);
-        } else if (checkpoint6?.support?.length > 0) {
-          const doneSoFar = checkpoint6.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
+        } else if (resumeCheckpoint6?.support?.length > 0) {
+          const doneSoFar = resumeCheckpoint6.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
           await progress(`↩ Resuming from checkpoint — ${doneSoFar} feature comments already saved`);
         } else {
           await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalFeatures} product features…`);
@@ -460,7 +468,7 @@ export async function runSingleStage(
             onBatchComplete: async (done, total, vendorName, featureRange) => {
               await progress(`Batch ${done}/${total} — Commentary: ${vendorName} | Features ${featureRange}`);
             },
-            checkpoint: checkpoint6,
+            checkpoint: resumeCheckpoint6,
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 6, { result: partial as any });
             },
@@ -489,13 +497,14 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage7 = await loadStageResult(jobId, 7);
         const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        // Load checkpoint from any previous failed run so fully-scored vendors are skipped
+        // Load checkpoint from any previous failed/interrupted run. Only use it
+        // when the stage was NOT already completed — a "Re-run all vendors" on a
+        // completed stage must start fresh, not skip already-scored vendors.
         const existingStage8 = await storage.getMarketBuilderStage(jobId, 8);
         const checkpoint8 = (existingStage8?.result as any) ?? undefined;
-        // Per-vendor resume (also covers "new vendors only"): seeds from this
-        // checkpoint, skips fully-scored vendors and processes the rest.
-        if (checkpoint8?.support?.length > 0) {
-          await progress(`↩ Resuming from checkpoint — ${checkpoint8.support.length} ecosystem scores already saved`);
+        const resumeCheckpoint8 = existingStage8?.status !== "completed" ? checkpoint8 : undefined;
+        if (resumeCheckpoint8?.support?.length > 0) {
+          await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint8.support.length} ecosystem scores already saved`);
         } else {
           await progress(`Scoring ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations (numeric scores only)…`);
         }
@@ -505,7 +514,7 @@ export async function runSingleStage(
             resolveScoringPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
             onProgress: async (msg: string) => { await progress(msg); },
-            checkpoint: checkpoint8,
+            checkpoint: resumeCheckpoint8,
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 8, { result: partial as any });
             },
@@ -521,9 +530,12 @@ export async function runSingleStage(
         const stage7 = await loadStageResult(jobId, 7);
         const stage8 = await loadStageResult(jobId, 8);
         const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
-        // Load checkpoint from any previous failed run so we can resume mid-vendor
+        // Load checkpoint from any previous failed/interrupted run so we can
+        // resume mid-vendor. Only use it when the stage was NOT already completed
+        // — a "Re-run all vendors" on a completed stage must start fresh.
         const existingStage9 = await storage.getMarketBuilderStage(jobId, 9);
         const checkpoint9 = (existingStage9?.result as any) ?? undefined;
+        const resumeCheckpoint9 = existingStage9?.status !== "completed" ? checkpoint9 : undefined;
         // "New vendors only": process just the vendors not yet present in the
         // saved commentary. Existing vendors stay untouched — preserved via the
         // checkpoint seed — regardless of whether their prior commentary was
@@ -539,8 +551,8 @@ export async function runSingleStage(
         const stage1ForRun9 = newOnly ? { ...stage1, vendors: scope9.vendors } : stage1;
         if (newOnly) {
           await progress(`Incremental run — writing ecosystem commentary for ${scope9.vendors.length} new vendor(s) across ${totalEcoFeatures} integrations…`);
-        } else if (checkpoint9?.support?.length > 0) {
-          const doneSoFar = checkpoint9.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
+        } else if (resumeCheckpoint9?.support?.length > 0) {
+          const doneSoFar = resumeCheckpoint9.support.filter((r: any) => (r.comments?.trim().length ?? 0) > 0).length;
           await progress(`↩ Resuming from checkpoint — ${doneSoFar} ecosystem comments already saved`);
         } else {
           await progress(`Writing commentary for ${stage1.vendors?.length ?? 0} vendors across ${totalEcoFeatures} ecosystem integrations…`);
@@ -551,7 +563,7 @@ export async function runSingleStage(
             resolveCommentaryPrompt: (categoryName, featureName) =>
               resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "commentary", categoryName, featureName }),
             onProgress: async (msg: string) => { await progress(msg); },
-            checkpoint: checkpoint9,
+            checkpoint: resumeCheckpoint9,
             onVendorComplete: async (partial) => {
               await storage.upsertMarketBuilderStage(jobId, 9, { result: partial as any });
             },
