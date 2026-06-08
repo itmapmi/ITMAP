@@ -602,6 +602,49 @@ export function registerLeadGenRoutes(app: Express): void {
     },
   );
 
+  // CSV import: find-or-create users by email list, then bulk-add to audience.
+  app.post(
+    "/api/lead-gen/seats/:seatUserId/audience/import",
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { marketId, emails } = req.body as { marketId?: string; emails?: unknown };
+        if (!marketId || !Array.isArray(emails)) {
+          return res.status(400).json({ error: "marketId and emails array are required" });
+        }
+
+        const seat = await storage.getUser(req.params.seatUserId);
+        if (!seat?.vendorScopeId) {
+          return res.status(400).json({ error: "User is not a vendor seat" });
+        }
+        const market = await storage.getMarketById(marketId);
+        if (!market) return res.status(400).json({ error: "Market not found" });
+
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const validEmails = [...new Set(
+          (emails as string[])
+            .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
+            .filter((e) => EMAIL_RE.test(e)),
+        )];
+
+        if (validEmails.length === 0) {
+          return res.json({ added: 0, invited: 0, skipped: 0 });
+        }
+
+        const resolved = await storage.findOrCreateUsersByEmails(validEmails);
+        const invited = resolved.filter((r) => r.isNew).length;
+        const userIds = resolved.map((r) => r.user.id);
+        const added = await storage.addSeatAudience(req.params.seatUserId, marketId, userIds);
+        const skipped = userIds.length - added;
+
+        res.json({ added, invited, skipped });
+      } catch (err) {
+        console.error("[lead-gen] audience import error:", err);
+        res.status(500).json({ error: "Failed to import audience" });
+      }
+    },
+  );
+
   // ── Exports ──
   // Leads list export
   app.get("/api/lead-gen/leads/export/:fmt", requireAdmin, async (req: Request, res: Response) => {

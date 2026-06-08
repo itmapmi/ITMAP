@@ -8,7 +8,7 @@ import {
   users, userActivityLogs, newPlayers, vendors, chatConversations, chatMessages,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -59,6 +59,52 @@ export async function updateUserFeatureAccess(id: string, featureAccess: string[
     .where(eq(users.id, id))
     .returning();
   return updated!;
+}
+
+// Activate a placeholder "invited" account: set password + name, clear invitedAt.
+export async function activateInvitedUser(
+  id: string,
+  data: { firstName?: string | null; lastName?: string | null; password: string },
+): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ ...data, invitedAt: null, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
+// Find existing users by email, or create lightweight invited placeholders for
+// any emails that don't match. Returns an array preserving input order.
+export async function findOrCreateUsersByEmails(
+  emails: string[],
+): Promise<{ email: string; user: User; isNew: boolean }[]> {
+  if (emails.length === 0) return [];
+  const existing = await db.select().from(users).where(inArray(users.email, emails));
+  const byEmail = new Map(existing.map((u) => [u.email!, u]));
+
+  const results: { email: string; user: User; isNew: boolean }[] = [];
+  const toInsert: string[] = [];
+  for (const email of emails) {
+    const found = byEmail.get(email);
+    if (found) {
+      results.push({ email, user: found, isNew: false });
+    } else {
+      toInsert.push(email);
+    }
+  }
+
+  if (toInsert.length > 0) {
+    const inserted = await db
+      .insert(users)
+      .values(toInsert.map((email) => ({ email, role: "user", invitedAt: new Date(), featureAccess: [] })))
+      .returning();
+    for (const u of inserted) {
+      results.push({ email: u.email!, user: u, isNew: true });
+    }
+  }
+
+  return results;
 }
 
 // Pin (or clear) a user's vendor-scoped seat for the Lead-Gen panel.

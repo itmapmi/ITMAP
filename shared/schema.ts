@@ -35,7 +35,12 @@ export const users = pgTable("users", {
   // OAuth provider info
   googleId: text("google_id").unique(),
   linkedinId: text("linkedin_id").unique(),
-  
+
+  // Set when a placeholder account is created via CSV audience import.
+  // Cleared (set to null) when the user completes registration. Null for all
+  // normal self-registered accounts.
+  invitedAt: timestamp("invited_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

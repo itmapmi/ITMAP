@@ -67,9 +67,39 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const userData = registerUserSchema.parse(req.body);
       const existingUser = await storage.getUserByEmail(userData.email);
+
+      // If an invited placeholder exists for this email, activate it rather
+      // than creating a new account — this preserves their user ID, audience
+      // assignments, and any event history already attached to the placeholder.
       if (existingUser) {
+        if (existingUser.invitedAt && !existingUser.password) {
+          const hashedPassword = await bcrypt.hash(userData.password, 10);
+          const activated = await storage.activateInvitedUser(existingUser.id, {
+            firstName: userData.firstName ?? null,
+            lastName: userData.lastName ?? null,
+            password: hashedPassword,
+          });
+          req.logIn(activated, async (err) => {
+            if (err) return res.status(500).json({ error: "Login failed after activation" });
+            try {
+              await storage.recordUserLogin({
+                userId: activated.id,
+                sessionId: req.sessionID,
+                ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+                userAgent: req.get('user-agent') || 'unknown',
+                loginAt: new Date(),
+              });
+            } catch (error) {
+              console.error("Error recording activation login:", error);
+            }
+            const { password, ...userWithoutPassword } = activated;
+            res.status(201).json(userWithoutPassword);
+          });
+          return;
+        }
         return res.status(400).json({ error: "User already exists with this email" });
       }
+
       const hashedPassword = await bcrypt.hash(userData.password, 10);
       const user = await storage.createUser({ ...userData, password: hashedPassword, role: 'user' });
       req.logIn(user, async (err) => {

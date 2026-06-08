@@ -22,6 +22,7 @@ export interface SeatAudienceRow {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  invitedAt: Date | null;
   createdAt: Date;
 }
 
@@ -36,6 +37,7 @@ export async function getSeatAudience(seatUserId: string): Promise<SeatAudienceR
       firstName: users.firstName,
       lastName: users.lastName,
       email: users.email,
+      invitedAt: users.invitedAt,
       createdAt: vendorSeatAudience.createdAt,
     })
     .from(vendorSeatAudience)

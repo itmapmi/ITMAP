@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useRef, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Trash2, Upload } from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -49,7 +49,34 @@ interface AudienceRow {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  invitedAt: string | null;
   createdAt: string;
+}
+
+// Parse a CSV string and return a deduplicated list of email addresses.
+// Handles single-column files (one email per line) and multi-column files
+// with a header row containing "email".
+function parseEmailsFromCsv(text: string): string[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Detect whether there's a header row with an "email" column.
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const emailCol = headers.indexOf("email");
+
+  const dataLines = emailCol >= 0 ? lines.slice(1) : lines;
+  const emails: string[] = [];
+
+  for (const line of dataLines) {
+    const cols = line.split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+    const candidate = emailCol >= 0 ? (cols[emailCol] ?? "") : cols[0] ?? "";
+    const lower = candidate.toLowerCase();
+    if (EMAIL_RE.test(lower)) emails.push(lower);
+  }
+
+  return [...new Set(emails)];
 }
 
 function ManageAudienceDialog({
@@ -66,6 +93,7 @@ function ManageAudienceDialog({
   const [marketId, setMarketId] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [userSearch, setUserSearch] = useState("");
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const audienceKey = ["/api/lead-gen/seats", seat.id, "audience"];
   const { data, isLoading } = useQuery<{ rows: AudienceRow[] }>({
@@ -91,6 +119,29 @@ function ManageAudienceDialog({
       });
     },
     onError: () => toast({ title: "Failed to add to audience", variant: "destructive" }),
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (emails: string[]) =>
+      apiRequest(`/api/lead-gen/seats/${seat.id}/audience/import`, "POST", {
+        marketId,
+        emails,
+      }),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: audienceKey });
+      const added = res?.added ?? 0;
+      const invited = res?.invited ?? 0;
+      const skipped = res?.skipped ?? 0;
+      const parts: string[] = [];
+      if (added > 0) parts.push(`${added} added`);
+      if (invited > 0) parts.push(`${invited} invited (not yet registered)`);
+      if (skipped > 0) parts.push(`${skipped} already in audience`);
+      toast({
+        title: "CSV import complete",
+        description: parts.join(" · ") || "No changes made",
+      });
+    },
+    onError: () => toast({ title: "CSV import failed", variant: "destructive" }),
   });
 
   const removeMutation = useMutation({
@@ -124,10 +175,26 @@ function ManageAudienceDialog({
     });
   };
 
+  const handleCsvFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const emails = parseEmailsFromCsv(text);
+      if (emails.length === 0) {
+        toast({ title: "No valid emails found in CSV", variant: "destructive" });
+        return;
+      }
+      importMutation.mutate(emails);
+    };
+    reader.readAsText(file);
+    // Reset so the same file can be re-uploaded if needed
+    if (csvInputRef.current) csvInputRef.current.value = "";
+  };
+
   const seatName =
     seat.firstName || seat.lastName
       ? `${seat.firstName ?? ""} ${seat.lastName ?? ""}`.trim()
-      : (seat.email ?? seat.username ?? "this seat");
+      : (seat.email ?? "this seat");
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -165,6 +232,7 @@ function ManageAudienceDialog({
               ))}
             </select>
 
+            {/* Manual user search + checkbox list */}
             <Input
               placeholder="Search users…"
               value={userSearch}
@@ -189,21 +257,51 @@ function ManageAudienceDialog({
                       <span className="font-medium text-gray-900">
                         {u.firstName || u.lastName
                           ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()
-                          : (u.username ?? "—")}
+                          : (u.email ?? "—")}
                       </span>
-                      <span className="text-xs text-gray-500">{u.email ?? u.username}</span>
+                      <span className="text-xs text-gray-500">{u.email}</span>
                     </span>
                   </label>
                 ))
               )}
             </div>
-            <Button
-              onClick={() => addMutation.mutate()}
-              disabled={!marketId || picked.size === 0 || addMutation.isPending}
-              data-testid="button-add-audience"
-            >
-              {addMutation.isPending ? "Adding…" : `Add ${picked.size || ""} to audience`}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => addMutation.mutate()}
+                disabled={!marketId || picked.size === 0 || addMutation.isPending}
+                data-testid="button-add-audience"
+              >
+                {addMutation.isPending ? "Adding…" : `Add ${picked.size || ""} to audience`}
+              </Button>
+
+              {/* CSV upload — parses client-side, POSTs emails as JSON */}
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                data-testid="input-csv-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleCsvFile(file);
+                }}
+              />
+              <Button
+                variant="outline"
+                disabled={!marketId || importMutation.isPending}
+                onClick={() => csvInputRef.current?.click()}
+                data-testid="button-upload-csv"
+              >
+                <Upload className="mr-1.5 h-4 w-4" />
+                {importMutation.isPending ? "Importing…" : "Upload CSV"}
+              </Button>
+            </div>
+
+            <p className="text-xs text-gray-400">
+              CSV format: one email per line, or a column headed <code>email</code>. Users not yet
+              registered will be added as invited placeholders and activated when they sign up.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -223,10 +321,15 @@ function ManageAudienceDialog({
                     data-testid={`audience-row-${row.id}`}
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 flex items-center gap-2">
                         {row.firstName || row.lastName
                           ? `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim()
                           : (row.email ?? "—")}
+                        {row.invitedAt && (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                            Invited
+                          </span>
+                        )}
                       </span>
                       <span className="text-xs text-gray-500">{row.email}</span>
                     </div>
@@ -326,8 +429,7 @@ export function UserAccessAdmin() {
       const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
       return (
         name.includes(q) ||
-        (u.email ?? "").toLowerCase().includes(q) ||
-        (u.username ?? "").toLowerCase().includes(q)
+        (u.email ?? "").toLowerCase().includes(q)
       );
     });
   }, [users, search]);
@@ -400,10 +502,10 @@ export function UserAccessAdmin() {
                         <span className="font-medium text-gray-900 flex items-center gap-2">
                           {user.firstName || user.lastName
                             ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-                            : (user.username ?? "—")}
+                            : (user.email ?? "—")}
                           {isAdminUser && <Badge variant="secondary">Admin</Badge>}
                         </span>
-                        <span className="text-xs text-gray-500">{user.email ?? user.username}</span>
+                        <span className="text-xs text-gray-500">{user.email}</span>
                       </div>
                     </TableCell>
                     {LOCKABLE_FEATURES.map((f) => (
