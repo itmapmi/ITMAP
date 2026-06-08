@@ -179,6 +179,25 @@ function ManageAudienceDialog({
     onError: () => toast({ title: "Failed to remove", variant: "destructive" }),
   });
 
+  const resendAudienceInviteMutation = useMutation({
+    mutationFn: async (userId: string) =>
+      apiRequestJson(`/api/admin/users/${userId}/resend-invite`, "POST"),
+    onSuccess: (_data, userId) => {
+      const row = audience.find((r) => r.endUserId === userId);
+      toast({
+        title: "Invite resent",
+        description: `Invite email sent to ${row?.email ?? "user"}.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to resend invite",
+        description: err?.message ?? "Email could not be sent.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
     const list = endUsers.filter((u) => u.id !== seat.id);
@@ -352,8 +371,21 @@ function ManageAudienceDialog({
                       </span>
                       <span className="text-xs text-gray-500">{row.email}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <Badge variant="secondary">{stripMarket(row.marketName)}</Badge>
+                      {row.invitedAt && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-amber-500 hover:text-amber-600"
+                          onClick={() => resendAudienceInviteMutation.mutate(row.endUserId)}
+                          disabled={resendAudienceInviteMutation.isPending}
+                          title="Resend invite"
+                          data-testid={`button-resend-invite-audience-${row.id}`}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
