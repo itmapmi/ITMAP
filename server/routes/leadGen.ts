@@ -1,4 +1,6 @@
 import type { Express, Request, Response } from "express";
+import multer from "multer";
+import XLSX from "xlsx";
 import { z } from "zod";
 import { requireAuth, requireAdmin } from "../auth";
 import { storage } from "../storage";
@@ -602,19 +604,29 @@ export function registerLeadGenRoutes(app: Express): void {
     },
   );
 
-  // CSV import: find-or-create users by email list, then bulk-add to audience.
-  // Applies the same eligibility rules as the manual POST audience route:
-  //   - not the seat user themselves
-  //   - not an admin
-  //   - not another vendor seat
+  // CSV import: accept multipart/form-data with `file` + `marketId`, parse
+  // server-side using xlsx, apply eligibility rules, and return summary counts.
+  const csvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const ok = /csv|text\/plain|spreadsheetml|officedocument/i.test(file.mimetype);
+      cb(null, ok || file.originalname.endsWith(".csv"));
+    },
+  }).single("file");
+
   app.post(
     "/api/lead-gen/seats/:seatUserId/audience/import",
     requireAdmin,
+    (req: Request, res: Response, next) => csvUpload(req, res, next),
     async (req: Request, res: Response) => {
       try {
-        const { marketId, emails } = req.body as { marketId?: string; emails?: unknown };
-        if (!marketId || !Array.isArray(emails)) {
-          return res.status(400).json({ error: "marketId and emails array are required" });
+        const marketId = typeof req.body.marketId === "string" ? req.body.marketId : "";
+        if (!marketId) {
+          return res.status(400).json({ error: "marketId is required" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ error: "CSV file is required" });
         }
 
         const seatUserId = req.params.seatUserId;
@@ -625,13 +637,32 @@ export function registerLeadGenRoutes(app: Express): void {
         const market = await storage.getMarketById(marketId);
         if (!market) return res.status(400).json({ error: "Market not found" });
 
-        // Server-side email validation & dedup — count invalids explicitly.
-        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const raw = (emails as unknown[]).map((e) =>
-          typeof e === "string" ? e.trim().toLowerCase() : "",
+        // Parse CSV server-side with xlsx — supports both header-row and
+        // simple one-email-per-line formats.
+        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false });
+
+        const firstRow = rows[0] ?? [];
+        const emailColIdx = firstRow.findIndex(
+          (h) => String(h ?? "").trim().toLowerCase() === "email",
         );
-        const invalid = raw.filter((e) => !EMAIL_RE.test(e)).length;
-        const validEmails = [...new Set(raw.filter((e) => EMAIL_RE.test(e)))];
+        const dataRows = emailColIdx >= 0 ? rows.slice(1) : rows;
+
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const allEmails: string[] = [];
+        let invalid = 0;
+
+        for (const row of dataRows) {
+          const cell = emailColIdx >= 0 ? row[emailColIdx] : row[0];
+          const candidate = String(cell ?? "").trim().replace(/^["']|["']$/g, "").toLowerCase();
+          if (EMAIL_RE.test(candidate)) {
+            allEmails.push(candidate);
+          } else if (candidate.length > 0) {
+            invalid++;
+          }
+        }
+        const validEmails = [...new Set(allEmails)];
 
         if (validEmails.length === 0) {
           return res.json({ added: 0, invited: 0, skipped: 0, invalid });
@@ -640,7 +671,7 @@ export function registerLeadGenRoutes(app: Express): void {
         const resolved = await storage.findOrCreateUsersByEmails(validEmails);
         const invited = resolved.filter((r) => r.isNew).length;
 
-        // Apply same eligibility filter as manual add route.
+        // Apply same eligibility rules as the manual add route.
         const eligible = resolved.filter(
           (r) => r.user.id !== seatUserId && r.user.role !== "admin" && !r.user.vendorScopeId,
         );
@@ -650,7 +681,7 @@ export function registerLeadGenRoutes(app: Express): void {
         const added = eligibleIds.length > 0
           ? await storage.addSeatAudience(seatUserId, marketId, eligibleIds)
           : 0;
-        // "skipped" = already in audience + ineligible (admins/other seats/self)
+        // skipped = already in audience + ineligible (admins / other seats / seat self)
         const skipped = eligibleIds.length - added + ineligible;
 
         res.json({ added, invited, skipped, invalid });

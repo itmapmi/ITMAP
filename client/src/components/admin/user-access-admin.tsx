@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequestJson, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -122,11 +122,21 @@ function ManageAudienceDialog({
   });
 
   const importMutation = useMutation({
-    mutationFn: async (emails: string[]) =>
-      apiRequestJson(`/api/lead-gen/seats/${seat.id}/audience/import`, "POST", {
-        marketId,
-        emails,
-      }),
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("marketId", marketId);
+      const res = await fetch(`/api/lead-gen/seats/${seat.id}/audience/import`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text}`);
+      }
+      return res.json();
+    },
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: audienceKey });
       const added = res?.added ?? 0;
@@ -178,17 +188,11 @@ function ManageAudienceDialog({
   };
 
   const handleCsvFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const emails = parseEmailsFromCsv(text);
-      if (emails.length === 0) {
-        toast({ title: "No valid emails found in CSV", variant: "destructive" });
-        return;
-      }
-      importMutation.mutate(emails);
-    };
-    reader.readAsText(file);
+    if (!marketId) {
+      toast({ title: "Please select a market first", variant: "destructive" });
+      return;
+    }
+    importMutation.mutate(file);
     // Reset so the same file can be re-uploaded if needed
     if (csvInputRef.current) csvInputRef.current.value = "";
   };
