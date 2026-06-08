@@ -253,6 +253,13 @@ export async function runSingleStage(
   const priorJob = await storage.getMarketBuilderJob(jobId);
   const wasPublished = priorJob?.status === "published";
 
+  // Capture whether this stage was already completed BEFORE markRunning() changes
+  // its status to "running". All checkpoint-based cases (3, 5, 6, 8, 9) use this
+  // flag to decide whether to resume from a checkpoint (interrupted/failed run) or
+  // start completely fresh (explicit re-run of an already-completed stage).
+  const priorStageRow = await storage.getMarketBuilderStage(jobId, stageNum);
+  const stageWasCompleted = priorStageRow?.status === "completed";
+
   try {
     if (!wasPublished) {
       await storage.updateMarketBuilderJob(jobId, { status: "running" });
@@ -333,7 +340,8 @@ export async function runSingleStage(
         // completed result as a checkpoint would cause every vendor to be skipped.
         const existingStage3 = await storage.getMarketBuilderStage(jobId, 3);
         const checkpoint3 = (existingStage3?.result as any) ?? undefined;
-        const resumeCheckpoint3 = existingStage3?.status !== "completed" ? checkpoint3 : undefined;
+        // Use stageWasCompleted captured before markRunning() changed the status.
+        const resumeCheckpoint3 = stageWasCompleted ? undefined : checkpoint3;
         // "New vendors only" mode is completion-aware: a vendor is "done" only
         // when it has a commentary row for EVERY criterion. New + partially-
         // completed vendors get (re)processed; fully-complete vendors are
@@ -403,7 +411,7 @@ export async function runSingleStage(
         // start fresh, not skip vendors that were scored in the previous run.
         const existingStage5 = await storage.getMarketBuilderStage(jobId, 5);
         const checkpoint5 = (existingStage5?.result as any) ?? undefined;
-        const resumeCheckpoint5 = existingStage5?.status !== "completed" ? checkpoint5 : undefined;
+        const resumeCheckpoint5 = stageWasCompleted ? undefined : checkpoint5;
         if (resumeCheckpoint5?.support?.length > 0) {
           await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint5.support.length} feature scores already saved`);
         } else {
@@ -438,7 +446,7 @@ export async function runSingleStage(
         // — a "Re-run all vendors" on a completed stage must start fresh.
         const existingStage6 = await storage.getMarketBuilderStage(jobId, 6);
         const checkpoint6 = (existingStage6?.result as any) ?? undefined;
-        const resumeCheckpoint6 = existingStage6?.status !== "completed" ? checkpoint6 : undefined;
+        const resumeCheckpoint6 = stageWasCompleted ? undefined : checkpoint6;
         // "New vendors only": process just the vendors not yet present in the
         // saved commentary. Existing vendors stay untouched — preserved via the
         // checkpoint seed — regardless of whether their prior commentary was
@@ -502,7 +510,7 @@ export async function runSingleStage(
         // completed stage must start fresh, not skip already-scored vendors.
         const existingStage8 = await storage.getMarketBuilderStage(jobId, 8);
         const checkpoint8 = (existingStage8?.result as any) ?? undefined;
-        const resumeCheckpoint8 = existingStage8?.status !== "completed" ? checkpoint8 : undefined;
+        const resumeCheckpoint8 = stageWasCompleted ? undefined : checkpoint8;
         if (resumeCheckpoint8?.support?.length > 0) {
           await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint8.support.length} ecosystem scores already saved`);
         } else {
@@ -535,7 +543,7 @@ export async function runSingleStage(
         // — a "Re-run all vendors" on a completed stage must start fresh.
         const existingStage9 = await storage.getMarketBuilderStage(jobId, 9);
         const checkpoint9 = (existingStage9?.result as any) ?? undefined;
-        const resumeCheckpoint9 = existingStage9?.status !== "completed" ? checkpoint9 : undefined;
+        const resumeCheckpoint9 = stageWasCompleted ? undefined : checkpoint9;
         // "New vendors only": process just the vendors not yet present in the
         // saved commentary. Existing vendors stay untouched — preserved via the
         // checkpoint seed — regardless of whether their prior commentary was

@@ -5,5 +5,6 @@
 - [News → AI suggestion trigger paths](news-suggestions-trigger-paths.md) — fire suggestions from BOTH scraper (non-null label) AND analyzer (null label); disjoint sets, additive not replacement.
 - [Market Builder republish gate](market-builder-republish-gate.md) — publish gate must accept status "published" too (not just "completed"), or republishing an already-published job deadlocks.
 - [MB new-only commentary scoping](market-builder-new-only-commentary.md) — commentary stages must scope new-only by vendor presence in runner, not by comment-completeness skip (scoring is fine; commentary isn't).
+- [MB re-run checkpoint ordering](market-builder-rerun-checkpoint.md) — read stage status into stageWasCompleted BEFORE markRunning(); reading it after always returns "running", breaking the fresh-vs-resume decision.
 - [LLM per-item report summaries](llm-report-summaries.md) — N-items→N-paragraphs LLM JSON: adaptive word target, reconcile/backfill against input list, one repair retry; never trust the model to emit every item.
 - [Quadrant label clamping](quadrant-label-clamp.md) — quadrant chart labels use absolute px (saved/fallback); resizing clips them off-screen. Clamp labelX/Y to drawable box at render.
