@@ -669,20 +669,32 @@ export function registerLeadGenRoutes(app: Express): void {
         }
 
         const resolved = await storage.findOrCreateUsersByEmails(validEmails);
-        const invited = resolved.filter((r) => r.isNew).length;
 
         // Apply same eligibility rules as the manual add route.
         const eligible = resolved.filter(
           (r) => r.user.id !== seatUserId && r.user.role !== "admin" && !r.user.vendorScopeId,
         );
         const ineligible = resolved.length - eligible.length;
+
+        // Split eligible into brand-new placeholders vs already-existing users.
+        // New placeholders were just inserted into the users table so they
+        // CANNOT already be in the audience — their addSeatAudience row always
+        // succeeds. Existing users may already be in the audience (conflict).
+        const newEligible = eligible.filter((r) => r.isNew);
+        const existingEligible = eligible.filter((r) => !r.isNew);
         const eligibleIds = eligible.map((r) => r.user.id);
 
-        const added = eligibleIds.length > 0
+        const totalInserted = eligibleIds.length > 0
           ? await storage.addSeatAudience(seatUserId, marketId, eligibleIds)
           : 0;
-        // skipped = already in audience + ineligible (admins / other seats / seat self)
-        const skipped = eligibleIds.length - added + ineligible;
+
+        // Derive disjoint summary counts:
+        //   invited  = new placeholders created & added (always succeed)
+        //   added    = existing registered users newly added to the audience
+        //   skipped  = existing users already in audience + ineligible users
+        const invited = newEligible.length;
+        const added = totalInserted - invited;
+        const skipped = existingEligible.length - added + ineligible;
 
         res.json({ added, invited, skipped, invalid });
       } catch (err) {
