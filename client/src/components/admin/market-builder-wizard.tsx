@@ -2204,24 +2204,56 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
 
             {/* DONE state */}
             {currentPhase === "done" && currentResult && (
-              <DoneStageView
-                stageNum={activeStage}
-                result={currentResult}
-                jobId={activeJob!.id}
-                apiBase={apiBase}
-                onDirtyChange={(stageNum, dirtyResult) => {
-                  if (dirtyResult === null) {
-                    if (dirtyEditRef.current?.stageNum === stageNum) dirtyEditRef.current = null;
-                  } else {
-                    dirtyEditRef.current = { stageNum, result: dirtyResult };
-                  }
-                }}
-                onSave={r => {
-                  setStageResults(prev => ({ ...prev, [activeStage]: r }));
-                  saveEdits.mutate({ stageNum: activeStage, result: r });
-                  if (dirtyEditRef.current?.stageNum === activeStage) dirtyEditRef.current = null;
-                }}
-              />
+              <>
+                {/* Prompt selector — also visible in done state so the user can
+                    change prompts before clicking "Re-run all vendors". Changes
+                    are saved immediately (per-job) and take effect on next run. */}
+                {(activeStage === 2 || activeStage === 3) && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="vendor_evaluation"
+                    criteria={allCriteria.filter(c => c.name !== "Product Capabilities" && c.name !== "ISV Ecosystem")}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
+                )}
+                {activeStage === 6 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="product_evaluation"
+                    categories={(stageResults[4]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
+                )}
+                {activeStage === 9 && (
+                  <PromptSelector
+                    jobId={activeJob!.id}
+                    stageKind="ecosystem_evaluation"
+                    categories={(stageResults[7]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
+                    apiBase={apiBase}
+                    promptsBase={promptsBase} mode={mode}
+                  />
+                )}
+                <DoneStageView
+                  stageNum={activeStage}
+                  result={currentResult}
+                  jobId={activeJob!.id}
+                  apiBase={apiBase}
+                  onDirtyChange={(stageNum, dirtyResult) => {
+                    if (dirtyResult === null) {
+                      if (dirtyEditRef.current?.stageNum === stageNum) dirtyEditRef.current = null;
+                    } else {
+                      dirtyEditRef.current = { stageNum, result: dirtyResult };
+                    }
+                  }}
+                  onSave={r => {
+                    setStageResults(prev => ({ ...prev, [activeStage]: r }));
+                    saveEdits.mutate({ stageNum: activeStage, result: r });
+                    if (dirtyEditRef.current?.stageNum === activeStage) dirtyEditRef.current = null;
+                  }}
+                />
+              </>
             )}
           </div>
 
