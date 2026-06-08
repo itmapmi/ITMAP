@@ -423,6 +423,25 @@ export function UserAccessAdmin() {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequestJson(`/api/admin/users/${id}/resend-invite`, "POST"),
+    onSuccess: (_data, id) => {
+      const u = (users ?? []).find((x) => x.id === id);
+      toast({
+        title: "Invite resent",
+        description: `Invite email sent to ${u?.email ?? "user"}.`,
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to resend invite",
+        description: err?.message ?? "Email could not be sent.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const vendorScopeMutation = useMutation({
     mutationFn: async ({ id, vendorScopeId }: { id: string; vendorScopeId: string | null }) => {
       return apiRequest(`/api/admin/users/${id}/vendor-scope`, "PATCH", { vendorScopeId });
@@ -582,8 +601,8 @@ export function UserAccessAdmin() {
                     className={isInvited ? "bg-amber-50/40" : undefined}
                   >
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900 flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
                           {user.firstName || user.lastName
                             ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
                             : (user.email ?? "—")}
@@ -600,6 +619,19 @@ export function UserAccessAdmin() {
                           <span className="text-[10px] text-gray-400 mt-0.5">
                             Invited {new Date(user.invitedAt).toLocaleDateString()}
                           </span>
+                        )}
+                        {isInvited && !isAdminUser && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 gap-1 text-xs w-fit mt-0.5"
+                            disabled={resendInviteMutation.isPending}
+                            onClick={() => resendInviteMutation.mutate(user.id)}
+                            data-testid={`button-resend-invite-${user.id}`}
+                          >
+                            <Mail className="h-3 w-3" />
+                            {resendInviteMutation.isPending ? "Sending…" : "Resend invite"}
+                          </Button>
                         )}
                       </div>
                     </TableCell>

@@ -1,12 +1,13 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { pool, db } from "../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
-import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
+import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, vendorSeatAudience, markets, vendors, users as usersTable } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
+import { sendWatchlistInviteEmail } from "../emailService";
 
 interface CollectionLogEntry {
   id: string;
@@ -89,6 +90,52 @@ export function registerAdminRoutes(app: Express): void {
 
   // Assign (or clear) a user's vendor seat. A vendor-scoped user can only see
   // buyer-intent leads for this one vendor via the vendor-facing Lead-Gen panel.
+  // Resend a watchlist invite email to a pending (not-yet-registered) user.
+  app.post("/api/admin/users/:id/resend-invite", requireAdmin, async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (!target.invitedAt) {
+        return res.status(400).json({ error: "User is not an invited/pending user" });
+      }
+      if (!target.email) {
+        return res.status(400).json({ error: "User has no email address" });
+      }
+
+      // Find context (vendor + market) from their first audience entry.
+      const [audienceRow] = await db
+        .select({
+          marketName: markets.name,
+          vendorName: vendors.name,
+        })
+        .from(vendorSeatAudience)
+        .leftJoin(markets, eq(vendorSeatAudience.marketId, markets.id))
+        .leftJoin(usersTable, eq(vendorSeatAudience.seatUserId, usersTable.id))
+        .leftJoin(vendors, eq(usersTable.vendorScopeId, vendors.id))
+        .where(eq(vendorSeatAudience.endUserId, target.id))
+        .limit(1);
+
+      const vendorName = audienceRow?.vendorName ?? "A vendor";
+      const rawMarket = audienceRow?.marketName ?? "IT";
+      const marketName = rawMarket.replace(/^ITMAP for /i, "");
+
+      const result = await sendWatchlistInviteEmail({
+        recipientEmail: target.email,
+        vendorName,
+        marketName,
+      });
+
+      if (result.sent) {
+        res.json({ sent: true });
+      } else {
+        res.status(500).json({ error: result.reason ?? "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error resending invite:", error);
+      res.status(500).json({ error: "Failed to resend invite" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/vendor-scope", requireAdmin, async (req, res) => {
     try {
       const schema = z.object({ vendorScopeId: z.string().min(1).nullable() });
