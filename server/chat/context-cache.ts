@@ -19,7 +19,7 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const TTL_MS = 10 * 60 * 1000;
+const TTL_MS = 24 * 60 * 60 * 1000;
 
 function isExpired(entry: CacheEntry): boolean {
   return Date.now() - entry.builtAt > TTL_MS;
@@ -98,7 +98,7 @@ export async function warmAllMarkets(): Promise<void> {
   }
 }
 
-/** Auto-refresh all cached entries every 10 minutes */
+/** Auto-refresh all cached entries once a day */
 export function startCacheRefreshTimer(): void {
   setInterval(async () => {
     const marketIds = Array.from(cache.keys());
