@@ -14,6 +14,7 @@ import { registerRfpRoutes } from "./routes/rfps";
 import { registerDatasheetRoutes } from "./routes/datasheets";
 import { registerDatasheetPhase2Routes } from "./routes/datasheetsPhase2";
 import { registerLeadGenRoutes } from "./routes/leadGen";
+import { warmAllMarkets, startCacheRefreshTimer } from "./chat/context-cache";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // External partner API (API-key auth, no session required) — must come first
@@ -33,6 +34,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDatasheetRoutes(app);
   registerDatasheetPhase2Routes(app);
   registerLeadGenRoutes(app);
+
+  // Warm the AI chat context cache in the background so the first user message
+  // on any public market is served from cache, not rebuilt from scratch.
+  setTimeout(() => {
+    warmAllMarkets().catch((e) => console.warn("[Startup] warmAllMarkets failed:", e));
+    startCacheRefreshTimer();
+  }, 5000); // 5-second delay so DB is fully ready before cache build starts
 
   return createServer(app);
 }

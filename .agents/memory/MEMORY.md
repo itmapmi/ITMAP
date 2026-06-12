@@ -8,3 +8,4 @@
 - [MB re-run checkpoint ordering](market-builder-rerun-checkpoint.md) — read stage status into stageWasCompleted BEFORE markRunning(); reading it after always returns "running", breaking the fresh-vs-resume decision.
 - [LLM per-item report summaries](llm-report-summaries.md) — N-items→N-paragraphs LLM JSON: adaptive word target, reconcile/backfill against input list, one repair retry; never trust the model to emit every item.
 - [Quadrant label clamping](quadrant-label-clamp.md) — quadrant chart labels use absolute px (saved/fallback); resizing clips them off-screen. Clamp labelX/Y to drawable box at render.
+- [AI chat streaming + context cache](ai-chat-streaming-cache.md) — chat uses SSE streaming + in-memory context cache; EventSource can't POST so use fetch+ReadableStream on client.

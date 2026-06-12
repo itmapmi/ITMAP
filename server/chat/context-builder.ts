@@ -2,159 +2,135 @@ import { storage } from "../storage";
 import type { ChatContext } from "./ai-service";
 
 /**
- * Build comprehensive context for AI chat by fetching all relevant market data
+ * Build comprehensive context for AI chat by fetching all relevant market data.
+ * Optimised: getAllCriteria() called once (not once per vendor), category features
+ * and news fetched in parallel via Promise.all instead of sequential for-of loops.
  */
 export async function buildMarketContext(marketId: string): Promise<ChatContext> {
   try {
     console.log(`[Context Builder] Starting context build for market: ${marketId}`);
-    
-    // Fetch market info
-    const market = await storage.getMarketById(marketId);
-    if (!market) {
-      throw new Error(`Market not found: ${marketId}`);
-    }
+
+    // ── Fetch top-level data in parallel ────────────────────────────────────
+    const [market, vendors, allFeatureSupport, allCriteria, weights] = await Promise.all([
+      storage.getMarketById(marketId),
+      storage.getVendorsByMarket(marketId),
+      storage.getVendorFeatureSupport(marketId),
+      storage.getAllCriteria(),
+      storage.getMarketCriteriaWeights(marketId),
+    ]);
+
+    if (!market) throw new Error(`Market not found: ${marketId}`);
     console.log(`[Context Builder] Market found: ${market.name}`);
-
-    // Fetch all vendors in this market with their scores
-    const vendors = await storage.getVendorsByMarket(marketId);
     console.log(`[Context Builder] Found ${vendors.length} vendors`);
-    
-    // Fetch ALL feature support for this market (includes product features AND ecosystem)
-    const allFeatureSupport = await storage.getVendorFeatureSupport(marketId);
     console.log(`[Context Builder] Found ${allFeatureSupport.length} feature support records`);
-    
-    // Enrich vendors with detailed score information and commentary
-    const enrichedVendors = await Promise.all(
-      vendors.map(async (vendor) => {
-        // Get all scores for this vendor
-        const scores = await storage.getVendorScores(vendor.id);
-        
-        // Calculate execution and viability scores (average of criteria in each category)
-        const criteria = await storage.getAllCriteria();
-        const executionCriteria = criteria.filter((c) => c.category === "execution");
-        const viabilityCriteria = criteria.filter((c) => c.category === "viability");
-        
-        const executionScores = scores.filter((s) =>
-          executionCriteria.some((c) => c.id === s.criteriaId)
-        );
-        const viabilityScores = scores.filter((s) =>
-          viabilityCriteria.some((c) => c.id === s.criteriaId)
-        );
-        
-        const executionScore = executionScores.length > 0
-          ? Math.round((executionScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) / executionScores.length) * 10)
-          : null;
-        
-        const viabilityScore = viabilityScores.length > 0
-          ? Math.round((viabilityScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) / viabilityScores.length) * 10)
-          : null;
-        
-        // Add criteria names and notes to scores
-        const enrichedScores = scores.map((score) => {
-          const criterion = criteria.find((c) => c.id === score.criteriaId);
-          return {
-            ...score,
-            criteriaName: criterion?.name || "Unknown",
-            criteriaCategory: criterion?.category || "unknown",
-          };
-        });
-        
-        // Filter feature support for this specific vendor
-        const featureSupport = allFeatureSupport.filter((s) => s.vendorId === vendor.id);
-        
-        return {
-          ...vendor,
-          executionScore,
-          viabilityScore,
-          scores: enrichedScores,
-          featureSupport,
-        };
-      })
-    );
 
-    // Get all criteria with weights
-    const allCriteria = await storage.getAllCriteria();
-    const weights = await storage.getMarketCriteriaWeights(marketId);
-    
-    const enrichedCriteria = allCriteria.map((criterion) => {
-      const weight = weights.find((w) => w.criteriaId === criterion.id);
-      return {
-        ...criterion,
-        weight: weight?.weight || 25,
-      };
+    const executionCriteria = allCriteria.filter((c) => c.category === "execution");
+    const viabilityCriteria = allCriteria.filter((c) => c.category === "viability");
+
+    // ── Enrich vendors in parallel (criteria already loaded above) ───────────
+    const vendorScoresAll = await Promise.all(vendors.map((v) => storage.getVendorScores(v.id)));
+
+    const enrichedVendors = vendors.map((vendor, i) => {
+      const scores = vendorScoresAll[i];
+
+      const executionScores = scores.filter((s) =>
+        executionCriteria.some((c) => c.id === s.criteriaId)
+      );
+      const viabilityScores = scores.filter((s) =>
+        viabilityCriteria.some((c) => c.id === s.criteriaId)
+      );
+
+      const executionScore =
+        executionScores.length > 0
+          ? Math.round(
+              (executionScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) /
+                executionScores.length) *
+                10
+            )
+          : null;
+
+      const viabilityScore =
+        viabilityScores.length > 0
+          ? Math.round(
+              (viabilityScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) /
+                viabilityScores.length) *
+                10
+            )
+          : null;
+
+      const enrichedScores = scores.map((score) => {
+        const criterion = allCriteria.find((c) => c.id === score.criteriaId);
+        return {
+          ...score,
+          criteriaName: criterion?.name || "Unknown",
+          criteriaCategory: criterion?.category || "unknown",
+        };
+      });
+
+      const featureSupport = allFeatureSupport.filter((s) => s.vendorId === vendor.id);
+
+      return { ...vendor, executionScore, viabilityScore, scores: enrichedScores, featureSupport };
     });
 
-    // Get all features with categories and vendor support
+    // ── Enriched criteria ────────────────────────────────────────────────────
+    const enrichedCriteria = allCriteria.map((criterion) => {
+      const weight = weights.find((w) => w.criteriaId === criterion.id);
+      return { ...criterion, weight: weight?.weight || 25 };
+    });
+
+    // ── Feature categories + features (parallel) ─────────────────────────────
     const categories = await storage.getMarketFeatureCategories(marketId);
     console.log(`[Context Builder] Found ${categories.length} feature categories`);
-    
+
+    const categoryFeatures = await Promise.all(
+      categories.map((cat) => storage.getCategoryFeatures(cat.id))
+    );
+
     const allFeatures: any[] = [];
-    
-    for (const category of categories) {
-      const features = await storage.getCategoryFeatures(category.id);
+    categories.forEach((category, ci) => {
+      const features = categoryFeatures[ci];
       console.log(`[Context Builder] Category "${category.name}": ${features.length} features`);
-      
       for (const feature of features) {
-        // Get support for this feature across all vendors
         const vendorSupport: any[] = [];
         for (const vendor of enrichedVendors) {
           const support = vendor.featureSupport.find((s: any) => s.featureId === feature.id);
           if (support) {
-            // Convert from 0-4 Harvey Ball scale to 0-100 percentage
-            // 0=Not Supported, 1=Limited(25%), 2=Partial(50%), 3=Good(75%), 4=Full(100%)
-            const supportLevelPercentage = support.supportLevel * 25;
-            
             vendorSupport.push({
               vendorId: vendor.id,
               vendorName: vendor.name,
-              supportLevel: supportLevelPercentage,
+              supportLevel: support.supportLevel * 25,
               comments: support.comments,
             });
           }
         }
-        
-        allFeatures.push({
-          ...feature,
-          categoryName: category.name,
-          vendorSupport,
-        });
+        allFeatures.push({ ...feature, categoryName: category.name, vendorSupport });
       }
-    }
-    
+    });
+
     console.log(`[Context Builder] Total features collected: ${allFeatures.length}`);
 
-    // Get recent news for vendors in this market
-    const news: any[] = [];
+    // ── News (parallel per vendor) ───────────────────────────────────────────
     const { newsStorage } = await import("../news/storage");
-    
-    for (const vendor of enrichedVendors) {
-      try {
-        // Get news articles for this vendor
-        const vendorNews = await newsStorage.getArticles({ 
-          vendorId: vendor.id,
-          limit: 5 
-        });
-        news.push(...vendorNews.map((article: any) => ({
-          ...article,
-          vendorName: vendor.name,
-          vendorId: vendor.id,
-        })));
-      } catch (e) {
-        // News might not be available for all vendors
-        console.warn(`[Context Builder] No news found for vendor ${vendor.name}`);
-      }
-    }
-    
-    // Sort news by date (most recent first)
-    news.sort((a, b) => {
-      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-      return dateB - dateA;
-    });
-    
+    const vendorNewsArrays = await Promise.all(
+      enrichedVendors.map(async (vendor) => {
+        try {
+          const articles = await newsStorage.getArticles({ vendorId: vendor.id, limit: 5 });
+          return articles.map((a: any) => ({ ...a, vendorName: vendor.name, vendorId: vendor.id }));
+        } catch {
+          return [];
+        }
+      })
+    );
+    const news = vendorNewsArrays
+      .flat()
+      .sort((a, b) => {
+        const dA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dB - dA;
+      });
     console.log(`[Context Builder] Collected ${news.length} news articles`);
 
-    // Build quadrant data (positions)
+    // ── Quadrant ─────────────────────────────────────────────────────────────
     const quadrantData = {
       vendors: enrichedVendors.map((v) => ({
         id: v.id,
@@ -167,7 +143,7 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       yAxisLabel: "Viability",
     };
 
-    const contextData = {
+    const contextData: ChatContext = {
       marketId,
       marketName: market.name,
       vendors: enrichedVendors,
@@ -176,60 +152,33 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       news,
       quadrantData,
     };
-    
-    console.log(`[Context Builder] Context build complete:`, {
+
+    console.log(`[Context Builder] Context build complete`, {
       marketName: market.name,
       vendorsCount: enrichedVendors.length,
       criteriaCount: enrichedCriteria.length,
       featuresCount: allFeatures.length,
-      newsCount: news.length
+      newsCount: news.length,
     });
-    
+
     return contextData;
   } catch (error: any) {
     console.error(`[Context Builder] Error building market context:`, error);
-    console.error(`[Context Builder] Error stack:`, error.stack);
-    console.error(`[Context Builder] Error message:`, error.message);
     throw new Error(`Failed to build market context: ${error.message}`);
   }
 }
 
-/**
- * Determine quadrant position based on scores
- * Using median (50) as the threshold
- */
 function determineQuadrant(execution: number, viability: number): string {
-  const medianX = 50;
-  const medianY = 50;
-  
-  if (execution >= medianX && viability >= medianY) {
-    return "Leader";
-  } else if (execution >= medianX && viability < medianY) {
-    return "Challenger";
-  } else if (execution < medianX && viability >= medianY) {
-    return "Visionary";
-  } else {
-    return "Niche";
-  }
+  if (execution >= 50 && viability >= 50) return "Leader";
+  if (execution >= 50 && viability < 50) return "Challenger";
+  if (execution < 50 && viability >= 50) return "Visionary";
+  return "Niche";
 }
 
-/**
- * Generate a concise title for a conversation based on the first message
- */
 export function generateConversationTitle(firstMessage: string): string {
-  // Truncate to first 50 characters
   let title = firstMessage.substring(0, 50);
-  
-  // Try to end at a word boundary
   const lastSpace = title.lastIndexOf(" ");
-  if (lastSpace > 20) {
-    title = title.substring(0, lastSpace);
-  }
-  
-  // Add ellipsis if truncated
-  if (firstMessage.length > 50) {
-    title += "...";
-  }
-  
+  if (lastSpace > 20) title = title.substring(0, lastSpace);
+  if (firstMessage.length > 50) title += "...";
   return title;
 }
