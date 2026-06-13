@@ -39,10 +39,10 @@ interface ColorTheme {
 
 const COLOR_THEMES: Record<string, ColorTheme> = {
   "dark-blue-gold": {
-    topFill1: "#1e3a5f", topFill2: "#1e40af",
-    bottomFill1: "#fbbf24", bottomFill2: "#f59e0b",
-    topStroke: "#1e40af", bottomStroke: "#d97706",
-    topText: "#1e3a5f", bottomText: "#92400e",
+    topFill1: "#f59e0b", topFill2: "#fbbf24",
+    bottomFill1: "#1e40af", bottomFill2: "#1e3a5f",
+    topStroke: "#d97706", bottomStroke: "#1e40af",
+    topText: "#92400e", bottomText: "#1e3a5f",
   },
   "emerald-coral": {
     topFill1: "#064e3b", topFill2: "#059669",
