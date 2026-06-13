@@ -48,15 +48,17 @@ export default function Navigation() {
   const isMarketBuilderActive = location.includes("market-builder") && !location.includes("forecast");
   const isForecastBuilderActive = location.includes("forecast-builder");
 
-  const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey }[] = [
+  const vendorOnly = isVendorScoped && !isAdmin;
+
+  const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey; vendorHidden?: boolean }[] = [
     { href: "/platform",          label: "Platform" },
     { href: "/markets",           label: "Markets" },
-    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive, featureKey: "market_builder" },
-    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder" },
-    { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets" },
+    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive, featureKey: "market_builder", vendorHidden: true },
+    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder", vendorHidden: true },
+    { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets", vendorHidden: true },
     { href: "/licensing",         label: "Licensing" },
     { href: "/about",             label: "About Us" },
-  ];
+  ].filter(item => !(vendorOnly && item.vendorHidden));
 
   if (isAdminArea) {
     return (
