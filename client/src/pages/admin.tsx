@@ -45,7 +45,7 @@ function PendingBadge() {
 function FactCheckBadge() {
   const { data } = useQuery<{ count: number }>({
     queryKey: ["/api/admin/fact-check-flags/pending-count"],
-    refetchInterval: 60000,
+    refetchInterval: 86400000,
   });
   const count = data?.count ?? 0;
   if (!count) return null;
