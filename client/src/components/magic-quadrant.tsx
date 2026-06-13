@@ -677,7 +677,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
       .tickSize(-chartWidth)
-      .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
+      .tickFormat(d => d === 50 || d === 100 ? `${d}` : '');
 
     svg.append("g")
       .attr("class", "x-axis")
