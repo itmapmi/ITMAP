@@ -699,26 +699,38 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-size", isMobile ? "10px" : "12px")
       .attr("font-weight", "600");
 
-    // Add professional axis labels
+    // Add professional axis labels — positioned close to the chart box
     const axisLabelSize = isMobile ? "11px" : "14px";
+    // X-axis label: sits just below the tick numbers (margin.bottom - 8px clearance)
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - 10)
+      .attr("y", height - margin.bottom + (isMobile ? 32 : 36))
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
       .text(isMobile ? "Execution" : "Product Strategy and Execution");
 
+    // Y-axis label: sits just left of the chart box (margin.left - small gap)
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", 15)
+      .attr("y", margin.left - (isMobile ? 6 : 8))
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
       .text(isMobile ? "Viability" : "Vendor Viability");
+
+    // DCIG Inc. watermark — bottom right, outside the grid
+    svg.append("text")
+      .attr("x", width - margin.right)
+      .attr("y", height - (isMobile ? 4 : 6))
+      .attr("text-anchor", "end")
+      .attr("font-size", isMobile ? "9px" : "11px")
+      .attr("font-weight", "500")
+      .attr("fill", "#94a3b8")
+      .text("DCIG Inc.");
 
     // ── Two-band zone labels ─────────────────────────────────────────────────
     const bandLabelSize = isMobile ? "11px" : "14px";
