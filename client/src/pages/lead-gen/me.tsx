@@ -240,7 +240,7 @@ export default function LeadGenMyVendorPage() {
   });
 
   const flagMutation = useMutation({
-    mutationFn: async (body: object) => apiRequest("POST", "/api/lead-gen/me/fact-review/flags", body),
+    mutationFn: async (body: object) => apiRequest("/api/lead-gen/me/fact-review/flags", "POST", body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-gen/me/fact-review"] });
       setFlagRow(null);
