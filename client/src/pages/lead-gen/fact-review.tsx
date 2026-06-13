@@ -124,7 +124,7 @@ function FactSection({
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">{title}</h3>
       <div className="space-y-2">
         {categories.map(([category, catRows]) => {
-          const isOpen = !collapsed[category];
+          const isOpen = collapsed[category] === true;
           const pendingCount = catRows.filter((r) => r.flag?.status === "pending").length;
           return (
             <GlassCard key={category} className="overflow-hidden">
