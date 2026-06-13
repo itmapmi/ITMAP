@@ -54,11 +54,20 @@ function resolveScope(req: Request): { vendorId?: string; marketId?: string } {
   return { vendorId, marketId };
 }
 
-// The vendor a request is scoped to. Admins have no scope (they see everything
-// via query filters); a vendor-side seat is hard-pinned to its own vendor.
-function vendorScopeId(req: Request): string | null {
+// Returns ALL vendor IDs assigned to this seat. Prefers the explicit
+// vendorScopeIds array (set by the multi-market picker); falls back to the
+// legacy single vendorScopeId for older seat records.
+function vendorScopeIds(req: Request): string[] {
   const user = req.user as any;
-  return user?.vendorScopeId ?? null;
+  const ids = user?.vendorScopeIds as string[] | null | undefined;
+  if (ids?.length) return ids;
+  const single = user?.vendorScopeId as string | null | undefined;
+  return single ? [single] : [];
+}
+
+// Returns the primary vendor ID (first in the list, or null if no seat).
+function vendorScopeId(req: Request): string | null {
+  return vendorScopeIds(req)[0] ?? null;
 }
 
 // Gate for the vendor-facing surface: only authenticated users that have a
@@ -68,7 +77,7 @@ function requireVendorScope(req: Request, res: Response, next: () => void) {
   if (!req.isAuthenticated?.()) {
     return res.status(401).json({ error: "Authentication required" });
   }
-  if (!vendorScopeId(req)) {
+  if (vendorScopeIds(req).length === 0) {
     return res.status(403).json({ error: "No vendor seat assigned to this account" });
   }
   next();
@@ -882,25 +891,34 @@ export function registerLeadGenRoutes(app: Express): void {
     try {
       const myVendorId = vendorScopeId(req)!;
       const myUserId = (req.user as any).id as string;
-      const primaryVendor = await storage.getVendorBrief(myVendorId);
-      if (!primaryVendor) return res.status(404).json({ error: "Assigned vendor not found" });
-
-      // Find all vendor records sharing this company name (multi-market support).
-      const allVendors = await storage.getVendorsByName(primaryVendor.name);
+      // Use the explicit vendorScopeIds list when set; fall back to name-matching
+      // from the primary vendorScopeId for legacy single-market seats that have not
+      // yet been migrated to the array field.
+      const explicitIds = vendorScopeIds(req);
+      let scopedVendorIds: string[];
+      if (explicitIds.length > 0) {
+        scopedVendorIds = explicitIds;
+      } else {
+        // Legacy fallback: find all vendors sharing the primary vendor's name.
+        const primaryVendor = await storage.getVendorBrief(myVendorId!);
+        if (!primaryVendor) return res.status(404).json({ error: "Assigned vendor not found" });
+        const byName = await storage.getVendorsByName(primaryVendor.name);
+        scopedVendorIds = byName.map((v) => v.id);
+      }
 
       const markets = await Promise.all(
-        allVendors
-          .filter((v) => !!v.marketId)
-          .map(async (vendor) => {
-            const [market, { productRows, ecosystemRows }] = await Promise.all([
-              storage.getMarketById(vendor.marketId!),
-              storage.getFactReviewRows(vendor.id, vendor.marketId!, myUserId),
-            ]);
-            return { vendor, market: market ?? null, productRows, ecosystemRows };
-          }),
+        scopedVendorIds.map(async (vendorId) => {
+          const vendor = await storage.getVendorBrief(vendorId);
+          if (!vendor?.marketId) return null;
+          const [market, { productRows, ecosystemRows }] = await Promise.all([
+            storage.getMarketById(vendor.marketId),
+            storage.getFactReviewRows(vendor.id, vendor.marketId, myUserId),
+          ]);
+          return { vendor, market: market ?? null, productRows, ecosystemRows };
+        }),
       );
 
-      res.json({ markets });
+      res.json({ markets: markets.filter(Boolean) });
     } catch (err) {
       console.error("[fact-check] me fact-review error:", err);
       res.status(500).json({ error: "Failed to load fact review" });

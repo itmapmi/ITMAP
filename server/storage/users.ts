@@ -127,10 +127,16 @@ export async function updateUserLastInviteSentAt(id: string): Promise<User> {
 }
 
 // Pin (or clear) a user's vendor-scoped seat for the Lead-Gen panel.
-export async function updateUserVendorScope(id: string, vendorScopeId: string | null): Promise<User> {
+// Accepts an explicit list of vendor IDs (multi-market). The primary
+// vendorScopeId is set to the first element for backward compat.
+export async function updateUserVendorScope(
+  id: string,
+  vendorScopeIds: string[],
+): Promise<User> {
+  const primary = vendorScopeIds[0] ?? null;
   const [updated] = await db
     .update(users)
-    .set({ vendorScopeId, updatedAt: new Date() })
+    .set({ vendorScopeId: primary, vendorScopeIds: vendorScopeIds.length ? vendorScopeIds : null, updatedAt: new Date() })
     .where(eq(users.id, id))
     .returning();
   return updated!;

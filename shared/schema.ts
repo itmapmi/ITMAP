@@ -28,9 +28,13 @@ export const users = pgTable("users", {
   featureAccess: text("feature_access").array().notNull().default(sql`'{}'::text[]`),
 
   // Vendor-scoped account: when set, this user is a vendor-side seat that may
-  // only see buyer-intent leads for this one vendor (the Lead-Gen panel is
-  // pinned to it). Null = a normal buyer/admin account. Admins ignore this.
+  // only see buyer-intent leads for this vendor (the Lead-Gen panel is pinned
+  // to it). Null = a normal buyer/admin account. Admins ignore this.
+  // vendorScopeId = primary vendor (kept for backward compat + single-market seats).
+  // vendorScopeIds = explicit multi-market list; when set, takes precedence over
+  // the name-matching fallback. Always kept in sync by updateUserVendorScope.
   vendorScopeId: varchar("vendor_scope_id").references((): any => vendors.id, { onDelete: "set null" }),
+  vendorScopeIds: text("vendor_scope_ids").array(),
 
   // OAuth provider info
   googleId: text("google_id").unique(),

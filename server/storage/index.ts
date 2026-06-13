@@ -165,7 +165,7 @@ export interface IStorage {
   getAdminUsers(): Promise<User[]>;
   getAllUsers(): Promise<User[]>;
   updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
-  updateUserVendorScope(id: string, vendorScopeId: string | null): Promise<User>;
+  updateUserVendorScope(id: string, vendorScopeIds: string[]): Promise<User>;
   updateUserLastInviteSentAt(id: string): Promise<User>;
   deleteInvitedUser(id: string): Promise<boolean>;
 

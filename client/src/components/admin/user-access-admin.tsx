@@ -104,6 +104,121 @@ function parseEmailsFromCsv(text: string): string[] {
   return [...new Set(emails)];
 }
 
+// ── Multi-vendor seat picker ─────────────────────────────────────────────────
+
+interface VendorScopePickerProps {
+  user: AdminUser;
+  vendors: { id: string; name: string; marketId: string | null }[];
+  markets: { id: string; name: string }[];
+  onSave: (ids: string[]) => void;
+  isPending: boolean;
+}
+
+function VendorScopePicker({ user, vendors, markets, onSave, isPending }: VendorScopePickerProps) {
+  const [open, setOpen] = useState(false);
+  const initialIds: string[] = user.vendorScopeIds?.length
+    ? user.vendorScopeIds
+    : user.vendorScopeId
+    ? [user.vendorScopeId]
+    : [];
+  const [selected, setSelected] = useState<string[]>(initialIds);
+
+  // Re-sync selection when the user row changes from outside.
+  const currentIds: string[] = user.vendorScopeIds?.length
+    ? user.vendorScopeIds
+    : user.vendorScopeId
+    ? [user.vendorScopeId]
+    : [];
+
+  const byMarket = useMemo(() => {
+    const map = new Map<string, { marketName: string; vendors: typeof vendors }>();
+    for (const v of vendors) {
+      const key = v.marketId ?? "__none__";
+      if (!map.has(key)) {
+        const mkt = markets.find((m) => m.id === v.marketId);
+        map.set(key, { marketName: mkt?.name ?? "Unknown market", vendors: [] });
+      }
+      map.get(key)!.vendors.push(v);
+    }
+    return [...map.values()].sort((a, b) => a.marketName.localeCompare(b.marketName));
+  }, [vendors, markets]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const handleOpen = (val: boolean) => {
+    if (val) setSelected(currentIds);
+    setOpen(val);
+  };
+
+  const save = () => {
+    onSave(selected);
+    setOpen(false);
+  };
+
+  const labelNames = currentIds
+    .map((id) => vendors.find((v) => v.id === id)?.name)
+    .filter(Boolean) as string[];
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <button
+          disabled={isPending}
+          className="w-full text-left truncate rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {labelNames.length === 0 ? (
+            <span className="text-gray-400">No vendor seat</span>
+          ) : labelNames.length === 1 ? (
+            labelNames[0]
+          ) : (
+            <span>{labelNames[0]} <span className="text-gray-500">+{labelNames.length - 1} more</span></span>
+          )}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assign Vendor Seats</DialogTitle>
+          <DialogDescription>
+            Select which vendor(s) this user can review and see leads for. Multiple markets are supported.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-64 overflow-y-auto space-y-4 py-2 pr-1">
+          {byMarket.map(({ marketName, vendors: mvs }) => (
+            <div key={marketName}>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{marketName}</p>
+              <div className="space-y-1">
+                {mvs.map((v) => (
+                  <label key={v.id} className="flex cursor-pointer items-center gap-2 py-0.5">
+                    <Checkbox
+                      checked={selected.includes(v.id)}
+                      onCheckedChange={() => toggle(v.id)}
+                      id={`vsp-${user.id}-${v.id}`}
+                    />
+                    <span className="text-sm">{v.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          {byMarket.length === 0 && (
+            <p className="text-sm text-gray-400">No vendors found.</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t pt-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelected([])}>
+            Clear all
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={save} disabled={isPending}>Save</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ManageAudienceDialog({
   seat,
   markets,
@@ -508,14 +623,18 @@ export function UserAccessAdmin() {
   });
 
   const vendorScopeMutation = useMutation({
-    mutationFn: async ({ id, vendorScopeId }: { id: string; vendorScopeId: string | null }) => {
-      return apiRequest(`/api/admin/users/${id}/vendor-scope`, "PATCH", { vendorScopeId });
+    mutationFn: async ({ id, vendorScopeIds }: { id: string; vendorScopeIds: string[] }) => {
+      return apiRequest(`/api/admin/users/${id}/vendor-scope`, "PATCH", { vendorScopeIds });
     },
-    onMutate: async ({ id, vendorScopeId }) => {
+    onMutate: async ({ id, vendorScopeIds }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/admin/users"] });
       const previous = queryClient.getQueryData<AdminUser[]>(["/api/admin/users"]);
       queryClient.setQueryData<AdminUser[]>(["/api/admin/users"], (old) =>
-        (old ?? []).map((u) => (u.id === id ? { ...u, vendorScopeId } : u)),
+        (old ?? []).map((u) =>
+          u.id === id
+            ? { ...u, vendorScopeIds, vendorScopeId: vendorScopeIds[0] ?? null }
+            : u,
+        ),
       );
       return { previous };
     },
@@ -732,27 +851,17 @@ export function UserAccessAdmin() {
                       {isAdminUser || isInvited ? (
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
-                        <select
-                          value={user.vendorScopeId ?? ""}
-                          disabled={vendorScopeMutation.isPending}
-                          onChange={(e) =>
-                            vendorScopeMutation.mutate({
-                              id: user.id,
-                              vendorScopeId: e.target.value || null,
-                            })
-                          }
-                          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
-                          data-testid={`select-vendor-scope-${user.id}`}
-                        >
-                          <option value="">No vendor seat</option>
-                          {vendors.map((v) => (
-                            <option key={v.id} value={v.id}>{v.name}</option>
-                          ))}
-                        </select>
+                        <VendorScopePicker
+                          user={user}
+                          vendors={vendors}
+                          markets={markets}
+                          onSave={(ids) => vendorScopeMutation.mutate({ id: user.id, vendorScopeIds: ids })}
+                          isPending={vendorScopeMutation.isPending}
+                        />
                       )}
                     </TableCell>
                     <TableCell>
-                      {isAdminUser || isInvited || !user.vendorScopeId ? (
+                      {isAdminUser || isInvited || (!user.vendorScopeId && !user.vendorScopeIds?.length) ? (
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
                         <ManageAudienceDialog seat={user} markets={markets} endUsers={endUsers} />

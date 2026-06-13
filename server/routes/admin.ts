@@ -190,15 +190,16 @@ export function registerAdminRoutes(app: Express): void {
 
   app.patch("/api/admin/users/:id/vendor-scope", requireAdmin, async (req, res) => {
     try {
-      const schema = z.object({ vendorScopeId: z.string().min(1).nullable() });
-      const { vendorScopeId } = schema.parse(req.body);
+      const schema = z.object({ vendorScopeIds: z.array(z.string().min(1)) });
+      const { vendorScopeIds } = schema.parse(req.body);
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ error: "User not found" });
-      if (vendorScopeId) {
-        const vendor = await storage.getVendorBrief(vendorScopeId);
-        if (!vendor) return res.status(404).json({ error: "Vendor not found" });
+      // Validate every vendor ID exists.
+      for (const vid of vendorScopeIds) {
+        const vendor = await storage.getVendorBrief(vid);
+        if (!vendor) return res.status(404).json({ error: `Vendor ${vid} not found` });
       }
-      const updated = await storage.updateUserVendorScope(req.params.id, vendorScopeId);
+      const updated = await storage.updateUserVendorScope(req.params.id, vendorScopeIds);
       const { password, ...safe } = updated;
       res.json(safe);
     } catch (error) {
