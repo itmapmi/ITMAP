@@ -40,25 +40,25 @@ interface ColorTheme {
 
 const COLOR_THEMES: Record<string, ColorTheme> = {
   "dark-blue-gold": {
-    topFillHighlight: "#fff8e1", topFill2: "#fcd34d",  topFill1: "#b45309",
-    bottomFillHighlight: "#e0f2fe", bottomFill2: "#3b82f6", bottomFill1: "#1e3a8a",
-    topStroke: "#f59e0b", bottomStroke: "#2563eb",
-    topText: "#78350f", bottomText: "#1e3a8a",
-    dotColor: "#facc15", dotDark: "#92400e",
+    topFillHighlight: "#C8961E", topFill2: "#C8961E", topFill1: "#C8961E",
+    bottomFillHighlight: "#1B3A6B", bottomFill2: "#1B3A6B", bottomFill1: "#1B3A6B",
+    topStroke: "#C8961E", bottomStroke: "#1B3A6B",
+    topText: "#ffffff", bottomText: "#ffffff",
+    dotColor: "#C8961E", dotDark: "#7C5209",
   },
   "emerald-coral": {
-    topFillHighlight: "#ecfdf5", topFill2: "#34d399", topFill1: "#065f46",
-    bottomFillHighlight: "#fff7ed", bottomFill2: "#fb923c", bottomFill1: "#9a3412",
-    topStroke: "#10b981", bottomStroke: "#ea580c",
-    topText: "#064e3b", bottomText: "#9a3412",
-    dotColor: "#34d399", dotDark: "#065f46",
+    topFillHighlight: "#059669", topFill2: "#059669", topFill1: "#059669",
+    bottomFillHighlight: "#ea580c", bottomFill2: "#ea580c", bottomFill1: "#ea580c",
+    topStroke: "#059669", bottomStroke: "#ea580c",
+    topText: "#ffffff", bottomText: "#ffffff",
+    dotColor: "#059669", dotDark: "#064e3b",
   },
   "violet-rose": {
-    topFillHighlight: "#f5f3ff", topFill2: "#a78bfa", topFill1: "#4c1d95",
-    bottomFillHighlight: "#fff1f2", bottomFill2: "#fb7185", bottomFill1: "#9f1239",
-    topStroke: "#8b5cf6", bottomStroke: "#f43f5e",
-    topText: "#4c1d95", bottomText: "#9f1239",
-    dotColor: "#a78bfa", dotDark: "#4c1d95",
+    topFillHighlight: "#7c3aed", topFill2: "#7c3aed", topFill1: "#7c3aed",
+    bottomFillHighlight: "#e11d48", bottomFill2: "#e11d48", bottomFill1: "#e11d48",
+    topStroke: "#7c3aed", bottomStroke: "#e11d48",
+    topText: "#ffffff", bottomText: "#ffffff",
+    dotColor: "#7c3aed", dotDark: "#4c1d95",
   },
 };
 
@@ -620,53 +620,30 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
-    // ── Glossy band gradients (3-stop: bright highlight → rich mid → deep base) ──
+    // ── Flat-colour band fills — fully opaque so true gold/navy show through ──
     const topGradient = defs.append("linearGradient")
       .attr("id", "topBandGradient")
       .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
     topGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.topFillHighlight).attr("stop-opacity", 0.72);
-    topGradient.append("stop").attr("offset", "45%")
-      .attr("stop-color", theme.topFill2).attr("stop-opacity", 0.60);
+      .attr("stop-color", theme.topFill1).attr("stop-opacity", 1);
     topGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", theme.topFill1).attr("stop-opacity", 0.75);
+      .attr("stop-color", theme.topFill1).attr("stop-opacity", 1);
 
     const bottomGradient = defs.append("linearGradient")
       .attr("id", "bottomBandGradient")
       .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
     bottomGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.bottomFillHighlight).attr("stop-opacity", 0.65);
-    bottomGradient.append("stop").attr("offset", "45%")
-      .attr("stop-color", theme.bottomFill2).attr("stop-opacity", 0.58);
+      .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 1);
     bottomGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 0.72);
+      .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 1);
 
-    // Glass sheen gradient (white → transparent, laid over top ~30% of each band)
-    const sheenGradient = defs.append("linearGradient")
-      .attr("id", "sheenGradient")
-      .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
-    sheenGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", "#ffffff").attr("stop-opacity", 0.32);
-    sheenGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", "#ffffff").attr("stop-opacity", 0);
-
-    // Dot radial gradient (bright highlight centre → rich → dark edge = 3-D sphere)
-    const dotGradient = defs.append("radialGradient")
-      .attr("id", "dotGradient")
-      .attr("cx", "35%").attr("cy", "30%").attr("r", "65%");
-    dotGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", "#ffffff").attr("stop-opacity", 0.90);
-    dotGradient.append("stop").attr("offset", "40%")
-      .attr("stop-color", theme.dotColor).attr("stop-opacity", 1);
-    dotGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", theme.dotDark).attr("stop-opacity", 1);
 
     // Compute the Y pixel position of the dividing line
     const divY = yScale(settings.dividerY);
     const topBandH = Math.max(0, divY - margin.top);
     const bottomBandH = Math.max(0, height - margin.bottom - divY);
 
-    // Top band
+    // Top band — flat gold
     svg.append("rect")
       .attr("x", margin.left).attr("y", margin.top)
       .attr("width", chartWidth).attr("height", topBandH)
@@ -674,29 +651,13 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("stroke", theme.topStroke).attr("stroke-width", 2)
       .attr("rx", 8).attr("ry", 8);
 
-    // Top band glass sheen (top 30%)
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", margin.top)
-      .attr("width", chartWidth).attr("height", topBandH * 0.30)
-      .attr("fill", "url(#sheenGradient)")
-      .attr("rx", 8).attr("ry", 8)
-      .attr("pointer-events", "none");
-
-    // Bottom band
+    // Bottom band — flat navy
     svg.append("rect")
       .attr("x", margin.left).attr("y", divY)
       .attr("width", chartWidth).attr("height", bottomBandH)
       .attr("fill", "url(#bottomBandGradient)")
       .attr("stroke", theme.bottomStroke).attr("stroke-width", 2)
       .attr("rx", 8).attr("ry", 8);
-
-    // Bottom band glass sheen (top 30%)
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", divY)
-      .attr("width", chartWidth).attr("height", bottomBandH * 0.30)
-      .attr("fill", "url(#sheenGradient)")
-      .attr("rx", 8).attr("ry", 8)
-      .attr("pointer-events", "none");
 
     // Dividing line — solid, bright, with glow
     svg.append("line")
@@ -801,22 +762,22 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .append("g")
       .attr("class", "vendor-group");
 
-    // Add glossy vendor dots (radial gradient = 3-D sphere look)
+    // Vendor dots — original size, white fill with themed stroke for clean executive look
     vendorGroups.append("circle")
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.adjustedX))
       .attr("cy", d => yScale(d.adjustedY))
-      .attr("r", 7)
-      .attr("fill", "url(#dotGradient)")
-      .attr("stroke", "#ffffff")
-      .attr("stroke-width", 2)
+      .attr("r", 6)
+      .attr("fill", "#ffffff")
+      .attr("stroke", theme.dotColor)
+      .attr("stroke-width", 2.5)
       .style("cursor", "pointer")
-      .style("filter", `drop-shadow(0 3px 6px ${theme.dotDark}88)`)
+      .style("filter", `drop-shadow(0 2px 5px ${theme.dotDark}99)`)
       .on("mouseover", function(event, d) {
         d3.select(this)
-          .attr("r", 10)
+          .attr("r", 9)
           .attr("stroke-width", 3)
-          .style("filter", `drop-shadow(0 5px 10px ${theme.dotDark}cc)`);
+          .style("filter", `drop-shadow(0 3px 8px ${theme.dotDark}cc)`);
         const parentGroup = d3.select(this.parentNode as Element);
         const hoverFontSize = isMobile ? 10 : 12;
         parentGroup.select(".vendor-label")
@@ -825,9 +786,9 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       })
       .on("mouseout", function(event, d) {
         d3.select(this)
-          .attr("r", 7)
-          .attr("stroke-width", 2)
-          .style("filter", `drop-shadow(0 3px 6px ${theme.dotDark}88)`);
+          .attr("r", 6)
+          .attr("stroke-width", 2.5)
+          .style("filter", `drop-shadow(0 2px 5px ${theme.dotDark}99)`);
         const parentGroup = d3.select(this.parentNode as Element);
         const normalFontSize = isMobile ? 9 : 11;
         parentGroup.select(".vendor-label")
