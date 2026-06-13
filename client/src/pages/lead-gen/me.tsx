@@ -78,30 +78,27 @@ type Tab = "intent" | "audience" | "fact-review";
 
 const stripMarket = (n: string | null) => (n ?? "").replace(/^ITMAP for /i, "");
 
-const HARVEY_LABELS = ["None", "Minimal", "Partial", "Mostly", "Full"];
+const HARVEY_LABELS = ["None", "Limited", "Partial", "Good", "Full"];
+
+const HARVEY_CHARS = ["○", "◔", "◑", "◕", "●"];
+const HARVEY_COLORS = [
+  "text-gray-400",
+  "text-orange-500",
+  "text-yellow-500",
+  "text-blue-500",
+  "text-green-500",
+];
 
 function HarveyBall({ level, size = 18 }: { level: number; size?: number }) {
-  const pct = (level / 4) * 100;
-  const r = size / 2 - 1;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circumference = 2 * Math.PI * r;
-  const filled = (pct / 100) * circumference;
+  const fontSize = Math.round(size * 1.2);
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
-      <circle cx={cx} cy={cy} r={r} fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-      {pct > 0 && (
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke="#22d3ee"
-          strokeWidth={r * 2}
-          strokeDasharray={`${filled} ${circumference}`}
-          strokeDashoffset={circumference / 4}
-        />
-      )}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-    </svg>
+    <span
+      className={`shrink-0 leading-none ${HARVEY_COLORS[level] ?? "text-gray-400"}`}
+      style={{ fontSize }}
+      title={HARVEY_LABELS[level]}
+    >
+      {HARVEY_CHARS[level] ?? "○"}
+    </span>
   );
 }
 
@@ -534,7 +531,7 @@ export default function LeadGenMyVendorPage() {
                       className={`flex-1 rounded-md border py-2 text-xs font-medium transition ${flagLevel === v ? "border-cyan-500 bg-cyan-500/10 text-cyan-400" : "border-white/10 text-slate-400 hover:border-white/20"}`}
                     >
                       <div className="flex justify-center mb-1"><HarveyBall level={v} size={16} /></div>
-                      {v}
+                      {HARVEY_LABELS[v]}
                     </button>
                   ))}
                 </div>
