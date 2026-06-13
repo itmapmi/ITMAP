@@ -711,11 +711,11 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("fill", "#374151")
       .text(isMobile ? "Execution" : "Product Strategy and Execution");
 
-    // Y-axis label: sits just left of the chart box (margin.left - small gap)
+    // Y-axis label: positioned left of the tick numbers to avoid overlapping "50"
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", margin.left - (isMobile ? 6 : 8))
+      .attr("y", isMobile ? 12 : 18)
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
