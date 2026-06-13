@@ -56,6 +56,7 @@ export * from "./rfps";
 export * from "./datasheets";
 export * from "./leadGen";
 export * from "./vendorAudience";
+export * from "./factCheck";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";

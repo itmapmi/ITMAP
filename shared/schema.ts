@@ -1078,6 +1078,38 @@ export const insertVendorSeatAudienceSchema = createInsertSchema(vendorSeatAudie
 export type VendorSeatAudience = typeof vendorSeatAudience.$inferSelect;
 export type InsertVendorSeatAudience = z.infer<typeof insertVendorSeatAudienceSchema>;
 
+// ── Vendor Fact-Check Flags ─────────────────────────────────────────────────
+// Vendors with a seat assigned can flag their own feature-support rows with a
+// proposed correction + evidence. Admins review and apply approved changes.
+// Scope: a flag always belongs to exactly one vendor (the seat's vendorScopeId).
+// Vendors can flag rows for both draft and published markets.
+export const vendorFactCheckFlags = pgTable("vendor_fact_check_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  featureSupportId: varchar("feature_support_id").notNull().references(() => vendorFeatureSupport.id, { onDelete: "cascade" }),
+  reportedByUserId: varchar("reported_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  proposedSupportLevel: integer("proposed_support_level"),
+  evidenceLinks: text("evidence_links"),
+  notes: text("notes"),
+  status: text("status").notNull().default("pending"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+export const insertVendorFactCheckFlagSchema = createInsertSchema(vendorFactCheckFlags).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
+  reviewedByUserId: true,
+  adminNotes: true,
+  status: true,
+});
+
+export type VendorFactCheckFlag = typeof vendorFactCheckFlags.$inferSelect;
+export type InsertVendorFactCheckFlag = z.infer<typeof insertVendorFactCheckFlagSchema>;
+
 /**
  * Allowlist of lead-gen event types. The client beacon is validated against
  * this set; anything else is rejected. `source` notes where a type is

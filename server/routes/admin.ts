@@ -1157,4 +1157,53 @@ export function registerAdminRoutes(app: Express): void {
       return res.status(500).json({ error: err?.message ?? String(err) });
     }
   });
+
+  // ── Fact-Check Flags ─────────────────────────────────────────────────────
+  // Must register /pending-count before /:id so the literal segment wins.
+
+  app.get("/api/admin/fact-check-flags/pending-count", requireAdmin, async (_req, res) => {
+    try {
+      const count = await storage.getPendingFactCheckFlagCount();
+      res.json({ count });
+    } catch (err) {
+      console.error("[fact-check] pending count error:", err);
+      res.status(500).json({ error: "Failed to get pending count" });
+    }
+  });
+
+  app.get("/api/admin/fact-check-flags", requireAdmin, async (_req, res) => {
+    try {
+      const flags = await storage.getAllFactCheckFlags();
+      res.json({ flags });
+    } catch (err) {
+      console.error("[fact-check] admin list error:", err);
+      res.status(500).json({ error: "Failed to load flags" });
+    }
+  });
+
+  app.patch("/api/admin/fact-check-flags/:id", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        status: z.enum(["approved", "rejected"]),
+        updatedSupportLevel: z.number().int().min(0).max(4).optional(),
+        updatedComments: z.string().optional(),
+        adminNotes: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
+      const reviewedByUserId = (req.user as any).id as string;
+      const { status, updatedSupportLevel, updatedComments, adminNotes } = parsed.data;
+      let flag;
+      if (status === "approved") {
+        flag = await storage.approveFactCheckFlag(req.params.id, reviewedByUserId, updatedSupportLevel, updatedComments);
+      } else {
+        flag = await storage.rejectFactCheckFlag(req.params.id, reviewedByUserId, adminNotes);
+      }
+      if (!flag) return res.status(404).json({ error: "Flag not found" });
+      res.json(flag);
+    } catch (err) {
+      console.error("[fact-check] admin review error:", err);
+      res.status(500).json({ error: "Failed to review flag" });
+    }
+  });
 }

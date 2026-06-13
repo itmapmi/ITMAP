@@ -22,6 +22,7 @@ import { UserMarketsAdmin } from "@/components/admin/user-markets-admin";
 import { UserRfpsAdmin } from "@/components/admin/user-rfps-admin";
 import DatasheetsAdmin from "@/components/admin/datasheets-admin";
 import { UserAccessAdmin } from "@/components/admin/user-access-admin";
+import { FactCheckFlagsAdmin } from "@/components/admin/fact-check-flags-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
@@ -36,6 +37,20 @@ function PendingBadge() {
   if (!count) return null;
   return (
     <span className="rounded-full bg-amber-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
+      {count}
+    </span>
+  );
+}
+
+function FactCheckBadge() {
+  const { data } = useQuery<{ count: number }>({
+    queryKey: ["/api/admin/fact-check-flags/pending-count"],
+    refetchInterval: 60000,
+  });
+  const count = data?.count ?? 0;
+  if (!count) return null;
+  return (
+    <span className="rounded-full bg-rose-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
       {count}
     </span>
   );
@@ -160,6 +175,10 @@ export default function Admin() {
             <TabsTrigger value="operations">Operations</TabsTrigger>
             <TabsTrigger value="datasheets">Datasheets</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+            <TabsTrigger value="fact-check-flags" className="gap-1.5">
+              Fact-Check
+              <FactCheckBadge />
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -251,6 +270,10 @@ export default function Admin() {
 
           <TabsContent value="api-keys" className="mt-6">
             <ApiKeysAdmin />
+          </TabsContent>
+
+          <TabsContent value="fact-check-flags" className="mt-6">
+            <FactCheckFlagsAdmin />
           </TabsContent>
         </Tabs>
       </motion.div>

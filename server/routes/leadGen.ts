@@ -873,6 +873,61 @@ export function registerLeadGenRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to load lead" });
     }
   });
+
+  // ── Vendor Fact-Check (vendor seat only) ────────────────────────────────
+  // Vendors read their own feature-support rows and submit correction flags.
+  // Hard-pinned to vendorScopeId — no cross-vendor or cross-market access.
+
+  app.get("/api/lead-gen/me/fact-review", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const myVendorId = vendorScopeId(req)!;
+      const myUserId = (req.user as any).id as string;
+      const vendor = await storage.getVendorBrief(myVendorId);
+      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      const { productRows, ecosystemRows } = await storage.getFactReviewRows(myVendorId, myUserId);
+      const market = vendor.marketId ? await storage.getMarketById(vendor.marketId) : null;
+      res.json({ vendor, market, productRows, ecosystemRows });
+    } catch (err) {
+      console.error("[fact-check] me fact-review error:", err);
+      res.status(500).json({ error: "Failed to load fact review" });
+    }
+  });
+
+  app.post("/api/lead-gen/me/fact-review/flags", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const myVendorId = vendorScopeId(req)!;
+      const myUserId = (req.user as any).id as string;
+      const schema = z.object({
+        featureSupportId: z.string().min(1),
+        proposedSupportLevel: z.number().int().min(0).max(4).nullable().optional(),
+        evidenceLinks: z.string().max(2000).nullable().optional(),
+        notes: z.string().max(2000).nullable().optional(),
+      }).refine(
+        (d) => d.proposedSupportLevel != null || (d.evidenceLinks?.trim()) || (d.notes?.trim()),
+        { message: "At least one of: proposed level, evidence links, or notes must be provided" },
+      );
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });
+      }
+      const { featureSupportId, proposedSupportLevel, evidenceLinks, notes } = parsed.data;
+      const flag = await storage.createFactCheckFlag({
+        vendorId: myVendorId,
+        featureSupportId,
+        reportedByUserId: myUserId,
+        proposedSupportLevel: proposedSupportLevel ?? null,
+        evidenceLinks: evidenceLinks ?? null,
+        notes: notes ?? null,
+      });
+      if (!flag) {
+        return res.status(403).json({ error: "Feature not found or does not belong to your vendor" });
+      }
+      res.status(201).json(flag);
+    } catch (err) {
+      console.error("[fact-check] me flag create error:", err);
+      res.status(500).json({ error: "Failed to submit flag" });
+    }
+  });
 }
 
 function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & object, name: string): string {
