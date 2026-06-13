@@ -647,21 +647,19 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     const topBandH = Math.max(0, divY - margin.top);
     const bottomBandH = Math.max(0, height - margin.bottom - divY);
 
-    // Top band — flat gold
+    // Top band — flat gold, sharp corners
     svg.append("rect")
       .attr("x", margin.left).attr("y", margin.top)
       .attr("width", chartWidth).attr("height", topBandH)
       .attr("fill", "url(#topBandGradient)")
-      .attr("stroke", theme.topStroke).attr("stroke-width", 2)
-      .attr("rx", 8).attr("ry", 8);
+      .attr("stroke", theme.topStroke).attr("stroke-width", 1.5);
 
-    // Bottom band — flat navy
+    // Bottom band — flat navy, sharp corners
     svg.append("rect")
       .attr("x", margin.left).attr("y", divY)
       .attr("width", chartWidth).attr("height", bottomBandH)
       .attr("fill", "url(#bottomBandGradient)")
-      .attr("stroke", theme.bottomStroke).attr("stroke-width", 2)
-      .attr("rx", 8).attr("ry", 8);
+      .attr("stroke", theme.bottomStroke).attr("stroke-width", 1.5);
 
     // Dividing line — solid, bright, with glow
     svg.append("line")
