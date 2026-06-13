@@ -82,7 +82,10 @@ export default function GraphicManagement() {
         quadrantTopLabel: pendingSettings.topLabel,
         quadrantColorTheme: pendingSettings.colorTheme,
       });
-      await queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/markets"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarketId] }),
+      ]);
       toast({ title: "Settings Saved", description: "Chart settings updated for this market." });
     } catch {
       toast({ title: "Error", description: "Failed to save chart settings.", variant: "destructive" });
