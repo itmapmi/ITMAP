@@ -891,19 +891,22 @@ export function registerLeadGenRoutes(app: Express): void {
     try {
       const myVendorId = vendorScopeId(req)!;
       const myUserId = (req.user as any).id as string;
-      // Use the explicit vendorScopeIds list when set; fall back to name-matching
-      // from the primary vendorScopeId for legacy single-market seats that have not
-      // yet been migrated to the array field.
-      const explicitIds = vendorScopeIds(req);
+      // Check whether the vendor_scope_ids array was explicitly set (non-null in DB).
+      // If it was, use it directly. If it was never set (NULL — old single-field
+      // accounts), fall back to name-matching so same-named vendors across markets
+      // are all included. vendorScopeIds() always returns at least [vendorScopeId]
+      // so we must check the raw field to distinguish "explicitly set" vs "fallback".
+      const rawArray = (req.user as any)?.vendorScopeIds as string[] | null | undefined;
       let scopedVendorIds: string[];
-      if (explicitIds.length > 0) {
-        scopedVendorIds = explicitIds;
+      if (rawArray?.length) {
+        // Explicitly assigned multi-market list — use as-is.
+        scopedVendorIds = rawArray;
       } else {
-        // Legacy fallback: find all vendors sharing the primary vendor's name.
+        // No explicit array (legacy single-field account) — name-match across markets.
         const primaryVendor = await storage.getVendorBrief(myVendorId!);
         if (!primaryVendor) return res.status(404).json({ error: "Assigned vendor not found" });
         const byName = await storage.getVendorsByName(primaryVendor.name);
-        scopedVendorIds = byName.map((v) => v.id);
+        scopedVendorIds = byName.length > 0 ? byName.map((v) => v.id) : [myVendorId];
       }
 
       const markets = await Promise.all(
