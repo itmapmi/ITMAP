@@ -40,9 +40,9 @@ interface ColorTheme {
 
 const COLOR_THEMES: Record<string, ColorTheme> = {
   "dark-blue-gold": {
-    topFillHighlight: "#C8961E", topFill2: "#C8961E", topFill1: "#C8961E",
-    bottomFillHighlight: "#1B3A6B", bottomFill2: "#1B3A6B", bottomFill1: "#1B3A6B",
-    topStroke: "#C8961E", bottomStroke: "#1B3A6B",
+    topFillHighlight: "#F0C84A", topFill2: "#C8961E", topFill1: "#9A6E0E",
+    bottomFillHighlight: "#243F7A", bottomFill2: "#1B3A6B", bottomFill1: "#0F2248",
+    topStroke: "#D4A822", bottomStroke: "#1B3A6B",
     topText: "#ffffff", bottomText: "#ffffff",
     dotColor: "#C8961E", dotDark: "#7C5209",
   },
@@ -620,12 +620,14 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
-    // ── Flat-colour band fills — fully opaque so true gold/navy show through ──
+    // ── Metallic 3-stop gradients — tight range gives a polished-surface sheen ──
     const topGradient = defs.append("linearGradient")
       .attr("id", "topBandGradient")
       .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
     topGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.topFill1).attr("stop-opacity", 1);
+      .attr("stop-color", theme.topFillHighlight).attr("stop-opacity", 1);
+    topGradient.append("stop").attr("offset", "45%")
+      .attr("stop-color", theme.topFill2).attr("stop-opacity", 1);
     topGradient.append("stop").attr("offset", "100%")
       .attr("stop-color", theme.topFill1).attr("stop-opacity", 1);
 
@@ -633,7 +635,9 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("id", "bottomBandGradient")
       .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
     bottomGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 1);
+      .attr("stop-color", theme.bottomFillHighlight).attr("stop-opacity", 1);
+    bottomGradient.append("stop").attr("offset", "45%")
+      .attr("stop-color", theme.bottomFill2).attr("stop-opacity", 1);
     bottomGradient.append("stop").attr("offset", "100%")
       .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 1);
 
