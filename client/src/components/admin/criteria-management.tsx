@@ -34,7 +34,7 @@ export default function CriteriaManagement() {
 
   const createCriteriaMutation = useMutation({
     mutationFn: async (data: InsertCriteria) => {
-      const response = await apiRequest("POST", "/api/criteria", data);
+      const response = await apiRequest("/api/criteria", "POST", data);
       return response.json();
     },
     onSuccess: () => {
@@ -56,7 +56,7 @@ export default function CriteriaManagement() {
 
   const updateCriteriaMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertCriteria> }) => {
-      const response = await apiRequest("PUT", `/api/criteria/${id}`, data);
+      const response = await apiRequest(`/api/criteria/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
@@ -79,7 +79,7 @@ export default function CriteriaManagement() {
 
   const deleteCriteriaMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/criteria/${id}`);
+      await apiRequest(`/api/criteria/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/criteria"] });

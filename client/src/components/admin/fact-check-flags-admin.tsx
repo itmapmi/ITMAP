@@ -86,7 +86,7 @@ export function FactCheckFlagsAdmin() {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ id, body }: { id: string; body: object }) =>
-      apiRequest("PATCH", `/api/admin/fact-check-flags/${id}`, body),
+      apiRequest(`/api/admin/fact-check-flags/${id}`, "PATCH", body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/fact-check-flags"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/fact-check-flags/pending-count"] });

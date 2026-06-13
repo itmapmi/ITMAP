@@ -409,7 +409,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
 
   const addSource = useMutation({
     mutationFn: (data: typeof form) =>
-      apiRequest("POST", `/api/forecast-builder/forecasts/${forecastId}/sources`, {
+      apiRequest(`/api/forecast-builder/forecasts/${forecastId}/sources`, "POST", {
         ...data,
         sourceType: "user_provided",
         assumptionId: assumptionId ?? null,
@@ -425,7 +425,7 @@ function SourcesTab({ forecastId, assumptionId, sources, queryKey }: {
 
   const removeSource = useMutation({
     mutationFn: (sourceId: string) =>
-      apiRequest("DELETE", `/api/forecast-builder/forecasts/${forecastId}/sources/${sourceId}`),
+      apiRequest(`/api/forecast-builder/forecasts/${forecastId}/sources/${sourceId}`, "DELETE"),
     onSuccess: () => { qc.invalidateQueries({ queryKey }); toast({ title: "Source removed" }); },
     onError: (e: Error) => toast({ title: "Failed to remove source", description: e.message, variant: "destructive" }),
   });
@@ -615,7 +615,7 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
   const override = useMutation({
     mutationFn: ({ value, r }: { value: number; r: string }) =>
-      apiRequest("PATCH", `/api/forecast-builder/forecasts/${forecastId}/assumptions/${assumption.id}`, {
+      apiRequest(`/api/forecast-builder/forecasts/${forecastId}/assumptions/${assumption.id}`, "PATCH", {
         newValue: value, reason: r || undefined,
       }),
     onSuccess: () => {
@@ -628,7 +628,7 @@ function EditHistoryTab({ forecastId, assumption, queryKey }: {
 
   const revert = useMutation({
     mutationFn: (oldValue: string) =>
-      apiRequest("PATCH", `/api/forecast-builder/forecasts/${forecastId}/assumptions/${assumption.id}`, {
+      apiRequest(`/api/forecast-builder/forecasts/${forecastId}/assumptions/${assumption.id}`, "PATCH", {
         newValue: parseFloat(oldValue), reason: "Reverted via edit history",
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey }); toast({ title: "Reverted" }); },
