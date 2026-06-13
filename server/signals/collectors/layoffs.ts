@@ -51,7 +51,7 @@ Only include confirmed layoffs or significant headcount reductions. Return up to
 
   try {
     const response = await responseApi.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-mini',
       tools: [{ type: 'web_search_preview' }],
       input: prompt,
     });

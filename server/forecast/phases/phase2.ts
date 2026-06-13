@@ -260,7 +260,7 @@ function getProgressMessage(answers: AnswerEntry[], _mode: "express" | "full"): 
 
 // ── LLM adaptive selector (full mode only) ────────────────────────────────
 //
-// After each answer in full mode, calls gpt-4o-mini to decide the best next
+// After each answer in full mode, calls gpt-5-mini to decide the best next
 // question from the eligible pool. The LLM may also signal the interview is
 // complete by returning `{ done: true }` — this allows early termination when
 // all important areas have already been addressed by earlier answers.
@@ -309,7 +309,7 @@ of the eligible IDs provided.`;
 
   try {
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

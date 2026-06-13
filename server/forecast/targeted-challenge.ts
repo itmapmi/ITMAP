@@ -8,7 +8,7 @@
  *
  * Per assumption:
  *   1. Web search for fresh market evidence (OpenAI Responses API)
- *   2. Two independent resolver calls (gpt-4o-mini A at t=0.2, B at t=0.5)
+ *   2. Two independent resolver calls (gpt-5-mini A at t=0.2, B at t=0.5)
  *   3. Deterministic convergence: |A - B| / avg(A, B) ≤ 0.15 → "resolved" (midpoint)
  *      else → "divergent" (both proposals reported; no auto-update)
  */
@@ -132,7 +132,7 @@ If you can support a value with evidence or sound reasoning, set canResolve=true
 Produce a resolution matching this schema:\n${RESOLUTION_SCHEMA_DESCRIPTION}`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages: [
       { role: "system", content: SYSTEM_RESOLVER },
       { role: "user", content: prompt },

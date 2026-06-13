@@ -96,7 +96,7 @@ flag ("genuine_consensus"|"false_consensus"|"insufficient_evidence"|"scenario_re
 Respond with ONLY the corrected JSON object — no markdown, no explanation.`;
 }
 
-// ── Consensus check call (gpt-4o-mini) ────────────────────────────────────
+// ── Consensus check call (gpt-5-mini) ─────────────────────────────────────
 
 async function checkConsensus(
   resolvedCruxes: ResolvedCrux[],
@@ -134,7 +134,7 @@ Remember: flag as "false_consensus" if the two resolvers just averaged the analy
 Produce a JSON object matching this schema:\n${CONSENSUS_CHECK_SCHEMA_DESCRIPTION}`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages: [
       { role: "system", content: SYSTEM_CONSENSUS_CHECKER },
       { role: "user", content: userPrompt },

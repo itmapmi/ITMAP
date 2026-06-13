@@ -270,7 +270,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         currency: extracted.currency,
       });
 
-      await writeAuditEntry(req.params.id, "boundary_proposed", "gpt-4o-mini", {
+      await writeAuditEntry(req.params.id, "boundary_proposed", "gpt-5-mini", {
         extractionAttempt: prevCount + 1,
         geographicScope: extracted.geographicScope,
         baseYear,

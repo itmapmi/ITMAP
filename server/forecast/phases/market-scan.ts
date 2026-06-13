@@ -177,7 +177,7 @@ async function scanTopic(
   try {
     const prompt = topic.buildPrompt(ctx);
     const response = await api.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       tools: [{ type: "web_search_preview" }],
       input: prompt,
     });

@@ -967,7 +967,7 @@ async function qcNarrativeCoherence(
       : "";
 
   const resp = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     max_tokens: 200,
     temperature: 0,
     messages: [

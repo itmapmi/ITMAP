@@ -26,7 +26,7 @@ const MODELS: Record<string, { id: string; label: string }[]> = {
     { id: "gpt-4.1-mini",  label: "GPT-4.1 Mini (Fast)" },
     { id: "gpt-4.1-nano",  label: "GPT-4.1 Nano (Fastest)" },
     { id: "gpt-4o",        label: "GPT-4o" },
-    { id: "gpt-4o-mini",   label: "GPT-4o Mini" },
+    { id: "gpt-5-mini",    label: "GPT-5 Mini" },
     { id: "o3",            label: "o3 (Reasoning)" },
     { id: "o3-mini",       label: "o3-mini" },
     { id: "o4-mini",       label: "o4-mini" },

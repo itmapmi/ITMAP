@@ -754,7 +754,7 @@ function Stage6Editor({ result, onChange }: { result: any; onChange: (r: any) =>
 
 // Keep in sync with LLM_MODELS in server/market-builder/llm.ts
 const PROVIDER_MODELS: Record<string, string[]> = {
-  openai:      ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o4-mini"],
+  openai:      ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-5-mini", "o3", "o3-mini", "o4-mini"],
   anthropic:   ["claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
   perplexity:  ["sonar-pro", "sonar", "sonar-reasoning-pro", "sonar-reasoning", "sonar-deep-research"],
 };

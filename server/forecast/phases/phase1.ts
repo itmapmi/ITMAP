@@ -45,7 +45,7 @@ export async function extractBoundary(marketDescription: string): Promise<Extrac
   });
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {

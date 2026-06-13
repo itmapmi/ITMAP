@@ -326,7 +326,7 @@ export async function runGeoSplitDebate(opts: RunGeoSplitOptions): Promise<GeoSp
     try {
       const critiqueRaw = await callJson(
         client,
-        "gpt-4o-mini",
+        "gpt-5-mini",
         "You are a tough critic. Respond with ONLY valid JSON.",
         criticPrompt(final, baseYear, horizonYear, forecast.title),
         1000

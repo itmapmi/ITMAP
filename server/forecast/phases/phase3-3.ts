@@ -60,7 +60,7 @@ function strictParseJson(text: string): unknown {
   throw new Error("Judge response was not valid JSON");
 }
 
-// ── Judge call (gpt-4o-mini) ───────────────────────────────────────────────
+// ── Judge call (gpt-5-mini) ────────────────────────────────────────────────
 
 // Constrained retry suffix for judge calls — appended when attempt > 0
 function judgeRetryHint(attempt: number): string {
@@ -115,8 +115,8 @@ Produce a JSON object matching this schema:\n${CRUX_SCHEMA_DESCRIPTION}
 Limit to 5 cruxes maximum. Focus on assumptions where the two analysts genuinely diverge AND where that divergence materially impacts the final forecast number.${judgeRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
-    // Per spec: crux identification judge must use gpt-4o-mini
-    model: "gpt-4o-mini",
+    // Per spec: crux identification judge must use gpt-5-mini
+    model: "gpt-5-mini",
     messages: [
       { role: "system", content: SYSTEM_JUDGE_CRUX },
       { role: "user", content: userPrompt },
