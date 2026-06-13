@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Market } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
-const TOP_LABEL_OPTIONS = ["DCIG Leaders", "DCIG Top 5", "DCIG Top 3"] as const;
+const TOP_LABEL_OPTIONS = ["DCIG Leaders", "DCIG Top 5", "DCIG Top 3", "Market Leaders"] as const;
 
 const THEME_OPTIONS: { value: string; label: string; topSwatch: string; bottomSwatch: string }[] = [
   { value: "dark-blue-gold", label: "Navy & Gold", topSwatch: "#1e40af", bottomSwatch: "#f59e0b" },
