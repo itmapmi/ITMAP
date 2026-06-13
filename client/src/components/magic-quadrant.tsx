@@ -952,12 +952,13 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
 
       // Add the text label positioned around the dot
       const fontSize = isMobile ? 9 : 11;
+      const inBottomBand = vendor.adjustedY < settings.dividerY;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
         .attr("y", labelPos.labelY)
         .attr("text-anchor", labelPos.anchor)
-        .attr("fill", "#1f2937")
+        .attr("fill", inBottomBand ? "#ffffff" : "#1f2937")
         .attr("font-size", `${fontSize}px`)
         .attr("font-weight", "600")
         .style("cursor", "move")
