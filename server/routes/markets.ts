@@ -315,11 +315,18 @@ export function registerMarketRoutes(app: Express): void {
         quadrantColorTheme: z.enum(["dark-blue-gold", "emerald-coral", "violet-rose"]),
       });
       const data = schema.parse(req.body);
+      console.log("[quadrant-settings] IN  body:", JSON.stringify(req.body));
       const market = await storage.updateMarket(req.params.id, {
         quadrantDividerY: String(data.quadrantDividerY),
         quadrantTopLabel: data.quadrantTopLabel,
         quadrantColorTheme: data.quadrantColorTheme,
       });
+      console.log("[quadrant-settings] OUT market:", JSON.stringify({
+        id: market.id,
+        quadrantDividerY: market.quadrantDividerY,
+        quadrantTopLabel: market.quadrantTopLabel,
+        quadrantColorTheme: market.quadrantColorTheme,
+      }));
       res.json(market);
     } catch (error) {
       console.error("Error saving quadrant settings:", error);
