@@ -139,6 +139,13 @@ export default function Navigation() {
                       }`}>My Leads</span>
                     </Link>
                   )}
+                  {isVendorScoped && !isAdmin && (
+                    <Link href="/lead-gen/me/fact-review">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>Fact Review</span>
+                    </Link>
+                  )}
                   {isAdmin && (
                     <Link href="/admin">
                       <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
@@ -248,6 +255,16 @@ export default function Navigation() {
                   onClick={() => setMobileOpen(false)}
                 >
                   My Leads
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && (
+              <Link href="/lead-gen/me/fact-review">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Fact Review
                 </div>
               </Link>
             )}
