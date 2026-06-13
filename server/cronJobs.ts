@@ -15,6 +15,22 @@ export class CronJobManager {
   public initializeCronJobs(): void {
     console.log('Initializing cron jobs...');
 
+    // Daily database backup to GCS at 2:30 AM UTC
+    const dbBackupJob = cron.schedule('30 2 * * *', async () => {
+      console.log('[dbBackup] Starting daily database backup...');
+      try {
+        const { runDatabaseBackup } = await import('./backup');
+        const result = await runDatabaseBackup();
+        console.log(`[dbBackup] Done — ${result.filename} (${result.sizeMb} MB) → ${result.bucket}`);
+        this.lastRun.set('dbBackup', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[dbBackup] Failed:', error);
+        this.lastRun.set('dbBackup', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+
+    this.jobs.set('dbBackup', dbBackupJob);
+
     // Weekly vendor position backup at Sunday 2:00 AM UTC
     const weeklyBackupJob = cron.schedule('0 2 * * 0', async () => {
       console.log('Starting weekly vendor position backup...');
@@ -293,6 +309,12 @@ export class CronJobManager {
       running: this.jobs.has('newsIngestion'),
       nextRun: 'Daily at 7:00 AM UTC (scrape)',
       lastRun: this.lastRun.get('newsIngestion')
+    };
+
+    status['dbBackup'] = {
+      running: this.jobs.has('dbBackup'),
+      nextRun: 'Daily at 2:30 AM UTC',
+      lastRun: this.lastRun.get('dbBackup')
     };
 
     status['weeklyBackup'] = {

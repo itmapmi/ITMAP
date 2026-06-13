@@ -1207,4 +1207,27 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to review flag" });
     }
   });
+
+  // ── Database backup ─────────────────────────────────────────────────────────
+  app.get("/api/admin/db-backups", requireAdmin, async (_req, res) => {
+    try {
+      const { listDatabaseBackups } = await import("../backup");
+      const backups = await listDatabaseBackups();
+      res.json(backups);
+    } catch (err) {
+      console.error("[db-backup] list error:", err);
+      res.status(500).json({ error: "Failed to list backups" });
+    }
+  });
+
+  app.post("/api/admin/db-backups/run", requireAdmin, async (_req, res) => {
+    try {
+      const { runDatabaseBackup } = await import("../backup");
+      const result = await runDatabaseBackup();
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[db-backup] run error:", err);
+      res.status(500).json({ error: String(err) });
+    }
+  });
 }
