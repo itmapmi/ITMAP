@@ -8,34 +8,85 @@ import {
 import { db } from "../db";
 import { eq, desc, and, or, isNull } from "drizzle-orm";
 
+// ── Quadrant-column fallback ────────────────────────────────────────────────
+// The three quadrant columns were added after initial production deploy.
+// If production DB is missing them (error 42703), fall back to an explicit
+// select of the pre-existing columns and inject defaults so the app stays live.
+
+const QUADRANT_DEFAULTS = {
+  quadrantDividerY: "50" as string | null,
+  quadrantTopLabel: "DCIG Leaders" as string | null,
+  quadrantColorTheme: "dark-blue-gold" as string | null,
+};
+
+const SAFE_COLUMNS = {
+  id: markets.id,
+  name: markets.name,
+  description: markets.description,
+  shortDescription: markets.shortDescription,
+  category: markets.category,
+  imageUrl: markets.imageUrl,
+  quadrantImageUrl: markets.quadrantImageUrl,
+  quadrantImageUpdatedAt: markets.quadrantImageUpdatedAt,
+  isVisible: markets.isVisible,
+  ownerUserId: markets.ownerUserId,
+  visibility: markets.visibility,
+  createdAt: markets.createdAt,
+  updatedAt: markets.updatedAt,
+};
+
+function isColumnMissingError(err: unknown): boolean {
+  return (err as any)?.code === "42703";
+}
+
+function withDefaults(rows: Omit<Market, "quadrantDividerY" | "quadrantTopLabel" | "quadrantColorTheme">[]): Market[] {
+  return rows.map(r => ({ ...r, ...QUADRANT_DEFAULTS })) as Market[];
+}
+
 // ── Markets ────────────────────────────────────────────────────────────────
 
 export async function getAllMarkets(): Promise<Market[]> {
-  return await db.select().from(markets).orderBy(markets.name);
+  try {
+    return await db.select().from(markets).orderBy(markets.name);
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const rows = await db.select(SAFE_COLUMNS).from(markets).orderBy(markets.name);
+    return withDefaults(rows);
+  }
 }
 
 // Public catalog — only markets that are public. Used by the public site so
 // that private end-user reports never leak.
 export async function getPublicMarkets(): Promise<Market[]> {
-  return await db
-    .select()
-    .from(markets)
-    .where(eq(markets.visibility, "public"))
-    .orderBy(markets.name);
+  try {
+    return await db.select().from(markets).where(eq(markets.visibility, "public")).orderBy(markets.name);
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const rows = await db.select(SAFE_COLUMNS).from(markets).where(eq(markets.visibility, "public")).orderBy(markets.name);
+    return withDefaults(rows);
+  }
 }
 
 // Markets owned by a specific user (their private reports).
 export async function getMarketsByOwner(ownerUserId: string): Promise<Market[]> {
-  return await db
-    .select()
-    .from(markets)
-    .where(eq(markets.ownerUserId, ownerUserId))
-    .orderBy(desc(markets.updatedAt));
+  try {
+    return await db.select().from(markets).where(eq(markets.ownerUserId, ownerUserId)).orderBy(desc(markets.updatedAt));
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const rows = await db.select(SAFE_COLUMNS).from(markets).where(eq(markets.ownerUserId, ownerUserId)).orderBy(desc(markets.updatedAt));
+    return withDefaults(rows);
+  }
 }
 
 export async function getMarketById(id: string): Promise<Market | undefined> {
-  const [market] = await db.select().from(markets).where(eq(markets.id, id));
-  return market || undefined;
+  try {
+    const [market] = await db.select().from(markets).where(eq(markets.id, id));
+    return market || undefined;
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const [market] = await db.select(SAFE_COLUMNS).from(markets).where(eq(markets.id, id));
+    return market ? withDefaults([market])[0] : undefined;
+  }
 }
 
 // Returns the market only if the viewer is allowed to see it: public markets
@@ -45,13 +96,18 @@ export async function getMarketByIdForViewer(
   id: string,
   viewerUserId: string | null,
 ): Promise<Market | undefined> {
-  const conditions = [eq(markets.id, id)];
   const visibilityClause = viewerUserId
     ? or(eq(markets.visibility, "public"), eq(markets.ownerUserId, viewerUserId))
     : eq(markets.visibility, "public");
-  conditions.push(visibilityClause as any);
-  const [market] = await db.select().from(markets).where(and(...conditions));
-  return market || undefined;
+  const condition = and(eq(markets.id, id), visibilityClause as any);
+  try {
+    const [market] = await db.select().from(markets).where(condition);
+    return market || undefined;
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const [market] = await db.select(SAFE_COLUMNS).from(markets).where(condition);
+    return market ? withDefaults([market])[0] : undefined;
+  }
 }
 
 export async function createMarket(market: InsertMarket): Promise<Market> {
