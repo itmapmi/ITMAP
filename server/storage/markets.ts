@@ -122,6 +122,7 @@ export async function updateMarket(id: string, market: Partial<InsertMarket>): P
   } catch (err) {
     if (!isColumnMissingError(err)) throw err;
     // Production DB missing the 3 quadrant columns — strip them and retry.
+    console.error("[updateMarket] 42703 — quadrant columns missing in production DB. Falling back to safe columns. Values NOT saved:", { quadrantDividerY: (market as any).quadrantDividerY, quadrantTopLabel: (market as any).quadrantTopLabel, quadrantColorTheme: (market as any).quadrantColorTheme });
     const { quadrantDividerY, quadrantTopLabel, quadrantColorTheme, ...safeFields } = market as any;
     const rows = await db
       .update(markets)
