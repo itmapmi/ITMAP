@@ -174,8 +174,8 @@ export default function GraphicManagement() {
                   </span>
                 </div>
                 <Slider
-                  min={10}
-                  max={90}
+                  min={0}
+                  max={100}
                   step={1}
                   value={[pendingSettings.dividerY]}
                   onValueChange={([v]) => setPendingSettings(s => ({ ...s, dividerY: v }))}
