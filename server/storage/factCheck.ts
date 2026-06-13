@@ -14,14 +14,15 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface FactReviewRow {
-  supportId: string;
+  supportId: string | null;   // null when the vendor has no score row for this feature yet
   featureId: string;
   featureName: string;
   categoryId: string;
   categoryName: string;
   isEcosystem: boolean;
-  supportLevel: number;
+  supportLevel: number;       // 0 when no score row exists
   comments: string | null;
+  hasSupport: boolean;        // true only when a vendor_feature_support row exists
   flag: {
     id: string;
     status: string;
@@ -58,11 +59,13 @@ export interface AdminFactCheckFlagRow {
 
 // ── Vendor-facing queries ───────────────────────────────────────────────────
 
-// Get all feature-support rows for a vendor (both product + ecosystem),
-// grouped with any flags the reporting user has submitted.
-// Security: rows are filtered strictly by vendorId — no cross-vendor leakage.
+// Get all features for a vendor's market (both product + ecosystem), joined
+// with any existing support scores and flags. Starts from the feature catalogue
+// so ALL features appear — even ones the vendor hasn't been scored on yet.
+// Security: support rows are filtered strictly by vendorId.
 export async function getFactReviewRows(
   vendorId: string,
+  marketId: string,
   reportedByUserId: string,
 ): Promise<{ productRows: FactReviewRow[]; ecosystemRows: FactReviewRow[] }> {
   const rows = await db
@@ -83,9 +86,15 @@ export async function getFactReviewRows(
       flagAdminNotes: vendorFactCheckFlags.adminNotes,
       flagCreatedAt: vendorFactCheckFlags.createdAt,
     })
-    .from(vendorFeatureSupport)
-    .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
-    .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+    .from(featureCategories)
+    .innerJoin(features, eq(features.categoryId, featureCategories.id))
+    .leftJoin(
+      vendorFeatureSupport,
+      and(
+        eq(vendorFeatureSupport.featureId, features.id),
+        eq(vendorFeatureSupport.vendorId, vendorId),
+      ),
+    )
     .leftJoin(
       vendorFactCheckFlags,
       and(
@@ -93,18 +102,19 @@ export async function getFactReviewRows(
         eq(vendorFactCheckFlags.reportedByUserId, reportedByUserId),
       ),
     )
-    .where(eq(vendorFeatureSupport.vendorId, vendorId))
+    .where(eq(featureCategories.marketId, marketId))
     .orderBy(featureCategories.displayOrder, features.displayOrder);
 
   const toRow = (r: typeof rows[number]): FactReviewRow => ({
-    supportId: r.supportId,
+    supportId: r.supportId ?? null,
     featureId: r.featureId,
     featureName: r.featureName,
     categoryId: r.categoryId,
     categoryName: r.categoryName,
     isEcosystem: r.isEcosystem,
-    supportLevel: r.supportLevel,
+    supportLevel: r.supportLevel ?? 0,
     comments: r.comments ?? null,
+    hasSupport: r.supportId !== null,
     flag: r.flagId
       ? {
           id: r.flagId,

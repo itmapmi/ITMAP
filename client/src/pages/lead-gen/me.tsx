@@ -44,7 +44,7 @@ interface FactFlag {
 }
 
 interface FactRow {
-  supportId: string;
+  supportId: string | null;
   featureId: string;
   featureName: string;
   categoryId: string;
@@ -52,14 +52,19 @@ interface FactRow {
   isEcosystem: boolean;
   supportLevel: number;
   comments: string | null;
+  hasSupport: boolean;
   flag: FactFlag | null;
 }
 
-interface FactReviewResponse {
+interface FactMarketGroup {
   vendor: { id: string; name: string; marketId: string | null };
   market: { id: string; name: string } | null;
   productRows: FactRow[];
   ecosystemRows: FactRow[];
+}
+
+interface FactReviewResponse {
+  markets: FactMarketGroup[];
 }
 
 const WINDOWS = [
@@ -142,12 +147,16 @@ function FactSection({ rows, title, onFlag }: { rows: FactRow[]; title: string; 
             </div>
             <div className="divide-y divide-white/5">
               {catRows.map((row) => (
-                <div key={row.supportId} className="flex items-start gap-3 px-4 py-3">
+                <div key={row.featureId} className="flex items-start gap-3 px-4 py-3">
                   <div className="mt-0.5"><HarveyBall level={row.supportLevel} /></div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium text-white">{row.featureName}</span>
-                      <span className="text-xs text-slate-500">{HARVEY_LABELS[row.supportLevel] ?? row.supportLevel}</span>
+                      {row.hasSupport ? (
+                        <span className="text-xs text-slate-500">{HARVEY_LABELS[row.supportLevel] ?? row.supportLevel}</span>
+                      ) : (
+                        <span className="text-xs italic text-slate-600">Not yet evaluated</span>
+                      )}
                     </div>
                     {row.comments && (
                       <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{row.comments}</p>
@@ -167,16 +176,16 @@ function FactSection({ rows, title, onFlag }: { rows: FactRow[]; title: string; 
                     )}
                   </div>
                   <div className="shrink-0">
-                    {!row.flag ? (
+                    {row.hasSupport && !row.flag ? (
                       <button
                         onClick={() => onFlag(row)}
                         className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
                       >
                         <Flag className="h-3 w-3" /> Flag
                       </button>
-                    ) : (
+                    ) : row.flag ? (
                       <span className="text-xs text-slate-600">Flagged</span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -246,7 +255,7 @@ export default function LeadGenMyVendorPage() {
   });
 
   function submitFlag() {
-    if (!flagRow) return;
+    if (!flagRow || !flagRow.supportId) return;
     if (flagLevel == null && !flagLinks.trim() && !flagNotes.trim()) {
       toast({ title: "Nothing to submit", description: "Provide a proposed level, evidence links, or notes.", variant: "destructive" });
       return;
@@ -455,12 +464,6 @@ export default function LeadGenMyVendorPage() {
             </GlassCard>
           ) : (
             <>
-              {factData.market && (
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <span>Market:</span>
-                  <span className="font-medium text-white">{stripMarket(factData.market.name)}</span>
-                </div>
-              )}
               <GlassCard className="p-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
@@ -471,13 +474,37 @@ export default function LeadGenMyVendorPage() {
                   </p>
                 </div>
               </GlassCard>
-              <FactSection rows={factData.productRows} title="Product Evaluation" onFlag={setFlagRow} />
-              <FactSection rows={factData.ecosystemRows} title="Ecosystem Evaluation" onFlag={setFlagRow} />
-              {factData.productRows.length === 0 && factData.ecosystemRows.length === 0 && (
+              {factData.markets.length === 0 && (
                 <GlassCard className="p-8 text-center">
-                  <p className="text-sm text-slate-500">No feature support rows found for your vendor yet.</p>
+                  <p className="text-sm text-slate-500">No feature data found for your vendor yet.</p>
                 </GlassCard>
               )}
+              {factData.markets.map((group) => {
+                const hasRows = group.productRows.length > 0 || group.ecosystemRows.length > 0;
+                return (
+                  <div key={group.vendor.id} className="space-y-4">
+                    {factData.markets.length > 1 && (
+                      <div className="flex items-center gap-2 pt-2">
+                        <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Market</span>
+                        <span className="text-sm font-semibold text-cyan-400">{stripMarket(group.market?.name ?? "")}</span>
+                      </div>
+                    )}
+                    {factData.markets.length === 1 && group.market && (
+                      <div className="flex items-center gap-2 text-sm text-slate-400">
+                        <span>Market:</span>
+                        <span className="font-medium text-white">{stripMarket(group.market.name)}</span>
+                      </div>
+                    )}
+                    <FactSection rows={group.productRows} title="Product Evaluation" onFlag={setFlagRow} />
+                    <FactSection rows={group.ecosystemRows} title="Ecosystem Evaluation" onFlag={setFlagRow} />
+                    {!hasRows && (
+                      <GlassCard className="p-6 text-center">
+                        <p className="text-sm text-slate-500">No features defined for this market yet.</p>
+                      </GlassCard>
+                    )}
+                  </div>
+                );
+              })}
             </>
           )}
         </div>

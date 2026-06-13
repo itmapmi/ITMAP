@@ -882,11 +882,25 @@ export function registerLeadGenRoutes(app: Express): void {
     try {
       const myVendorId = vendorScopeId(req)!;
       const myUserId = (req.user as any).id as string;
-      const vendor = await storage.getVendorBrief(myVendorId);
-      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
-      const { productRows, ecosystemRows } = await storage.getFactReviewRows(myVendorId, myUserId);
-      const market = vendor.marketId ? await storage.getMarketById(vendor.marketId) : null;
-      res.json({ vendor, market, productRows, ecosystemRows });
+      const primaryVendor = await storage.getVendorBrief(myVendorId);
+      if (!primaryVendor) return res.status(404).json({ error: "Assigned vendor not found" });
+
+      // Find all vendor records sharing this company name (multi-market support).
+      const allVendors = await storage.getVendorsByName(primaryVendor.name);
+
+      const markets = await Promise.all(
+        allVendors
+          .filter((v) => !!v.marketId)
+          .map(async (vendor) => {
+            const [market, { productRows, ecosystemRows }] = await Promise.all([
+              storage.getMarketById(vendor.marketId!),
+              storage.getFactReviewRows(vendor.id, vendor.marketId!, myUserId),
+            ]);
+            return { vendor, market: market ?? null, productRows, ecosystemRows };
+          }),
+      );
+
+      res.json({ markets });
     } catch (err) {
       console.error("[fact-check] me fact-review error:", err);
       res.status(500).json({ error: "Failed to load fact review" });

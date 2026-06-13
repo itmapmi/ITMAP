@@ -366,3 +366,12 @@ export async function getVendorBrief(vendorId: string): Promise<{ id: string; na
     .where(eq(vendors.id, vendorId));
   return v;
 }
+
+// Find all vendor records that share the same name — used to aggregate
+// fact-review data across markets when one company appears in multiple markets.
+export async function getVendorsByName(name: string): Promise<{ id: string; name: string; marketId: string | null }[]> {
+  return await db
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId })
+    .from(vendors)
+    .where(eq(vendors.name, name));
+}
