@@ -116,8 +116,20 @@ export async function createMarket(market: InsertMarket): Promise<Market> {
 }
 
 export async function updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market> {
-  const [updatedMarket] = await db.update(markets).set({ ...market, updatedAt: new Date() }).where(eq(markets.id, id)).returning();
-  return updatedMarket;
+  try {
+    const [updatedMarket] = await db.update(markets).set({ ...market, updatedAt: new Date() }).where(eq(markets.id, id)).returning();
+    return updatedMarket;
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    // Production DB missing the 3 quadrant columns — strip them and retry.
+    const { quadrantDividerY, quadrantTopLabel, quadrantColorTheme, ...safeFields } = market as any;
+    const rows = await db
+      .update(markets)
+      .set({ ...safeFields, updatedAt: new Date() })
+      .where(eq(markets.id, id))
+      .returning(SAFE_COLUMNS);
+    return withDefaults(rows)[0];
+  }
 }
 
 export async function deleteMarket(id: string): Promise<void> {
