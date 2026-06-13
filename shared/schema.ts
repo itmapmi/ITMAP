@@ -71,6 +71,10 @@ export const markets = pgTable("markets", {
   // Legacy Vendor Evaluation chart image (kept to preserve historical data; not actively populated)
   quadrantImageUrl: text("quadrant_image_url"),
   quadrantImageUpdatedAt: timestamp("quadrant_image_updated_at"),
+  // Two-band Spectio chart settings (per market, admin-configurable)
+  quadrantDividerY: numeric("quadrant_divider_y").default("50"),
+  quadrantTopLabel: text("quadrant_top_label").default("DCIG Leaders"),
+  quadrantColorTheme: text("quadrant_color_theme").default("dark-blue-gold"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   // Ownership: null = platform-owned (admin-created public market).
   ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),

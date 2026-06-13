@@ -660,6 +660,11 @@ export default function MarketDetails() {
               marketName={market.name}
               enableDrag={editingLabels}
               onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
+              quadrantSettings={{
+                dividerY: market.quadrantDividerY != null ? Number(market.quadrantDividerY) : 50,
+                topLabel: market.quadrantTopLabel ?? "DCIG Leaders",
+                colorTheme: market.quadrantColorTheme ?? "dark-blue-gold",
+              }}
             />
           </TabsContent>
 

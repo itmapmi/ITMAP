@@ -18,11 +18,52 @@ import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 
+export interface QuadrantSettings {
+  dividerY: number;      // 0-100 scale — where the horizontal dividing line sits
+  topLabel: string;      // e.g. "DCIG Leaders", "DCIG Top 5", "DCIG Top 3"
+  colorTheme: string;    // "dark-blue-gold" | "emerald-coral" | "violet-rose"
+}
+
+const DEFAULT_SETTINGS: QuadrantSettings = {
+  dividerY: 50,
+  topLabel: "DCIG Leaders",
+  colorTheme: "dark-blue-gold",
+};
+
+interface ColorTheme {
+  topFill1: string; topFill2: string;
+  bottomFill1: string; bottomFill2: string;
+  topStroke: string; bottomStroke: string;
+  topText: string; bottomText: string;
+}
+
+const COLOR_THEMES: Record<string, ColorTheme> = {
+  "dark-blue-gold": {
+    topFill1: "#1e3a5f", topFill2: "#1e40af",
+    bottomFill1: "#fbbf24", bottomFill2: "#f59e0b",
+    topStroke: "#1e40af", bottomStroke: "#d97706",
+    topText: "#1e3a5f", bottomText: "#92400e",
+  },
+  "emerald-coral": {
+    topFill1: "#064e3b", topFill2: "#059669",
+    bottomFill1: "#fdba74", bottomFill2: "#f97316",
+    topStroke: "#059669", bottomStroke: "#ea580c",
+    topText: "#064e3b", bottomText: "#9a3412",
+  },
+  "violet-rose": {
+    topFill1: "#4c1d95", topFill2: "#7c3aed",
+    bottomFill1: "#fda4af", bottomFill2: "#f43f5e",
+    topStroke: "#7c3aed", bottomStroke: "#e11d48",
+    topText: "#4c1d95", bottomText: "#9f1239",
+  },
+};
+
 interface MagicQuadrantProps {
   marketId: string;
   marketName: string;
-  enableDrag?: boolean; // Enable drag for admin panel
-  onLabelPositionChange?: (vendorId: string, x: number, y: number) => void; // Callback for position changes
+  enableDrag?: boolean;
+  onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
+  quadrantSettings?: QuadrantSettings;
 }
 
 interface VendorWithScores extends Vendor {
@@ -38,7 +79,9 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
-export default function MagicQuadrant({ marketId, marketName, enableDrag = false, onLabelPositionChange }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, enableDrag = false, onLabelPositionChange, quadrantSettings }: MagicQuadrantProps) {
+  const settings = { ...DEFAULT_SETTINGS, ...quadrantSettings };
+  const theme = COLOR_THEMES[settings.colorTheme] ?? COLOR_THEMES["dark-blue-gold"];
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
@@ -568,135 +611,71 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("stroke", "#f1f5f9")
       .attr("stroke-width", 1);
 
-    // Add gradient definitions for sophisticated shading
+    // ── Two-band Spectio chart layout ────────────────────────────────────────
     const defs = svg.append("defs");
-    
-    // Emerging Players gradient (bottom-left)
-    const emergingGradient = defs.append("linearGradient")
-      .attr("id", "emergingGradient")
-      .attr("gradientUnits", "objectBoundingBox");
-    emergingGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", "#fbbf24")
-      .attr("stop-opacity", 0.25);
-    emergingGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", "#f59e0b")
-      .attr("stop-opacity", 0.35);
-
-    // Leaders gradient (top-right)
-    const leadersGradient = defs.append("linearGradient")
-      .attr("id", "leadersGradient")
-      .attr("gradientUnits", "objectBoundingBox");
-    leadersGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", "#22c55e")
-      .attr("stop-opacity", 0.25);
-    leadersGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", "#16a34a")
-      .attr("stop-opacity", 0.35);
-
-    // Challengers gradient (top-left)
-    const challengersGradient = defs.append("linearGradient")
-      .attr("id", "challengersGradient")
-      .attr("gradientUnits", "objectBoundingBox");
-    challengersGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", "#3b82f6")
-      .attr("stop-opacity", 0.25);
-    challengersGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", "#1d4ed8")
-      .attr("stop-opacity", 0.35);
-
-    // Innovators gradient (bottom-right)
-    const innovatorsGradient = defs.append("linearGradient")
-      .attr("id", "innovatorsGradient")
-      .attr("gradientUnits", "objectBoundingBox");
-    innovatorsGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", "#8b5cf6")
-      .attr("stop-opacity", 0.25);
-    innovatorsGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", "#7c3aed")
-      .attr("stop-opacity", 0.35);
-    
-    // Add four distinct 5x5 quadrant backgrounds with improved styling
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
-    const midX = xScale(50);
-    const midY = yScale(50);
-    
-    // Challengers (top-left: 0-50 x, 50-100 y)
+
+    // Top band gradient (DCIG tier)
+    const topGradient = defs.append("linearGradient")
+      .attr("id", "topBandGradient")
+      .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
+    topGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", theme.topFill2)
+      .attr("stop-opacity", 0.22);
+    topGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", theme.topFill1)
+      .attr("stop-opacity", 0.12);
+
+    // Bottom band gradient (Emerging Players)
+    const bottomGradient = defs.append("linearGradient")
+      .attr("id", "bottomBandGradient")
+      .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
+    bottomGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", theme.bottomFill1)
+      .attr("stop-opacity", 0.18);
+    bottomGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", theme.bottomFill2)
+      .attr("stop-opacity", 0.30);
+
+    // Compute the Y pixel position of the dividing line
+    const divY = yScale(settings.dividerY);
+
+    // Top band (full width, margin.top → divY)
     svg.append("rect")
       .attr("x", margin.left)
       .attr("y", margin.top)
-      .attr("width", midX - margin.left)
-      .attr("height", midY - margin.top)
-      .attr("fill", "url(#challengersGradient)")
-      .attr("stroke", "#1d4ed8")
-      .attr("stroke-width", 2)
-      .attr("rx", 8)
-      .attr("ry", 8);
+      .attr("width", chartWidth)
+      .attr("height", Math.max(0, divY - margin.top))
+      .attr("fill", "url(#topBandGradient)")
+      .attr("stroke", theme.topStroke)
+      .attr("stroke-width", 1.5)
+      .attr("rx", 8).attr("ry", 8);
 
-    // Leaders (top-right: 50-100 x, 50-100 y)
-    svg.append("rect")
-      .attr("x", midX)
-      .attr("y", margin.top)
-      .attr("width", width - margin.right - midX)
-      .attr("height", midY - margin.top)
-      .attr("fill", "url(#leadersGradient)")
-      .attr("stroke", "#16a34a")
-      .attr("stroke-width", 2)
-      .attr("rx", 8)
-      .attr("ry", 8);
-    
-    // Emerging Players (bottom-left: 0-50 x, 0-50 y)
+    // Bottom band (full width, divY → bottom)
     svg.append("rect")
       .attr("x", margin.left)
-      .attr("y", midY)
-      .attr("width", midX - margin.left)
-      .attr("height", height - margin.bottom - midY)
-      .attr("fill", "url(#emergingGradient)")
-      .attr("stroke", "#f59e0b")
-      .attr("stroke-width", 2)
-      .attr("rx", 8)
-      .attr("ry", 8);
+      .attr("y", divY)
+      .attr("width", chartWidth)
+      .attr("height", Math.max(0, height - margin.bottom - divY))
+      .attr("fill", "url(#bottomBandGradient)")
+      .attr("stroke", theme.bottomStroke)
+      .attr("stroke-width", 1.5)
+      .attr("rx", 8).attr("ry", 8);
 
-    // Innovators (bottom-right: 50-100 x, 0-50 y)
-    svg.append("rect")
-      .attr("x", midX)
-      .attr("y", midY)
-      .attr("width", width - margin.right - midX)
-      .attr("height", height - margin.bottom - midY)
-      .attr("fill", "url(#innovatorsGradient)")
-      .attr("stroke", "#7c3aed")
-      .attr("stroke-width", 2)
-      .attr("rx", 8)
-      .attr("ry", 8);
-
-    // Add prominent center dividing lines for 5x5 quadrant structure
-    // Vertical center line (x = 50)
-    svg.append("line")
-      .attr("x1", midX)
-      .attr("x2", midX)
-      .attr("y1", margin.top)
-      .attr("y2", height - margin.bottom)
-      .attr("stroke", "#374151")
-      .attr("stroke-width", 3)
-      .attr("stroke-dasharray", "5,5");
-
-    // Horizontal center line (y = 50)
+    // Single horizontal dividing line
     svg.append("line")
       .attr("x1", margin.left)
       .attr("x2", width - margin.right)
-      .attr("y1", midY)
-      .attr("y2", midY)
-      .attr("stroke", "#374151")
-      .attr("stroke-width", 3)
-      .attr("stroke-dasharray", "5,5");
+      .attr("y1", divY)
+      .attr("y2", divY)
+      .attr("stroke", theme.topStroke)
+      .attr("stroke-width", 2.5)
+      .attr("stroke-dasharray", "6,4");
 
     // Add professional-looking axes
     const xAxis = d3.axisBottom(xScale)
@@ -749,54 +728,34 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("fill", "#374151")
       .text(isMobile ? "Viability" : "Vendor Viability");
 
-    // Add quadrant labels positioned in corners
-    const quadrantLabelSize = isMobile ? "10px" : "13px";
-    const textShadow = "0 0 3px white, 0 0 3px white, 0 0 3px white";
-    const labelOffset = isMobile ? 10 : 15; // Distance from corner
-    
-    // Challengers label (top-left quadrant - top right corner)
-    svg.append("text")
-      .attr("x", midX - labelOffset)
-      .attr("y", margin.top + labelOffset)
-      .attr("text-anchor", "end")
-      .attr("font-size", quadrantLabelSize)
-      .attr("font-weight", "700")
-      .attr("fill", "#1d4ed8")
-      .style("text-shadow", textShadow)
-      .text("Challengers");
+    // ── Two-band zone labels ─────────────────────────────────────────────────
+    const bandLabelSize = isMobile ? "11px" : "14px";
+    const labelOffset = isMobile ? 10 : 15;
+    const textShadow = "0 1px 3px rgba(255,255,255,0.9), 0 1px 3px rgba(255,255,255,0.9)";
 
-    // Leaders label (top-right quadrant - top right corner)
+    // Top band label (top-right corner of the top band)
     svg.append("text")
       .attr("x", width - margin.right - labelOffset)
       .attr("y", margin.top + labelOffset)
       .attr("text-anchor", "end")
-      .attr("font-size", quadrantLabelSize)
-      .attr("font-weight", "700")
-      .attr("fill", "#16a34a")
+      .attr("font-size", bandLabelSize)
+      .attr("font-weight", "800")
+      .attr("fill", theme.topText)
+      .attr("letter-spacing", "0.5")
       .style("text-shadow", textShadow)
-      .text("Leaders");
+      .text(settings.topLabel);
 
-    // Emerging Players label (bottom-left quadrant - bottom right corner)
+    // Bottom band label (bottom-right corner of the bottom band)
     svg.append("text")
-      .attr("x", midX - labelOffset)
+      .attr("x", width - margin.right - labelOffset)
       .attr("y", height - margin.bottom - labelOffset)
       .attr("text-anchor", "end")
-      .attr("font-size", quadrantLabelSize)
-      .attr("font-weight", "700")
-      .attr("fill", "#f59e0b")
+      .attr("font-size", bandLabelSize)
+      .attr("font-weight", "800")
+      .attr("fill", theme.bottomText)
+      .attr("letter-spacing", "0.5")
       .style("text-shadow", textShadow)
       .text(isMobile ? "Emerging" : "Emerging Players");
-
-    // Innovators label (bottom-right quadrant - bottom right corner)
-    svg.append("text")
-      .attr("x", width - margin.right - labelOffset)
-      .attr("y", height - margin.bottom - labelOffset)
-      .attr("text-anchor", "end")
-      .attr("font-size", quadrantLabelSize)
-      .attr("font-weight", "700")
-      .attr("fill", "#7c3aed")
-      .style("text-shadow", textShadow)
-      .text("Evolving Players");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.

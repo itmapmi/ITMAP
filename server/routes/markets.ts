@@ -305,6 +305,28 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // ── Quadrant Settings (per-market two-band chart config) ─────────────────
+
+  app.patch("/api/admin/markets/:id/quadrant-settings", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        quadrantDividerY: z.number().min(0).max(100),
+        quadrantTopLabel: z.enum(["DCIG Leaders", "DCIG Top 5", "DCIG Top 3"]),
+        quadrantColorTheme: z.enum(["dark-blue-gold", "emerald-coral", "violet-rose"]),
+      });
+      const data = schema.parse(req.body);
+      const market = await storage.updateMarket(req.params.id, {
+        quadrantDividerY: String(data.quadrantDividerY),
+        quadrantTopLabel: data.quadrantTopLabel,
+        quadrantColorTheme: data.quadrantColorTheme,
+      });
+      res.json(market);
+    } catch (error) {
+      console.error("Error saving quadrant settings:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to save quadrant settings" });
+    }
+  });
+
   // ── Vendor Label Positions ─────────────────────────────────────────────────
 
   app.get("/api/markets/:marketId/label-positions", requireMarketAccess, async (req, res) => {
