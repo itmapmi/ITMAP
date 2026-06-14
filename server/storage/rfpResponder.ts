@@ -80,6 +80,8 @@ export async function updateRfpResponseSession(
       | "reviewedAt"
       | "generationStartedAt"
       | "completedAt"
+      | "outcomeTag"
+      | "exportedAt"
     >
   >,
 ): Promise<RfpResponseSession> {

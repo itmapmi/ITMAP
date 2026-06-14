@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -8,13 +8,15 @@ import {
   ArrowLeft, CheckCircle, AlertTriangle, XCircle, Loader2, BookOpen,
   ChevronRight, ChevronDown, Eye, EyeOff, Zap, FileText, Shield,
   AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
+  Download, Trophy, ThumbsDown, HelpCircle, FileDown, TableProperties,
+  Presentation, FileText as FilePdf,
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { RfpResponseSession, RfpResponseReq, RfpResponseAnswer, ResponseSource, CompetitiveClaim } from "@shared/schema";
+import type { RfpResponseSession, RfpResponseReq, RfpResponseAnswer, ResponseSource, CompetitiveClaim, RfpDiagram } from "@shared/schema";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -512,13 +514,331 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
   );
 }
 
+// ── Export Panel ──────────────────────────────────────────────────────────
+
+type ExportFormat = "docx" | "pdf" | "xlsx" | "pptx";
+type OutcomeTag = "won" | "lost" | "pending";
+
+interface GateBlocker {
+  kind: string;
+  label: string;
+  requirementId?: string;
+  diagramId?: string;
+}
+
+interface GateResult {
+  blocked: boolean;
+  blockers: GateBlocker[];
+}
+
+const FORMAT_META: Record<ExportFormat, { label: string; desc: string; icon: React.ReactNode; ext: string }> = {
+  docx: { label: "Word Document", desc: "Full RFP response with all sections, citations, and gap analysis", icon: <FileText className="h-4 w-4" />, ext: ".docx" },
+  pdf:  { label: "PDF Report",    desc: "Print-ready PDF with branded headers, footers, and SVG diagrams", icon: <FilePdf className="h-4 w-4" />, ext: ".pdf" },
+  xlsx: { label: "Excel Matrix",  desc: "Requirement matrix spreadsheet with coverage summary tab", icon: <TableProperties className="h-4 w-4" />, ext: ".xlsx" },
+  pptx: { label: "PowerPoint Deck", desc: "Executive presentation with diagram slides and competitive claims", icon: <Presentation className="h-4 w-4" />, ext: ".pptx" },
+};
+
+function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpResponseSession }) {
+  const { toast } = useToast();
+  const [format, setFormat] = useState<ExportFormat>("docx");
+  const [showCitations, setShowCitations] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [outcome, setOutcome] = useState<OutcomeTag | null>(
+    (session.outcomeTag as OutcomeTag | null) ?? null,
+  );
+  const [submittingOutcome, setSubmittingOutcome] = useState(false);
+
+  // Load diagrams to let user pick which ones to include
+  const { data: diagramsData } = useQuery<{ diagrams: RfpDiagram[] }>({
+    queryKey: ["/api/rfp/diagrams", sessionId],
+    queryFn: async () => {
+      const r = await fetch(`/api/rfp/diagrams?sessionId=${sessionId}`, { credentials: "include" });
+      return r.json();
+    },
+  });
+  const diagrams = diagramsData?.diagrams ?? [];
+  const [includedDiagramIds, setIncludedDiagramIds] = useState<string[] | null>(null); // null = all
+
+  // Gate check
+  const { data: gate, isLoading: gateLoading, refetch: refetchGate } = useQuery<GateResult>({
+    queryKey: ["/api/rfp/responses/export-gate", sessionId],
+    queryFn: async () => {
+      const r = await fetch(`/api/rfp/responses/${sessionId}/export-gate`, { credentials: "include" });
+      if (!r.ok) throw new Error("Gate check failed");
+      return r.json();
+    },
+  });
+
+  function toggleDiagram(id: string) {
+    if (includedDiagramIds === null) {
+      // All included → exclude this one
+      setIncludedDiagramIds(diagrams.filter((d) => d.id !== id).map((d) => d.id));
+    } else {
+      if (includedDiagramIds.includes(id)) {
+        setIncludedDiagramIds(includedDiagramIds.filter((x) => x !== id));
+      } else {
+        const next = [...includedDiagramIds, id];
+        setIncludedDiagramIds(next.length === diagrams.length ? null : next);
+      }
+    }
+  }
+
+  function isDiagramIncluded(id: string) {
+    return includedDiagramIds === null || includedDiagramIds.includes(id);
+  }
+
+  async function handleExport(bypassGate = false) {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/rfp/responses/${sessionId}/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ format, showCitations, includedDiagramIds, bypass: bypassGate }),
+      });
+      if (res.status === 422) {
+        const body = await res.json();
+        toast({
+          title: "Export blocked",
+          description: `${body.blockers?.length ?? 0} issue(s) must be resolved. Review the gate checklist below.`,
+          variant: "destructive",
+        });
+        refetchGate();
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safe = (session.rfpFileName ?? "rfp-response").replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
+      a.download = `${safe}${FORMAT_META[format].ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses", sessionId] });
+      toast({ title: "Export complete", description: `${FORMAT_META[format].label} downloaded successfully.` });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleOutcome(tag: OutcomeTag) {
+    setSubmittingOutcome(true);
+    try {
+      const res = await apiRequest("POST", `/api/rfp/responses/${sessionId}/outcome`, { outcome: tag });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error ?? "Failed to record outcome");
+      }
+      setOutcome(tag);
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses", sessionId] });
+      toast({
+        title: tag === "won" ? "🏆 Marked as Won" : tag === "lost" ? "Marked as Lost" : "Outcome cleared",
+        description: tag === "won"
+          ? "This response will be re-ingested as a gold-standard KB document in the background."
+          : tag === "lost"
+          ? "This response will be re-ingested as a reference lesson in the KB."
+          : "Outcome tag removed.",
+      });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setSubmittingOutcome(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Pre-export gate checklist */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="h-4 w-4 text-cyan-400" />
+          <h3 className="text-sm font-semibold text-white">Pre-export Gate</h3>
+          {gateLoading && <Loader2 className="h-3.5 w-3.5 text-slate-500 animate-spin" />}
+          {gate && !gateLoading && (
+            gate.blocked
+              ? <span className="ml-auto text-xs font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">{gate.blockers.length} issue{gate.blockers.length !== 1 ? "s" : ""}</span>
+              : <span className="ml-auto text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">✓ All clear</span>
+          )}
+        </div>
+        {gate?.blockers && gate.blockers.length > 0 ? (
+          <div className="space-y-2">
+            {gate.blockers.map((b, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-xs text-slate-400">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <span>{b.label}</span>
+              </div>
+            ))}
+            <p className="text-xs text-slate-500 mt-3">
+              Resolve these issues in the Responses tab, then export — or use "Export anyway" to download a draft.
+            </p>
+          </div>
+        ) : !gateLoading && gate && (
+          <p className="text-xs text-slate-500">All amber/red requirements confirmed, all competitive claims reviewed. Ready to export.</p>
+        )}
+      </div>
+
+      {/* Format picker */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+        <h3 className="text-sm font-semibold text-white mb-4">Export Format</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {(Object.entries(FORMAT_META) as [ExportFormat, (typeof FORMAT_META)[ExportFormat]][]).map(([key, meta]) => (
+            <button
+              key={key}
+              onClick={() => setFormat(key)}
+              className={`flex items-start gap-3 rounded-xl p-4 border text-left transition-all ${
+                format === key
+                  ? "bg-cyan-500/10 border-cyan-500/30 ring-1 ring-cyan-500/30"
+                  : "bg-slate-800/50 border-white/5 hover:border-white/10"
+              }`}
+            >
+              <span className={format === key ? "text-cyan-400" : "text-slate-500"}>{meta.icon}</span>
+              <div>
+                <div className={`text-sm font-medium ${format === key ? "text-white" : "text-slate-300"}`}>{meta.label}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{meta.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-white">Export Options</h3>
+
+        {/* Citation toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-slate-300">Include source citations</div>
+            <div className="text-xs text-slate-500 mt-0.5">Shows KB document references alongside each response</div>
+          </div>
+          <button
+            onClick={() => setShowCitations(!showCitations)}
+            className={`text-xl transition-colors ${showCitations ? "text-cyan-400" : "text-slate-600"}`}
+          >
+            {showCitations ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
+          </button>
+        </div>
+
+        {/* Diagram picker (only for docx/pdf/pptx) */}
+        {format !== "xlsx" && diagrams.length > 0 && (
+          <div>
+            <div className="text-sm text-slate-300 mb-2">Architecture diagrams to include</div>
+            <div className="space-y-2">
+              {diagrams.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => toggleDiagram(d.id)}
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 border text-left transition-all ${
+                    isDiagramIncluded(d.id)
+                      ? "bg-violet-500/8 border-violet-500/20"
+                      : "bg-slate-800/30 border-white/5 opacity-50"
+                  }`}
+                >
+                  <span className={`h-4 w-4 rounded border flex-shrink-0 flex items-center justify-center ${isDiagramIncluded(d.id) ? "bg-violet-500 border-violet-400" : "border-slate-600"}`}>
+                    {isDiagramIncluded(d.id) && <CheckCircle className="h-3 w-3 text-white" />}
+                  </span>
+                  <div>
+                    <div className="text-xs font-medium text-slate-300">{d.title}</div>
+                    <div className="text-[11px] text-slate-500">{d.diagramIntent}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Export button */}
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={() => handleExport(false)}
+          disabled={exporting}
+          className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-medium"
+        >
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+          {exporting ? "Exporting…" : `Export ${FORMAT_META[format].label}`}
+        </Button>
+        {gate?.blocked && (
+          <Button
+            onClick={() => handleExport(true)}
+            disabled={exporting}
+            variant="outline"
+            className="border-slate-700 text-slate-400 hover:text-white"
+          >
+            <FileDown className="h-4 w-4 mr-1.5" />
+            Export anyway
+          </Button>
+        )}
+      </div>
+
+      {/* Outcome recording */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+        <h3 className="text-sm font-semibold text-white mb-1">Record Outcome</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Mark whether you won or lost this RFP. Won responses are re-ingested into the knowledge base with boosted retrieval weight; lost responses are ingested as lower-weight lessons.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => !submittingOutcome && handleOutcome("won")}
+            disabled={submittingOutcome}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 border text-sm font-medium transition-all ${
+              outcome === "won"
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                : "bg-slate-800/50 border-white/5 text-slate-400 hover:border-emerald-500/20 hover:text-emerald-400"
+            }`}
+          >
+            <Trophy className="h-4 w-4" />
+            Won
+          </button>
+          <button
+            onClick={() => !submittingOutcome && handleOutcome("lost")}
+            disabled={submittingOutcome}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 border text-sm font-medium transition-all ${
+              outcome === "lost"
+                ? "bg-red-500/15 border-red-500/30 text-red-400"
+                : "bg-slate-800/50 border-white/5 text-slate-400 hover:border-red-500/20 hover:text-red-400"
+            }`}
+          >
+            <ThumbsDown className="h-4 w-4" />
+            Lost
+          </button>
+          {outcome && outcome !== "pending" && (
+            <button
+              onClick={() => !submittingOutcome && handleOutcome("pending")}
+              disabled={submittingOutcome}
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 border border-white/5 bg-slate-800/50 text-slate-500 hover:text-slate-300 text-sm transition-all"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Clear
+            </button>
+          )}
+        </div>
+        {outcome && outcome !== "pending" && (
+          <p className={`mt-3 text-xs ${outcome === "won" ? "text-emerald-500" : "text-red-500"}`}>
+            {outcome === "won"
+              ? "✓ Marked as Won — this response has been queued for KB re-ingestion with gold-standard weight."
+              : "✓ Marked as Lost — this response will be ingested as a reference lesson at reduced weight."}
+          </p>
+        )}
+        {submittingOutcome && <Loader2 className="h-4 w-4 text-slate-400 animate-spin mt-3" />}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function RfpSessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [completeTab, setCompleteTab] = useState<"responses" | "diagrams">("responses");
+  const [completeTab, setCompleteTab] = useState<"responses" | "diagrams" | "export">("responses");
 
   const POLLING_STATUSES = new Set(["decomposing", "generating"]);
 
@@ -713,6 +1033,20 @@ export default function RfpSessionDetailPage() {
                 <Network className="h-3.5 w-3.5" />
                 Architecture Diagrams
               </button>
+              <button
+                onClick={() => setCompleteTab("export")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  completeTab === "export"
+                    ? "bg-white/8 text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Assemble &amp; Export
+                {session.exportedAt && (
+                  <span className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" title="Previously exported" />
+                )}
+              </button>
             </div>
 
             {completeTab === "responses" && <CompleteView data={data} sessionId={id!} />}
@@ -726,6 +1060,9 @@ export default function RfpSessionDetailPage() {
                 }}
                 requirements={requirements}
               />
+            )}
+            {completeTab === "export" && (
+              <ExportPanel sessionId={id!} session={session} />
             )}
           </div>
         )}

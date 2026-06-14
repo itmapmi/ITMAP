@@ -17,6 +17,7 @@ import { registerLeadGenRoutes } from "./routes/leadGen";
 import { registerRfpKbRoutes } from "./routes/rfpKb";
 import { registerRfpResponderRoutes } from "./routes/rfpResponder";
 import { registerRfpDiagramRoutes } from "./routes/rfpDiagrams";
+import { registerRfpAssemblyRoutes } from "./routes/rfpAssembly";
 import { warmAllMarkets, startCacheRefreshTimer } from "./chat/context-cache";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -40,6 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerRfpKbRoutes(app);
   registerRfpResponderRoutes(app);
   registerRfpDiagramRoutes(app);
+  registerRfpAssemblyRoutes(app);
 
   // Warm the AI chat context cache in the background so the first user message
   // on any public market is served from cache, not rebuilt from scratch.

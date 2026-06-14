@@ -2041,6 +2041,9 @@ export const rfpResponseSessions = pgTable("rfp_response_sessions", {
   reviewedAt: timestamp("reviewed_at"),
   generationStartedAt: timestamp("generation_started_at"),
   completedAt: timestamp("completed_at"),
+  // 'won' | 'lost' | 'pending' | null — recorded after export
+  outcomeTag: text("outcome_tag"),
+  exportedAt: timestamp("exported_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
