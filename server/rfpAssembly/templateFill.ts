@@ -276,9 +276,11 @@ export async function fillDocxTemplate(
       }
     }
 
-    // Reconstruct table: props + header + data rows
+    // Reconstruct table: tblProps already starts with the opening <w:tbl...> tag
+    // (it is sliced from tableXml up to the first row), so just append rows and
+    // close the element — do NOT wrap in another <w:tbl>.
     const newTableXml =
-      `<w:tbl>${tblProps}${headerRowXml}${dataRowsXml.join("")}</w:tbl>`;
+      `${tblProps}${headerRowXml}${dataRowsXml.join("")}</w:tbl>`;
 
     const newXml = before + newTableXml + after;
     zip.updateFile("word/document.xml", Buffer.from(newXml, "utf8"));
