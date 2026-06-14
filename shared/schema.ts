@@ -2058,21 +2058,28 @@ export const rfpResponseReqs = pgTable("rfp_response_reqs", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
-export const rfpResponseAnswers = pgTable("rfp_response_answers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requirementId: varchar("requirement_id").notNull().references(() => rfpResponseReqs.id, { onDelete: "cascade" }),
-  sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
-  generatedText: text("generated_text"),
-  coverageFlag: text("coverage_flag").notNull().default("pending"),
-  sources: jsonb("sources").$type<ResponseSource[]>(),
-  competitiveClaims: jsonb("competitive_claims").$type<CompetitiveClaim[]>(),
-  smeNote: text("sme_note"),
-  confirmed: boolean("confirmed").notNull().default(false),
-  citationsVisible: boolean("citations_visible").notNull().default(true),
-  createdAt: timestamp("created_at").default(sql`now()`),
-  updatedAt: timestamp("updated_at").default(sql`now()`),
-});
+export const rfpResponseAnswers = pgTable(
+  "rfp_response_answers",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    requirementId: varchar("requirement_id").notNull().references(() => rfpResponseReqs.id, { onDelete: "cascade" }),
+    sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
+    vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    generatedText: text("generated_text"),
+    coverageFlag: text("coverage_flag").notNull().default("pending"),
+    sources: jsonb("sources").$type<ResponseSource[]>(),
+    competitiveClaims: jsonb("competitive_claims").$type<CompetitiveClaim[]>(),
+    smeNote: text("sme_note"),
+    confirmed: boolean("confirmed").notNull().default(false),
+    citationsVisible: boolean("citations_visible").notNull().default(true),
+    createdAt: timestamp("created_at").default(sql`now()`),
+    updatedAt: timestamp("updated_at").default(sql`now()`),
+  },
+  (t) => ({
+    // One answer per requirement — enforces idempotent generation
+    rfpAnswerReqUniq: uniqueIndex("rfp_answer_req_uniq").on(t.requirementId),
+  }),
+);
 
 export const insertRfpResponseSessionSchema = createInsertSchema(rfpResponseSessions).omit({
   id: true, createdAt: true, updatedAt: true,

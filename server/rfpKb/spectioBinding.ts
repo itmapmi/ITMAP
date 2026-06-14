@@ -5,6 +5,7 @@ export interface SpectioDataPoint {
   label: string;
   value: string;
   excerpt: string;
+  relevanceScore: number; // 0-1, computed per-requirement
   criterionName?: string;
   featureName?: string;
   categoryName?: string;
@@ -16,6 +17,7 @@ export interface SpectioContext {
   vendorId: string;
   vendorName: string;
   marketName: string;
+  /** All data points ranked by relevance to the requirement (caller selects top-k). */
   dataPoints: SpectioDataPoint[];
   raw: {
     executionScore: number | null;
@@ -34,9 +36,59 @@ const HARVEY_LABELS = [
   "Full support",
 ];
 
+// ── Relevance scoring ─────────────────────────────────────────────────────
+
+/**
+ * Simple bag-of-words relevance score between a requirement and a data point.
+ * Returns a value in [0, 1] based on token overlap (TF-intersection).
+ * This is intentionally lightweight — the goal is to filter irrelevant data
+ * points before sending them to GPT, not to replace semantic search.
+ */
+function computeRelevance(requirementText: string, dataPointText: string): number {
+  const stopwords = new Set([
+    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "as", "is", "are", "was", "were", "be",
+    "been", "being", "have", "has", "had", "do", "does", "did", "not",
+    "this", "that", "these", "those", "it", "its", "shall", "should",
+    "must", "will", "may", "can", "our", "your", "their", "we", "they",
+    "vendor", "solution", "please", "provide", "describe", "detail",
+  ]);
+
+  function tokenize(text: string): Set<string> {
+    return new Set(
+      text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .split(/\s+/)
+        .filter((t) => t.length > 2 && !stopwords.has(t)),
+    );
+  }
+
+  const reqTokens = tokenize(requirementText);
+  const dpTokens = tokenize(dataPointText);
+
+  if (reqTokens.size === 0 || dpTokens.size === 0) return 0;
+
+  let matches = 0;
+  for (const t of reqTokens) {
+    if (dpTokens.has(t)) matches++;
+  }
+
+  // Normalise by the smaller set to avoid penalising long data points
+  return matches / Math.min(reqTokens.size, dpTokens.size);
+}
+
+// ── Context builder ───────────────────────────────────────────────────────
+
+/**
+ * Build the full Spectio context for a vendor in a market.
+ * When `requirementText` is provided each data point is scored for relevance;
+ * the caller should call `selectTopDataPoints()` to filter before LLM use.
+ */
 export async function buildSpectioContext(
   vendorId: string,
   marketId: string,
+  requirementText?: string,
 ): Promise<SpectioContext> {
   const [vendor, market, allCriteria, allFeatureSupport] = await Promise.all([
     storage.getVendorById(vendorId),
@@ -105,55 +157,73 @@ export async function buildSpectioContext(
     impact: a.impactLabel ?? a.impact ?? null,
   }));
 
-  // Build data points
+  // ── Build data points with relevance scores ───────────────────────────
+
+  const req = requirementText ?? "";
+
   const dataPoints: SpectioDataPoint[] = [];
 
   if (executionScore !== null) {
+    const excerpt = `${vendor.name} has an execution score of ${executionScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`;
     dataPoints.push({
       type: "vendor_score",
       label: "Execution score",
       value: `${executionScore}/100`,
-      excerpt: `${vendor.name} has an execution score of ${executionScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`,
+      excerpt,
+      relevanceScore: req ? computeRelevance(req, `execution delivery performance ${excerpt}`) : 0.5,
     });
   }
   if (viabilityScore !== null) {
+    const excerpt = `${vendor.name} has a viability score of ${viabilityScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`;
     dataPoints.push({
       type: "vendor_score",
       label: "Viability score",
       value: `${viabilityScore}/100`,
-      excerpt: `${vendor.name} has a viability score of ${viabilityScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`,
+      excerpt,
+      relevanceScore: req ? computeRelevance(req, `viability financial stability market ${excerpt}`) : 0.5,
     });
   }
   for (const cs of criteriaScores) {
+    const excerpt = `${vendor.name} scored ${cs.score}/100 on "${cs.name}" (${cs.category}) — spectio.ai evaluation, ${marketDisplayName} market.`;
     dataPoints.push({
       type: "vendor_score",
       label: cs.name,
       value: `${cs.score}/100`,
       criterionName: cs.name,
-      excerpt: `${vendor.name} scored ${cs.score}/100 on "${cs.name}" (${cs.category}) — spectio.ai evaluation, ${marketDisplayName} market.`,
+      excerpt,
+      relevanceScore: req ? computeRelevance(req, `${cs.name} ${cs.category} score ${excerpt}`) : 0.4,
     });
   }
   for (const f of features) {
     const label = HARVEY_LABELS[f.supportLevel] ?? "Unknown";
+    const excerpt = `${vendor.name}: "${f.name}" (${f.category}) — ${label}${f.notes ? ". " + f.notes : ""}. Source: spectio.ai product evaluation.`;
     dataPoints.push({
       type: "product_feature",
       label: `${f.category} — ${f.name}`,
       value: label,
       categoryName: f.category,
       featureName: f.name,
-      excerpt: `${vendor.name}: "${f.name}" (${f.category}) — ${label}${f.notes ? ". " + f.notes : ""}. Source: spectio.ai product evaluation.`,
+      excerpt,
+      relevanceScore: req
+        ? computeRelevance(req, `${f.name} ${f.category} feature capability support ${f.notes ?? ""} ${excerpt}`)
+        : 0.3,
     });
   }
   for (const n of recentNews) {
+    const excerpt = n.summary ?? n.title;
     dataPoints.push({
       type: "news",
       label: n.title,
       value: n.impact ?? "Informational",
       articleTitle: n.title,
       publishedAt: n.publishedAt,
-      excerpt: n.summary ?? n.title,
+      excerpt,
+      relevanceScore: req ? computeRelevance(req, `${n.title} ${excerpt}`) : 0.2,
     });
   }
+
+  // Sort by relevance descending so callers can easily slice top-k
+  dataPoints.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
   return {
     vendorId,
@@ -164,40 +234,45 @@ export async function buildSpectioContext(
   };
 }
 
-/** Format the Spectio context into a plain-text block for inclusion in LLM prompts. */
-export function formatSpectioContext(ctx: SpectioContext): string {
+/**
+ * Return the top-k most relevant data points for this requirement,
+ * always including at least one score point if any exist.
+ */
+export function selectTopDataPoints(
+  ctx: SpectioContext,
+  topK = 12,
+): SpectioDataPoint[] {
+  const selected = ctx.dataPoints.slice(0, topK);
+
+  // Ensure at least one score point is included (for coverage context)
+  const hasScore = selected.some((dp) => dp.type === "vendor_score");
+  if (!hasScore) {
+    const scorePoint = ctx.dataPoints.find((dp) => dp.type === "vendor_score");
+    if (scorePoint) {
+      selected.pop();
+      selected.unshift(scorePoint);
+    }
+  }
+
+  return selected;
+}
+
+/** Format a subset of data points into a plain-text block for LLM prompts. */
+export function formatSpectioContext(ctx: SpectioContext, dataPoints?: SpectioDataPoint[]): string {
+  const pts = dataPoints ?? ctx.dataPoints;
   const lines: string[] = [
     `=== Spectio Intelligence: ${ctx.vendorName} in ${ctx.marketName} ===`,
+    `(relevance-ranked data points for this requirement — use only what is directly relevant)`,
   ];
 
-  if (ctx.raw.executionScore !== null)
-    lines.push(`Execution score: ${ctx.raw.executionScore}/100`);
-  if (ctx.raw.viabilityScore !== null)
-    lines.push(`Viability score: ${ctx.raw.viabilityScore}/100`);
-
-  if (ctx.raw.criteriaScores.length > 0) {
-    lines.push("\nCriteria scores:");
-    for (const cs of ctx.raw.criteriaScores) {
-      lines.push(`  ${cs.name} (${cs.category}): ${cs.score}/100`);
-    }
-  }
-
-  if (ctx.raw.features.length > 0) {
-    lines.push("\nProduct feature support:");
-    for (const f of ctx.raw.features) {
-      const label = HARVEY_LABELS[f.supportLevel] ?? "Unknown";
-      lines.push(`  [${f.category}] ${f.name}: ${label}${f.notes ? " — " + f.notes : ""}`);
-    }
-  }
-
-  if (ctx.raw.recentNews.length > 0) {
-    lines.push("\nRecent news:");
-    for (const n of ctx.raw.recentNews.slice(0, 5)) {
-      lines.push(
-        `  [${n.publishedAt ?? "unknown date"}${n.impact ? ", " + n.impact : ""}] ${n.title}${
-          n.summary ? " — " + n.summary : ""
-        }`,
-      );
+  for (const dp of pts) {
+    const rel = `[rel=${dp.relevanceScore.toFixed(2)}]`;
+    if (dp.type === "vendor_score") {
+      lines.push(`  [SCORE] ${rel} ${dp.label}: ${dp.value} — ${dp.excerpt}`);
+    } else if (dp.type === "product_feature") {
+      lines.push(`  [FEATURE] ${rel} ${dp.label}: ${dp.value} — ${dp.excerpt}`);
+    } else if (dp.type === "news") {
+      lines.push(`  [NEWS] ${rel} [${dp.publishedAt ?? "date unknown"}${dp.value !== "Informational" ? ", " + dp.value : ""}] ${dp.label} — ${dp.excerpt}`);
     }
   }
 

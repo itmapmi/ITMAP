@@ -14,7 +14,7 @@ import {
   bulkCreateRfpResponseReqs,
   listRfpResponseReqs,
   updateRfpResponseReq,
-  createRfpResponseAnswer,
+  upsertRfpResponseAnswer,
   listRfpResponseAnswers,
   updateRfpResponseAnswer,
   recomputeSessionCounts,
@@ -256,6 +256,9 @@ export function registerRfpResponderRoutes(app: Express): void {
       if (session.status === "generating") {
         return res.status(409).json({ error: "Generation already in progress" });
       }
+      if (session.status === "complete") {
+        return res.status(409).json({ error: "Session is already complete. Delete and re-upload to regenerate from scratch." });
+      }
 
       const requirements = await listRfpResponseReqs(session.id);
       if (requirements.length === 0) {
@@ -289,7 +292,7 @@ export function registerRfpResponderRoutes(app: Express): void {
                     marketId: session.marketId,
                     vendorName,
                   });
-                  await createRfpResponseAnswer({
+                  await upsertRfpResponseAnswer({
                     requirementId: req_.id,
                     sessionId: session.id,
                     vendorId,
@@ -303,7 +306,7 @@ export function registerRfpResponderRoutes(app: Express): void {
                     `[rfpResponder] generation failed for req ${req_.id}:`,
                     e.message,
                   );
-                  await createRfpResponseAnswer({
+                  await upsertRfpResponseAnswer({
                     requirementId: req_.id,
                     sessionId: session.id,
                     vendorId,

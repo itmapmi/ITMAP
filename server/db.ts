@@ -414,6 +414,72 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_at timestamp;
     `);
 
+    // 26. RFP Responder tables — vendor-side pipeline for responding to client
+    //     RFPs. Three tables: sessions (one per RFP upload), requirements
+    //     (decomposed from the RFP doc), answers (one per requirement, enforced
+    //     by a unique index so generation is idempotent).
+    //     Guarded with IF NOT EXISTS / CREATE UNIQUE INDEX IF NOT EXISTS so safe
+    //     across all environments without a preceding db:push.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rfp_response_sessions (
+        id                  varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vendor_id           varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        uploaded_by_user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_org_name     text,
+        rfp_file_name       text,
+        rfp_text            text,
+        market_id           varchar REFERENCES markets(id) ON DELETE SET NULL,
+        status              text NOT NULL DEFAULT 'uploading',
+        error_message       text,
+        requirements_count  integer NOT NULL DEFAULT 0,
+        green_count         integer NOT NULL DEFAULT 0,
+        amber_count         integer NOT NULL DEFAULT 0,
+        red_count           integer NOT NULL DEFAULT 0,
+        confirmed_count     integer NOT NULL DEFAULT 0,
+        reviewed_at         timestamp,
+        generation_started_at timestamp,
+        completed_at        timestamp,
+        created_at          timestamp DEFAULT now(),
+        updated_at          timestamp DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS rfp_response_reqs (
+        id               varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id       varchar NOT NULL REFERENCES rfp_response_sessions(id) ON DELETE CASCADE,
+        vendor_id        varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        section          text,
+        requirement_text text NOT NULL,
+        category         text NOT NULL DEFAULT 'other',
+        mandatory        boolean NOT NULL DEFAULT false,
+        response_type    text NOT NULL DEFAULT 'descriptive',
+        display_order    integer NOT NULL DEFAULT 0,
+        created_at       timestamp DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS rfp_response_answers (
+        id                  varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        requirement_id      varchar NOT NULL REFERENCES rfp_response_reqs(id) ON DELETE CASCADE,
+        session_id          varchar NOT NULL REFERENCES rfp_response_sessions(id) ON DELETE CASCADE,
+        vendor_id           varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        generated_text      text,
+        coverage_flag       text NOT NULL DEFAULT 'pending',
+        sources             jsonb,
+        competitive_claims  jsonb,
+        sme_note            text,
+        confirmed           boolean NOT NULL DEFAULT false,
+        citations_visible   boolean NOT NULL DEFAULT true,
+        created_at          timestamp DEFAULT now(),
+        updated_at          timestamp DEFAULT now()
+      );
+    `);
+
+    // 26b. Unique index on rfp_response_answers(requirement_id) — one answer per
+    //      requirement, makes generation idempotent via ON CONFLICT upsert.
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS rfp_answer_req_uniq
+        ON rfp_response_answers (requirement_id)
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { searchRfpKbChunks, type SimilarChunk } from "../storage/rfpKb";
-import { buildSpectioContext, formatSpectioContext, type SpectioContext } from "./spectioBinding";
+import { buildSpectioContext, selectTopDataPoints, formatSpectioContext, type SpectioContext, type SpectioDataPoint } from "./spectioBinding";
 import type { ResponseSource, CompetitiveClaim } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -15,6 +15,12 @@ const generationOutputSchema = z.object({
   answer: z.string().min(1),
   coverageAssessment: z.enum(["green", "amber", "red"]),
   coverageReason: z.string(),
+  /**
+   * Factual statements sourced from Spectio data that COMPARE this vendor
+   * against others or assert a competitive position.
+   * These are stored separately and MUST NOT appear in the `answer` field.
+   * Users opt-in to each claim before it enters any external document.
+   */
   competitiveClaims: z
     .array(
       z.object({
@@ -44,25 +50,32 @@ async function embedText(text: string): Promise<number[]> {
 function buildSystemPrompt(vendorName: string): string {
   return `You are an expert RFP response writer for ${vendorName}. Your task is to draft a concise, factual answer to a specific RFP requirement.
 
-CRITICAL RULES:
-1. Every factual claim MUST be grounded in the provided "Knowledge Base Excerpts" or "Spectio Intelligence" sections. Do not invent facts.
-2. If the retrieved materials do not contain sufficient information to answer a requirement: say so clearly and honestly — do not fabricate. Mark it as a gap.
-3. Do not mention competitor vendor names unless they appear explicitly in the provided context.
-4. Write in professional third-person narrative (${vendorName} does / provides / supports…).
-5. Keep answers concise — 1-3 paragraphs for descriptive, one sentence for yes/no.
+STRICT OUTPUT CONTRACT — read carefully before responding:
 
-Coverage assessment rules:
-- "green": the retrieved materials contain clear, direct evidence to answer this requirement fully.
-- "amber": materials contain partial or inferred evidence — answer is reasonable but may need SME verification.
-- "red": no relevant evidence found — the answer is a gap and must NOT be presented as a capability claim.
+1. The "answer" field must contain ONLY first-person vendor narrative about what ${vendorName} does, provides, or supports. It must NOT reference competitor names, comparative rankings, or relative market positions of any kind. Comparative claims go in "competitiveClaims" only.
 
-Competitive claims: identify any statement that explicitly or implicitly compares ${vendorName} to other vendors using Spectio data. List each one separately.
+2. Every factual claim in "answer" must be grounded in the provided "Knowledge Base Excerpts" or "Spectio Intelligence" sections. Do NOT invent capabilities.
+
+3. If the retrieved materials do not contain sufficient information to fully answer a requirement, say so honestly — e.g. "Our team would be happy to provide further detail on this during a discovery call." Do NOT fabricate. Coverage: "red".
+
+4. Write in professional third-person narrative: "${vendorName} provides / supports / delivers…"
+
+5. Keep answers concise: 1-3 paragraphs for descriptive, one sentence for yes/no.
+
+Coverage assessment:
+- "green": retrieved materials contain clear, direct evidence that fully answers the requirement.
+- "amber": partial or inferred evidence — answer is reasonable but may need SME verification before finalising.
+- "red": no relevant evidence found — the answer acknowledges a gap and must NOT claim a capability.
+
+"competitiveClaims" — populate this array if Spectio data reveals a factual, verifiable claim that positions ${vendorName} against peers (e.g. "scored 82/100 on security, the highest in the market"). Each claim must:
+  - be factually supported by the provided Spectio data
+  - NOT appear anywhere in the "answer" text — they are extracted for optional human review only
 
 Respond ONLY with valid JSON:
 {
-  "answer": "The drafted response paragraph(s)...",
+  "answer": "...",
   "coverageAssessment": "green|amber|red",
-  "coverageReason": "Brief reason for the coverage level",
+  "coverageReason": "...",
   "competitiveClaims": [
     {"claim": "...", "sourceType": "spectio_score|spectio_feature|spectio_news", "sourceDetail": "..."}
   ]
@@ -74,27 +87,29 @@ function buildUserMessage(
   section: string | null | undefined,
   chunks: SimilarChunk[],
   spectioCtx: SpectioContext | null,
+  rankedDataPoints: SpectioDataPoint[],
 ): string {
   const parts: string[] = [];
 
   parts.push(`REQUIREMENT (section: ${section ?? "Unspecified"}):\n${requirementText}`);
 
   if (chunks.length > 0) {
-    parts.push("\n=== Knowledge Base Excerpts ===");
+    parts.push("\n=== Knowledge Base Excerpts (retrieved by semantic similarity) ===");
     for (let i = 0; i < chunks.length; i++) {
       const c = chunks[i]!;
       const loc = c.sectionPath ? ` [${c.sectionPath}]` : c.pageRef ? ` [p.${c.pageRef}]` : "";
-      parts.push(`[Excerpt ${i + 1}${loc}]\n${c.content.slice(0, 800)}`);
+      parts.push(`[Excerpt ${i + 1}${loc} | similarity=${c.score.toFixed(3)}]\n${c.content.slice(0, 800)}`);
     }
   } else {
     parts.push("\n[No Knowledge Base excerpts found for this requirement]");
   }
 
-  if (spectioCtx) {
-    parts.push("\n" + formatSpectioContext(spectioCtx));
+  if (spectioCtx && rankedDataPoints.length > 0) {
+    parts.push("\n" + formatSpectioContext(spectioCtx, rankedDataPoints));
   }
 
-  parts.push("\nGenerate the JSON response now.");
+  parts.push("\nRemember: competitive claims must ONLY appear in the competitiveClaims array, never in the answer text.");
+  parts.push("Generate the JSON response now.");
   return parts.join("\n");
 }
 
@@ -107,7 +122,7 @@ function computeCoverageFlag(
   // Downgrade if model claims green but retrieval is weak
   if (modelAssessment === "green" && topScore < 0.45) return "amber";
 
-  // Never let model upgrade red to amber/green without evidence
+  // Never let model upgrade red
   if (modelAssessment === "red") return "red";
 
   return modelAssessment;
@@ -115,40 +130,42 @@ function computeCoverageFlag(
 
 function buildSources(
   chunks: SimilarChunk[],
-  chunkDocNames: Map<string, string>,
   spectioCtx: SpectioContext | null,
-  modelCompetitiveClaims: { sourceType: string; sourceDetail: string }[],
+  rankedDataPoints: SpectioDataPoint[],
 ): ResponseSource[] {
   const sources: ResponseSource[] = [];
 
-  // KB chunk sources
   for (const c of chunks) {
     sources.push({
       type: "kb_chunk",
-      docName: chunkDocNames.get(c.documentId) ?? "Vendor document",
+      docName: `Document ${c.documentId.slice(0, 8)}`,
       pageRef: c.pageRef,
       sectionPath: c.sectionPath,
       excerpt: c.content.slice(0, 200),
     });
   }
 
-  // Spectio sources from competitive claims
   if (spectioCtx) {
-    for (const claim of modelCompetitiveClaims) {
-      if (claim.sourceType === "spectio_score") {
+    for (const dp of rankedDataPoints.filter((dp) => dp.relevanceScore > 0.1)) {
+      if (dp.type === "vendor_score") {
         sources.push({
           type: "spectio_score",
-          excerpt: claim.sourceDetail,
+          criterionName: dp.criterionName,
+          excerpt: dp.excerpt,
         });
-      } else if (claim.sourceType === "spectio_feature") {
+      } else if (dp.type === "product_feature") {
         sources.push({
           type: "spectio_feature",
-          excerpt: claim.sourceDetail,
+          featureName: dp.featureName,
+          categoryName: dp.categoryName,
+          excerpt: dp.excerpt,
         });
-      } else if (claim.sourceType === "spectio_news") {
+      } else if (dp.type === "news") {
         sources.push({
           type: "spectio_news",
-          excerpt: claim.sourceDetail,
+          articleTitle: dp.articleTitle,
+          publishedAt: dp.publishedAt,
+          excerpt: dp.excerpt,
         });
       }
     }
@@ -170,24 +187,21 @@ export async function generateRequirementResponse(params: {
   // 1. Embed requirement text
   const queryEmbedding = await embedText(requirementText);
 
-  // 2. Search vendor KB in parallel with Spectio context fetch
+  // 2. Search vendor KB + build requirement-conditioned Spectio context in parallel
   const [chunks, spectioCtx] = await Promise.all([
     searchRfpKbChunks(vendorId, queryEmbedding, topK),
-    marketId ? buildSpectioContext(vendorId, marketId).catch((e) => {
-      console.warn("[rfp-generate] Spectio context failed:", e.message);
-      return null;
-    }) : Promise.resolve(null),
+    marketId
+      ? buildSpectioContext(vendorId, marketId, requirementText).catch((e) => {
+          console.warn("[rfp-generate] Spectio context failed:", e.message);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
-  // Build doc name map (we don't have a separate lookup — use documentId as fallback)
-  const chunkDocNames = new Map<string, string>();
-  for (const c of chunks) {
-    if (!chunkDocNames.has(c.documentId)) {
-      chunkDocNames.set(c.documentId, `Document ${c.documentId.slice(0, 8)}`);
-    }
-  }
+  // 3. Select the top-k requirement-relevant Spectio data points
+  const rankedDataPoints = spectioCtx ? selectTopDataPoints(spectioCtx, 12) : [];
 
-  // 3. Generate response
+  // 4. Generate response
   let output: z.infer<typeof generationOutputSchema>;
   let lastError: unknown;
 
@@ -199,7 +213,7 @@ export async function generateRequirementResponse(params: {
           { role: "system", content: buildSystemPrompt(vendorName) },
           {
             role: "user",
-            content: buildUserMessage(requirementText, section, chunks, spectioCtx),
+            content: buildUserMessage(requirementText, section, chunks, spectioCtx, rankedDataPoints),
           },
         ],
         response_format: { type: "json_object" },
@@ -216,14 +230,13 @@ export async function generateRequirementResponse(params: {
     }
   }
 
-  // @ts-expect-error set in loop
+  // @ts-expect-error set in loop above
   if (!output!) {
     throw new Error(`Generation failed after 3 attempts: ${String(lastError)}`);
   }
 
   const coverageFlag = computeCoverageFlag(output.coverageAssessment, chunks);
-
-  const sources = buildSources(chunks, chunkDocNames, spectioCtx, output.competitiveClaims);
+  const sources = buildSources(chunks, spectioCtx, rankedDataPoints);
 
   const competitiveClaims: CompetitiveClaim[] = output.competitiveClaims.map((c, idx) => ({
     id: `claim-${idx}`,

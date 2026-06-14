@@ -8,7 +8,7 @@ import {
   type ResponseSource,
   type CompetitiveClaim,
 } from "@shared/schema";
-import { db } from "../db";
+import { db, pool } from "../db";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 // ── Sessions ───────────────────────────────────────────────────────────────
@@ -145,7 +145,13 @@ export async function updateRfpResponseReq(
 
 // ── Answers ────────────────────────────────────────────────────────────────
 
-export async function createRfpResponseAnswer(data: {
+/**
+ * Upsert an answer for a requirement. The unique constraint on requirement_id
+ * ensures at most one answer per requirement, making generation idempotent.
+ * On conflict, only the generated fields are overwritten (not SME annotations
+ * or confirmed status, which are user-owned).
+ */
+export async function upsertRfpResponseAnswer(data: {
   requirementId: string;
   sessionId: string;
   vendorId: string;
@@ -154,8 +160,33 @@ export async function createRfpResponseAnswer(data: {
   sources?: ResponseSource[] | null;
   competitiveClaims?: CompetitiveClaim[] | null;
 }): Promise<RfpResponseAnswer> {
-  const [row] = await db.insert(rfpResponseAnswers).values(data).returning();
-  return row!;
+  const client = await pool.connect();
+  try {
+    const result = await client.query<RfpResponseAnswer>(
+      `INSERT INTO rfp_response_answers
+         (id, requirement_id, session_id, vendor_id, generated_text, coverage_flag, sources, competitive_claims, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, now(), now())
+       ON CONFLICT (requirement_id) DO UPDATE
+         SET generated_text      = EXCLUDED.generated_text,
+             coverage_flag       = EXCLUDED.coverage_flag,
+             sources             = EXCLUDED.sources,
+             competitive_claims  = EXCLUDED.competitive_claims,
+             updated_at          = now()
+       RETURNING *`,
+      [
+        data.requirementId,
+        data.sessionId,
+        data.vendorId,
+        data.generatedText ?? null,
+        data.coverageFlag ?? "pending",
+        JSON.stringify(data.sources ?? []),
+        JSON.stringify(data.competitiveClaims ?? []),
+      ],
+    );
+    return result.rows[0]!;
+  } finally {
+    client.release();
+  }
 }
 
 export async function listRfpResponseAnswers(
