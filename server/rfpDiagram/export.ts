@@ -101,60 +101,46 @@ export function exportDrawio(spec: TopologySpec, layout: LayoutResult): string {
 </mxfile>`;
 }
 
-// ── PNG export via puppeteer ──────────────────────────────────────────────────
+// ── PNG export via sharp (SVG → PNG rasterization, no browser required) ───────
 
 export async function exportPng(svgContent: string): Promise<Buffer> {
-  const { launchBrowser } = await import("../pdf-generator/pdf-service");
-  const html = buildSvgHtml(svgContent);
-
-  // Use the project-wide robust Chromium launcher (probes multiple paths, has fallbacks)
-  const browser = await launchBrowser();
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 2 });
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const el = await page.$("svg");
-    const buf = el
-      ? await el.screenshot({ type: "png" })
-      : await page.screenshot({ type: "png", fullPage: false });
-    return Buffer.from(buf);
-  } finally {
-    await browser.close();
-  }
+  const sharp = (await import("sharp")).default;
+  // sharp reads the SVG width/height attributes — our SVGs declare 1200×750.
+  // density: 144 doubles the DPI from 72 to 144 (2× retina quality).
+  const pngBuffer = await sharp(Buffer.from(svgContent), { density: 144 })
+    .png()
+    .toBuffer();
+  return pngBuffer;
 }
 
-// ── PDF export ────────────────────────────────────────────────────────────────
+// ── PDF export via pdf-lib (embeds PNG raster, no browser required) ───────────
 
 export async function exportPdf(svgContent: string, title: string): Promise<Buffer> {
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${escXml(title)}</title>
-  <style>
-    @page { size: 1200px 800px; margin: 0; }
-    body { margin: 0; padding: 0; background: #0c1222; }
-    svg { display: block; width: 100%; height: auto; }
-  </style>
-</head>
-<body>${svgContent}</body>
-</html>`;
+  const { PDFDocument } = await import("pdf-lib");
+  const sharp = (await import("sharp")).default;
 
-  const { pdfService } = await import("../pdf-generator/pdf-service");
-  return pdfService.htmlToPdf(html, { format: "A4", landscape: true });
+  // Rasterize SVG → PNG first
+  const pngBuffer = await sharp(Buffer.from(svgContent), { density: 144 })
+    .resize({ width: 1200, height: 750, fit: "contain", background: "#0c1222" })
+    .png()
+    .toBuffer();
+
+  // Create a landscape A4-ish PDF page at 1200×750 pts
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle(title);
+  pdfDoc.setAuthor("spectio.ai");
+  pdfDoc.setCreationDate(new Date());
+
+  const page = pdfDoc.addPage([1200, 750]);
+  const pngImage = await pdfDoc.embedPng(pngBuffer);
+
+  page.drawImage(pngImage, {
+    x: 0,
+    y: 0,
+    width: 1200,
+    height: 750,
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
-
-function buildSvgHtml(svgContent: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { margin: 0; padding: 0; background: #0c1222; display: flex; align-items: flex-start; justify-content: flex-start; }
-    svg { display: block; }
-  </style>
-</head>
-<body>${svgContent}</body>
-</html>`;
-}
-

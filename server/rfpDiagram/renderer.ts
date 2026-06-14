@@ -67,6 +67,16 @@ function renderEdge(edge: DiagramEdge, layout: LayoutResult): string {
 <path d="${pathB}" stroke="${color}" stroke-width="2" fill="none"/>`;
   }
 
+  // Redundant edges render as parallel offset paths to make redundancy visually explicit
+  if (edge.redundant) {
+    const pathA = ptStr(offsetPath(route.points, 3));
+    const pathB = ptStr(offsetPath(route.points, -3));
+    const dashAttrR = dash ? `stroke-dasharray="${dash}"` : "";
+    return `
+<path d="${pathA}" stroke="${color}" stroke-width="1.8" fill="none" ${dashAttrR} marker-end="url(#${markerId})"/>
+<path d="${pathB}" stroke="${color}" stroke-width="1.8" fill="none" ${dashAttrR}/>`;
+  }
+
   const d = ptStr(route.points);
   const labelPart = edge.label ? `
 <text font-size="10" fill="${color}" font-family="${LABEL_FONT}" text-anchor="middle" dominant-baseline="middle"

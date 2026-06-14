@@ -85,7 +85,7 @@ export function registerRfpDiagramRoutes(app: Express): void {
         requirementText,
       });
 
-      const layout = computeLayout(spec);
+      const layout = await computeLayout(spec);
       const { svgContent, iconManifest } = renderDiagram(spec, layout);
       const hasTier4 = iconManifest.some((m) => m.tier4Pending);
 
@@ -139,7 +139,7 @@ export function registerRfpDiagramRoutes(app: Express): void {
       }
 
       const spec = topologySpecSchema.parse(diagram.topologySpec);
-      const layout = computeLayout(spec, parsed.data);
+      const layout = await computeLayout(spec, parsed.data);
       const { svgContent } = renderDiagram(spec, layout);
 
       const updated = await updateRfpDiagramPositions(req.params.id, layout.nodePositions, svgContent);
@@ -170,7 +170,7 @@ export function registerRfpDiagramRoutes(app: Express): void {
       }
 
       const spec = topologySpecSchema.parse(diagram.topologySpec);
-      const layout = computeLayout(spec, diagram.nodePositions as Record<string, { x: number; y: number }>);
+      const layout = await computeLayout(spec, diagram.nodePositions as Record<string, { x: number; y: number }>);
       const safeName = diagram.title.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
 
       if (fmt === "drawio") {

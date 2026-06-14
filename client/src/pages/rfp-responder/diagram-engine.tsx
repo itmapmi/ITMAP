@@ -12,7 +12,7 @@ import {
   Network, Layers3, HardDrive, Database, Globe, Server, GitBranch,
   Cloud, Shield, ArrowRight, LayoutGrid, Plus, Trash2, Download,
   ZoomIn, ZoomOut, Maximize2, ChevronLeft, RotateCcw, Loader2,
-  FileImage, FileText, Code2, Info,
+  FileImage, FileText, Code2, Info, Presentation, Replace,
 } from "lucide-react";
 import type { RfpResponseReq } from "@shared/schema";
 
@@ -318,6 +318,15 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
                 >
                   <Code2 className="h-3.5 w-3.5" /> draw.io
                 </Button>
+                {/* PPTX — post-v1 placeholder */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-white/10 text-slate-500 hover:text-slate-400 text-xs opacity-60"
+                  onClick={() => toast({ title: "PowerPoint export coming soon", description: "PPTX generation is on the roadmap." })}
+                >
+                  <Presentation className="h-3.5 w-3.5" /> PPTX
+                </Button>
               </>
             )}
             <Button
@@ -449,8 +458,20 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
                     <p className="text-[10px] text-slate-600 truncate">{item.nodeType}</p>
                     <p className="text-[9px] text-slate-700 mt-0.5">{item.tierLabel}</p>
                   </div>
-                  {item.tier4Pending && (
+                  {item.tier4Pending ? (
                     <span className="text-[9px] text-amber-400 bg-amber-500/10 rounded px-1">Pending</span>
+                  ) : (
+                    /* Swap icon tier — placeholder until vendor icon uploads are live */
+                    <button
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-slate-600 hover:text-cyan-400"
+                      title="Swap icon tier — Tier 2/1 vendor icons available after vendor icon upload"
+                      onClick={() => toast({
+                        title: "Icon swap unavailable",
+                        description: "Tier 2 / Tier 1 vendor icons will be available after uploading vendor brand assets.",
+                      })}
+                    >
+                      <Replace className="h-3 w-3" />
+                    </button>
                   )}
                 </div>
               ))}
