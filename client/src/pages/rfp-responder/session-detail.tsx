@@ -432,6 +432,22 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
   const [selectedReqId, setSelectedReqId] = useState<string | null>(
     data.requirements[0]?.id ?? null,
   );
+  const [copiedReqId, setCopiedReqId] = useState<string | null>(null);
+
+  const handleCopyResponse = (
+    e: React.MouseEvent,
+    answer: RfpResponseAnswer | undefined,
+    reqId: string,
+  ) => {
+    e.stopPropagation();
+    if (!answer?.generatedText) return;
+    let text = answer.generatedText;
+    if (answer.smeNote) text += `\n\nSME Note: ${answer.smeNote}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedReqId(reqId);
+      setTimeout(() => setCopiedReqId(null), 2000);
+    });
+  };
 
   const { requirements, answers } = data;
   const answerByReqId = new Map(answers.map((a) => [a.requirementId, a]));
@@ -461,12 +477,17 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
                   const answer = answerByReqId.get(req.id);
                   const flag = answer?.coverageFlag ?? "pending";
                   const isSelected = req.id === selectedReqId;
+                  const isCopied = copiedReqId === req.id;
+                  const hasResponse = !!answer?.generatedText;
                   return (
-                    <button
+                    <div
                       key={req.id}
                       id={`req-${req.id}`}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedReqId(req.id)}
-                      className={`w-full px-3 py-2.5 text-left flex items-start gap-2 border-b border-white/3 transition-colors ${
+                      onKeyDown={(e) => e.key === "Enter" && setSelectedReqId(req.id)}
+                      className={`group relative w-full px-3 py-2.5 text-left flex items-start gap-2 border-b border-white/3 transition-colors cursor-pointer ${
                         isSelected ? "bg-cyan-500/10 border-l-2 border-l-cyan-500/50" : "hover:bg-white/3"
                       }`}
                     >
@@ -492,7 +513,22 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
                           )}
                         </div>
                       </div>
-                    </button>
+                      {hasResponse && (
+                        <button
+                          onClick={(e) => handleCopyResponse(e, answer, req.id)}
+                          title="Copy response"
+                          className={`flex-shrink-0 mt-0.5 rounded p-0.5 transition-all ${
+                            isCopied
+                              ? "text-emerald-400 opacity-100"
+                              : "text-slate-500 opacity-0 group-hover:opacity-100 hover:text-slate-300"
+                          }`}
+                        >
+                          {isCopied
+                            ? <ClipboardCheck className="h-3 w-3" />
+                            : <Copy className="h-3 w-3" />}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
