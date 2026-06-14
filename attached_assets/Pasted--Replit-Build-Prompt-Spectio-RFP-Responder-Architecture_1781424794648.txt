@@ -1,0 +1,219 @@
+# Replit Build Prompt — Spectio "RFP Responder" Architecture Diagram Engine
+
+> Paste this whole document into Replit as the build brief. It is written so an
+> agent can implement it without further clarification. Where a decision is
+> needed, the constraint is stated explicitly. **Do not skip guardrails — they
+> are the point of this feature.**
+
+---
+
+## 1. What we are building
+
+A module inside the Spectio platform called **RFP Responder**, for vendor
+pre-sales and sales engineers. It ingests a client RFP, decomposes it into
+structured requirements, and drafts a comprehensive solution response. This
+brief covers ONE subsystem of that module: the **Architecture Diagram Engine**.
+
+The engine takes a proposed solution architecture (a structured topology, not
+prose) and produces clean, professional, editable architecture diagrams —
+specifically data-center **network** diagrams (spine-leaf and three-tier) and
+**storage** diagrams (SAN/NAS host→fabric→array) for v1.
+
+Output must look like a deliverable a customer would accept in a procurement
+process — not an auto-generated sketch.
+
+---
+
+## 2. Non-negotiable design principle
+
+**Separate icon SOURCING from diagram COMPOSITION. Never conflate them.**
+
+- **Composition** (layout, topology, connections, labels, grouping) is ALWAYS
+  deterministic and template-driven. The LLM never places boxes or draws lines.
+- **Icon sourcing** is the variable part and MUST run through the four-tier
+  fallback ladder below, in order, on EVERY diagram request.
+
+The LLM's only job is to emit a **structured topology spec** (a typed graph).
+The renderer turns that graph into a diagram using deterministic layout engines.
+
+---
+
+## 3. The four-tier icon sourcing ladder (MANDATORY GUARDRAIL)
+
+For every component that needs an icon, the engine MUST attempt sources in this
+exact priority order and record which tier was used. This resolution logic runs
+on every diagram, every time — it is not optional and not skippable.
+
+### Tier 1 — Official vendor stencil libraries (preferred)
+- Check the tenant's ingested stencil library first (Visio/PPT stencils from
+  Cisco, NetApp, Dell, Pure, Arista, etc., normalized at onboarding).
+- Match by component-type key in the icon taxonomy.
+- If a branded, approved vector icon exists → use it. Record `source: tier1`.
+
+### Tier 2 — Extract from vendor-provided PPT / PDF
+- If no Tier 1 match, search assets the vendor uploaded (design guides, decks).
+- Extract **VECTOR** graphics only (EMF/WMF shapes from PPTX `ppt/media/` + slide
+  XML; SVG/vector paths from PDF). NEVER use rasterized screenshots as icons.
+- Classify extracted shapes against the component taxonomy using surrounding
+  text labels + visual similarity. Record `source: tier2` + provenance file.
+
+### Tier 3 — Clean generic professional icon set (safe default)
+- If no Tier 1/2 match, fall back to the bundled neutral, license-clear icon
+  library (switch, router, firewall, load balancer, storage array, server,
+  controller, host, SAN/NAS, hypervisor, spine, leaf, etc.).
+- Record `source: tier3`.
+
+### Tier 4 — External vendor website scrape (LAST RESORT, HUMAN-GATED)
+- Only if explicitly enabled AND no Tier 1–3 match.
+- This path is NEVER fully automatic. It MUST:
+  - Flag every scraped asset for mandatory human review before it can appear in
+    any exported deliverable.
+  - Reject assets with watermarks, low resolution, or detectable competitor
+    branding.
+  - Log source URL + license risk for audit.
+- Record `source: tier4_pending_review`. A diagram containing an unreviewed
+  Tier 4 asset CANNOT be exported.
+
+### Decision rule (enforce in code)
+**Prefer a clean generic (Tier 3) icon over a messy or low-confidence branded
+one.** Visual consistency beats brand fidelity. If a Tier 1/2 match is below the
+confidence threshold, drop to Tier 3 rather than ship something that looks off.
+
+Every diagram must expose an **icon-source manifest**: for each node, which tier
+supplied its icon and (for Tier 2/4) the provenance. The UI surfaces this so the
+sales engineer can see and override.
+
+---
+
+## 4. The topology spec (LLM output contract)
+
+The LLM reads the RFP requirements + chosen solution and emits ONLY this typed
+graph — no visual properties, no coordinates. Validate against this schema and
+reject malformed output (regenerate, don't guess).
+
+```json
+{
+  "diagram_intent": "network_spine_leaf | network_three_tier | storage_san | storage_nas | hci_cluster | multi_site_dr",
+  "title": "string",
+  "nodes": [
+    {
+      "id": "string",
+      "type": "spine | leaf | core | aggregation | access | router | firewall | load_balancer | host | server | storage_array | controller | san_switch | nas_filer | hypervisor",
+      "label": "string",
+      "tier": "string",
+      "group": "string (rack | site | az | fabric_a | fabric_b ...)",
+      "attributes": { "model": "string?", "scale": "string?" }
+    }
+  ],
+  "edges": [
+    {
+      "from": "node_id",
+      "to": "node_id",
+      "connection_type": "ethernet | fibre_channel | replication | mgmt | uplink",
+      "redundant": true,
+      "label": "string?"
+    }
+  ],
+  "groups": [
+    { "id": "string", "label": "string", "kind": "rack | site | az | fabric" }
+  ]
+}
+```
+
+**Guardrails on the LLM step:**
+- LLM does extraction/structuring only — it never asserts performance numbers or
+  competitive claims here.
+- Output is validated against the schema; invalid graphs are regenerated, never
+  rendered.
+- Node types outside the taxonomy are rejected (forces clean mapping to icons).
+
+---
+
+## 5. Composition — deterministic, domain-aware layout
+
+Route the topology spec to the correct layout archetype by `diagram_intent`.
+Each archetype is a parameterized template, never a from-scratch draw.
+
+- **network_spine_leaf** → canonical spine-leaf form; spines on top row, leaves
+  below, full-mesh uplinks. Use layered layout (ELK layered / Graphviz dot).
+- **network_three_tier** → core → aggregation → access hierarchy, top-down.
+- **storage_san** → host → fabric (dual fabric A/B) → array tiers, with
+  multipathing shown as redundant links.
+- **storage_nas** → host → network → filer/controller layout.
+- **hci_cluster** → grid of nodes with shared-nothing interconnect.
+- **multi_site_dr** → two site groups with replication links between arrays.
+
+**Layout engine requirements:**
+- Use **ELK (elkjs)** or **Graphviz** for auto-layout — they handle edge routing
+  and prevent overlapping lines (the #1 cause of messy-looking diagrams).
+- Redundant links render as paired/parallel paths, not single lines.
+- Groups render as labeled containers (racks, sites, fabrics).
+
+---
+
+## 6. Rendering stack
+
+- **Source of truth = SVG.** Place sourced icons at computed node positions;
+  everything stays vector and crisp.
+- Export to: **PNG, PDF, editable PPTX, and draw.io/Visio-compatible XML.**
+- **Output MUST be editable.** A sales engineer will always nudge the final
+  diagram — ship an editable artifact, never only a flat PNG. An un-editable
+  diagram will get rejected by users.
+- Apply a consistent visual theme (spacing, font, line weights, color coding by
+  connection type) so all diagrams look like one product.
+
+---
+
+## 7. Scope discipline for v1 (do NOT over-build)
+
+Support exactly TWO diagram families at launch, done well:
+1. **Data-center network** — spine-leaf + three-tier.
+2. **Storage** — SAN (dual-fabric) + NAS.
+
+These map to Spectio's infrastructure/storage strength. Do not attempt every
+diagram type — uniform mediocrity is the failure mode. Additional families
+(WAN, cloud landing zone, security zoning) come in later iterations behind the
+same engine.
+
+---
+
+## 8. Required build deliverables
+
+1. **Topology schema + validator** (reject-and-regenerate on invalid LLM output).
+2. **Icon taxonomy** + the bundled Tier 3 generic icon set (vector/SVG).
+3. **Four-tier icon resolver** with the mandatory fallback ladder, confidence
+   thresholds, the Tier-4 human-review gate, and the per-diagram icon-source
+   manifest.
+4. **PPTX/PDF vector extraction** pipeline for Tier 2 (vector-only; classifier to
+   component taxonomy with provenance logging).
+5. **Stencil ingestion** for Tier 1 (normalize Visio/PPT stencils at onboarding).
+6. **Layout archetypes** for the six `diagram_intent` values, on ELK/Graphviz.
+7. **SVG renderer** + exporters (PNG, PDF, editable PPTX, draw.io XML).
+8. **Review/override UI**: show icon-source manifest per node, allow icon
+   swap (force a different tier), allow manual nudge before export, and BLOCK
+   export of any diagram containing an unreviewed Tier 4 asset.
+
+---
+
+## 9. Hard guardrails to enforce in code (summary)
+
+- The four-tier ladder runs on EVERY diagram; tier used is recorded per node.
+- Tier 4 (web scrape) is never automatic and never exportable without human OK.
+- Reject watermarked / low-res / competitor-branded scraped assets.
+- Prefer clean generic (Tier 3) over low-confidence branded.
+- LLM emits structured topology only — never places, draws, or asserts facts.
+- Invalid topology specs are regenerated, never rendered.
+- All exports are editable artifacts.
+- v1 supports only the two named diagram families.
+
+---
+
+## 10. Suggested build order
+
+1. Topology schema + validator.
+2. Tier 3 generic icon set + taxonomy + SVG renderer + one archetype
+   (spine-leaf) end to end — prove the deterministic pipeline first.
+3. Remaining archetypes.
+4. Tier 1 stencil ingestion, then Tier 2 vector extraction.
+5. Tier 4 gated scrape path + review UI + export blocking.
+6. Exporters (editable PPTX, draw.io XML).

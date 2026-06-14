@@ -1,0 +1,323 @@
+# Replit Build Prompt — Spectio "RFP Responder" (Full Module)
+
+> Paste this whole document into Replit as the build brief for the complete
+> feature. It is written so an agent can implement it without further
+> clarification. Where a decision is needed, the constraint is stated
+> explicitly. **Guardrails are mandatory, not suggestions — they are what makes
+> this deliverable trustworthy in a procurement context.**
+
+---
+
+## 0. What we are building
+
+**RFP Responder** is a module inside the Spectio platform, built for vendor
+**pre-sales and sales engineers**. The user uploads a client's RFP/RFI/RFQ
+floated in the market; the platform decomposes it, drafts a comprehensive
+solution response grounded in the vendor's own content plus Spectio's live
+competitive intelligence, generates supporting architecture diagrams, and
+exports the response in the client's required format.
+
+The whole pipeline has six stages:
+
+1. **Knowledge base ingestion** — vendor's own documents (multi-format).
+2. **Spectio intelligence binding** — internal competitive datasets.
+3. **Client RFP ingestion + decomposition** — the floated document.
+4. **Response generation** — grounded, cited, requirement-by-requirement.
+5. **Diagram generation** — clean, editable architecture diagrams (all families).
+6. **Output assembly + export** — in the client's desired format.
+
+A single governing principle runs through every stage:
+
+> **All facts are grounded and cited. The LLM extracts, retrieves, and writes
+> prose — it never invents facts, numbers, or competitive claims. Every factual
+> statement in the output traces to a source (vendor doc, datasheet, or Spectio
+> dataset). Anything ungrounded is flagged, never silently asserted.**
+
+---
+
+## STAGE 1 — Vendor Knowledge Base Ingestion (multi-format)
+
+Each vendor is a **tenant** with a private, isolated corpus. Onboarding and
+ongoing uploads populate it.
+
+### 1.1 Accepted input formats
+- Documents: PDF, DOCX, PPTX, XLSX, CSV, TXT, Markdown, HTML.
+- Web: documentation URLs (crawl + snapshot the linked pages).
+- Images/diagrams: PNG, JPG, SVG, Visio (VSDX), EMF/WMF.
+- Past RFP responses in any of the above (highest-value content — see 1.4).
+
+### 1.2 Ingestion pipeline (per file)
+1. **Detect type** and route to the correct parser (do not blindly extract).
+2. **Extract text + structure**: headings, tables, lists, captions. Preserve
+   tables as structured data, not flattened text.
+3. **Extract embedded assets**: images, vector shapes, datasheet tables.
+   Vector graphics from PPTX (`ppt/media/` + slide XML) and PDF are tagged for
+   the diagram engine's Tier-2 icon source (see Stage 5).
+4. **Chunk** semantically (by section/heading, not fixed token windows).
+5. **Embed** into a **tenant-scoped** vector store.
+6. **Tag every chunk** with metadata: product, version, date, document type,
+   approval status, confidence, source filename, page/slide reference.
+
+### 1.3 Content governance
+- **Approval status** per chunk: `approved | draft | deprecated`. Only
+  `approved` content is eligible for outbound responses by default; draft is
+  usable only with explicit user opt-in and a flag.
+- **Recency**: stale content (past a configurable age, or superseded by a newer
+  version tag) is down-ranked or excluded.
+- **Tenant isolation is absolute** — no cross-tenant retrieval, ever.
+
+### 1.4 Past responses as gold-standard corpus
+- Won responses are tagged `won` and weighted highest — they encode approved
+  tone, structure, and messaging.
+- Lost responses are tagged `lost` and used only for gap analysis, never copied.
+- This forms the per-tenant **learning loop** (see Stage 6.5).
+
+---
+
+## STAGE 2 — Spectio Internal Intelligence Binding
+
+The module has **read access** to Spectio's proprietary datasets. This is the
+core differentiator — a vendor can pull *live, daily-updated* competitive
+positioning into a response instead of static marketing claims.
+
+### 2.1 Bound data sources
+- **Product evaluation** data (scores, capability matrices, datasheet specs).
+- **Vendor evaluation** data (positioning, dots/quadrant placement, commentary).
+- **Ecosystem evaluation** data (integrations, partner landscape).
+- **Datasheet comparison** engine (hardware spec-by-spec comparison).
+- **Real-time news / intelligence** feed (recent vendor announcements).
+
+### 2.2 How it's used
+- Retrieval-time: when answering a requirement, the engine can pull the relevant
+  Spectio data point alongside vendor-KB content.
+- Every Spectio-sourced claim carries a **Spectio citation** (dataset + date),
+  so competitive statements are defensible and dated.
+
+### 2.3 Competitive-claim guardrail (MANDATORY)
+- Comparative claims (e.g. "we exceed the category median throughput") are
+  **gated behind explicit per-claim user opt-in**, not auto-inserted, because
+  comparative claims invite legal challenge in procurement.
+- Each inserted competitive claim must show its Spectio source and date in a
+  reviewable panel before it lands in the document.
+
+---
+
+## STAGE 3 — Client RFP Ingestion + Decomposition
+
+### 3.1 Upload + parse
+- Accept PDF, DOCX, XLSX (RFPs frequently arrive as requirement spreadsheets),
+  and structured forms.
+- Parse into a normalized **requirement tree**. The LLM does **extraction only**
+  here — structuring, not judgment.
+
+### 3.2 Requirement normalization
+Each line item becomes a structured object:
+```json
+{
+  "id": "string",
+  "section": "string",
+  "text": "verbatim requirement text",
+  "category": "functional | technical | commercial | compliance_security | support | other",
+  "mandatory": true,
+  "response_type": "yes_no | narrative | evidence | numeric",
+  "client_response_format": "string (target cell/field if the RFP is a form)"
+}
+```
+
+### 3.3 Human review gate
+- The decomposed requirement tree is presented for user review/correction
+  **before** drafting begins. The user confirms categorization and flags
+  must-win requirements. Drafting never starts on an unreviewed tree.
+
+### 3.4 Capture client priorities
+- Extract stated evaluation criteria, weighting, and priorities from the RFP —
+  used to tailor the executive summary and emphasis in Stage 4.
+
+---
+
+## STAGE 4 — Response Generation (grounded + cited)
+
+For each requirement, run retrieval against the **vendor KB + Spectio data**,
+then generate a grounded answer.
+
+### 4.1 Per-requirement generation
+1. Retrieve top relevant chunks (vendor KB) + relevant Spectio data points.
+2. Generate the response **only from retrieved sources**, with inline citations
+   (vendor doc + page, or Spectio dataset + date).
+3. Attach a **coverage flag**:
+   - 🟢 **Green** — strong supporting source(s).
+   - 🟡 **Amber** — partial/inferred; needs SME confirmation.
+   - 🔴 **Red** — no supporting content; SME input required.
+4. Never fabricate to fill a red. Surface it as a gap.
+
+### 4.2 Trust model (MANDATORY GUARDRAIL)
+- **Propose-and-confirm with mandatory human-in-the-loop** on anything not
+  green-flagged. The tool drafts; the sales engineer approves. Amber/red items
+  cannot be marked "final" without explicit user action.
+
+### 4.3 LLM role discipline
+- LLM does extraction, retrieval-reading, and prose generation **only**.
+- All truth and numbers come from retrieved sources or Spectio data — never from
+  model memory. No ungrounded specs, no invented performance figures.
+
+### 4.4 Standard response structure (assembled in Stage 6)
+- Executive summary (tailored to client's stated priorities).
+- Solution architecture narrative.
+- Architecture diagram(s) (Stage 5).
+- Requirement-by-requirement response matrix (with coverage flags).
+- Competitive differentiation section (Spectio-powered, opt-in claims only).
+- Assumptions, dependencies, and gaps (explicitly surfaced).
+
+---
+
+## STAGE 5 — Architecture Diagram Generation (ALL families)
+
+Diagrams must look like a professional procurement deliverable. The hard part is
+icons when vendors don't supply stencils; the discipline below handles it.
+
+### 5.1 Core principle — separate SOURCING from COMPOSITION
+- **Composition** (layout, topology, connections, labels, grouping) is ALWAYS
+  deterministic and template-driven. The LLM never places boxes or draws lines.
+- **Icon sourcing** runs the four-tier ladder (5.3) on EVERY diagram.
+- The LLM's only job is to emit a validated **topology spec** (5.2).
+
+### 5.2 Topology spec (LLM output contract)
+The LLM reads requirements + chosen solution and emits ONLY this typed graph —
+no coordinates, no visual properties. Validate; reject-and-regenerate if invalid.
+```json
+{
+  "diagram_intent": "network_spine_leaf | network_three_tier | network_wan | storage_san | storage_nas | hci_cluster | multi_site_dr | cloud_landing_zone | security_zoning | data_pipeline | app_tier | <extensible>",
+  "title": "string",
+  "nodes": [
+    { "id": "string", "type": "string (from icon taxonomy)", "label": "string",
+      "tier": "string", "group": "string",
+      "attributes": { "model": "string?", "scale": "string?" } }
+  ],
+  "edges": [
+    { "from": "node_id", "to": "node_id",
+      "connection_type": "ethernet | fibre_channel | replication | mgmt | uplink | api | wan",
+      "redundant": true, "label": "string?" }
+  ],
+  "groups": [ { "id": "string", "label": "string",
+    "kind": "rack | site | az | fabric | zone | vpc | subnet" } ]
+}
+```
+
+### 5.3 Four-tier icon sourcing ladder (MANDATORY — runs on EVERY diagram)
+For every component icon, attempt sources in this exact order; record the tier
+used per node in an **icon-source manifest**.
+
+- **Tier 1 — Official vendor stencils (preferred).** Tenant's ingested
+  Visio/PPT stencil libraries (Cisco, NetApp, Dell, Pure, Arista, etc.),
+  normalized at onboarding. Match by component-type key. `source: tier1`.
+- **Tier 2 — Extract from vendor PPT/PDF.** If no Tier 1 match, mine
+  vendor-uploaded decks/guides for **VECTOR** graphics only (EMF/WMF from PPTX;
+  vector paths from PDF). NEVER use rasterized screenshots. Classify shapes to
+  the taxonomy via surrounding labels + visual similarity. `source: tier2` +
+  provenance.
+- **Tier 3 — Clean generic professional icon set (safe default).** Bundled
+  neutral, license-clear vector library covering all categories. `source: tier3`.
+- **Tier 4 — External vendor website scrape (LAST RESORT, HUMAN-GATED).** Only
+  if explicitly enabled and no Tier 1–3 match. NEVER automatic. MUST: flag every
+  scraped asset for mandatory human review before any export; reject watermarked,
+  low-res, or competitor-branded assets; log source URL + license risk.
+  `source: tier4_pending_review`. A diagram with an unreviewed Tier 4 asset
+  CANNOT be exported.
+
+**Decision rule (enforce in code):** prefer a clean generic (Tier 3) icon over a
+low-confidence or messy branded one. Visual consistency beats brand fidelity.
+
+### 5.4 Composition — deterministic, domain-aware layout
+Route by `diagram_intent` to a parameterized layout archetype (never
+from-scratch). Use **ELK (elkjs)** or **Graphviz** for auto-layout — they route
+edges and prevent overlapping lines (the #1 cause of messy diagrams). Redundant
+links render as paired paths; groups render as labeled containers.
+
+Archetypes (build the full set, extensible):
+- Network: spine-leaf, three-tier (core/agg/access), WAN.
+- Storage: SAN (dual-fabric A/B, multipathing), NAS (host→network→filer).
+- Compute: HCI cluster.
+- Resilience: multi-site DR (replication links).
+- Cloud: landing zone (VPC/subnet/AZ grouping).
+- Security: zoning/segmentation.
+- Data/App: data pipeline, application tier.
+- New intents register a new archetype + layout rule; the framework is built to
+  extend, so coverage is not limited to two families.
+
+### 5.5 Rendering + export
+- **SVG is the source of truth** (icons placed at computed positions; all vector).
+- Export to **PNG, PDF, editable PPTX, and draw.io/Visio-compatible XML**.
+- **Output MUST be editable** — sales engineers always nudge the final diagram.
+  Never ship only a flat PNG.
+- Consistent theme (spacing, fonts, line weights, color-coded connections) so
+  every diagram looks like one product.
+
+### 5.6 Diagram review UI
+- Show the icon-source manifest per node; allow icon swap (force a different
+  tier); allow manual nudge before export; **block export** of any diagram with
+  an unreviewed Tier 4 asset.
+
+---
+
+## STAGE 6 — Output Assembly + Export (client's desired format)
+
+### 6.1 Format fidelity (the actual job-to-be-done)
+- If the RFP arrived as the client's own template (DOCX form, XLSX requirement
+  matrix), **fill the client's template back in their format** — map each
+  generated answer to its target field/cell (`client_response_format` from 3.2).
+- If no mandated template, assemble the standard structure (4.4) into a clean,
+  branded document.
+
+### 6.2 Supported export formats
+- DOCX, PDF, XLSX (filled requirement matrix), PPTX (for exec/solution decks).
+- Diagrams embedded as editable objects where the format allows; otherwise as
+  high-res vector (SVG/EMF) — never low-res raster.
+
+### 6.3 Citation + traceability layer
+- Every factual claim links to its source. Provide a toggle to show/hide inline
+  citations in the exported document (internal review view vs. client-facing).
+- Competitive claims show Spectio dataset + date.
+
+### 6.4 Final gate before export (MANDATORY)
+- Block export if: any non-green requirement is unreviewed; any competitive
+  claim is un-opted-in; any diagram contains an unreviewed Tier 4 asset; any
+  required template field is unmapped. Surface a pre-export checklist.
+
+### 6.5 Learning loop
+- On outcome capture, re-ingest **won** responses as gold-standard tenant
+  content; tag **lost** ones for gap analysis. The corpus self-improves per
+  tenant over time.
+
+### 6.6 Behavioral signal
+- Emit usage/sentiment signal (which markets, vendors, requirements) to feed
+  Spectio's existing lead-gen module.
+
+---
+
+## CROSS-CUTTING GUARDRAILS (enforce everywhere)
+
+1. **Grounding:** every fact cited to a source; LLM never invents facts/numbers.
+2. **Tenant isolation:** absolute; no cross-tenant retrieval.
+3. **Human-in-the-loop:** propose-and-confirm on all amber/red items and all
+   competitive claims; nothing high-stakes auto-finalizes.
+4. **Diagram ladder:** four-tier icon resolution on EVERY diagram; tier recorded
+   per node; Tier 4 never automatic, never exportable without human review.
+5. **Composition is deterministic:** LLM emits validated topology only; renderers
+   draw. Invalid specs regenerate, never render.
+6. **Editable outputs:** all diagrams and documents export as editable artifacts.
+7. **Format fidelity:** fill the client's own template when one is mandated.
+8. **Pre-export checklist** blocks incomplete or ungoverned deliverables.
+
+---
+
+## BUILD ORDER (suggested)
+
+1. Tenant model + isolated vector store + ingestion pipeline (Stage 1).
+2. Spectio data binding with citation layer (Stage 2).
+3. RFP upload + decomposition + review gate (Stage 3).
+4. Per-requirement grounded generation + coverage flags + trust model (Stage 4).
+5. Diagram engine: topology schema + validator → Tier 3 icons + SVG renderer +
+   one archetype end-to-end → remaining archetypes → Tier 1 stencils → Tier 2
+   extraction → Tier 4 gated scrape + review UI (Stage 5).
+6. Output assembly, template-fill, exporters, pre-export gate (Stage 6).
+7. Learning loop + lead-gen signal (Stage 6.5–6.6).
