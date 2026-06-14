@@ -12,11 +12,14 @@ export type BlockerKind =
   | "unconfirmed_amber"
   | "unconfirmed_red"
   | "unopted_claim"
-  | "tier4_diagram";
+  | "tier4_diagram"
+  | "template_unmapped";
 
 export interface ExportBlocker {
   kind: BlockerKind;
   label: string;
+  /** deep-link path the user can click to go fix the blocker */
+  fixPath?: string;
   requirementId?: string;
   requirementText?: string;
   diagramId?: string;
@@ -39,9 +42,7 @@ export async function checkExportGate(
     listRfpDiagrams(session.id),
   ]);
 
-  const answerMap = new Map(answers.map((a: RfpResponseAnswer) => [a.requirementId, a]));
   const reqMap = new Map(reqs.map((r) => [r.id, r]));
-
   const blockers: ExportBlocker[] = [];
 
   for (const answer of answers) {
@@ -53,28 +54,33 @@ export async function checkExportGate(
       blockers.push({
         kind: "unconfirmed_amber",
         label: `Amber requirement not confirmed: "${req.requirementText.slice(0, 80)}..."`,
+        fixPath: `/rfp-responder/${session.id}`,
         requirementId: req.id,
         requirementText: req.requirementText,
       });
     }
 
-    // Unconfirmed red answers (gaps must be acknowledged)
+    // Unconfirmed red answers (gaps must be acknowledged before export)
     if (answer.coverageFlag === "red" && !answer.confirmed) {
       blockers.push({
         kind: "unconfirmed_red",
         label: `Red gap not confirmed: "${req.requirementText.slice(0, 80)}..."`,
+        fixPath: `/rfp-responder/${session.id}`,
         requirementId: req.id,
         requirementText: req.requirementText,
       });
     }
 
-    // Un-opted competitive claims
+    // Competitive claims where optedIn is NOT explicitly true
+    // (covers: undefined = never reviewed, null = skipped, false = explicitly declined)
+    // All three states must be resolved before export.
     const claims = (answer.competitiveClaims ?? []) as CompetitiveClaim[];
-    const unoptedClaims = claims.filter((c) => !c.optedIn && c.optedIn !== false);
+    const unoptedClaims = claims.filter((c) => c.optedIn !== true);
     if (unoptedClaims.length > 0) {
       blockers.push({
         kind: "unopted_claim",
-        label: `${unoptedClaims.length} competitive claim(s) need review for: "${req.requirementText.slice(0, 60)}..."`,
+        label: `${unoptedClaims.length} competitive claim(s) not opted-in for: "${req.requirementText.slice(0, 60)}..."`,
+        fixPath: `/rfp-responder/${session.id}`,
         requirementId: req.id,
         requirementText: req.requirementText,
       });
@@ -87,11 +93,29 @@ export async function checkExportGate(
       blockers.push({
         kind: "tier4_diagram",
         label: `Diagram "${diagram.title}" contains unreviewed Tier 4 icons`,
+        fixPath: `/rfp-responder/${session.id}`,
         diagramId: diagram.id,
         diagramTitle: diagram.title,
       });
     }
   }
 
+  // Client template: if a non-none format is set but not yet confirmed
+  const fmt = session.clientTemplateFormat ?? "none";
+  if (fmt !== "none" && !session.clientTemplateConfirmed) {
+    blockers.push({
+      kind: "template_unmapped",
+      label: `Client response template (${templateFormatLabel(fmt)}) has been detected but section mapping has not been confirmed — open the Export tab to confirm the field map.`,
+      fixPath: `/rfp-responder/${session.id}`,
+    });
+  }
+
   return { blocked: blockers.length > 0, blockers };
+}
+
+function templateFormatLabel(fmt: string): string {
+  if (fmt === "docx_table") return "DOCX Table";
+  if (fmt === "xlsx_grid") return "Excel Grid";
+  if (fmt === "pptx_deck") return "PPTX Deck";
+  return fmt;
 }

@@ -82,6 +82,9 @@ export async function updateRfpResponseSession(
       | "completedAt"
       | "outcomeTag"
       | "exportedAt"
+      | "clientTemplateFormat"
+      | "clientTemplateConfirmed"
+      | "clientTemplateSectionMap"
     >
   >,
 ): Promise<RfpResponseSession> {

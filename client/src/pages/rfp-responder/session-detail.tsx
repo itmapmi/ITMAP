@@ -538,6 +538,28 @@ const FORMAT_META: Record<ExportFormat, { label: string; desc: string; icon: Rea
   pptx: { label: "PowerPoint Deck", desc: "Executive presentation with diagram slides and competitive claims", icon: <Presentation className="h-4 w-4" />, ext: ".pptx" },
 };
 
+type ClientTemplateFormat = "none" | "docx_table" | "xlsx_grid" | "pptx_deck";
+
+const TEMPLATE_FORMAT_META: Record<ClientTemplateFormat, { label: string; desc: string; applicableTo: ExportFormat[] }> = {
+  none: { label: "None — use spectio.ai standard layout", desc: "Spectio assembles the document in its own professional format", applicableTo: ["docx","pdf","xlsx","pptx"] },
+  docx_table: { label: "DOCX Table — client response template", desc: "Writes responses into a requirements table matching the client's DOCX column format", applicableTo: ["docx"] },
+  xlsx_grid: { label: "Excel Grid — client response template", desc: "Populates the Excel matrix using column headings from the client's spreadsheet template", applicableTo: ["xlsx"] },
+  pptx_deck: { label: "PPTX Deck — client presentation template", desc: "Structures slides to match the client's expected deck format", applicableTo: ["pptx"] },
+};
+
+const DEFAULT_FIELD_MAP: Record<string, string> = {
+  Section: "Section",
+  Requirement: "Requirement",
+  Mandatory: "Mandatory",
+  Coverage: "Coverage / Compliance",
+  Response: "Vendor Response",
+  Notes: "Notes / SME",
+  Category: "Category",
+  Type: "Response Type",
+  Sources: "Sources",
+  Claims: "Competitive Claims",
+};
+
 function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpResponseSession }) {
   const { toast } = useToast();
   const [format, setFormat] = useState<ExportFormat>("docx");
@@ -548,6 +570,18 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
   );
   const [submittingOutcome, setSubmittingOutcome] = useState(false);
 
+  // Client template state — synced from session
+  const [templateFormat, setTemplateFormat] = useState<ClientTemplateFormat>(
+    (session.clientTemplateFormat as ClientTemplateFormat) ?? "none",
+  );
+  const [fieldMap, setFieldMap] = useState<Record<string, string>>(
+    (session.clientTemplateSectionMap as Record<string, string> | null) ?? { ...DEFAULT_FIELD_MAP },
+  );
+  const [templateConfirmed, setTemplateConfirmed] = useState<boolean>(
+    session.clientTemplateConfirmed ?? false,
+  );
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   // Load diagrams to let user pick which ones to include
   const { data: diagramsData } = useQuery<{ diagrams: RfpDiagram[] }>({
     queryKey: ["/api/rfp/diagrams", sessionId],
@@ -557,7 +591,7 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
     },
   });
   const diagrams = diagramsData?.diagrams ?? [];
-  const [includedDiagramIds, setIncludedDiagramIds] = useState<string[] | null>(null); // null = all
+  const [includedDiagramIds, setIncludedDiagramIds] = useState<string[] | null>(null);
 
   // Gate check
   const { data: gate, isLoading: gateLoading, refetch: refetchGate } = useQuery<GateResult>({
@@ -571,7 +605,6 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
 
   function toggleDiagram(id: string) {
     if (includedDiagramIds === null) {
-      // All included → exclude this one
       setIncludedDiagramIds(diagrams.filter((d) => d.id !== id).map((d) => d.id));
     } else {
       if (includedDiagramIds.includes(id)) {
@@ -587,20 +620,51 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
     return includedDiagramIds === null || includedDiagramIds.includes(id);
   }
 
-  async function handleExport(bypassGate = false) {
+  async function handleSaveTemplate(newFormat?: ClientTemplateFormat, newConfirmed?: boolean) {
+    setSavingTemplate(true);
+    try {
+      const fmt = newFormat ?? templateFormat;
+      const confirmed = newConfirmed ?? templateConfirmed;
+      const res = await apiRequest("PATCH", `/api/rfp/responses/${sessionId}/template`, {
+        clientTemplateFormat: fmt,
+        clientTemplateSectionMap: fmt === "none" ? null : fieldMap,
+        clientTemplateConfirmed: confirmed,
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error ?? "Failed to save template");
+      }
+      if (newFormat !== undefined) {
+        setTemplateFormat(newFormat);
+        setTemplateConfirmed(false);
+      }
+      if (newConfirmed !== undefined) setTemplateConfirmed(newConfirmed);
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses", sessionId] });
+      refetchGate();
+      if (newConfirmed) {
+        toast({ title: "Template mapping confirmed", description: "The client field map has been saved and the gate blocker cleared." });
+      }
+    } catch (e: any) {
+      toast({ title: "Failed to save", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function handleExport() {
     setExporting(true);
     try {
       const res = await fetch(`/api/rfp/responses/${sessionId}/export`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ format, showCitations, includedDiagramIds, bypass: bypassGate }),
+        body: JSON.stringify({ format, showCitations, includedDiagramIds }),
       });
       if (res.status === 422) {
         const body = await res.json();
         toast({
           title: "Export blocked",
-          description: `${body.blockers?.length ?? 0} issue(s) must be resolved. Review the gate checklist below.`,
+          description: `${body.blockers?.length ?? 0} issue(s) must be resolved before exporting. Review the gate checklist below.`,
           variant: "destructive",
         });
         refetchGate();
@@ -652,9 +716,13 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
     }
   }
 
+  // Applicable template formats for the currently selected export format
+  const applicableTemplateFormats = (Object.entries(TEMPLATE_FORMAT_META) as [ClientTemplateFormat, typeof TEMPLATE_FORMAT_META[ClientTemplateFormat]][])
+    .filter(([, meta]) => meta.applicableTo.includes(format));
+
   return (
     <div className="space-y-6">
-      {/* Pre-export gate checklist */}
+      {/* ── Pre-export gate checklist ────────────────────────────────── */}
       <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-4 w-4 text-cyan-400" />
@@ -667,23 +735,30 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
           )}
         </div>
         {gate?.blockers && gate.blockers.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {gate.blockers.map((b, i) => (
-              <div key={i} className="flex items-start gap-2.5 text-xs text-slate-400">
+              <div key={i} className="flex items-start gap-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <span>{b.label}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-300">{b.label}</p>
+                  {b.kind === "template_unmapped" ? (
+                    <p className="text-[11px] text-amber-400 mt-0.5">→ Confirm the field map in the Client Template section below</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 mt-0.5">→ Switch to the Responses tab to fix</p>
+                  )}
+                </div>
               </div>
             ))}
-            <p className="text-xs text-slate-500 mt-3">
-              Resolve these issues in the Responses tab, then export — or use "Export anyway" to download a draft.
+            <p className="text-xs text-slate-500 mt-1">
+              All items above must be resolved before the export can proceed. There is no override — this protects delivery quality.
             </p>
           </div>
         ) : !gateLoading && gate && (
-          <p className="text-xs text-slate-500">All amber/red requirements confirmed, all competitive claims reviewed. Ready to export.</p>
+          <p className="text-xs text-slate-500">All amber/red requirements confirmed, competitive claims reviewed, template mapping confirmed (if applicable). Ready to export.</p>
         )}
       </div>
 
-      {/* Format picker */}
+      {/* ── Format picker ──────────────────────────────────────────────── */}
       <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
         <h3 className="text-sm font-semibold text-white mb-4">Export Format</h3>
         <div className="grid grid-cols-2 gap-3">
@@ -707,7 +782,101 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
         </div>
       </div>
 
-      {/* Options */}
+      {/* ── Client Response Template ────────────────────────────────────── */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <FileDown className="h-4 w-4 text-violet-400" />
+          <h3 className="text-sm font-semibold text-white">Client Response Template</h3>
+          {templateFormat !== "none" && templateConfirmed && (
+            <span className="ml-auto text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">✓ Confirmed</span>
+          )}
+          {templateFormat !== "none" && !templateConfirmed && (
+            <span className="ml-auto text-xs font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">Needs confirmation</span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 mb-4">
+          If the client provided a specific response format (e.g. their own DOCX table or Excel matrix), select it here and confirm the field mapping so the export matches their expected layout.
+        </p>
+
+        {/* Template format selector */}
+        <div className="space-y-2 mb-4">
+          {applicableTemplateFormats.map(([key, meta]) => (
+            <button
+              key={key}
+              onClick={() => {
+                if (templateFormat !== key) {
+                  setTemplateConfirmed(false);
+                  handleSaveTemplate(key, false);
+                }
+              }}
+              className={`w-full flex items-start gap-3 rounded-lg px-3 py-2.5 border text-left transition-all ${
+                templateFormat === key
+                  ? "bg-violet-500/10 border-violet-500/25"
+                  : "bg-slate-800/30 border-white/5 hover:border-white/10"
+              }`}
+            >
+              <span className={`h-3.5 w-3.5 mt-0.5 rounded-full border-2 flex-shrink-0 ${templateFormat === key ? "border-violet-400 bg-violet-400" : "border-slate-600"}`} />
+              <div>
+                <div className={`text-xs font-medium ${templateFormat === key ? "text-white" : "text-slate-400"}`}>{meta.label}</div>
+                <div className="text-[11px] text-slate-500">{meta.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Field mapping table (shown when a non-none template is selected) */}
+        {templateFormat !== "none" && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-slate-400 mb-2">
+              Column / field name mapping — edit the right column to match the client's headings:
+            </p>
+            <div className="rounded-lg overflow-hidden border border-white/5">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-800/60">
+                    <th className="text-left px-3 py-2 text-slate-500 font-medium">spectio field</th>
+                    <th className="text-left px-3 py-2 text-slate-500 font-medium">client column heading</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(fieldMap).map(([key, val]) => (
+                    <tr key={key} className="border-t border-white/5">
+                      <td className="px-3 py-1.5 text-slate-500">{key}</td>
+                      <td className="px-1.5 py-1">
+                        <input
+                          value={val}
+                          onChange={(e) => setFieldMap((prev) => ({ ...prev, [key]: e.target.value }))}
+                          onBlur={() => handleSaveTemplate()}
+                          className="w-full bg-slate-800 border border-white/5 rounded px-2 py-0.5 text-slate-300 text-xs focus:outline-none focus:border-violet-500/40"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Button
+              onClick={() => handleSaveTemplate(undefined, true)}
+              disabled={savingTemplate || templateConfirmed}
+              className="mt-3 w-full bg-violet-600 hover:bg-violet-700 text-white text-xs"
+            >
+              {savingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+              {templateConfirmed ? "Field mapping confirmed ✓" : "Confirm field mapping"}
+            </Button>
+            {templateConfirmed && (
+              <button
+                className="mt-1.5 w-full text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                onClick={() => handleSaveTemplate(undefined, false)}
+              >
+                Reset confirmation
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Export options ──────────────────────────────────────────────── */}
       <div className="rounded-xl bg-slate-900 border border-white/5 p-5 space-y-4">
         <h3 className="text-sm font-semibold text-white">Export Options</h3>
 
@@ -754,30 +923,17 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
         )}
       </div>
 
-      {/* Export button */}
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={() => handleExport(false)}
-          disabled={exporting}
-          className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-medium"
-        >
-          {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-          {exporting ? "Exporting…" : `Export ${FORMAT_META[format].label}`}
-        </Button>
-        {gate?.blocked && (
-          <Button
-            onClick={() => handleExport(true)}
-            disabled={exporting}
-            variant="outline"
-            className="border-slate-700 text-slate-400 hover:text-white"
-          >
-            <FileDown className="h-4 w-4 mr-1.5" />
-            Export anyway
-          </Button>
-        )}
-      </div>
+      {/* ── Export button (gate is hard — no bypass) ──────────────────── */}
+      <Button
+        onClick={handleExport}
+        disabled={exporting || !!(gate?.blocked)}
+        className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+        {exporting ? "Exporting…" : gate?.blocked ? `Export blocked (${gate.blockers.length} issue${gate.blockers.length !== 1 ? "s" : ""} to resolve)` : `Export ${FORMAT_META[format].label}`}
+      </Button>
 
-      {/* Outcome recording */}
+      {/* ── Outcome recording ─────────────────────────────────────────── */}
       <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
         <h3 className="text-sm font-semibold text-white mb-1">Record Outcome</h3>
         <p className="text-xs text-slate-500 mb-4">

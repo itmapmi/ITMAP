@@ -1,17 +1,21 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { requireFeature } from "../featureAccess";
-import { assertSessionBelongsToVendor } from "../storage/rfpResponder";
-import { updateRfpResponseSession } from "../storage/rfpResponder";
-import { assembleResponse } from "../rfpAssembly/assemble";
+import {
+  assertSessionBelongsToVendor,
+  updateRfpResponseSession,
+} from "../storage/rfpResponder";
+import { assembleResponse, buildFullText } from "../rfpAssembly/assemble";
 import { checkExportGate } from "../rfpAssembly/gate";
 import { exportDocx } from "../rfpAssembly/exportDocx";
 import { exportPdf } from "../rfpAssembly/exportPdf";
 import { exportXlsx } from "../rfpAssembly/exportXlsx";
 import { exportPptx } from "../rfpAssembly/exportPptx";
-import { buildFullText } from "../rfpAssembly/assemble";
-import { createRfpKbDocument, updateRfpKbDocumentStatus } from "../storage/rfpKb";
-import { bulkInsertRfpKbChunks } from "../storage/rfpKb";
+import {
+  createRfpKbDocument,
+  updateRfpKbDocumentStatus,
+  bulkInsertRfpKbChunks,
+} from "../storage/rfpKb";
 import { insertVendorSignal } from "../storage/signals";
 
 // ── Auth helpers ──────────────────────────────────────────────────────────
@@ -61,8 +65,56 @@ export function registerRfpAssemblyRoutes(app: Express): void {
     },
   );
 
+  // PATCH /api/rfp/responses/:id/template
+  // Set/update client template detection: format, section map, and confirmation.
+  // Body: { clientTemplateFormat?: string; clientTemplateSectionMap?: Record<string,string>; clientTemplateConfirmed?: boolean }
+  app.patch(
+    "/api/rfp/responses/:id/template",
+    ...guard,
+    async (req: Request, res: Response) => {
+      try {
+        const vendorId = primaryVendorId(req)!;
+        const session = await assertSessionBelongsToVendor(req.params.id, vendorId);
+
+        const schema = z.object({
+          clientTemplateFormat: z
+            .enum(["none", "docx_table", "xlsx_grid", "pptx_deck"])
+            .optional(),
+          clientTemplateSectionMap: z
+            .record(z.string())
+            .nullable()
+            .optional(),
+          clientTemplateConfirmed: z.boolean().optional(),
+        });
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid request body" });
+        }
+
+        const updates: Record<string, unknown> = {};
+        if (parsed.data.clientTemplateFormat !== undefined) {
+          updates.clientTemplateFormat = parsed.data.clientTemplateFormat;
+          // Reset confirmation whenever the format changes
+          updates.clientTemplateConfirmed = false;
+        }
+        if (parsed.data.clientTemplateSectionMap !== undefined) {
+          updates.clientTemplateSectionMap = parsed.data.clientTemplateSectionMap;
+        }
+        if (parsed.data.clientTemplateConfirmed !== undefined) {
+          updates.clientTemplateConfirmed = parsed.data.clientTemplateConfirmed;
+        }
+
+        const updated = await updateRfpResponseSession(session.id, updates as any);
+        res.json({ session: updated });
+      } catch (err: any) {
+        res.status(err.status ?? 500).json({ error: err.message ?? "Failed to update template" });
+      }
+    },
+  );
+
   // POST /api/rfp/responses/:id/export — assemble + export document
   // Body: { format: 'docx'|'pdf'|'xlsx'|'pptx', showCitations?: boolean, includedDiagramIds?: string[]|null }
+  // NOTE: no bypass parameter — gate is mandatory. Call PATCH /template to satisfy template blocker first.
   app.post(
     "/api/rfp/responses/:id/export",
     ...guard,
@@ -75,24 +127,20 @@ export function registerRfpAssemblyRoutes(app: Express): void {
           format: z.enum(["docx", "pdf", "xlsx", "pptx"]),
           showCitations: z.boolean().optional().default(true),
           includedDiagramIds: z.array(z.string()).nullable().optional().default(null),
-          // bypass: skip gate check (allow even if blockers exist — e.g. for drafts)
-          bypass: z.boolean().optional().default(false),
         });
         const parsed = schema.safeParse(req.body);
         if (!parsed.success) {
           return res.status(400).json({ error: "Invalid request body" });
         }
-        const { format, showCitations, includedDiagramIds, bypass } = parsed.data;
+        const { format, showCitations, includedDiagramIds } = parsed.data;
 
-        // Gate check (unless bypassed)
-        if (!bypass) {
-          const gate = await checkExportGate(session);
-          if (gate.blocked) {
-            return res.status(422).json({
-              error: "Export blocked by pre-export gate",
-              blockers: gate.blockers,
-            });
-          }
+        // Gate check — always enforced, no bypass
+        const gate = await checkExportGate(session);
+        if (gate.blocked) {
+          return res.status(422).json({
+            error: "Export blocked by pre-export gate",
+            blockers: gate.blockers,
+          });
         }
 
         // Assemble
@@ -101,14 +149,17 @@ export function registerRfpAssemblyRoutes(app: Express): void {
           includedDiagramIds: includedDiagramIds ?? null,
         });
 
-        // Export
+        // Export — pass client template fields so exporters can adapt output format
+        const templateFormat = session.clientTemplateFormat ?? "none";
+        const templateSectionMap = (session.clientTemplateSectionMap as Record<string, string> | null) ?? null;
+
         let buf: Buffer;
         let mimeType: string;
         let ext: string;
 
         switch (format) {
           case "docx":
-            buf = await exportDocx(assembled);
+            buf = await exportDocx(assembled, { templateFormat, templateSectionMap });
             mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             ext = "docx";
             break;
@@ -118,7 +169,7 @@ export function registerRfpAssemblyRoutes(app: Express): void {
             ext = "pdf";
             break;
           case "xlsx":
-            buf = await exportXlsx(assembled);
+            buf = await exportXlsx(assembled, { templateFormat, templateSectionMap });
             mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             ext = "xlsx";
             break;
@@ -132,33 +183,35 @@ export function registerRfpAssemblyRoutes(app: Express): void {
         // Mark session as exported
         await updateRfpResponseSession(session.id, { exportedAt: new Date() });
 
-        // Lead-gen signal emission
-        try {
-          const reqCategories = assembled.sections.map((s) => s.section);
-          const diagramIntents = assembled.diagrams.map((d) => d.diagramIntent);
-          await insertVendorSignal({
-            vendorId: session.vendorId,
-            marketId: session.marketId ?? session.vendorId, // fallback; signals require marketId
-            sourceType: "hackernews", // reuse closest available type; stored in metadata
-            title: `RFP Response exported: ${session.rfpFileName ?? "RFP"}`,
-            content: `Format: ${format.toUpperCase()}. Sections: ${reqCategories.slice(0, 5).join(", ")}. Diagrams: ${diagramIntents.join(", ")}`,
-            url: null,
-            sentiment: "positive",
-            sentimentScore: "0.8",
-            impactLabel: "LOW",
-            signalDate: new Date(),
-            rawData: {
-              source: "rfp_export",
-              sessionId: session.id,
-              format,
-              diagramIntents,
-              requirementCategories: reqCategories,
-            } as any,
-          });
-        } catch (signalErr) {
-          // Signal emission must never block the export
-          console.warn("[rfpAssembly] signal emission failed (non-fatal):", signalErr);
-        }
+        // Lead-gen signal emission (non-blocking)
+        setImmediate(async () => {
+          try {
+            const reqCategories = assembled.sections.map((s) => s.section);
+            const diagramIntents = assembled.diagrams.map((d) => d.diagramIntent);
+            await insertVendorSignal({
+              vendorId: session.vendorId,
+              marketId: session.marketId ?? session.vendorId,
+              sourceType: "hackernews",
+              title: `RFP Response exported: ${session.rfpFileName ?? "RFP"}`,
+              content: `Format: ${format.toUpperCase()}. Client template: ${templateFormat}. Sections: ${reqCategories.slice(0, 5).join(", ")}. Diagrams: ${diagramIntents.join(", ")}`,
+              url: null,
+              sentiment: "positive",
+              sentimentScore: "0.8",
+              impactLabel: "LOW",
+              signalDate: new Date(),
+              rawData: {
+                source: "rfp_export",
+                sessionId: session.id,
+                format,
+                templateFormat,
+                diagramIntents,
+                requirementCategories: reqCategories,
+              } as any,
+            });
+          } catch (signalErr) {
+            console.warn("[rfpAssembly] signal emission failed (non-fatal):", signalErr);
+          }
+        });
 
         const safeName = (session.rfpFileName ?? "rfp-response")
           .replace(/\.[^.]+$/, "")
@@ -176,7 +229,8 @@ export function registerRfpAssemblyRoutes(app: Express): void {
   );
 
   // POST /api/rfp/responses/:id/outcome — record won/lost/pending outcome
-  // On "won": re-ingest assembled response as gold-standard KB document
+  // On "won": re-ingest assembled response as gold-standard KB document (async)
+  // On "lost": re-ingest as reduced-weight lesson (async)
   app.post(
     "/api/rfp/responses/:id/outcome",
     ...guard,
@@ -199,15 +253,13 @@ export function registerRfpAssemblyRoutes(app: Express): void {
           outcomeTag: outcome,
         } as any);
 
-        // Learning loop: re-ingest as KB document for won/lost
+        // Learning loop: re-ingest as KB document for won/lost (non-blocking)
         if (outcome === "won" || outcome === "lost") {
-          // Run async — do not block the response
-          (async () => {
+          setImmediate(async () => {
             try {
               const assembled = await assembleResponse(session, { showCitations: true });
               const fullText = buildFullText(assembled);
 
-              // Create KB document record
               const kbDoc = await createRfpKbDocument({
                 vendorId: session.vendorId,
                 uploadedByUserId: userId(req),
@@ -221,7 +273,7 @@ export function registerRfpAssemblyRoutes(app: Express): void {
 
               await updateRfpKbDocumentStatus(kbDoc.id, "chunking");
 
-              // Chunk the text into ~400-word windows
+              // Chunk into ~400-word windows with 60-word overlap
               const CHUNK_WORDS = 400;
               const OVERLAP = 60;
               const words = fullText.split(/\s+/);
@@ -233,7 +285,6 @@ export function registerRfpAssemblyRoutes(app: Express): void {
                 start = end - OVERLAP;
               }
 
-              // Embed chunks
               const OpenAI = (await import("openai")).default;
               const openai = new OpenAI({
                 apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -242,7 +293,6 @@ export function registerRfpAssemblyRoutes(app: Express): void {
 
               await updateRfpKbDocumentStatus(kbDoc.id, "embedding");
 
-              const BATCH = 100;
               const embeddedChunks: {
                 documentId: string;
                 vendorId: string;
@@ -255,6 +305,7 @@ export function registerRfpAssemblyRoutes(app: Express): void {
                 metadata: Record<string, unknown>;
               }[] = [];
 
+              const BATCH = 100;
               for (let i = 0; i < chunkTexts.length; i += BATCH) {
                 const batch = chunkTexts.slice(i, i + BATCH);
                 const embResp = await openai.embeddings.create({
@@ -269,15 +320,13 @@ export function registerRfpAssemblyRoutes(app: Express): void {
                     content: batch[j]!,
                     sectionPath: null,
                     pageRef: null,
-                    // Won responses have highest retrieval weight via approval status
                     approvalStatus: outcome === "won" ? "approved" : "draft",
                     embedding: embResp.data[j]!.embedding,
                     metadata: {
                       wonLost: outcome,
                       sessionId: session.id,
                       rfpFileName: session.rfpFileName,
-                      // Won responses get a boosted weight marker in metadata
-                      ...(outcome === "won" ? { retrievalWeight: 2.0 } : { retrievalWeight: 0.5 }),
+                      retrievalWeight: outcome === "won" ? 2.0 : 0.5,
                     },
                   });
                 }
@@ -288,11 +337,13 @@ export function registerRfpAssemblyRoutes(app: Express): void {
                 chunkCount: embeddedChunks.length,
               });
 
-              console.log(`[rfpAssembly] Learning loop: ingested ${embeddedChunks.length} chunks for ${outcome} session ${session.id}`);
+              console.log(
+                `[rfpAssembly] Learning loop: ingested ${embeddedChunks.length} chunks for ${outcome} session ${session.id}`,
+              );
             } catch (ingestErr) {
               console.error("[rfpAssembly] KB re-ingest failed (non-fatal):", ingestErr);
             }
-          })();
+          });
         }
 
         res.json({ session: updated, outcome });

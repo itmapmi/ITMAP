@@ -1,11 +1,16 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-  Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType,
+  Table, TableRow, TableCell, WidthType, BorderStyle,
   Header, Footer, PageNumber,
 } from "docx";
 import type { AssembledResponse } from "./assemble";
 import { buildExecSummaryText } from "./assemble";
 import type { CompetitiveClaim, ResponseSource } from "@shared/schema";
+
+export interface DocxExportOptions {
+  templateFormat?: string;
+  templateSectionMap?: Record<string, string> | null;
+}
 
 function coverageColor(flag: string): string {
   if (flag === "green") return "16A34A";
@@ -18,9 +23,128 @@ function safeText(s: string | null | undefined): string {
   return (s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
 }
 
+// ── Client DOCX table template export ────────────────────────────────────
+// When clientTemplateFormat === 'docx_table', we render the whole matrix as
+// a requirements-response table matching client column expectations, using
+// the user-supplied section-map to re-label headings.
+
+function buildClientTableDoc(
+  assembled: AssembledResponse,
+  sectionMap: Record<string, string>,
+): Document {
+  const { session, vendorName, sections, showCitations } = assembled;
+  const client = session.clientOrgName ?? "Client";
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
+  // Map column labels via sectionMap (fallback to defaults)
+  const COL_REQ = sectionMap["Requirement"] ?? "Requirement";
+  const COL_SECTION = sectionMap["Section"] ?? "Section";
+  const COL_MANDATORY = sectionMap["Mandatory"] ?? "Mandatory";
+  const COL_COVERAGE = sectionMap["Coverage"] ?? "Coverage";
+  const COL_RESPONSE = sectionMap["Response"] ?? "Vendor Response";
+  const COL_NOTES = sectionMap["Notes"] ?? "Notes / SME";
+
+  function headerCell(text: string) {
+    return new TableCell({
+      children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 18 })] })],
+      shading: { fill: "1E3A5F", type: "clear" as any },
+    });
+  }
+
+  const headerRow = new TableRow({
+    children: [
+      headerCell(COL_SECTION),
+      headerCell(COL_REQ),
+      headerCell(COL_MANDATORY),
+      headerCell(COL_COVERAGE),
+      headerCell(COL_RESPONSE),
+      headerCell(COL_NOTES),
+    ],
+    tableHeader: true,
+  });
+
+  const dataRows: TableRow[] = [];
+  for (const { section, items } of sections) {
+    for (const { req, answer } of items) {
+      const flag = answer?.coverageFlag ?? "pending";
+      const claimsText = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[])
+        .filter((c) => c.optedIn === true)
+        .map((c) => c.claim)
+        .join("; ");
+
+      dataRows.push(
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: section, size: 18 })] })] }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(req.requirementText), size: 18 })] })] }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: req.mandatory ? "Yes" : "No", size: 18 })] })] }),
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: flag.toUpperCase(), bold: true, color: coverageColor(flag), size: 18 })] })],
+            }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(answer?.generatedText ?? ""), size: 18 })] })] }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(answer?.smeNote ?? "") + (claimsText ? `\n[Competitive: ${claimsText}]` : ""), size: 18 })] })] }),
+          ],
+        }),
+      );
+    }
+  }
+
+  const table = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [headerRow, ...dataRows],
+    columnWidths: [1200, 2800, 800, 900, 3000, 1800],
+  });
+
+  return new Document({
+    title: `${vendorName} RFP Response (Client Template)`,
+    sections: [
+      {
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: `${vendorName} — Response for ${client} | ${today}`, size: 18, color: "94A3B8" })],
+                alignment: AlignmentType.RIGHT,
+              }),
+            ],
+          }),
+        },
+        children: [
+          new Paragraph({
+            text: `${vendorName} Response — ${session.rfpFileName ?? "RFP"}`,
+            heading: HeadingLevel.TITLE,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: buildExecSummaryText(assembled), size: 22 })],
+            spacing: { after: 400 },
+          }),
+          new Paragraph({ text: "Requirement Matrix", heading: HeadingLevel.HEADING_1, spacing: { after: 200 } }),
+          table,
+        ],
+      },
+    ],
+  });
+}
+
+// ── Standard narrative export ─────────────────────────────────────────────
+
 export async function exportDocx(
   assembled: AssembledResponse,
+  opts: DocxExportOptions = {},
 ): Promise<Buffer> {
+  const { templateFormat = "none", templateSectionMap = null } = opts;
+
+  // If client has specified a DOCX table format, use the client template structure
+  if (templateFormat === "docx_table") {
+    const sectionMap = templateSectionMap ?? {};
+    const doc = buildClientTableDoc(assembled, sectionMap);
+    return Packer.toBuffer(doc);
+  }
+
+  // ── Standard narrative DOCX ───────────────────────────────────────────────
   const { session, vendorName, sections, diagrams, showCitations } = assembled;
   const client = session.clientOrgName ?? "Client";
   const rfpName = session.rfpFileName ?? "RFP";
@@ -56,7 +180,7 @@ export async function exportDocx(
     }),
   );
 
-  // 2. Solution Overview / Narrative
+  // 2. Solution Overview
   children.push(
     new Paragraph({ text: "2. Solution Overview", heading: HeadingLevel.HEADING_1, spacing: { after: 200 } }),
     new Paragraph({
@@ -80,15 +204,17 @@ export async function exportDocx(
     );
 
     for (const { req, answer } of items) {
+      const flag = answer?.coverageFlag ?? "pending";
+
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: req.requirementText, bold: true, size: 22 }),
             new TextRun({ text: "  " }),
             new TextRun({
-              text: `[${(answer?.coverageFlag ?? "pending").toUpperCase()}]`,
+              text: `[${flag.toUpperCase()}]`,
               bold: true,
-              color: coverageColor(answer?.coverageFlag ?? "pending"),
+              color: coverageColor(flag),
               size: 20,
             }),
           ],
@@ -148,8 +274,8 @@ export async function exportDocx(
         );
       }
 
-      // Opted-in competitive claims
-      const claims = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[]).filter((c) => c.optedIn);
+      // Opted-in competitive claims only
+      const claims = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[]).filter((c) => c.optedIn === true);
       if (claims.length) {
         children.push(
           new Paragraph({
@@ -166,9 +292,9 @@ export async function exportDocx(
 
   // 4. Competitive Differentiation
   const allOptedClaims: { claim: string; reqText: string }[] = [];
-  for (const { section, items } of sections) {
+  for (const { items } of sections) {
     for (const { req, answer } of items) {
-      const claims = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[]).filter((c) => c.optedIn);
+      const claims = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[]).filter((c) => c.optedIn === true);
       for (const c of claims) {
         allOptedClaims.push({ claim: c.claim, reqText: req.requirementText });
       }
@@ -201,7 +327,7 @@ export async function exportDocx(
     }
   }
 
-  // 5. Architecture Diagrams section (reference note — SVG inline in PPTX)
+  // 5. Architecture Diagrams (reference note)
   if (diagrams.length > 0) {
     children.push(
       new Paragraph({ text: "5. Architecture Diagrams", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
@@ -257,16 +383,14 @@ export async function exportDocx(
       children.push(
         new Paragraph({
           bullet: { level: 0 },
-          children: [
-            new TextRun({ text: req.requirementText, size: 22, bold: true }),
-          ],
+          children: [new TextRun({ text: safeText(req.requirementText), size: 22, bold: true })],
           spacing: { after: 40 },
         }),
       );
       if (answer?.smeNote) {
         children.push(
           new Paragraph({
-            children: [new TextRun({ text: `  Note: ${answer.smeNote}`, size: 20, color: "64748B" })],
+            children: [new TextRun({ text: `  Note: ${safeText(answer.smeNote)}`, size: 20, color: "64748B" })],
             spacing: { after: 80 },
           }),
         );
@@ -283,9 +407,7 @@ export async function exportDocx(
           default: new Header({
             children: [
               new Paragraph({
-                children: [
-                  new TextRun({ text: `${vendorName} — ${rfpName} Response`, size: 18, color: "94A3B8" }),
-                ],
+                children: [new TextRun({ text: `${vendorName} — ${rfpName} Response`, size: 18, color: "94A3B8" })],
                 alignment: AlignmentType.RIGHT,
               }),
             ],
