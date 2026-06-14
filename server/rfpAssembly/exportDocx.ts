@@ -6,10 +6,13 @@ import {
 import type { AssembledResponse } from "./assemble";
 import { buildExecSummaryText } from "./assemble";
 import type { CompetitiveClaim, ResponseSource } from "@shared/schema";
+import { fillDocxTemplate } from "./templateFill";
 
 export interface DocxExportOptions {
   templateFormat?: string;
   templateSectionMap?: Record<string, string> | null;
+  /** GCS storage key of the original uploaded DOCX template, for round-trip filling. */
+  templateStorageKey?: string | null;
 }
 
 function coverageColor(flag: string): string {
@@ -135,11 +138,25 @@ export async function exportDocx(
   assembled: AssembledResponse,
   opts: DocxExportOptions = {},
 ): Promise<Buffer> {
-  const { templateFormat = "none", templateSectionMap = null } = opts;
+  const { templateFormat = "none", templateSectionMap = null, templateStorageKey = null } = opts;
 
-  // If client has specified a DOCX table format, use the client template structure
+  // Client DOCX table mode: prefer round-trip filling of the original template
+  // binary (writes answers into the template's existing table structure); fall
+  // back to buildClientTableDoc if the artifact is unavailable or XML fails.
   if (templateFormat === "docx_table") {
     const sectionMap = templateSectionMap ?? {};
+    if (templateStorageKey) {
+      try {
+        const { downloadFromGcs } = await import("../rfpKb/ingest");
+        const templateBuf = await downloadFromGcs(templateStorageKey);
+        if (templateBuf) {
+          return fillDocxTemplate(templateBuf, assembled, sectionMap);
+        }
+      } catch (fillErr) {
+        console.warn("[exportDocx] round-trip fill failed, using generated fallback:", fillErr);
+      }
+    }
+    // Fallback: generate a properly-structured DOCX with client column headings
     const doc = buildClientTableDoc(assembled, sectionMap);
     return Packer.toBuffer(doc);
   }

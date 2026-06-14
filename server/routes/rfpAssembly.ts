@@ -149,9 +149,13 @@ export function registerRfpAssemblyRoutes(app: Express): void {
           includedDiagramIds: includedDiagramIds ?? null,
         });
 
-        // Export — pass client template fields so exporters can adapt output format
+        // Export — pass client template fields + storage key to exporters.
+        // When a templateStorageKey is available the DOCX/XLSX exporters perform
+        // true round-trip filling: they download the original template binary from
+        // GCS and write answers into its existing table cells / column structure.
         const templateFormat = session.clientTemplateFormat ?? "none";
         const templateSectionMap = (session.clientTemplateSectionMap as Record<string, string> | null) ?? null;
+        const templateStorageKey = (session as any).rfpTemplateStorageKey ?? null;
 
         let buf: Buffer;
         let mimeType: string;
@@ -159,7 +163,7 @@ export function registerRfpAssemblyRoutes(app: Express): void {
 
         switch (format) {
           case "docx":
-            buf = await exportDocx(assembled, { templateFormat, templateSectionMap });
+            buf = await exportDocx(assembled, { templateFormat, templateSectionMap, templateStorageKey });
             mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             ext = "docx";
             break;
@@ -169,7 +173,7 @@ export function registerRfpAssemblyRoutes(app: Express): void {
             ext = "pdf";
             break;
           case "xlsx":
-            buf = await exportXlsx(assembled, { templateFormat, templateSectionMap });
+            buf = await exportXlsx(assembled, { templateFormat, templateSectionMap, templateStorageKey });
             mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             ext = "xlsx";
             break;

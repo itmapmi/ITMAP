@@ -85,6 +85,7 @@ export async function updateRfpResponseSession(
       | "clientTemplateFormat"
       | "clientTemplateConfirmed"
       | "clientTemplateSectionMap"
+      | "rfpTemplateStorageKey"
     >
   >,
 ): Promise<RfpResponseSession> {

@@ -1,9 +1,12 @@
 import type { AssembledResponse } from "./assemble";
 import type { CompetitiveClaim, ResponseSource } from "@shared/schema";
+import { fillXlsxTemplate } from "./templateFill";
 
 export interface XlsxExportOptions {
   templateFormat?: string;
   templateSectionMap?: Record<string, string> | null;
+  /** GCS storage key of the original uploaded XLSX template, for round-trip filling. */
+  templateStorageKey?: string | null;
 }
 
 export async function exportXlsx(
@@ -12,7 +15,21 @@ export async function exportXlsx(
 ): Promise<Buffer> {
   const XLSX = (await import("xlsx")).default ?? await import("xlsx");
   const { session, vendorName, sections, showCitations } = assembled;
-  const { templateFormat = "none", templateSectionMap = null } = opts;
+  const { templateFormat = "none", templateSectionMap = null, templateStorageKey = null } = opts;
+
+  // XLSX grid mode: prefer round-trip filling of the original template binary
+  // (writes data under the client's existing column headings + preserves formatting).
+  if (templateFormat === "xlsx_grid" && templateStorageKey) {
+    try {
+      const { downloadFromGcs } = await import("../rfpKb/ingest");
+      const templateBuf = await downloadFromGcs(templateStorageKey);
+      if (templateBuf) {
+        return fillXlsxTemplate(templateBuf, assembled, templateSectionMap ?? {});
+      }
+    } catch (fillErr) {
+      console.warn("[exportXlsx] round-trip fill failed, using generated fallback:", fillErr);
+    }
+  }
 
   // Column labels — caller can override via templateSectionMap to match client's expected headings
   const sm = templateSectionMap ?? {};

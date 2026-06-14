@@ -560,7 +560,15 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   Claims: "Competitive Claims",
 };
 
-function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpResponseSession }) {
+function ExportPanel({
+  sessionId,
+  session,
+  onSwitchToResponses,
+}: {
+  sessionId: string;
+  session: RfpResponseSession;
+  onSwitchToResponses?: () => void;
+}) {
   const { toast } = useToast();
   const [format, setFormat] = useState<ExportFormat>("docx");
   const [showCitations, setShowCitations] = useState(true);
@@ -742,9 +750,19 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-slate-300">{b.label}</p>
                   {b.kind === "template_unmapped" ? (
-                    <p className="text-[11px] text-amber-400 mt-0.5">→ Confirm the field map in the Client Template section below</p>
+                    <a
+                      href="#template-mapping"
+                      className="text-[11px] text-amber-400 hover:text-amber-300 underline underline-offset-2 mt-0.5 inline-block"
+                    >
+                      → Confirm the field map in the Client Template section below ↓
+                    </a>
                   ) : (
-                    <p className="text-[11px] text-slate-500 mt-0.5">→ Switch to the Responses tab to fix</p>
+                    <button
+                      onClick={() => onSwitchToResponses?.()}
+                      className="text-[11px] text-cyan-500 hover:text-cyan-400 underline underline-offset-2 mt-0.5 text-left"
+                    >
+                      → Switch to the Responses tab to fix →
+                    </button>
                   )}
                 </div>
               </div>
@@ -783,7 +801,7 @@ function ExportPanel({ sessionId, session }: { sessionId: string; session: RfpRe
       </div>
 
       {/* ── Client Response Template ────────────────────────────────────── */}
-      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+      <div id="template-mapping" className="rounded-xl bg-slate-900 border border-white/5 p-5">
         <div className="flex items-center gap-2 mb-1">
           <FileDown className="h-4 w-4 text-violet-400" />
           <h3 className="text-sm font-semibold text-white">Client Response Template</h3>
@@ -1218,7 +1236,11 @@ export default function RfpSessionDetailPage() {
               />
             )}
             {completeTab === "export" && (
-              <ExportPanel sessionId={id!} session={session} />
+              <ExportPanel
+                sessionId={id!}
+                session={session}
+                onSwitchToResponses={() => setCompleteTab("responses")}
+              />
             )}
           </div>
         )}

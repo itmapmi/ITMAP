@@ -140,6 +140,23 @@ export function registerRfpResponderRoutes(app: Express): void {
           //    clientTemplateFormat and pre-populate the field map so the user
           //    sees real client column names instead of generic defaults.
           const detection = detectClientTemplate(buffer, originalname);
+
+          // 5. Persist the original template binary to GCS for round-trip filling.
+          //    When the user later exports as docx_table or xlsx_grid, the exporter
+          //    downloads this artifact and writes answers into the template's
+          //    existing table cells / column structure, preserving formatting.
+          let rfpTemplateStorageKey: string | null = null;
+          if (detection.format !== "none") {
+            const { uploadRawFileToGcs } = await import("../rfpKb/ingest");
+            rfpTemplateStorageKey = await uploadRawFileToGcs({
+              vendorId,
+              documentId: session.id,
+              fileName: originalname,
+              mimeType: mimetype,
+              buffer,
+            });
+          }
+
           const templateUpdates: Record<string, unknown> = {
             status: "reviewing",
             requirementsCount: reqs.length,
@@ -148,6 +165,9 @@ export function registerRfpResponderRoutes(app: Express): void {
             templateUpdates.clientTemplateFormat = detection.format;
             templateUpdates.clientTemplateSectionMap = detection.detectedColumns;
             templateUpdates.clientTemplateConfirmed = false;
+            if (rfpTemplateStorageKey) {
+              templateUpdates.rfpTemplateStorageKey = rfpTemplateStorageKey;
+            }
           }
           await updateRfpResponseSession(session.id, templateUpdates as any);
         } catch (e: any) {

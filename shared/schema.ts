@@ -2048,8 +2048,10 @@ export const rfpResponseSessions = pgTable("rfp_response_sessions", {
   clientTemplateFormat: text("client_template_format").notNull().default("none"),
   // True once the user has confirmed the section→template-field mapping in the Export UI
   clientTemplateConfirmed: boolean("client_template_confirmed").notNull().default(false),
-  // JSONB map of section name → template column/heading (user-editable in Export UI)
+  // JSONB map of spectio canonical key → client column heading (user-editable in Export UI)
   clientTemplateSectionMap: jsonb("client_template_section_map").$type<Record<string, string>>(),
+  // GCS storage key of the original uploaded RFP file, used for round-trip template filling
+  rfpTemplateStorageKey: text("rfp_template_storage_key"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
