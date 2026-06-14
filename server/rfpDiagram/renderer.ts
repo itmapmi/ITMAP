@@ -20,6 +20,16 @@ const EDGE_DASH: Partial<Record<ConnectionType, string>> = {
 const FONT_FAMILY = "ui-monospace, 'Cascadia Code', 'Source Code Pro', Consolas, monospace";
 const LABEL_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
+/** Escape all special XML/SVG characters to prevent SVG injection. */
+function esc(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function ptStr(pts: { x: number; y: number }[]): string {
   if (pts.length === 2) {
     return `M ${pts[0]!.x} ${pts[0]!.y} L ${pts[1]!.x} ${pts[1]!.y}`;
@@ -61,7 +71,7 @@ function renderEdge(edge: DiagramEdge, layout: LayoutResult): string {
   const labelPart = edge.label ? `
 <text font-size="10" fill="${color}" font-family="${LABEL_FONT}" text-anchor="middle" dominant-baseline="middle"
   x="${(route.points[0]!.x + route.points[route.points.length - 1]!.x) / 2}"
-  y="${(route.points[0]!.y + route.points[route.points.length - 1]!.y) / 2 - 8}">${edge.label}</text>` : "";
+  y="${(route.points[0]!.y + route.points[route.points.length - 1]!.y) / 2 - 8}">${esc(edge.label)}</text>` : "";
 
   return `
 <path d="${d}" stroke="${color}" stroke-width="${edge.redundant ? 2.5 : 1.8}" fill="none" ${dashAttr} marker-end="url(#${markerId})"/>
@@ -71,19 +81,19 @@ ${labelPart}`;
 function renderNode(node: DiagramNode, pos: { x: number; y: number }): string {
   const color = NODE_COLORS[node.type as NodeType] ?? "#94a3b8";
   const HALF = 26;
-  const label = node.label.length > 20 ? node.label.slice(0, 19) + "…" : node.label;
+  const rawLabel = node.label.length > 20 ? node.label.slice(0, 19) + "\u2026" : node.label;
   const countBadge = (node.count && node.count > 1)
     ? `<text x="${pos.x + HALF}" y="${pos.y - HALF}" font-family="${LABEL_FONT}" font-size="10" fill="${color}" text-anchor="middle"
-        dominant-baseline="middle">×${node.count}</text>`
+        dominant-baseline="middle">\xd7${node.count}</text>`
     : "";
 
-  return `<g class="diagram-node" data-node-id="${node.id}" data-node-type="${node.type}" cursor="grab">
+  return `<g class="diagram-node" data-node-id="${esc(node.id)}" data-node-type="${esc(node.type)}" cursor="grab">
   <rect x="${pos.x - HALF - 4}" y="${pos.y - HALF - 4}" width="${(HALF + 4) * 2}" height="${(HALF + 4) * 2}" rx="8" fill="${color}10" stroke="${color}" stroke-width="1" stroke-opacity="0.3"/>
   <g color="${color}" transform="translate(${pos.x - HALF}, ${pos.y - HALF})">
-    <use href="#icon-${node.type}" width="52" height="52"/>
+    <use href="#icon-${esc(node.type)}" width="52" height="52"/>
   </g>
   ${countBadge}
-  <text x="${pos.x}" y="${pos.y + HALF + 16}" font-family="${LABEL_FONT}" font-size="11" fill="#cbd5e1" text-anchor="middle" dominant-baseline="hanging">${label}</text>
+  <text x="${pos.x}" y="${pos.y + HALF + 16}" font-family="${LABEL_FONT}" font-size="11" fill="#cbd5e1" text-anchor="middle" dominant-baseline="hanging">${esc(rawLabel)}</text>
 </g>`;
 }
 
@@ -97,10 +107,10 @@ function renderGroup(group: DiagramGroup, box: { x: number; y: number; w: number
     "subnet-group": "#22d3ee",
   };
   const color = kindColors[group.kind] ?? "#94a3b8";
-  return `<g class="diagram-group" data-group-id="${group.id}">
+  return `<g class="diagram-group" data-group-id="${esc(group.id)}">
   <rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="10"
     fill="${color}08" stroke="${color}" stroke-width="1.5" stroke-dasharray="8 4" stroke-opacity="0.6"/>
-  <text x="${box.x + 14}" y="${box.y + 18}" font-family="${LABEL_FONT}" font-size="12" fill="${color}" font-weight="600" opacity="0.85">${group.label}</text>
+  <text x="${box.x + 14}" y="${box.y + 18}" font-family="${LABEL_FONT}" font-size="12" fill="${color}" font-weight="600" opacity="0.85">${esc(group.label)}</text>
 </g>`;
 }
 
@@ -169,7 +179,7 @@ ${iconDefs}
 </defs>
 <rect width="${canvasWidth}" height="${canvasHeight}" fill="url(#grid)"/>
 <!-- Title -->
-<text x="${canvasWidth / 2}" y="36" font-family="${LABEL_FONT}" font-size="16" fill="#e2e8f0" font-weight="600" text-anchor="middle">${spec.title}</text>
+<text x="${canvasWidth / 2}" y="36" font-family="${LABEL_FONT}" font-size="16" fill="#e2e8f0" font-weight="600" text-anchor="middle">${esc(spec.title)}</text>
 <!-- Groups (background) -->
 ${groupsSvg}
 <!-- Edges -->

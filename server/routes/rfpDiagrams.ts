@@ -70,7 +70,10 @@ export function registerRfpDiagramRoutes(app: Express): void {
       let requirementText: string | null = null;
       if (parsed.data.reqId) {
         const req2 = await getRfpResponseReqById(parsed.data.reqId).catch(() => null);
-        requirementText = req2?.requirementText ?? null;
+        // Verify the requirement belongs to this session (prevents cross-session IDOR)
+        if (req2 && req2.sessionId === req.params.sessionId) {
+          requirementText = req2.requirementText;
+        }
       }
 
       const intent = parsed.data.intent as DiagramIntent;

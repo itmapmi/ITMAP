@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,7 +135,7 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
 
   const generateMutation = useMutation({
     mutationFn: (body: { intent: string; reqId?: string | null }) =>
-      apiRequest(`/api/rfp/sessions/${sessionId}/diagrams/generate`, "POST", body) as Promise<RfpDiagram>,
+      apiRequestJson(`/api/rfp/sessions/${sessionId}/diagrams/generate`, "POST", body) as Promise<RfpDiagram>,
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/rfp/sessions", sessionId, "diagrams"] });
       setShowGenDialog(false);
@@ -152,7 +151,7 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
 
   const nudgeMutation = useMutation({
     mutationFn: (positions: Record<string, { x: number; y: number }>) =>
-      apiRequest(`/api/rfp/diagrams/${selectedDiagramId}/node-positions`, "PATCH", positions) as Promise<RfpDiagram>,
+      apiRequestJson(`/api/rfp/diagrams/${selectedDiagramId}/node-positions`, "PATCH", positions) as Promise<RfpDiagram>,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/rfp/sessions", sessionId, "diagrams"] });
       setLocalPositions({});
@@ -164,7 +163,7 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/rfp/diagrams/${id}`, "DELETE") as Promise<void>,
+    mutationFn: async (id: string) => { await apiRequest(`/api/rfp/diagrams/${id}`, "DELETE"); },
     onSuccess: async (_, id) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/rfp/sessions", sessionId, "diagrams"] });
       if (selectedDiagramId === id) setSelectedDiagramId(null);

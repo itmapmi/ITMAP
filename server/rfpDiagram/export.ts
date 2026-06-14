@@ -104,32 +104,19 @@ export function exportDrawio(spec: TopologySpec, layout: LayoutResult): string {
 // ── PNG export via puppeteer ──────────────────────────────────────────────────
 
 export async function exportPng(svgContent: string): Promise<Buffer> {
-  const { launchBrowser } = await import("../pdf-generator/pdf-service").then((m) => ({
-    launchBrowser: (m as any).launchBrowserForExport as (() => Promise<any>) | undefined,
-  }));
-
-  // Build a standalone HTML page containing the SVG
+  const { launchBrowser } = await import("../pdf-generator/pdf-service");
   const html = buildSvgHtml(svgContent);
 
-  // Use puppeteer directly (imported lazily to avoid startup cost)
-  const puppeteer = await import("puppeteer");
-  const pup = puppeteer.default ?? puppeteer;
-
-  const browser = await pup.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-  });
-
+  // Use the project-wide robust Chromium launcher (probes multiple paths, has fallbacks)
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 2 });
     await page.setContent(html, { waitUntil: "networkidle0" });
     const el = await page.$("svg");
-    if (!el) {
-      await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 2 });
-      const buf = await page.screenshot({ type: "png", fullPage: false });
-      return Buffer.from(buf);
-    }
-    const buf = await el.screenshot({ type: "png" });
+    const buf = el
+      ? await el.screenshot({ type: "png" })
+      : await page.screenshot({ type: "png", fullPage: false });
     return Buffer.from(buf);
   } finally {
     await browser.close();
