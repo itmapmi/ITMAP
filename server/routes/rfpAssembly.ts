@@ -212,6 +212,13 @@ export function registerRfpAssemblyRoutes(app: Express): void {
             : null;
 
         const assembled = await assembleResponse(session, { showCitations, includedDiagramIds });
+
+        if (req.query.format === "text") {
+          const text = buildFullText(assembled);
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          return res.send(text);
+        }
+
         const html = buildPreviewHtml(assembled);
 
         res.setHeader("Content-Type", "text/html; charset=utf-8");

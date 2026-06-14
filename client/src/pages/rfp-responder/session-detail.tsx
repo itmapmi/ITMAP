@@ -9,7 +9,7 @@ import {
   ChevronRight, ChevronDown, Eye, EyeOff, Zap, FileText, Shield,
   AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
   Download, Trophy, ThumbsDown, HelpCircle, FileDown, TableProperties,
-  Presentation, FileText as FilePdf, ScanEye, X, History,
+  Presentation, FileText as FilePdf, ScanEye, X, History, Copy, ClipboardCheck,
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
@@ -579,6 +579,7 @@ function ExportPanel({
   const [previewing, setPreviewing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
   const [outcome, setOutcome] = useState<OutcomeTag | null>(
     (session.outcomeTag as OutcomeTag | null) ?? null,
   );
@@ -705,6 +706,32 @@ function ExportPanel({
       toast({ title: "Preview failed", description: e.message, variant: "destructive" });
     } finally {
       setPreviewing(false);
+    }
+  }
+
+  async function handleCopyText() {
+    setCopying(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("showCitations", showCitations ? "true" : "false");
+      params.set("format", "text");
+      if (includedDiagramIds !== null) {
+        params.set("includedDiagramIds", includedDiagramIds.join(","));
+      }
+      const res = await fetch(`/api/rfp/responses/${sessionId}/preview?${params}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Copy failed");
+      }
+      const text = await res.text();
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copied!", description: "Plain text copied to clipboard." });
+    } catch (e: any) {
+      toast({ title: "Copy failed", description: e.message, variant: "destructive" });
+    } finally {
+      setCopying(false);
     }
   }
 
@@ -1052,12 +1079,25 @@ function ExportPanel({
                   {showCitations ? "Citations on" : "Citations off"}
                 </span>
               </div>
-              <button
-                onClick={() => setPreviewOpen(false)}
-                className="text-slate-500 hover:text-slate-300 transition-colors rounded-md p-1 hover:bg-white/5"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyText}
+                  disabled={copying || previewing}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-md px-2.5 py-1.5 border border-white/8 bg-white/3 hover:border-cyan-500/30 hover:bg-cyan-500/5"
+                  title="Copy as plain text"
+                >
+                  {copying
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Copy className="h-3.5 w-3.5" />}
+                  Copy text
+                </button>
+                <button
+                  onClick={() => setPreviewOpen(false)}
+                  className="text-slate-500 hover:text-slate-300 transition-colors rounded-md p-1 hover:bg-white/5"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             {/* Panel body */}
             <div className="flex-1 overflow-hidden">
