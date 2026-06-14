@@ -1997,3 +1997,98 @@ export type DatasheetAgentRun = typeof datasheetAgentRuns.$inferSelect;
 export type InsertDatasheetAgentRun = z.infer<typeof insertDatasheetAgentRunSchema>;
 export type DatasheetEmailLog = typeof datasheetEmailLog.$inferSelect;
 export type InsertDatasheetEmailLog = z.infer<typeof insertDatasheetEmailLogSchema>;
+
+// ── RFP Responder — Response Sessions ─────────────────────────────────────────
+// Vendor-side pipeline: ingest a client RFP → decompose into requirement tree
+// → generate grounded answers per requirement, using vendor KB + Spectio data.
+
+export type ResponseSource = {
+  type: "kb_chunk" | "spectio_score" | "spectio_feature" | "spectio_news";
+  docName?: string;
+  pageRef?: number | null;
+  sectionPath?: string | null;
+  criterionName?: string;
+  featureName?: string;
+  categoryName?: string;
+  articleTitle?: string;
+  publishedAt?: string | null;
+  excerpt: string;
+};
+
+export type CompetitiveClaim = {
+  id: string;
+  claim: string;
+  sourceType: "spectio_score" | "spectio_feature" | "spectio_news";
+  sourceDetail: string;
+  optedIn: boolean;
+};
+
+export const rfpResponseSessions = pgTable("rfp_response_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clientOrgName: text("client_org_name"),
+  rfpFileName: text("rfp_file_name"),
+  rfpText: text("rfp_text"),
+  marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("uploading"),
+  errorMessage: text("error_message"),
+  requirementsCount: integer("requirements_count").notNull().default(0),
+  greenCount: integer("green_count").notNull().default(0),
+  amberCount: integer("amber_count").notNull().default(0),
+  redCount: integer("red_count").notNull().default(0),
+  confirmedCount: integer("confirmed_count").notNull().default(0),
+  reviewedAt: timestamp("reviewed_at"),
+  generationStartedAt: timestamp("generation_started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const rfpResponseReqs = pgTable("rfp_response_reqs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  section: text("section"),
+  requirementText: text("requirement_text").notNull(),
+  category: text("category").notNull().default("other"),
+  mandatory: boolean("mandatory").notNull().default(false),
+  responseType: text("response_type").notNull().default("descriptive"),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const rfpResponseAnswers = pgTable("rfp_response_answers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requirementId: varchar("requirement_id").notNull().references(() => rfpResponseReqs.id, { onDelete: "cascade" }),
+  sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  generatedText: text("generated_text"),
+  coverageFlag: text("coverage_flag").notNull().default("pending"),
+  sources: jsonb("sources").$type<ResponseSource[]>(),
+  competitiveClaims: jsonb("competitive_claims").$type<CompetitiveClaim[]>(),
+  smeNote: text("sme_note"),
+  confirmed: boolean("confirmed").notNull().default(false),
+  citationsVisible: boolean("citations_visible").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const insertRfpResponseSessionSchema = createInsertSchema(rfpResponseSessions).omit({
+  id: true, createdAt: true, updatedAt: true,
+  requirementsCount: true, greenCount: true, amberCount: true, redCount: true, confirmedCount: true,
+  reviewedAt: true, generationStartedAt: true, completedAt: true,
+});
+export const insertRfpResponseReqSchema = createInsertSchema(rfpResponseReqs).omit({
+  id: true, createdAt: true,
+});
+export const insertRfpResponseAnswerSchema = createInsertSchema(rfpResponseAnswers).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type RfpResponseSession = typeof rfpResponseSessions.$inferSelect;
+export type InsertRfpResponseSession = z.infer<typeof insertRfpResponseSessionSchema>;
+export type RfpResponseReq = typeof rfpResponseReqs.$inferSelect;
+export type InsertRfpResponseReq = z.infer<typeof insertRfpResponseReqSchema>;
+export type RfpResponseAnswer = typeof rfpResponseAnswers.$inferSelect;
+export type InsertRfpResponseAnswer = z.infer<typeof insertRfpResponseAnswerSchema>;

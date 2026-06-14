@@ -41,6 +41,7 @@ import LeadGenMyVendorPage from "@/pages/lead-gen/me";
 import LeadGenAudienceDetailPage from "@/pages/lead-gen/me-audience-detail";
 import FactReviewPage from "@/pages/lead-gen/fact-review";
 import RfpResponderPage from "@/pages/rfp-responder/index";
+import RfpSessionDetailPage from "@/pages/rfp-responder/session-detail";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -95,6 +96,7 @@ function Router() {
         <Route path="/lead-gen/me" component={() => <ProtectedRoute component={LeadGenMyVendorPage} />} />
         <Route path="/lead-gen/me/fact-review" component={() => <ProtectedRoute component={FactReviewPage} />} />
         <Route path="/rfp-responder" component={() => <ProtectedRoute component={RfpResponderPage} />} />
+        <Route path="/rfp-responder/sessions/:id" component={() => <ProtectedRoute component={RfpSessionDetailPage} />} />
         <Route path="/lead-gen/me/audience/:marketId/:endUserId" component={() => <ProtectedRoute component={LeadGenAudienceDetailPage} />} />
         <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />

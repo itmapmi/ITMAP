@@ -58,6 +58,7 @@ export * from "./leadGen";
 export * from "./vendorAudience";
 export * from "./factCheck";
 export * from "./rfpKb";
+export * from "./rfpResponder";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -75,6 +76,7 @@ import * as leadGenStorage from "./leadGen";
 import * as vendorAudienceStorage from "./vendorAudience";
 import * as factCheckStorage from "./factCheck";
 import * as rfpKbStorage from "./rfpKb";
+import * as rfpResponderStorage from "./rfpResponder";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -335,4 +337,5 @@ export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorag
   ...vendorAudienceStorage,
   ...factCheckStorage,
   ...rfpKbStorage,
+  ...rfpResponderStorage,
 };

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,10 @@ import {
   Cpu,
   Layers,
   Zap,
+  Plus,
+  MessageSquare,
+  ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +42,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { RfpKbDocument } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import type { RfpKbDocument, RfpResponseSession } from "@shared/schema";
 
 const ACCEPTED_TYPES = ".pdf,.docx,.pptx,.xlsx,.csv,.txt,.md";
 const MAX_SIZE_MB = 50;
@@ -188,13 +200,22 @@ const ACTIVE_STATUSES = new Set(["pending", "extracting", "chunking", "embedding
 export default function RfpResponderPage() {
   const { hasFeature, isVendorScoped, isAdmin } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const rfpFileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [activeTab, setActiveTab] = useState<"kb" | "respond">("kb");
 
   // Upload form state
   const [wonLost, setWonLost] = useState<"" | "won" | "lost">("");
   const [documentType, setDocumentType] = useState("");
   const [productContext, setProductContext] = useState("");
+
+  // New session dialog state
+  const [showNewSession, setShowNewSession] = useState(false);
+  const [newClientOrg, setNewClientOrg] = useState("");
+  const [newMarketId, setNewMarketId] = useState("");
+  const [newFile, setNewFile] = useState<File | null>(null);
 
   const rfpEnabled = hasFeature("rfp");
 
@@ -318,6 +339,70 @@ export default function RfpResponderPage() {
     .filter((d) => d.status === "ready")
     .reduce((s, d) => s + d.chunkCount, 0);
 
+  // ── Respond to RFP — sessions ────────────────────────────────────────────
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery<{ sessions: RfpResponseSession[] }>({
+    queryKey: ["/api/rfp/responses"],
+    enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "respond",
+    refetchInterval: (query) => {
+      const sessions = (query.state.data as any)?.sessions ?? [];
+      const hasActive = sessions.some((s: RfpResponseSession) =>
+        ["decomposing", "generating"].includes(s.status),
+      );
+      return hasActive ? 3000 : false;
+    },
+  });
+  const sessions = sessionsData?.sessions ?? [];
+
+  const { data: marketsData } = useQuery<{ markets: any[] }>({
+    queryKey: ["/api/markets"],
+    enabled: showNewSession,
+  });
+  const markets = marketsData?.markets ?? [];
+
+  const newSessionMutation = useMutation({
+    mutationFn: async () => {
+      if (!newFile) throw new Error("No file selected");
+      const form = new FormData();
+      form.append("file", newFile);
+      if (newClientOrg.trim()) form.append("clientOrgName", newClientOrg.trim());
+      if (newMarketId) form.append("marketId", newMarketId);
+      const res = await fetch("/api/rfp/responses", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Upload failed (${res.status})`);
+      }
+      return res.json();
+    },
+    onSuccess: ({ session }) => {
+      setShowNewSession(false);
+      setNewClientOrg("");
+      setNewMarketId("");
+      setNewFile(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses"] });
+      navigate(`/rfp-responder/sessions/${session.id}`);
+    },
+    onError: (err: any) =>
+      toast({ title: "Failed to create session", description: err?.message, variant: "destructive" }),
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/rfp/responses/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses"] });
+      toast({ title: "Session deleted" });
+    },
+  });
+
   if (!rfpEnabled || !isVendorScoped || isAdmin) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -339,17 +424,136 @@ export default function RfpResponderPage() {
       <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <div className="mb-8 flex items-start gap-4">
+        <div className="mb-6 flex items-start gap-4">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-violet-600/20 border border-white/10 flex items-center justify-center flex-shrink-0">
             <BookOpen className="h-5 w-5 text-cyan-400" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">RFP Responder</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Build your vendor knowledge base. Upload product docs, datasheets, and past RFP responses — the AI grounds its answers exclusively in your materials.
+              Build your vendor knowledge base, then respond to client RFPs with AI-grounded answers.
             </p>
           </div>
         </div>
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-8 rounded-xl bg-slate-900/60 border border-white/5 p-1 w-fit">
+          {[
+            { id: "kb" as const, label: "Knowledge Base", Icon: Database },
+            { id: "respond" as const, label: "Respond to RFP", Icon: MessageSquare },
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === id
+                  ? "bg-gradient-to-r from-cyan-500/20 to-violet-600/20 text-white border border-white/10"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* New Session Dialog */}
+        <Dialog open={showNewSession} onOpenChange={setShowNewSession}>
+          <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upload Client RFP</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Upload the client's RFP document. spectio.ai will decompose it into a requirement tree for your review before generating responses.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">Client / Organisation name (optional)</label>
+                <input
+                  type="text"
+                  value={newClientOrg}
+                  onChange={(e) => setNewClientOrg(e.target.value)}
+                  placeholder="e.g. Acme Corp"
+                  className="w-full rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-200 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">Market (optional — adds Spectio intelligence)</label>
+                <select
+                  value={newMarketId}
+                  onChange={(e) => setNewMarketId(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                >
+                  <option value="">No market selected</option>
+                  {markets.map((m: any) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name.replace(/^ITMAP for /i, "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">RFP document <span className="text-rose-400">*</span></label>
+                <div
+                  onClick={() => rfpFileInputRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed border-white/10 hover:border-cyan-500/40 hover:bg-cyan-500/3 transition-colors cursor-pointer"
+                >
+                  <div className="flex flex-col items-center py-7 text-center pointer-events-none">
+                    {newFile ? (
+                      <>
+                        <CheckCircle className="h-6 w-6 text-emerald-400 mb-2" />
+                        <p className="text-sm text-slate-200 font-medium">{newFile.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(newFile.size / 1024 / 1024).toFixed(1)} MB
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6 text-slate-500 mb-2" />
+                        <p className="text-sm text-slate-400">Click to select RFP file</p>
+                        <p className="text-xs text-slate-600 mt-0.5">PDF, DOCX, XLSX, TXT — up to 30 MB</p>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    ref={rfpFileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.xlsx,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setNewFile(f);
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-white/10 bg-transparent text-slate-300 hover:bg-slate-800"
+                  onClick={() => setShowNewSession(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white"
+                  onClick={() => newSessionMutation.mutate()}
+                  disabled={!newFile || newSessionMutation.isPending}
+                >
+                  {newSessionMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  Upload & Analyse
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Knowledge Base tab ─────────────────────────────────────────── */}
+        {activeTab === "kb" && <>
 
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-4 mb-8">
@@ -596,6 +800,151 @@ export default function RfpResponderPage() {
             </div>
           )}
         </div>
+
+        </>}
+
+        {/* ── Respond to RFP tab ──────────────────────────────────────────── */}
+        {activeTab === "respond" && (
+          <div>
+            {/* Top bar */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-sm text-slate-400">
+                  Upload a client RFP to decompose it into a requirement tree, review it, then generate grounded AI responses.
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowNewSession(true)}
+                className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white flex-shrink-0"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Response
+              </Button>
+            </div>
+
+            {/* Session list */}
+            {sessionsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl bg-slate-800/60" />
+                ))}
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="rounded-xl bg-slate-900/60 border border-white/5 px-8 py-16 flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/10 to-violet-600/10 border border-white/5 flex items-center justify-center mb-4">
+                  <MessageSquare className="h-5 w-5 text-slate-500" />
+                </div>
+                <p className="text-sm font-medium text-slate-300 mb-1">No RFP responses yet</p>
+                <p className="text-xs text-slate-500 max-w-xs">
+                  Upload your first client RFP to get started. The AI will decompose it into a requirement tree for your review.
+                </p>
+                <Button
+                  onClick={() => setShowNewSession(true)}
+                  className="mt-5 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload RFP
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sessions.map((session) => {
+                  const isActive = ["decomposing", "generating"].includes(session.status);
+                  const statusColors: Record<string, string> = {
+                    decomposing: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+                    reviewing: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+                    ready_to_generate: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+                    generating: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+                    complete: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+                    error: "text-red-400 bg-red-500/10 border-red-500/20",
+                  };
+                  const statusLabels: Record<string, string> = {
+                    decomposing: "Decomposing…",
+                    reviewing: "Under Review",
+                    ready_to_generate: "Ready to Generate",
+                    generating: "Generating…",
+                    complete: "Complete",
+                    error: "Error",
+                  };
+
+                  return (
+                    <div
+                      key={session.id}
+                      className="rounded-xl bg-slate-900 border border-white/5 hover:border-white/10 transition-colors cursor-pointer group"
+                      onClick={() => navigate(`/rfp-responder/sessions/${session.id}`)}
+                    >
+                      <div className="px-5 py-4 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-sm font-medium text-white">
+                              {session.clientOrgName ?? "Unnamed RFP"}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusColors[session.status] ?? "text-slate-400 bg-slate-500/10 border-slate-500/20"}`}>
+                              {isActive && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                              {statusLabels[session.status] ?? session.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                            {session.rfpFileName && <span>{session.rfpFileName}</span>}
+                            {session.requirementsCount > 0 && (
+                              <span>{session.requirementsCount} requirements</span>
+                            )}
+                            {session.status === "complete" && (
+                              <>
+                                <span className="text-emerald-400">{session.greenCount} green</span>
+                                {session.amberCount > 0 && <span className="text-amber-400">{session.amberCount} amber</span>}
+                                {session.redCount > 0 && <span className="text-red-400">{session.redCount} red</span>}
+                              </>
+                            )}
+                            {session.createdAt && (
+                              <span>{new Date(session.createdAt).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent
+                              className="bg-slate-900 border-white/10 text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this RFP session?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-slate-400">
+                                  All requirements and generated responses for "{session.clientOrgName ?? "this session"}" will be permanently deleted. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-slate-800 border-white/10 text-white hover:bg-slate-700">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-600 hover:bg-red-500 text-white"
+                                  onClick={() => deleteSessionMutation.mutate(session.id)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
