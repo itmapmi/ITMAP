@@ -220,6 +220,7 @@ function AnswerPanel({
   const [smeNote, setSmeNote] = useState(answer?.smeNote ?? "");
   const [showCitations, setShowCitations] = useState(answer?.citationsVisible ?? true);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [copiedPanel, setCopiedPanel] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
@@ -327,7 +328,32 @@ function AnswerPanel({
       {/* Generated text */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Generated Response</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Generated Response</p>
+            {answer?.generatedText && (
+              <button
+                onClick={() => {
+                  let text = answer.generatedText ?? "";
+                  if (smeNote) text += `\n\nSME Note: ${smeNote}`;
+                  navigator.clipboard.writeText(text).then(() => {
+                    setCopiedPanel(true);
+                    setTimeout(() => setCopiedPanel(false), 2000);
+                  });
+                }}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                title="Copy response"
+              >
+                {copiedPanel ? (
+                  <>
+                    <ClipboardCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied!</span>
+                  </>
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
+          </div>
           <button
             onClick={() => {
               const next = !showCitations;
