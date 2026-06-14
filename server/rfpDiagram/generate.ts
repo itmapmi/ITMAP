@@ -85,16 +85,36 @@ export async function generateTopologySpec(params: {
 
       const validated = topologySpecSchema.parse(parsed);
 
+      // Enforce unique node IDs (duplicate IDs silently overwrite position maps)
+      const nodeIdSet = new Set<string>();
+      for (const n of validated.nodes) {
+        if (nodeIdSet.has(n.id)) throw new Error(`Duplicate node ID: ${n.id}`);
+        nodeIdSet.add(n.id);
+      }
+
+      // Enforce unique edge IDs
+      const edgeIdSet = new Set<string>();
+      for (const e of validated.edges) {
+        if (edgeIdSet.has(e.id)) throw new Error(`Duplicate edge ID: ${e.id}`);
+        edgeIdSet.add(e.id);
+      }
+
+      // Enforce unique group IDs
+      const groupIdSet = new Set<string>();
+      for (const g of validated.groups) {
+        if (groupIdSet.has(g.id)) throw new Error(`Duplicate group ID: ${g.id}`);
+        groupIdSet.add(g.id);
+      }
+
       // Verify referential integrity: edge source/target must be valid node IDs
-      const nodeIds = new Set(validated.nodes.map((n) => n.id));
-      const badEdges = validated.edges.filter((e) => !nodeIds.has(e.source) || !nodeIds.has(e.target));
+      const badEdges = validated.edges.filter((e) => !nodeIdSet.has(e.source) || !nodeIdSet.has(e.target));
       if (badEdges.length > 0) {
         throw new Error(`Invalid edge references: ${badEdges.map((e) => `${e.source}→${e.target}`).join(", ")}`);
       }
 
       // Verify group nodeIds are valid
       for (const g of validated.groups) {
-        const bad = g.nodeIds.filter((id) => !nodeIds.has(id));
+        const bad = g.nodeIds.filter((id) => !nodeIdSet.has(id));
         if (bad.length > 0) {
           throw new Error(`Group "${g.id}" references unknown nodes: ${bad.join(", ")}`);
         }

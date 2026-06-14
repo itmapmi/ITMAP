@@ -128,6 +128,7 @@
     "remark-gfm": "^4.0.1",
     "rss-parser": "^3.13.0",
     "sharp": "^0.35.1",
+    "svg-to-pdfkit": "^0.1.8",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tinymce": "^8.0.2",

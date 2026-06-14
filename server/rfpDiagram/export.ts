@@ -1,6 +1,5 @@
 import type { TopologySpec } from "./topology";
 import type { LayoutResult } from "./layout";
-import { EDGE_COLORS } from "./renderer";
 
 // ── draw.io XML export ────────────────────────────────────────────────────────
 
@@ -48,7 +47,6 @@ export function exportDrawio(spec: TopologySpec, layout: LayoutResult): string {
 
   const cells: string[] = [];
   let cellId = 2;
-
   const nodeIdMap: Record<string, number> = {};
 
   for (const node of spec.nodes) {
@@ -105,42 +103,74 @@ export function exportDrawio(spec: TopologySpec, layout: LayoutResult): string {
 
 export async function exportPng(svgContent: string): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
-  // sharp reads the SVG width/height attributes — our SVGs declare 1200×750.
-  // density: 144 doubles the DPI from 72 to 144 (2× retina quality).
-  const pngBuffer = await sharp(Buffer.from(svgContent), { density: 144 })
-    .png()
-    .toBuffer();
-  return pngBuffer;
+  // density:144 = 2× retina; our SVGs declare width/height so sharp reads them directly
+  return sharp(Buffer.from(svgContent), { density: 144 }).png().toBuffer();
 }
 
-// ── PDF export via pdf-lib (embeds PNG raster, no browser required) ───────────
+// ── SVG preprocessing: resolve <use>/<symbol> so pdf renderers see plain paths ─
+
+/**
+ * Flatten <use href="#id"> references by inlining the corresponding <symbol>
+ * content with an appropriate transform. Also resolves currentColor → explicit
+ * color values so pdfkit/svg-to-pdfkit doesn't need CSS color inheritance.
+ */
+function flattenSvgUse(svg: string): string {
+  // 1. Extract all <symbol id="X">...</symbol> into a map
+  const symbolMap: Record<string, string> = {};
+  const symbolRe = /<symbol[^>]+id="([^"]+)"[^>]*>([\s\S]*?)<\/symbol>/g;
+  let m: RegExpExecArray | null;
+  while ((m = symbolRe.exec(svg)) !== null) {
+    symbolMap[m[1]!] = m[2]!;
+  }
+
+  // 2. Replace each <use href="#ID" ...> with the symbol content, resolving
+  //    currentColor from the nearest ancestor <g color="X">.
+  //    Our SVG always wraps <use> in <g color="COLOR" transform="translate(X,Y)">.
+  svg = svg.replace(
+    /<g color="([^"]+)" transform="translate\(([^)]+)\)">\s*<use\s+href="#([^"]+)"[^>]*\/>/g,
+    (_match, color: string, translate: string, symbolId: string) => {
+      let content = symbolMap[symbolId] ?? "";
+      // Replace currentColor with the actual color value
+      content = content.replace(/currentColor/g, color);
+      return `<g transform="translate(${translate})">${content}</g>`;
+    },
+  );
+
+  // 3. Remove the <defs> block (symbols are now inlined)
+  svg = svg.replace(/<defs>[\s\S]*?<\/defs>/g, "");
+
+  return svg;
+}
+
+// ── PDF export via pdfkit + svg-to-pdfkit (SVG embedded as vector) ────────────
 
 export async function exportPdf(svgContent: string, title: string): Promise<Buffer> {
-  const { PDFDocument } = await import("pdf-lib");
-  const sharp = (await import("sharp")).default;
+  const { default: PDFDocument } = await import("pdfkit");
+  const { default: SVGtoPDF } = await import("svg-to-pdfkit");
 
-  // Rasterize SVG → PNG first
-  const pngBuffer = await sharp(Buffer.from(svgContent), { density: 144 })
-    .resize({ width: 1200, height: 750, fit: "contain", background: "#0c1222" })
-    .png()
-    .toBuffer();
+  // Flatten <use>/<symbol> before handing to pdfkit renderer
+  const flatSvg = flattenSvgUse(svgContent);
 
-  // Create a landscape A4-ish PDF page at 1200×750 pts
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.setTitle(title);
-  pdfDoc.setAuthor("spectio.ai");
-  pdfDoc.setCreationDate(new Date());
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = new (PDFDocument as any)({
+      size: [1200, 750],
+      margin: 0,
+      info: { Title: title, Author: "spectio.ai", Creator: "spectio.ai RFP Responder" },
+    });
 
-  const page = pdfDoc.addPage([1200, 750]);
-  const pngImage = await pdfDoc.embedPng(pngBuffer);
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", (err: Error) => reject(err));
 
-  page.drawImage(pngImage, {
-    x: 0,
-    y: 0,
-    width: 1200,
-    height: 750,
+    try {
+      (SVGtoPDF as any)(doc, flatSvg, 0, 0, { width: 1200, height: 750, preserveAspectRatio: "xMidYMid meet" });
+    } catch (svgErr) {
+      console.error("[rfpDiagram] SVGtoPDF rendering error:", svgErr);
+      reject(svgErr);
+      return;
+    }
+
+    doc.end();
   });
-
-  const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
 }

@@ -140,6 +140,78 @@ const INTENT_OPTIONS: Record<DiagramIntent, Record<string, string>> = {
   },
 };
 
+// ── Intent-specific archetype layer mappers ────────────────────────────────────
+//
+// Each function maps a node type to an explicit ELK partition (layer index).
+// Partition 1 = first visual tier, 2 = second, etc. Returning null means no
+// explicit constraint — ELK places the node freely based on edge topology.
+// These mappers enforce the canonical visual structure (e.g. spine on top,
+// leaf at bottom) before ELK runs its edge-routing pass.
+
+type LayerFn = (nodeType: string) => number | null;
+
+const INTENT_LAYER_MAP: Record<DiagramIntent, LayerFn> = {
+  // spine-leaf: spines ← top bus, leaves ← bottom bus, others ← middle
+  "spine-leaf": (t) => {
+    if (t === "spine") return 1;
+    if (t === "leaf") return 3;
+    return 2;
+  },
+  // three-tier: core/border → aggregation → access
+  "three-tier": (t) => {
+    if (["core", "router", "firewall"].includes(t)) return 1;
+    if (t === "aggregation") return 2;
+    if (t === "access") return 3;
+    return 2;
+  },
+  // SAN: hosts → fabric switches → controllers → arrays
+  "SAN": (t) => {
+    if (["host", "server", "hypervisor"].includes(t)) return 1;
+    if (t === "san_switch") return 2;
+    if (t === "controller") return 3;
+    if (t === "storage_array") return 4;
+    return 2;
+  },
+  // NAS: clients → network fabric → filers
+  "NAS": (t) => {
+    if (["host", "server"].includes(t)) return 1;
+    if (["router", "load_balancer", "spine", "leaf", "core", "access"].includes(t)) return 2;
+    if (["nas_filer", "storage_array"].includes(t)) return 3;
+    return 2;
+  },
+  // WAN: group-based partitioning via site membership (layer fn unused)
+  "WAN": (_t) => null,
+  // HCI: management plane on top, HCI compute nodes in body
+  "HCI": (t) => {
+    if (t === "hci_node") return 2;
+    return 1;
+  },
+  // multi-site-DR: group-based (site A vs site B) via group membership
+  "multi-site-DR": (_t) => null,
+  // cloud-landing-zone: VPC → AZs → subnets → services
+  "cloud-landing-zone": (t) => {
+    if (t === "vpc") return 1;
+    if (t === "az") return 2;
+    if (t === "subnet") return 3;
+    return 4;
+  },
+  // security-zoning: group-based (zone membership drives layers)
+  "security-zoning": (_t) => null,
+  // data-pipeline: sources → pipeline stages → sinks (left to right)
+  "data-pipeline": (t) => {
+    if (t === "pipeline_stage") return 2;
+    return 1;
+  },
+  // app-tier: LB → app tiers → servers → storage (top to bottom)
+  "app-tier": (t) => {
+    if (t === "load_balancer") return 1;
+    if (t === "app_tier") return 2;
+    if (["server", "host"].includes(t)) return 3;
+    if (t === "storage_array") return 4;
+    return 5;
+  },
+};
+
 // ── Canvas fit helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -201,27 +273,32 @@ export async function computeLayout(
   spec: TopologySpec,
   positionOverrides?: Record<string, NodePosition>,
 ): Promise<LayoutResult> {
-  // Build partition map: nodes in the same group share a partition id so
-  // ELK keeps them in the same layer (useful for site / zone intents).
-  const partitionMap: Record<string, number> = {};
+  // Build group membership map for group-based intents (WAN, multi-site-DR, security-zoning).
+  // partition index = group index + 1 (1-based, avoids ELK's 0-reserved partition)
+  const groupPartitionMap: Record<string, number> = {};
   spec.groups.forEach((g, gi) => {
-    g.nodeIds.forEach((id) => { partitionMap[id] = gi + 1; });
+    g.nodeIds.forEach((id) => { groupPartitionMap[id] = gi + 1; });
   });
 
   const intentOptions = INTENT_OPTIONS[spec.diagramIntent] ?? INTENT_OPTIONS["app-tier"]!;
-  const usePartitions = intentOptions["elk.partitioning.activate"] === "true";
+  const layerFn = INTENT_LAYER_MAP[spec.diagramIntent] ?? ((_t: string) => null);
 
   const elkGraph: ElkNode = {
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.edgeRouting": "ORTHOGONAL",
+      // Always activate partitioning — per-node partition values override it for unset nodes
+      "elk.partitioning.activate": "true",
       ...intentOptions,
     },
     children: spec.nodes.map((n) => {
+      // Type-based layer wins; fall back to group membership for site/zone intents
+      const typeLayer = layerFn(n.type);
+      const partition = typeLayer ?? groupPartitionMap[n.id];
       const nodeOpts: Record<string, string> = {};
-      if (usePartitions && partitionMap[n.id] != null) {
-        nodeOpts["elk.partitioning.partition"] = String(partitionMap[n.id]);
+      if (partition != null) {
+        nodeOpts["elk.partitioning.partition"] = String(partition);
       }
       return {
         id: n.id,
