@@ -763,7 +763,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-size", isMobile ? "9px" : "11px")
       .attr("font-weight", "500")
       .attr("fill", "#94a3b8")
-      .text("DCIG Inc.");
+      .text("Powered by DCIG.ai");
 
     // ── Two-band zone labels ─────────────────────────────────────────────────
     const bandLabelSize = isMobile ? "11px" : "14px";
