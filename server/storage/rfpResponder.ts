@@ -2,9 +2,11 @@ import {
   rfpResponseSessions,
   rfpResponseReqs,
   rfpResponseAnswers,
+  rfpExportHistory,
   type RfpResponseSession,
   type RfpResponseReq,
   type RfpResponseAnswer,
+  type RfpExportHistory,
   type ResponseSource,
   type CompetitiveClaim,
 } from "@shared/schema";
@@ -269,4 +271,29 @@ export async function recomputeSessionCounts(sessionId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(rfpResponseSessions.id, sessionId));
+}
+
+// ── Export History ─────────────────────────────────────────────────────────
+
+export async function createRfpExportRecord(data: {
+  sessionId: string;
+  vendorId: string;
+  exportedByUserId?: string | null;
+  format: string;
+  fileName: string;
+  storageKey: string;
+  fileSizeBytes?: number | null;
+}): Promise<RfpExportHistory> {
+  const [row] = await db.insert(rfpExportHistory).values(data).returning();
+  return row!;
+}
+
+export async function listRfpExportRecords(
+  sessionId: string,
+): Promise<RfpExportHistory[]> {
+  return db
+    .select()
+    .from(rfpExportHistory)
+    .where(eq(rfpExportHistory.sessionId, sessionId))
+    .orderBy(desc(rfpExportHistory.createdAt));
 }

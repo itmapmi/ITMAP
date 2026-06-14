@@ -2143,3 +2143,24 @@ export const insertRfpDiagramSchema = createInsertSchema(rfpDiagrams).omit({
 
 export type RfpDiagram = typeof rfpDiagrams.$inferSelect;
 export type InsertRfpDiagram = z.infer<typeof insertRfpDiagramSchema>;
+
+// ── RFP Export History ────────────────────────────────────────────────────────
+
+export const rfpExportHistory = pgTable("rfp_export_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  exportedByUserId: varchar("exported_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  format: text("format").notNull(),
+  fileName: text("file_name").notNull(),
+  storageKey: text("storage_key").notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertRfpExportHistorySchema = createInsertSchema(rfpExportHistory).omit({
+  id: true, createdAt: true,
+});
+
+export type RfpExportHistory = typeof rfpExportHistory.$inferSelect;
+export type InsertRfpExportHistory = z.infer<typeof insertRfpExportHistorySchema>;

@@ -9,7 +9,7 @@ import {
   ChevronRight, ChevronDown, Eye, EyeOff, Zap, FileText, Shield,
   AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
   Download, Trophy, ThumbsDown, HelpCircle, FileDown, TableProperties,
-  Presentation, FileText as FilePdf, ScanEye, X,
+  Presentation, FileText as FilePdf, ScanEye, X, History,
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
@@ -604,6 +604,22 @@ function ExportPanel({
       return r.json();
     },
   });
+
+  // Export history
+  const { data: exportsData, isLoading: exportsLoading } = useQuery<{
+    exports: Array<{
+      id: string; format: string; fileName: string; fileSizeBytes: number | null;
+      createdAt: string; downloadUrl: string | null;
+    }>;
+  }>({
+    queryKey: ["/api/rfp/responses/exports", sessionId],
+    queryFn: async () => {
+      const r = await fetch(`/api/rfp/responses/${sessionId}/exports`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load export history");
+      return r.json();
+    },
+    refetchInterval: 10000,
+  });
   const diagrams = diagramsData?.diagrams ?? [];
   const [includedDiagramIds, setIncludedDiagramIds] = useState<string[] | null>(null);
 
@@ -1113,6 +1129,50 @@ function ExportPanel({
           </p>
         )}
         {submittingOutcome && <Loader2 className="h-4 w-4 text-slate-400 animate-spin mt-3" />}
+      </div>
+
+      {/* ── Export History ────────────────────────────────────────────── */}
+      <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <History className="h-4 w-4 text-slate-400" />
+          <h3 className="text-sm font-semibold text-white">Export History</h3>
+          {exportsLoading && <Loader2 className="h-3.5 w-3.5 text-slate-500 animate-spin ml-auto" />}
+        </div>
+        {!exportsLoading && (!exportsData?.exports || exportsData.exports.length === 0) ? (
+          <p className="text-xs text-slate-500">No exports stored yet. Exports are saved to cloud storage so you can re-download them later.</p>
+        ) : (
+          <div className="space-y-2">
+            {exportsData?.exports.map((ex) => (
+              <div key={ex.id} className="flex items-center gap-3 rounded-lg bg-slate-800/50 border border-white/5 px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-slate-200 truncate">{ex.fileName}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                    <span className="uppercase font-medium text-slate-400">{ex.format}</span>
+                    {ex.fileSizeBytes != null && (
+                      <span>· {ex.fileSizeBytes < 1024 * 1024
+                        ? `${Math.round(ex.fileSizeBytes / 1024)} KB`
+                        : `${(ex.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`}
+                      </span>
+                    )}
+                    <span>· {new Date(ex.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                {ex.downloadUrl ? (
+                  <a
+                    href={ex.downloadUrl}
+                    download={ex.fileName}
+                    className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/60 px-2.5 py-1.5 text-[11px] font-medium text-slate-300 hover:border-cyan-500/40 hover:text-white transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </a>
+                ) : (
+                  <span className="flex-shrink-0 text-[11px] text-slate-600">Unavailable</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

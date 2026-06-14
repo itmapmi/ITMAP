@@ -4,6 +4,8 @@ import { requireFeature } from "../featureAccess";
 import {
   assertSessionBelongsToVendor,
   updateRfpResponseSession,
+  createRfpExportRecord,
+  listRfpExportRecords,
 } from "../storage/rfpResponder";
 import { assembleResponse, buildFullText, buildRequirementMatrixText, buildExecSummaryText, type AssembledResponse } from "../rfpAssembly/assemble";
 import { checkExportGate } from "../rfpAssembly/gate";
@@ -17,6 +19,7 @@ import {
   bulkInsertRfpKbChunks,
 } from "../storage/rfpKb";
 import { insertVendorSignal } from "../storage/signals";
+import { ObjectStorageService } from "../objectStorage";
 
 // ── Auth helpers ──────────────────────────────────────────────────────────
 
@@ -357,6 +360,33 @@ export function registerRfpAssemblyRoutes(app: Express): void {
         // Mark session as exported
         await updateRfpResponseSession(session.id, { exportedAt: new Date() });
 
+        // Upload export to GCS and record in history (non-blocking — browser download is not delayed)
+        const capturedBuf = buf;
+        const capturedMime = mimeType;
+        const capturedExt = ext;
+        const capturedFormat = format;
+        const capturedSafeName = (session.rfpFileName ?? "rfp-response")
+          .replace(/\.[^.]+$/, "")
+          .replace(/[^a-z0-9_-]/gi, "_")
+          .toLowerCase();
+        setImmediate(async () => {
+          try {
+            const objectStorage = new ObjectStorageService();
+            const storageKey = await objectStorage.uploadBuffer(capturedBuf, capturedMime);
+            await createRfpExportRecord({
+              sessionId: session.id,
+              vendorId: session.vendorId,
+              exportedByUserId: userId(req) ?? null,
+              format: capturedFormat,
+              fileName: `${capturedSafeName}.${capturedExt}`,
+              storageKey,
+              fileSizeBytes: capturedBuf.length,
+            });
+          } catch (uploadErr) {
+            console.warn("[rfpAssembly] export GCS upload failed (non-fatal):", uploadErr);
+          }
+        });
+
         // Lead-gen signal emission (non-blocking).
         // vendorSignals.marketId is NOT NULL — only emit when session has a marketId.
         if (session.marketId) {
@@ -402,6 +432,34 @@ export function registerRfpAssemblyRoutes(app: Express): void {
       } catch (err: any) {
         console.error("[rfpAssembly] export error:", err);
         res.status(err.status ?? 500).json({ error: err.message ?? "Export failed" });
+      }
+    },
+  );
+
+  // GET /api/rfp/responses/:id/exports — list past exports with signed download URLs
+  app.get(
+    "/api/rfp/responses/:id/exports",
+    ...guard,
+    async (req: Request, res: Response) => {
+      try {
+        const vendorId = primaryVendorId(req)!;
+        await assertSessionBelongsToVendor(req.params.id, vendorId);
+        const records = await listRfpExportRecords(req.params.id);
+        const objectStorage = new ObjectStorageService();
+        const withUrls = await Promise.all(
+          records.map(async (r) => {
+            let downloadUrl: string | null = null;
+            try {
+              downloadUrl = await objectStorage.getSignedDownloadUrl(r.storageKey, 3600);
+            } catch {
+              // signed URL generation failed — file may be unavailable
+            }
+            return { ...r, downloadUrl };
+          }),
+        );
+        res.json({ exports: withUrls });
+      } catch (err: any) {
+        res.status(err.status ?? 500).json({ error: err.message ?? "Failed to list exports" });
       }
     },
   );

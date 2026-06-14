@@ -272,6 +272,41 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+
+  // Uploads a buffer directly to object storage.
+  // Returns the normalized storage key (e.g. /objects/uploads/<uuid>).
+  async uploadBuffer(
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
+    const uploadURL = await this.getObjectEntityUploadURL();
+    const putResp = await fetch(uploadURL, {
+      method: "PUT",
+      body: new Uint8Array(buffer),
+      headers: { "Content-Type": contentType },
+    });
+    if (!putResp.ok) {
+      throw new Error(`GCS buffer upload failed: ${putResp.status}`);
+    }
+    return this.normalizeObjectEntityPath(uploadURL);
+  }
+
+  // Generates a temporary signed GET URL for a stored object key.
+  async getSignedDownloadUrl(storageKey: string, ttlSec: number = 3600): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    let entityDir = privateObjectDir;
+    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
+
+    // storageKey is /objects/<rest>
+    if (!storageKey.startsWith("/objects/")) {
+      throw new Error("Invalid storage key");
+    }
+    const entityId = storageKey.slice("/objects/".length);
+    const fullPath = `${entityDir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+
+    return signObjectURL({ bucketName, objectName, method: "GET", ttlSec });
+  }
 }
 
 function parseObjectPath(path: string): {

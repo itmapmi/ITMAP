@@ -498,6 +498,25 @@ export async function runStartupMigrations(): Promise<void> {
       );
     `);
 
+    // 28. RFP Export History (Task #130 — persist exports to GCS for re-download)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rfp_export_history (
+        id                    varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id            varchar NOT NULL REFERENCES rfp_response_sessions(id) ON DELETE CASCADE,
+        vendor_id             varchar NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+        exported_by_user_id   varchar REFERENCES users(id) ON DELETE SET NULL,
+        format                text NOT NULL,
+        file_name             text NOT NULL,
+        storage_key           text NOT NULL,
+        file_size_bytes       integer,
+        created_at            timestamp DEFAULT now()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS rfp_export_history_session_id_created_at_idx
+        ON rfp_export_history (session_id, created_at DESC)
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
