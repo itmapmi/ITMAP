@@ -742,7 +742,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(isMobile ? "Execution" : "Product Strategy and Execution");
+      .text(isMobile ? "Execution →" : "Product Strategy and Execution →");
 
     // Y-axis label: positioned left of the tick numbers to avoid overlapping "50"
     svg.append("text")
@@ -753,7 +753,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(isMobile ? "Viability" : "Vendor Viability");
+      .text(isMobile ? "Viability →" : "Vendor Viability →");
 
     // DCIG Inc. watermark — bottom right, outside the grid
     svg.append("text")
