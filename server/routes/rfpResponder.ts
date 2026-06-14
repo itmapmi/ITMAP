@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireFeature } from "../featureAccess";
 import { extractText } from "../rfpKb/ingest";
 import { decomposeRfp } from "../rfpKb/decompose";
+import { detectClientTemplate } from "../rfpAssembly/detectTemplate";
 import { generateRequirementResponse } from "../rfpKb/generate";
 import {
   createRfpResponseSession,
@@ -134,10 +135,21 @@ export function registerRfpResponderRoutes(app: Express): void {
             })),
           );
 
-          await updateRfpResponseSession(session.id, {
+          // 4. Auto-detect client response template format from the uploaded file.
+          //    Inspects DOCX table headers / XLSX column headings to infer the
+          //    clientTemplateFormat and pre-populate the field map so the user
+          //    sees real client column names instead of generic defaults.
+          const detection = detectClientTemplate(buffer, originalname);
+          const templateUpdates: Record<string, unknown> = {
             status: "reviewing",
             requirementsCount: reqs.length,
-          });
+          };
+          if (detection.format !== "none") {
+            templateUpdates.clientTemplateFormat = detection.format;
+            templateUpdates.clientTemplateSectionMap = detection.detectedColumns;
+            templateUpdates.clientTemplateConfirmed = false;
+          }
+          await updateRfpResponseSession(session.id, templateUpdates as any);
         } catch (e: any) {
           console.error("[rfpResponder] background decompose error:", e);
           await updateRfpResponseSession(session.id, {

@@ -259,22 +259,8 @@ export async function exportDocx(
         );
       }
 
-      if (showCitations && answer?.sources?.length) {
-        const srcs = (answer.sources as ResponseSource[])
-          .map((s) => s.title ?? s.type ?? "source")
-          .join("; ");
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: "Sources: ", bold: true, size: 18, color: "94A3B8" }),
-              new TextRun({ text: `[${srcs}]`, size: 18, color: "94A3B8", italics: true }),
-            ],
-            spacing: { after: 80 },
-          }),
-        );
-      }
-
-      // Opted-in competitive claims only
+      // Opted-in competitive claims — always rendered regardless of showCitations
+      // (claims are response content, not optional citation metadata).
       const claims = ((answer?.competitiveClaims ?? []) as CompetitiveClaim[]).filter((c) => c.optedIn === true);
       if (claims.length) {
         children.push(
@@ -282,6 +268,25 @@ export async function exportDocx(
             children: [
               new TextRun({ text: "Competitive Advantage: ", bold: true, size: 20, color: "0891B2" }),
               new TextRun({ text: claims.map((c) => c.claim).join("; "), size: 20, color: "0891B2" }),
+            ],
+            spacing: { after: 80 },
+          }),
+        );
+      }
+
+      // KB source citations:
+      //   • always shown when the answer has opted-in claims (claim evidence must be traceable)
+      //   • shown for all answers when showCitations=true
+      const hasClaims = claims.length > 0;
+      if ((showCitations || hasClaims) && answer?.sources?.length) {
+        const srcs = (answer.sources as ResponseSource[])
+          .map((s) => s.title ?? s.type ?? "source")
+          .join("; ");
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: hasClaims && !showCitations ? "Claim Sources: " : "Sources: ", bold: true, size: 18, color: "94A3B8" }),
+              new TextRun({ text: `[${srcs}]`, size: 18, color: "94A3B8", italics: true }),
             ],
             spacing: { after: 160 },
           }),

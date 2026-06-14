@@ -5,6 +5,7 @@ import {
 } from "@shared/schema";
 import { listRfpResponseReqs, listRfpResponseAnswers } from "../storage/rfpResponder";
 import { listRfpDiagrams } from "../storage/rfpDiagrams";
+import { findEmptyRequiredFields } from "./detectTemplate";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -100,14 +101,27 @@ export async function checkExportGate(
     }
   }
 
-  // Client template: if a non-none format is set but not yet confirmed
+  // Client template gate
   const fmt = session.clientTemplateFormat ?? "none";
-  if (fmt !== "none" && !session.clientTemplateConfirmed) {
-    blockers.push({
-      kind: "template_unmapped",
-      label: `Client response template (${templateFormatLabel(fmt)}) has been detected but section mapping has not been confirmed — open the Export tab to confirm the field map.`,
-      fixPath: `/rfp-responder/${session.id}`,
-    });
+  if (fmt !== "none") {
+    if (!session.clientTemplateConfirmed) {
+      blockers.push({
+        kind: "template_unmapped",
+        label: `Client response template (${templateFormatLabel(fmt)}) detected but field mapping has not been confirmed — open the Export tab to confirm.`,
+        fixPath: `/rfp-responder/${session.id}`,
+      });
+    } else {
+      // Even if confirmed, validate required fields are non-empty
+      const sectionMap = (session.clientTemplateSectionMap as Record<string, string> | null) ?? {};
+      const emptyFields = findEmptyRequiredFields(sectionMap);
+      if (emptyFields.length > 0) {
+        blockers.push({
+          kind: "template_unmapped",
+          label: `Template confirmed but ${emptyFields.length} required field heading(s) are blank: ${emptyFields.join(", ")}. Re-open the Export tab and fill them in.`,
+          fixPath: `/rfp-responder/${session.id}`,
+        });
+      }
+    }
   }
 
   return { blocked: blockers.length > 0, blockers };

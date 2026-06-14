@@ -183,35 +183,39 @@ export function registerRfpAssemblyRoutes(app: Express): void {
         // Mark session as exported
         await updateRfpResponseSession(session.id, { exportedAt: new Date() });
 
-        // Lead-gen signal emission (non-blocking)
-        setImmediate(async () => {
-          try {
-            const reqCategories = assembled.sections.map((s) => s.section);
-            const diagramIntents = assembled.diagrams.map((d) => d.diagramIntent);
-            await insertVendorSignal({
-              vendorId: session.vendorId,
-              marketId: session.marketId ?? session.vendorId,
-              sourceType: "hackernews",
-              title: `RFP Response exported: ${session.rfpFileName ?? "RFP"}`,
-              content: `Format: ${format.toUpperCase()}. Client template: ${templateFormat}. Sections: ${reqCategories.slice(0, 5).join(", ")}. Diagrams: ${diagramIntents.join(", ")}`,
-              url: null,
-              sentiment: "positive",
-              sentimentScore: "0.8",
-              impactLabel: "LOW",
-              signalDate: new Date(),
-              rawData: {
-                source: "rfp_export",
-                sessionId: session.id,
-                format,
-                templateFormat,
-                diagramIntents,
-                requirementCategories: reqCategories,
-              } as any,
-            });
-          } catch (signalErr) {
-            console.warn("[rfpAssembly] signal emission failed (non-fatal):", signalErr);
-          }
-        });
+        // Lead-gen signal emission (non-blocking).
+        // vendorSignals.marketId is NOT NULL — only emit when session has a marketId.
+        if (session.marketId) {
+          const capturedMarketId = session.marketId;
+          setImmediate(async () => {
+            try {
+              const reqCategories = assembled.sections.map((s) => s.section);
+              const diagramIntents = assembled.diagrams.map((d) => d.diagramIntent);
+              await insertVendorSignal({
+                vendorId: session.vendorId,
+                marketId: capturedMarketId,
+                sourceType: "rfp_responder",
+                title: `RFP Response exported: ${session.rfpFileName ?? "RFP"}`,
+                content: `Format: ${format.toUpperCase()}. Template: ${templateFormat}. Sections: ${reqCategories.slice(0, 5).join(", ")}. Diagrams: ${diagramIntents.join(", ")}`,
+                url: null,
+                sentiment: "positive",
+                sentimentScore: "0.8",
+                impactLabel: "LOW",
+                signalDate: new Date(),
+                rawData: {
+                  source: "rfp_responder",
+                  sessionId: session.id,
+                  format,
+                  templateFormat,
+                  diagramIntents,
+                  requirementCategories: reqCategories,
+                } as any,
+              });
+            } catch (signalErr) {
+              console.warn("[rfpAssembly] signal emission failed (non-fatal):", signalErr);
+            }
+          });
+        }
 
         const safeName = (session.rfpFileName ?? "rfp-response")
           .replace(/\.[^.]+$/, "")
