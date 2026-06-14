@@ -5,7 +5,7 @@ import {
   assertSessionBelongsToVendor,
   updateRfpResponseSession,
 } from "../storage/rfpResponder";
-import { assembleResponse, buildFullText } from "../rfpAssembly/assemble";
+import { assembleResponse, buildFullText, buildRequirementMatrixText, buildExecSummaryText, type AssembledResponse } from "../rfpAssembly/assemble";
 import { checkExportGate } from "../rfpAssembly/gate";
 import { exportDocx } from "../rfpAssembly/exportDocx";
 import { exportPdf } from "../rfpAssembly/exportPdf";
@@ -44,10 +44,180 @@ function userId(req: Request): string {
   return (req.user as any)?.id;
 }
 
+// ── Preview HTML builder ───────────────────────────────────────────────────
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildPreviewHtml(assembled: AssembledResponse): string {
+  const { session, vendorName, sections, diagrams, showCitations } = assembled;
+
+  const coverageClass: Record<string, string> = {
+    green: "color:#22c55e",
+    amber: "color:#f59e0b",
+    red: "color:#ef4444",
+  };
+
+  const execSummary = buildExecSummaryText(assembled);
+
+  const total = sections.reduce((n, s) => n + s.items.length, 0);
+  const green = sections.reduce((n, s) => n + s.items.filter((i) => i.answer?.coverageFlag === "green").length, 0);
+  const amber = sections.reduce((n, s) => n + s.items.filter((i) => i.answer?.coverageFlag === "amber").length, 0);
+  const red   = sections.reduce((n, s) => n + s.items.filter((i) => i.answer?.coverageFlag === "red").length, 0);
+
+  let rows = "";
+  for (const { section, items } of sections) {
+    rows += `<tr><td colspan="6" style="background:#1e293b;padding:8px 12px;font-weight:700;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(section)}</td></tr>`;
+    for (const { req, answer } of items) {
+      const flag = answer?.coverageFlag ?? "pending";
+      const flagLabel = flag === "green" ? "✓ Green" : flag === "amber" ? "⚠ Amber" : flag === "red" ? "✗ Red" : "— Pending";
+      const flagStyle = coverageClass[flag] ?? "color:#64748b";
+      const responseText = answer?.generatedText ?? "";
+      const smeNote = answer?.smeNote ?? "";
+      const claims = ((answer?.competitiveClaims ?? []) as any[]).filter((c) => c.optedIn).map((c) => c.claim).join("; ");
+      const sources = showCitations && answer?.sources?.length
+        ? ((answer.sources as any[]).map((s) => s.title ?? s.type ?? "source").join("; "))
+        : "";
+
+      rows += `
+        <tr style="border-top:1px solid #1e293b">
+          <td style="padding:8px 12px;vertical-align:top;color:#e2e8f0;font-size:12px;max-width:240px">${esc(req.requirementText)}</td>
+          <td style="padding:8px 12px;vertical-align:top;color:#94a3b8;font-size:11px;white-space:nowrap">${esc(req.category)}</td>
+          <td style="padding:8px 12px;vertical-align:top;color:#94a3b8;font-size:11px;white-space:nowrap">${req.mandatory ? "Yes" : "No"}</td>
+          <td style="padding:8px 12px;vertical-align:top;font-size:11px;font-weight:600;white-space:nowrap;${flagStyle}">${flagLabel}</td>
+          <td style="padding:8px 12px;vertical-align:top;color:#cbd5e1;font-size:11px;max-width:300px">
+            ${responseText ? `<div style="margin-bottom:${smeNote ? "6px" : "0"}">${esc(responseText).replace(/\n/g, "<br>")}</div>` : '<span style="color:#475569;font-style:italic">Not yet generated</span>'}
+            ${smeNote ? `<div style="color:#94a3b8;font-style:italic;font-size:10px">SME: ${esc(smeNote)}</div>` : ""}
+            ${claims ? `<div style="color:#a78bfa;font-size:10px;margin-top:4px">★ ${esc(claims)}</div>` : ""}
+          </td>
+          <td style="padding:8px 12px;vertical-align:top;color:#64748b;font-size:10px;max-width:160px">${sources ? esc(sources) : ""}</td>
+        </tr>`;
+    }
+  }
+
+  let diagramSection = "";
+  if (diagrams.length > 0) {
+    const diagramItems = diagrams.map((d) => `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:12px">
+        <div style="font-weight:600;color:#e2e8f0;margin-bottom:4px;font-size:13px">${esc(d.title)}</div>
+        <div style="color:#64748b;font-size:11px">${esc(d.diagramIntent ?? "")}</div>
+        ${d.svgContent ? `<div style="margin-top:12px;overflow:auto">${d.svgContent}</div>` : ""}
+      </div>`).join("");
+
+    diagramSection = `
+      <h2 style="font-size:15px;font-weight:700;color:#f1f5f9;margin:32px 0 12px;padding-bottom:8px;border-bottom:1px solid #1e293b">
+        Architecture Diagrams (${diagrams.length})
+      </h2>
+      ${diagramItems}`;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Preview — ${esc(session.rfpFileName ?? "RFP Response")}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #020617; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.5; padding: 24px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #0f172a; padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:9999px; font-size:10px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div style="margin-bottom:28px">
+  <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#22d3ee;margin-bottom:6px">Document Preview</div>
+  <h1 style="font-size:20px;font-weight:700;color:#f8fafc;margin-bottom:2px">${esc(session.rfpFileName ?? "RFP Response")}</h1>
+  <div style="color:#64748b;font-size:12px">${esc(vendorName)} → ${esc(session.clientOrgName ?? "Client")}</div>
+</div>
+
+<!-- Coverage summary pills -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px">
+  <span style="background:#16a34a22;border:1px solid #22c55e33;color:#22c55e;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600">${green} Green</span>
+  <span style="background:#d9770622;border:1px solid #f59e0b33;color:#f59e0b;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600">${amber} Amber</span>
+  <span style="background:#dc262622;border:1px solid #ef444433;color:#ef4444;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600">${red} Red</span>
+  <span style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600">${total} total</span>
+  ${showCitations ? '<span style="background:#7c3aed22;border:1px solid #7c3aed44;color:#a78bfa;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600">Citations on</span>' : ""}
+</div>
+
+<!-- Executive Summary -->
+<h2 style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1e293b">Executive Summary</h2>
+<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;color:#cbd5e1;font-size:13px;line-height:1.65;margin-bottom:28px">
+  ${esc(execSummary)}
+</div>
+
+<!-- Requirement Matrix -->
+<h2 style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e293b">
+  Requirement Matrix (${total} requirements)
+</h2>
+<div style="overflow-x:auto;border:1px solid #1e293b;border-radius:8px;margin-bottom:28px">
+  <table>
+    <thead>
+      <tr>
+        <th>Requirement</th>
+        <th>Category</th>
+        <th>Mandatory</th>
+        <th>Coverage</th>
+        <th>Response</th>
+        ${showCitations ? "<th>Sources</th>" : ""}
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>
+</div>
+
+${diagramSection}
+
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #1e293b;color:#334155;font-size:10px;text-align:center">
+  This is a read-only preview. Download the export for the formatted document.
+</div>
+</body>
+</html>`;
+}
+
 // ── Route registration ────────────────────────────────────────────────────
 
 export function registerRfpAssemblyRoutes(app: Express): void {
   const guard = [requireVendorScope, requireFeature("rfp")] as any[];
+
+  // GET /api/rfp/responses/:id/preview — return HTML preview of assembled document
+  // Query params: showCitations=true|false, includedDiagramIds=id1,id2 (comma-separated, omit for all)
+  app.get(
+    "/api/rfp/responses/:id/preview",
+    ...guard,
+    async (req: Request, res: Response) => {
+      try {
+        const vendorId = primaryVendorId(req)!;
+        const session = await assertSessionBelongsToVendor(req.params.id, vendorId);
+
+        const showCitations = req.query.showCitations !== "false";
+        const rawIds = req.query.includedDiagramIds;
+        const includedDiagramIds: string[] | null =
+          typeof rawIds === "string" && rawIds.length > 0
+            ? rawIds.split(",").map((s) => s.trim()).filter(Boolean)
+            : null;
+
+        const assembled = await assembleResponse(session, { showCitations, includedDiagramIds });
+        const html = buildPreviewHtml(assembled);
+
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(html);
+      } catch (err: any) {
+        res.status(err.status ?? 500).json({ error: err.message ?? "Preview failed" });
+      }
+    },
+  );
 
   // GET /api/rfp/responses/:id/export-gate — run pre-export gate check
   app.get(

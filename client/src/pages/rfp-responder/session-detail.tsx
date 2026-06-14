@@ -9,7 +9,7 @@ import {
   ChevronRight, ChevronDown, Eye, EyeOff, Zap, FileText, Shield,
   AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
   Download, Trophy, ThumbsDown, HelpCircle, FileDown, TableProperties,
-  Presentation, FileText as FilePdf,
+  Presentation, FileText as FilePdf, ScanEye, X,
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
@@ -576,6 +576,9 @@ function ExportPanel({
   const [format, setFormat] = useState<ExportFormat>("docx");
   const [showCitations, setShowCitations] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<OutcomeTag | null>(
     (session.outcomeTag as OutcomeTag | null) ?? null,
   );
@@ -659,6 +662,33 @@ function ExportPanel({
       toast({ title: "Failed to save", description: e.message, variant: "destructive" });
     } finally {
       setSavingTemplate(false);
+    }
+  }
+
+  async function handlePreview() {
+    setPreviewing(true);
+    setPreviewHtml(null);
+    setPreviewOpen(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("showCitations", showCitations ? "true" : "false");
+      if (includedDiagramIds !== null) {
+        params.set("includedDiagramIds", includedDiagramIds.join(","));
+      }
+      const res = await fetch(`/api/rfp/responses/${sessionId}/preview?${params}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Preview failed");
+      }
+      const html = await res.text();
+      setPreviewHtml(html);
+    } catch (e: any) {
+      setPreviewOpen(false);
+      toast({ title: "Preview failed", description: e.message, variant: "destructive" });
+    } finally {
+      setPreviewing(false);
     }
   }
 
@@ -966,15 +996,72 @@ function ExportPanel({
         )}
       </div>
 
-      {/* ── Export button (gate is hard — no bypass) ──────────────────── */}
-      <Button
-        onClick={handleExport}
-        disabled={exporting || !!(gate?.blocked)}
-        className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-        {exporting ? "Exporting…" : gate?.blocked ? `Export blocked (${gate.blockers.length} issue${gate.blockers.length !== 1 ? "s" : ""} to resolve)` : `Export ${FORMAT_META[format].label}`}
-      </Button>
+      {/* ── Preview + Export buttons ───────────────────────────────────── */}
+      <div className="flex gap-3">
+        <Button
+          onClick={handlePreview}
+          disabled={previewing}
+          variant="outline"
+          className="flex-none border-white/10 bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white"
+        >
+          {previewing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ScanEye className="h-4 w-4 mr-2" />}
+          Preview
+        </Button>
+        <Button
+          onClick={handleExport}
+          disabled={exporting || !!(gate?.blocked)}
+          className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-600 hover:to-violet-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+          {exporting ? "Exporting…" : gate?.blocked ? `Export blocked (${gate.blockers.length} issue${gate.blockers.length !== 1 ? "s" : ""} to resolve)` : `Export ${FORMAT_META[format].label}`}
+        </Button>
+      </div>
+
+      {/* ── Document preview slide-over ────────────────────────────────── */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setPreviewOpen(false)}
+          />
+          {/* Panel */}
+          <div className="relative ml-auto w-full max-w-4xl h-full bg-slate-950 border-l border-white/8 flex flex-col shadow-2xl">
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <ScanEye className="h-4 w-4 text-cyan-400" />
+                <span className="text-sm font-semibold text-white">Document Preview</span>
+                <span className="text-[11px] text-slate-500 bg-slate-800 border border-white/5 rounded-full px-2 py-0.5">
+                  {showCitations ? "Citations on" : "Citations off"}
+                </span>
+              </div>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="text-slate-500 hover:text-slate-300 transition-colors rounded-md p-1 hover:bg-white/5"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {/* Panel body */}
+            <div className="flex-1 overflow-hidden">
+              {previewing && !previewHtml ? (
+                <div className="flex items-center justify-center h-full gap-3 text-slate-500">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm">Assembling preview…</span>
+                </div>
+              ) : previewHtml ? (
+                <iframe
+                  srcDoc={previewHtml}
+                  title="Document preview"
+                  className="w-full h-full border-0"
+                  sandbox="allow-same-origin"
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Outcome recording ─────────────────────────────────────────── */}
       <div className="rounded-xl bg-slate-900 border border-white/5 p-5">
