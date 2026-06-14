@@ -16,7 +16,7 @@ export const LOCKABLE_FEATURES = [
   { key: "forecast_builder", label: "Forecast Builder" },
   { key: "research_reports", label: "Research Reports" },
   { key: "datasheets", label: "Datasheets" },
-  { key: "rfp", label: "RFP Generation" },
+  { key: "rfp", label: "RFP Responder" },
   { key: "news", label: "News" },
   { key: "intelligence_feed", label: "Intelligence Feed" },
 ] as const;

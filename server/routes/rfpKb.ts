@@ -4,17 +4,21 @@ import { z } from "zod";
 import { requireFeature } from "../featureAccess";
 import {
   createRfpKbDocument,
-  getRfpKbDocument,
   listRfpKbDocuments,
   deleteRfpKbDocument,
   updateRfpKbDocument,
   assertDocumentBelongsToVendor,
   setDocumentApprovalStatus,
   updateRfpKbDocumentStorageKey,
+  updateRfpKbDocumentStatus,
 } from "../storage/rfpKb";
-import { ingestDocument, uploadRawFileToGcs } from "../rfpKb/ingest";
+import {
+  ingestDocument,
+  uploadRawFileToGcs,
+  downloadFromGcs,
+} from "../rfpKb/ingest";
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── File upload config ────────────────────────────────────────────────────
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -68,9 +72,7 @@ function primaryVendorId(req: Request): string | null {
 // ── Route registration ────────────────────────────────────────────────────
 
 export function registerRfpKbRoutes(app: Express): void {
-  // Every route: require vendor seat + rfp feature.
-  // The double guard ensures (a) only vendor users can reach these paths and
-  // (b) the rfp feature flag is enabled for their account.
+  // Double guard on every route: vendor seat (no cross-tenant) + rfp feature flag
   const guard = [requireVendorScope, requireFeature("rfp")] as any[];
 
   // List all KB documents for the signed-in vendor
@@ -129,12 +131,12 @@ export function registerRfpKbRoutes(app: Express): void {
         return res.status(500).json({ error: "Failed to create document record" });
       }
 
-      // Respond immediately — ingestion happens in background
+      // Respond immediately — GCS persist + ingest runs in background
       res.status(202).json({ document: doc, message: "Document accepted — ingestion started" });
 
       setImmediate(async () => {
         try {
-          // 1. Persist raw file to GCS (vendor-scoped path)
+          // 1. Persist raw file to GCS under vendor-scoped path
           const storageKey = await uploadRawFileToGcs({
             vendorId,
             documentId: doc.id,
@@ -146,7 +148,7 @@ export function registerRfpKbRoutes(app: Express): void {
             await updateRfpKbDocumentStorageKey(doc.id, storageKey);
           }
 
-          // 2. Parse → chunk → embed → store
+          // 2. Extract → chunk → embed → store (stages update status field)
           await ingestDocument({ documentId: doc.id, vendorId, buffer, mimeType: mimetype, fileName: originalname });
         } catch (e) {
           console.error("[rfpKb] background ingestion error:", e);
@@ -188,7 +190,7 @@ export function registerRfpKbRoutes(app: Express): void {
     }
   });
 
-  // Approve or deprecate all chunks of a document
+  // Approve or deprecate all chunks of a document (bidirectional toggle)
   app.post("/api/rfp/kb/documents/:id/approval", ...guard, async (req: Request, res: Response) => {
     try {
       const vendorId = primaryVendorId(req)!;
@@ -199,7 +201,6 @@ export function registerRfpKbRoutes(app: Express): void {
       if (!parsed.success) {
         return res.status(400).json({ error: "approvalStatus must be 'approved' or 'deprecated'" });
       }
-      // assertDocumentBelongsToVendor is called inside setDocumentApprovalStatus
       await setDocumentApprovalStatus(req.params.id, vendorId, parsed.data.approvalStatus);
       res.json({ ok: true, approvalStatus: parsed.data.approvalStatus });
     } catch (err: any) {
@@ -207,30 +208,51 @@ export function registerRfpKbRoutes(app: Express): void {
     }
   });
 
-  // Re-ingest an existing document (re-embed with latest model from DB storageKey)
-  // For now we cannot re-fetch the file from GCS without a signed URL path, so
-  // we return a clear error explaining that re-upload is required.
-  // (Full re-fetch from GCS is a post-v1 enhancement.)
+  // Re-ingest: download the original file from GCS and re-run the full pipeline.
+  // This lets vendors force a re-embed (e.g. after chunking improvements ship).
   app.post("/api/rfp/kb/documents/:id/reingest", ...guard, async (req: Request, res: Response) => {
     try {
       const vendorId = primaryVendorId(req)!;
       const doc = await assertDocumentBelongsToVendor(req.params.id, vendorId);
-      if (doc.status === "processing") {
+
+      if (doc.status === "extracting" || doc.status === "chunking" || doc.status === "embedding") {
         return res.status(409).json({ error: "Document is already being processed" });
       }
       if (!doc.storageKey) {
         return res.status(400).json({
-          error: "No stored file available for re-ingestion. Please delete and re-upload the document.",
+          error: "No stored file found. Please delete this document and re-upload it.",
         });
       }
-      // Fetch raw file from GCS and re-ingest
-      res.json({ ok: true, message: "Re-ingestion requires re-upload in this version. Please delete and re-upload the document." });
+
+      // Respond immediately — re-ingest runs in background
+      res.json({ ok: true, message: "Re-ingestion started" });
+
+      setImmediate(async () => {
+        try {
+          const buffer = await downloadFromGcs(doc.storageKey!);
+          if (!buffer) {
+            await updateRfpKbDocumentStatus(doc.id, "error", {
+              errorMessage: "Could not retrieve original file from storage. Please re-upload.",
+            });
+            return;
+          }
+          await ingestDocument({
+            documentId: doc.id,
+            vendorId,
+            buffer,
+            mimeType: doc.mimeType,
+            fileName: doc.fileName,
+          });
+        } catch (e) {
+          console.error("[rfpKb] re-ingest error:", e);
+        }
+      });
     } catch (err: any) {
       res.status(err.status ?? 500).json({ error: err.message ?? "Failed to re-ingest" });
     }
   });
 
-  // Delete a document (cross-tenant assertion: must belong to this vendor)
+  // Delete a document and all its chunks (cross-tenant assertion baked into delete query)
   app.delete("/api/rfp/kb/documents/:id", ...guard, async (req: Request, res: Response) => {
     try {
       const vendorId = primaryVendorId(req)!;

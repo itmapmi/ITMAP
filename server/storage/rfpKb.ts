@@ -6,7 +6,7 @@ import {
   type InsertRfpKbChunk,
 } from "@shared/schema";
 import { db } from "../db";
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 // ── Documents ──────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export async function listRfpKbDocuments(vendorId: string): Promise<RfpKbDocumen
 
 export async function updateRfpKbDocumentStatus(
   id: string,
-  status: "pending" | "processing" | "ready" | "error",
+  status: "pending" | "extracting" | "chunking" | "embedding" | "ready" | "error",
   extra?: { chunkCount?: number; errorMessage?: string },
 ): Promise<RfpKbDocument> {
   const [row] = await db
@@ -84,9 +84,9 @@ export async function deleteRfpKbDocument(id: string, vendorId: string): Promise
 }
 
 // ── Cross-tenant isolation assertion ──────────────────────────────────────
-// Called by routes to confirm a given doc belongs to the requesting vendor.
-// Returns the doc if it does, throws 403 otherwise. This is the explicit
-// guard that ensures no cross-tenant data can leak regardless of how routes evolve.
+// Hard-checks that a document belongs to the requesting vendor.
+// Returns the doc on success; throws 404 if the document doesn't exist or
+// belongs to a different vendor. This is the explicit cross-tenant guard.
 
 export async function assertDocumentBelongsToVendor(
   documentId: string,
@@ -108,7 +108,6 @@ export async function assertDocumentBelongsToVendor(
 
 export async function bulkInsertRfpKbChunks(chunks: InsertRfpKbChunk[]): Promise<void> {
   if (chunks.length === 0) return;
-  // Insert in batches of 200 to avoid query size limits
   for (let i = 0; i < chunks.length; i += 200) {
     await db.insert(rfpKbChunks).values(chunks.slice(i, i + 200));
   }
@@ -134,22 +133,30 @@ export async function deleteChunksByDocument(documentId: string): Promise<void> 
   await db.delete(rfpKbChunks).where(eq(rfpKbChunks.documentId, documentId));
 }
 
+// Bulk-set approval status for all chunks of a document, and mirror the
+// document-level approvalStatus field so the UI can render instantly.
 export async function setDocumentApprovalStatus(
   documentId: string,
   vendorId: string,
   approvalStatus: "approved" | "deprecated",
 ): Promise<void> {
-  // Verify cross-tenant ownership before bulk-updating chunks
+  // Verify cross-tenant ownership first
   await assertDocumentBelongsToVendor(documentId, vendorId);
+  // Update all chunks
   await db
     .update(rfpKbChunks)
     .set({ approvalStatus })
     .where(eq(rfpKbChunks.documentId, documentId));
+  // Mirror onto document record for fast UI rendering (no chunk aggregation needed)
+  await db
+    .update(rfpKbDocuments)
+    .set({ approvalStatus, updatedAt: new Date() })
+    .where(eq(rfpKbDocuments.id, documentId));
 }
 
 // ── Similarity search (cosine) ─────────────────────────────────────────────
 // No pgvector — cosine ranking done in JS over a capped candidate window.
-// Only `approved` chunks are returned; deprecated chunks are excluded.
+// Only `approved` chunks from `approved` documents are returned.
 
 export interface SimilarChunk {
   id: string;
@@ -178,7 +185,6 @@ export async function searchRfpKbChunks(
   queryEmbedding: number[],
   topK = 8,
 ): Promise<SimilarChunk[]> {
-  // Load approved chunks only, plus their doc wonLost for retrieval weighting
   const rows = await db
     .select({
       id: rfpKbChunks.id,
@@ -196,6 +202,7 @@ export async function searchRfpKbChunks(
       and(
         eq(rfpKbChunks.vendorId, vendorId),
         eq(rfpKbChunks.approvalStatus, "approved"),
+        eq(rfpKbDocuments.approvalStatus, "approved"),
       ),
     )
     .limit(1000);
@@ -204,7 +211,6 @@ export async function searchRfpKbChunks(
     .filter((r) => r.embedding && r.embedding.length > 0)
     .map((r) => {
       const cosine = cosineSimilarity(queryEmbedding, r.embedding!);
-      // Won RFP responses get a 1.2× boost; lost get 0.8×
       const wonLostWeight = r.wonLost === "won" ? 1.2 : r.wonLost === "lost" ? 0.8 : 1.0;
       return {
         id: r.id,

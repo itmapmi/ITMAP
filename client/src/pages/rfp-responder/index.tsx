@@ -20,6 +20,9 @@ import {
   Eye,
   Trophy,
   XCircle,
+  Cpu,
+  Layers,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,11 +66,30 @@ function formatBytes(bytes: number | null | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Granular pipeline stage badges
 function StatusBadge({ status }: { status: string }) {
   if (status === "ready")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
         <CheckCircle className="h-3 w-3" /> Ready
+      </span>
+    );
+  if (status === "extracting")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-400">
+        <Layers className="h-3 w-3 animate-pulse" /> Extracting
+      </span>
+    );
+  if (status === "chunking")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[11px] font-medium text-cyan-400">
+        <Cpu className="h-3 w-3 animate-pulse" /> Chunking
+      </span>
+    );
+  if (status === "embedding")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[11px] font-medium text-violet-400">
+        <Zap className="h-3 w-3 animate-pulse" /> Embedding
       </span>
     );
   if (status === "processing")
@@ -122,6 +144,47 @@ function WonLostBadge({ tag }: { tag: string | null | undefined }) {
   return null;
 }
 
+// Approve/Deprecate toggle — shows current state and the available action
+function ApprovalToggle({
+  doc,
+  onToggle,
+  isPending,
+}: {
+  doc: RfpKbDocument;
+  onToggle: (approvalStatus: "approved" | "deprecated") => void;
+  isPending: boolean;
+}) {
+  if (doc.status !== "ready") return null;
+
+  // If currently approved → offer deprecate
+  if (doc.approvalStatus !== "deprecated") {
+    return (
+      <button
+        title="Deprecate — exclude chunks from retrieval"
+        disabled={isPending}
+        onClick={() => onToggle("deprecated")}
+        className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-400/10 transition-colors disabled:opacity-40"
+      >
+        <EyeOff className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
+
+  // If currently deprecated → offer re-approve
+  return (
+    <button
+      title="Approve — include chunks in retrieval"
+      disabled={isPending}
+      onClick={() => onToggle("approved")}
+      className="h-8 w-8 flex items-center justify-center rounded-lg text-amber-400 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors disabled:opacity-40"
+    >
+      <Eye className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+const ACTIVE_STATUSES = new Set(["pending", "extracting", "chunking", "embedding", "processing"]);
+
 export default function RfpResponderPage() {
   const { hasFeature, isVendorScoped, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -140,10 +203,8 @@ export default function RfpResponderPage() {
     enabled: rfpEnabled && isVendorScoped && !isAdmin,
     refetchInterval: (query) => {
       const docs = (query.state.data as any)?.documents ?? [];
-      const hasActive = docs.some(
-        (d: RfpKbDocument) => d.status === "processing" || d.status === "pending",
-      );
-      return hasActive ? 3000 : false;
+      const hasActive = docs.some((d: RfpKbDocument) => ACTIVE_STATUSES.has(d.status));
+      return hasActive ? 2500 : false;
     },
   });
 
@@ -169,7 +230,7 @@ export default function RfpResponderPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/documents"] });
-      toast({ title: "Document uploaded", description: "Processing started — status updates automatically." });
+      toast({ title: "Document uploaded", description: "Extracting and embedding — status updates automatically." });
       setWonLost("");
       setDocumentType("");
       setProductContext("");
@@ -230,7 +291,7 @@ export default function RfpResponderPage() {
     },
     onSuccess: (body) => {
       queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/documents"] });
-      toast({ title: "Re-ingest", description: body.message ?? "Re-ingest requested." });
+      toast({ title: "Re-ingestion started", description: body.message ?? "Processing in background." });
     },
     onError: (err: any) =>
       toast({ title: "Re-ingest failed", description: err?.message, variant: "destructive" }),
@@ -364,7 +425,8 @@ export default function RfpResponderPage() {
                 {uploadMutation.isPending ? (
                   <>
                     <Loader2 className="h-7 w-7 text-cyan-400 animate-spin mb-3" />
-                    <p className="text-sm text-slate-300">Uploading…</p>
+                    <p className="text-sm text-slate-300 font-medium">Uploading…</p>
+                    <p className="text-xs text-slate-500 mt-1">Extracting → Chunking → Embedding</p>
                   </>
                 ) : (
                   <>
@@ -373,6 +435,7 @@ export default function RfpResponderPage() {
                     </div>
                     <p className="text-sm font-medium text-white mb-1">Drop a file or click to browse</p>
                     <p className="text-xs text-slate-500">PDF, DOCX, PPTX, XLSX, CSV, TXT, MD — up to {MAX_SIZE_MB} MB</p>
+                    <p className="text-xs text-slate-600 mt-1">Parsed with structure preserved · Embedded with text-embedding-3-small</p>
                   </>
                 )}
               </div>
@@ -394,7 +457,7 @@ export default function RfpResponderPage() {
         <div className="mb-6 flex items-start gap-2 rounded-lg bg-slate-900/60 border border-white/5 px-4 py-3">
           <Info className="h-4 w-4 text-cyan-400/70 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-slate-400">
-            All documents are stored and retrieved exclusively within your vendor account — no other vendor or user can see or access your knowledge base. Processing takes 10–60 seconds depending on file size.
+            Documents are stored and retrieved exclusively within your vendor account — no other vendor or user can access your knowledge base. Processing takes 10–60 seconds depending on file size and complexity.
           </p>
         </div>
 
@@ -422,10 +485,14 @@ export default function RfpResponderPage() {
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="rounded-xl bg-slate-900 border border-white/5 px-4 py-3 hover:border-white/10 transition-colors"
+                  className={`rounded-xl border px-4 py-3 transition-colors ${
+                    doc.approvalStatus === "deprecated"
+                      ? "bg-slate-900/50 border-white/3 opacity-70"
+                      : "bg-slate-900 border-white/5 hover:border-white/10"
+                  }`}
                 >
                   <div className="flex items-center gap-4">
-                    {/* File type icon */}
+                    {/* File type badge */}
                     <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/5 flex items-center justify-center flex-shrink-0">
                       <FileExtBadge fileName={doc.fileName} />
                     </div>
@@ -433,11 +500,18 @@ export default function RfpResponderPage() {
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-white truncate max-w-xs">{doc.fileName}</p>
+                        <p className={`text-sm font-medium truncate max-w-xs ${doc.approvalStatus === "deprecated" ? "text-slate-400 line-through" : "text-white"}`}>
+                          {doc.fileName}
+                        </p>
                         <WonLostBadge tag={doc.wonLost} />
                         {doc.documentType && DOC_TYPE_LABELS[doc.documentType] && (
                           <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[10px] font-medium text-violet-300">
                             {DOC_TYPE_LABELS[doc.documentType]}
+                          </span>
+                        )}
+                        {doc.approvalStatus === "deprecated" && (
+                          <span className="inline-flex items-center rounded-full bg-slate-700/50 border border-slate-600/30 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                            Deprecated
                           </span>
                         )}
                       </div>
@@ -464,27 +538,19 @@ export default function RfpResponderPage() {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <StatusBadge status={doc.status} />
 
-                      {/* Approve / Deprecate toggle */}
-                      {doc.status === "ready" && (
-                        <button
-                          title={doc.chunkCount > 0 ? "Deprecate (exclude from retrieval)" : "Approve (include in retrieval)"}
-                          disabled={approvalMutation.isPending}
-                          onClick={() =>
-                            approvalMutation.mutate({
-                              id: doc.id,
-                              approvalStatus: "deprecated",
-                            })
-                          }
-                          className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-400/10 transition-colors disabled:opacity-40"
-                        >
-                          <EyeOff className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                      {/* Approve / Deprecate bidirectional toggle */}
+                      <ApprovalToggle
+                        doc={doc}
+                        onToggle={(approvalStatus) =>
+                          approvalMutation.mutate({ id: doc.id, approvalStatus })
+                        }
+                        isPending={approvalMutation.isPending}
+                      />
 
                       {/* Re-ingest */}
                       {(doc.status === "ready" || doc.status === "error") && (
                         <button
-                          title="Re-ingest"
+                          title="Re-ingest from stored file"
                           disabled={reingestMutation.isPending}
                           onClick={() => reingestMutation.mutate(doc.id)}
                           className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 transition-colors disabled:opacity-40"

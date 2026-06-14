@@ -1681,10 +1681,12 @@ export const rfpKbDocuments = pgTable("rfp_kb_documents", {
   mimeType: text("mime_type").notNull(),
   fileSizeBytes: integer("file_size_bytes"),
   storageKey: text("storage_key"),
-  // 'pending' | 'processing' | 'ready' | 'error'
+  // 'pending' | 'extracting' | 'chunking' | 'embedding' | 'ready' | 'error'
   status: text("status").notNull().default("pending"),
   chunkCount: integer("chunk_count").notNull().default(0),
   errorMessage: text("error_message"),
+  // 'approved' | 'deprecated' — mirrors the bulk chunk approval status for fast UI rendering
+  approvalStatus: text("approval_status").notNull().default("approved"),
   // Metadata supplied at upload time
   // 'won' | 'lost' | null — past RFP responses tagged for retrieval weighting
   wonLost: text("won_lost"),
