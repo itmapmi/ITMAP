@@ -18,6 +18,57 @@ import AdmZip from "adm-zip";
 import type { AssembledResponse } from "./assemble";
 import type { CompetitiveClaim, ResponseSource } from "@shared/schema";
 
+// ── Per-requirement response formatting ───────────────────────────────────────
+//
+// Each requirement has a responseType from decomposition:
+//   yes_no      → client expects a short YES/NO/PARTIAL label, not a narrative
+//   scored      → client expects a score/band prefix followed by the detail
+//   descriptive → full narrative text (default)
+//   reference   → narrative text (usually referencing an attachment or URL)
+//
+// This function is used by all fill paths (XLSX round-trip, XLSX fallback,
+// DOCX round-trip) to ensure the response cell matches what the client expects
+// per-requirement rather than always emitting the raw generatedText.
+
+export function formatResponseForType(
+  responseType: string,
+  generatedText: string,
+  coverageFlag: string,
+): string {
+  switch (responseType) {
+    case "yes_no": {
+      const label =
+        coverageFlag === "green"
+          ? "YES"
+          : coverageFlag === "red"
+            ? "NO"
+            : coverageFlag === "amber"
+              ? "PARTIAL"
+              : "PENDING";
+      // Append narrative in parentheses if present and non-trivial
+      if (generatedText && generatedText.trim().length > 0) {
+        return `${label} — ${generatedText.trim()}`;
+      }
+      return label;
+    }
+    case "scored": {
+      // Prefix with the coverage band so the score is immediately visible
+      const band =
+        coverageFlag === "green"
+          ? "FULL"
+          : coverageFlag === "amber"
+            ? "PARTIAL"
+            : coverageFlag === "red"
+              ? "NONE"
+              : "PENDING";
+      return generatedText ? `[${band}] ${generatedText.trim()}` : `[${band}]`;
+    }
+    default:
+      // descriptive, reference, unknown → emit raw generated text
+      return generatedText;
+  }
+}
+
 // ── XLSX round-trip fill ──────────────────────────────────────────────────────
 //
 // Algorithm:
@@ -90,14 +141,22 @@ export async function fillXlsxTemplate(
         .map((c) => c.claim)
         .join("; ");
 
-      // Sources: always show when answer has opted-in claims; respect toggle otherwise
-      const hasClaims = claims.length > 0;
-      const sources =
-        showCitations || hasClaims
-          ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
-              .map((s) => s.title ?? s.type ?? "source")
-              .join("; ")
-          : "";
+      // Sources: governed strictly by the citation toggle — claims text is
+      // already written as response content above; KB source refs are optional metadata.
+      const sources = showCitations
+        ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
+            .map((s) => s.title ?? s.type ?? "source")
+            .join("; ")
+        : "";
+
+      // Format the response text per requirement type.
+      // yes_no → short YES/NO/PARTIAL label (the canonical answer for compliance grids);
+      // scored → score band prefixed; descriptive/reference → full narrative text.
+      const responseText = formatResponseForType(
+        req.responseType ?? "descriptive",
+        answer?.generatedText ?? "",
+        answer?.coverageFlag ?? "pending",
+      );
 
       writeCell(rowIdx, colIndex["Section"], section);
       writeCell(rowIdx, colIndex["Requirement"], req.requirementText);
@@ -105,7 +164,14 @@ export async function fillXlsxTemplate(
       writeCell(rowIdx, colIndex["Mandatory"], req.mandatory ? "Yes" : "No");
       writeCell(rowIdx, colIndex["Type"], req.responseType ?? "");
       writeCell(rowIdx, colIndex["Coverage"], (answer?.coverageFlag ?? "pending").toUpperCase());
-      writeCell(rowIdx, colIndex["Response"], answer?.generatedText ?? "");
+      // Generic response column (all types)
+      writeCell(rowIdx, colIndex["Response"], responseText);
+      // Type-specific routing: client templates may have dedicated yes/no or narrative columns
+      if (req.responseType === "yes_no") {
+        writeCell(rowIdx, colIndex["ResponseYesNo"], responseText);
+      } else {
+        writeCell(rowIdx, colIndex["ResponseDescriptive"], responseText);
+      }
       writeCell(rowIdx, colIndex["Notes"], answer?.smeNote ?? "");
       writeCell(rowIdx, colIndex["Sources"], sources);
       writeCell(rowIdx, colIndex["Claims"], claims);
@@ -152,13 +218,18 @@ async function generateFallbackXlsx(
         .filter((c) => c.optedIn === true)
         .map((c) => c.claim)
         .join("; ");
-      const hasClaims = claims.length > 0;
-      const sources =
-        showCitations || hasClaims
-          ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
-              .map((s) => s.title ?? s.type ?? "source")
-              .join("; ")
-          : "";
+      // Sources: governed strictly by the citation toggle.
+      const sources = showCitations
+        ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
+            .map((s) => s.title ?? s.type ?? "source")
+            .join("; ")
+        : "";
+
+      const responseText = formatResponseForType(
+        req.responseType ?? "descriptive",
+        answer?.generatedText ?? "",
+        answer?.coverageFlag ?? "pending",
+      );
 
       rows.push([
         section,
@@ -166,7 +237,7 @@ async function generateFallbackXlsx(
         req.category ?? "",
         req.mandatory ? "Yes" : "No",
         (answer?.coverageFlag ?? "pending").toUpperCase(),
-        answer?.generatedText ?? "",
+        responseText,
         answer?.smeNote ?? "",
         sources,
         claims,
@@ -247,13 +318,20 @@ export async function fillDocxTemplate(
           .filter((c) => c.optedIn === true)
           .map((c) => c.claim)
           .join("; ");
-        const hasClaims = claims.length > 0;
-        const sources =
-          showCitations || hasClaims
-            ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
-                .map((s) => s.title ?? s.type ?? "source")
-                .join("; ")
-            : "";
+
+        // Sources: strictly governed by the citation toggle.
+        const sources = showCitations
+          ? ((answer?.sources as ResponseSource[] | undefined) ?? [])
+              .map((s) => s.title ?? s.type ?? "source")
+              .join("; ")
+          : "";
+
+        // Format per requirement type
+        const responseText = formatResponseForType(
+          req.responseType ?? "descriptive",
+          answer?.generatedText ?? "",
+          answer?.coverageFlag ?? "pending",
+        );
 
         const cellValues: string[] = new Array(numCols).fill("");
         function set(key: string, val: string) {
@@ -267,7 +345,13 @@ export async function fillDocxTemplate(
         set("Mandatory", req.mandatory ? "Yes" : "No");
         set("Type", req.responseType ?? "");
         set("Coverage", (answer?.coverageFlag ?? "pending").toUpperCase());
-        set("Response", answer?.generatedText ?? "");
+        // Generic response column (all types) + type-specific routing
+        set("Response", responseText);
+        if (req.responseType === "yes_no") {
+          set("ResponseYesNo", responseText);
+        } else {
+          set("ResponseDescriptive", responseText);
+        }
         set("Notes", answer?.smeNote ?? "");
         set("Sources", sources);
         set("Claims", claims);

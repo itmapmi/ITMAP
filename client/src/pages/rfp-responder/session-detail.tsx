@@ -464,6 +464,7 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
                   return (
                     <button
                       key={req.id}
+                      id={`req-${req.id}`}
                       onClick={() => setSelectedReqId(req.id)}
                       className={`w-full px-3 py-2.5 text-left flex items-start gap-2 border-b border-white/3 transition-colors ${
                         isSelected ? "bg-cyan-500/10 border-l-2 border-l-cyan-500/50" : "hover:bg-white/3"
@@ -564,10 +565,12 @@ function ExportPanel({
   sessionId,
   session,
   onSwitchToResponses,
+  onFocusRequirement,
 }: {
   sessionId: string;
   session: RfpResponseSession;
   onSwitchToResponses?: () => void;
+  onFocusRequirement?: (reqId: string) => void;
 }) {
   const { toast } = useToast();
   const [format, setFormat] = useState<ExportFormat>("docx");
@@ -756,6 +759,28 @@ function ExportPanel({
                     >
                       → Confirm the field map in the Client Template section below ↓
                     </a>
+                  ) : b.requirementId ? (
+                    <button
+                      onClick={() => {
+                        onSwitchToResponses?.();
+                        // Give the tab a moment to render before scrolling
+                        setTimeout(() => {
+                          const el = document.getElementById(`req-${b.requirementId}`);
+                          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          el?.focus({ preventScroll: true });
+                        }, 150);
+                      }}
+                      className="text-[11px] text-cyan-500 hover:text-cyan-400 underline underline-offset-2 mt-0.5 text-left"
+                    >
+                      → Go to this requirement in the Responses tab →
+                    </button>
+                  ) : b.diagramId ? (
+                    <button
+                      onClick={() => onSwitchToResponses?.()}
+                      className="text-[11px] text-cyan-500 hover:text-cyan-400 underline underline-offset-2 mt-0.5 text-left"
+                    >
+                      → Review diagrams in the Architecture tab →
+                    </button>
                   ) : (
                     <button
                       onClick={() => onSwitchToResponses?.()}
@@ -1240,6 +1265,14 @@ export default function RfpSessionDetailPage() {
                 sessionId={id!}
                 session={session}
                 onSwitchToResponses={() => setCompleteTab("responses")}
+                onFocusRequirement={(reqId) => {
+                  setCompleteTab("responses");
+                  setTimeout(() => {
+                    const el = document.getElementById(`req-${reqId}`);
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el?.focus({ preventScroll: true });
+                  }, 150);
+                }}
               />
             )}
           </div>

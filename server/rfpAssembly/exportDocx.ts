@@ -6,7 +6,7 @@ import {
 import type { AssembledResponse } from "./assemble";
 import { buildExecSummaryText } from "./assemble";
 import type { CompetitiveClaim, ResponseSource } from "@shared/schema";
-import { fillDocxTemplate } from "./templateFill";
+import { fillDocxTemplate, formatResponseForType } from "./templateFill";
 
 export interface DocxExportOptions {
   templateFormat?: string;
@@ -76,6 +76,12 @@ function buildClientTableDoc(
         .filter((c) => c.optedIn === true)
         .map((c) => c.claim)
         .join("; ");
+      // Format response per requirement type (yes_no → YES/NO/PARTIAL, scored → [BAND], etc.)
+      const responseText = formatResponseForType(
+        req.responseType ?? "descriptive",
+        answer?.generatedText ?? "",
+        flag,
+      );
 
       dataRows.push(
         new TableRow({
@@ -86,7 +92,7 @@ function buildClientTableDoc(
             new TableCell({
               children: [new Paragraph({ children: [new TextRun({ text: flag.toUpperCase(), bold: true, color: coverageColor(flag), size: 18 })] })],
             }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(answer?.generatedText ?? ""), size: 18 })] })] }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(responseText), size: 18 })] })] }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: safeText(answer?.smeNote ?? "") + (claimsText ? `\n[Competitive: ${claimsText}]` : ""), size: 18 })] })] }),
           ],
         }),
@@ -291,18 +297,17 @@ export async function exportDocx(
         );
       }
 
-      // KB source citations:
-      //   • always shown when the answer has opted-in claims (claim evidence must be traceable)
-      //   • shown for all answers when showCitations=true
-      const hasClaims = claims.length > 0;
-      if ((showCitations || hasClaims) && answer?.sources?.length) {
+      // KB source citations: only shown when the user has enabled citations.
+      // Competitive claim text is always rendered (above) as it is response content,
+      // but the underlying KB source list is a citation feature governed by showCitations.
+      if (showCitations && answer?.sources?.length) {
         const srcs = (answer.sources as ResponseSource[])
           .map((s) => s.title ?? s.type ?? "source")
           .join("; ");
         children.push(
           new Paragraph({
             children: [
-              new TextRun({ text: hasClaims && !showCitations ? "Claim Sources: " : "Sources: ", bold: true, size: 18, color: "94A3B8" }),
+              new TextRun({ text: "Sources: ", bold: true, size: 18, color: "94A3B8" }),
               new TextRun({ text: `[${srcs}]`, size: 18, color: "94A3B8", italics: true }),
             ],
             spacing: { after: 160 },
