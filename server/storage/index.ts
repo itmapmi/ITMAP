@@ -59,6 +59,7 @@ export * from "./vendorAudience";
 export * from "./factCheck";
 export * from "./rfpKb";
 export * from "./rfpResponder";
+export * from "./rfpDiagrams";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";

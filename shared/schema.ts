@@ -2099,3 +2099,36 @@ export type RfpResponseReq = typeof rfpResponseReqs.$inferSelect;
 export type InsertRfpResponseReq = z.infer<typeof insertRfpResponseReqSchema>;
 export type RfpResponseAnswer = typeof rfpResponseAnswers.$inferSelect;
 export type InsertRfpResponseAnswer = z.infer<typeof insertRfpResponseAnswerSchema>;
+
+// ── RFP Architecture Diagrams ─────────────────────────────────────────────────
+
+export type IconManifestItem = {
+  nodeId: string;
+  nodeType: string;
+  nodeLabel: string;
+  iconTier: 1 | 2 | 3 | 4;
+  tierLabel: string;
+  tier4Pending: boolean;
+};
+
+export const rfpDiagrams = pgTable("rfp_diagrams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => rfpResponseSessions.id, { onDelete: "cascade" }),
+  reqId: varchar("req_id").references(() => rfpResponseReqs.id, { onDelete: "set null" }),
+  diagramIntent: text("diagram_intent").notNull(),
+  title: text("title").notNull(),
+  topologySpec: jsonb("topology_spec").notNull().$type<Record<string, unknown>>(),
+  svgContent: text("svg_content").notNull(),
+  nodePositions: jsonb("node_positions").notNull().default(sql`'{}'::jsonb`).$type<Record<string, { x: number; y: number }>>(),
+  iconManifest: jsonb("icon_manifest").notNull().default(sql`'[]'::jsonb`).$type<IconManifestItem[]>(),
+  hasTier4Pending: boolean("has_tier4_pending").notNull().default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const insertRfpDiagramSchema = createInsertSchema(rfpDiagrams).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type RfpDiagram = typeof rfpDiagrams.$inferSelect;
+export type InsertRfpDiagram = z.infer<typeof insertRfpDiagramSchema>;

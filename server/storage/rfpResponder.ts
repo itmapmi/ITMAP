@@ -130,6 +130,11 @@ export async function listRfpResponseReqs(
     .orderBy(rfpResponseReqs.displayOrder);
 }
 
+export async function getRfpResponseReqById(id: string): Promise<RfpResponseReq | undefined> {
+  const [row] = await db.select().from(rfpResponseReqs).where(eq(rfpResponseReqs.id, id));
+  return row;
+}
+
 export async function updateRfpResponseReq(
   id: string,
   sessionId: string,

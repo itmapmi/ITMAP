@@ -480,6 +480,24 @@ export async function runStartupMigrations(): Promise<void> {
         ON rfp_response_answers (requirement_id)
     `);
 
+    // 27. RFP Architecture Diagrams (Task #120 — Diagram Engine)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rfp_diagrams (
+        id               varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id       varchar NOT NULL REFERENCES rfp_response_sessions(id) ON DELETE CASCADE,
+        req_id           varchar REFERENCES rfp_response_reqs(id) ON DELETE SET NULL,
+        diagram_intent   text NOT NULL,
+        title            text NOT NULL,
+        topology_spec    jsonb NOT NULL,
+        svg_content      text NOT NULL,
+        node_positions   jsonb NOT NULL DEFAULT '{}',
+        icon_manifest    jsonb NOT NULL DEFAULT '[]',
+        has_tier4_pending boolean NOT NULL DEFAULT false,
+        created_at       timestamp DEFAULT now(),
+        updated_at       timestamp DEFAULT now()
+      );
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

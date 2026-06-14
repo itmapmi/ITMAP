@@ -7,8 +7,9 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft, CheckCircle, AlertTriangle, XCircle, Loader2, BookOpen,
   ChevronRight, ChevronDown, Eye, EyeOff, Zap, FileText, Shield,
-  AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play,
+  AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
 } from "lucide-react";
+import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -517,6 +518,7 @@ export default function RfpSessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [completeTab, setCompleteTab] = useState<"responses" | "diagrams">("responses");
 
   const POLLING_STATUSES = new Set(["decomposing", "generating"]);
 
@@ -686,7 +688,46 @@ export default function RfpSessionDetailPage() {
         )}
 
         {session.status === "complete" && (
-          <CompleteView data={data} sessionId={id!} />
+          <div className="space-y-4">
+            {/* Tab switcher */}
+            <div className="flex gap-1 rounded-xl bg-slate-900/60 border border-white/5 p-1 w-fit">
+              <button
+                onClick={() => setCompleteTab("responses")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  completeTab === "responses"
+                    ? "bg-white/8 text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Responses
+              </button>
+              <button
+                onClick={() => setCompleteTab("diagrams")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  completeTab === "diagrams"
+                    ? "bg-white/8 text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                <Network className="h-3.5 w-3.5" />
+                Architecture Diagrams
+              </button>
+            </div>
+
+            {completeTab === "responses" && <CompleteView data={data} sessionId={id!} />}
+            {completeTab === "diagrams" && (
+              <DiagramEngine
+                sessionId={id!}
+                session={{
+                  vendorId: session.vendorId,
+                  marketId: session.marketId ?? null,
+                  clientOrgName: session.clientOrgName ?? null,
+                }}
+                requirements={requirements}
+              />
+            )}
+          </div>
         )}
 
         {/* Competitive claims summary (if any are pending review) */}
