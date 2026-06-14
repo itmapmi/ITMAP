@@ -57,6 +57,7 @@ export * from "./datasheets";
 export * from "./leadGen";
 export * from "./vendorAudience";
 export * from "./factCheck";
+export * from "./rfpKb";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -73,6 +74,7 @@ import * as datasheetsStorage from "./datasheets";
 import * as leadGenStorage from "./leadGen";
 import * as vendorAudienceStorage from "./vendorAudience";
 import * as factCheckStorage from "./factCheck";
+import * as rfpKbStorage from "./rfpKb";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -316,7 +318,7 @@ export interface IStorage {
 // of the IStorage interface (the datasheet surface area is large and would
 // double the interface size for little type-safety gain — callers that
 // need typed access import from `./datasheets` directly).
-export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorage & typeof vendorAudienceStorage & typeof factCheckStorage = {
+export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorage & typeof vendorAudienceStorage & typeof factCheckStorage & typeof rfpKbStorage = {
   ...userStorage,
   ...marketStorage,
   ...criteriaStorage,
@@ -332,4 +334,5 @@ export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorag
   ...leadGenStorage,
   ...vendorAudienceStorage,
   ...factCheckStorage,
+  ...rfpKbStorage,
 };

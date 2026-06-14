@@ -148,6 +148,13 @@ export default function Navigation() {
                       }`}>Fact Review</span>
                     </Link>
                   )}
+                  {isVendorScoped && !isAdmin && hasFeature("rfp") && (
+                    <Link href="/rfp-responder">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>RFP Responder</span>
+                    </Link>
+                  )}
                   {isAdmin && (
                     <Link href="/admin">
                       <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
@@ -267,6 +274,16 @@ export default function Navigation() {
                   onClick={() => setMobileOpen(false)}
                 >
                   Fact Review
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && hasFeature("rfp") && (
+              <Link href="/rfp-responder">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  RFP Responder
                 </div>
               </Link>
             )}

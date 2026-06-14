@@ -1669,6 +1669,47 @@ export type InsertRfpShortlistEntry = z.infer<typeof insertRfpShortlistSchema>;
 export type RfpOutreachEntry = typeof rfpOutreach.$inferSelect;
 export type InsertRfpOutreachEntry = z.infer<typeof insertRfpOutreachSchema>;
 
+// ── RFP Vendor Knowledge Base ─────────────────────────────────────────────
+// Vendor-uploaded documents (PDF, DOCX, PPTX, TXT) that are parsed, chunked,
+// and embedded to power the AI RFP Responder for that vendor.
+
+export const rfpKbDocuments = pgTable("rfp_kb_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  storageKey: text("storage_key"),
+  status: text("status").notNull().default("pending"),
+  chunkCount: integer("chunk_count").notNull().default(0),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const rfpKbChunks = pgTable("rfp_kb_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => rfpKbDocuments.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  embedding: jsonb("embedding").$type<number[]>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertRfpKbDocumentSchema = createInsertSchema(rfpKbDocuments).omit({
+  id: true, createdAt: true, updatedAt: true, status: true, chunkCount: true, errorMessage: true,
+});
+export const insertRfpKbChunkSchema = createInsertSchema(rfpKbChunks).omit({
+  id: true, createdAt: true,
+});
+
+export type RfpKbDocument = typeof rfpKbDocuments.$inferSelect;
+export type InsertRfpKbDocument = z.infer<typeof insertRfpKbDocumentSchema>;
+export type RfpKbChunk = typeof rfpKbChunks.$inferSelect;
+export type InsertRfpKbChunk = z.infer<typeof insertRfpKbChunkSchema>;
+
 
 // ── Datasheet Comparison ─────────────────────────────────────────────────
 // Separate from `markets` — these tables model SKU-level hardware vendors
