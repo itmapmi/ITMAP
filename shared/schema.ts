@@ -1681,9 +1681,17 @@ export const rfpKbDocuments = pgTable("rfp_kb_documents", {
   mimeType: text("mime_type").notNull(),
   fileSizeBytes: integer("file_size_bytes"),
   storageKey: text("storage_key"),
+  // 'pending' | 'processing' | 'ready' | 'error'
   status: text("status").notNull().default("pending"),
   chunkCount: integer("chunk_count").notNull().default(0),
   errorMessage: text("error_message"),
+  // Metadata supplied at upload time
+  // 'won' | 'lost' | null — past RFP responses tagged for retrieval weighting
+  wonLost: text("won_lost"),
+  // 'product_doc' | 'rfp_response' | 'case_study' | 'datasheet' | 'other'
+  documentType: text("document_type"),
+  // Free-text product/solution name this document covers
+  productContext: text("product_context"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -1694,6 +1702,14 @@ export const rfpKbChunks = pgTable("rfp_kb_chunks", {
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
   chunkIndex: integer("chunk_index").notNull(),
   content: text("content").notNull(),
+  // Section breadcrumb (e.g. "Introduction > Capabilities")
+  sectionPath: text("section_path"),
+  // Source page number or slide number
+  pageRef: integer("page_ref"),
+  // 'approved' | 'draft' | 'deprecated' — controls retrieval eligibility
+  approvalStatus: text("approval_status").notNull().default("approved"),
+  // Arbitrary extra metadata (token count, heading text, etc.)
+  metadata: jsonb("metadata"),
   embedding: jsonb("embedding").$type<number[]>(),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
