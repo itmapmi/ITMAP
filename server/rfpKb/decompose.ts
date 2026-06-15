@@ -7,15 +7,15 @@ const openai = new OpenAI({
 });
 
 const requirementItemSchema = z.object({
-  section: z.string(),
+  section: z.string().catch("General"),
   requirementText: z.string().min(5),
   category: z.enum(["functional", "technical", "commercial", "compliance", "support", "other"]).catch("other"),
-  mandatory: z.boolean(),
-  responseType: z.enum(["yes_no", "descriptive", "scored", "reference"]),
+  mandatory: z.boolean().catch(false),
+  responseType: z.enum(["yes_no", "descriptive", "scored", "reference"]).catch("descriptive"),
 });
 
 const decompositionSchema = z.object({
-  requirements: z.array(requirementItemSchema).min(1).max(300),
+  requirements: z.array(z.unknown()).min(1).max(500),
 });
 
 export type DecomposedRequirement = z.infer<typeof requirementItemSchema>;
@@ -58,7 +58,7 @@ export async function decomposeRfp(rfpText: string): Promise<DecomposedRequireme
         ],
         response_format: { type: "json_object" },
         temperature: 0,
-        max_tokens: 10000,
+        max_tokens: 16000,
       });
 
       const raw = response.choices[0]?.message?.content ?? "{}";
@@ -69,8 +69,17 @@ export async function decomposeRfp(rfpText: string): Promise<DecomposedRequireme
         throw new Error(`GPT returned invalid JSON on attempt ${attempt + 1}`);
       }
 
-      const validated = decompositionSchema.parse(parsed);
-      return validated.requirements;
+      const outer = decompositionSchema.safeParse(parsed);
+      if (!outer.success) throw new Error(`Unexpected response shape on attempt ${attempt + 1}`);
+
+      // Validate each item individually — skip any that are malformed rather than failing the whole batch
+      const results: DecomposedRequirement[] = [];
+      for (const item of outer.data.requirements) {
+        const r = requirementItemSchema.safeParse(item);
+        if (r.success) results.push(r.data);
+      }
+      if (results.length === 0) throw new Error(`No valid requirements parsed on attempt ${attempt + 1}`);
+      return results;
     } catch (err) {
       lastError = err;
       console.warn(`[rfp-decompose] attempt ${attempt + 1} failed:`, err instanceof Error ? err.message : err);
