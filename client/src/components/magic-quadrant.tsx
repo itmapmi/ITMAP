@@ -620,18 +620,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
-    // Arrowhead marker for axis direction indicators
-    defs.append("marker")
-      .attr("id", "axis-arrow")
-      .attr("markerWidth", 8)
-      .attr("markerHeight", 8)
-      .attr("refX", 6)
-      .attr("refY", 3)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M0,0 L0,6 L7,3 z")
-      .attr("fill", "#64748b");
-
     // ── Metallic 3-stop gradients — tight range gives a polished-surface sheen ──
     const topGradient = defs.append("linearGradient")
       .attr("id", "topBandGradient")
@@ -714,27 +702,6 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       .attr("fill", "#64748b")
       .attr("font-size", isMobile ? "10px" : "12px")
       .attr("font-weight", "600");
-
-    // Direction arrows — small lines extending from the positive end of each axis
-    // X-axis: arrow pointing right at the right edge
-    svg.append("line")
-      .attr("x1", width - margin.right - 2)
-      .attr("y1", height - margin.bottom)
-      .attr("x2", width - margin.right + 10)
-      .attr("y2", height - margin.bottom)
-      .attr("stroke", "#64748b")
-      .attr("stroke-width", 1.5)
-      .attr("marker-end", "url(#axis-arrow)");
-
-    // Y-axis: arrow pointing up at the top edge
-    svg.append("line")
-      .attr("x1", margin.left)
-      .attr("y1", margin.top + 2)
-      .attr("x2", margin.left)
-      .attr("y2", margin.top - 10)
-      .attr("stroke", "#64748b")
-      .attr("stroke-width", 1.5)
-      .attr("marker-end", "url(#axis-arrow)");
 
     // Add professional axis labels — positioned close to the chart box
     const axisLabelSize = isMobile ? "11px" : "14px";
