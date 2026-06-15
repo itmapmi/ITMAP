@@ -30,7 +30,7 @@ interface AlgoliaResponse {
 
 export async function collectHnSignals(vendorName: string): Promise<HnRawSignal[]> {
   const query = encodeURIComponent(vendorName);
-  const apiUrl = `https://hn.algolia.com/api/v1/search?query=${query}&tags=story,comment&hitsPerPage=20`;
+  const apiUrl = `https://hn.algolia.com/api/v1/search?query=${query}&tags=(story,comment)&hitsPerPage=20`;
 
   const results: HnRawSignal[] = [];
   const seenUrls = new Set<string>();
