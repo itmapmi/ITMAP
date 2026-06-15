@@ -21,6 +21,11 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
+// Embeddings are not supported by the Replit proxy — use standard OpenAI endpoint
+const openaiEmbed = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
+
 // ── GCS helpers ───────────────────────────────────────────────────────────
 
 // Persist raw file buffer to GCS under a vendor-scoped path.
@@ -324,7 +329,7 @@ export async function extractText(buffer: Buffer, mimeType: string, fileName: st
 // ── Embedding ─────────────────────────────────────────────────────────────
 
 async function embedBatch(texts: string[]): Promise<number[][]> {
-  const response = await openai.embeddings.create({
+  const response = await openaiEmbed.embeddings.create({
     model: EMBED_MODEL,
     input: texts,
   });

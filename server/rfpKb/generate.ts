@@ -10,6 +10,11 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
+// Embeddings are not supported by the Replit proxy — use standard OpenAI endpoint
+const openaiEmbed = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+});
+
 const EMBED_MODEL = "text-embedding-3-small";
 
 const generationOutputSchema = z.object({
@@ -41,7 +46,7 @@ export interface GenerationResult {
 }
 
 async function embedText(text: string): Promise<number[]> {
-  const res = await openai.embeddings.create({
+  const res = await openaiEmbed.embeddings.create({
     model: EMBED_MODEL,
     input: text.slice(0, 8000),
   });
