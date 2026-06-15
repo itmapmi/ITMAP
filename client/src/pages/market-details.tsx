@@ -436,56 +436,6 @@ export default function MarketDetails() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className={`flex flex-wrap gap-2 ${isMobile ? 'justify-center' : ''}`}
           >
-            <Button
-              onClick={() => setShowVendorModal(true)}
-              variant="default"
-              size={isMobile ? "sm" : "default"}
-              data-testid="button-generate-full-report"
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              {isMobile ? 'Report' : 'Generate Reports'}
-            </Button>
-            <Button
-              onClick={() => setShowSummaryModal(true)}
-              variant="outline"
-              size={isMobile ? "sm" : "default"}
-              className="border-violet-500/50 text-violet-700 hover:bg-violet-50"
-              data-testid="button-download-summary"
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              {isMobile ? 'Summary' : 'Download Summary'}
-            </Button>
-            {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
-              hasFeature("rfp") ? (
-                <Button
-                  variant="outline"
-                  size={isMobile ? "sm" : "default"}
-                  className="border-cyan-500/50 text-cyan-700 hover:bg-cyan-50"
-                  data-testid="button-generate-rfp"
-                  disabled={createRfpMutation.isPending}
-                  onClick={() => {
-                    track("rfp_clicked", { marketId, metadata: { marketName: market.name } });
-                    createRfpMutation.mutate({ marketId: market.id, marketName: market.name });
-                  }}
-                >
-                  <FileDown className="mr-2 h-4 w-4" />
-                  {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
-                </Button>
-              ) : (
-                <LockedFeatureTooltip>
-                  <Button
-                    variant="outline"
-                    size={isMobile ? "sm" : "default"}
-                    className="border-gray-300 text-gray-400 cursor-not-allowed"
-                    data-testid="button-generate-rfp-locked"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <Lock className="mr-2 h-4 w-4" />
-                    {isMobile ? 'RFP' : 'Generate RFP'}
-                  </Button>
-                </LockedFeatureTooltip>
-              )
-            )}
             <Link href="/markets">
               <Button variant="outline" size={isMobile ? "sm" : "default"}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -587,18 +537,50 @@ export default function MarketDetails() {
                       )}
                       data-testid="tab-research-reports-locked"
                     >
-                      {isMobile ? 'Reports' : 'Research Reports'}
+                      Reports
                       <Lock className="h-3 w-3" />
                     </span>
                   </LockedFeatureTooltip>
                 ) : (
                   <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
-                    {isMobile ? 'Reports' : 'Research Reports'}
+                    Reports
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
                   {isMobile ? 'Method' : 'Methodology'}
                 </TabsTrigger>
+                {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
+                  hasFeature("rfp") ? (
+                    <button
+                      className={cn(
+                        "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-muted-foreground hover:text-foreground",
+                        isMobile && "flex-shrink-0 px-2 text-[10px]"
+                      )}
+                      disabled={createRfpMutation.isPending}
+                      data-testid="tab-generate-rfp"
+                      onClick={() => {
+                        track("rfp_clicked", { marketId, metadata: { marketName: market.name } });
+                        createRfpMutation.mutate({ marketId: market.id, marketName: market.name });
+                      }}
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      {createRfpMutation.isPending ? "Starting…" : (isMobile ? 'RFP' : 'Generate RFP')}
+                    </button>
+                  ) : (
+                    <LockedFeatureTooltip>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
+                          isMobile && "flex-shrink-0 px-2 text-[10px]"
+                        )}
+                        data-testid="tab-generate-rfp-locked"
+                      >
+                        <Lock className="h-3 w-3" />
+                        {isMobile ? 'RFP' : 'Generate RFP'}
+                      </span>
+                    </LockedFeatureTooltip>
+                  )
+                )}
               </TabsList>
 
           <TabsContent value="vendor-evaluation" className="mt-6">
@@ -689,6 +671,27 @@ export default function MarketDetails() {
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">
+            <div className="flex flex-wrap gap-2 mb-5">
+              <Button
+                onClick={() => setShowVendorModal(true)}
+                variant="default"
+                size={isMobile ? "sm" : "default"}
+                data-testid="button-generate-full-report"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {isMobile ? 'Report' : 'Generate Reports'}
+              </Button>
+              <Button
+                onClick={() => setShowSummaryModal(true)}
+                variant="outline"
+                size={isMobile ? "sm" : "default"}
+                className="border-violet-500/50 text-violet-700 hover:bg-violet-50"
+                data-testid="button-download-summary"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {isMobile ? 'Summary' : 'Download Summary'}
+              </Button>
+            </div>
             <ResearchReports marketId={marketId!} />
           </TabsContent>
 
