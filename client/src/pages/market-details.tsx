@@ -421,20 +421,20 @@ export default function MarketDetails() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <FadeInSection className={`${isMobile ? 'space-y-4' : 'flex items-center justify-between'} mb-6`}>
+        <FadeInSection className="mb-6 space-y-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
-            <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
+            <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
           </motion.div>
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className={isMobile ? 'flex gap-2 justify-center' : 'flex gap-2'}
+            className={`flex flex-wrap gap-2 ${isMobile ? 'justify-center' : ''}`}
           >
             <Button
               onClick={() => setShowVendorModal(true)}
