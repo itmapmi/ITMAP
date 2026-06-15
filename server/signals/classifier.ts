@@ -49,7 +49,7 @@ Rules:
 
   try {
     const response = await getOpenAI().chat.completions.create({
-      model: 'gpt-5-mini',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
       max_tokens: 100,

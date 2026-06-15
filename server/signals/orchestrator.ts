@@ -121,19 +121,23 @@ export async function collectSignalsForVendor(
 
       newCount++;
 
-      // Feed HIGH/MEDIUM HN and Layoffs signals into the AI suggestion pipeline.
+      // Feed signals into the AI suggestion pipeline:
+      //   - HN and Layoffs: HIGH and MEDIUM only
+      //   - Reddit: all signals regardless of impact label
       //
       // Three observable states for a qualifying signal row:
       //   fed=false, suggestionId=null  → not yet evaluated (LOW or non-qualifying source)
       //   fed=true,  suggestionId=null  → evaluated; LLM found no evidence-backed change
       //   fed=true,  suggestionId=set   → evaluated; suggestion created and linked
       //
-      // markVendorSignalFeedAttempted fires first so every HIGH/MEDIUM signal
+      // markVendorSignalFeedAttempted fires first so every qualifying signal
       // records that it entered the suggestion pipeline, regardless of outcome.
-      if (
-        SUGGESTION_SOURCES.has(raw.sourceType) &&
-        (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')
-      ) {
+      const qualifiesForSuggestion =
+        (SUGGESTION_SOURCES.has(raw.sourceType) &&
+          (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')) ||
+        raw.sourceType === 'reddit';
+
+      if (qualifiesForSuggestion) {
         try {
           // Always record that this signal was submitted to the suggestion pipeline
           await markVendorSignalFeedAttempted(signal.id);
