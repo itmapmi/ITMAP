@@ -191,7 +191,11 @@ async function extractPptx(buffer: Buffer): Promise<StructuredChunk[]> {
 }
 
 async function extractPdf(buffer: Buffer): Promise<StructuredChunk[]> {
-  const pdfParse = (await import("pdf-parse")).default;
+  const pdfParseModule = await import("pdf-parse");
+  const pdfParse: (buf: Buffer) => Promise<{ text: string }> =
+    typeof pdfParseModule.default === "function"
+      ? pdfParseModule.default
+      : (pdfParseModule as any);
   const result = await pdfParse(buffer);
 
   // Split by double newlines / form feeds as proxy for paragraph boundaries
