@@ -214,10 +214,11 @@ export default function RfpResponderPage() {
   // New session dialog state
   const [showNewSession, setShowNewSession] = useState(false);
   const [newClientOrg, setNewClientOrg] = useState("");
-  const [newMarketIds, setNewMarketIds] = useState<string[]>([]);
-  const [newExternalUrls, setNewExternalUrls] = useState<string[]>([]);
-  const [newUrlInput, setNewUrlInput] = useState("");
   const [newFile, setNewFile] = useState<File | null>(null);
+
+  // KB source management state
+  const [kbUrlInput, setKbUrlInput] = useState("");
+  const [kbUrlLabel, setKbUrlLabel] = useState("");
 
   const rfpEnabled = hasFeature("rfp");
 
@@ -357,9 +358,73 @@ export default function RfpResponderPage() {
 
   const { data: marketsData } = useQuery<{ markets: any[] }>({
     queryKey: ["/api/markets"],
-    enabled: showNewSession,
+    enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "kb",
   });
   const markets = marketsData?.markets ?? [];
+
+  const { data: kbMarketLinksData, isLoading: kbMarketLinksLoading } = useQuery<{ links: any[] }>({
+    queryKey: ["/api/rfp/kb/market-links"],
+    enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "kb",
+  });
+  const kbMarketLinks = kbMarketLinksData?.links ?? [];
+  const linkedMarketIds = new Set(kbMarketLinks.map((l: any) => l.marketId));
+
+  const { data: kbExternalUrlsData } = useQuery<{ urls: any[] }>({
+    queryKey: ["/api/rfp/kb/external-urls"],
+    enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "kb",
+  });
+  const kbExternalUrls = kbExternalUrlsData?.urls ?? [];
+
+  const addMarketLinkMutation = useMutation({
+    mutationFn: async (marketId: string) => {
+      const res = await fetch("/api/rfp/kb/market-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketId }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to add market");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/market-links"] }),
+    onError: () => toast({ title: "Failed to link market", variant: "destructive" }),
+  });
+
+  const removeMarketLinkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch(`/api/rfp/kb/market-links/${id}`, { method: "DELETE", credentials: "include" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/market-links"] }),
+  });
+
+  const addExternalUrlMutation = useMutation({
+    mutationFn: async ({ url, label }: { url: string; label?: string }) => {
+      const res = await fetch("/api/rfp/kb/external-urls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, label }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to add URL");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/external-urls"] });
+      setKbUrlInput("");
+      setKbUrlLabel("");
+    },
+    onError: (err: any) => toast({ title: "Failed to add URL", description: err?.message, variant: "destructive" }),
+  });
+
+  const removeExternalUrlMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await fetch(`/api/rfp/kb/external-urls/${id}`, { method: "DELETE", credentials: "include" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/external-urls"] }),
+  });
 
   const newSessionMutation = useMutation({
     mutationFn: async () => {
@@ -367,8 +432,6 @@ export default function RfpResponderPage() {
       const form = new FormData();
       form.append("file", newFile);
       if (newClientOrg.trim()) form.append("clientOrgName", newClientOrg.trim());
-      if (newMarketIds.length > 0) form.append("marketIds", JSON.stringify(newMarketIds));
-      if (newExternalUrls.length > 0) form.append("externalSourceUrls", JSON.stringify(newExternalUrls));
       const res = await fetch("/api/rfp/responses", {
         method: "POST",
         body: form,
@@ -383,9 +446,6 @@ export default function RfpResponderPage() {
     onSuccess: ({ session }) => {
       setShowNewSession(false);
       setNewClientOrg("");
-      setNewMarketIds([]);
-      setNewExternalUrls([]);
-      setNewUrlInput("");
       setNewFile(null);
       queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses"] });
       navigate(`/rfp-responder/sessions/${session.id}`);
@@ -464,7 +524,7 @@ export default function RfpResponderPage() {
 
         {/* New Session Dialog */}
         <Dialog open={showNewSession} onOpenChange={setShowNewSession}>
-          <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Upload Client RFP</DialogTitle>
               <DialogDescription className="text-slate-400">
@@ -481,98 +541,6 @@ export default function RfpResponderPage() {
                   placeholder="e.g. Acme Corp"
                   className="w-full rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-200 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1.5">
-                  Spectio markets <span className="text-slate-600">(optional — adds vendor eval, product eval &amp; ecosystem data)</span>
-                </label>
-                <div className="rounded-lg bg-slate-800 border border-white/8 max-h-44 overflow-y-auto divide-y divide-white/5">
-                  {markets.length === 0 ? (
-                    <p className="text-xs text-slate-600 px-3 py-2">No markets available</p>
-                  ) : (
-                    markets.map((m: any) => {
-                      const checked = newMarketIds.includes(m.id);
-                      return (
-                        <label
-                          key={m.id}
-                          className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/3 transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() =>
-                              setNewMarketIds((prev) =>
-                                checked ? prev.filter((id) => id !== m.id) : [...prev, m.id],
-                              )
-                            }
-                            className="accent-cyan-500 h-3.5 w-3.5 flex-shrink-0"
-                          />
-                          <span className="text-sm text-slate-300 leading-tight">
-                            {m.name.replace(/^ITMAP for /i, "")}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                {newMarketIds.length > 0 && (
-                  <p className="text-xs text-cyan-400 mt-1.5">
-                    {newMarketIds.length} market{newMarketIds.length > 1 ? "s" : ""} selected
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1.5">
-                  External reference URLs <span className="text-slate-600">(optional — web pages the AI can draw from)</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={newUrlInput}
-                    onChange={(e) => setNewUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const url = newUrlInput.trim();
-                        if (url && !newExternalUrls.includes(url)) {
-                          setNewExternalUrls((prev) => [...prev, url]);
-                          setNewUrlInput("");
-                        }
-                      }
-                    }}
-                    placeholder="https://example.com/security-policy"
-                    className="flex-1 rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-200 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = newUrlInput.trim();
-                      if (url && !newExternalUrls.includes(url)) {
-                        setNewExternalUrls((prev) => [...prev, url]);
-                        setNewUrlInput("");
-                      }
-                    }}
-                    className="px-3 py-2 rounded-lg bg-slate-700 border border-white/8 text-slate-300 text-sm hover:bg-slate-600 transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-                {newExternalUrls.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {newExternalUrls.map((url) => (
-                      <li key={url} className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 group">
-                        <span className="flex-1 truncate">{url}</span>
-                        <button
-                          type="button"
-                          onClick={() => setNewExternalUrls((prev) => prev.filter((u) => u !== url))}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-rose-400"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400 block mb-1.5">RFP document <span className="text-rose-400">*</span></label>
@@ -881,6 +849,139 @@ export default function RfpResponderPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* ── Spectio Market Intelligence ───────────────────────────────── */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Spectio Market Intelligence</h2>
+            {kbMarketLinks.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[10px] font-medium text-cyan-400">
+                {kbMarketLinks.length} linked
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Select Spectio markets to include vendor evaluation, product evaluation, and ecosystem data as a live intelligence source when generating RFP responses.
+          </p>
+          <div className="rounded-xl bg-slate-900/70 border border-white/8 overflow-hidden">
+            {kbMarketLinksLoading ? (
+              <div className="px-5 py-4 space-y-2">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full bg-slate-800/60 rounded-lg" />)}
+              </div>
+            ) : markets.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-slate-500">No markets available.</p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {markets.map((m: any) => {
+                  const linked = linkedMarketIds.has(m.id);
+                  const link = kbMarketLinks.find((l: any) => l.marketId === m.id);
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/2 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-slate-200">{m.name.replace(/^ITMAP for /i, "")}</span>
+                      </div>
+                      <button
+                        onClick={() =>
+                          linked && link
+                            ? removeMarketLinkMutation.mutate(link.id)
+                            : addMarketLinkMutation.mutate(m.id)
+                        }
+                        disabled={addMarketLinkMutation.isPending || removeMarketLinkMutation.isPending}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                          linked
+                            ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                            : "bg-slate-800 border-white/8 text-slate-400 hover:border-cyan-500/30 hover:text-cyan-400"
+                        }`}
+                      >
+                        {linked ? (
+                          <><CheckCircle className="h-3.5 w-3.5" /> Linked</>
+                        ) : (
+                          <><Plus className="h-3.5 w-3.5" /> Add</>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── External Reference URLs ───────────────────────────────────── */}
+        <div className="mt-8 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">External Reference URLs</h2>
+            {kbExternalUrls.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+                {kbExternalUrls.length} added
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Add public web pages (product pages, security whitepapers, certifications) that the AI can draw from when generating responses.
+          </p>
+
+          <div className="rounded-xl bg-slate-900/70 border border-white/8 overflow-hidden mb-3">
+            <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input
+                type="url"
+                value={kbUrlInput}
+                onChange={(e) => setKbUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (kbUrlInput.trim()) addExternalUrlMutation.mutate({ url: kbUrlInput.trim(), label: kbUrlLabel.trim() || undefined });
+                  }
+                }}
+                placeholder="https://example.com/security-policy"
+                className="sm:col-span-2 rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-200 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={kbUrlLabel}
+                  onChange={(e) => setKbUrlLabel(e.target.value)}
+                  placeholder="Label (optional)"
+                  className="flex-1 rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-300 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                />
+                <button
+                  onClick={() => {
+                    if (kbUrlInput.trim()) addExternalUrlMutation.mutate({ url: kbUrlInput.trim(), label: kbUrlLabel.trim() || undefined });
+                  }}
+                  disabled={!kbUrlInput.trim() || addExternalUrlMutation.isPending}
+                  className="px-3 py-2 rounded-lg bg-gradient-to-r from-cyan-500/20 to-violet-600/20 border border-white/10 text-slate-300 hover:text-white hover:border-cyan-500/30 transition-colors disabled:opacity-40"
+                >
+                  {addExternalUrlMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {kbExternalUrls.length > 0 && (
+              <div className="border-t border-white/5 divide-y divide-white/5">
+                {kbExternalUrls.map((u: any) => (
+                  <div key={u.id} className="flex items-center gap-3 px-5 py-3 group">
+                    <div className="flex-1 min-w-0">
+                      {u.label && <p className="text-xs font-medium text-slate-300 mb-0.5">{u.label}</p>}
+                      <p className="text-xs text-slate-500 truncate">{u.url}</p>
+                    </div>
+                    <button
+                      onClick={() => removeExternalUrlMutation.mutate(u.id)}
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {kbExternalUrls.length === 0 && (
+              <div className="px-5 pb-5 text-center">
+                <p className="text-xs text-slate-600">No external URLs added yet.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         </>}

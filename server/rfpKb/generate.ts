@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { searchRfpKbChunks, type SimilarChunk } from "../storage/rfpKb";
-import { buildSpectioContext, buildMultiMarketSpectioContext, selectTopDataPoints, formatSpectioContext, type SpectioContext, type SpectioDataPoint } from "./spectioBinding";
+import { buildMultiMarketSpectioContext, selectTopDataPoints, formatSpectioContext, type SpectioContext, type SpectioDataPoint } from "./spectioBinding";
+import { listRfpKbMarketLinks, listRfpKbExternalUrls } from "../storage/rfpKb";
 import type { ResponseSource, CompetitiveClaim } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -208,23 +209,22 @@ export async function generateRequirementResponse(params: {
   vendorId: string;
   requirementText: string;
   section?: string | null;
-  marketId?: string | null;
-  marketIds?: string[];
-  externalSourceUrls?: string[];
   vendorName: string;
   topK?: number;
 }): Promise<GenerationResult> {
-  const { vendorId, requirementText, section, marketId, marketIds, externalSourceUrls, vendorName, topK = 8 } = params;
+  const { vendorId, requirementText, section, vendorName, topK = 8 } = params;
 
-  // Resolve effective market list: prefer marketIds array, fall back to single marketId
-  const effectiveMarketIds = (marketIds && marketIds.length > 0)
-    ? marketIds
-    : marketId ? [marketId] : [];
+  // 1. Load vendor-level KB sources (market links + external URLs) in parallel with embedding
+  const [queryEmbedding, kbMarketLinks, kbExternalUrls] = await Promise.all([
+    embedText(requirementText),
+    listRfpKbMarketLinks(vendorId),
+    listRfpKbExternalUrls(vendorId),
+  ]);
 
-  // 1. Embed requirement text
-  const queryEmbedding = await embedText(requirementText);
+  const effectiveMarketIds = kbMarketLinks.map((l) => l.marketId);
+  const effectiveExternalUrls = kbExternalUrls.map((u) => u.url);
 
-  // 2. Search vendor KB + build requirement-conditioned Spectio context + fetch external URLs in parallel
+  // 2. Search vendor KB + build Spectio context + fetch external URLs in parallel
   const [chunks, spectioCtx, externalPages] = await Promise.all([
     searchRfpKbChunks(vendorId, queryEmbedding, topK),
     effectiveMarketIds.length > 0
@@ -233,8 +233,8 @@ export async function generateRequirementResponse(params: {
           return null;
         })
       : Promise.resolve(null),
-    externalSourceUrls && externalSourceUrls.length > 0
-      ? Promise.all(externalSourceUrls.map(fetchExternalUrl)).then((r) => r.filter(Boolean) as { url: string; content: string }[])
+    effectiveExternalUrls.length > 0
+      ? Promise.all(effectiveExternalUrls.map(fetchExternalUrl)).then((r) => r.filter(Boolean) as { url: string; content: string }[])
       : Promise.resolve([]),
   ]);
 

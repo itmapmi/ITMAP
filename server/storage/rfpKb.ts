@@ -1,9 +1,13 @@
 import {
   rfpKbDocuments,
   rfpKbChunks,
+  rfpKbMarketLinks,
+  rfpKbExternalUrls,
   type RfpKbDocument,
   type RfpKbChunk,
   type InsertRfpKbChunk,
+  type RfpKbMarketLink,
+  type RfpKbExternalUrl,
 } from "@shared/schema";
 import { db } from "../db";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -225,4 +229,42 @@ export async function searchRfpKbChunks(
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
+}
+
+// ── KB: vendor-level market links ─────────────────────────────────────────
+
+export async function listRfpKbMarketLinks(vendorId: string): Promise<RfpKbMarketLink[]> {
+  return db.select().from(rfpKbMarketLinks).where(eq(rfpKbMarketLinks.vendorId, vendorId)).orderBy(asc(rfpKbMarketLinks.createdAt));
+}
+
+export async function addRfpKbMarketLink(vendorId: string, marketId: string): Promise<RfpKbMarketLink> {
+  // Upsert — ignore if already linked
+  const existing = await db.select().from(rfpKbMarketLinks)
+    .where(and(eq(rfpKbMarketLinks.vendorId, vendorId), eq(rfpKbMarketLinks.marketId, marketId)));
+  if (existing[0]) return existing[0];
+  const [row] = await db.insert(rfpKbMarketLinks).values({ vendorId, marketId }).returning();
+  return row!;
+}
+
+export async function removeRfpKbMarketLink(id: string, vendorId: string): Promise<boolean> {
+  const result = await db.delete(rfpKbMarketLinks)
+    .where(and(eq(rfpKbMarketLinks.id, id), eq(rfpKbMarketLinks.vendorId, vendorId)));
+  return (result.rowCount ?? 0) > 0;
+}
+
+// ── KB: vendor-level external URLs ───────────────────────────────────────
+
+export async function listRfpKbExternalUrls(vendorId: string): Promise<RfpKbExternalUrl[]> {
+  return db.select().from(rfpKbExternalUrls).where(eq(rfpKbExternalUrls.vendorId, vendorId)).orderBy(asc(rfpKbExternalUrls.createdAt));
+}
+
+export async function addRfpKbExternalUrl(vendorId: string, url: string, label?: string | null): Promise<RfpKbExternalUrl> {
+  const [row] = await db.insert(rfpKbExternalUrls).values({ vendorId, url, label: label ?? null }).returning();
+  return row!;
+}
+
+export async function removeRfpKbExternalUrl(id: string, vendorId: string): Promise<boolean> {
+  const result = await db.delete(rfpKbExternalUrls)
+    .where(and(eq(rfpKbExternalUrls.id, id), eq(rfpKbExternalUrls.vendorId, vendorId)));
+  return (result.rowCount ?? 0) > 0;
 }

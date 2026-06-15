@@ -20,6 +20,14 @@ import {
   updateRfpResponseAnswer,
   recomputeSessionCounts,
 } from "../storage/rfpResponder";
+import {
+  listRfpKbMarketLinks,
+  addRfpKbMarketLink,
+  removeRfpKbMarketLink,
+  listRfpKbExternalUrls,
+  addRfpKbExternalUrl,
+  removeRfpKbExternalUrl,
+} from "../storage/rfpKb";
 import { storage } from "../storage";
 
 // ── File upload config ────────────────────────────────────────────────────
@@ -343,9 +351,6 @@ export function registerRfpResponderRoutes(app: Express): void {
                     vendorId,
                     requirementText: req_.requirementText,
                     section: req_.section,
-                    marketId: session.marketId,
-                    marketIds: session.marketIds ?? undefined,
-                    externalSourceUrls: session.externalSourceUrls ?? undefined,
                     vendorName,
                   });
                   await upsertRfpResponseAnswer({
@@ -418,4 +423,70 @@ export function registerRfpResponderRoutes(app: Express): void {
       }
     },
   );
+
+  // ── KB: vendor-level intelligence sources ────────────────────────────────
+
+  // Market links
+  app.get("/api/rfp/kb/market-links", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const links = await listRfpKbMarketLinks(vendorId);
+      res.json({ links });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/rfp/kb/market-links", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const { marketId } = z.object({ marketId: z.string().min(1) }).parse(req.body);
+      const link = await addRfpKbMarketLink(vendorId, marketId);
+      res.json({ link });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/rfp/kb/market-links/:id", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      await removeRfpKbMarketLink(req.params.id, vendorId);
+      res.json({ deleted: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // External URLs
+  app.get("/api/rfp/kb/external-urls", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const urls = await listRfpKbExternalUrls(vendorId);
+      res.json({ urls });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/rfp/kb/external-urls", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const { url, label } = z.object({ url: z.string().url(), label: z.string().optional() }).parse(req.body);
+      const entry = await addRfpKbExternalUrl(vendorId, url, label);
+      res.json({ entry });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/rfp/kb/external-urls/:id", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      await removeRfpKbExternalUrl(req.params.id, vendorId);
+      res.json({ deleted: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 }

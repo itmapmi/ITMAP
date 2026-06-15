@@ -1728,6 +1728,26 @@ export type InsertRfpKbDocument = z.infer<typeof insertRfpKbDocumentSchema>;
 export type RfpKbChunk = typeof rfpKbChunks.$inferSelect;
 export type InsertRfpKbChunk = z.infer<typeof insertRfpKbChunkSchema>;
 
+// ── RFP KB: vendor-level intelligence sources ──────────────────────────────
+
+export const rfpKbMarketLinks = pgTable("rfp_kb_market_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const rfpKbExternalUrls = pgTable("rfp_kb_external_urls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  label: text("label"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type RfpKbMarketLink = typeof rfpKbMarketLinks.$inferSelect;
+export type RfpKbExternalUrl = typeof rfpKbExternalUrls.$inferSelect;
+
 
 // ── Datasheet Comparison ─────────────────────────────────────────────────
 // Separate from `markets` — these tables model SKU-level hardware vendors
