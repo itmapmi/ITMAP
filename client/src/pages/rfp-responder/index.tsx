@@ -214,7 +214,9 @@ export default function RfpResponderPage() {
   // New session dialog state
   const [showNewSession, setShowNewSession] = useState(false);
   const [newClientOrg, setNewClientOrg] = useState("");
-  const [newMarketId, setNewMarketId] = useState("");
+  const [newMarketIds, setNewMarketIds] = useState<string[]>([]);
+  const [newExternalUrls, setNewExternalUrls] = useState<string[]>([]);
+  const [newUrlInput, setNewUrlInput] = useState("");
   const [newFile, setNewFile] = useState<File | null>(null);
 
   const rfpEnabled = hasFeature("rfp");
@@ -365,7 +367,8 @@ export default function RfpResponderPage() {
       const form = new FormData();
       form.append("file", newFile);
       if (newClientOrg.trim()) form.append("clientOrgName", newClientOrg.trim());
-      if (newMarketId) form.append("marketId", newMarketId);
+      if (newMarketIds.length > 0) form.append("marketIds", JSON.stringify(newMarketIds));
+      if (newExternalUrls.length > 0) form.append("externalSourceUrls", JSON.stringify(newExternalUrls));
       const res = await fetch("/api/rfp/responses", {
         method: "POST",
         body: form,
@@ -380,7 +383,9 @@ export default function RfpResponderPage() {
     onSuccess: ({ session }) => {
       setShowNewSession(false);
       setNewClientOrg("");
-      setNewMarketId("");
+      setNewMarketIds([]);
+      setNewExternalUrls([]);
+      setNewUrlInput("");
       setNewFile(null);
       queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses"] });
       navigate(`/rfp-responder/sessions/${session.id}`);
@@ -459,7 +464,7 @@ export default function RfpResponderPage() {
 
         {/* New Session Dialog */}
         <Dialog open={showNewSession} onOpenChange={setShowNewSession}>
-          <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-md">
+          <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Upload Client RFP</DialogTitle>
               <DialogDescription className="text-slate-400">
@@ -478,19 +483,96 @@ export default function RfpResponderPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1.5">Market (optional — adds Spectio intelligence)</label>
-                <select
-                  value={newMarketId}
-                  onChange={(e) => setNewMarketId(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-                >
-                  <option value="">No market selected</option>
-                  {markets.map((m: any) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name.replace(/^ITMAP for /i, "")}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-xs text-slate-400 block mb-1.5">
+                  Spectio markets <span className="text-slate-600">(optional — adds vendor eval, product eval &amp; ecosystem data)</span>
+                </label>
+                <div className="rounded-lg bg-slate-800 border border-white/8 max-h-44 overflow-y-auto divide-y divide-white/5">
+                  {markets.length === 0 ? (
+                    <p className="text-xs text-slate-600 px-3 py-2">No markets available</p>
+                  ) : (
+                    markets.map((m: any) => {
+                      const checked = newMarketIds.includes(m.id);
+                      return (
+                        <label
+                          key={m.id}
+                          className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-white/3 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setNewMarketIds((prev) =>
+                                checked ? prev.filter((id) => id !== m.id) : [...prev, m.id],
+                              )
+                            }
+                            className="accent-cyan-500 h-3.5 w-3.5 flex-shrink-0"
+                          />
+                          <span className="text-sm text-slate-300 leading-tight">
+                            {m.name.replace(/^ITMAP for /i, "")}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                {newMarketIds.length > 0 && (
+                  <p className="text-xs text-cyan-400 mt-1.5">
+                    {newMarketIds.length} market{newMarketIds.length > 1 ? "s" : ""} selected
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">
+                  External reference URLs <span className="text-slate-600">(optional — web pages the AI can draw from)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={newUrlInput}
+                    onChange={(e) => setNewUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const url = newUrlInput.trim();
+                        if (url && !newExternalUrls.includes(url)) {
+                          setNewExternalUrls((prev) => [...prev, url]);
+                          setNewUrlInput("");
+                        }
+                      }
+                    }}
+                    placeholder="https://example.com/security-policy"
+                    className="flex-1 rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-200 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = newUrlInput.trim();
+                      if (url && !newExternalUrls.includes(url)) {
+                        setNewExternalUrls((prev) => [...prev, url]);
+                        setNewUrlInput("");
+                      }
+                    }}
+                    className="px-3 py-2 rounded-lg bg-slate-700 border border-white/8 text-slate-300 text-sm hover:bg-slate-600 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {newExternalUrls.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {newExternalUrls.map((url) => (
+                      <li key={url} className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400 group">
+                        <span className="flex-1 truncate">{url}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewExternalUrls((prev) => prev.filter((u) => u !== url))}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-rose-400"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400 block mb-1.5">RFP document <span className="text-rose-400">*</span></label>

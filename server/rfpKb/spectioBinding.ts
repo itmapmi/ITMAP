@@ -257,6 +257,54 @@ export function selectTopDataPoints(
   return selected;
 }
 
+/**
+ * Build Spectio context across multiple markets, merging and deduplicating data points.
+ * Data points from all markets are pooled and re-sorted by relevance so the top-k
+ * selection sees the best signal from whichever market is most relevant.
+ */
+export async function buildMultiMarketSpectioContext(
+  vendorId: string,
+  marketIds: string[],
+  requirementText?: string,
+): Promise<SpectioContext | null> {
+  const unique = [...new Set(marketIds.filter(Boolean))];
+  if (unique.length === 0) return null;
+
+  const results = await Promise.allSettled(
+    unique.map((mid) => buildSpectioContext(vendorId, mid, requirementText)),
+  );
+
+  const successful = results
+    .filter((r): r is PromiseFulfilledResult<SpectioContext> => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  if (successful.length === 0) return null;
+
+  // Merge: use first market as base, append data points from subsequent markets
+  const base = successful[0]!;
+  const mergedDataPoints: SpectioDataPoint[] = [...base.dataPoints];
+  const marketNames: string[] = [base.marketName];
+
+  for (const ctx of successful.slice(1)) {
+    marketNames.push(ctx.marketName);
+    for (const dp of ctx.dataPoints) {
+      // Deduplicate by label+value to avoid repeating the same score
+      const isDuplicate = mergedDataPoints.some(
+        (existing) => existing.label === dp.label && existing.value === dp.value,
+      );
+      if (!isDuplicate) mergedDataPoints.push(dp);
+    }
+  }
+
+  mergedDataPoints.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+  return {
+    ...base,
+    marketName: marketNames.join(", "),
+    dataPoints: mergedDataPoints,
+  };
+}
+
 /** Format a subset of data points into a plain-text block for LLM prompts. */
 export function formatSpectioContext(ctx: SpectioContext, dataPoints?: SpectioDataPoint[]): string {
   const pts = dataPoints ?? ctx.dataPoints;

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { searchRfpKbChunks, type SimilarChunk } from "../storage/rfpKb";
-import { buildSpectioContext, selectTopDataPoints, formatSpectioContext, type SpectioContext, type SpectioDataPoint } from "./spectioBinding";
+import { buildSpectioContext, buildMultiMarketSpectioContext, selectTopDataPoints, formatSpectioContext, type SpectioContext, type SpectioDataPoint } from "./spectioBinding";
 import type { ResponseSource, CompetitiveClaim } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -88,6 +88,7 @@ function buildUserMessage(
   chunks: SimilarChunk[],
   spectioCtx: SpectioContext | null,
   rankedDataPoints: SpectioDataPoint[],
+  externalPages?: { url: string; content: string }[],
 ): string {
   const parts: string[] = [];
 
@@ -106,6 +107,13 @@ function buildUserMessage(
 
   if (spectioCtx && rankedDataPoints.length > 0) {
     parts.push("\n" + formatSpectioContext(spectioCtx, rankedDataPoints));
+  }
+
+  if (externalPages && externalPages.length > 0) {
+    parts.push("\n=== External Reference Sources ===");
+    for (const page of externalPages) {
+      parts.push(`[Source: ${page.url}]\n${page.content.slice(0, 1200)}`);
+    }
   }
 
   parts.push("\nRemember: competitive claims must ONLY appear in the competitiveClaims array, never in the answer text.");
@@ -174,28 +182,60 @@ function buildSources(
   return sources;
 }
 
+/** Fetch a URL and return trimmed plain text (best-effort, no crash). */
+async function fetchExternalUrl(url: string): Promise<{ url: string; content: string } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "spectio-rfp-agent/1.0" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // Strip HTML tags to get readable text
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return { url, content: text.slice(0, 6000) };
+  } catch {
+    return null;
+  }
+}
+
 export async function generateRequirementResponse(params: {
   vendorId: string;
   requirementText: string;
   section?: string | null;
   marketId?: string | null;
+  marketIds?: string[];
+  externalSourceUrls?: string[];
   vendorName: string;
   topK?: number;
 }): Promise<GenerationResult> {
-  const { vendorId, requirementText, section, marketId, vendorName, topK = 8 } = params;
+  const { vendorId, requirementText, section, marketId, marketIds, externalSourceUrls, vendorName, topK = 8 } = params;
+
+  // Resolve effective market list: prefer marketIds array, fall back to single marketId
+  const effectiveMarketIds = (marketIds && marketIds.length > 0)
+    ? marketIds
+    : marketId ? [marketId] : [];
 
   // 1. Embed requirement text
   const queryEmbedding = await embedText(requirementText);
 
-  // 2. Search vendor KB + build requirement-conditioned Spectio context in parallel
-  const [chunks, spectioCtx] = await Promise.all([
+  // 2. Search vendor KB + build requirement-conditioned Spectio context + fetch external URLs in parallel
+  const [chunks, spectioCtx, externalPages] = await Promise.all([
     searchRfpKbChunks(vendorId, queryEmbedding, topK),
-    marketId
-      ? buildSpectioContext(vendorId, marketId, requirementText).catch((e) => {
+    effectiveMarketIds.length > 0
+      ? buildMultiMarketSpectioContext(vendorId, effectiveMarketIds, requirementText).catch((e) => {
           console.warn("[rfp-generate] Spectio context failed:", e.message);
           return null;
         })
       : Promise.resolve(null),
+    externalSourceUrls && externalSourceUrls.length > 0
+      ? Promise.all(externalSourceUrls.map(fetchExternalUrl)).then((r) => r.filter(Boolean) as { url: string; content: string }[])
+      : Promise.resolve([]),
   ]);
 
   // 3. Select the top-k requirement-relevant Spectio data points
@@ -213,7 +253,7 @@ export async function generateRequirementResponse(params: {
           { role: "system", content: buildSystemPrompt(vendorName) },
           {
             role: "user",
-            content: buildUserMessage(requirementText, section, chunks, spectioCtx, rankedDataPoints),
+            content: buildUserMessage(requirementText, section, chunks, spectioCtx, rankedDataPoints, externalPages),
           },
         ],
         response_format: { type: "json_object" },

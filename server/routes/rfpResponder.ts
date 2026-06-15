@@ -95,6 +95,24 @@ export function registerRfpResponderRoutes(app: Express): void {
       const marketId =
         typeof req.body.marketId === "string" && req.body.marketId ? req.body.marketId : null;
 
+      // marketIds: JSON-encoded string array from multipart form
+      let marketIds: string[] | null = null;
+      try {
+        if (typeof req.body.marketIds === "string" && req.body.marketIds) {
+          const parsed = JSON.parse(req.body.marketIds);
+          if (Array.isArray(parsed) && parsed.length > 0) marketIds = parsed.filter(Boolean);
+        }
+      } catch {}
+
+      // externalSourceUrls: JSON-encoded string array from multipart form
+      let externalSourceUrls: string[] | null = null;
+      try {
+        if (typeof req.body.externalSourceUrls === "string" && req.body.externalSourceUrls) {
+          const parsed = JSON.parse(req.body.externalSourceUrls);
+          if (Array.isArray(parsed) && parsed.length > 0) externalSourceUrls = parsed.filter(Boolean);
+        }
+      } catch {}
+
       const { originalname, mimetype, buffer } = req.file;
 
       // Create session record immediately
@@ -104,6 +122,8 @@ export function registerRfpResponderRoutes(app: Express): void {
         clientOrgName,
         rfpFileName: originalname,
         marketId,
+        marketIds,
+        externalSourceUrls,
         status: "decomposing",
       });
 
@@ -196,7 +216,7 @@ export function registerRfpResponderRoutes(app: Express): void {
     }
   });
 
-  // Update session metadata (clientOrgName, marketId)
+  // Update session metadata (clientOrgName, marketId, marketIds, externalSourceUrls)
   app.patch("/api/rfp/responses/:id", ...guard, async (req: Request, res: Response) => {
     try {
       const vendorId = primaryVendorId(req)!;
@@ -204,6 +224,8 @@ export function registerRfpResponderRoutes(app: Express): void {
       const schema = z.object({
         clientOrgName: z.string().nullable().optional(),
         marketId: z.string().nullable().optional(),
+        marketIds: z.array(z.string()).nullable().optional(),
+        externalSourceUrls: z.array(z.string()).nullable().optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
@@ -322,6 +344,8 @@ export function registerRfpResponderRoutes(app: Express): void {
                     requirementText: req_.requirementText,
                     section: req_.section,
                     marketId: session.marketId,
+                    marketIds: session.marketIds ?? undefined,
+                    externalSourceUrls: session.externalSourceUrls ?? undefined,
                     vendorName,
                   });
                   await upsertRfpResponseAnswer({

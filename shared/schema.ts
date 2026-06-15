@@ -2031,6 +2031,8 @@ export const rfpResponseSessions = pgTable("rfp_response_sessions", {
   rfpFileName: text("rfp_file_name"),
   rfpText: text("rfp_text"),
   marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
+  marketIds: text("market_ids").array(),
+  externalSourceUrls: text("external_source_urls").array(),
   status: text("status").notNull().default("uploading"),
   errorMessage: text("error_message"),
   requirementsCount: integer("requirements_count").notNull().default(0),

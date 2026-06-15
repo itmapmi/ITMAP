@@ -22,6 +22,8 @@ export async function createRfpResponseSession(data: {
   rfpFileName?: string | null;
   rfpText?: string | null;
   marketId?: string | null;
+  marketIds?: string[] | null;
+  externalSourceUrls?: string[] | null;
   status?: string;
 }): Promise<RfpResponseSession> {
   const [row] = await db.insert(rfpResponseSessions).values(data).returning();
@@ -73,6 +75,8 @@ export async function updateRfpResponseSession(
       | "clientOrgName"
       | "rfpText"
       | "marketId"
+      | "marketIds"
+      | "externalSourceUrls"
       | "errorMessage"
       | "requirementsCount"
       | "greenCount"
