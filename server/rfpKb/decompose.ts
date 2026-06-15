@@ -9,7 +9,7 @@ const openai = new OpenAI({
 const requirementItemSchema = z.object({
   section: z.string(),
   requirementText: z.string().min(5),
-  category: z.enum(["functional", "technical", "commercial", "compliance", "support", "other"]),
+  category: z.enum(["functional", "technical", "commercial", "compliance", "support", "other"]).catch("other"),
   mandatory: z.boolean(),
   responseType: z.enum(["yes_no", "descriptive", "scored", "reference"]),
 });
