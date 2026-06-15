@@ -1,5 +1,9 @@
 import OpenAI from "openai";
+import { createRequire } from "module";
 import { objectStorageClient } from "../objectStorage";
+
+const _require = createRequire(import.meta.url);
+const { PDFParse } = _require("pdf-parse") as { PDFParse: new (opts: { data: Buffer; verbosity: number }) => { getText: () => Promise<{ text: string }> } };
 import {
   bulkInsertRfpKbChunks,
   deleteChunksByDocument,
@@ -191,7 +195,6 @@ async function extractPptx(buffer: Buffer): Promise<StructuredChunk[]> {
 }
 
 async function extractPdf(buffer: Buffer): Promise<StructuredChunk[]> {
-  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer, verbosity: 0 });
   const result = await parser.getText();
 
