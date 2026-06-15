@@ -684,26 +684,30 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
     // Add professional-looking axes
     const xAxis = d3.axisBottom(xScale)
       .tickSize(-chartHeight)
+      .tickSizeOuter(0)
       .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
       .tickSize(-chartWidth)
+      .tickSizeOuter(0)
       .tickFormat(d => d === 50 || d === 100 ? `${d}` : '');
 
-    svg.append("g")
+    const xAxisG = svg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(xAxis)
-      .selectAll(".tick line")
+      .call(xAxis);
+    xAxisG.selectAll(".tick line")
       .attr("stroke", "#e2e8f0")
       .attr("stroke-width", 1);
+    xAxisG.select(".domain").remove();
 
-    svg.append("g")
+    const yAxisG = svg.append("g")
       .attr("class", "y-axis")
       .attr("transform", `translate(${margin.left},0)`)
-      .call(yAxis)
-      .selectAll(".tick line")
+      .call(yAxis);
+    yAxisG.selectAll(".tick line")
       .attr("stroke", "#e2e8f0")
       .attr("stroke-width", 1);
+    yAxisG.select(".domain").remove();
 
     // Style axis text
     svg.selectAll(".x-axis text, .y-axis text")
