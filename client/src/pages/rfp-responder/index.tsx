@@ -356,11 +356,11 @@ export default function RfpResponderPage() {
   });
   const sessions = sessionsData?.sessions ?? [];
 
-  const { data: marketsData } = useQuery<{ markets: any[] }>({
+  const { data: marketsData } = useQuery<any[]>({
     queryKey: ["/api/markets"],
     enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "kb",
   });
-  const markets = marketsData?.markets ?? [];
+  const markets = marketsData ?? [];
 
   const { data: kbMarketLinksData, isLoading: kbMarketLinksLoading } = useQuery<{ links: any[] }>({
     queryKey: ["/api/rfp/kb/market-links"],
