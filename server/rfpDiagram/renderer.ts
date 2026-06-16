@@ -88,7 +88,7 @@ function renderEdge(edge: DiagramEdge, layout: LayoutResult): string {
 ${labelPart}`;
 }
 
-function renderNode(node: DiagramNode, pos: { x: number; y: number }): string {
+function renderNode(node: DiagramNode, pos: { x: number; y: number }, imageOverrides?: Record<string, string>): string {
   const color = NODE_COLORS[node.type as NodeType] ?? "#94a3b8";
   const HALF = 26;
   const rawLabel = node.label.length > 20 ? node.label.slice(0, 19) + "\u2026" : node.label;
@@ -97,11 +97,17 @@ function renderNode(node: DiagramNode, pos: { x: number; y: number }): string {
         dominant-baseline="middle">\xd7${node.count}</text>`
     : "";
 
+  const stencilDataUri = imageOverrides?.[node.type];
+
+  const iconEl = stencilDataUri
+    ? `<image href="${stencilDataUri}" x="${pos.x - HALF}" y="${pos.y - HALF}" width="52" height="52" preserveAspectRatio="xMidYMid meet"/>`
+    : `<g color="${color}" transform="translate(${pos.x - HALF}, ${pos.y - HALF})">
+    <use href="#icon-${esc(node.type)}" width="52" height="52"/>
+  </g>`;
+
   return `<g class="diagram-node" data-node-id="${esc(node.id)}" data-node-type="${esc(node.type)}" cursor="grab">
   <rect x="${pos.x - HALF - 4}" y="${pos.y - HALF - 4}" width="${(HALF + 4) * 2}" height="${(HALF + 4) * 2}" rx="8" fill="${color}10" stroke="${color}" stroke-width="1" stroke-opacity="0.3"/>
-  <g color="${color}" transform="translate(${pos.x - HALF}, ${pos.y - HALF})">
-    <use href="#icon-${esc(node.type)}" width="52" height="52"/>
-  </g>
+  ${iconEl}
   ${countBadge}
   <text x="${pos.x}" y="${pos.y + HALF + 16}" font-family="${LABEL_FONT}" font-size="11" fill="#cbd5e1" text-anchor="middle" dominant-baseline="hanging">${esc(rawLabel)}</text>
 </g>`;
@@ -156,11 +162,19 @@ export interface RenderResult {
   iconManifest: IconManifestItem[];
 }
 
-export function renderDiagram(spec: TopologySpec, layout: LayoutResult): RenderResult {
+export function renderDiagram(
+  spec: TopologySpec,
+  layout: LayoutResult,
+  imageOverrides?: Record<string, string>,
+): RenderResult {
   const { nodePositions, edgeRoutes, groupBoxes, canvasWidth, canvasHeight } = layout;
   const nodeTypes = spec.nodes.map((n) => n.type as NodeType);
 
-  const iconDefs = buildIconDefs(nodeTypes);
+  // Only build SVG symbol defs for node types that don't have a stencil image
+  const typesNeedingDefs = imageOverrides
+    ? nodeTypes.filter((t) => !imageOverrides[t])
+    : nodeTypes;
+  const iconDefs = buildIconDefs(typesNeedingDefs);
 
   const groupsSvg = spec.groups.map((g) => {
     const box = groupBoxes[g.id];
@@ -171,7 +185,7 @@ export function renderDiagram(spec: TopologySpec, layout: LayoutResult): RenderR
 
   const nodesSvg = spec.nodes.map((n) => {
     const pos = nodePositions[n.id];
-    return pos ? renderNode(n, pos) : "";
+    return pos ? renderNode(n, pos, imageOverrides) : "";
   }).join("\n");
 
   const legend = renderLegend(spec);
@@ -201,7 +215,10 @@ ${legend}
 </svg>`;
 
   const iconManifest: IconManifestItem[] = spec.nodes.map((n) => {
-    const resolved = resolveIcon(n.type as NodeType);
+    const hasStencil = !!(imageOverrides?.[n.type]);
+    const resolved = hasStencil
+      ? { tier: 2 as const, tierLabel: "Tier 2 — Stencil", tier4Pending: false }
+      : resolveIcon(n.type as NodeType);
     return {
       nodeId: n.id,
       nodeType: n.type,

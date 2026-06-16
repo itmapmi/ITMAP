@@ -1748,6 +1748,20 @@ export const rfpKbExternalUrls = pgTable("rfp_kb_external_urls", {
 export type RfpKbMarketLink = typeof rfpKbMarketLinks.$inferSelect;
 export type RfpKbExternalUrl = typeof rfpKbExternalUrls.$inferSelect;
 
+// ── RFP KB: appliance stencil images (per node type) ──────────────────────
+
+export const rfpKbNodeImages = pgTable("rfp_kb_node_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  nodeType: text("node_type").notNull(),
+  label: text("label"),
+  storageKey: text("storage_key").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type RfpKbNodeImage = typeof rfpKbNodeImages.$inferSelect;
 
 // ── Datasheet Comparison ─────────────────────────────────────────────────
 // Separate from `markets` — these tables model SKU-level hardware vendors

@@ -28,6 +28,7 @@ import {
   MessageSquare,
   ChevronRight,
   AlertTriangle,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +54,35 @@ import type { RfpKbDocument, RfpResponseSession } from "@shared/schema";
 
 const ACCEPTED_TYPES = ".pdf,.docx,.pptx,.xlsx,.csv,.txt,.md";
 const MAX_SIZE_MB = 50;
+
+const STENCIL_NODE_TYPES: { value: string; label: string }[] = [
+  { value: "spine",          label: "Spine Switch" },
+  { value: "leaf",           label: "Leaf Switch" },
+  { value: "core",           label: "Core Switch" },
+  { value: "aggregation",    label: "Aggregation Switch" },
+  { value: "access",         label: "Access Switch" },
+  { value: "router",         label: "Router" },
+  { value: "firewall",       label: "Firewall" },
+  { value: "load_balancer",  label: "Load Balancer" },
+  { value: "host",           label: "Host / VM" },
+  { value: "server",         label: "Server" },
+  { value: "storage_array",  label: "Storage Array" },
+  { value: "controller",     label: "Controller" },
+  { value: "san_switch",     label: "SAN Switch" },
+  { value: "nas_filer",      label: "NAS Filer" },
+  { value: "hypervisor",     label: "Hypervisor Node" },
+  { value: "hci_node",       label: "HCI Node" },
+  { value: "vpc",            label: "VPC" },
+  { value: "subnet",         label: "Subnet" },
+  { value: "az",             label: "Availability Zone" },
+  { value: "security_zone",  label: "Security Zone" },
+  { value: "pipeline_stage", label: "Pipeline Stage" },
+  { value: "app_tier",       label: "App Tier" },
+];
+
+const NODE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  STENCIL_NODE_TYPES.map((t) => [t.value, t.label])
+);
 
 const DOC_TYPES: { value: string; label: string }[] = [
   { value: "", label: "Document type (optional)" },
@@ -220,6 +250,11 @@ export default function RfpResponderPage() {
   const [kbUrlInput, setKbUrlInput] = useState("");
   const [kbUrlLabel, setKbUrlLabel] = useState("");
 
+  // Stencil image upload state
+  const stencilFileInputRef = useRef<HTMLInputElement>(null);
+  const [stencilNodeType, setStencilNodeType] = useState("");
+  const [stencilLabel, setStencilLabel] = useState("");
+
   const rfpEnabled = hasFeature("rfp");
 
   const { data, isLoading } = useQuery<{ documents: RfpKbDocument[] }>({
@@ -375,6 +410,12 @@ export default function RfpResponderPage() {
   });
   const kbExternalUrls = kbExternalUrlsData?.urls ?? [];
 
+  const { data: nodeImagesData } = useQuery<{ images: any[] }>({
+    queryKey: ["/api/rfp/kb/node-images"],
+    enabled: rfpEnabled && isVendorScoped && !isAdmin && activeTab === "kb",
+  });
+  const nodeImages = nodeImagesData?.images ?? [];
+
   const addMarketLinkMutation = useMutation({
     mutationFn: async (marketId: string) => {
       const res = await fetch("/api/rfp/kb/market-links", {
@@ -424,6 +465,46 @@ export default function RfpResponderPage() {
       await fetch(`/api/rfp/kb/external-urls/${id}`, { method: "DELETE", credentials: "include" });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/external-urls"] }),
+  });
+
+  const uploadStencilMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!stencilNodeType) throw new Error("Please select a node type before uploading");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("nodeType", stencilNodeType);
+      if (stencilLabel.trim()) form.append("label", stencilLabel.trim());
+      const res = await fetch("/api/rfp/kb/node-images", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Upload failed (${res.status})`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/node-images"] });
+      toast({ title: "Stencil uploaded", description: "Diagrams will now use this image for the selected node type." });
+      setStencilNodeType("");
+      setStencilLabel("");
+      if (stencilFileInputRef.current) stencilFileInputRef.current.value = "";
+    },
+    onError: (err: any) => toast({ title: "Upload failed", description: err?.message, variant: "destructive" }),
+  });
+
+  const deleteStencilMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/rfp/kb/node-images/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Delete failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rfp/kb/node-images"] });
+      toast({ title: "Stencil removed" });
+    },
+    onError: () => toast({ title: "Failed to delete stencil", variant: "destructive" }),
   });
 
   const newSessionMutation = useMutation({
@@ -982,6 +1063,125 @@ export default function RfpResponderPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── Appliance Stencil Images ───────────────────────────────────── */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Appliance Stencil Images</h2>
+            {nodeImages.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+                {nodeImages.length} uploaded
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Upload your vendor's product icons or appliance images (PNG, JPG, SVG, WebP — up to 5 MB). When generating architecture diagrams, these replace the generic vector icons for the selected node types.
+          </p>
+
+          {/* Upload row */}
+          <div className="rounded-xl bg-slate-900/70 border border-white/8 overflow-hidden mb-3">
+            <div className="px-5 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+              <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-3">
+                <select
+                  value={stencilNodeType}
+                  onChange={(e) => setStencilNodeType(e.target.value)}
+                  className="rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                >
+                  <option value="">Select node type…</option>
+                  {STENCIL_NODE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={stencilLabel}
+                  onChange={(e) => setStencilLabel(e.target.value)}
+                  placeholder="Label (optional)"
+                  className="rounded-lg bg-slate-800 border border-white/8 text-sm text-slate-300 px-3 py-2 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500/50 flex-1"
+                />
+              </div>
+              <button
+                onClick={() => stencilFileInputRef.current?.click()}
+                disabled={!stencilNodeType || uploadStencilMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 border border-violet-500/30 text-sm text-violet-300 hover:bg-violet-600/30 hover:border-violet-500/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                {uploadStencilMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Image className="h-3.5 w-3.5" />
+                )}
+                {uploadStencilMutation.isPending ? "Uploading…" : "Upload image"}
+              </button>
+              <input
+                ref={stencilFileInputRef}
+                type="file"
+                accept=".png,.jpg,.jpeg,.svg,.webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadStencilMutation.mutate(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Image list */}
+          {nodeImages.length > 0 && (
+            <div className="rounded-xl bg-slate-900/70 border border-white/8 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {nodeImages.map((img: any) => (
+                  <div key={img.id} className="flex items-center gap-3 px-5 py-3 group">
+                    <div className="h-10 w-10 rounded-lg bg-slate-800 border border-white/8 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <img
+                        src={`/api/rfp/kb/node-images/${img.id}/data`}
+                        alt={img.label ?? img.nodeType}
+                        className="h-full w-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-slate-200">
+                          {NODE_TYPE_LABELS[img.nodeType] ?? img.nodeType}
+                        </span>
+                        {img.label && (
+                          <span className="text-[10px] text-slate-500">— {img.label}</span>
+                        )}
+                        <span className="inline-flex items-center rounded-full bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 text-[9px] font-medium text-violet-400 uppercase tracking-wide">
+                          Tier 2
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 mt-0.5">
+                        {img.mimeType} · {formatBytes(img.fileSizeBytes)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteStencilMutation.mutate(img.id)}
+                      disabled={deleteStencilMutation.isPending}
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {nodeImages.length === 0 && (
+            <div className="rounded-xl bg-slate-900/60 border border-white/5 px-8 py-10 flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/10 to-cyan-500/10 border border-white/5 flex items-center justify-center mb-3">
+                <Image className="h-4 w-4 text-slate-500" />
+              </div>
+              <p className="text-xs text-slate-500 max-w-xs">
+                No stencil images uploaded yet. Add images above to replace generic icons in your architecture diagrams.
+              </p>
+            </div>
+          )}
         </div>
 
         </>}

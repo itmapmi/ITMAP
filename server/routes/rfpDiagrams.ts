@@ -14,7 +14,8 @@ import { computeLayout } from "../rfpDiagram/layout";
 import { renderDiagram } from "../rfpDiagram/renderer";
 import { exportDrawio, exportPdf, exportPng } from "../rfpDiagram/export";
 import { topologySpecSchema, type DiagramIntent, DIAGRAM_INTENTS, INTENT_DISPLAY_NAMES, INTENT_DESCRIPTIONS } from "../rfpDiagram/topology";
-import { searchRfpKbChunks } from "../storage/rfpKb";
+import { searchRfpKbChunks, listRfpKbNodeImages } from "../storage/rfpKb";
+import { downloadFromGcs } from "../rfpKb/ingest";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -184,7 +185,19 @@ Which diagrams should be generated for this RFP response?`;
       });
 
       const layout = await computeLayout(spec);
-      const { svgContent, iconManifest } = renderDiagram(spec, layout);
+
+      // Build stencil image overrides: fetch uploaded appliance images for this vendor,
+      // download each from GCS, base64-encode → data URI. Falls back to vector SVG if unavailable.
+      const nodeImages = await listRfpKbNodeImages(session.vendorId).catch(() => []);
+      const imageOverrides: Record<string, string> = {};
+      await Promise.all(nodeImages.map(async (img) => {
+        const buffer = await downloadFromGcs(img.storageKey).catch(() => null);
+        if (buffer) {
+          imageOverrides[img.nodeType] = `data:${img.mimeType};base64,${buffer.toString("base64")}`;
+        }
+      }));
+
+      const { svgContent, iconManifest } = renderDiagram(spec, layout, Object.keys(imageOverrides).length > 0 ? imageOverrides : undefined);
       const hasTier4 = iconManifest.some((m) => m.tier4Pending);
 
       const diagram = await createRfpDiagram({

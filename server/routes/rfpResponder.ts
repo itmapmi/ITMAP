@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { requireFeature } from "../featureAccess";
-import { extractText } from "../rfpKb/ingest";
+import { extractText, uploadRawFileToGcs, downloadFromGcs } from "../rfpKb/ingest";
 import { decomposeRfp } from "../rfpKb/decompose";
 import { detectClientTemplate } from "../rfpAssembly/detectTemplate";
 import { generateRequirementResponse } from "../rfpKb/generate";
@@ -27,6 +27,10 @@ import {
   listRfpKbExternalUrls,
   addRfpKbExternalUrl,
   removeRfpKbExternalUrl,
+  createRfpKbNodeImage,
+  listRfpKbNodeImages,
+  getRfpKbNodeImage,
+  deleteRfpKbNodeImage,
 } from "../storage/rfpKb";
 import { storage } from "../storage";
 
@@ -485,6 +489,91 @@ export function registerRfpResponderRoutes(app: Express): void {
       const vendorId = primaryVendorId(req)!;
       await removeRfpKbExternalUrl(req.params.id, vendorId);
       res.json({ deleted: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── KB: appliance stencil images ────────────────────────────────────────
+
+  app.get("/api/rfp/kb/node-images", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const images = await listRfpKbNodeImages(vendorId);
+      res.json({ images });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/rfp/kb/node-images", ...guard, upload.single("file"), async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+      const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml", "image/webp"];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({ error: "Only PNG, JPG, SVG, and WebP images are accepted" });
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: "Image must be under 5 MB" });
+      }
+
+      const nodeType = req.body.nodeType as string | undefined;
+      if (!nodeType) return res.status(400).json({ error: "nodeType is required" });
+
+      const label = req.body.label as string | undefined;
+
+      const docId = `stencil-${Date.now()}`;
+      const storageKey = await uploadRawFileToGcs({
+        vendorId,
+        documentId: docId,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        buffer: file.buffer,
+      });
+
+      if (!storageKey) {
+        return res.status(500).json({ error: "Storage unavailable — image could not be saved" });
+      }
+
+      const image = await createRfpKbNodeImage({
+        vendorId,
+        nodeType,
+        label: label || null,
+        storageKey,
+        mimeType: file.mimetype,
+        fileSizeBytes: file.size,
+      });
+
+      res.status(201).json(image);
+    } catch (err: any) {
+      console.error("[rfp/kb/node-images] upload error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/rfp/kb/node-images/:id", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      await deleteRfpKbNodeImage(req.params.id, vendorId);
+      res.json({ deleted: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/rfp/kb/node-images/:id/data", ...guard, async (req: Request, res: Response) => {
+    try {
+      const vendorId = primaryVendorId(req)!;
+      const image = await getRfpKbNodeImage(req.params.id);
+      if (!image || image.vendorId !== vendorId) return res.status(404).json({ error: "Not found" });
+      const buffer = await downloadFromGcs(image.storageKey);
+      if (!buffer) return res.status(404).json({ error: "Image data not found in storage" });
+      res.set("Content-Type", image.mimeType);
+      res.set("Cache-Control", "private, max-age=3600");
+      res.send(buffer);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

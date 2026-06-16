@@ -3,11 +3,13 @@ import {
   rfpKbChunks,
   rfpKbMarketLinks,
   rfpKbExternalUrls,
+  rfpKbNodeImages,
   type RfpKbDocument,
   type RfpKbChunk,
   type InsertRfpKbChunk,
   type RfpKbMarketLink,
   type RfpKbExternalUrl,
+  type RfpKbNodeImage,
 } from "@shared/schema";
 import { db } from "../db";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -289,5 +291,36 @@ export async function addRfpKbExternalUrl(vendorId: string, url: string, label?:
 export async function removeRfpKbExternalUrl(id: string, vendorId: string): Promise<boolean> {
   const result = await db.delete(rfpKbExternalUrls)
     .where(and(eq(rfpKbExternalUrls.id, id), eq(rfpKbExternalUrls.vendorId, vendorId)));
+  return (result.rowCount ?? 0) > 0;
+}
+
+// ── KB: appliance stencil images ──────────────────────────────────────────
+
+export async function createRfpKbNodeImage(data: {
+  vendorId: string;
+  nodeType: string;
+  label?: string | null;
+  storageKey: string;
+  mimeType: string;
+  fileSizeBytes?: number;
+}): Promise<RfpKbNodeImage> {
+  const [row] = await db.insert(rfpKbNodeImages).values(data).returning();
+  return row!;
+}
+
+export async function listRfpKbNodeImages(vendorId: string): Promise<RfpKbNodeImage[]> {
+  return db.select().from(rfpKbNodeImages)
+    .where(eq(rfpKbNodeImages.vendorId, vendorId))
+    .orderBy(asc(rfpKbNodeImages.createdAt));
+}
+
+export async function getRfpKbNodeImage(id: string): Promise<RfpKbNodeImage | null> {
+  const [row] = await db.select().from(rfpKbNodeImages).where(eq(rfpKbNodeImages.id, id));
+  return row ?? null;
+}
+
+export async function deleteRfpKbNodeImage(id: string, vendorId: string): Promise<boolean> {
+  const result = await db.delete(rfpKbNodeImages)
+    .where(and(eq(rfpKbNodeImages.id, id), eq(rfpKbNodeImages.vendorId, vendorId)));
   return (result.rowCount ?? 0) > 0;
 }
