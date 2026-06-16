@@ -94,7 +94,7 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
 
   const updateReqMutation = useMutation({
     mutationFn: async ({ reqId, patch }: { reqId: string; patch: Record<string, any> }) => {
-      const res = await apiRequest("PATCH", `/api/rfp/responses/${sessionId}/requirements/${reqId}`, patch);
+      const res = await apiRequest(`/api/rfp/responses/${sessionId}/requirements/${reqId}`, "PATCH", patch);
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses", sessionId] }),
@@ -102,7 +102,7 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
 
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/rfp/responses/${sessionId}/confirm-review`, {});
+      const res = await apiRequest(`/api/rfp/responses/${sessionId}/confirm-review`, "POST", {});
       return res.json();
     },
     onSuccess: () => {
@@ -224,7 +224,7 @@ function AnswerPanel({
 
   const updateMutation = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
-      const res = await apiRequest("PATCH", `/api/rfp/responses/${sessionId}/answers/${answer?.id}`, patch);
+      const res = await apiRequest(`/api/rfp/responses/${sessionId}/answers/${answer?.id}`, "PATCH", patch);
       return res.json();
     },
     onSuccess: () => {
@@ -718,7 +718,7 @@ function ExportPanel({
     try {
       const fmt = newFormat ?? templateFormat;
       const confirmed = newConfirmed ?? templateConfirmed;
-      const res = await apiRequest("PATCH", `/api/rfp/responses/${sessionId}/template`, {
+      const res = await apiRequest(`/api/rfp/responses/${sessionId}/template`, "PATCH", {
         clientTemplateFormat: fmt,
         clientTemplateSectionMap: fmt === "none" ? null : fieldMap,
         clientTemplateConfirmed: confirmed,
@@ -840,7 +840,7 @@ function ExportPanel({
   async function handleOutcome(tag: OutcomeTag) {
     setSubmittingOutcome(true);
     try {
-      const res = await apiRequest("POST", `/api/rfp/responses/${sessionId}/outcome`, { outcome: tag });
+      const res = await apiRequest(`/api/rfp/responses/${sessionId}/outcome`, "POST", { outcome: tag });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
         throw new Error(b.error ?? "Failed to record outcome");
@@ -1306,7 +1306,7 @@ export default function RfpSessionDetailPage() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/rfp/responses/${id}/generate`, {});
+      const res = await apiRequest(`/api/rfp/responses/${id}/generate`, "POST", {});
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Generation failed");
