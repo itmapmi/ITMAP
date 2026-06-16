@@ -53,7 +53,7 @@ export default function DatasheetSharePage() {
           <p className="text-slate-400 mt-1 text-sm">From {data.market.name} · read-only snapshot</p>
         </div>
         <ShareSpecMatrix data={data} schema={schema} />
-        <p className="text-xs text-slate-500 mt-6">Powered by spectio.ai datasheet intelligence.</p>
+        <p className="text-xs text-slate-500 mt-6">Powered by DCIG datasheet intelligence.</p>
       </div>
     </div>
   );

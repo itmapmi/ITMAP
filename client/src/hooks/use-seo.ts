@@ -8,7 +8,7 @@ interface SeoOptions {
   type?: "website" | "article";
 }
 
-const SITE = "https://spectio.ai";
+const SITE = "https://dcig.com";
 const DEFAULT_IMAGE = `${SITE}/og-image.png`;
 
 function setMeta(selector: string, attr: "name" | "property", key: string, content: string) {

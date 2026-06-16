@@ -24,8 +24,8 @@ const fadeUp = {
 
 export default function Markets() {
   useSeo({
-    title: "Markets — spectio.ai | Browse Enterprise IT Vendor Markets",
-    description: "Browse every enterprise IT market on spectio.ai — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
+    title: "Markets — DCIG | Browse Enterprise IT Vendor Markets",
+    description: "Browse every enterprise IT market on DCIG — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
     path: "/markets",
   });
   const { isAuthenticated, user } = useAuth();

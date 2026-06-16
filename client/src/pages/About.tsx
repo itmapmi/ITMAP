@@ -48,8 +48,8 @@ const CONTACT_DETAILS = [
   {
     icon: <Mail className="h-5 w-5 text-cyan-400" />,
     label: "Email",
-    value: "priyanka@spectio.ai",
-    href: "mailto:priyanka@spectio.ai",
+    value: "priyanka@dcig.com",
+    href: "mailto:priyanka@dcig.com",
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
@@ -77,8 +77,8 @@ const CONTACT_DETAILS = [
 
 export default function About() {
   useSeo({
-    title: "About spectio.ai — Independent AI-Powered Vendor Intelligence",
-    description: "Learn about spectio.ai's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
+    title: "About DCIG — Independent AI-Powered Vendor Intelligence",
+    description: "Learn about DCIG's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
     path: "/about",
   });
   return (
@@ -94,7 +94,7 @@ export default function About() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Globe2 className="h-4 w-4" /> About spectio.ai
+              <Globe2 className="h-4 w-4" /> About DCIG
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-8">
               Built to cut through
@@ -102,7 +102,7 @@ export default function About() {
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">the analyst noise</span>
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              spectio.ai was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
+              DCIG was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
             </p>
           </motion.div>
         </div>
@@ -123,7 +123,7 @@ export default function About() {
                 For too long, enterprise technology research has been a product sold to vendors first, and to buyers second. Gartner Magic Quadrants, Forrester Waves, IDC MarketScapes — all funded, in part, by the very companies they rank.
               </p>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                spectio.ai is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
+                DCIG is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
               </p>
               <Link href="/platform">
                 <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
@@ -212,7 +212,7 @@ export default function About() {
                 Practitioners building for practitioners
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                spectio.ai is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
+                DCIG is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
               </p>
               <ul className="space-y-3">
                 {TEAM_VALUES.map((t) => (
@@ -255,7 +255,7 @@ export default function About() {
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-sm font-bold text-white">P</div>
                   <div>
                     <p className="text-white font-medium text-sm">Priyanka</p>
-                    <p className="text-slate-500 text-xs">Founder, spectio.ai</p>
+                    <p className="text-slate-500 text-xs">Founder, DCIG</p>
                   </div>
                 </div>
 
@@ -325,7 +325,7 @@ export default function About() {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
-                    onClick={() => window.location.href = "mailto:priyanka@spectio.ai"}
+                    onClick={() => window.location.href = "mailto:priyanka@dcig.com"}
                   >
                     Send Message <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -370,9 +370,9 @@ export default function About() {
                 <div className="relative">
                   <h3 className="text-lg font-bold text-white mb-3">Exploring a partnership?</h3>
                   <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating spectio.ai intelligence into your workflow, let's talk.
+                    We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating DCIG intelligence into your workflow, let's talk.
                   </p>
-                  <a href="mailto:priyanka@spectio.ai?subject=Partnership Enquiry">
+                  <a href="mailto:priyanka@dcig.com?subject=Partnership Enquiry">
                     <Button variant="outline" size="sm" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 bg-transparent">
                       Explore Partnership <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Button>

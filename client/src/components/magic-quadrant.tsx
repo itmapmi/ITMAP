@@ -212,7 +212,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = marketName.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `Spectio for ${cleanMarketName} - Vendor Evaluation.pdf`;
+      a.download = `DCIG for ${cleanMarketName} - Vendor Evaluation.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

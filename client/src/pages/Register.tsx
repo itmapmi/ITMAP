@@ -80,7 +80,7 @@ export default function Register() {
           <div className="flex justify-center">
             <SpectioLogo variant="dark" size="lg" />
           </div>
-          <CardTitle className="text-2xl text-center">Join Spectio</CardTitle>
+          <CardTitle className="text-2xl text-center">Join DCIG</CardTitle>
           <CardDescription className="text-center">
             <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
             Create your account to start your free trial

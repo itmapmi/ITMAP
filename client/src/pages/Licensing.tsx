@@ -12,16 +12,16 @@ const fadeUp = {
 };
 
 const REQUIRES_LICENSE = [
-  "Charts, diagrams, matrices, market maps or other graphics created by spectio.ai",
+  "Charts, diagrams, matrices, market maps or other graphics created by DCIG",
   "Research content: report excerpts, key takeaways, ratings, quotes, summaries or narrative text",
-  "Data points or findings unique to spectio.ai (even if paraphrased) when used to endorse products or services",
-  "Translations of any spectio.ai content",
+  "Data points or findings unique to DCIG (even if paraphrased) when used to endorse products or services",
+  "Translations of any DCIG content",
   "Thumbnails or screengrabs of our graphics",
-  "Use of spectio.ai logos, product marks or badges",
+  "Use of DCIG logos, product marks or badges",
 ];
 
 const NO_LICENSE = [
-  "Linking to public spectio.ai pages using article or report titles",
+  "Linking to public DCIG pages using article or report titles",
   "Short, purely editorial citations in neutral journalistic contexts (vendors must still obtain a license)",
 ];
 
@@ -29,8 +29,8 @@ const STEPS = [
   {
     num: "01",
     title: "Submit a request",
-    desc: "Email priyanka@spectio.ai with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
-    cta: { label: "Email us", href: "mailto:priyanka@spectio.ai" },
+    desc: "Email priyanka@dcig.com with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
+    cta: { label: "Email us", href: "mailto:priyanka@dcig.com" },
   },
   {
     num: "02",
@@ -66,8 +66,8 @@ const STEPS = [
 
 export default function Licensing() {
   useSeo({
-    title: "Licensing & Reprints — spectio.ai",
-    description: "License spectio.ai vendor evaluations, market reports, and forecasts for internal use, marketing, sales enablement, or analyst-style reprint rights.",
+    title: "Licensing & Reprints — DCIG",
+    description: "License DCIG vendor evaluations, market reports, and forecasts for internal use, marketing, sales enablement, or analyst-style reprint rights.",
     path: "/licensing",
   });
   return (
@@ -87,7 +87,7 @@ export default function Licensing() {
             <h1 className="text-5xl sm:text-6xl font-bold mb-6 leading-tight">
               Third-party use of
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">spectio.ai research</span>
+              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">DCIG research</span>
             </h1>
             <p className="text-xl text-slate-400 leading-relaxed max-w-2xl">
               Our research and graphics are protected intellectual property. Here's what requires a licence and how to get one.
@@ -106,7 +106,7 @@ export default function Licensing() {
             <h2 className="text-2xl font-bold text-white">What requires a licence?</h2>
           </div>
           <p className="text-slate-400 mb-6 leading-relaxed">
-            The following always require a spectio.ai reprint licence when used by vendors or for promotional / marketing purposes:
+            The following always require a DCIG reprint licence when used by vendors or for promotional / marketing purposes:
           </p>
           <ul className="space-y-3">
             {REQUIRES_LICENSE.map((item) => (
@@ -176,9 +176,9 @@ export default function Licensing() {
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Questions about licensing?</h3>
             <p className="text-slate-400 mb-6">Our team typically responds within 2 business days.</p>
-            <a href="mailto:priyanka@spectio.ai">
+            <a href="mailto:priyanka@dcig.com">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact priyanka@spectio.ai <ArrowRight className="ml-2 h-4 w-4" />
+                Contact priyanka@dcig.com <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>

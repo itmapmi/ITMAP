@@ -109,7 +109,7 @@ const FEATURES = [
 
 export default function Home() {
   useSeo({
-    title: "spectio.ai — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
+    title: "DCIG — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
     description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
     path: "/",
   });
@@ -230,7 +230,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.25 }}
               className="text-lg sm:text-xl text-slate-400 max-w-2xl leading-relaxed mb-10"
             >
-              spectio.ai delivers independent, AI-powered enterprise IT intelligence — vendor rankings, feature evaluations, news impact analysis and research reports. No vendor bias. No guesswork.
+              DCIG delivers independent, AI-powered enterprise IT intelligence — vendor rankings, feature evaluations, news impact analysis and research reports. No vendor bias. No guesswork.
             </motion.p>
 
             <motion.div
@@ -433,7 +433,7 @@ export default function Home() {
                 Everything your team needs to choose wisely
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                spectio.ai gives enterprise IT and procurement teams the depth of a boutique analyst firm, delivered at the speed of AI — updated daily, without the subscription lag.
+                DCIG gives enterprise IT and procurement teams the depth of a boutique analyst firm, delivered at the speed of AI — updated daily, without the subscription lag.
               </p>
               <div className="space-y-3">
                 {["No vendor sponsorships or paid placements", "Public data sources, transparent scoring", "AI analysis refreshed continuously", "Custom market builder for your criteria"].map((item) => (
@@ -542,20 +542,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why spectio.ai */}
+      {/* Why DCIG */}
       <section className="py-24 border-t border-white/5">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div {...fadeUp}>
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
               <div className="h-px w-8 bg-cyan-400" />
-              THE SPECTIO DIFFERENCE
+              THE DCIG DIFFERENCE
             </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
               Analyst-grade research,{" "}
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">without the agenda</span>
             </h2>
             <p className="text-slate-400 text-xl leading-relaxed max-w-3xl mx-auto mb-14">
-              Traditional analyst firms charge vendors for placement. We don't. spectio.ai's evaluations are built on publicly verifiable data, scored by AI, and reviewed by independent technologists. Every rating is explainable, every source is public.
+              Traditional analyst firms charge vendors for placement. We don't. DCIG's evaluations are built on publicly verifiable data, scored by AI, and reviewed by independent technologists. Every rating is explainable, every source is public.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-14">
@@ -593,7 +593,7 @@ export default function Home() {
                   Start seeing clearly.
                 </h2>
                 <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-                  Join enterprise IT and procurement teams who rely on spectio.ai for vendor decisions that matter.
+                  Join enterprise IT and procurement teams who rely on DCIG for vendor decisions that matter.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/register">
@@ -624,18 +624,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
             <div className="md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
-                  <defs>
-                    <linearGradient id="fl1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#0EA5E9" />
-                      <stop offset="100%" stopColor="#7C3AED" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="18" cy="18" r="10" stroke="url(#fl1)" strokeWidth="2" />
-                  <circle cx="18" cy="18" r="4.5" fill="url(#fl1)" />
-                  <circle cx="18" cy="18" r="2" fill="white" />
-                </svg>
-                <span className="text-white font-bold">spectio<span className="text-cyan-400">.ai</span></span>
+                <img src="/dcig-logo-white.png" alt="DCIG" style={{ height: 28, width: "auto", objectFit: "contain" }} />
               </div>
               <p className="text-slate-500 text-sm leading-relaxed">
                 AI-powered enterprise IT intelligence. Independent. Transparent. Always current.
@@ -665,14 +654,14 @@ export default function Home() {
                 ))}
               </ul>
               <div className="mt-5">
-                <a href="mailto:priyanka@spectio.ai" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
-                  priyanka@spectio.ai
+                <a href="mailto:priyanka@dcig.com" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
+                  priyanka@dcig.com
                 </a>
               </div>
             </div>
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-slate-600 text-sm">© 2025 spectio.ai. All rights reserved.</p>
+            <p className="text-slate-600 text-sm">© 2025 DCIG. All rights reserved.</p>
             <p className="text-slate-600 text-sm">Independent AI-powered IT intelligence · Dubai, UAE</p>
           </div>
         </div>

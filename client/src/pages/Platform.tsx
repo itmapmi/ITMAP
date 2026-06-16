@@ -93,8 +93,8 @@ const HOW_STEPS = [
 
 export default function Platform() {
   useSeo({
-    title: "Platform — spectio.ai | AI-Native IT Vendor Intelligence",
-    description: "Explore the spectio.ai platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
+    title: "Platform — DCIG | AI-Native IT Vendor Intelligence",
+    description: "Explore the DCIG platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
     path: "/platform",
   });
 
@@ -258,7 +258,7 @@ export default function Platform() {
                   <th className="text-left p-5 text-slate-500 text-sm font-medium w-1/3">Criteria</th>
                   <th className="text-center p-5 text-slate-500 text-sm font-medium w-1/3 border-l border-white/5">Traditional Analysts</th>
                   <th className="text-center p-5 text-sm font-medium w-1/3 border-l border-white/5 bg-gradient-to-r from-cyan-500/5 to-violet-500/5">
-                    <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent font-semibold">spectio.ai</span>
+                    <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent font-semibold">DCIG</span>
                   </th>
                 </tr>
               </thead>

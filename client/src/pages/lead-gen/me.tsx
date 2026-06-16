@@ -81,7 +81,7 @@ export default function LeadGenMyVendorPage() {
           <span className="mx-auto mb-4 inline-flex rounded-xl bg-white/5 p-3"><Radar className="h-6 w-6 text-slate-400" /></span>
           <h1 className="text-lg font-semibold text-white">No vendor seat assigned</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Your account isn't linked to a vendor yet. Ask your spectio.ai administrator to assign you a
+            Your account isn't linked to a vendor yet. Ask your DCIG administrator to assign you a
             vendor seat to view buyers showing intent toward your product.
           </p>
         </GlassCard>
@@ -182,7 +182,7 @@ export default function LeadGenMyVendorPage() {
             <div className="space-y-2 p-5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-white/5" />)}</div>
           ) : audienceRows.length === 0 ? (
             <div className="px-5 py-16 text-center text-sm text-slate-500">
-              No watched users yet. Ask your spectio.ai administrator to assign users and a market to watch.
+              No watched users yet. Ask your DCIG administrator to assign users and a market to watch.
             </div>
           ) : (
             <div className="divide-y divide-white/5">

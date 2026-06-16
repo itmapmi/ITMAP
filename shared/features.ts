@@ -9,7 +9,7 @@
 // enforcement) import from this file so the three surfaces — gating, admin
 // toggles, and enforcement — can never drift.
 
-export const SALES_CONTACT_EMAIL = "sales@spectio.ai";
+export const SALES_CONTACT_EMAIL = "sales@dcig.com";
 
 export const LOCKABLE_FEATURES = [
   { key: "market_builder", label: "Market Builder" },

@@ -55,7 +55,7 @@ export default function Login() {
           <div className="flex justify-center">
             <SpectioLogo variant="dark" size="lg" />
           </div>
-          <CardTitle className="text-2xl text-center">Welcome to Spectio</CardTitle>
+          <CardTitle className="text-2xl text-center">Welcome to DCIG</CardTitle>
           <CardDescription className="text-center">
             <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
             Sign in to access your technology intelligence platform

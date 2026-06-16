@@ -206,7 +206,7 @@ export default function MarketDetails() {
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `Spectio for ${cleanMarketName}.pdf`;
+      a.download = `DCIG for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -251,7 +251,7 @@ export default function MarketDetails() {
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `Spectio Summary for ${cleanMarketName}.pdf`;
+      a.download = `DCIG Summary for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
