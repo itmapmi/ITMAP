@@ -163,49 +163,28 @@ export async function buildSpectioContext(
 
   const dataPoints: SpectioDataPoint[] = [];
 
-  if (executionScore !== null) {
-    const excerpt = `${vendor.name} has an execution score of ${executionScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`;
-    dataPoints.push({
-      type: "vendor_score",
-      label: "Execution score",
-      value: `${executionScore}/100`,
-      excerpt,
-      relevanceScore: req ? computeRelevance(req, `execution delivery performance ${excerpt}`) : 0.5,
-    });
-  }
-  if (viabilityScore !== null) {
-    const excerpt = `${vendor.name} has a viability score of ${viabilityScore}/100 in the ${marketDisplayName} market (spectio.ai independent analysis).`;
-    dataPoints.push({
-      type: "vendor_score",
-      label: "Viability score",
-      value: `${viabilityScore}/100`,
-      excerpt,
-      relevanceScore: req ? computeRelevance(req, `viability financial stability market ${excerpt}`) : 0.5,
-    });
-  }
-  for (const cs of criteriaScores) {
-    const excerpt = `${vendor.name} scored ${cs.score}/100 on "${cs.name}" (${cs.category}) — spectio.ai evaluation, ${marketDisplayName} market.`;
-    dataPoints.push({
-      type: "vendor_score",
-      label: cs.name,
-      value: `${cs.score}/100`,
-      criterionName: cs.name,
-      excerpt,
-      relevanceScore: req ? computeRelevance(req, `${cs.name} ${cs.category} score ${excerpt}`) : 0.4,
-    });
-  }
+  // Only product/ecosystem features and news are used in RFP responses.
+  // Scores are internal analysis metrics and must NOT appear in client-facing documents.
   for (const f of features) {
-    const label = HARVEY_LABELS[f.supportLevel] ?? "Unknown";
-    const excerpt = `${vendor.name}: "${f.name}" (${f.category}) — ${label}${f.notes ? ". " + f.notes : ""}. Source: spectio.ai product evaluation.`;
+    const supportLabel = HARVEY_LABELS[f.supportLevel] ?? "Unknown";
+    // Skip unsupported / not-planned features — no point surfacing gaps in an RFP response
+    if (f.supportLevel === 0) continue;
+    // Build a capability statement the AI can draw on directly
+    const capability = f.notes
+      ? `${f.notes}`
+      : supportLabel === "Full support"
+        ? `${vendor.name} fully supports ${f.name}.`
+        : `${vendor.name} provides ${supportLabel.toLowerCase()} for ${f.name}.`;
+    const excerpt = `${f.category} — ${f.name}: ${capability}`;
     dataPoints.push({
       type: "product_feature",
       label: `${f.category} — ${f.name}`,
-      value: label,
+      value: supportLabel,
       categoryName: f.category,
       featureName: f.name,
       excerpt,
       relevanceScore: req
-        ? computeRelevance(req, `${f.name} ${f.category} feature capability support ${f.notes ?? ""} ${excerpt}`)
+        ? computeRelevance(req, `${f.name} ${f.category} ${f.notes ?? ""} capability support`)
         : 0.3,
     });
   }
@@ -309,18 +288,26 @@ export async function buildMultiMarketSpectioContext(
 export function formatSpectioContext(ctx: SpectioContext, dataPoints?: SpectioDataPoint[]): string {
   const pts = dataPoints ?? ctx.dataPoints;
   const lines: string[] = [
-    `=== Spectio Intelligence: ${ctx.vendorName} in ${ctx.marketName} ===`,
-    `(relevance-ranked data points for this requirement — use only what is directly relevant)`,
+    `=== ${ctx.vendorName} Capability & Ecosystem Intelligence (${ctx.marketName}) ===`,
+    `(Use the capabilities below to construct factual, evidence-based narrative in the RFP response.`,
+    ` Do NOT quote scores or rankings. Translate feature support into professional capability statements.)`,
   ];
 
-  for (const dp of pts) {
-    const rel = `[rel=${dp.relevanceScore.toFixed(2)}]`;
-    if (dp.type === "vendor_score") {
-      lines.push(`  [SCORE] ${rel} ${dp.label}: ${dp.value} — ${dp.excerpt}`);
-    } else if (dp.type === "product_feature") {
-      lines.push(`  [FEATURE] ${rel} ${dp.label}: ${dp.value} — ${dp.excerpt}`);
-    } else if (dp.type === "news") {
-      lines.push(`  [NEWS] ${rel} [${dp.publishedAt ?? "date unknown"}${dp.value !== "Informational" ? ", " + dp.value : ""}] ${dp.label} — ${dp.excerpt}`);
+  const features = pts.filter((dp) => dp.type === "product_feature");
+  const news = pts.filter((dp) => dp.type === "news");
+
+  if (features.length > 0) {
+    lines.push("\nCapabilities & feature support:");
+    for (const dp of features) {
+      lines.push(`  • ${dp.excerpt}`);
+    }
+  }
+
+  if (news.length > 0) {
+    lines.push("\nRecent developments (use only if directly relevant to the requirement):");
+    for (const dp of news) {
+      const date = dp.publishedAt ? ` (${dp.publishedAt})` : "";
+      lines.push(`  • ${dp.label}${date}: ${dp.excerpt}`);
     }
   }
 

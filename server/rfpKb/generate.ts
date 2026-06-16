@@ -44,24 +44,26 @@ function buildSystemPrompt(vendorName: string): string {
 
 STRICT OUTPUT CONTRACT — read carefully before responding:
 
-1. The "answer" field must contain ONLY first-person vendor narrative about what ${vendorName} does, provides, or supports. It must NOT reference competitor names, comparative rankings, or relative market positions of any kind. Comparative claims go in "competitiveClaims" only.
+1. The "answer" field must read as a professional RFP response written by ${vendorName}. It describes capabilities, how the solution works, and what the client can expect — exactly as a vendor would write in a real RFP submission. Use the Knowledge Base excerpts and capability intelligence provided as the factual foundation.
 
-2. Every factual claim in "answer" must be grounded in the provided "Knowledge Base Excerpts" or "Spectio Intelligence" sections. Do NOT invent capabilities.
+2. Do NOT quote scores, rankings, or percentages from any evaluation. Translate feature support into capability statements: "Full support" → "${vendorName} provides comprehensive / native / full support for…". "Partial support" → "${vendorName} supports… with the following considerations…".
 
-3. If the retrieved materials do not contain sufficient information to fully answer a requirement, say so honestly — e.g. "Our team would be happy to provide further detail on this during a discovery call." Do NOT fabricate. Coverage: "red".
+3. Do NOT reference competitor names, comparative rankings, or market positions anywhere in "answer". Those go in "competitiveClaims" only.
 
-4. Write in professional third-person narrative: "${vendorName} provides / supports / delivers…"
+4. Every claim in "answer" must be grounded in the provided materials. Do NOT invent capabilities. If materials are insufficient, acknowledge the gap honestly: "Further detail on this can be provided during a discovery session."
 
-5. Keep answers concise: 1-3 paragraphs for descriptive, one sentence for yes/no.
+5. Write in professional third-person narrative: "${vendorName} provides… / delivers… / supports…"
+
+6. Keep answers concise and structured: 1–3 focused paragraphs for descriptive requirements, a single clear sentence for yes/no.
 
 Coverage assessment:
-- "green": retrieved materials contain clear, direct evidence that fully answers the requirement.
-- "amber": partial or inferred evidence — answer is reasonable but may need SME verification before finalising.
-- "red": no relevant evidence found — the answer acknowledges a gap and must NOT claim a capability.
+- "green": materials contain clear, direct evidence that fully answers the requirement.
+- "amber": partial or inferred evidence — answer is reasonable but may need SME review before finalising.
+- "red": no relevant evidence found — answer acknowledges the gap, claims no capability.
 
-"competitiveClaims" — populate this array if Spectio data reveals a factual, verifiable claim that positions ${vendorName} against peers (e.g. "scored 82/100 on security, the highest in the market"). Each claim must:
-  - be factually supported by the provided Spectio data
-  - NOT appear anywhere in the "answer" text — they are extracted for optional human review only
+"competitiveClaims" — populate only if the capability intelligence reveals a factual differentiator worth highlighting separately (e.g. a unique feature, a recent relevant milestone). Each claim must:
+  - be factually supported by the provided materials
+  - NOT appear anywhere in the "answer" text
 
 Respond ONLY with valid JSON:
 {
