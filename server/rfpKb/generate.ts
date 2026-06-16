@@ -10,13 +10,6 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
-// Embeddings are not supported by the Replit proxy — use standard OpenAI endpoint
-const openaiEmbed = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
-
-const EMBED_MODEL = "text-embedding-3-small";
-
 const generationOutputSchema = z.object({
   answer: z.string().min(1),
   coverageAssessment: z.enum(["green", "amber", "red"]),
@@ -45,13 +38,6 @@ export interface GenerationResult {
   competitiveClaims: CompetitiveClaim[];
 }
 
-async function embedText(text: string): Promise<number[]> {
-  const res = await openaiEmbed.embeddings.create({
-    model: EMBED_MODEL,
-    input: text.slice(0, 8000),
-  });
-  return res.data[0]!.embedding;
-}
 
 function buildSystemPrompt(vendorName: string): string {
   return `You are an expert RFP response writer for ${vendorName}. Your task is to draft a concise, factual answer to a specific RFP requirement.
@@ -219,9 +205,8 @@ export async function generateRequirementResponse(params: {
 }): Promise<GenerationResult> {
   const { vendorId, requirementText, section, vendorName, topK = 8 } = params;
 
-  // 1. Load vendor-level KB sources (market links + external URLs) in parallel with embedding
-  const [queryEmbedding, kbMarketLinks, kbExternalUrls] = await Promise.all([
-    embedText(requirementText),
+  // 1. Load vendor-level KB sources (market links + external URLs)
+  const [kbMarketLinks, kbExternalUrls] = await Promise.all([
     listRfpKbMarketLinks(vendorId),
     listRfpKbExternalUrls(vendorId),
   ]);
@@ -229,9 +214,9 @@ export async function generateRequirementResponse(params: {
   const effectiveMarketIds = kbMarketLinks.map((l) => l.marketId);
   const effectiveExternalUrls = kbExternalUrls.map((u) => u.url);
 
-  // 2. Search vendor KB + build Spectio context + fetch external URLs in parallel
+  // 2. Search vendor KB (keyword) + build Spectio context + fetch external URLs in parallel
   const [chunks, spectioCtx, externalPages] = await Promise.all([
-    searchRfpKbChunks(vendorId, queryEmbedding, topK),
+    searchRfpKbChunks(vendorId, requirementText, topK),
     effectiveMarketIds.length > 0
       ? buildMultiMarketSpectioContext(vendorId, effectiveMarketIds, requirementText).catch((e) => {
           console.warn("[rfp-generate] Spectio context failed:", e.message);

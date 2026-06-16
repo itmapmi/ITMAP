@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { createRequire } from "module";
 import { objectStorageClient } from "../objectStorage";
 
@@ -11,20 +10,8 @@ import {
   updateRfpKbDocumentStorageKey,
 } from "../storage/rfpKb";
 
-const EMBED_MODEL = "text-embedding-3-small";
-const EMBED_BATCH = 100;
 const CHUNK_WORDS = 400;
 const CHUNK_OVERLAP_WORDS = 60;
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
-
-// Embeddings are not supported by the Replit proxy — use standard OpenAI endpoint
-const openaiEmbed = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
 
 // ── GCS helpers ───────────────────────────────────────────────────────────
 
@@ -326,19 +313,8 @@ export async function extractText(buffer: Buffer, mimeType: string, fileName: st
   throw new Error(`Unsupported file type: ${mimeType} (${fileName})`);
 }
 
-// ── Embedding ─────────────────────────────────────────────────────────────
-
-async function embedBatch(texts: string[]): Promise<number[][]> {
-  const response = await openaiEmbed.embeddings.create({
-    model: EMBED_MODEL,
-    input: texts,
-  });
-  return response.data.map((d) => d.embedding);
-}
-
 // ── Main ingestion pipeline ───────────────────────────────────────────────
-// Stages are surfaced in rfp_kb_documents.status so the UI can show
-// granular progress: extracting → chunking → embedding → ready / error
+// Stages: extracting → chunking → ready / error  (no embedding API needed)
 
 export async function ingestDocument(params: {
   documentId: string;
@@ -357,23 +333,11 @@ export async function ingestDocument(params: {
       throw new Error("Document appears to be empty or has no extractable text");
     }
 
-    // Stage 2: semantic chunking — already done inside extractText;
-    // mark the stage transition so the UI shows "chunking" briefly
+    // Stage 2: chunking (already done inside extractText)
     await updateRfpKbDocumentStatus(documentId, "chunking");
-    // Delete any previous chunks (supports re-ingest)
     await deleteChunksByDocument(documentId);
 
-    // Stage 3: embed in batches via OpenAI text-embedding-3-small
-    await updateRfpKbDocumentStatus(documentId, "embedding");
-    const texts = rawChunks.map((c) => c.content);
-    const allEmbeddings: number[][] = [];
-    for (let i = 0; i < texts.length; i += EMBED_BATCH) {
-      const batch = texts.slice(i, i + EMBED_BATCH);
-      const embeddings = await embedBatch(batch);
-      allEmbeddings.push(...embeddings);
-    }
-
-    // Stage 4: persist chunks
+    // Stage 3: persist chunks (no embedding — keyword search used at query time)
     const rows = rawChunks.map((chunk, idx) => ({
       documentId,
       vendorId,
@@ -383,7 +347,7 @@ export async function ingestDocument(params: {
       pageRef: chunk.pageRef ?? null,
       approvalStatus: "approved" as const,
       metadata: chunk.metadata as any,
-      embedding: allEmbeddings[idx] ?? null,
+      embedding: null,
     }));
 
     await bulkInsertRfpKbChunks(rows);

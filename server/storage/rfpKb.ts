@@ -158,9 +158,9 @@ export async function setDocumentApprovalStatus(
     .where(eq(rfpKbDocuments.id, documentId));
 }
 
-// ── Similarity search (cosine) ─────────────────────────────────────────────
-// No pgvector — cosine ranking done in JS over a capped candidate window.
-// Only `approved` chunks from `approved` documents are returned.
+// ── Keyword search (BM25-style, no embedding API required) ────────────────
+// Scores chunks by normalised term-frequency of query tokens against chunk
+// content. Won/lost weighting applied on top.
 
 export interface SimilarChunk {
   id: string;
@@ -173,20 +173,43 @@ export interface SimilarChunk {
   wonLostWeight: number;
 }
 
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i]! * b[i]!;
-    magA += a[i]! * a[i]!;
-    magB += b[i]! * b[i]!;
+const STOP_WORDS = new Set([
+  "a","an","the","and","or","but","in","on","at","to","for","of","with",
+  "is","are","was","were","be","been","being","have","has","had","do","does",
+  "did","will","would","could","should","may","might","shall","can","not",
+  "this","that","these","those","it","its","we","our","you","your","they",
+  "their","i","my","as","by","from","into","than","then","when","where",
+  "which","who","how","what","if","all","any","each","some","such","no",
+]);
+
+function tokenise(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 2 && !STOP_WORDS.has(t));
+}
+
+function keywordScore(queryTokens: string[], chunkText: string): number {
+  if (queryTokens.length === 0) return 0;
+  const chunkLower = chunkText.toLowerCase();
+  let hits = 0;
+  for (const token of queryTokens) {
+    // Count occurrences (capped at 3 per term to avoid runaway scores)
+    let idx = 0, count = 0;
+    while ((idx = chunkLower.indexOf(token, idx)) !== -1 && count < 3) {
+      hits++;
+      count++;
+      idx += token.length;
+    }
   }
-  const denom = Math.sqrt(magA) * Math.sqrt(magB);
-  return denom === 0 ? 0 : dot / denom;
+  // Normalise by query length so scores are 0–1-ish
+  return hits / (queryTokens.length * 3);
 }
 
 export async function searchRfpKbChunks(
   vendorId: string,
-  queryEmbedding: number[],
+  queryText: string,
   topK = 8,
 ): Promise<SimilarChunk[]> {
   const rows = await db
@@ -197,7 +220,6 @@ export async function searchRfpKbChunks(
       content: rfpKbChunks.content,
       sectionPath: rfpKbChunks.sectionPath,
       pageRef: rfpKbChunks.pageRef,
-      embedding: rfpKbChunks.embedding,
       wonLost: rfpKbDocuments.wonLost,
     })
     .from(rfpKbChunks)
@@ -209,12 +231,13 @@ export async function searchRfpKbChunks(
         eq(rfpKbDocuments.approvalStatus, "approved"),
       ),
     )
-    .limit(1000);
+    .limit(2000);
+
+  const queryTokens = tokenise(queryText);
 
   return rows
-    .filter((r) => r.embedding && r.embedding.length > 0)
     .map((r) => {
-      const cosine = cosineSimilarity(queryEmbedding, r.embedding!);
+      const kw = keywordScore(queryTokens, r.content);
       const wonLostWeight = r.wonLost === "won" ? 1.2 : r.wonLost === "lost" ? 0.8 : 1.0;
       return {
         id: r.id,
@@ -223,7 +246,7 @@ export async function searchRfpKbChunks(
         content: r.content,
         sectionPath: r.sectionPath,
         pageRef: r.pageRef,
-        score: cosine * wonLostWeight,
+        score: kw * wonLostWeight,
         wonLostWeight,
       };
     })
