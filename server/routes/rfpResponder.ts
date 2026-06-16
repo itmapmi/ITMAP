@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireFeature } from "../featureAccess";
 import { extractText, uploadRawFileToGcs, downloadFromGcs } from "../rfpKb/ingest";
 import { decomposeRfp } from "../rfpKb/decompose";
+import { generateNarrativeSections } from "../rfpKb/narrative";
 import { detectClientTemplate } from "../rfpAssembly/detectTemplate";
 import { generateRequirementResponse } from "../rfpKb/generate";
 import {
@@ -384,6 +385,30 @@ export function registerRfpResponderRoutes(app: Express): void {
               }),
             );
           }
+          // Generate AI narrative sections (exec summary, about, solution overview, differentiators)
+          // This is non-fatal: if it fails, the session still completes without narrative.
+          try {
+            const allAnswers_ = await listRfpResponseAnswers(session.id);
+            const gc = allAnswers_.filter((a) => a.coverageFlag === "green").length;
+            const ac = allAnswers_.filter((a) => a.coverageFlag === "amber").length;
+            const rc = allAnswers_.filter((a) => a.coverageFlag === "red").length;
+            const sectionNames = [...new Set(requirements.map((r) => r.section ?? "General"))];
+            const narrative = await generateNarrativeSections({
+              vendorId,
+              vendorName,
+              clientOrgName: session.clientOrgName,
+              rfpFileName: session.rfpFileName,
+              sectionNames,
+              greenCount: gc,
+              amberCount: ac,
+              redCount: rc,
+              totalCount: requirements.length,
+            });
+            await updateRfpResponseSession(session.id, { narrativeSections: narrative });
+          } catch (narErr: any) {
+            console.warn("[rfpResponder] narrative generation failed (non-fatal):", narErr.message);
+          }
+
           await recomputeSessionCounts(session.id);
         } catch (e: any) {
           console.error("[rfpResponder] generation batch error:", e);

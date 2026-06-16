@@ -12,6 +12,7 @@ import {
 } from "../storage/rfpResponder";
 import { listRfpDiagrams } from "../storage/rfpDiagrams";
 import { getVendorBrief } from "../storage/leadGen";
+import type { NarrativeSections } from "../rfpKb/narrative";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,8 @@ export interface DiagramEntry {
   include: boolean;
 }
 
+export type { NarrativeSections };
+
 export interface AssembledResponse {
   session: RfpResponseSession;
   vendorName: string;
@@ -39,6 +42,8 @@ export interface AssembledResponse {
   showCitations: boolean;
   // Diagrams explicitly included by the user (null = all)
   includedDiagramIds: string[] | null;
+  // AI-generated narrative sections (null if not yet generated or generation failed)
+  narrativeSections: NarrativeSections | null;
 }
 
 // ── Assembly ───────────────────────────────────────────────────────────────
@@ -82,6 +87,7 @@ export async function assembleResponse(
     diagrams: filteredDiagrams,
     showCitations,
     includedDiagramIds,
+    narrativeSections: (session.narrativeSections as NarrativeSections | null | undefined) ?? null,
   };
 }
 

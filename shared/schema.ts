@@ -2088,6 +2088,13 @@ export const rfpResponseSessions = pgTable("rfp_response_sessions", {
   clientTemplateSectionMap: jsonb("client_template_section_map").$type<Record<string, string>>(),
   // GCS storage key of the original uploaded RFP file, used for round-trip template filling
   rfpTemplateStorageKey: text("rfp_template_storage_key"),
+  // AI-generated narrative sections written after all requirement answers are complete
+  narrativeSections: jsonb("narrative_sections").$type<{
+    execSummary: string;
+    aboutVendor: string;
+    solutionOverview: string;
+    keyDifferentiators: string[];
+  }>(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

@@ -8,7 +8,7 @@ function safeText(s: string | null | undefined): string {
 
 export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
   const PDFDocument = (await import("pdfkit")).default;
-  const { session, vendorName, sections, diagrams, showCitations } = assembled;
+  const { session, vendorName, sections, diagrams, showCitations, narrativeSections } = assembled;
   const client = session.clientOrgName ?? "Client";
   const today = new Date().toLocaleDateString("en-GB", {
     day: "numeric", month: "long", year: "numeric",
@@ -54,7 +54,13 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     doc.moveDown(0.3);
   }
 
-  // Title page
+  function bullet(text: string, color = SLATE) {
+    doc.fontSize(10).fillColor(color).font("Helvetica")
+      .text(`• ${safeText(text)}`, { indent: 14, lineGap: 2 });
+    doc.moveDown(0.2);
+  }
+
+  // ── Title page ─────────────────────────────────────────────────────────────
   doc.fontSize(22).fillColor(SLATE).font("Helvetica-Bold")
     .text(`${vendorName}`, { align: "center" });
   doc.fontSize(18).fillColor(CYAN).font("Helvetica")
@@ -67,19 +73,55 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     .lineTo(doc.page.width - doc.page.margins.right, doc.y)
     .strokeColor("#CBD5E1").lineWidth(1).stroke();
 
-  // 1. Executive Summary
+  // ── 1. Executive Summary ────────────────────────────────────────────────────
   heading1("1. Executive Summary");
-  body(buildExecSummaryText(assembled));
+  if (narrativeSections?.execSummary) {
+    // Split on paragraph breaks and render each paragraph
+    for (const para of narrativeSections.execSummary.split(/\n{2,}/)) {
+      if (para.trim()) body(para.trim());
+    }
+  } else {
+    body(buildExecSummaryText(assembled));
+  }
 
-  // 2. Solution Overview
-  heading1("2. Solution Overview");
-  body(
-    `${vendorName} offers a comprehensive solution addressing the requirements in this RFP. ` +
-    `Detailed responses are provided below, organised by section.`,
-  );
+  // ── 2. About the Vendor ─────────────────────────────────────────────────────
+  heading1(`2. About ${vendorName}`);
+  if (narrativeSections?.aboutVendor) {
+    for (const para of narrativeSections.aboutVendor.split(/\n{2,}/)) {
+      if (para.trim()) body(para.trim());
+    }
+  } else {
+    body(
+      `${vendorName} is an established technology provider with deep expertise in the domains addressed by this RFP. ` +
+      `The following sections provide detailed responses to each requirement.`,
+    );
+  }
 
-  // 3. Requirement Matrix
-  heading1("3. Requirement Matrix");
+  // ── 3. Solution Overview ────────────────────────────────────────────────────
+  heading1("3. Solution Overview");
+  if (narrativeSections?.solutionOverview) {
+    for (const para of narrativeSections.solutionOverview.split(/\n{2,}/)) {
+      if (para.trim()) body(para.trim());
+    }
+  } else {
+    body(
+      `${vendorName} offers a comprehensive solution addressing the requirements in this RFP. ` +
+      `Detailed responses are provided below, organised by section.`,
+    );
+  }
+
+  // ── 4. Key Differentiators ──────────────────────────────────────────────────
+  heading1("4. Key Differentiators");
+  if (narrativeSections?.keyDifferentiators?.length) {
+    for (const diff of narrativeSections.keyDifferentiators) {
+      bullet(diff, SLATE);
+    }
+  } else {
+    body("Please refer to the Competitive Differentiation section for key advantages.", MUTED);
+  }
+
+  // ── 5. Requirement Matrix ───────────────────────────────────────────────────
+  heading1("5. Requirement Matrix");
 
   for (const { section, items } of sections) {
     heading2(section);
@@ -87,7 +129,6 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
       const flag = answer?.coverageFlag ?? "pending";
       const flagLabel = flag.toUpperCase();
 
-      // Requirement label row
       doc.fontSize(10).font("Helvetica-Bold").fillColor(SLATE)
         .text(safeText(req.requirementText), { continued: false });
       doc.fontSize(9).font("Helvetica-Bold").fillColor(coverageColor(flag))
@@ -122,8 +163,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // 4. Competitive Differentiation
-  heading1("4. Competitive Differentiation");
+  // ── 6. Competitive Differentiation ─────────────────────────────────────────
+  heading1("6. Competitive Differentiation");
   const allOptedClaims = sections
     .flatMap((s) => s.items)
     .flatMap(({ req, answer }) =>
@@ -144,9 +185,9 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // 5. Architecture Diagrams
+  // ── 7. Architecture Diagrams ────────────────────────────────────────────────
   if (diagrams.length > 0) {
-    heading1("5. Architecture Diagrams");
+    heading1("7. Architecture Diagrams");
     body(`${diagrams.length} architecture diagram(s) are included in this response:`);
     for (const d of diagrams) {
       doc.fontSize(10).font("Helvetica-Bold").fillColor(SLATE)
@@ -154,7 +195,6 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
       doc.font("Helvetica").fillColor(MUTED).text(`  [${d.diagramIntent}]`);
       doc.moveDown(0.2);
 
-      // Embed SVG as text note (PDF SVG embedding via svg-to-pdfkit if available)
       try {
         const SVGtoPDF = (await import("svg-to-pdfkit")).default;
         const pageW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -174,8 +214,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // 6. Assumptions & Gaps
-  heading1("6. Assumptions & Gaps");
+  // ── 8. Assumptions & Gaps ───────────────────────────────────────────────────
+  heading1("8. Assumptions & Gaps");
   const redItems = sections.flatMap((s) => s.items).filter((i) => i.answer?.coverageFlag === "red");
   if (redItems.length === 0) {
     body("No gaps identified in this response.", GREEN);
