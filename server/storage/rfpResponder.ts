@@ -11,7 +11,7 @@ import {
   type CompetitiveClaim,
 } from "@shared/schema";
 import { db, pool } from "../db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 // ── Sessions ───────────────────────────────────────────────────────────────
 
@@ -243,6 +243,24 @@ export async function updateRfpResponseAnswer(
     )
     .returning();
   return row;
+}
+
+export async function bulkConfirmRfpAnswers(
+  sessionId: string,
+  flags: ("amber" | "red")[],
+): Promise<number> {
+  const rows = await db
+    .update(rfpResponseAnswers)
+    .set({ confirmed: true, updatedAt: new Date() })
+    .where(
+      and(
+        eq(rfpResponseAnswers.sessionId, sessionId),
+        inArray(rfpResponseAnswers.coverageFlag, flags),
+        eq(rfpResponseAnswers.confirmed, false),
+      ),
+    )
+    .returning({ id: rfpResponseAnswers.id });
+  return rows.length;
 }
 
 // Recompute the green/amber/red/confirmed counts from the answers table and

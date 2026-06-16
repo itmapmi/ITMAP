@@ -623,6 +623,73 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   Claims: "Competitive Claims",
 };
 
+function BulkConfirmButton({
+  sessionId,
+  blockers,
+  onDone,
+}: {
+  sessionId: string;
+  blockers: { kind: string }[];
+  onDone: () => void;
+}) {
+  const { toast } = useToast();
+  const amberCount = blockers.filter((b) => b.kind === "unconfirmed_amber").length;
+  const redCount = blockers.filter((b) => b.kind === "unconfirmed_red").length;
+  const total = amberCount + redCount;
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const flags: string[] = [];
+      if (amberCount > 0) flags.push("amber");
+      if (redCount > 0) flags.push("red");
+      const res = await apiRequest(
+        `/api/rfp/responses/${sessionId}/answers/bulk-confirm`,
+        "POST",
+        { flags },
+      );
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error ?? "Bulk confirm failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: `${data.confirmed} answer${data.confirmed !== 1 ? "s" : ""} confirmed`,
+        description: "All partial evidence items have been acknowledged.",
+      });
+      onDone();
+    },
+    onError: (e: any) => {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5">
+      <p className="text-xs text-slate-300">
+        <span className="font-medium text-white">{total}</span> item{total !== 1 ? "s" : ""} need acknowledgement
+        {amberCount > 0 && redCount > 0 && ` (${amberCount} amber, ${redCount} red)`}
+        {amberCount > 0 && redCount === 0 && ` (${amberCount} amber)`}
+        {redCount > 0 && amberCount === 0 && ` (${redCount} red)`}
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 bg-transparent ml-3 flex-shrink-0"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+      >
+        {mutation.isPending ? (
+          <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Confirming…</>
+        ) : (
+          <><ClipboardCheck className="h-3 w-3 mr-1" /> Confirm all ({total})</>
+        )}
+      </Button>
+    </div>
+  );
+}
+
 function ExportPanel({
   sessionId,
   session,
@@ -898,7 +965,6 @@ function ExportPanel({
                     <button
                       onClick={() => {
                         onSwitchToResponses?.();
-                        // Give the tab a moment to render before scrolling
                         setTimeout(() => {
                           const el = document.getElementById(`req-${b.requirementId}`);
                           el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -927,8 +993,18 @@ function ExportPanel({
                 </div>
               </div>
             ))}
+            {gate.blockers.some((b) => b.kind === "unconfirmed_amber" || b.kind === "unconfirmed_red") && (
+              <BulkConfirmButton
+                sessionId={sessionId}
+                blockers={gate.blockers}
+                onDone={() => {
+                  refetchGate();
+                  queryClient.invalidateQueries({ queryKey: ["/api/rfp/responses", sessionId] });
+                }}
+              />
+            )}
             <p className="text-xs text-slate-500 mt-1">
-              All items above must be resolved before the export can proceed. There is no override — this protects delivery quality.
+              Resolve all items above before exporting. Use "Confirm all" to bulk-acknowledge partial evidence items.
             </p>
           </div>
         ) : !gateLoading && gate && (

@@ -19,6 +19,7 @@ import {
   upsertRfpResponseAnswer,
   listRfpResponseAnswers,
   updateRfpResponseAnswer,
+  bulkConfirmRfpAnswers,
   recomputeSessionCounts,
 } from "../storage/rfpResponder";
 import {
@@ -422,6 +423,28 @@ export function registerRfpResponderRoutes(app: Express): void {
       res.status(err.status ?? 500).json({ error: err.message ?? "Failed to start generation" });
     }
   });
+
+  // Bulk-confirm all unconfirmed amber and/or red answers for a session
+  app.post(
+    "/api/rfp/responses/:id/answers/bulk-confirm",
+    ...guard,
+    async (req: Request, res: Response) => {
+      try {
+        const vendorId = primaryVendorId(req)!;
+        await assertSessionBelongsToVendor(req.params.id, vendorId);
+        const schema = z.object({
+          flags: z.array(z.enum(["amber", "red"])).default(["amber", "red"]),
+        });
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
+        const count = await bulkConfirmRfpAnswers(req.params.id, parsed.data.flags);
+        await recomputeSessionCounts(req.params.id);
+        res.json({ confirmed: count });
+      } catch (err: any) {
+        res.status(err.status ?? 500).json({ error: err.message ?? "Failed to bulk-confirm answers" });
+      }
+    },
+  );
 
   // Update an answer (smeNote, confirmed, competitiveClaims opt-in, citationsVisible)
   app.patch(
