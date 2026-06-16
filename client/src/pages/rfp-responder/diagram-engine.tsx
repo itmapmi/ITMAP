@@ -83,6 +83,7 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
   const [showGenDialog, setShowGenDialog] = useState(false);
   const [selectedIntent, setSelectedIntent] = useState<DiagramIntent | null>(null);
   const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
+  const [showAllTypes, setShowAllTypes] = useState(false);
 
   // Viewer: pan + zoom
   const [zoom, setZoom] = useState(0.85);
@@ -119,6 +120,27 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
       return res.json();
     },
   });
+
+  type DiagramSuggestion = { intent: string; rationale: string; confidence: "high" | "medium" };
+
+  const { data: suggestData, isFetching: suggestLoading } = useQuery<{ suggestions: DiagramSuggestion[] }>({
+    queryKey: ["/api/rfp/sessions", sessionId, "diagrams/suggest"],
+    queryFn: async () => {
+      const res = await fetch(`/api/rfp/sessions/${sessionId}/diagrams/suggest`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) return { suggestions: [] };
+      return res.json();
+    },
+    enabled: showGenDialog,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const suggestions: DiagramSuggestion[] = suggestData?.suggestions ?? [];
+  const suggestedIntents = new Set(suggestions.map((s) => s.intent));
 
   const selectedDiagram = useMemo(
     () => diagrams.find((d) => d.id === selectedDiagramId) ?? null,
@@ -584,40 +606,137 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
       )}
 
       {/* Generate dialog */}
-      <Dialog open={showGenDialog} onOpenChange={setShowGenDialog}>
-        <DialogContent className="sm:max-w-2xl bg-slate-900 border-white/10 text-white">
+      <Dialog open={showGenDialog} onOpenChange={(open) => {
+        setShowGenDialog(open);
+        if (!open) { setSelectedIntent(null); setSelectedReqId(null); setShowAllTypes(false); }
+      }}>
+        <DialogContent className="sm:max-w-2xl bg-slate-900 border-white/10 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">Generate Architecture Diagram</DialogTitle>
             <DialogDescription className="text-slate-400 text-sm">
-              Choose a diagram type and optionally link it to a specific RFP requirement.
+              AI has analysed your RFP and solution documents to recommend the most relevant diagrams.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Intent grid */}
-          <div className="grid grid-cols-3 gap-2 mt-1">
-            {DIAGRAM_INTENTS.map((intent) => {
-              const meta = INTENT_META[intent];
-              const Icon = meta.Icon;
-              const active = selectedIntent === intent;
-              return (
+          {/* AI Recommended section */}
+          {suggestLoading ? (
+            <div className="mt-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+                <span className="text-xs text-slate-400">Analysing RFP and solution documents…</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-xl border border-white/5 bg-slate-800/40 p-3 h-24 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ) : suggestions.length > 0 ? (
+            <div className="mt-1 space-y-3">
+              {/* Recommended */}
+              <div>
+                <p className="text-[10px] text-cyan-400 uppercase tracking-widest font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  AI Recommended for this RFP
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {suggestions.map((s) => {
+                    const meta = INTENT_META[s.intent as DiagramIntent];
+                    if (!meta) return null;
+                    const Icon = meta.Icon;
+                    const active = selectedIntent === s.intent;
+                    return (
+                      <button
+                        key={s.intent}
+                        onClick={() => setSelectedIntent(s.intent as DiagramIntent)}
+                        className={`text-left rounded-xl border p-3 transition-all ${
+                          active
+                            ? "border-cyan-500/60 bg-cyan-500/10 ring-1 ring-cyan-500/30"
+                            : "border-cyan-500/20 bg-cyan-500/5 hover:border-cyan-500/40 hover:bg-cyan-500/8"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-cyan-400" : "text-cyan-500/70"}`} />
+                          <p className={`text-xs font-medium leading-tight ${active ? "text-cyan-300" : "text-slate-300"}`}>
+                            {meta.name}
+                          </p>
+                          {s.confidence === "high" && (
+                            <span className="ml-auto text-[9px] bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 rounded px-1 py-0.5 flex-shrink-0">
+                              High fit
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">{s.rationale}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* All types toggle */}
+              <div>
                 <button
-                  key={intent}
-                  onClick={() => setSelectedIntent(intent)}
-                  className={`text-left rounded-xl border p-3 transition-all ${
-                    active
-                      ? "border-cyan-500/50 bg-cyan-500/10"
-                      : "border-white/5 bg-slate-800/50 hover:border-white/15 hover:bg-slate-800"
-                  }`}
+                  onClick={() => setShowAllTypes((v) => !v)}
+                  className="text-[10px] text-slate-500 hover:text-slate-400 flex items-center gap-1 transition-colors"
                 >
-                  <Icon className={`h-4 w-4 mb-1.5 ${active ? "text-cyan-400" : "text-slate-400"}`} />
-                  <p className={`text-xs font-medium leading-tight ${active ? "text-cyan-300" : "text-slate-300"}`}>
-                    {meta.name}
-                  </p>
-                  <p className="text-[10px] text-slate-600 mt-0.5 leading-tight">{meta.desc}</p>
+                  <span>{showAllTypes ? "▲" : "▼"}</span>
+                  {showAllTypes ? "Hide all types" : "Show all diagram types"}
                 </button>
-              );
-            })}
-          </div>
+                {showAllTypes && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {DIAGRAM_INTENTS.filter((id) => !suggestedIntents.has(id)).map((intent) => {
+                      const meta = INTENT_META[intent];
+                      const Icon = meta.Icon;
+                      const active = selectedIntent === intent;
+                      return (
+                        <button
+                          key={intent}
+                          onClick={() => setSelectedIntent(intent)}
+                          className={`text-left rounded-xl border p-3 transition-all ${
+                            active
+                              ? "border-cyan-500/50 bg-cyan-500/10"
+                              : "border-white/5 bg-slate-800/50 hover:border-white/15 hover:bg-slate-800"
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 mb-1.5 ${active ? "text-cyan-400" : "text-slate-400"}`} />
+                          <p className={`text-xs font-medium leading-tight ${active ? "text-cyan-300" : "text-slate-300"}`}>
+                            {meta.name}
+                          </p>
+                          <p className="text-[10px] text-slate-600 mt-0.5 leading-tight">{meta.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* No suggestions / fallback — show full grid */
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              {DIAGRAM_INTENTS.map((intent) => {
+                const meta = INTENT_META[intent];
+                const Icon = meta.Icon;
+                const active = selectedIntent === intent;
+                return (
+                  <button
+                    key={intent}
+                    onClick={() => setSelectedIntent(intent)}
+                    className={`text-left rounded-xl border p-3 transition-all ${
+                      active
+                        ? "border-cyan-500/50 bg-cyan-500/10"
+                        : "border-white/5 bg-slate-800/50 hover:border-white/15 hover:bg-slate-800"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 mb-1.5 ${active ? "text-cyan-400" : "text-slate-400"}`} />
+                    <p className={`text-xs font-medium leading-tight ${active ? "text-cyan-300" : "text-slate-300"}`}>
+                      {meta.name}
+                    </p>
+                    <p className="text-[10px] text-slate-600 mt-0.5 leading-tight">{meta.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Requirement selector (optional) */}
           {requirements.length > 0 && (
@@ -645,7 +764,7 @@ export default function DiagramEngine({ sessionId, session, requirements }: Diag
             <Button
               variant="ghost"
               className="text-slate-400"
-              onClick={() => { setShowGenDialog(false); setSelectedIntent(null); setSelectedReqId(null); }}
+              onClick={() => { setShowGenDialog(false); setSelectedIntent(null); setSelectedReqId(null); setShowAllTypes(false); }}
             >
               Cancel
             </Button>

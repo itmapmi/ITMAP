@@ -1,18 +1,25 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
+import OpenAI from "openai";
 import { requireAuth, requireAdmin } from "../auth";
 import { requireFeature } from "../featureAccess";
 import {
   createRfpDiagram, getRfpDiagram, listRfpDiagrams,
   updateRfpDiagramPositions, deleteRfpDiagram,
 } from "../storage/rfpDiagrams";
-import { getRfpResponseSession, getRfpResponseReqById } from "../storage/rfpResponder";
+import { getRfpResponseSession, getRfpResponseReqById, listRfpResponseReqs } from "../storage/rfpResponder";
 import { getVendorById, getMarketById } from "../storage/markets";
 import { generateTopologySpec } from "../rfpDiagram/generate";
 import { computeLayout } from "../rfpDiagram/layout";
 import { renderDiagram } from "../rfpDiagram/renderer";
 import { exportDrawio, exportPdf, exportPng } from "../rfpDiagram/export";
-import { topologySpecSchema, type DiagramIntent, DIAGRAM_INTENTS } from "../rfpDiagram/topology";
+import { topologySpecSchema, type DiagramIntent, DIAGRAM_INTENTS, INTENT_DISPLAY_NAMES, INTENT_DESCRIPTIONS } from "../rfpDiagram/topology";
+import { searchRfpKbChunks } from "../storage/rfpKb";
+
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -40,6 +47,97 @@ export function registerRfpDiagramRoutes(app: Express): void {
     } catch (err) {
       console.error("[rfpDiagrams] list error:", err);
       res.status(500).json({ error: "Failed to list diagrams" });
+    }
+  });
+
+  // ── AI diagram suggestions ──
+  app.post("/api/rfp/sessions/:sessionId/diagrams/suggest", guard, async (req: Request, res: Response) => {
+    try {
+      const session = await getRfpResponseSession(req.params.sessionId);
+      if (!session || !canAccessSession(session, req)) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      const vendor = await getVendorById(session.vendorId);
+      if (!vendor) return res.status(404).json({ error: "Vendor not found" });
+
+      // Gather RFP requirements + KB chunks in parallel
+      const [requirements, kbChunks] = await Promise.all([
+        listRfpResponseReqs(session.id),
+        searchRfpKbChunks(session.vendorId, "architecture infrastructure deployment topology storage network", 12),
+      ]);
+
+      // Build context strings
+      const reqSummary = requirements
+        .slice(0, 40)
+        .map((r, i) => `${i + 1}. [${r.section ?? "General"}] ${r.requirementText.slice(0, 200)}`)
+        .join("\n");
+
+      const kbSummary = kbChunks
+        .slice(0, 8)
+        .map((c) => c.content.slice(0, 400))
+        .join("\n---\n");
+
+      // Build intent catalogue for the prompt
+      const intentCatalogue = DIAGRAM_INTENTS.map(
+        (id) => `  "${id}": ${INTENT_DISPLAY_NAMES[id]} — ${INTENT_DESCRIPTIONS[id]}`,
+      ).join("\n");
+
+      const systemPrompt = `You are an expert IT architecture consultant. Your job is to recommend which architecture diagrams would best support a vendor RFP response.
+
+Given the RFP requirements and the vendor's solution documentation excerpts, select up to 5 diagram types that are directly relevant and would meaningfully illustrate the vendor's capabilities.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "suggestions": [
+    { "intent": "<one of the valid intents>", "rationale": "<1 sentence explaining why this diagram is relevant to THIS RFP>", "confidence": "high|medium" }
+  ]
+}
+
+Rules:
+- Only return diagram types from the provided catalogue. Do not invent new types.
+- Rank by relevance — most relevant first.
+- If fewer than 3 types genuinely apply, return only those that do. Do not pad.
+- Rationale must reference specific requirements or capabilities from the provided context, not generic statements.`;
+
+      const userPrompt = `Vendor: ${vendor.name}
+
+Available diagram types:
+${intentCatalogue}
+
+RFP Requirements (${requirements.length} total, first 40 shown):
+${reqSummary || "(no requirements found)"}
+
+Vendor solution documentation excerpts:
+${kbSummary || "(no KB documents uploaded yet)"}
+
+Which diagrams should be generated for this RFP response?`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+        max_tokens: 800,
+      });
+
+      const raw = response.choices[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(raw) as { suggestions?: { intent: string; rationale: string; confidence: string }[] };
+
+      // Validate intents against the known list
+      const validIntents = new Set<string>(DIAGRAM_INTENTS);
+      const suggestions = (parsed.suggestions ?? [])
+        .filter((s) => validIntents.has(s.intent))
+        .slice(0, 5);
+
+      res.json({ suggestions });
+    } catch (err) {
+      console.error("[rfpDiagrams] suggest error:", err);
+      // Fail gracefully — frontend will fall back to showing all types
+      res.json({ suggestions: [] });
     }
   });
 
