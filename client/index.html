@@ -46,6 +46,14 @@
     <link rel="shortcut icon" href="/favicon.jpg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.jpg" />
 
+    <!-- Theme initialisation: set dark class synchronously to prevent flash -->
+    <script>
+      (function() {
+        var t = localStorage.getItem("spectio-theme");
+        if (t !== "light") document.documentElement.classList.add("dark");
+      })();
+    </script>
+
     <!-- Performance / fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

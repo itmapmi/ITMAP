@@ -124,7 +124,7 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
+      <div className="min-h-screen theme-bg flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -132,7 +132,7 @@ export default function Home() {
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#1e2130]">
+      <div className="min-h-screen theme-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <motion.div {...fadeUp} className="mb-10">
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -184,7 +184,7 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-[#1e2130] text-white overflow-x-hidden">
+    <div className="theme-bg overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[92vh] flex items-center overflow-x-hidden">
         <div className="absolute inset-0">
