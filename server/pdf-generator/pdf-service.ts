@@ -276,41 +276,183 @@ export class PDFService {
     bodyHtml: string,
     opts?: { format?: 'A4' | 'Letter'; pageMargins?: [number, number, number, number] },
   ): Promise<Buffer> {
-    const pm = await this.getPdfmake();
-    const htmlToPdfmake = (await import('html-to-pdfmake')).default as any;
-    const { JSDOM } = await import('jsdom');
-    const { window } = new JSDOM('');
+    try {
+      const pm = await this.getPdfmake();
+      const htmlToPdfmake = (await import('html-to-pdfmake')).default as any;
+      const { JSDOM } = await import('jsdom');
+      const { window } = new JSDOM('');
 
-    const content = htmlToPdfmake(this.sanitizeHtmlForPdfmake(bodyHtml), { window });
-    const year = new Date().getFullYear();
+      const content = htmlToPdfmake(this.sanitizeHtmlForPdfmake(bodyHtml), { window });
+      const year = new Date().getFullYear();
 
-    const docDefinition = {
-      pageSize: opts?.format ?? 'A4',
-      pageMargins: opts?.pageMargins ?? [40, 45, 40, 60],
-      defaultStyle: { font: 'Helvetica', fontSize: 10, lineHeight: 1.25 },
-      content,
-      footer: (currentPage: number, pageCount: number) => ({
-        columns: [
-          {
-            text: `© ${year} Spectio — All Rights Reserved`,
-            alignment: 'left',
-            fontSize: 8,
-            color: '#718096',
-            margin: [40, 0, 0, 0],
-          },
-          {
-            text: `Page ${currentPage} of ${pageCount}`,
-            alignment: 'right',
-            fontSize: 8,
-            color: '#718096',
-            margin: [0, 0, 40, 0],
-          },
-        ],
-      }),
+      const docDefinition = {
+        pageSize: opts?.format ?? 'A4',
+        pageMargins: opts?.pageMargins ?? [40, 45, 40, 60],
+        defaultStyle: { font: 'Helvetica', fontSize: 10, lineHeight: 1.25 },
+        content,
+        footer: (currentPage: number, pageCount: number) => ({
+          columns: [
+            {
+              text: `© ${year} Spectio — All Rights Reserved`,
+              alignment: 'left',
+              fontSize: 8,
+              color: '#718096',
+              margin: [40, 0, 0, 0],
+            },
+            {
+              text: `Page ${currentPage} of ${pageCount}`,
+              alignment: 'right',
+              fontSize: 8,
+              color: '#718096',
+              margin: [0, 0, 40, 0],
+            },
+          ],
+        }),
+      };
+
+      const doc = pm.createPdf(docDefinition, {});
+      return await doc.getBuffer();
+    } catch (pdfmakeErr) {
+      console.error('[PDF] pdfmake unavailable, falling back to pdf-lib:', (pdfmakeErr as Error)?.message);
+      return this.renderHtmlWithPdfLib(bodyHtml, opts);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pure-JS fallback using pdf-lib (no native deps, no pdfkit dependency).
+  // Strips HTML to structured plain text and lays it out on A4 pages.
+  // Used when pdfmake/pdfkit is unavailable in the deployed environment.
+  // ---------------------------------------------------------------------------
+  private async renderHtmlWithPdfLib(
+    bodyHtml: string,
+    opts?: { format?: 'A4' | 'Letter'; pageMargins?: [number, number, number, number] },
+  ): Promise<Buffer> {
+    const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+
+    // Parse HTML into a flat list of styled text segments
+    interface Segment { text: string; bold: boolean; size: number; isBreak: boolean }
+    const segments: Segment[] = [];
+
+    const decoded = bodyHtml
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#039;/g, "'")
+      .replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
+      .replace(/&[a-z]+;/gi, ' ');
+
+    const HEADING_SIZES: Record<string, number> = { h1: 18, h2: 15, h3: 13, h4: 11 };
+
+    // Simple sequential HTML parser — no DOM needed
+    let remaining = decoded;
+    const addBreak = () => segments.push({ text: '', bold: false, size: 10, isBreak: true });
+    const addText = (t: string, bold: boolean, size: number) => {
+      const clean = t.replace(/\s+/g, ' ').trim();
+      if (clean) segments.push({ text: clean, bold, size, isBreak: false });
     };
 
-    const doc = pm.createPdf(docDefinition, {});
-    return await doc.getBuffer();
+    while (remaining.length > 0) {
+      const tagStart = remaining.indexOf('<');
+      if (tagStart === -1) {
+        addText(remaining, false, 10);
+        break;
+      }
+      if (tagStart > 0) {
+        addText(remaining.slice(0, tagStart), false, 10);
+        remaining = remaining.slice(tagStart);
+        continue;
+      }
+      const tagEnd = remaining.indexOf('>');
+      if (tagEnd === -1) break;
+      const tag = remaining.slice(1, tagEnd).trim().toLowerCase();
+      remaining = remaining.slice(tagEnd + 1);
+      const tagName = tag.replace(/[^a-z0-9]/g, '').replace(/^\//, '');
+      if (tag.startsWith('/')) {
+        if (['p', 'div', 'tr', 'li'].includes(tag.slice(1))) addBreak();
+        if (Object.keys(HEADING_SIZES).includes(tag.slice(1))) { addBreak(); addBreak(); }
+      } else if (['br'].includes(tagName)) {
+        addBreak();
+      } else if (['th', 'td'].includes(tagName)) {
+        addText('  ', false, 10);
+      } else if (Object.keys(HEADING_SIZES).some(h => tag.startsWith(h))) {
+        addBreak();
+      }
+    }
+
+    // Layout constants for A4
+    const isLetter = opts?.format === 'Letter';
+    const PAGE_W = isLetter ? 612 : 595;
+    const PAGE_H = isLetter ? 792 : 842;
+    const [mL, mT, mR, mB] = opts?.pageMargins ?? [50, 50, 50, 50];
+    const CONTENT_W = PAGE_W - mL - mR;
+    const FOOTER_H = 20;
+
+    const pdfDoc = await PDFDocument.create();
+    const normalFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont   = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    const textColor   = rgb(0.13, 0.13, 0.13);
+    const footerColor = rgb(0.44, 0.50, 0.56);
+
+    let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    let y = PAGE_H - mT;
+    const pageNums: { page: ReturnType<typeof pdfDoc.addPage>; num: number }[] = [{ page, num: 1 }];
+
+    const newPage = () => {
+      // draw footer on the page we're leaving
+      const last = pageNums[pageNums.length - 1];
+      last.page.drawText(`© ${new Date().getFullYear()} Spectio — All Rights Reserved`, {
+        x: mL, y: mB - 14, size: 7, font: normalFont, color: footerColor,
+      });
+      page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+      y = PAGE_H - mT;
+      pageNums.push({ page, num: last.num + 1 });
+    };
+
+    const drawLine = (text: string, size: number, bold: boolean, indent = 0) => {
+      const lineH = size * 1.45;
+      if (y - lineH < mB + FOOTER_H) newPage();
+      page.drawText(text, {
+        x: mL + indent, y,
+        size, font: bold ? boldFont : normalFont, color: textColor,
+      });
+      y -= lineH;
+    };
+
+    const wrapAndDraw = (text: string, size: number, bold: boolean) => {
+      const f = bold ? boldFont : normalFont;
+      const words = text.split(' ');
+      let line = '';
+      for (const word of words) {
+        const probe = line ? `${line} ${word}` : word;
+        if (f.widthOfTextAtSize(probe, size) > CONTENT_W && line) {
+          drawLine(line, size, bold);
+          line = word;
+        } else {
+          line = probe;
+        }
+      }
+      if (line) drawLine(line, size, bold);
+    };
+
+    for (const seg of segments) {
+      if (seg.isBreak) { y -= seg.size * 0.6; continue; }
+      wrapAndDraw(seg.text, seg.size, seg.bold);
+    }
+
+    // Footer on last page
+    const last = pageNums[pageNums.length - 1];
+    const total = pageNums.length;
+    last.page.drawText(`© ${new Date().getFullYear()} Spectio — All Rights Reserved`, {
+      x: mL, y: mB - 14, size: 7, font: normalFont, color: footerColor,
+    });
+    // Page numbers (go back and add them now we know total)
+    for (const { page: pg, num } of pageNums) {
+      pg.drawText(`Page ${num} of ${total}`, {
+        x: PAGE_W - mR - 60, y: mB - 14, size: 7, font: normalFont, color: footerColor,
+      });
+    }
+
+    const bytes = await pdfDoc.save();
+    return Buffer.from(bytes);
   }
 
   generateVendorEvaluationContent(market: Market, vendors: any[], scores: any[]): string {

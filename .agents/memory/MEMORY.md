@@ -1,7 +1,7 @@
 - [Market-scoped endpoint read auth](market-read-auth.md) — new marketId endpoints must enforce canReadMarket (404 on fail).
 - [PDF template bundling](pdf-template-bundling.md) — bundle the report HTML into TS; do not readFile it at runtime (esbuild skips .html → prod EIO 500).
 - [Puppeteer Chromium in deploy](puppeteer-chromium-deploy.md) — path existing != launchable; ship project-local Chrome + declare nix libs; launch-probe candidates, don't trust access().
-- [PDF browser-free fallback](pdf-browser-free-fallback.md) — generatePDF/htmlToPdf fall back to pdfmake+jsdom when Chromium can't launch; route new reports through them.
+- [PDF browser-free fallback](pdf-browser-free-fallback.md) — pdfmake fails in prod too (pdfkit EIO); renderHtmlWithPdfmake now try-catches and falls back to renderHtmlWithPdfLib (pdf-lib, pure JS).
 - [News → AI suggestion trigger paths](news-suggestions-trigger-paths.md) — fire suggestions from BOTH scraper (non-null label) AND analyzer (null label); disjoint sets, additive not replacement.
 - [Market Builder republish gate](market-builder-republish-gate.md) — publish gate must accept status "published" too (not just "completed"), or republishing an already-published job deadlocks.
 - [MB new-only commentary scoping](market-builder-new-only-commentary.md) — commentary stages must scope new-only by vendor presence in runner, not by comment-completeness skip (scoring is fine; commentary isn't).
