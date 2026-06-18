@@ -109,8 +109,8 @@ export default function DatasheetComparePage() {
     return <LockedFeaturePanel featureKey="datasheets" variant="dark" />;
   }
 
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">Loading…</div>;
-  if (!marketDetail || !market || !schema) return <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">Market not found.</div>;
+  if (isLoading) return <div className="min-h-screen theme-bg pt-20 px-6">Loading…</div>;
+  if (!marketDetail || !market || !schema) return <div className="min-h-screen theme-bg pt-20 px-6">Market not found.</div>;
 
   const toggle = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : prev.length < 5 ? [...prev, id] : prev);
@@ -134,7 +134,7 @@ export default function DatasheetComparePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white pt-20 pb-12">
+    <div className="min-h-screen theme-bg pt-20 pb-12">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>

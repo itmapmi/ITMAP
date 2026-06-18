@@ -404,3 +404,25 @@ html:not(.dark) .theme-bg input::placeholder,
 html:not(.dark) .theme-bg textarea::placeholder {
   color: #94a3b8 !important;
 }
+
+/* bg-slate-950 variants inside theme-bg pages */
+html:not(.dark) .theme-bg .bg-slate-950 {
+  background-color: #ffffff !important;
+}
+html:not(.dark) .theme-bg .bg-slate-950\/60,
+html:not(.dark) .theme-bg .bg-slate-950\/80,
+html:not(.dark) .theme-bg .bg-slate-950\/85,
+html:not(.dark) .theme-bg .bg-slate-950\/90 {
+  background-color: rgba(248, 250, 252, 0.85) !important;
+}
+
+/* Forecast report: fix the sticky jump-to nav strip in light mode */
+[data-fb-theme="light"] .bg-slate-950\/85 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+[data-fb-theme="light"] .bg-slate-950\/60 {
+  background-color: rgba(248, 250, 252, 0.7) !important;
+}
+[data-fb-theme="light"] .hover\:bg-white\/\[0\.04\]:hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
