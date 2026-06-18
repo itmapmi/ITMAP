@@ -184,10 +184,14 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
         throw new Error("Failed to generate report");
       }
 
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+      const filename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : 'Spectio Product Evaluation Report.pdf';
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
