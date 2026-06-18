@@ -48,6 +48,13 @@ interface VendorSignalsPage {
   offset: number;
 }
 
+interface AiSuggestionsPage {
+  data: AiSuggestion[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 const SIGNAL_SOURCE_TYPES = [
   { value: "all", label: "All Sources" },
   { value: "hackernews", label: "Hacker News" },
@@ -1259,21 +1266,30 @@ const SUGGESTION_SOURCE_TYPES = [
 
 // ─── Main component ───────────────────────────────────────────────────────
 
+const SUGGESTIONS_PAGE_SIZE = 50;
+
 export function AiSuggestionsAdmin() {
   const { toast } = useToast();
   const [mainTab, setMainTab] = useState("suggestions");
   const [tab, setTab] = useState("pending");
   const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
+  const [vendorFilter, setVendorFilter] = useState("all");
+  const [offset, setOffset] = useState(0);
 
-  const suggestionsUrl = `/api/admin/ai-suggestions?status=${tab === "all" ? "" : tab}${
+  const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
+
+  const suggestionsUrl = `/api/admin/ai-suggestions?limit=${SUGGESTIONS_PAGE_SIZE}&offset=${offset}&status=${tab === "all" ? "" : tab}${
     sourceTypeFilter !== "all" ? `&sourceType=${sourceTypeFilter}` : ""
-  }`;
+  }${vendorFilter !== "all" ? `&vendorId=${vendorFilter}` : ""}`;
 
-  const { data: suggestions = [], isLoading } = useQuery<AiSuggestion[]>({
-    queryKey: ["/api/admin/ai-suggestions", tab, sourceTypeFilter],
+  const { data: suggestionsPage, isLoading } = useQuery<AiSuggestionsPage>({
+    queryKey: ["/api/admin/ai-suggestions", tab, sourceTypeFilter, vendorFilter, offset],
     queryFn: () =>
       fetch(suggestionsUrl, { credentials: "include" }).then(r => r.json()),
   });
+
+  const suggestions = suggestionsPage?.data ?? [];
+  const totalSuggestions = suggestionsPage?.total ?? 0;
 
   const { data: countData } = useQuery<{ count: number }>({
     queryKey: ["/api/admin/ai-suggestions/count"],
@@ -1381,7 +1397,19 @@ export function AiSuggestionsAdmin() {
 
           {/* Filter bar */}
           <div className="flex flex-wrap gap-2 items-center">
-            <Select value={sourceTypeFilter} onValueChange={setSourceTypeFilter}>
+            <Select value={vendorFilter} onValueChange={(v) => { setVendorFilter(v); setOffset(0); }}>
+              <SelectTrigger className="w-44 h-8 text-sm">
+                <SelectValue placeholder="All vendors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All vendors</SelectItem>
+                {vendors.map(v => (
+                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sourceTypeFilter} onValueChange={(v) => { setSourceTypeFilter(v); setOffset(0); }}>
               <SelectTrigger className="w-36 h-8 text-sm">
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
@@ -1391,18 +1419,25 @@ export function AiSuggestionsAdmin() {
                 ))}
               </SelectContent>
             </Select>
-            {sourceTypeFilter !== "all" && (
+
+            {(sourceTypeFilter !== "all" || vendorFilter !== "all") && (
               <button
                 className="text-xs text-gray-400 hover:text-gray-600 underline"
-                onClick={() => setSourceTypeFilter("all")}
+                onClick={() => { setSourceTypeFilter("all"); setVendorFilter("all"); setOffset(0); }}
               >
-                Clear
+                Clear filters
               </button>
+            )}
+
+            {suggestionsPage && (
+              <span className="text-xs text-gray-400 ml-auto">
+                {offset + 1}–{Math.min(offset + SUGGESTIONS_PAGE_SIZE, totalSuggestions)} of {totalSuggestions} total
+              </span>
             )}
           </div>
 
           {/* Status tabs */}
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs value={tab} onValueChange={(v) => { setTab(v); setOffset(0); }}>
             <TabsList>
               <TabsTrigger value="pending" className="gap-2">
                 Pending
@@ -1445,6 +1480,33 @@ export function AiSuggestionsAdmin() {
                         mutating={mutating}
                       />
                     ))}
+
+                    {/* Pagination */}
+                    {totalSuggestions > SUGGESTIONS_PAGE_SIZE && (
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          disabled={offset === 0}
+                          onClick={() => setOffset(Math.max(0, offset - SUGGESTIONS_PAGE_SIZE))}
+                        >
+                          ← Previous
+                        </Button>
+                        <span className="text-xs text-gray-400">
+                          {offset + 1}–{Math.min(offset + SUGGESTIONS_PAGE_SIZE, totalSuggestions)} of {totalSuggestions}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          disabled={offset + SUGGESTIONS_PAGE_SIZE >= totalSuggestions}
+                          onClick={() => setOffset(offset + SUGGESTIONS_PAGE_SIZE)}
+                        >
+                          Next →
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </TabsContent>

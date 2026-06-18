@@ -178,7 +178,7 @@ export interface IStorage {
   upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;
 
   createAiSuggestion(data: InsertAiSuggestion): Promise<AiSuggestion>;
-  getAiSuggestions(filters?: { status?: string; vendorId?: string; marketId?: string }): Promise<(AiSuggestion & { vendorName: string; marketName: string })[]>;
+  getAiSuggestions(filters?: { status?: string; vendorId?: string; marketId?: string; sourceType?: string; limit?: number; offset?: number }): Promise<import('./admin').AiSuggestionsPage>;
   getAiSuggestionById(id: string): Promise<AiSuggestion | undefined>;
   updateAiSuggestionStatus(id: string, status: 'approved' | 'rejected'): Promise<AiSuggestion>;
   getPendingAiSuggestionsCount(): Promise<number>;

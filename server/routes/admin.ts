@@ -717,11 +717,15 @@ export function registerAdminRoutes(app: Express): void {
 
   app.get('/api/admin/ai-suggestions', requireAdmin, async (req, res) => {
     try {
-      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-      const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
-      const marketId = typeof req.query.marketId === 'string' ? req.query.marketId : undefined;
-      const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
-      res.json(await storage.getAiSuggestions({ status, vendorId, marketId, sourceType }));
+      const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : undefined;
+      const vendorId = typeof req.query.vendorId === 'string' && req.query.vendorId ? req.query.vendorId : undefined;
+      const marketId = typeof req.query.marketId === 'string' && req.query.marketId ? req.query.marketId : undefined;
+      const sourceType = typeof req.query.sourceType === 'string' && req.query.sourceType ? req.query.sourceType : undefined;
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      const parsedOffset = parseInt(req.query.offset as string, 10);
+      const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+      const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+      res.json(await storage.getAiSuggestions({ status, vendorId, marketId, sourceType, limit, offset }));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

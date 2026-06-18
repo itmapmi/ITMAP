@@ -6,7 +6,7 @@ import {
   vendors, markets, vendorSignals, newsArticles,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, sql, inArray, gte } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, gte, count } from "drizzle-orm";
 
 export interface SourceArticle {
   id: string;
@@ -68,9 +68,19 @@ export async function createAiSuggestion(data: InsertAiSuggestion): Promise<AiSu
   return created!;
 }
 
+export interface AiSuggestionsPage {
+  data: AiSuggestionWithContext[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export async function getAiSuggestions(
-  filters?: { status?: string; vendorId?: string; marketId?: string; sourceType?: string }
-): Promise<AiSuggestionWithContext[]> {
+  filters?: { status?: string; vendorId?: string; marketId?: string; sourceType?: string; limit?: number; offset?: number }
+): Promise<AiSuggestionsPage> {
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+
   const sourceTypeCondition = (() => {
     if (!filters?.sourceType) return undefined;
     if (filters.sourceType === "news_article") {
@@ -79,6 +89,39 @@ export async function getAiSuggestions(
     return eq(vendorSignals.sourceType, filters.sourceType);
   })();
 
+  const whereClause = and(
+    filters?.status ? eq(aiSuggestions.status, filters.status) : undefined,
+    filters?.vendorId ? eq(aiSuggestions.vendorId, filters.vendorId) : undefined,
+    filters?.marketId ? eq(aiSuggestions.marketId, filters.marketId) : undefined,
+    sourceTypeCondition,
+  );
+
+  // Total count (DISTINCT because the left-join can multiply rows)
+  const [{ total }] = await db
+    .select({ total: sql<number>`COUNT(DISTINCT ${aiSuggestions.id})::int` })
+    .from(aiSuggestions)
+    .innerJoin(vendors, eq(aiSuggestions.vendorId, vendors.id))
+    .innerJoin(markets, eq(aiSuggestions.marketId, markets.id))
+    .leftJoin(vendorSignals, eq(vendorSignals.aiSuggestionId, aiSuggestions.id))
+    .where(whereClause);
+
+  // Paginated suggestion IDs (DISTINCT to avoid duplication from multi-signal rows)
+  const idRows = await db
+    .selectDistinct({ id: aiSuggestions.id, createdAt: aiSuggestions.createdAt })
+    .from(aiSuggestions)
+    .innerJoin(vendors, eq(aiSuggestions.vendorId, vendors.id))
+    .innerJoin(markets, eq(aiSuggestions.marketId, markets.id))
+    .leftJoin(vendorSignals, eq(vendorSignals.aiSuggestionId, aiSuggestions.id))
+    .where(whereClause)
+    .orderBy(desc(aiSuggestions.createdAt), aiSuggestions.id)
+    .limit(limit)
+    .offset(offset);
+
+  if (!idRows.length) return { data: [], total, limit, offset };
+
+  const ids = idRows.map(r => r.id);
+
+  // Full data for the page of IDs only
   const rows = await db
     .select({
       suggestion: aiSuggestions,
@@ -98,17 +141,11 @@ export async function getAiSuggestions(
     .innerJoin(vendors, eq(aiSuggestions.vendorId, vendors.id))
     .innerJoin(markets, eq(aiSuggestions.marketId, markets.id))
     .leftJoin(vendorSignals, eq(vendorSignals.aiSuggestionId, aiSuggestions.id))
-    .where(
-      and(
-        filters?.status ? eq(aiSuggestions.status, filters.status) : undefined,
-        filters?.vendorId ? eq(aiSuggestions.vendorId, filters.vendorId) : undefined,
-        filters?.marketId ? eq(aiSuggestions.marketId, filters.marketId) : undefined,
-        sourceTypeCondition,
-      )
-    )
+    .where(inArray(aiSuggestions.id, ids))
     .orderBy(desc(aiSuggestions.createdAt));
 
   // Deduplicate: multiple signals can reference the same suggestion; keep the first signal per suggestion.
+  const idOrder = new Map(ids.map((id, i) => [id, i]));
   const seen = new Set<string>();
   const deduped: AiSuggestionWithContext[] = [];
   for (const r of rows) {
@@ -132,6 +169,7 @@ export async function getAiSuggestions(
       sourceArticles: [],
     });
   }
+  deduped.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
   // Fetch article data for article-triggered suggestions
   const allArticleIds = deduped
@@ -176,7 +214,7 @@ export async function getAiSuggestions(
     }
   }
 
-  return deduped;
+  return { data: deduped, total, limit, offset };
 }
 
 export async function getAiSuggestionById(id: string): Promise<AiSuggestion | undefined> {
