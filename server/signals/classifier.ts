@@ -26,21 +26,24 @@ function getOpenAI(): OpenAI {
 export async function classifySignal(
   sourceType: string,
   title: string,
-  content: string
+  content: string,
+  vendorName: string,
 ): Promise<ClassificationResult> {
-  const prompt = `You are an enterprise technology market analyst. Classify this ${sourceType} signal about a technology vendor.
+  const prompt = `You are an enterprise technology market analyst. Classify this ${sourceType} signal for the technology vendor "${vendorName}".
 
 Title: ${title}
 Content: ${content ? content.slice(0, 500) : '(no content excerpt)'}
 
 Return ONLY valid JSON with no markdown:
 {
+  "relevant": true,
   "sentiment": "positive",
   "sentiment_score": 0.75,
   "impact_label": "MEDIUM"
 }
 
 Rules:
+- relevant: true ONLY if this signal is actually about "${vendorName}" the technology company. Set false if the title/content is about an unrelated person, place, concept, food, or industry that happens to share the same word (e.g. "quantum physics" is not about Quantum Corporation; "wasabi sauce" is not about Wasabi Technologies). When uncertain, set true.
 - sentiment: "positive" (growth/praise/feature launch), "negative" (criticism/outage/layoff/churn), "neutral" (factual/informational), "mixed" (both positive and negative aspects)
 - sentiment_score: -1.0 (very negative) to +1.0 (very positive), 0.0 = neutral
 - impact_label:
@@ -53,7 +56,7 @@ Rules:
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
-      max_tokens: 100,
+      max_tokens: 120,
     });
 
     const raw = response.choices[0]?.message?.content ?? '';
@@ -64,6 +67,7 @@ Rules:
 
     const parsed = JSON.parse(cleaned.slice(start, end + 1));
 
+    const isRelevant = parsed.relevant !== false; // default true if missing
     const sentimentOptions = ['positive', 'negative', 'neutral', 'mixed'] as const;
     const sentiment = sentimentOptions.includes(parsed.sentiment) ? parsed.sentiment : 'neutral';
     const sentimentScore = Math.max(-1, Math.min(1, parseFloat(parsed.sentiment_score) || 0));
@@ -72,9 +76,9 @@ Rules:
       ? parsed.impact_label.toUpperCase()
       : 'LOW';
 
-    return { sentiment, sentimentScore, impactLabel };
+    return { sentiment, sentimentScore, impactLabel, isRelevant };
   } catch (err: any) {
     console.warn(`[Classifier] Failed for "${title.slice(0, 60)}": ${err.message} — defaulting to neutral/LOW`);
-    return { sentiment: 'neutral', sentimentScore: 0, impactLabel: 'LOW' };
+    return { sentiment: 'neutral', sentimentScore: 0, impactLabel: 'LOW', isRelevant: true };
   }
 }

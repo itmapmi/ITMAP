@@ -99,8 +99,14 @@ export async function collectSignalsForVendor(
       });
       if (existing) continue;
 
-      // Classify with GPT-4o-mini
-      const classification = await classifySignal(raw.sourceType, raw.title, raw.content);
+      // Classify with GPT-4o-mini — also checks relevance
+      const classification = await classifySignal(raw.sourceType, raw.title, raw.content, vendorName);
+
+      // Drop signals that are not about this tech vendor (e.g. "quantum physics" ≠ Quantum Corp)
+      if (!classification.isRelevant) {
+        console.log(`[Orchestrator] Skipping irrelevant signal for ${vendorName}: "${raw.title.slice(0, 80)}"`);
+        continue;
+      }
 
       // Store the signal
       const signal = await insertVendorSignal({
