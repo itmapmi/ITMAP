@@ -279,6 +279,51 @@ function wordWindowChunks(text: string, sectionPath: string | null): StructuredC
 
 // ── Format router ─────────────────────────────────────────────────────────
 
+// Returns the full plain text of a document without KB-style chunking.
+// Use this for RFP decomposition so the text is clean and non-duplicated.
+export async function extractRawText(buffer: Buffer, mimeType: string, fileName: string): Promise<string> {
+  const lower = fileName.toLowerCase();
+
+  if (mimeType === "application/pdf" || lower.endsWith(".pdf")) {
+    const parser = new PDFParse({ data: buffer, verbosity: 0 });
+    const result = await parser.getText();
+    return result.text;
+  }
+
+  if (
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    lower.endsWith(".docx")
+  ) {
+    const mammoth = await import("mammoth");
+    const { value: html } = await mammoth.convertToHtml({ buffer });
+    return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  if (
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    lower.endsWith(".xlsx")
+  ) {
+    const XLSX = await import("xlsx");
+    const wb = XLSX.read(buffer, { type: "buffer" });
+    return wb.SheetNames.map((name) => {
+      const ws = wb.Sheets[name]!;
+      return XLSX.utils.sheet_to_csv(ws);
+    }).join("\n\n");
+  }
+
+  if (mimeType === "text/csv" || lower.endsWith(".csv")) {
+    return buffer.toString("utf-8");
+  }
+
+  if (mimeType === "text/plain" || lower.endsWith(".txt") || lower.endsWith(".md")) {
+    return buffer.toString("utf-8");
+  }
+
+  // Fallback: join structured chunks
+  const chunks = await extractText(buffer, mimeType, fileName);
+  return chunks.map((c) => c.content).join("\n\n");
+}
+
 export async function extractText(buffer: Buffer, mimeType: string, fileName: string): Promise<StructuredChunk[]> {
   const lower = fileName.toLowerCase();
 

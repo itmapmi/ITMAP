@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { requireFeature } from "../featureAccess";
-import { extractText, uploadRawFileToGcs, downloadFromGcs } from "../rfpKb/ingest";
+import { extractText, extractRawText, uploadRawFileToGcs, downloadFromGcs } from "../rfpKb/ingest";
 import { decomposeRfp } from "../rfpKb/decompose";
 import { generateNarrativeSections } from "../rfpKb/narrative";
 import { detectClientTemplate } from "../rfpAssembly/detectTemplate";
@@ -146,9 +146,8 @@ export function registerRfpResponderRoutes(app: Express): void {
 
       setImmediate(async () => {
         try {
-          // 1. Extract text from uploaded file
-          const chunks = await extractText(buffer, mimetype, originalname);
-          const rfpText = chunks.map((c) => c.content).join("\n\n");
+          // 1. Extract text from uploaded file (raw, no KB-style chunking)
+          const rfpText = await extractRawText(buffer, mimetype, originalname);
 
           await updateRfpResponseSession(session.id, { rfpText });
 
