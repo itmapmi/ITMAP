@@ -782,9 +782,10 @@ export function registerAdminRoutes(app: Express): void {
         rawSource && (VALID_SOURCE_TYPES as readonly string[]).includes(rawSource)
           ? (rawSource as ValidSource)
           : undefined;
+      const search = typeof req.query.search === 'string' && req.query.search.trim() ? req.query.search.trim() : undefined;
       const parsedLimit = parseInt(req.query.limit as string, 10);
       const parsedOffset = parseInt(req.query.offset as string, 10);
-      const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
+      const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 500) : 50;
       const offset = !isNaN(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
       // Accept dateFrom/dateTo (canonical) or from/to (legacy aliases)
       const rawFrom =
@@ -840,7 +841,7 @@ export function registerAdminRoutes(app: Express): void {
         return res.end();
       }
 
-      const page = await getVendorSignals({ vendorId, marketId, sourceType, from, to, limit, offset });
+      const page = await getVendorSignals({ vendorId, marketId, sourceType, from, to, search, limit, offset });
       res.json(page);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

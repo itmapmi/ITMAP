@@ -32,7 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download, X } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Download, X, Search } from "lucide-react";
 import { SignalCard, type SignalData } from "@/components/signal-card";
 import type { Vendor, Market } from "@shared/schema";
 import {
@@ -285,6 +285,10 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
   const [sourceFilter, setSourceFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 100;
   const [rawDataSignal, setRawDataSignal] = useState<SignalData | null>(null);
   const [collectResults, setCollectResults] = useState<CollectResult[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -293,20 +297,24 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
   const { data: vendors = [] } = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
   const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 
-  const buildFilterParams = () => {
+  const resetOffset = () => setOffset(0);
+
+  const buildFilterParams = (forCsv = false) => {
     const parts: string[] = [];
     if (vendorFilter !== "all") parts.push(`vendorId=${vendorFilter}`);
     if (marketFilter !== "all") parts.push(`marketId=${marketFilter}`);
     if (sourceFilter !== "all") parts.push(`sourceType=${sourceFilter}`);
     if (dateFrom) parts.push(`dateFrom=${dateFrom}`);
     if (dateTo) parts.push(`dateTo=${dateTo}`);
+    if (search) parts.push(`search=${encodeURIComponent(search)}`);
+    if (!forCsv) parts.push(`offset=${offset}`);
     return parts.length ? `&${parts.join("&")}` : "";
   };
 
-  const signalsUrl = `/api/admin/vendor-signals?limit=50${buildFilterParams()}`;
-  const csvUrl = `/api/admin/vendor-signals?format=csv${buildFilterParams()}`;
+  const signalsUrl = `/api/admin/vendor-signals?limit=${PAGE_SIZE}${buildFilterParams()}`;
+  const csvUrl = `/api/admin/vendor-signals?format=csv${buildFilterParams(true)}`;
   const buildParamUrl = (base: string) => {
-    const params = buildFilterParams();
+    const params = buildFilterParams(true);
     return params ? `${base}?${params.slice(1)}` : base;
   };
   const summaryUrl = buildParamUrl("/api/admin/vendor-signals/summary");
@@ -452,7 +460,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Select value={marketFilter} onValueChange={setMarketFilter}>
+            <Select value={marketFilter} onValueChange={(v) => { setMarketFilter(v); resetOffset(); }}>
               <SelectTrigger className="w-44 h-9 text-sm">
                 <SelectValue placeholder="All markets" />
               </SelectTrigger>
@@ -465,7 +473,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
                 ))}
               </SelectContent>
             </Select>
-            <Select value={vendorFilter} onValueChange={setVendorFilter}>
+            <Select value={vendorFilter} onValueChange={(v) => { setVendorFilter(v); resetOffset(); }}>
               <SelectTrigger className="w-44 h-9 text-sm">
                 <SelectValue placeholder="All vendors" />
               </SelectTrigger>
@@ -507,7 +515,36 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
       {/* Filter + list */}
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2 items-center">
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          {/* Title search */}
+          <form
+            className="flex items-center gap-1"
+            onSubmit={(e) => { e.preventDefault(); setSearch(searchInput); resetOffset(); }}
+          >
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search titles…"
+                className="h-8 w-48 text-sm pl-7"
+              />
+            </div>
+            <Button type="submit" size="sm" variant="outline" className="h-8 text-xs">Search</Button>
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-gray-500"
+                onClick={() => { setSearch(""); setSearchInput(""); resetOffset(); }}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear
+              </Button>
+            )}
+          </form>
+
+          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); resetOffset(); }}>
             <SelectTrigger className="w-36 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -522,7 +559,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
             <Input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => { setDateFrom(e.target.value); resetOffset(); }}
               className="h-8 w-36 text-sm"
             />
           </div>
@@ -531,7 +568,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
             <Input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => { setDateTo(e.target.value); resetOffset(); }}
               className="h-8 w-36 text-sm"
             />
           </div>
@@ -540,7 +577,7 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
               variant="ghost"
               size="sm"
               className="h-8 text-xs text-gray-500"
-              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              onClick={() => { setDateFrom(""); setDateTo(""); resetOffset(); }}
             >
               <X className="h-3 w-3 mr-1" />
               Clear dates
@@ -563,7 +600,9 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
             </a>
           </Button>
           {page && (
-            <span className="text-xs text-gray-400 ml-auto">{page.total} total</span>
+            <span className="text-xs text-gray-400 ml-auto">
+              Showing {Math.min(offset + PAGE_SIZE, page.total)} of {page.total} total
+            </span>
           )}
         </div>
 
@@ -618,6 +657,31 @@ export function SignalFeedAdmin({ initialVendorId }: SignalFeedAdminProps = {}) 
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={offset === 0}
+                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              >
+                ← Previous
+              </Button>
+              <span className="text-xs text-gray-400">
+                {page ? `${offset + 1}–${Math.min(offset + PAGE_SIZE, page.total)} of ${page.total}` : ""}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={!page || offset + PAGE_SIZE >= page.total}
+                onClick={() => setOffset(offset + PAGE_SIZE)}
+              >
+                Next →
+              </Button>
             </div>
           </>
         )}

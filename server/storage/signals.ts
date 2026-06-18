@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { vendorSignals, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
-import { eq, and, desc, count, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, desc, count, gte, lte, ilike, sql } from 'drizzle-orm';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs';
 
@@ -11,6 +11,7 @@ export interface GetVendorSignalsOptions {
   sourceType?: SignalSourceType;
   from?: Date;
   to?: Date;
+  search?: string;
   limit?: number;
   offset?: number;
 }
@@ -33,7 +34,7 @@ export async function insertVendorSignal(data: InsertVendorSignal): Promise<Vend
 }
 
 export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Promise<VendorSignalsPage> {
-  const { vendorId, marketId, sourceType, from, to, limit = 50, offset = 0 } = opts;
+  const { vendorId, marketId, sourceType, from, to, search, limit = 50, offset = 0 } = opts;
 
   const where = and(
     vendorId ? eq(vendorSignals.vendorId, vendorId) : undefined,
@@ -41,6 +42,7 @@ export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Prom
     sourceType ? eq(vendorSignals.sourceType, sourceType) : undefined,
     from ? gte(vendorSignals.collectedAt, from) : undefined,
     to ? lte(vendorSignals.collectedAt, to) : undefined,
+    search ? ilike(vendorSignals.title, `%${search}%`) : undefined,
   );
 
   const [{ total }] = await db
