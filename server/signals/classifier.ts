@@ -9,6 +9,7 @@ export interface ClassificationResult {
   sentiment: 'positive' | 'negative' | 'neutral' | 'mixed';
   sentimentScore: number; // -1.0 to 1.0
   impactLabel: 'HIGH' | 'MEDIUM' | 'LOW';
+  isRelevant: boolean; // false = not about this tech vendor (homonym, unrelated industry, etc.)
 }
 
 let _openai: OpenAI | null = null;
