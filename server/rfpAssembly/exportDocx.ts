@@ -239,9 +239,35 @@ export async function exportDocx(
     }));
   }
 
-  // 3. Solution Overview
+  // 3. Scope of Work Overview
   children.push(
-    new Paragraph({ text: "3. Solution Overview", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
+    new Paragraph({ text: "3. Scope of Work Overview", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
+  );
+  if ((narrativeSections as any)?.scopeOverview) {
+    for (const para of ((narrativeSections as any).scopeOverview as string).split(/\n{2,}/)) {
+      if (para.trim()) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: safeText(para.trim()), size: 24 })],
+          spacing: { after: 200 },
+        }));
+      }
+    }
+  } else {
+    const sectionList = sections.map((s) => s.section).join(", ");
+    children.push(new Paragraph({
+      children: [new TextRun({
+        text: `${vendorName} has thoroughly reviewed the requirements set forth by ${client} in this RFP. ` +
+          `The scope encompasses ${sections.length} major area${sections.length !== 1 ? "s" : ""}: ${sectionList}. ` +
+          `${vendorName} understands the client's objectives and has structured this response to address each requirement directly and comprehensively.`,
+        size: 24,
+      })],
+      spacing: { after: 400 },
+    }));
+  }
+
+  // 4. Solution Overview
+  children.push(
+    new Paragraph({ text: "4. Solution Overview", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
   );
   if (narrativeSections?.solutionOverview) {
     for (const para of narrativeSections.solutionOverview.split(/\n{2,}/)) {
@@ -263,9 +289,9 @@ export async function exportDocx(
     }));
   }
 
-  // 4. Key Differentiators
+  // 5. Key Differentiators
   children.push(
-    new Paragraph({ text: "4. Key Differentiators", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
+    new Paragraph({ text: "5. Key Differentiators", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
   );
   if (narrativeSections?.keyDifferentiators?.length) {
     for (const diff of narrativeSections.keyDifferentiators) {
@@ -282,9 +308,9 @@ export async function exportDocx(
     }));
   }
 
-  // 5. Requirement Matrix
+  // 6. Requirement Responses
   children.push(
-    new Paragraph({ text: "5. Requirement Matrix", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
+    new Paragraph({ text: "6. Requirement Responses", heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 200 } }),
   );
 
   for (const { section, items } of sections) {
@@ -383,7 +409,7 @@ export async function exportDocx(
     }
   }
 
-  // 6. Competitive Differentiation
+  // 7. Competitive Differentiation
   const allOptedClaims: { claim: string; reqText: string }[] = [];
   for (const { items } of sections) {
     for (const { req, answer } of items) {
@@ -395,7 +421,7 @@ export async function exportDocx(
   }
 
   children.push(
-    new Paragraph({ text: "6. Competitive Differentiation", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
+    new Paragraph({ text: "7. Competitive Differentiation", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
   );
 
   if (allOptedClaims.length === 0) {
@@ -420,10 +446,10 @@ export async function exportDocx(
     }
   }
 
-  // 7. Architecture Diagrams (reference note)
+  // 8. Architecture Diagrams (reference note)
   if (diagrams.length > 0) {
     children.push(
-      new Paragraph({ text: "7. Architecture Diagrams", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
+      new Paragraph({ text: "8. Architecture Diagrams", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
       new Paragraph({
         children: [new TextRun({ text: `${diagrams.length} architecture diagram(s) have been prepared for this response:`, size: 22 })],
         spacing: { after: 160 },
@@ -449,13 +475,13 @@ export async function exportDocx(
     );
   }
 
-  // 8. Assumptions & Gaps
+  // 9. Assumptions & Gaps
   const redItems = sections
     .flatMap((s) => s.items)
     .filter((i) => i.answer?.coverageFlag === "red");
 
   children.push(
-    new Paragraph({ text: "8. Assumptions & Gaps", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
+    new Paragraph({ text: "9. Assumptions & Gaps", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
   );
 
   if (redItems.length === 0) {
@@ -489,6 +515,39 @@ export async function exportDocx(
         );
       }
     }
+  }
+
+  // 10. Closing Statement & Next Steps
+  children.push(
+    new Paragraph({ text: "10. Closing Statement & Next Steps", heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } }),
+  );
+  if ((narrativeSections as any)?.closingSummary) {
+    for (const para of ((narrativeSections as any).closingSummary as string).split(/\n{2,}/)) {
+      if (para.trim()) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: safeText(para.trim()), size: 24 })],
+          spacing: { after: 200 },
+        }));
+      }
+    }
+  } else {
+    children.push(new Paragraph({
+      children: [new TextRun({
+        text: `${vendorName} is confident that this response demonstrates the depth of our capabilities and our commitment to ${client}'s success. ` +
+          `We welcome the opportunity to discuss this proposal further, provide a technical demonstration, or arrange reference calls with existing customers. ` +
+          `Please do not hesitate to reach out with any questions or clarifications required.`,
+        size: 24,
+      })],
+      spacing: { after: 200 },
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({
+        text: `We look forward to partnering with ${client} on this initiative.`,
+        size: 24,
+        bold: true,
+      })],
+      spacing: { after: 400 },
+    }));
   }
 
   const doc = new Document({

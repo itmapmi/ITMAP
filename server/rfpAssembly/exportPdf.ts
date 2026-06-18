@@ -97,8 +97,23 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     );
   }
 
-  // ── 3. Solution Overview ────────────────────────────────────────────────────
-  heading1("3. Solution Overview");
+  // ── 3. Scope of Work Overview ───────────────────────────────────────────────
+  heading1("3. Scope of Work Overview");
+  if ((narrativeSections as any)?.scopeOverview) {
+    for (const para of ((narrativeSections as any).scopeOverview as string).split(/\n{2,}/)) {
+      if (para.trim()) body(para.trim());
+    }
+  } else {
+    const sectionList = sections.map((s) => s.section).join(", ");
+    body(
+      `${vendorName} has thoroughly reviewed the requirements set forth by ${client} in this RFP. ` +
+      `The scope encompasses ${sections.length} major area${sections.length !== 1 ? "s" : ""}: ${sectionList}. ` +
+      `${vendorName} understands the client's objectives and has structured this response to address each requirement directly and comprehensively.`,
+    );
+  }
+
+  // ── 4. Solution Overview ────────────────────────────────────────────────────
+  heading1("4. Solution Overview");
   if (narrativeSections?.solutionOverview) {
     for (const para of narrativeSections.solutionOverview.split(/\n{2,}/)) {
       if (para.trim()) body(para.trim());
@@ -110,8 +125,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     );
   }
 
-  // ── 4. Key Differentiators ──────────────────────────────────────────────────
-  heading1("4. Key Differentiators");
+  // ── 5. Key Differentiators ──────────────────────────────────────────────────
+  heading1("5. Key Differentiators");
   if (narrativeSections?.keyDifferentiators?.length) {
     for (const diff of narrativeSections.keyDifferentiators) {
       bullet(diff, SLATE);
@@ -120,8 +135,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     body("Please refer to the Competitive Differentiation section for key advantages.", MUTED);
   }
 
-  // ── 5. Requirement Matrix ───────────────────────────────────────────────────
-  heading1("5. Requirement Matrix");
+  // ── 6. Requirement Responses ────────────────────────────────────────────────
+  heading1("6. Requirement Responses");
 
   for (const { section, items } of sections) {
     heading2(section);
@@ -163,8 +178,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // ── 6. Competitive Differentiation ─────────────────────────────────────────
-  heading1("6. Competitive Differentiation");
+  // ── 7. Competitive Differentiation ─────────────────────────────────────────
+  heading1("7. Competitive Differentiation");
   const allOptedClaims = sections
     .flatMap((s) => s.items)
     .flatMap(({ req, answer }) =>
@@ -185,9 +200,9 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // ── 7. Architecture Diagrams ────────────────────────────────────────────────
+  // ── 8. Architecture Diagrams ────────────────────────────────────────────────
   if (diagrams.length > 0) {
-    heading1("7. Architecture Diagrams");
+    heading1("8. Architecture Diagrams");
     body(`${diagrams.length} architecture diagram(s) are included in this response:`);
     for (const d of diagrams) {
       doc.fontSize(10).font("Helvetica-Bold").fillColor(SLATE)
@@ -214,8 +229,8 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
     }
   }
 
-  // ── 8. Assumptions & Gaps ───────────────────────────────────────────────────
-  heading1("8. Assumptions & Gaps");
+  // ── 9. Assumptions & Gaps ───────────────────────────────────────────────────
+  heading1("9. Assumptions & Gaps");
   const redItems = sections.flatMap((s) => s.items).filter((i) => i.answer?.coverageFlag === "red");
   if (redItems.length === 0) {
     body("No gaps identified in this response.", GREEN);
@@ -230,6 +245,22 @@ export async function exportPdf(assembled: AssembledResponse): Promise<Buffer> {
       }
       doc.moveDown(0.3);
     }
+  }
+
+  // ── 10. Closing Statement & Next Steps ──────────────────────────────────────
+  heading1("10. Closing Statement & Next Steps");
+  if ((narrativeSections as any)?.closingSummary) {
+    for (const para of ((narrativeSections as any).closingSummary as string).split(/\n{2,}/)) {
+      if (para.trim()) body(para.trim());
+    }
+  } else {
+    body(
+      `${vendorName} is confident that this response demonstrates the depth of our capabilities and our commitment to ${client}'s success. ` +
+      `We welcome the opportunity to discuss this proposal further, provide a technical demonstration, or arrange reference calls with existing customers. ` +
+      `Please do not hesitate to reach out with any questions or clarifications required.`,
+    );
+    doc.fontSize(10).font("Helvetica-Bold").fillColor(SLATE)
+      .text(`We look forward to partnering with ${client} on this initiative.`);
   }
 
   doc.end();

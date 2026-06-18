@@ -2092,8 +2092,10 @@ export const rfpResponseSessions = pgTable("rfp_response_sessions", {
   narrativeSections: jsonb("narrative_sections").$type<{
     execSummary: string;
     aboutVendor: string;
+    scopeOverview: string;
     solutionOverview: string;
     keyDifferentiators: string[];
+    closingSummary: string;
   }>(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

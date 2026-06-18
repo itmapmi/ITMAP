@@ -8,6 +8,7 @@ import {
   listRfpExportRecords,
 } from "../storage/rfpResponder";
 import { assembleResponse, buildFullText, buildRequirementMatrixText, buildExecSummaryText, type AssembledResponse } from "../rfpAssembly/assemble";
+import { generateNarrativeSections } from "../rfpKb/narrative";
 import { checkExportGate } from "../rfpAssembly/gate";
 import { exportDocx } from "../rfpAssembly/exportDocx";
 import { exportPdf } from "../rfpAssembly/exportPdf";
@@ -328,6 +329,38 @@ export function registerRfpAssemblyRoutes(app: Express): void {
           showCitations,
           includedDiagramIds: includedDiagramIds ?? null,
         });
+
+        // If narrativeSections were never generated (old session or silent failure),
+        // generate them now so the exported document is comprehensive.
+        if (!assembled.narrativeSections) {
+          try {
+            const allItems = assembled.sections.flatMap((s) => s.items);
+            const sectionNames = [...new Set(assembled.sections.map((s) => s.section))];
+            const requirementsSample = allItems.slice(0, 15).map((i) => i.req.requirementText);
+            const gc = allItems.filter((i) => i.answer?.coverageFlag === "green").length;
+            const ac = allItems.filter((i) => i.answer?.coverageFlag === "amber").length;
+            const rc = allItems.filter((i) => i.answer?.coverageFlag === "red").length;
+            const narrative = await generateNarrativeSections({
+              vendorId,
+              vendorName: assembled.vendorName,
+              clientOrgName: session.clientOrgName,
+              rfpFileName: session.rfpFileName,
+              sectionNames,
+              requirementsSample,
+              greenCount: gc,
+              amberCount: ac,
+              redCount: rc,
+              totalCount: allItems.length,
+            });
+            assembled.narrativeSections = narrative;
+            // Save for future exports (non-blocking on failure)
+            updateRfpResponseSession(session.id, { narrativeSections: narrative }).catch(
+              (e) => console.warn("[rfpAssembly] narrative save failed:", e),
+            );
+          } catch (narrativeErr) {
+            console.warn("[rfpAssembly] on-demand narrative generation failed:", narrativeErr);
+          }
+        }
 
         // Export — pass client template fields + storage key to exporters.
         // When a templateStorageKey is available the DOCX/XLSX exporters perform
