@@ -1467,7 +1467,7 @@ export default function RfpSessionDetailPage() {
             <Loader2 className="h-10 w-10 text-cyan-400 animate-spin mb-4" />
             <h2 className="text-lg font-medium text-white mb-2">Decomposing RFP</h2>
             <p className="text-sm text-slate-400 max-w-sm">
-              GPT-4o is extracting and structuring every requirement from your document. This usually takes 15–60 seconds.
+              Extracting and structuring every requirement from your document. This usually takes 15–60 seconds.
             </p>
           </div>
         )}

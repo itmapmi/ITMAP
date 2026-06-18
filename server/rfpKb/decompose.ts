@@ -42,19 +42,46 @@ Rules:
 - Omit cover letters, table of contents entries, and boilerplate headers with no evaluable content.
 - Preserve the original section hierarchy in the section field.`;
 
-export async function decomposeRfp(rfpText: string): Promise<DecomposedRequirement[]> {
-  let lastError: unknown;
+const CHUNK_SIZE = 60_000;
+const CHUNK_OVERLAP = 1_500;
 
+function chunkText(text: string): string[] {
+  if (text.length <= CHUNK_SIZE) return [text];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    chunks.push(text.slice(start, start + CHUNK_SIZE));
+    start += CHUNK_SIZE - CHUNK_OVERLAP;
+  }
+  return chunks;
+}
+
+function deduplicateRequirements(items: DecomposedRequirement[]): DecomposedRequirement[] {
+  const seen = new Set<string>();
+  const out: DecomposedRequirement[] = [];
+  for (const item of items) {
+    const key = item.requirementText.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 100);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+async function decomposeSingleChunk(
+  chunk: string,
+  chunkIndex: number,
+  totalChunks: number,
+): Promise<DecomposedRequirement[]> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      const label = totalChunks > 1 ? ` (part ${chunkIndex + 1} of ${totalChunks})` : "";
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `RFP document (${rfpText.length.toLocaleString()} chars):\n\n${rfpText.slice(0, 80000)}`,
-          },
+          { role: "user", content: `RFP document${label}:\n\n${chunk}` },
         ],
         response_format: { type: "json_object" },
         temperature: 0,
@@ -66,26 +93,46 @@ export async function decomposeRfp(rfpText: string): Promise<DecomposedRequireme
       try {
         parsed = JSON.parse(raw);
       } catch {
-        throw new Error(`GPT returned invalid JSON on attempt ${attempt + 1}`);
+        throw new Error(`Invalid JSON on chunk ${chunkIndex + 1}, attempt ${attempt + 1}`);
       }
 
       const outer = decompositionSchema.safeParse(parsed);
-      if (!outer.success) throw new Error(`Unexpected response shape on attempt ${attempt + 1}`);
+      if (!outer.success) throw new Error(`Unexpected response shape on chunk ${chunkIndex + 1}`);
 
-      // Validate each item individually — skip any that are malformed rather than failing the whole batch
       const results: DecomposedRequirement[] = [];
       for (const item of outer.data.requirements) {
         const r = requirementItemSchema.safeParse(item);
         if (r.success) results.push(r.data);
       }
-      if (results.length === 0) throw new Error(`No valid requirements parsed on attempt ${attempt + 1}`);
       return results;
     } catch (err) {
-      lastError = err;
-      console.warn(`[rfp-decompose] attempt ${attempt + 1} failed:`, err instanceof Error ? err.message : err);
+      console.warn(
+        `[rfp-decompose] chunk ${chunkIndex + 1} attempt ${attempt + 1} failed:`,
+        err instanceof Error ? err.message : err,
+      );
       if (attempt < 2) await new Promise((r) => setTimeout(r, 1500));
     }
   }
+  console.warn(`[rfp-decompose] chunk ${chunkIndex + 1} failed all attempts — skipping`);
+  return [];
+}
 
-  throw new Error(`RFP decomposition failed after 3 attempts: ${String(lastError)}`);
+export async function decomposeRfp(rfpText: string): Promise<DecomposedRequirement[]> {
+  const chunks = chunkText(rfpText);
+  console.log(`[rfp-decompose] document ${rfpText.length.toLocaleString()} chars → ${chunks.length} chunk(s)`);
+
+  const chunkResults = await Promise.all(
+    chunks.map((chunk, i) => decomposeSingleChunk(chunk, i, chunks.length)),
+  );
+
+  const merged = chunkResults.flat();
+  const deduplicated = deduplicateRequirements(merged);
+
+  console.log(`[rfp-decompose] extracted ${merged.length} total → ${deduplicated.length} after dedup`);
+
+  if (deduplicated.length === 0) {
+    throw new Error("RFP decomposition produced no valid requirements across all chunks");
+  }
+
+  return deduplicated;
 }
