@@ -58,7 +58,11 @@ export default function Navigation() {
     { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets", vendorHidden: true },
     { href: "/licensing",         label: "Licensing" },
     { href: "/about",             label: "About Us" },
-  ].filter(item => !(vendorOnly && item.vendorHidden));
+  ].filter(item => {
+    if (!vendorOnly || !item.vendorHidden) return true;
+    // For vendor-scoped users: only show vendorHidden items when the feature has been explicitly granted
+    return item.featureKey ? hasFeature(item.featureKey) : false;
+  });
 
   if (isAdminArea) {
     return (
