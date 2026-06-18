@@ -381,6 +381,12 @@ html:not(.dark) .theme-bg .border-white\/20 {
 html:not(.dark) .theme-bg .text-white {
   color: #0f172a !important;
 }
+html:not(.dark) .theme-bg .text-slate-100 {
+  color: #1e293b !important;
+}
+html:not(.dark) .theme-bg .text-slate-200 {
+  color: #334155 !important;
+}
 html:not(.dark) .theme-bg .text-slate-300 {
   color: #475569 !important;
 }
@@ -389,6 +395,14 @@ html:not(.dark) .theme-bg .text-slate-400 {
 }
 html:not(.dark) .theme-bg .text-slate-500 {
   color: #94a3b8 !important;
+}
+
+/* Gradient clip-text headings: flip white-based (invisible on white bg) gradients to dark in light mode */
+html:not(.dark) .theme-bg .from-white.bg-clip-text.text-transparent {
+  background-image: linear-gradient(to right, #0f172a, #475569) !important;
+}
+html:not(.dark) .theme-bg .from-white.to-slate-400.bg-clip-text {
+  background-image: linear-gradient(to right, #0f172a, #475569) !important;
 }
 
 /* Form inputs inside public pages */
