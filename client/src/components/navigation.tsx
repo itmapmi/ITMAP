@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, User, Settings, Menu, X, ChevronRight, Store, Sun, Moon, Lock } from "lucide-react";
+import { LogOut, User, Settings, Menu, X, ChevronRight, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,8 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import SpectioLogo from "@/components/spectio-logo";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
+import { Lock } from "lucide-react";
 import type { LockableFeatureKey } from "@shared/features";
-import { useTheme } from "@/components/theme-provider";
 
 const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
 
@@ -29,7 +29,6 @@ export default function Navigation() {
   const vendorSeatName = vendorScope?.vendor?.name;
 
   const isAdminArea = ADMIN_PATHS.some(p => location.startsWith(p));
-  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -101,21 +100,9 @@ export default function Navigation() {
     );
   }
 
-  const navBg = theme === "dark"
-    ? "bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5"
-    : "bg-white/95 backdrop-blur-sm border-b border-gray-200/50";
-
-  const navItemClass = (isActive: boolean) => {
-    const base = "px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer";
-    if (theme === "dark") {
-      return `${base} ${isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`;
-    }
-    return `${base} ${isActive ? "text-slate-900 bg-slate-100" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`;
-  };
-
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 ${navBg}`}>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/">
@@ -138,28 +125,38 @@ export default function Navigation() {
                 }
                 return (
                   <Link key={label} href={href}>
-                    <span className={navItemClass(isActive)}>{label}</span>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                      isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}>{label}</span>
                   </Link>
                 );
               })}
               {isAuthenticated && (
                 <>
                   <Link href="/me/reports">
-                    <span className={navItemClass(location.includes("reports"))}>My Reports</span>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                      location.includes("reports") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}>My Reports</span>
                   </Link>
                   {isVendorScoped && !isAdmin && (
                     <Link href="/lead-gen/me">
-                      <span className={navItemClass(location === "/lead-gen/me")}>My Leads</span>
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>My Leads</span>
                     </Link>
                   )}
                   {isVendorScoped && !isAdmin && (
                     <Link href="/lead-gen/me/fact-review">
-                      <span className={navItemClass(location === "/lead-gen/me/fact-review")}>Fact Review</span>
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>Fact Review</span>
                     </Link>
                   )}
                   {isVendorScoped && !isAdmin && hasFeature("rfp") && (
                     <Link href="/rfp-responder">
-                      <span className={navItemClass(location.startsWith("/rfp-responder"))}>RFP Responder</span>
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>RFP Responder</span>
                     </Link>
                   )}
                   {isAdmin && (
@@ -173,40 +170,20 @@ export default function Navigation() {
 
             {/* Desktop auth */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === "dark"
-                    ? "text-slate-400 hover:text-white hover:bg-white/10"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-              >
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={`relative h-9 w-9 rounded-full border ${
-                        theme === "dark" ? "border-white/10 hover:border-white/20" : "border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
+                    <Button variant="ghost" className="relative h-9 w-9 rounded-full border border-white/10 hover:border-white/20">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={user?.profileImageUrl || ""} />
                         <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-violet-600 text-white text-xs">{getUserInitials()}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className={`w-56 ${theme === "dark" ? "bg-slate-900 border-white/10 text-white" : ""}`}
-                  >
-                    <div className={`p-2 border-b ${theme === "dark" ? "border-white/10" : "border-slate-100"}`}>
-                      <p className={`font-medium text-sm ${theme === "dark" ? "text-white" : ""}`}>{user?.firstName} {user?.lastName}</p>
-                      <p className={`text-xs truncate ${theme === "dark" ? "text-slate-400" : "text-muted-foreground"}`}>{user?.email}</p>
+                  <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-white/10 text-white">
+                    <div className="p-2 border-b border-white/10">
+                      <p className="font-medium text-sm text-white">{user?.firstName} {user?.lastName}</p>
+                      <p className="text-xs text-slate-400 truncate">{user?.email}</p>
                       {isVendorScoped && !isAdmin && (
                         <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500/15 to-violet-600/15 border border-cyan-400/20 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
                           <Store className="h-3 w-3" />
@@ -214,29 +191,19 @@ export default function Navigation() {
                         </span>
                       )}
                     </div>
-                    <DropdownMenuItem asChild className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer" : "cursor-pointer"}>
+                    <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
                       <Link href="/me/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer" : "cursor-pointer"}>
+                    <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
                       <Link href="/me/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer" : "cursor-pointer"}>
-                      <LogOut className="mr-2 h-4 w-4" />Sign out
-                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <>
                   <Link href="/login">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={theme === "dark"
-                        ? "text-slate-300 hover:text-white hover:bg-white/10 border border-white/10"
-                        : "text-slate-600 hover:text-slate-900 border border-slate-200"}
-                    >
-                      Sign In
-                    </Button>
+                    <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 border border-white/10">Sign In</Button>
                   </Link>
                   <Link href="/register">
                     <Button size="sm" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 font-medium">
@@ -248,7 +215,7 @@ export default function Navigation() {
             </div>
 
             <button
-              className={`md:hidden p-2 ${theme === "dark" ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900"}`}
+              className="md:hidden p-2 text-slate-400 hover:text-white"
               onClick={() => setMobileOpen(!mobileOpen)}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -258,9 +225,7 @@ export default function Navigation() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className={`md:hidden border-t px-4 py-4 space-y-1 ${
-            theme === "dark" ? "bg-[#1e2130] border-white/5" : "bg-white border-gray-200"
-          }`}>
+          <div className="md:hidden bg-[#1e2130] border-t border-white/5 px-4 py-4 space-y-1">
             {navItems.map(({ href, label, active, featureKey }) => {
               const isActive = active !== undefined ? active : location === href;
               const locked = featureKey ? !hasFeature(featureKey) : false;
@@ -277,9 +242,7 @@ export default function Navigation() {
                 <Link key={label} href={href}>
                   <div
                     className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                      isActive
-                        ? theme === "dark" ? "text-white bg-white/10" : "text-slate-900 bg-slate-100"
-                        : theme === "dark" ? "text-slate-400" : "text-slate-600"
+                      isActive ? "text-white bg-white/10" : "text-slate-400"
                     }`}
                     onClick={() => setMobileOpen(false)}
                   >
@@ -291,11 +254,7 @@ export default function Navigation() {
             {isAuthenticated && (
               <Link href="/me/reports">
                 <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location.includes("reports")
-                      ? theme === "dark" ? "text-white bg-white/10" : "text-slate-900 bg-slate-100"
-                      : theme === "dark" ? "text-slate-400" : "text-slate-600"
-                  }`}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-400"}`}
                   onClick={() => setMobileOpen(false)}
                 >
                   My Reports
@@ -305,11 +264,7 @@ export default function Navigation() {
             {isVendorScoped && !isAdmin && (
               <Link href="/lead-gen/me">
                 <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location === "/lead-gen/me"
-                      ? theme === "dark" ? "text-white bg-white/10" : "text-slate-900 bg-slate-100"
-                      : theme === "dark" ? "text-slate-400" : "text-slate-600"
-                  }`}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`}
                   onClick={() => setMobileOpen(false)}
                 >
                   My Leads
@@ -319,11 +274,7 @@ export default function Navigation() {
             {isVendorScoped && !isAdmin && (
               <Link href="/lead-gen/me/fact-review">
                 <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location === "/lead-gen/me/fact-review"
-                      ? theme === "dark" ? "text-white bg-white/10" : "text-slate-900 bg-slate-100"
-                      : theme === "dark" ? "text-slate-400" : "text-slate-600"
-                  }`}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`}
                   onClick={() => setMobileOpen(false)}
                 >
                   Fact Review
@@ -333,39 +284,22 @@ export default function Navigation() {
             {isVendorScoped && !isAdmin && hasFeature("rfp") && (
               <Link href="/rfp-responder">
                 <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location.startsWith("/rfp-responder")
-                      ? theme === "dark" ? "text-white bg-white/10" : "text-slate-900 bg-slate-100"
-                      : theme === "dark" ? "text-slate-400" : "text-slate-600"
-                  }`}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400"}`}
                   onClick={() => setMobileOpen(false)}
                 >
                   RFP Responder
                 </div>
               </Link>
             )}
-            <div className={`pt-3 border-t flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-gray-200"}`}>
-              {/* Theme toggle in mobile */}
-              <button
-                onClick={toggleTheme}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                  theme === "dark" ? "text-slate-400 hover:text-white hover:bg-white/10" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-              >
-                {theme === "dark" ? <><Sun className="h-4 w-4" /> Light mode</> : <><Moon className="h-4 w-4" /> Dark mode</>}
-              </button>
+            <div className="pt-3 border-t border-white/5 flex flex-col gap-2">
               {isAuthenticated ? (
-                <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className={`w-full justify-start ${theme === "dark" ? "text-slate-400" : "text-slate-600"}`}>
+                <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full justify-start text-slate-400">
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </Button>
               ) : (
                 <>
-                  <Link href="/login">
-                    <Button variant="ghost" className={`w-full ${theme === "dark" ? "text-slate-300 border border-white/10" : "text-slate-600 border border-slate-200"}`} onClick={() => setMobileOpen(false)}>Sign In</Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 text-white" onClick={() => setMobileOpen(false)}>Get Started</Button>
-                  </Link>
+                  <Link href="/login"><Button variant="ghost" className="w-full text-slate-300 border border-white/10" onClick={() => setMobileOpen(false)}>Sign In</Button></Link>
+                  <Link href="/register"><Button className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 text-white" onClick={() => setMobileOpen(false)}>Get Started</Button></Link>
                 </>
               )}
             </div>

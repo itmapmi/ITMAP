@@ -17,7 +17,7 @@ export default function DatasheetsIndexPage() {
   }
 
   return (
-    <div className="min-h-screen theme-bg pt-20 pb-24">
+    <div className="min-h-screen bg-slate-950 text-white pt-20 pb-24">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-medium mb-4">

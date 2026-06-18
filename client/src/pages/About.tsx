@@ -82,7 +82,7 @@ export default function About() {
     path: "/about",
   });
   return (
-    <div className="min-h-screen theme-bg">
+    <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}
       <section className="relative py-28 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(14,165,233,0.1)_0%,transparent_60%)]" />

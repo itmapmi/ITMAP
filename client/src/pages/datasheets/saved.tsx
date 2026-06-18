@@ -38,7 +38,7 @@ export default function DatasheetSavedPage() {
   }
 
   return (
-    <div className="min-h-screen theme-bg pt-20 pb-24">
+    <div className="min-h-screen bg-slate-950 text-white pt-20 pb-24">
       <div className="max-w-5xl mx-auto px-6">
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-medium mb-3">

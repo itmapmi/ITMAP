@@ -64,7 +64,7 @@ export default function Markets() {
 
   if (error) {
     return (
-      <div className="min-h-screen theme-bg flex items-center justify-center">
+      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-400 mb-2">Error Loading Markets</h1>
           <p className="text-slate-500">Unable to fetch market data. Please try again later.</p>
@@ -74,7 +74,7 @@ export default function Markets() {
   }
 
   return (
-    <div className="min-h-screen theme-bg">
+    <div className="min-h-screen bg-[#1e2130] text-white">
       {/* Hero */}
       <div className="relative py-20 overflow-hidden border-b border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(14,165,233,0.08)_0%,transparent_60%)]" />
@@ -297,7 +297,7 @@ export default function Markets() {
                         bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500
                         shadow-[0_0_35px_rgba(52,211,153,0.18)] hover:shadow-[0_0_55px_rgba(52,211,153,0.28)]
                         transition-all duration-300">
-                        <div className="relative bg-slate-950 rounded-2xl p-6 h-full overflow-hidden">
+                        <div className="relative bg-[#111b27] rounded-2xl p-6 h-full overflow-hidden">
                           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent group-hover:from-emerald-500/15 transition-all duration-500" />
                           <div className="relative flex flex-col h-full">
                             <div className="flex items-start justify-between mb-5">

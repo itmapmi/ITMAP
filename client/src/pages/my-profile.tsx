@@ -40,7 +40,7 @@ export default function MyProfile() {
     : null;
 
   return (
-    <div className="min-h-screen theme-bg">
+    <div className="min-h-screen bg-[#1e2130] text-white">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
         {/* Back */}

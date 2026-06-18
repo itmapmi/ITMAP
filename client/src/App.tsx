@@ -19,7 +19,6 @@ import ForecastBuilderPage from "@/pages/forecast-builder/index";
 import ForecastDetailPage from "@/pages/forecast-builder/detail";
 import ForecastReportPage from "@/pages/forecast-builder/report";
 import { ForecastThemeProvider } from "@/components/forecast/forecast-theme";
-import { ThemeProvider } from "@/components/theme-provider";
 import MyReportsPage from "@/pages/my-reports";
 import MyRfpsPage from "@/pages/my-rfps";
 import MyRfpDetailPage from "@/pages/my-rfp-detail";
@@ -125,14 +124,12 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 

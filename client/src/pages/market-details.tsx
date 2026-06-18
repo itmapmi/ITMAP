@@ -377,7 +377,7 @@ export default function MarketDetails() {
 
   if (!isAuthenticated && !isFreeMarket) {
     return (
-      <div className="min-h-[80vh] theme-bg flex items-center justify-center px-4">
+      <div className="min-h-[80vh] bg-[#1e2130] flex items-center justify-center px-4">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}

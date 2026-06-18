@@ -33,9 +33,9 @@ export default function DatasheetSharePage() {
     retry: false,
   });
 
-  if (isLoading) return <div className="min-h-screen theme-bg pt-20 px-6">Loading shared comparison…</div>;
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">Loading shared comparison…</div>;
   if (error || !data) return (
-    <div className="min-h-screen theme-bg pt-20 px-6">
+    <div className="min-h-screen bg-slate-950 text-white pt-20 px-6">
       <div className="max-w-2xl mx-auto py-20 text-center">
         <h1 className="text-2xl font-bold mb-2">Link unavailable</h1>
         <p className="text-slate-400">This share link is invalid or has been revoked by its owner.</p>
@@ -45,7 +45,7 @@ export default function DatasheetSharePage() {
 
   const schema = data.market.schemaDefinition as DatasheetSchemaDefinition;
   return (
-    <div className="min-h-screen theme-bg pt-20 pb-12">
+    <div className="min-h-screen bg-slate-950 text-white pt-20 pb-12">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-6">
           <div className="text-xs text-cyan-400 uppercase tracking-wider mb-1">Shared datasheet comparison</div>
