@@ -175,7 +175,7 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     setIsGenerating(true);
     try {
       const response = await apiRequest(
-        `/api/markets/${marketId}/generate-product-evaluation-pdf-report`,
+        `/api/markets/${marketId}/generate-product-evaluation-pdf`,
         "POST",
         { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
       );

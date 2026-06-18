@@ -311,7 +311,13 @@ export class PDFService {
       };
 
       const doc = pm.createPdf(docDefinition, {});
-      return await doc.getBuffer();
+      const buf = await doc.getBuffer();
+      // Validate the output — pdfmake can silently produce garbage when pdfkit
+      // cannot load its fonts from the nix-store in the deployed environment.
+      if (!buf || buf.length < 100 || buf.slice(0, 4).toString() !== '%PDF') {
+        throw new Error('pdfmake returned invalid PDF bytes (pdfkit font issue)');
+      }
+      return buf;
     } catch (pdfmakeErr) {
       console.error('[PDF] pdfmake unavailable, falling back to pdf-lib:', (pdfmakeErr as Error)?.message);
       return this.renderHtmlWithPdfLib(bodyHtml, opts);

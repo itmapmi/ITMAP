@@ -124,7 +124,7 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
     setIsGenerating(true);
     try {
       const response = await apiRequest(
-        `/api/markets/${marketId}/generate-ecosystem-pdf-report`,
+        `/api/markets/${marketId}/generate-ecosystem-pdf`,
         "POST",
         { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
       );
