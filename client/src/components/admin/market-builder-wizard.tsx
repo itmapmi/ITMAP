@@ -813,7 +813,7 @@ function VendorRefreshDialog({
   const [provider, setProvider] = useState(defaultProvider);
   const [model, setModel] = useState(defaultModel);
   const [promptOverride, setPromptOverride] = useState("");
-  const [vendorUrl, setVendorUrl] = useState("");
+  const [vendorUrls, setVendorUrls] = useState<string[]>([""]);
   const [log, setLog] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const esRef = useRef<EventSource | null>(null);
@@ -838,7 +838,7 @@ function VendorRefreshDialog({
     setStatus("running");
     const params = new URLSearchParams({ stage: String(stageNum), vendor: vendorName, provider, model });
     if (promptOverride.trim()) params.set("promptOverride", promptOverride.trim());
-    if (vendorUrl.trim())      params.set("vendorUrl", vendorUrl.trim());
+    vendorUrls.forEach(u => { if (u.trim()) params.append("vendorUrl", u.trim()); });
     if (criterion) params.set("criterion", criterion);
     if (category)  params.set("category", category);
     if (feature)   params.set("feature", feature);
@@ -904,16 +904,44 @@ function VendorRefreshDialog({
           </div>
           <div>
             <Label className="text-xs mb-1 block">
-              Vendor URL <span className="font-normal text-gray-400">(optional — paste a page the AI should read for this refresh)</span>
+              Vendor URLs <span className="font-normal text-gray-400">(optional — pages the AI should read for this refresh)</span>
             </Label>
-            <input
-              type="url"
-              value={vendorUrl}
-              onChange={e => setVendorUrl(e.target.value)}
-              placeholder="https://example.com/vendor-page"
-              disabled={status === "running"}
-              className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            />
+            <div className="space-y-1.5">
+              {vendorUrls.map((url, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={e => setVendorUrls(prev => prev.map((u, i) => i === idx ? e.target.value : u))}
+                    placeholder="https://example.com/vendor-page"
+                    disabled={status === "running"}
+                    className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                  />
+                  {vendorUrls.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setVendorUrls(prev => prev.filter((_, i) => i !== idx))}
+                      disabled={status === "running"}
+                      className="h-8 w-8 flex items-center justify-center rounded-md border border-input text-gray-400 hover:text-red-500 hover:border-red-300 disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {vendorUrls.length < 10 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1 mt-0.5"
+                  disabled={status === "running"}
+                  onClick={() => setVendorUrls(prev => [...prev, ""])}
+                >
+                  <Plus className="h-3 w-3" />Add URL
+                </Button>
+              )}
+            </div>
           </div>
           <div>
             <Label className="text-xs mb-1 block">

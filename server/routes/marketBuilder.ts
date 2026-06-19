@@ -241,15 +241,18 @@ export function registerMarketBuilderRoutes(app: Express): void {
         const criterionName = (req.query.criterion as string) || undefined;
         const categoryName  = (req.query.category  as string) || undefined;
         const featureName   = (req.query.feature   as string) || undefined;
-        const vendorUrl     = (req.query.vendorUrl  as string) || undefined;
+        const rawVendorUrl  = req.query.vendorUrl;
+        const vendorUrls: string[] = rawVendorUrl
+          ? (Array.isArray(rawVendorUrl) ? rawVendorUrl as string[] : [rawVendorUrl as string]).filter(Boolean)
+          : [];
         const isItem = !!(criterionName || (categoryName && featureName));
         if (isItem) {
-          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName, vendorUrl }).catch(err => {
+          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName, vendorUrls }).catch(err => {
             console.error(`[MarketBuilder] Admin item refresh error stage=${stageNum} vendor="${vendorName}":`, err);
             try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
           });
         } else {
-          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, vendorUrl }).catch(err => {
+          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, vendorUrls }).catch(err => {
             console.error(`[MarketBuilder] Vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
             try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
           });
@@ -962,15 +965,18 @@ export function registerMarketBuilderRoutes(app: Express): void {
         const criterionName = (req.query.criterion as string) || undefined;
         const categoryName  = (req.query.category  as string) || undefined;
         const featureName   = (req.query.feature   as string) || undefined;
-        const vendorUrl     = (req.query.vendorUrl  as string) || undefined;
+        const rawVendorUrl  = req.query.vendorUrl;
+        const vendorUrls: string[] = rawVendorUrl
+          ? (Array.isArray(rawVendorUrl) ? rawVendorUrl as string[] : [rawVendorUrl as string]).filter(Boolean)
+          : [];
         const isItem = !!(criterionName || (categoryName && featureName));
         if (isItem) {
-          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName, vendorUrl }).catch(err => {
+          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName, vendorUrls }).catch(err => {
             console.error(`[MarketBuilder] User item refresh error stage=${stageNum} vendor="${vendorName}":`, err);
             try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
           });
         } else {
-          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, vendorUrl }).catch(err => {
+          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, vendorUrls }).catch(err => {
             console.error(`[MarketBuilder] User vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
             try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
           });

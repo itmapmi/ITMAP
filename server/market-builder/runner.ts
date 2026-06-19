@@ -14,7 +14,10 @@ import { addInFlightVendor, removeInFlightVendor, clearInFlightVendors } from ".
 export interface VendorRefreshOpts {
   llmOverride?: { provider: string; model: string };
   promptOverride?: string;
+  /** Single URL — kept for backward compat. Prefer vendorUrls. */
   vendorUrl?: string;
+  /** One or more URLs for the AI to read as extra context during this refresh. */
+  vendorUrls?: string[];
 }
 
 // ── Canonical stage map (frontend & backend MUST agree on this) ──────────
@@ -670,15 +673,27 @@ export async function runItemRefresh(
   let sourceContext = buildSourceContext(allSources, stageNum);
   const progress = makeProgress(res, jobId, stageNum);
 
-  if (opts.vendorUrl) {
-    try {
-      progress(`Fetching vendor URL: ${opts.vendorUrl} …`);
-      const urlContent = await fetchUrlContent(opts.vendorUrl);
-      const adHoc: SourceRecord = { id: "adhoc-vendor-url", name: `Ad-hoc: ${opts.vendorUrl}`, type: "url", url: opts.vendorUrl, content: urlContent };
-      sourceContext = buildSourceContext([...allSources, adHoc], stageNum);
-      progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
-    } catch (err: any) {
-      progress(`Warning: could not fetch vendor URL — ${err.message}`);
+  {
+    const urlsToFetch = [
+      ...(opts.vendorUrls ?? []),
+      ...(opts.vendorUrl && !(opts.vendorUrls ?? []).includes(opts.vendorUrl) ? [opts.vendorUrl] : []),
+    ].filter(Boolean);
+    if (urlsToFetch.length > 0) {
+      const adHocs: SourceRecord[] = [];
+      for (let i = 0; i < urlsToFetch.length; i++) {
+        const u = urlsToFetch[i];
+        try {
+          await progress(`Fetching vendor URL: ${u} …`);
+          const urlContent = await fetchUrlContent(u);
+          adHocs.push({ id: `adhoc-vendor-url-${i}`, name: `Ad-hoc: ${u}`, type: "url", url: u, content: urlContent });
+          await progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
+        } catch (err: any) {
+          await progress(`Warning: could not fetch vendor URL — ${err.message}`);
+        }
+      }
+      if (adHocs.length > 0) {
+        sourceContext = buildSourceContext([...allSources, ...adHocs], stageNum);
+      }
     }
   }
 
@@ -918,15 +933,27 @@ export async function runVendorRefresh(
   // Progress helper — writes to stage's activity log (same DB column as full runs)
   const progress = makeProgress(res, jobId, stageNum);
 
-  if (opts.vendorUrl) {
-    try {
-      progress(`Fetching vendor URL: ${opts.vendorUrl} …`);
-      const urlContent = await fetchUrlContent(opts.vendorUrl);
-      const adHoc: SourceRecord = { id: "adhoc-vendor-url", name: `Ad-hoc: ${opts.vendorUrl}`, type: "url", url: opts.vendorUrl, content: urlContent };
-      sourceContext = buildSourceContext([...allSources, adHoc], stageNum);
-      progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
-    } catch (err: any) {
-      progress(`Warning: could not fetch vendor URL — ${err.message}`);
+  {
+    const urlsToFetch = [
+      ...(opts.vendorUrls ?? []),
+      ...(opts.vendorUrl && !(opts.vendorUrls ?? []).includes(opts.vendorUrl) ? [opts.vendorUrl] : []),
+    ].filter(Boolean);
+    if (urlsToFetch.length > 0) {
+      const adHocs: SourceRecord[] = [];
+      for (let i = 0; i < urlsToFetch.length; i++) {
+        const u = urlsToFetch[i];
+        try {
+          await progress(`Fetching vendor URL: ${u} …`);
+          const urlContent = await fetchUrlContent(u);
+          adHocs.push({ id: `adhoc-vendor-url-${i}`, name: `Ad-hoc: ${u}`, type: "url", url: u, content: urlContent });
+          await progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
+        } catch (err: any) {
+          await progress(`Warning: could not fetch vendor URL — ${err.message}`);
+        }
+      }
+      if (adHocs.length > 0) {
+        sourceContext = buildSourceContext([...allSources, ...adHocs], stageNum);
+      }
     }
   }
 
