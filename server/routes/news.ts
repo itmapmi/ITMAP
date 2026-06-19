@@ -40,7 +40,21 @@ export function registerNewsRoutes(app: Express): void {
       }
       const filters: any = { limit: parseInt(limit as string), offset: parseInt(offset as string) };
       if (source_id) filters.sourceId = source_id as string;
-      if (vendor_id) filters.vendorId = vendor_id as string;
+      if (vendor_id) {
+        // Expand to canonical group so pre-link and post-link articles are all returned
+        const { db } = await import("../db");
+        const { vendors } = await import("@shared/schema");
+        const { eq } = await import("drizzle-orm");
+        const [vendorRow] = await db.select().from(vendors).where(eq(vendors.id, vendor_id as string));
+        if (vendorRow?.canonicalVendorId) {
+          const siblings = await db.select().from(vendors)
+            .where(eq(vendors.canonicalVendorId, vendorRow.canonicalVendorId));
+          filters.canonicalVendorId = vendorRow.canonicalVendorId;
+          filters.siblingVendorIds = siblings.map((v: any) => v.id);
+        } else {
+          filters.vendorId = vendor_id as string;
+        }
+      }
       if (market) filters.marketIds = [market as string];
       if (impact) filters.impactLabel = (impact as string).toUpperCase();
       if (category) filters.category = category as string;

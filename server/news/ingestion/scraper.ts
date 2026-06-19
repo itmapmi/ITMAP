@@ -244,40 +244,26 @@ async function saveAnalyzedArticle(
 
 // ─── Grouping helpers ────────────────────────────────────────────────────
 
-// Build scrape groups from all vendors with a newsroom URL.
-// Vendors sharing a canonical vendor (with a newsroomUrl) are collapsed into
-// one group; vendors without a canonical vendor are each their own group.
+// Build scrape groups from ALL vendors, resolving effective newsroom URL via
+// canonical vendor when set.  Vendors with no effective URL are skipped.
+// Vendors sharing a canonical vendor are collapsed into one group (scraped once).
 async function buildScrapeGroups(): Promise<ScrapeGroup[]> {
-  const allVendors = await db
-    .select()
-    .from(vendors)
-    .where(isNotNull(vendors.newsroomUrl));
+  // Fetch ALL vendors — including those whose only newsroom URL lives on a
+  // linked canonical vendor (per-vendor newsroomUrl may be null for those).
+  const allVendors = await db.select().from(vendors);
 
-  // Fetch canonical vendors that have their own newsroomUrl set
-  const canonicalIds = [...new Set(
-    allVendors
-      .filter(v => v.canonicalVendorId)
-      .map(v => v.canonicalVendorId as string)
-  )];
-
+  // Fetch all canonical vendors so we can resolve effective URLs
+  const allCanonicals = await db.select().from(canonicalVendors);
   const canonicalMap = new Map<string, typeof canonicalVendors.$inferSelect>();
-  if (canonicalIds.length > 0) {
-    const canonicalRows = await db
-      .select()
-      .from(canonicalVendors)
-      .where(inArray(canonicalVendors.id, canonicalIds));
-    for (const c of canonicalRows) canonicalMap.set(c.id, c);
-  }
+  for (const c of allCanonicals) canonicalMap.set(c.id, c);
 
-  // Group by: (a) canonical vendor ID if the canonical has its own newsroomUrl,
-  // (b) effective newsroom URL otherwise (so vendors with the same URL but no
-  //     canonical vendor also collapse).
+  // Group by: (a) canonical vendor ID when the vendor is linked to one,
+  // (b) effective newsroom URL otherwise (so unlinked vendors with the same
+  //     URL also collapse).
   const groupsByKey = new Map<string, ScrapeGroup>();
 
   for (const vendor of allVendors) {
-    if (!vendor.newsroomUrl) continue;
-
-    let effectiveUrl = vendor.newsroomUrl;
+    let effectiveUrl: string | null = vendor.newsroomUrl ?? null;
     let canonicalVendorId: string | null = null;
     let groupKey: string;
 
@@ -285,15 +271,18 @@ async function buildScrapeGroups(): Promise<ScrapeGroup[]> {
       const canonical = canonicalMap.get(vendor.canonicalVendorId);
       if (canonical) {
         canonicalVendorId = canonical.id;
-        // Use canonical newsroom URL if set; fall back to vendor's own URL
-        effectiveUrl = canonical.newsroomUrl || vendor.newsroomUrl;
+        // Canonical URL takes precedence; fall back to vendor's own URL
+        effectiveUrl = canonical.newsroomUrl || vendor.newsroomUrl || null;
         groupKey = `canonical:${canonical.id}`;
       } else {
-        groupKey = `url:${effectiveUrl}`;
+        groupKey = effectiveUrl ? `url:${effectiveUrl}` : `vendor:${vendor.id}`;
       }
     } else {
-      groupKey = `url:${effectiveUrl}`;
+      groupKey = effectiveUrl ? `url:${effectiveUrl}` : `vendor:${vendor.id}`;
     }
+
+    // No effective URL to scrape — skip
+    if (!effectiveUrl) continue;
 
     const existing = groupsByKey.get(groupKey);
     if (existing) {
@@ -405,10 +394,9 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
   const rows = await db.select().from(vendors).where(eq(vendors.id, vendorId));
   const vendor = rows[0];
   if (!vendor) throw new Error(`Vendor ${vendorId} not found`);
-  if (!vendor.newsroomUrl) throw new Error(`Vendor ${vendor.name} has no newsroom URL configured`);
 
   // Resolve canonical vendor if linked
-  let effectiveUrl = vendor.newsroomUrl;
+  let effectiveUrl: string | null = vendor.newsroomUrl ?? null;
   let canonicalVendorId: string | null = null;
   let allMarketIds: string[] = [vendor.marketId];
   let allVendorIds: string[] = [vendor.id];
@@ -420,7 +408,8 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
       .where(eq(canonicalVendors.id, vendor.canonicalVendorId));
     if (canonical) {
       canonicalVendorId = canonical.id;
-      if (canonical.newsroomUrl) effectiveUrl = canonical.newsroomUrl;
+      // Canonical URL takes precedence; fall back to vendor's own URL
+      effectiveUrl = canonical.newsroomUrl || vendor.newsroomUrl || null;
 
       // Collect all other vendors in this canonical group
       const siblings = await db
@@ -430,6 +419,13 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
       allVendorIds = siblings.map(v => v.id);
       allMarketIds = [...new Set(siblings.map(v => v.marketId))];
     }
+  }
+
+  if (!effectiveUrl) {
+    throw new Error(
+      `Vendor ${vendor.name} has no newsroom URL configured` +
+      (vendor.canonicalVendorId ? " (canonical vendor also has no URL)" : "")
+    );
   }
 
   const v: VendorRecord = {

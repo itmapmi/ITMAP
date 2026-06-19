@@ -1,10 +1,26 @@
 import { db } from "../db";
 import { canonicalVendors, vendors } from "@shared/schema";
 import type { CanonicalVendor, InsertCanonicalVendor } from "@shared/schema";
-import { eq, ilike } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-export async function listCanonicalVendors(): Promise<CanonicalVendor[]> {
-  return db.select().from(canonicalVendors).orderBy(canonicalVendors.name);
+export type CanonicalVendorWithCount = CanonicalVendor & { linkedVendorCount: number };
+
+export async function listCanonicalVendors(): Promise<CanonicalVendorWithCount[]> {
+  const rows = await db
+    .select({
+      id: canonicalVendors.id,
+      name: canonicalVendors.name,
+      website: canonicalVendors.website,
+      newsroomUrl: canonicalVendors.newsroomUrl,
+      createdAt: canonicalVendors.createdAt,
+      updatedAt: canonicalVendors.updatedAt,
+      linkedVendorCount: sql<number>`count(${vendors.id})::int`,
+    })
+    .from(canonicalVendors)
+    .leftJoin(vendors, eq(vendors.canonicalVendorId, canonicalVendors.id))
+    .groupBy(canonicalVendors.id)
+    .orderBy(canonicalVendors.name);
+  return rows;
 }
 
 export async function getCanonicalVendorById(id: string): Promise<CanonicalVendor | undefined> {
@@ -30,33 +46,80 @@ export async function deleteCanonicalVendor(id: string): Promise<void> {
   await db.delete(canonicalVendors).where(eq(canonicalVendors.id, id));
 }
 
-// Auto-link vendors to canonical vendors by matching vendor name (case-insensitive).
-// Returns counts of how many links were created.
-export async function autoLinkVendorsByName(): Promise<{ linked: number; skipped: number }> {
+// Auto-link vendors to canonical vendors by normalised name.
+// 
+// For unlinked vendors grouped by normalised name:
+//   - Groups of ≥ 2 members: create a new canonical record (first member donates its
+//     name/website/newsroomUrl) then link all members.
+//   - Groups of 1 that already has an existing canonical with the same name: link to it.
+//   - Otherwise: skip (skipped includes already-linked vendors).
+//
+// Returns { created, linked, skipped }.
+export async function autoLinkVendorsByName(): Promise<{
+  created: number;
+  linked: number;
+  skipped: number;
+}> {
   const allVendors = await db.select().from(vendors);
   const allCanonical = await db.select().from(canonicalVendors);
 
-  const canonicalByName = new Map(allCanonical.map(c => [c.name.toLowerCase().trim(), c]));
+  const existingCanonicalByName = new Map(
+    allCanonical.map(c => [c.name.toLowerCase().trim(), c])
+  );
 
-  let linked = 0;
-  let skipped = 0;
+  // Partition into already-linked (skip) and unlinked
+  const unlinked = allVendors.filter(v => !v.canonicalVendorId);
+  const alreadyLinked = allVendors.length - unlinked.length;
 
-  for (const vendor of allVendors) {
-    if (vendor.canonicalVendorId) {
-      skipped++;
-      continue;
-    }
-    const match = canonicalByName.get(vendor.name.toLowerCase().trim());
-    if (match) {
-      await db
-        .update(vendors)
-        .set({ canonicalVendorId: match.id })
-        .where(eq(vendors.id, vendor.id));
-      linked++;
-    } else {
-      skipped++;
-    }
+  // Group unlinked vendors by normalised name
+  const groupsByName = new Map<string, (typeof allVendors)[number][]>();
+  for (const v of unlinked) {
+    const key = v.name.toLowerCase().trim();
+    const grp = groupsByName.get(key) ?? [];
+    grp.push(v);
+    groupsByName.set(key, grp);
   }
 
-  return { linked, skipped };
+  let created = 0;
+  let linked = 0;
+
+  for (const [normName, group] of groupsByName) {
+    const existingCanonical = existingCanonicalByName.get(normName);
+
+    if (existingCanonical) {
+      // Link all group members to the existing canonical
+      for (const v of group) {
+        await db
+          .update(vendors)
+          .set({ canonicalVendorId: existingCanonical.id })
+          .where(eq(vendors.id, v.id));
+        linked++;
+      }
+    } else if (group.length >= 2) {
+      // Multiple vendors share a name — create a canonical record from the first member
+      const lead = group[0];
+      const [canonical] = await db
+        .insert(canonicalVendors)
+        .values({
+          name: lead.name,
+          website: lead.website ?? null,
+          newsroomUrl: lead.newsroomUrl ?? null,
+        })
+        .returning();
+      created++;
+      existingCanonicalByName.set(normName, canonical);
+
+      for (const v of group) {
+        await db
+          .update(vendors)
+          .set({ canonicalVendorId: canonical.id })
+          .where(eq(vendors.id, v.id));
+        linked++;
+      }
+    }
+    // else: single vendor with no existing canonical → skip (no action)
+  }
+
+  const skipped = alreadyLinked + unlinked.length - linked;
+  return { created, linked, skipped };
 }

@@ -30,6 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Link2, ExternalLink } from "lucide-react";
 import type { CanonicalVendor } from "@shared/schema";
 
+type CanonicalVendorWithCount = CanonicalVendor & { linkedVendorCount: number };
+
 interface FormValues {
   name: string;
   website: string;
@@ -41,7 +43,7 @@ export function CanonicalVendorsAdmin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CanonicalVendor | null>(null);
 
-  const { data: canonicalVendors, isLoading } = useQuery<CanonicalVendor[]>({
+  const { data: canonicalVendors, isLoading } = useQuery<CanonicalVendorWithCount[]>({
     queryKey: ["/api/admin/canonical-vendors"],
   });
 
@@ -55,7 +57,7 @@ export function CanonicalVendorsAdmin() {
     setDialogOpen(true);
   };
 
-  const openEdit = (cv: CanonicalVendor) => {
+  const openEdit = (cv: CanonicalVendorWithCount) => {
     setEditing(cv);
     form.reset({
       name: cv.name,
@@ -129,13 +131,18 @@ export function CanonicalVendorsAdmin() {
         const err = await res.json();
         throw new Error(err.error || "Failed to auto-link");
       }
-      return res.json() as Promise<{ linked: number; skipped: number }>;
+      return res.json() as Promise<{ created: number; linked: number; skipped: number }>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/canonical-vendors"] });
+      const parts: string[] = [];
+      if (data.created > 0) parts.push(`Created ${data.created} canonical record(s)`);
+      if (data.linked > 0) parts.push(`linked ${data.linked} vendor(s)`);
+      if (data.skipped > 0) parts.push(`${data.skipped} already linked or unmatched`);
       toast({
         title: "Auto-link complete",
-        description: `Linked ${data.linked} vendor(s) by name match. ${data.skipped} already linked or unmatched.`,
+        description: parts.join(". ") || "Nothing to link.",
       });
     },
     onError: (e: Error) => {
@@ -198,6 +205,7 @@ export function CanonicalVendorsAdmin() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead className="text-center">Linked Vendors</TableHead>
                     <TableHead>Newsroom URL</TableHead>
                     <TableHead>Website</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -207,6 +215,15 @@ export function CanonicalVendorsAdmin() {
                   {canonicalVendors.map((cv) => (
                     <TableRow key={cv.id}>
                       <TableCell className="font-medium">{cv.name}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          cv.linkedVendorCount > 0
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                        }`}>
+                          {cv.linkedVendorCount}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-sm">
                         {cv.newsroomUrl ? (
                           <a

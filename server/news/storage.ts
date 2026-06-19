@@ -16,6 +16,10 @@ export class NewsStorage {
     sourceId?: string;
     vendorId?: string;
     vendorIds?: string[];
+    // When set, returns articles whose canonical_vendor_id matches OR whose
+    // vendor_id is in siblingVendorIds (to catch pre-canonical articles).
+    canonicalVendorId?: string;
+    siblingVendorIds?: string[];
     marketIds?: string[];
     impactLabel?: string;
     category?: string;
@@ -29,10 +33,24 @@ export class NewsStorage {
     if (filters.sourceId) {
       conditions.push(eq(newsArticles.sourceId, filters.sourceId));
     }
-    if (filters.vendorId) {
+    // Canonical-aware vendor filter: matches by canonical_vendor_id OR
+    // vendorId membership so pre-link articles are also included.
+    if (filters.canonicalVendorId) {
+      const siblingIds = filters.siblingVendorIds ?? [];
+      if (siblingIds.length > 0) {
+        conditions.push(
+          or(
+            eq(newsArticles.canonicalVendorId, filters.canonicalVendorId),
+            inArray(newsArticles.vendorId, siblingIds)
+          )!
+        );
+      } else {
+        conditions.push(eq(newsArticles.canonicalVendorId, filters.canonicalVendorId));
+      }
+    } else if (filters.vendorId) {
       conditions.push(eq(newsArticles.vendorId, filters.vendorId));
     }
-    if (filters.vendorIds && filters.vendorIds.length > 0) {
+    if (!filters.canonicalVendorId && filters.vendorIds && filters.vendorIds.length > 0) {
       conditions.push(inArray(newsArticles.vendorId, filters.vendorIds));
     }
     if (filters.impactLabel) {

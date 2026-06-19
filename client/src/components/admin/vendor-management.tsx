@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff, Zap } from "lucide-react";
+import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff, Zap, Link2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type CanonicalVendor } from "@shared/schema";
@@ -80,6 +80,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
   const { data: canonicalVendors } = useQuery<CanonicalVendor[]>({
     queryKey: ["/api/admin/canonical-vendors"],
   });
+
+  const canonicalVendorNameMap = new Map(
+    (canonicalVendors ?? []).map(cv => [cv.id, cv.name])
+  );
 
   const { data: signalCounts, isLoading: signalCountsLoading } = useQuery<VendorSignalCountsResponse>({
     queryKey: ["/api/admin/vendor-signals/counts"],
@@ -936,6 +940,15 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                               <div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span>{vendor.name}</span>
+                                  {vendor.canonicalVendorId && (
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium"
+                                      title={`Canonical: ${canonicalVendorNameMap.get(vendor.canonicalVendorId) ?? vendor.canonicalVendorId}`}
+                                    >
+                                      <Link2 className="h-3 w-3" />
+                                      {canonicalVendorNameMap.get(vendor.canonicalVendorId) ?? "Linked"}
+                                    </span>
+                                  )}
                                   {(() => {
                                     const health = getUrlHealth(vendor.id);
                                     if (!health) return null;
@@ -1146,6 +1159,15 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                               <div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span>{vendor.name}</span>
+                                  {vendor.canonicalVendorId && (
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium"
+                                      title={`Canonical: ${canonicalVendorNameMap.get(vendor.canonicalVendorId) ?? vendor.canonicalVendorId}`}
+                                    >
+                                      <Link2 className="h-3 w-3" />
+                                      {canonicalVendorNameMap.get(vendor.canonicalVendorId) ?? "Linked"}
+                                    </span>
+                                  )}
                                   {(() => {
                                     const health = getUrlHealth(vendor.id);
                                     if (!health) return null;
