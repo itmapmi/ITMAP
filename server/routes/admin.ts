@@ -350,6 +350,25 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/admin/canonical-vendors/:id/merge", requireAdmin, async (req, res) => {
+    try {
+      const { mergeCanonicalVendors, getCanonicalVendorById } = await import("../storage/canonicalVendors");
+      const sourceId = req.params.id;
+      const { intoId } = req.body;
+      if (!intoId || typeof intoId !== "string") return res.status(400).json({ error: "intoId is required" });
+      if (sourceId === intoId) return res.status(400).json({ error: "Cannot merge a vendor into itself" });
+      const source = await getCanonicalVendorById(sourceId);
+      if (!source) return res.status(404).json({ error: "Source canonical vendor not found" });
+      const target = await getCanonicalVendorById(intoId);
+      if (!target) return res.status(404).json({ error: "Target canonical vendor not found" });
+      const result = await mergeCanonicalVendors(sourceId, intoId);
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      console.error("Error merging canonical vendors:", err);
+      res.status(500).json({ error: "Failed to merge canonical vendors" });
+    }
+  });
+
   app.post("/api/admin/canonical-vendors/auto-link", requireAdmin, async (_req, res) => {
     try {
       const { autoLinkVendorsByName } = await import("../storage/canonicalVendors");

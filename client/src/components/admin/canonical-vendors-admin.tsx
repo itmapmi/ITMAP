@@ -24,10 +24,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Link2, ExternalLink } from "lucide-react";
+import { Plus, Edit, Trash2, Link2, ExternalLink, Merge } from "lucide-react";
 import type { CanonicalVendor } from "@shared/schema";
 
 type CanonicalVendorWithCount = CanonicalVendor & { linkedVendorCount: number };
@@ -42,6 +49,8 @@ export function CanonicalVendorsAdmin() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CanonicalVendor | null>(null);
+  const [mergeSource, setMergeSource] = useState<CanonicalVendorWithCount | null>(null);
+  const [mergeIntoId, setMergeIntoId] = useState<string>("");
 
   const { data: canonicalVendors, isLoading } = useQuery<CanonicalVendorWithCount[]>({
     queryKey: ["/api/admin/canonical-vendors"],
@@ -65,6 +74,11 @@ export function CanonicalVendorsAdmin() {
       newsroomUrl: cv.newsroomUrl || "",
     });
     setDialogOpen(true);
+  };
+
+  const openMerge = (cv: CanonicalVendorWithCount) => {
+    setMergeSource(cv);
+    setMergeIntoId("");
   };
 
   const createMutation = useMutation({
@@ -150,6 +164,30 @@ export function CanonicalVendorsAdmin() {
     },
   });
 
+  const mergeMutation = useMutation({
+    mutationFn: async ({ sourceId, intoId }: { sourceId: string; intoId: string }) => {
+      const res = await apiRequest(`/api/admin/canonical-vendors/${sourceId}/merge`, "POST", { intoId });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to merge");
+      }
+      return res.json() as Promise<{ vendorsMoved: number; articlesMoved: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/canonical-vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      setMergeSource(null);
+      setMergeIntoId("");
+      toast({
+        title: "Merged",
+        description: `Moved ${data.vendorsMoved} vendor link(s) and ${data.articlesMoved} article(s).`,
+      });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const onSubmit = (values: FormValues) => {
     const payload = {
       name: values.name.trim(),
@@ -162,6 +200,8 @@ export function CanonicalVendorsAdmin() {
       createMutation.mutate(payload);
     }
   };
+
+  const mergeTargets = canonicalVendors?.filter(cv => cv.id !== mergeSource?.id) ?? [];
 
   return (
     <div className="space-y-6">
@@ -244,8 +284,11 @@ export function CanonicalVendorsAdmin() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(cv)}>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(cv)} title="Edit">
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => openMerge(cv)} title="Merge into another">
+                            <Merge className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -290,6 +333,7 @@ export function CanonicalVendorsAdmin() {
         </CardContent>
       </Card>
 
+      {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -353,6 +397,53 @@ export function CanonicalVendorsAdmin() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Merge dialog */}
+      <Dialog open={!!mergeSource} onOpenChange={(open) => { if (!open) { setMergeSource(null); setMergeIntoId(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Merge Canonical Vendor</DialogTitle>
+            <DialogDescription>
+              All vendor links and articles belonging to <strong>{mergeSource?.name}</strong> will be
+              moved to the target record, then <strong>{mergeSource?.name}</strong> will be deleted.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Merge into</p>
+              <Select value={mergeIntoId} onValueChange={setMergeIntoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select target canonical vendor…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mergeTargets.map((cv) => (
+                    <SelectItem key={cv.id} value={cv.id}>
+                      {cv.name} ({cv.linkedVendorCount} linked)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setMergeSource(null); setMergeIntoId(""); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!mergeIntoId || mergeMutation.isPending}
+              onClick={() => {
+                if (mergeSource && mergeIntoId) {
+                  mergeMutation.mutate({ sourceId: mergeSource.id, intoId: mergeIntoId });
+                }
+              }}
+            >
+              {mergeMutation.isPending ? "Merging…" : "Merge & Delete"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

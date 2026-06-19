@@ -141,6 +141,33 @@ export async function backfillArticleCanonicalIds(): Promise<number> {
   return (result as any).rowCount ?? 0;
 }
 
+// Merge sourceId into intoId:
+//   1. Re-point all vendors linked to source → into
+//   2. Re-point all news_articles linked to source → into
+//   3. Delete source canonical vendor
+// Returns counts of rows updated in each table.
+export async function mergeCanonicalVendors(
+  sourceId: string,
+  intoId: string,
+): Promise<{ vendorsMoved: number; articlesMoved: number }> {
+  const vendorsResult = await db
+    .update(vendors)
+    .set({ canonicalVendorId: intoId })
+    .where(eq(vendors.canonicalVendorId, sourceId));
+
+  const articlesResult = await db
+    .update(newsArticles)
+    .set({ canonicalVendorId: intoId })
+    .where(eq(newsArticles.canonicalVendorId, sourceId));
+
+  await db.delete(canonicalVendors).where(eq(canonicalVendors.id, sourceId));
+
+  return {
+    vendorsMoved: (vendorsResult as any).rowCount ?? 0,
+    articlesMoved: (articlesResult as any).rowCount ?? 0,
+  };
+}
+
 // Back-fill canonical_vendor_id for a single vendor's articles.
 // Called automatically when a vendor is linked to a canonical vendor.
 export async function backfillArticlesForVendor(
