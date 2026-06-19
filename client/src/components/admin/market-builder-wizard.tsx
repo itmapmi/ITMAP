@@ -2380,7 +2380,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     promptsBase={promptsBase} mode={mode}
                   />
                 )}
-                {activeStage === 6 && (
+                {(activeStage === 5 || activeStage === 6) && (
                   <PromptSelector
                     jobId={activeJob!.id}
                     stageKind="product_evaluation"
@@ -2389,7 +2389,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     promptsBase={promptsBase} mode={mode}
                   />
                 )}
-                {activeStage === 9 && (
+                {(activeStage === 8 || activeStage === 9) && (
                   <PromptSelector
                     jobId={activeJob!.id}
                     stageKind="ecosystem_evaluation"
@@ -2558,7 +2558,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     promptsBase={promptsBase} mode={mode}
                   />
                 )}
-                {activeStage === 6 && (
+                {(activeStage === 5 || activeStage === 6) && (
                   <PromptSelector
                     jobId={activeJob!.id}
                     stageKind="product_evaluation"
@@ -2567,7 +2567,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     promptsBase={promptsBase} mode={mode}
                   />
                 )}
-                {activeStage === 9 && (
+                {(activeStage === 8 || activeStage === 9) && (
                   <PromptSelector
                     jobId={activeJob!.id}
                     stageKind="ecosystem_evaluation"
