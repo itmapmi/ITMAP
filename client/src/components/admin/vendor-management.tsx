@@ -14,7 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff, Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore } from "@shared/schema";
+import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type CanonicalVendor } from "@shared/schema";
 
 interface UrlHealthResult {
   vendorId: string;
@@ -75,6 +75,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
 
   const { data: allVendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
+  });
+
+  const { data: canonicalVendors } = useQuery<CanonicalVendor[]>({
+    queryKey: ["/api/admin/canonical-vendors"],
   });
 
   const { data: signalCounts, isLoading: signalCountsLoading } = useQuery<VendorSignalCountsResponse>({
@@ -146,6 +150,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       revenue: undefined,
       product: "",
       marketId: "",
+      canonicalVendorId: null,
     },
   });
 
@@ -408,6 +413,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
           revenue: vendor.revenue || "",
           product: vendor.product || "",
           marketId: vendor.marketId,
+          canonicalVendorId: vendor.canonicalVendorId ?? null,
         });
         setPendingAutoEdit(null);
         setTimeout(() => {
@@ -435,6 +441,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       revenue: vendor.revenue || "",
       product: vendor.product || "",
       marketId: vendor.marketId,
+      canonicalVendorId: vendor.canonicalVendorId ?? null,
     });
   };
 
@@ -449,6 +456,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       revenue: "",
       product: "",
       marketId: "",
+      canonicalVendorId: null,
     });
   };
 
@@ -805,6 +813,38 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                           <FormControl>
                             <Input placeholder="e.g., PowerMax 8500, Alletra 9000" {...field} value={field.value || ""} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={vendorForm.control}
+                      name="canonicalVendorId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Canonical Vendor</FormLabel>
+                          <Select
+                            value={field.value ?? "none"}
+                            onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="No canonical vendor" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No canonical vendor</SelectItem>
+                              {canonicalVendors?.map((cv) => (
+                                <SelectItem key={cv.id} value={cv.id}>
+                                  {cv.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Link to a canonical vendor to share a single newsroom and article pool across markets.
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}

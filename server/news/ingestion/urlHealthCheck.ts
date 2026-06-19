@@ -1,4 +1,6 @@
-import { storage } from '../../storage';
+import { db } from '../../db';
+import { vendors, canonicalVendors } from '@shared/schema';
+import { isNotNull, inArray } from 'drizzle-orm';
 
 export interface UrlHealthResult {
   vendorId: string;
@@ -108,14 +110,26 @@ async function checkUrl(url: string): Promise<CheckOutcome> {
 }
 
 export async function checkSingleNewsroomUrl(vendorId: string): Promise<UrlHealthResult | null> {
-  const vendor = await storage.getVendorById(vendorId);
+  const rows = await db.select().from(vendors).where(
+    inArray(vendors.id, [vendorId])
+  );
+  const vendor = rows[0];
   if (!vendor || !vendor.newsroomUrl) return null;
 
-  const outcome = await checkUrl(vendor.newsroomUrl);
+  // Resolve effective URL via canonical vendor if linked
+  let effectiveUrl = vendor.newsroomUrl;
+  if (vendor.canonicalVendorId) {
+    const cRows = await db.select().from(canonicalVendors)
+      .where(inArray(canonicalVendors.id, [vendor.canonicalVendorId]));
+    const canonical = cRows[0];
+    if (canonical?.newsroomUrl) effectiveUrl = canonical.newsroomUrl;
+  }
+
+  const outcome = await checkUrl(effectiveUrl);
   const result: UrlHealthResult = {
     vendorId: vendor.id,
     vendorName: vendor.name,
-    url: vendor.newsroomUrl,
+    url: effectiveUrl,
     ...outcome,
     lastChecked: new Date(),
   };
@@ -125,10 +139,51 @@ export async function checkSingleNewsroomUrl(vendorId: string): Promise<UrlHealt
 }
 
 export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
-  const vendors = await storage.getAllVendors();
-  const vendorsWithUrls = vendors.filter(v => v.newsroomUrl);
+  const allVendors = await db.select().from(vendors).where(isNotNull(vendors.newsroomUrl));
+  const vendorsWithUrls = allVendors.filter(v => v.newsroomUrl);
 
-  console.log(`[URLHealthCheck] Checking ${vendorsWithUrls.length} newsroom URLs…`);
+  // Fetch canonical vendors for those that have one set
+  const canonicalIds = [...new Set(
+    vendorsWithUrls
+      .filter(v => v.canonicalVendorId)
+      .map(v => v.canonicalVendorId as string)
+  )];
+  const canonicalMap = new Map<string, typeof canonicalVendors.$inferSelect>();
+  if (canonicalIds.length > 0) {
+    const cRows = await db.select().from(canonicalVendors)
+      .where(inArray(canonicalVendors.id, canonicalIds));
+    for (const c of cRows) canonicalMap.set(c.id, c);
+  }
+
+  // Build deduplication map: effective URL → lead vendor row
+  // (same logic as scraper: canonical URL takes precedence, then vendor URL)
+  const urlToLead = new Map<string, { vendorId: string; vendorName: string; url: string; siblingIds: string[] }>();
+  for (const v of vendorsWithUrls) {
+    let effectiveUrl = v.newsroomUrl!;
+    if (v.canonicalVendorId) {
+      const c = canonicalMap.get(v.canonicalVendorId);
+      if (c?.newsroomUrl) effectiveUrl = c.newsroomUrl;
+    }
+
+    const existing = urlToLead.get(effectiveUrl);
+    if (existing) {
+      existing.siblingIds.push(v.id);
+    } else {
+      urlToLead.set(effectiveUrl, {
+        vendorId: v.id,
+        vendorName: v.name,
+        url: effectiveUrl,
+        siblingIds: [v.id],
+      });
+    }
+  }
+
+  console.log(
+    `[URLHealthCheck] Checking ${urlToLead.size} unique newsroom URL(s)` +
+    (urlToLead.size < vendorsWithUrls.length
+      ? ` (${vendorsWithUrls.length - urlToLead.size} duplicate(s) skipped via canonical vendor)`
+      : '') + '…'
+  );
 
   // Snapshot previous statuses before overwriting
   for (const [id, result] of healthResults.entries()) {
@@ -137,21 +192,25 @@ export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
 
   const results: UrlHealthResult[] = [];
 
-  for (const vendor of vendorsWithUrls) {
-    const outcome = await checkUrl(vendor.newsroomUrl!);
+  for (const entry of urlToLead.values()) {
+    const outcome = await checkUrl(entry.url);
     const result: UrlHealthResult = {
-      vendorId: vendor.id,
-      vendorName: vendor.name,
-      url: vendor.newsroomUrl!,
+      vendorId: entry.vendorId,
+      vendorName: entry.vendorName,
+      url: entry.url,
       ...outcome,
       lastChecked: new Date(),
     };
 
-    healthResults.set(vendor.id, result);
+    // Store result for all sibling vendor IDs so the UI shows the correct state
+    for (const vid of entry.siblingIds) {
+      healthResults.set(vid, { ...result, vendorId: vid });
+    }
     results.push(result);
 
     const icon = result.status === 'ok' ? '✓' : '✗';
-    console.log(`[URLHealthCheck] ${icon} ${vendor.name}: ${result.status} (${result.statusCode ?? result.error ?? 'n/a'})`);
+    const siblingNote = entry.siblingIds.length > 1 ? ` (+${entry.siblingIds.length - 1} linked)` : '';
+    console.log(`[URLHealthCheck] ${icon} ${entry.vendorName}${siblingNote}: ${result.status} (${result.statusCode ?? result.error ?? 'n/a'})`);
   }
 
   lastFullCheckAt = new Date();
@@ -169,11 +228,8 @@ export function getNewlyBrokenResults(currentResults: UrlHealthResult[]): UrlHea
   const isFirstRun = previousStatuses.size === 0;
   return currentResults.filter(r => {
     if (r.status !== 'broken') return false;
-    // On the very first run there is no baseline; alert on all broken URLs so
-    // admins are notified about any pre-existing problems immediately.
     if (isFirstRun) return true;
     const prev = previousStatuses.get(r.vendorId);
-    // Strict ok → broken transition only; unknown/new vendors don't alert.
     return prev === 'ok';
   });
 }

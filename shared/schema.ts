@@ -112,16 +112,29 @@ export const criteria = pgTable("criteria", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+// Canonical vendor identity — one row per real-world company.
+// Multiple per-market vendor rows can link to the same canonical vendor so
+// the newsroom is scraped once and the article pool is unified.
+export const canonicalVendors = pgTable("canonical_vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  website: text("website"),
+  newsroomUrl: text("newsroom_url"), // Authoritative newsroom URL; overrides per-market vendor URL when set
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
   website: text("website"),
-  newsroomUrl: text("newsroom_url"), // Vendor newsroom page for scraping
+  newsroomUrl: text("newsroom_url"), // Vendor newsroom page for scraping (overridden by canonical when linked)
   newsroomAlertDisabled: boolean("newsroom_alert_disabled").notNull().default(false), // Per-vendor opt-out from email alerts
   revenue: decimal("revenue", { precision: 15, scale: 2 }),
   product: text("product"), // Product being evaluated for this vendor
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  canonicalVendorId: varchar("canonical_vendor_id").references((): any => canonicalVendors.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -231,6 +244,7 @@ export const newsArticles = pgTable("news_articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sourceId: varchar("source_id"), // Legacy: previously referenced news_sources; kept for backward compat
   vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  canonicalVendorId: varchar("canonical_vendor_id").references(() => canonicalVendors.id, { onDelete: "set null" }),
   marketIds: text("market_ids").array(), // Array of market IDs
   
   // Article content
@@ -294,10 +308,19 @@ export const subMarketsRelations = relations(subMarkets, ({ one }) => ({
   }),
 }));
 
+export const canonicalVendorsRelations = relations(canonicalVendors, ({ many }) => ({
+  vendors: many(vendors),
+  newsArticles: many(newsArticles),
+}));
+
 export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   market: one(markets, {
     fields: [vendors.marketId],
     references: [markets.id],
+  }),
+  canonicalVendor: one(canonicalVendors, {
+    fields: [vendors.canonicalVendorId],
+    references: [canonicalVendors.id],
   }),
   scores: many(vendorScores),
   featureSupport: many(vendorFeatureSupport),
@@ -385,6 +408,10 @@ export const newsArticlesRelations = relations(newsArticles, ({ one }) => ({
     fields: [newsArticles.vendorId],
     references: [vendors.id],
   }),
+  canonicalVendor: one(canonicalVendors, {
+    fields: [newsArticles.canonicalVendorId],
+    references: [canonicalVendors.id],
+  }),
 }));
 
 // Insert schemas
@@ -405,6 +432,12 @@ export const registerUserSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   password: z.string().min(6),
+});
+
+export const insertCanonicalVendorSchema = createInsertSchema(canonicalVendors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertMarketSchema = createInsertSchema(markets).omit({
@@ -513,6 +546,9 @@ export type InsertUserActivityLog = z.infer<typeof insertUserActivityLogSchema>;
 export type UserActivityLog = typeof userActivityLogs.$inferSelect;
 export type LoginUser = z.infer<typeof loginUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
+
+export type InsertCanonicalVendor = z.infer<typeof insertCanonicalVendorSchema>;
+export type CanonicalVendor = typeof canonicalVendors.$inferSelect;
 
 export type InsertMarket = z.infer<typeof insertMarketSchema>;
 export type Market = typeof markets.$inferSelect;

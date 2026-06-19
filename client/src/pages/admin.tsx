@@ -23,6 +23,7 @@ import { UserRfpsAdmin } from "@/components/admin/user-rfps-admin";
 import DatasheetsAdmin from "@/components/admin/datasheets-admin";
 import { UserAccessAdmin } from "@/components/admin/user-access-admin";
 import { FactCheckFlagsAdmin } from "@/components/admin/fact-check-flags-admin";
+import { CanonicalVendorsAdmin } from "@/components/admin/canonical-vendors-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
@@ -158,6 +159,7 @@ export default function Admin() {
             <TabsTrigger value="user-markets">User Markets</TabsTrigger>
             <TabsTrigger value="user-rfps">User RFPs</TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
+            <TabsTrigger value="canonical-vendors">Canonical Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
             <TabsTrigger value="news">News</TabsTrigger>
             <TabsTrigger value="ai-suggestions" className="gap-1.5">
@@ -206,6 +208,10 @@ export default function Admin() {
                 setActiveTab("signal-feed");
               }}
             />
+          </TabsContent>
+
+          <TabsContent value="canonical-vendors" className="mt-6">
+            <CanonicalVendorsAdmin />
           </TabsContent>
 
           <TabsContent value="new-players" className="mt-6">

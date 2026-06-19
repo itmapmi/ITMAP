@@ -2,8 +2,8 @@ import OpenAI from 'openai';
 import { newsStorage } from '../storage';
 import { db } from '../../db';
 import { generateSuggestionsForVendorById } from '../suggestions/generator';
-import { vendors } from '@shared/schema';
-import { isNotNull, eq } from 'drizzle-orm';
+import { vendors, canonicalVendors } from '@shared/schema';
+import { isNotNull, eq, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
 let _openai: OpenAI | null = null;
@@ -36,6 +36,21 @@ interface VendorRecord {
   name: string;
   newsroomUrl: string;
   marketId: string;
+}
+
+// A "scrape group" represents a unique newsroom URL to scrape once.
+// It can cover multiple vendor rows (and market IDs) via a shared canonical vendor.
+interface ScrapeGroup {
+  // Representative vendor ID for logging/fetch-log purposes
+  leadVendorId: string;
+  leadVendorName: string;
+  newsroomUrl: string;
+  // All vendor IDs in this group (for suggestions)
+  vendorIds: string[];
+  // All market IDs covered
+  marketIds: string[];
+  // Set if all vendors in this group share a canonical vendor
+  canonicalVendorId: string | null;
 }
 
 export interface ScrapeResult {
@@ -179,7 +194,10 @@ function generateContentHash(title: string, url: string): string {
   return crypto.createHash('sha256').update(`${title}::${url}`).digest('hex');
 }
 
-async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecord): Promise<string | null> {
+async function saveAnalyzedArticle(
+  article: AnalyzedArticle,
+  group: ScrapeGroup
+): Promise<string | null> {
   const canonicalUrl = article.url.split('?')[0].replace(/\/$/, '');
 
   const existing = await newsStorage.getArticleByUrl(canonicalUrl);
@@ -203,8 +221,9 @@ async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecor
 
   const saved = await newsStorage.createArticle({
     sourceId: null,
-    vendorId: vendor.id,
-    marketIds: [vendor.marketId],
+    vendorId: group.leadVendorId,
+    canonicalVendorId: group.canonicalVendorId,
+    marketIds: group.marketIds,
     title: article.title,
     url: article.url,
     canonicalUrl,
@@ -223,26 +242,98 @@ async function saveAnalyzedArticle(article: AnalyzedArticle, vendor: VendorRecor
   return saved.id;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────
+// ─── Grouping helpers ────────────────────────────────────────────────────
 
-export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
+// Build scrape groups from all vendors with a newsroom URL.
+// Vendors sharing a canonical vendor (with a newsroomUrl) are collapsed into
+// one group; vendors without a canonical vendor are each their own group.
+async function buildScrapeGroups(): Promise<ScrapeGroup[]> {
   const allVendors = await db
     .select()
     .from(vendors)
     .where(isNotNull(vendors.newsroomUrl));
 
-  const results: ScrapeResult[] = [];
+  // Fetch canonical vendors that have their own newsroomUrl set
+  const canonicalIds = [...new Set(
+    allVendors
+      .filter(v => v.canonicalVendorId)
+      .map(v => v.canonicalVendorId as string)
+  )];
+
+  const canonicalMap = new Map<string, typeof canonicalVendors.$inferSelect>();
+  if (canonicalIds.length > 0) {
+    const canonicalRows = await db
+      .select()
+      .from(canonicalVendors)
+      .where(inArray(canonicalVendors.id, canonicalIds));
+    for (const c of canonicalRows) canonicalMap.set(c.id, c);
+  }
+
+  // Group by: (a) canonical vendor ID if the canonical has its own newsroomUrl,
+  // (b) effective newsroom URL otherwise (so vendors with the same URL but no
+  //     canonical vendor also collapse).
+  const groupsByKey = new Map<string, ScrapeGroup>();
 
   for (const vendor of allVendors) {
     if (!vendor.newsroomUrl) continue;
+
+    let effectiveUrl = vendor.newsroomUrl;
+    let canonicalVendorId: string | null = null;
+    let groupKey: string;
+
+    if (vendor.canonicalVendorId) {
+      const canonical = canonicalMap.get(vendor.canonicalVendorId);
+      if (canonical) {
+        canonicalVendorId = canonical.id;
+        // Use canonical newsroom URL if set; fall back to vendor's own URL
+        effectiveUrl = canonical.newsroomUrl || vendor.newsroomUrl;
+        groupKey = `canonical:${canonical.id}`;
+      } else {
+        groupKey = `url:${effectiveUrl}`;
+      }
+    } else {
+      groupKey = `url:${effectiveUrl}`;
+    }
+
+    const existing = groupsByKey.get(groupKey);
+    if (existing) {
+      existing.vendorIds.push(vendor.id);
+      if (!existing.marketIds.includes(vendor.marketId)) {
+        existing.marketIds.push(vendor.marketId);
+      }
+    } else {
+      groupsByKey.set(groupKey, {
+        leadVendorId: vendor.id,
+        leadVendorName: vendor.name,
+        newsroomUrl: effectiveUrl,
+        vendorIds: [vendor.id],
+        marketIds: [vendor.marketId],
+        canonicalVendorId,
+      });
+    }
+  }
+
+  return [...groupsByKey.values()];
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────
+
+export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
+  const groups = await buildScrapeGroups();
+  const results: ScrapeResult[] = [];
+
+  for (const group of groups) {
     const v: VendorRecord = {
-      id: vendor.id,
-      name: vendor.name,
-      newsroomUrl: vendor.newsroomUrl,
-      marketId: vendor.marketId,
+      id: group.leadVendorId,
+      name: group.leadVendorName,
+      newsroomUrl: group.newsroomUrl,
+      marketId: group.marketIds[0],
     };
 
-    console.log(`[Scraper] Processing ${v.name} (${results.length + 1}/${allVendors.length})`);
+    const groupDesc = group.vendorIds.length > 1
+      ? `${v.name} (+${group.vendorIds.length - 1} linked)`
+      : v.name;
+    console.log(`[Scraper] Processing ${groupDesc} (${results.length + 1}/${groups.length})`);
     const startTime = Date.now();
 
     try {
@@ -250,15 +341,21 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
 
       const newArticleIds: string[] = [];
       for (const article of articles) {
-        const savedId = await saveAnalyzedArticle(article, v);
+        const savedId = await saveAnalyzedArticle(article, group);
         if (savedId) newArticleIds.push(savedId);
       }
 
-      results.push({ vendorId: v.id, vendor: v.name, total: articles.length, newCount: newArticleIds.length, error });
-      console.log(`[Scraper] ${v.name}: ${articles.length} found, ${newArticleIds.length} new`);
+      results.push({
+        vendorId: group.leadVendorId,
+        vendor: groupDesc,
+        total: articles.length,
+        newCount: newArticleIds.length,
+        error,
+      });
+      console.log(`[Scraper] ${groupDesc}: ${articles.length} found, ${newArticleIds.length} new (markets: ${group.marketIds.join(', ')})`);
 
       await newsStorage.createFetchLog({
-        sourceId: v.id,
+        sourceId: group.leadVendorId,
         status: error ? 'partial' : 'success',
         articlesFound: articles.length,
         articlesNew: newArticleIds.length,
@@ -267,26 +364,30 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
         duration: Date.now() - startTime,
       });
 
-      // Trigger AI suggestion generation for new scraped articles (these are
-      // saved with an impact label inline, so the deep analyzer won't re-pick
-      // them up). Feed articles that arrive WITHOUT an impact label are handled
-      // separately by the analyzer (see analyzer.triggerSuggestionsFromAnalysis).
       if (newArticleIds.length > 0) {
-        generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
-          console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);
-        });
+        // Fire suggestions for all vendors in the group
+        for (const vendorId of group.vendorIds) {
+          generateSuggestionsForVendorById(vendorId, newArticleIds).catch(err => {
+            console.error(`[Suggestions] Background generation failed for ${vendorId}: ${err.message}`);
+          });
+        }
       }
 
-      // Small delay between vendors to avoid rate limiting
-      if (results.length < allVendors.length) {
+      if (results.length < groups.length) {
         await new Promise(r => setTimeout(r, 1000));
       }
     } catch (err: any) {
-      console.error(`[Scraper] ${v.name} failed: ${err.message}`);
-      results.push({ vendorId: v.id, vendor: v.name, total: 0, newCount: 0, error: err.message });
+      console.error(`[Scraper] ${groupDesc} failed: ${err.message}`);
+      results.push({
+        vendorId: group.leadVendorId,
+        vendor: groupDesc,
+        total: 0,
+        newCount: 0,
+        error: err.message,
+      });
 
       await newsStorage.createFetchLog({
-        sourceId: v.id,
+        sourceId: group.leadVendorId,
         status: 'failed',
         articlesFound: 0,
         articlesNew: 0,
@@ -306,12 +407,47 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
   if (!vendor) throw new Error(`Vendor ${vendorId} not found`);
   if (!vendor.newsroomUrl) throw new Error(`Vendor ${vendor.name} has no newsroom URL configured`);
 
+  // Resolve canonical vendor if linked
+  let effectiveUrl = vendor.newsroomUrl;
+  let canonicalVendorId: string | null = null;
+  let allMarketIds: string[] = [vendor.marketId];
+  let allVendorIds: string[] = [vendor.id];
+
+  if (vendor.canonicalVendorId) {
+    const [canonical] = await db
+      .select()
+      .from(canonicalVendors)
+      .where(eq(canonicalVendors.id, vendor.canonicalVendorId));
+    if (canonical) {
+      canonicalVendorId = canonical.id;
+      if (canonical.newsroomUrl) effectiveUrl = canonical.newsroomUrl;
+
+      // Collect all other vendors in this canonical group
+      const siblings = await db
+        .select()
+        .from(vendors)
+        .where(eq(vendors.canonicalVendorId, canonical.id));
+      allVendorIds = siblings.map(v => v.id);
+      allMarketIds = [...new Set(siblings.map(v => v.marketId))];
+    }
+  }
+
   const v: VendorRecord = {
     id: vendor.id,
     name: vendor.name,
-    newsroomUrl: vendor.newsroomUrl,
+    newsroomUrl: effectiveUrl,
     marketId: vendor.marketId,
   };
+
+  const group: ScrapeGroup = {
+    leadVendorId: vendor.id,
+    leadVendorName: vendor.name,
+    newsroomUrl: effectiveUrl,
+    vendorIds: allVendorIds,
+    marketIds: allMarketIds,
+    canonicalVendorId,
+  };
+
   const startTime = Date.now();
 
   try {
@@ -319,12 +455,12 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
 
     const newArticleIds: string[] = [];
     for (const article of articles) {
-      const savedId = await saveAnalyzedArticle(article, v);
+      const savedId = await saveAnalyzedArticle(article, group);
       if (savedId) newArticleIds.push(savedId);
     }
 
     await newsStorage.createFetchLog({
-      sourceId: v.id,
+      sourceId: vendor.id,
       status: error ? 'partial' : 'success',
       articlesFound: articles.length,
       articlesNew: newArticleIds.length,
@@ -333,19 +469,18 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
       duration: Date.now() - startTime,
     });
 
-    // Trigger AI suggestion generation for new scraped articles (saved with an
-    // impact label inline; feed articles without a label are handled by the
-    // analyzer — see analyzer.triggerSuggestionsFromAnalysis).
     if (newArticleIds.length > 0) {
-      generateSuggestionsForVendorById(v.id, newArticleIds).catch(err => {
-        console.error(`[Suggestions] Background generation failed for ${v.name}: ${err.message}`);
-      });
+      for (const vid of allVendorIds) {
+        generateSuggestionsForVendorById(vid, newArticleIds).catch(err => {
+          console.error(`[Suggestions] Background generation failed for ${vid}: ${err.message}`);
+        });
+      }
     }
 
-    return { vendorId: v.id, vendor: v.name, total: articles.length, newCount: newArticleIds.length, error };
+    return { vendorId: vendor.id, vendor: vendor.name, total: articles.length, newCount: newArticleIds.length, error };
   } catch (err: any) {
     await newsStorage.createFetchLog({
-      sourceId: v.id,
+      sourceId: vendor.id,
       status: 'failed',
       articlesFound: 0,
       articlesNew: 0,

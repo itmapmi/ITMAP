@@ -297,6 +297,70 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // ── Canonical Vendors ─────────────────────────────────────────────────────
+
+  app.get("/api/admin/canonical-vendors", requireAdmin, async (_req, res) => {
+    try {
+      const { listCanonicalVendors } = await import("../storage/canonicalVendors");
+      res.json(await listCanonicalVendors());
+    } catch (err: any) {
+      console.error("Error listing canonical vendors:", err);
+      res.status(500).json({ error: "Failed to list canonical vendors" });
+    }
+  });
+
+  app.post("/api/admin/canonical-vendors", requireAdmin, async (req, res) => {
+    try {
+      const { insertCanonicalVendorSchema } = await import("@shared/schema");
+      const { createCanonicalVendor } = await import("../storage/canonicalVendors");
+      const parsed = insertCanonicalVendorSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      res.status(201).json(await createCanonicalVendor(parsed.data));
+    } catch (err: any) {
+      console.error("Error creating canonical vendor:", err);
+      res.status(500).json({ error: "Failed to create canonical vendor" });
+    }
+  });
+
+  app.patch("/api/admin/canonical-vendors/:id", requireAdmin, async (req, res) => {
+    try {
+      const { insertCanonicalVendorSchema } = await import("@shared/schema");
+      const { updateCanonicalVendor, getCanonicalVendorById } = await import("../storage/canonicalVendors");
+      const existing = await getCanonicalVendorById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Canonical vendor not found" });
+      const parsed = insertCanonicalVendorSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      res.json(await updateCanonicalVendor(req.params.id, parsed.data));
+    } catch (err: any) {
+      console.error("Error updating canonical vendor:", err);
+      res.status(500).json({ error: "Failed to update canonical vendor" });
+    }
+  });
+
+  app.delete("/api/admin/canonical-vendors/:id", requireAdmin, async (req, res) => {
+    try {
+      const { deleteCanonicalVendor, getCanonicalVendorById } = await import("../storage/canonicalVendors");
+      const existing = await getCanonicalVendorById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Canonical vendor not found" });
+      await deleteCanonicalVendor(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error deleting canonical vendor:", err);
+      res.status(500).json({ error: "Failed to delete canonical vendor" });
+    }
+  });
+
+  app.post("/api/admin/canonical-vendors/auto-link", requireAdmin, async (_req, res) => {
+    try {
+      const { autoLinkVendorsByName } = await import("../storage/canonicalVendors");
+      const result = await autoLinkVendorsByName();
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      console.error("Error auto-linking canonical vendors:", err);
+      res.status(500).json({ error: "Failed to auto-link vendors" });
+    }
+  });
+
   // ── Newsroom URL Health Check ─────────────────────────────────────────────
 
   app.get("/api/admin/newsroom-url-health", requireAdmin, async (_req, res) => {

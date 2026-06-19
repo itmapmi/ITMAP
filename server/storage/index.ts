@@ -43,6 +43,7 @@ import type { RfpProjectWithMeta } from "./rfps";
 
 export * from "./users";
 export * from "./markets";
+export * from "./canonicalVendors";
 export * from "./criteria";
 export * from "./features";
 export * from "./research";
