@@ -813,6 +813,7 @@ function VendorRefreshDialog({
   const [provider, setProvider] = useState(defaultProvider);
   const [model, setModel] = useState(defaultModel);
   const [promptOverride, setPromptOverride] = useState("");
+  const [vendorUrl, setVendorUrl] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const esRef = useRef<EventSource | null>(null);
@@ -827,6 +828,7 @@ function VendorRefreshDialog({
     setStatus("running");
     const params = new URLSearchParams({ stage: String(stageNum), vendor: vendorName, provider, model });
     if (promptOverride.trim()) params.set("promptOverride", promptOverride.trim());
+    if (vendorUrl.trim())      params.set("vendorUrl", vendorUrl.trim());
     if (criterion) params.set("criterion", criterion);
     if (category)  params.set("category", category);
     if (feature)   params.set("feature", feature);
@@ -889,6 +891,19 @@ function VendorRefreshDialog({
                 <SelectContent>{(PROVIDER_MODELS[provider] ?? []).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">
+              Vendor URL <span className="font-normal text-gray-400">(optional — paste a page the AI should read for this refresh)</span>
+            </Label>
+            <input
+              type="url"
+              value={vendorUrl}
+              onChange={e => setVendorUrl(e.target.value)}
+              placeholder="https://example.com/vendor-page"
+              disabled={status === "running"}
+              className="w-full h-8 rounded-md border border-input bg-background px-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+            />
           </div>
           <div>
             <Label className="text-xs mb-1 block">

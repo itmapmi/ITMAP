@@ -2,7 +2,7 @@ import type { Response } from "express";
 import { storage } from "../storage";
 import type { MarketBuilderJob } from "@shared/schema";
 import type { LLMConfig } from "./llm";
-import { buildSourceContext } from "./sources";
+import { buildSourceContext, fetchUrlContent, SourceRecord } from "./sources";
 import { runStage1 } from "./stages/stage1";
 import { runStage2Scoring, runStage2Commentary } from "./stages/stage2";
 import { runStage3 } from "./stages/stage3";
@@ -14,6 +14,7 @@ import { addInFlightVendor, removeInFlightVendor, clearInFlightVendors } from ".
 export interface VendorRefreshOpts {
   llmOverride?: { provider: string; model: string };
   promptOverride?: string;
+  vendorUrl?: string;
 }
 
 // ── Canonical stage map (frontend & backend MUST agree on this) ──────────
@@ -666,8 +667,20 @@ export async function runItemRefresh(
   const llmConfig: LLMConfig = await buildLLMConfig(effectiveJob as any);
 
   const allSources = await storage.listMarketBuilderSources(jobId);
-  const sourceContext = buildSourceContext(allSources, stageNum);
+  let sourceContext = buildSourceContext(allSources, stageNum);
   const progress = makeProgress(res, jobId, stageNum);
+
+  if (opts.vendorUrl) {
+    try {
+      progress(`Fetching vendor URL: ${opts.vendorUrl} …`);
+      const urlContent = await fetchUrlContent(opts.vendorUrl);
+      const adHoc: SourceRecord = { id: "adhoc-vendor-url", name: `Ad-hoc: ${opts.vendorUrl}`, type: "url", url: opts.vendorUrl, content: urlContent };
+      sourceContext = buildSourceContext([...allSources, adHoc], stageNum);
+      progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
+    } catch (err: any) {
+      progress(`Warning: could not fetch vendor URL — ${err.message}`);
+    }
+  }
 
   const mkPrompt =
     (stage: string, promptType: "scoring" | "commentary") =>
@@ -900,10 +913,22 @@ export async function runVendorRefresh(
   const llmConfig: LLMConfig = await buildLLMConfig(effectiveJob as any);
 
   const allSources = await storage.listMarketBuilderSources(jobId);
-  const sourceContext = buildSourceContext(allSources, stageNum);
+  let sourceContext = buildSourceContext(allSources, stageNum);
 
   // Progress helper — writes to stage's activity log (same DB column as full runs)
   const progress = makeProgress(res, jobId, stageNum);
+
+  if (opts.vendorUrl) {
+    try {
+      progress(`Fetching vendor URL: ${opts.vendorUrl} …`);
+      const urlContent = await fetchUrlContent(opts.vendorUrl);
+      const adHoc: SourceRecord = { id: "adhoc-vendor-url", name: `Ad-hoc: ${opts.vendorUrl}`, type: "url", url: opts.vendorUrl, content: urlContent };
+      sourceContext = buildSourceContext([...allSources, adHoc], stageNum);
+      progress(`Vendor URL fetched (${urlContent.length.toLocaleString()} chars)`);
+    } catch (err: any) {
+      progress(`Warning: could not fetch vendor URL — ${err.message}`);
+    }
+  }
 
   // Prompt resolver — raw override text short-circuits the normal DB resolution
   const mkVendorPrompt =
