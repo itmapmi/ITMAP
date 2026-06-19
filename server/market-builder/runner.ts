@@ -817,11 +817,18 @@ export async function runItemRefresh(
             onVendorEnd: (v) => removeInFlightVendor(jobId, 6, v),
           },
         );
-        const kept = (existing.support ?? []).filter(
+        // Only take the specific vendor×feature row — newResult.support is
+        // seeded from the full scoring baseline so it contains entries for
+        // every vendor×feature combination, all with comments:"". Taking the
+        // whole array would duplicate and wipe other vendors' commentary.
+        const newRow6 = (newResult.support ?? []).filter(
+          (s: any) => s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat,
+        );
+        const kept6item = (existing.support ?? []).filter(
           (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
         );
         await storage.upsertMarketBuilderStage(jobId, 6, {
-          result: { ...existing, support: [...kept, ...newResult.support] },
+          result: { ...existing, support: [...kept6item, ...newRow6] },
         });
         break;
       }
@@ -878,11 +885,18 @@ export async function runItemRefresh(
             onVendorEnd: (v) => removeInFlightVendor(jobId, 9, v),
           },
         );
-        const kept = (existing.support ?? []).filter(
+        // Only take the specific vendor×feature row — same reason as stage 6:
+        // newResult.support is seeded from the full scoring baseline with
+        // comments:"" for every vendor×feature, so taking the whole array
+        // would duplicate and wipe other vendors' existing commentary.
+        const newRow9 = (newResult.support ?? []).filter(
+          (s: any) => s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat,
+        );
+        const kept9item = (existing.support ?? []).filter(
           (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
         );
         await storage.upsertMarketBuilderStage(jobId, 9, {
-          result: { ...existing, support: [...kept, ...newResult.support] },
+          result: { ...existing, support: [...kept9item, ...newRow9] },
         });
         break;
       }
@@ -1046,8 +1060,12 @@ export async function runVendorRefresh(
             onVendorEnd: (v) => removeInFlightVendor(jobId, 6, v),
           },
         );
-        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
-        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        // Only take the refreshed vendor's rows from newResult — the rest of
+        // newResult.support was seeded from the scoring baseline (comments:"")
+        // and must NOT overwrite other vendors' existing commentary.
+        const newVendorRows6 = (newResult.support ?? []).filter((s: any) => s.vendorName === vendorName);
+        const kept6 = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept6, ...newVendorRows6] };
         break;
       }
 
@@ -1083,8 +1101,12 @@ export async function runVendorRefresh(
             onVendorEnd: (v) => removeInFlightVendor(jobId, 9, v),
           },
         );
-        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
-        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        // Only take the refreshed vendor's rows from newResult — the rest of
+        // newResult.support was seeded from the scoring baseline (comments:"")
+        // and must NOT overwrite other vendors' existing commentary.
+        const newVendorRows9 = (newResult.support ?? []).filter((s: any) => s.vendorName === vendorName);
+        const kept9 = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept9, ...newVendorRows9] };
         break;
       }
 
