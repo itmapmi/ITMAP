@@ -819,6 +819,16 @@ function VendorRefreshDialog({
   const esRef = useRef<EventSource | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Derive stage/promptType filter from stageNum for prompt repository lookup
+  const stageKey = stageNum <= 3 ? "vendor_evaluation" : stageNum <= 6 ? "product_evaluation" : "ecosystem_evaluation";
+  const promptTypeKey = [2, 5, 8].includes(stageNum) ? "scoring" : "commentary";
+  const promptsBase = apiBase.startsWith("/api/admin") ? "/api/admin/prompts" : "/api/me/prompts";
+
+  const { data: repoPrompts = [] } = useQuery<{ id: string; name: string; content: string; isSystem: boolean }[]>({
+    queryKey: [promptsBase, stageKey, promptTypeKey],
+    queryFn: () => fetch(`${promptsBase}?stage=${stageKey}&promptType=${promptTypeKey}`, { credentials: "include" }).then(r => r.json()),
+  });
+
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [log.length]);
   useEffect(() => () => { esRef.current?.close(); }, []);
 
@@ -909,6 +919,30 @@ function VendorRefreshDialog({
             <Label className="text-xs mb-1 block">
               Prompt override <span className="font-normal text-gray-400">(optional — leave blank to use stage's configured prompt)</span>
             </Label>
+            {repoPrompts.length > 0 && (
+              <div className="mb-2">
+                <Select
+                  value=""
+                  onValueChange={val => {
+                    const p = repoPrompts.find(r => r.id === val);
+                    if (p) setPromptOverride(p.content);
+                  }}
+                  disabled={status === "running"}
+                >
+                  <SelectTrigger className="h-8 text-xs text-gray-500">
+                    <SelectValue placeholder="Load from repository…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repoPrompts.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span>{p.name}</span>
+                        {p.isSystem && <span className="ml-1.5 text-[10px] text-gray-400">(system)</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Textarea value={promptOverride} onChange={e => setPromptOverride(e.target.value)} rows={4} className="text-xs resize-none"
               placeholder="Custom system prompt for this refresh only, or leave blank." disabled={status === "running"} />
           </div>
