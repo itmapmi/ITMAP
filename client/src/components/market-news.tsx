@@ -140,21 +140,39 @@ export function MarketNews({ marketId }: MarketNewsProps) {
     }
   };
 
+  // Determine if the selected vendor is canonically linked so we can use
+  // canonical_vendor_id to surface cross-market articles from the same company.
+  const selectedVendorRow = selectedVendor !== 'all'
+    ? vendors?.find(v => v.id === selectedVendor)
+    : undefined;
+  const vendorFilterParam = selectedVendorRow?.canonicalVendorId
+    ? { key: 'canonical_vendor_id', value: selectedVendorRow.canonicalVendorId }
+    : selectedVendor !== 'all'
+      ? { key: 'vendor_id', value: selectedVendor }
+      : null;
+
   const { data: articles, isLoading } = useQuery<NewsArticleExtended[]>({
     queryKey: ['/api/news', {
       market: marketId,
-      vendor_id: selectedVendor !== 'all' ? selectedVendor : undefined,
+      vendorFilter: vendorFilterParam,
       impact: selectedImpact !== 'all' ? selectedImpact : undefined,
       category: selectedCategory !== 'all' ? selectedCategory : undefined,
       range: selectedRange !== 'all' ? selectedRange : undefined,
       limit: 50
     }],
     queryFn: async ({ queryKey }) => {
-      const [, params] = queryKey as [string, Record<string, string | undefined | number>];
+      const [, params] = queryKey as [string, Record<string, any>];
       const queryParams = new URLSearchParams();
 
-      if (params.market) queryParams.append('market', String(params.market));
-      if (params.vendor_id) queryParams.append('vendor_id', String(params.vendor_id));
+      // Only scope to this market when NOT using canonical_vendor_id.
+      // canonical_vendor_id already spans all sibling markets, so adding
+      // the market filter would incorrectly restrict the result set.
+      if (params.market && params.vendorFilter?.key !== 'canonical_vendor_id') {
+        queryParams.append('market', String(params.market));
+      }
+      if (params.vendorFilter) {
+        queryParams.append(params.vendorFilter.key, String(params.vendorFilter.value));
+      }
       if (params.impact) queryParams.append('impact', String(params.impact));
       if (params.category) queryParams.append('category', String(params.category));
       const since = sinceFromRange(params.range ? String(params.range) : 'all');

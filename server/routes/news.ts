@@ -33,14 +33,23 @@ export function registerNewsRoutes(app: Express): void {
 
   app.get("/api/news", requireAuth, async (req, res) => {
     try {
-      const { q, market, source_id, vendor_id, since, until, impact, category, limit = '20', offset = '0' } = req.query;
+      const { q, market, source_id, vendor_id, canonical_vendor_id, since, until, impact, category, limit = '20', offset = '0' } = req.query;
       if (q && typeof q === 'string') {
         const articles = await newsStorage.searchArticles(q, parseInt(limit as string));
         return res.json(articles);
       }
       const filters: any = { limit: parseInt(limit as string), offset: parseInt(offset as string) };
       if (source_id) filters.sourceId = source_id as string;
-      if (vendor_id) {
+      if (canonical_vendor_id) {
+        // Direct canonical vendor filter: collect all sibling vendor IDs
+        const { db } = await import("../db");
+        const { vendors } = await import("@shared/schema");
+        const { eq } = await import("drizzle-orm");
+        const siblings = await db.select().from(vendors)
+          .where(eq(vendors.canonicalVendorId, canonical_vendor_id as string));
+        filters.canonicalVendorId = canonical_vendor_id as string;
+        filters.siblingVendorIds = siblings.map((v: any) => v.id);
+      } else if (vendor_id) {
         // Expand to canonical group so pre-link and post-link articles are all returned
         const { db } = await import("../db");
         const { vendors } = await import("@shared/schema");

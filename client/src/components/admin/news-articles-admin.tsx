@@ -60,41 +60,49 @@ export function NewsArticlesAdmin() {
     queryKey: ['/api/admin/canonical-vendors']
   });
 
-  // Build a deduplicated vendor dropdown list:
-  // - canonical-linked vendors: one entry per canonical vendor (labeled with
-  //   canonical name + "· N markets"), value = representative vendor ID so the
-  //   backend expands it to the full canonical group.
-  // - unlinked vendors: one entry per vendor (by unique name to avoid showing
-  //   the same company name once per market).
-  type VendorOption = { label: string; value: string };
-  const vendorOptions: VendorOption[] = (() => {
-    if (!vendors) return [];
+  // Build a deduplicated vendor dropdown list split into two groups:
+  // 1. Canonical vendors (one entry per canonical vendor, queries by canonical_vendor_id
+  //    so ALL cross-market articles for that vendor are returned)
+  // 2. Unlinked vendors (one entry per unique name — market-scoped articles only)
+  type VendorOption = { label: string; value: string; paramKey: "canonical_vendor_id" | "vendor_id" };
+  const { canonicalOptions, unlinkedOptions } = (() => {
+    if (!vendors) return { canonicalOptions: [] as VendorOption[], unlinkedOptions: [] as VendorOption[] };
     const canonicalNameMap = new Map((canonicalVendors ?? []).map(c => [c.id, c.name]));
-    const options: VendorOption[] = [];
-    const seenCanonicals = new Map<string, string>();    // canonicalId → representative vendorId
+    const canonical: VendorOption[] = [];
+    const unlinked: VendorOption[] = [];
+    const seenCanonicals = new Set<string>();
     const seenUnlinkedNames = new Set<string>();
 
     for (const v of vendors) {
       if (v.canonicalVendorId) {
         if (!seenCanonicals.has(v.canonicalVendorId)) {
-          seenCanonicals.set(v.canonicalVendorId, v.id);
+          seenCanonicals.add(v.canonicalVendorId);
           const label = canonicalNameMap.get(v.canonicalVendorId) ?? v.name;
-          options.push({ label, value: v.id });
+          canonical.push({ label, value: v.canonicalVendorId, paramKey: "canonical_vendor_id" });
         }
       } else {
         if (!seenUnlinkedNames.has(v.name)) {
           seenUnlinkedNames.add(v.name);
-          options.push({ label: v.name, value: v.id });
+          unlinked.push({ label: v.name, value: v.id, paramKey: "vendor_id" });
         }
       }
     }
-    return options.sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      canonicalOptions: canonical.sort((a, b) => a.label.localeCompare(b.label)),
+      unlinkedOptions: unlinked.sort((a, b) => a.label.localeCompare(b.label)),
+    };
   })();
+
+  // Determine which param key the selected vendor option uses
+  const allVendorOptions = [...canonicalOptions, ...unlinkedOptions];
+  const selectedVendorOption = allVendorOptions.find(o => o.value === selectedVendor);
 
   // Build filter params
   const filterParams = new URLSearchParams();
   if (selectedMarket !== "all") filterParams.append("market", selectedMarket);
-  if (selectedVendor !== "all") filterParams.append("vendor_id", selectedVendor);
+  if (selectedVendor !== "all" && selectedVendorOption) {
+    filterParams.append(selectedVendorOption.paramKey, selectedVendor);
+  }
   if (selectedImpact !== "all") filterParams.append("impact", selectedImpact);
   filterParams.append("limit", "100");
 
@@ -191,9 +199,19 @@ export function NewsArticlesAdmin() {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => runPipelineMutation.mutate(
-                  selectedVendor !== "all" ? selectedVendor : undefined
-                )}
+                onClick={() => {
+                  // The pipeline runs per-newsroom so it needs a real vendor ID.
+                  // For canonical selections, pick the first sibling vendor as representative.
+                  let vendorIdForPipeline: string | undefined;
+                  if (selectedVendor === "all") {
+                    vendorIdForPipeline = undefined;
+                  } else if (selectedVendorOption?.paramKey === "canonical_vendor_id") {
+                    vendorIdForPipeline = vendors?.find(v => v.canonicalVendorId === selectedVendor)?.id;
+                  } else {
+                    vendorIdForPipeline = selectedVendor;
+                  }
+                  runPipelineMutation.mutate(vendorIdForPipeline);
+                }}
                 disabled={runPipelineMutation.isPending}
                 size="sm"
                 data-testid="button-run-pipeline"
@@ -245,11 +263,30 @@ export function NewsArticlesAdmin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vendors</SelectItem>
-                  {vendorOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
+                  {canonicalOptions.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        All Markets
+                      </div>
+                      {canonicalOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {unlinkedOptions.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-1">
+                        Single Market
+                      </div>
+                      {unlinkedOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
