@@ -400,7 +400,7 @@ const AUTO_COMPUTED_LABELS: Record<string, string> = {
   "ISV Ecosystem":        "Auto-computed from Stages 8–9",
 };
 
-function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+function Stage2Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
   const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
@@ -512,7 +512,17 @@ function Stage2Editor({ result, onChange }: { result: any; onChange: (r: any) =>
             </tr></thead>
             <tbody>{vendors.map(v => (
               <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+                <td className="p-2 font-medium whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <span>{v}</span>
+                    {onRefreshVendor && (
+                      <button onClick={() => onRefreshVendor(v)} title={`Re-run AI for ${v}`}
+                        className="text-gray-300 hover:text-cyan-500 transition-colors shrink-0">
+                        <RefreshCw className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </td>
                 {weights.map((w: any) => {
                   const s = getScore(v, w.criterionName);
                   const isLocked = AUTO_COMPUTED_CRITERIA.has(w.criterionName);
@@ -599,7 +609,7 @@ function Stage3Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
-function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange: (s: any[]) => void; label?: string }) {
+function HarveyBallGrid({ support, onChange, label, onRefreshVendor }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void }) {
   const vendors = [...new Set<string>(support.map((s: any) => s.vendorName))];
   const features = [...new Set<string>(support.map((s: any) => s.featureName))];
   const [selected, setSelected] = useState<{ v: string; f: string } | null>(null);
@@ -665,7 +675,17 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
           </thead>
           <tbody>{vendors.map(v => (
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
-              <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+              <td className="p-2 font-medium whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                  <span>{v}</span>
+                  {onRefreshVendor && (
+                    <button onClick={() => onRefreshVendor(v)} title={`Re-run AI for ${v}`}
+                      className="text-gray-300 hover:text-cyan-500 transition-colors shrink-0">
+                      <RefreshCw className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </td>
               {pageFeatures.map(f => {
                 const s = get(v, f);
                 return <td key={f} className="p-1 text-center">
@@ -694,7 +714,7 @@ function HarveyBallGrid({ support, onChange, label }: { support: any[]; onChange
   );
 }
 
-function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+function Stage4Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
   const support = result?.support ?? [];
   const cats = result?.categories ?? [];
   const totalFeatures = cats.length > 0
@@ -710,6 +730,7 @@ function Stage4Editor({ result, onChange }: { result: any; onChange: (r: any) =>
         support={support}
         onChange={s => onChange({ ...result, support: s })}
         label="Product Capability Scores"
+        onRefreshVendor={onRefreshVendor}
       />
     </div>
   );
@@ -729,7 +750,7 @@ function Stage5Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
-function Stage6Editor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+function Stage6Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
   const cats = result?.categories ?? [];
   const support = result?.support ?? [];
   const totalFeatures = cats.length > 0
@@ -745,7 +766,137 @@ function Stage6Editor({ result, onChange }: { result: any; onChange: (r: any) =>
         support={support}
         onChange={s => onChange({ ...result, support: s })}
         label="Ecosystem Integration Scores"
+        onRefreshVendor={onRefreshVendor}
       />
+    </div>
+  );
+}
+
+// ── Single-vendor refresh dialog ──────────────────────────────────────────
+//
+// Opens as a modal overlay; streams SSE progress from the refresh-vendor
+// endpoint and shows live log lines while the LLM rewrites that vendor's rows.
+
+const REFRESH_STAGE_LABELS: Record<number, string> = {
+  2: "Vendor Scoring", 3: "Vendor Commentary",
+  5: "Product Scoring", 6: "Product Commentary",
+  8: "Ecosystem Scoring", 9: "Ecosystem Commentary",
+};
+
+function VendorRefreshDialog({
+  jobId, stageNum, vendorName, defaultProvider, defaultModel, apiBase,
+  onComplete, onClose,
+}: {
+  jobId: string; stageNum: number; vendorName: string;
+  defaultProvider: string; defaultModel: string; apiBase: string;
+  onComplete: () => void; onClose: () => void;
+}) {
+  const [provider, setProvider] = useState(defaultProvider);
+  const [model, setModel] = useState(defaultModel);
+  const [promptOverride, setPromptOverride] = useState("");
+  const [log, setLog] = useState<string[]>([]);
+  const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const esRef = useRef<EventSource | null>(null);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [log.length]);
+  useEffect(() => () => { esRef.current?.close(); }, []);
+
+  const run = () => {
+    esRef.current?.close();
+    setLog([]);
+    setStatus("running");
+    const params = new URLSearchParams({ stage: String(stageNum), vendor: vendorName, provider, model });
+    if (promptOverride.trim()) params.set("promptOverride", promptOverride.trim());
+    const es = new EventSource(`${apiBase}/jobs/${jobId}/refresh-vendor?${params}`);
+    esRef.current = es;
+    es.onmessage = (e) => {
+      try {
+        const ev = JSON.parse(e.data);
+        if (ev.type === "stage_progress") {
+          setLog(prev => [...prev, ev.message]);
+        } else if (ev.type === "stage_complete") {
+          setStatus("done");
+          es.close();
+          onComplete();
+        } else if (ev.type === "stage_error") {
+          setStatus("error");
+          setLog(prev => [...prev, `✗ ${ev.error}`]);
+          es.close();
+        }
+      } catch (_) {}
+    };
+    es.onerror = () => {
+      es.close();
+      setStatus(s => s === "done" ? s : "error");
+      setLog(prev => [...prev, "⚠ Stream disconnected — refresh may still complete on the server."]);
+    };
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={e => { if (e.target === e.currentTarget && status !== "running") onClose(); }}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">
+              Refresh Vendor — Stage {stageNum}: {REFRESH_STAGE_LABELS[stageNum]}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium">{vendorName}</p>
+          </div>
+          <button onClick={onClose} disabled={status === "running"} className="text-gray-400 hover:text-gray-700 disabled:opacity-40"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs mb-1 block">Provider</Label>
+              <Select value={provider} onValueChange={p => { setProvider(p); setModel(PROVIDER_MODELS[p]?.[0] ?? ""); }} disabled={status === "running"}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{Object.keys(PROVIDER_MODELS).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Model</Label>
+              <Select value={model} onValueChange={setModel} disabled={status === "running"}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{(PROVIDER_MODELS[provider] ?? []).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">
+              Prompt override <span className="font-normal text-gray-400">(optional — leave blank to use stage's configured prompt)</span>
+            </Label>
+            <Textarea value={promptOverride} onChange={e => setPromptOverride(e.target.value)} rows={4} className="text-xs resize-none"
+              placeholder="Custom system prompt for this refresh only, or leave blank." disabled={status === "running"} />
+          </div>
+          {log.length > 0 && (
+            <div className="rounded-lg bg-slate-950 border border-slate-800 p-3 max-h-44 overflow-y-auto text-xs font-mono space-y-0.5">
+              {log.map((line, i) => (
+                <p key={i} className={line.startsWith("✓") ? "text-green-400" : line.startsWith("✗") || line.startsWith("⚠") ? "text-red-400" : "text-slate-300"}>{line}</p>
+              ))}
+              <div ref={logEndRef} />
+            </div>
+          )}
+        </div>
+        <div className="px-5 pb-4 flex items-center gap-3">
+          {status === "done" ? (
+            <Button variant="outline" onClick={onClose} className="gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />Done — Close
+            </Button>
+          ) : status === "running" ? (
+            <Button disabled className="gap-1.5 bg-gradient-to-r from-cyan-500 to-violet-600 text-white">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />Refreshing…
+            </Button>
+          ) : (
+            <Button onClick={run} className="gap-1.5 bg-gradient-to-r from-cyan-500 to-violet-600 text-white">
+              <RefreshCw className="h-3.5 w-3.5" />{status === "error" ? "Retry Refresh" : "Run Refresh"}
+            </Button>
+          )}
+          {status !== "running" && status !== "done" && (
+            <Button variant="ghost" size="sm" className="text-gray-500" onClick={onClose}>Cancel</Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -846,7 +997,7 @@ function StageLlmPicker({ jobId, stageNum, defaultProvider, defaultModel, apiBas
 
 // ── Stage 2: Scoring-only editor (numeric, no commentary) ─────────────────
 
-function Stage2ScoringEditor({ result, onChange }: { result: any; onChange: (r: any) => void }) {
+function Stage2ScoringEditor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
   const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
@@ -931,7 +1082,17 @@ function Stage2ScoringEditor({ result, onChange }: { result: any; onChange: (r: 
             </tr></thead>
             <tbody>{vendors.map(v => (
               <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+                <td className="p-2 font-medium whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <span>{v}</span>
+                    {onRefreshVendor && (
+                      <button onClick={() => onRefreshVendor(v)} title={`Re-run AI for ${v}`}
+                        className="text-gray-300 hover:text-cyan-500 transition-colors shrink-0">
+                        <RefreshCw className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </td>
                 {weights.map((w: any) => {
                   const s = getScore(v, w.criterionName);
                   const isLocked = AUTO_COMPUTED_CRITERIA.has(w.criterionName);
@@ -957,7 +1118,7 @@ function Stage2ScoringEditor({ result, onChange }: { result: any; onChange: (r: 
 
 // ── Harvey Ball scores-only grid (no commentary edit) ────────────────────
 
-function HarveyBallScoreOnlyGrid({ support, onChange, label }: { support: any[]; onChange: (s: any[]) => void; label?: string }) {
+function HarveyBallScoreOnlyGrid({ support, onChange, label, onRefreshVendor }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void }) {
   const vendors  = [...new Set<string>(support.map((s: any) => s.vendorName))];
   const features = [...new Set<string>(support.map((s: any) => s.featureName))];
   const PAGE_SIZE = 22;
@@ -988,7 +1149,17 @@ function HarveyBallScoreOnlyGrid({ support, onChange, label }: { support: any[];
           </thead>
           <tbody>{vendors.map(v => (
             <tr key={v} className="border-b last:border-0 hover:bg-gray-50">
-              <td className="p-2 font-medium whitespace-nowrap">{v}</td>
+              <td className="p-2 font-medium whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                  <span>{v}</span>
+                  {onRefreshVendor && (
+                    <button onClick={() => onRefreshVendor(v)} title={`Re-run AI for ${v}`}
+                      className="text-gray-300 hover:text-cyan-500 transition-colors shrink-0">
+                      <RefreshCw className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </td>
               {pageFeatures.map(f => {
                 const s = get(v, f);
                 return (
@@ -1118,16 +1289,53 @@ function PublishPanel({ job, stageResults, stagePhases, onPublished, apiBase, mo
 
 // ── Done stage view ───────────────────────────────────────────────────────
 
-function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange }: {
+function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange, onRefreshComplete }: {
   stageNum: number; result: any; jobId: string; onSave: (r: any) => void; apiBase: string;
   onDirtyChange?: (stageNum: number, dirtyResult: any | null) => void;
+  onRefreshComplete?: (result: any) => void;
 }) {
   const [localResult, setLocalResult] = useState(result);
   const [isDirty, setIsDirty] = useState(false);
+  const [refreshVendor, setRefreshVendor] = useState<string | null>(null);
   useEffect(() => { setLocalResult(result); setIsDirty(false); onDirtyChange?.(stageNum, null); }, [result, stageNum]);
   const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); onDirtyChange?.(stageNum, r); };
+
+  // Refresh stages that support per-vendor re-runs
+  const VENDOR_REFRESH_STAGES = [2, 3, 5, 6, 8, 9];
+  const supportsRefresh = VENDOR_REFRESH_STAGES.includes(stageNum);
+
+  // Called when the dialog's SSE stream completes — reload from server
+  const handleRefreshComplete = async () => {
+    try {
+      const res = await fetch(`${apiBase}/jobs/${jobId}`, { credentials: "include" });
+      if (res.ok) {
+        const fullJob = await res.json();
+        const stageData = (fullJob.stages ?? []).find((s: any) => s.stage === stageNum);
+        if (stageData?.result) {
+          setLocalResult(stageData.result);
+          setIsDirty(false);
+          onDirtyChange?.(stageNum, null);
+          onRefreshComplete?.(stageData.result);
+        }
+      }
+    } catch (_) {}
+    setRefreshVendor(null);
+  };
+
   return (
     <div className="space-y-5">
+      {refreshVendor && (
+        <VendorRefreshDialog
+          jobId={jobId}
+          stageNum={stageNum}
+          vendorName={refreshVendor}
+          defaultProvider="openai"
+          defaultModel="gpt-4o-mini"
+          apiBase={apiBase}
+          onComplete={handleRefreshComplete}
+          onClose={() => setRefreshVendor(null)}
+        />
+      )}
       <SourcesPanel jobId={jobId} currentStage={stageNum} apiBase={apiBase} />
       {isDirty && (
         <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
@@ -1140,14 +1348,14 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
         {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} />}
-        {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
         {stageNum === 4 && <Stage3Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 5 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Product Feature Scores (Harvey Ball)" />}
-        {stageNum === 6 && <Stage4Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 5 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Product Feature Scores (Harvey Ball)" onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 6 && <Stage4Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
         {stageNum === 7 && <Stage5Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 8 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Ecosystem Integration Scores (Harvey Ball)" />}
-        {stageNum === 9 && <Stage6Editor result={localResult} onChange={handleChange} />}
+        {stageNum === 8 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Ecosystem Integration Scores (Harvey Ball)" onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 9 && <Stage6Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
       </div>
     </div>
   );
@@ -2251,6 +2459,9 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     setStageResults(prev => ({ ...prev, [activeStage]: r }));
                     saveEdits.mutate({ stageNum: activeStage, result: r });
                     if (dirtyEditRef.current?.stageNum === activeStage) dirtyEditRef.current = null;
+                  }}
+                  onRefreshComplete={r => {
+                    setStageResults(prev => ({ ...prev, [activeStage]: r }));
                   }}
                 />
               </>

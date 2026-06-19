@@ -11,6 +11,11 @@ import { runStage5A, runStage8Scoring, runStage9Commentary } from "./stages/stag
 import { resolvePromptContent } from "./prompts";
 import { addInFlightVendor, removeInFlightVendor, clearInFlightVendors } from "./inflight";
 
+export interface VendorRefreshOpts {
+  llmOverride?: { provider: string; model: string };
+  promptOverride?: string;
+}
+
 // ── Canonical stage map (frontend & backend MUST agree on this) ──────────
 // If a deployed bundle ever drifts from this map, the startup banner in
 // server/index.ts will print the mismatch and the per-stage sanity check
@@ -627,6 +632,187 @@ export async function runSingleStage(
     } else {
       await storage.updateMarketBuilderJob(jobId, { status: "failed", error: err.message });
     }
+    sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
+  } finally {
+    clearInFlightVendors(jobId, stageNum);
+    res.end();
+  }
+}
+
+// ── Single-vendor refresh ─────────────────────────────────────────────────
+//
+// Re-runs exactly one named vendor through a per-vendor stage (2, 3, 5, 6, 8, 9),
+// merges the refreshed rows back into the existing result blob, and persists.
+// Stage status / job status are NOT downgraded — this is a targeted patch,
+// not a full re-run.
+
+export async function runVendorRefresh(
+  res: Response,
+  job: MarketBuilderJob,
+  stageNum: number,
+  vendorName: string,
+  opts: VendorRefreshOpts = {},
+): Promise<void> {
+  const { id: jobId, inputName } = job;
+
+  // Build LLM config — apply the caller's provider/model override (if any)
+  // by swapping those fields on the job before resolving the API key, so the
+  // correct key for the override provider is loaded from the user's stored keys.
+  const effectiveJob = opts.llmOverride
+    ? { ...job, llmProvider: opts.llmOverride.provider as any, llmModel: opts.llmOverride.model }
+    : job;
+  const llmConfig: LLMConfig = await buildLLMConfig(effectiveJob as any);
+
+  const allSources = await storage.listMarketBuilderSources(jobId);
+  const sourceContext = buildSourceContext(allSources, stageNum);
+
+  // Progress helper — writes to stage's activity log (same DB column as full runs)
+  const progress = makeProgress(res, jobId, stageNum);
+
+  // Prompt resolver — raw override text short-circuits the normal DB resolution
+  const mkVendorPrompt =
+    (stage: string, promptType: "scoring" | "commentary") =>
+    (a: string, b?: string): Promise<string> =>
+      opts.promptOverride
+        ? Promise.resolve(opts.promptOverride!)
+        : resolvePromptContent({ jobId, stage, promptType, criterionName: a, categoryName: a, featureName: b });
+
+  sendEvent(res, { type: "stage_start", stage: stageNum });
+  await progress(`Refreshing ${vendorName} — stage ${stageNum} (${llmConfig.provider}/${llmConfig.model})…`);
+
+  try {
+    // Load stage-1 vendor list and narrow to the single target vendor
+    const stage1 = await loadStageResult(jobId, 1);
+    const targetVendorObj = (stage1.vendors ?? []).find((v: any) => v.name === vendorName);
+    if (!targetVendorObj) {
+      throw new Error(`Vendor "${vendorName}" was not found in stage 1 results. Ensure stage 1 is up to date.`);
+    }
+    const stage1Single = { ...stage1, vendors: [targetVendorObj] };
+
+    let mergedResult: any;
+
+    switch (stageNum) {
+      // ── Stage 2: Vendor Scoring ─────────────────────────────────────────
+      case 2: {
+        const allCriteria = await storage.getAllCriteria();
+        const existing = ((await storage.getMarketBuilderStage(jobId, 2))?.result ?? {}) as any;
+        const newResult = await runStage2Scoring(
+          inputName, stage1Single, allCriteria, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: mkVendorPrompt("vendor_evaluation", "scoring"),
+            onProgress: progress,
+            reuseWeights: existing.criteriaWeights,
+          },
+        );
+        const kept = (existing.scores ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, scores: [...kept, ...newResult.scores] };
+        break;
+      }
+
+      // ── Stage 3: Vendor Commentary ──────────────────────────────────────
+      case 3: {
+        const allCriteria = await storage.getAllCriteria();
+        const stage2 = await loadStageResult(jobId, 2);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 3))?.result ?? {}) as any;
+        const newResult = await runStage2Commentary(
+          inputName, stage1Single, allCriteria, stage2, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: mkVendorPrompt("vendor_evaluation", "commentary"),
+            onProgress: progress,
+          },
+        );
+        const kept = (existing.scores ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, scores: [...kept, ...newResult.scores] };
+        break;
+      }
+
+      // ── Stage 5: Product Feature Scoring ───────────────────────────────
+      case 5: {
+        const stage4 = await loadStageResult(jobId, 4);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 5))?.result ?? {}) as any;
+        const newResult = await runStage4Scoring(
+          inputName, stage1Single, stage4, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: (cat, feat) => mkVendorPrompt("product_evaluation", "scoring")(cat, feat),
+            onBatchComplete: async (_d, _t, v, r) => { await progress(`Scoring ${v} — features ${r}`); },
+            onVendorComplete: async () => {},
+          },
+        );
+        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        break;
+      }
+
+      // ── Stage 6: Product Feature Commentary ────────────────────────────
+      case 6: {
+        const stage4 = await loadStageResult(jobId, 4);
+        const stage5 = await loadStageResult(jobId, 5);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 6))?.result ?? {}) as any;
+        const newResult = await runStage4Commentary(
+          inputName, stage1Single, stage4, stage5, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (cat, feat) => mkVendorPrompt("product_evaluation", "commentary")(cat, feat),
+            onBatchComplete: async (_d, _t, v, r) => { await progress(`Commentary ${v} — features ${r}`); },
+            onVendorComplete: async () => {},
+            onVendorStart: (v) => addInFlightVendor(jobId, 6, v),
+            onVendorEnd: (v) => removeInFlightVendor(jobId, 6, v),
+          },
+        );
+        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        break;
+      }
+
+      // ── Stage 8: Ecosystem Scoring ──────────────────────────────────────
+      case 8: {
+        const stage7 = await loadStageResult(jobId, 7);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 8))?.result ?? {}) as any;
+        const newResult = await runStage8Scoring(
+          inputName, stage1Single, stage7, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: (cat, feat) => mkVendorPrompt("ecosystem_evaluation", "scoring")(cat, feat),
+            onProgress: async (msg) => { await progress(msg); },
+            onVendorComplete: async () => {},
+          },
+        );
+        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        break;
+      }
+
+      // ── Stage 9: Ecosystem Commentary ──────────────────────────────────
+      case 9: {
+        const stage7 = await loadStageResult(jobId, 7);
+        const stage8 = await loadStageResult(jobId, 8);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 9))?.result ?? {}) as any;
+        const newResult = await runStage9Commentary(
+          inputName, stage1Single, stage7, stage8, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (cat, feat) => mkVendorPrompt("ecosystem_evaluation", "commentary")(cat, feat),
+            onBatchComplete: async (_d, _t, v, r) => { await progress(`Commentary ${v} — integrations ${r}`); },
+            onVendorComplete: async () => {},
+            onVendorStart: (v) => addInFlightVendor(jobId, 9, v),
+            onVendorEnd: (v) => removeInFlightVendor(jobId, 9, v),
+          },
+        );
+        const kept = (existing.support ?? []).filter((s: any) => s.vendorName !== vendorName);
+        mergedResult = { ...existing, support: [...kept, ...newResult.support] };
+        break;
+      }
+
+      default:
+        throw new Error(
+          `Stage ${stageNum} does not support per-vendor refresh. Only stages 2, 3, 5, 6, 8, 9 are per-vendor.`,
+        );
+    }
+
+    // Persist merged result while preserving the stage's current status
+    await storage.upsertMarketBuilderStage(jobId, stageNum, { result: mergedResult });
+    await progress(`✓ ${vendorName} refreshed successfully`);
+    sendEvent(res, { type: "stage_complete", stage: stageNum, vendorName });
+  } catch (err: any) {
+    console.error(`[MarketBuilder] Vendor refresh error stage=${stageNum} vendor="${vendorName}" job=${jobId}:`, err);
+    await progress(`✗ Error: ${err.message}`);
     sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
   } finally {
     clearInFlightVendors(jobId, stageNum);

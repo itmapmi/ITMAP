@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { requireAdmin, requireAuth } from "../auth";
 import { requireFeature } from "../featureAccess";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
-import { initSSE, sendEvent, runSingleStage, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
+import { initSSE, sendEvent, runSingleStage, runVendorRefresh, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 import { listInFlightVendors } from "../market-builder/inflight";
@@ -191,6 +191,54 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       runSingleStage(res, job, stageNum, { newVendorsOnly: req.query.mode === "new-only" }).catch(err => {
         console.error(`[MarketBuilder] Stage ${stageNum} error for ${job.id}:`, err);
+        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+      });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Single-vendor refresh SSE stream (admin) ─────────────────────────────
+  //
+  // Re-runs exactly one vendor through a per-vendor stage (2, 3, 5, 6, 8, 9)
+  // without touching any other vendor's data.
+  //
+  // Query params: ?stage=N&vendor=VendorName[&provider=openai&model=gpt-4o][&promptOverride=...]
+
+  app.get("/api/admin/market-builder/jobs/:id/refresh-vendor", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.query.stage as string, 10);
+      const vendorName = ((req.query.vendor as string) ?? "").trim();
+      const REFRESH_STAGES = [2, 3, 5, 6, 8, 9];
+      if (!stageNum || !REFRESH_STAGES.includes(stageNum)) {
+        return res.status(400).json({ error: `?stage must be one of: ${REFRESH_STAGES.join(", ")}` });
+      }
+      if (!vendorName) return res.status(400).json({ error: "?vendor= (vendor name) is required" });
+
+      const job = await storage.getMarketBuilderJob(req.params.id);
+      if (!job) return res.status(404).json({ error: "Job not found" });
+
+      const llmOverride =
+        req.query.provider && req.query.model
+          ? { provider: req.query.provider as string, model: req.query.model as string }
+          : undefined;
+      const promptOverride = (req.query.promptOverride as string) || undefined;
+
+      // Preflight LLM key check before opening the SSE stream
+      const preflightJob = llmOverride
+        ? { ...job, llmProvider: llmOverride.provider as any, llmModel: llmOverride.model }
+        : job;
+      try {
+        await buildLLMConfig(preflightJob as any);
+      } catch (err: any) {
+        if (err instanceof MissingLlmKeyError) {
+          return res.status(412).json({ error: err.message, code: "MISSING_LLM_KEY", provider: err.provider });
+        }
+        throw err;
+      }
+
+      initSSE(res);
+      req.on("close", () => {});
+      runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
+        console.error(`[MarketBuilder] Vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
         try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
       });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -862,6 +910,45 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
       res.json(await storage.listJobLlmSelections(jobId));
     } catch (err: any) { res.status(400).json({ error: err.message }); }
+  });
+
+  // ── Single-vendor refresh SSE stream (end-user) ──────────────────────────
+  app.get("/api/market-builder/jobs/:id/refresh-vendor", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.query.stage as string, 10);
+      const vendorName = ((req.query.vendor as string) ?? "").trim();
+      const REFRESH_STAGES = [2, 3, 5, 6, 8, 9];
+      if (!stageNum || !REFRESH_STAGES.includes(stageNum)) {
+        return res.status(400).json({ error: `?stage must be one of: ${REFRESH_STAGES.join(", ")}` });
+      }
+      if (!vendorName) return res.status(400).json({ error: "?vendor= (vendor name) is required" });
+
+      const job = (req as any).job;
+      const llmOverride =
+        req.query.provider && req.query.model
+          ? { provider: req.query.provider as string, model: req.query.model as string }
+          : undefined;
+      const promptOverride = (req.query.promptOverride as string) || undefined;
+
+      const preflightJob = llmOverride
+        ? { ...job, llmProvider: llmOverride.provider as any, llmModel: llmOverride.model }
+        : job;
+      try {
+        await buildLLMConfig(preflightJob as any);
+      } catch (err: any) {
+        if (err instanceof MissingLlmKeyError) {
+          return res.status(412).json({ error: err.message, code: "MISSING_LLM_KEY", provider: err.provider, forUser: err.forUser });
+        }
+        throw err;
+      }
+
+      initSSE(res);
+      req.on("close", () => {});
+      runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
+        console.error(`[MarketBuilder] User vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
+        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+      });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
   // SSE stream — runs ONE stage. Owner only.
