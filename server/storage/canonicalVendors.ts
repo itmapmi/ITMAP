@@ -1,7 +1,7 @@
 import { db } from "../db";
-import { canonicalVendors, vendors } from "@shared/schema";
+import { canonicalVendors, vendors, newsArticles } from "@shared/schema";
 import type { CanonicalVendor, InsertCanonicalVendor } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, isNull, and, sql } from "drizzle-orm";
 
 export type CanonicalVendorWithCount = CanonicalVendor & { linkedVendorCount: number };
 
@@ -122,4 +122,39 @@ export async function autoLinkVendorsByName(): Promise<{
 
   const skipped = alreadyLinked + unlinked.length - linked;
   return { created, linked, skipped };
+}
+
+// Back-fill canonical_vendor_id on all existing news_articles whose vendor_id
+// belongs to a linked vendor but whose canonical_vendor_id is still NULL.
+// Uses a single UPDATE … FROM vendors statement for efficiency.
+// Returns the number of rows updated.
+export async function backfillArticleCanonicalIds(): Promise<number> {
+  const result = await db.execute(sql`
+    UPDATE news_articles na
+    SET    canonical_vendor_id = v.canonical_vendor_id
+    FROM   vendors v
+    WHERE  na.vendor_id = v.id
+      AND  v.canonical_vendor_id IS NOT NULL
+      AND  na.canonical_vendor_id IS NULL
+  `);
+  // Drizzle's execute returns a pg QueryResult; rowCount is the number updated.
+  return (result as any).rowCount ?? 0;
+}
+
+// Back-fill canonical_vendor_id for a single vendor's articles.
+// Called automatically when a vendor is linked to a canonical vendor.
+export async function backfillArticlesForVendor(
+  vendorId: string,
+  canonicalVendorId: string
+): Promise<number> {
+  const result = await db
+    .update(newsArticles)
+    .set({ canonicalVendorId })
+    .where(
+      and(
+        eq(newsArticles.vendorId, vendorId),
+        isNull(newsArticles.canonicalVendorId)
+      )
+    );
+  return (result as any).rowCount ?? 0;
 }

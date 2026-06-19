@@ -215,6 +215,22 @@ export function registerMarketRoutes(app: Express): void {
           .then(({ checkSingleNewsroomUrl }) => checkSingleNewsroomUrl(vendor.id))
           .catch(err => console.error("[URLHealthCheck] Post-update recheck failed:", err));
       }
+      // When a vendor is linked to a canonical vendor for the first time,
+      // back-fill existing articles so the unified article pool is complete.
+      if (
+        vendorData.canonicalVendorId &&
+        !existing.canonicalVendorId &&
+        isAdmin
+      ) {
+        import("../storage/canonicalVendors")
+          .then(({ backfillArticlesForVendor }) =>
+            backfillArticlesForVendor(vendor.id, vendorData.canonicalVendorId!)
+          )
+          .then(count =>
+            console.log(`[BackfillArticles] Vendor ${vendor.id} linked → backfilled ${count} articles`)
+          )
+          .catch(err => console.error("[BackfillArticles] Failed:", err));
+      }
     } catch (error) {
       console.error("Error updating vendor:", error);
       res.status(400).json({ error: "Failed to update vendor", details: error instanceof Error ? error.message : String(error) });

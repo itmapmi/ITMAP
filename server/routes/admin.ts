@@ -361,6 +361,17 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/admin/canonical-vendors/backfill-articles", requireAdmin, async (_req, res) => {
+    try {
+      const { backfillArticleCanonicalIds } = await import("../storage/canonicalVendors");
+      const updated = await backfillArticleCanonicalIds();
+      res.json({ updated });
+    } catch (err: any) {
+      console.error("Error back-filling article canonical vendor IDs:", err);
+      res.status(500).json({ error: "Failed to back-fill article canonical vendor IDs" });
+    }
+  });
+
   // ── Newsroom URL Health Check ─────────────────────────────────────────────
 
   app.get("/api/admin/newsroom-url-health", requireAdmin, async (_req, res) => {
