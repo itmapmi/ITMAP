@@ -46,12 +46,19 @@ const HarveyBall = ({ level }: { level: number }) => {
 
 export function SupportMatrixAdmin() {
   const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [editingSupport, setEditingSupport] = useState<{ vendorId: string; featureId: string; vendorName: string; featureName: string } | null>(null);
   const [supportEditData, setSupportEditData] = useState<{ supportLevel: number; comments: string }>({ supportLevel: 0, comments: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  // Reset vendor filter when market changes
+  const handleMarketChange = (marketId: string) => {
+    setSelectedMarket(marketId);
+    setSelectedVendorId("all");
+  };
 
   // Fetch markets
   const { data: markets = [] } = useQuery<Market[]>({
@@ -82,6 +89,11 @@ export function SupportMatrixAdmin() {
     const key = `${support.vendorId}-${support.featureId}`;
     supportLookup.set(key, { level: support.supportLevel, comments: support.comments || '' });
   });
+
+  // Filtered vendor list — "all" shows every vendor, otherwise just the selected one
+  const displayedVendors = selectedVendorId === "all"
+    ? vendors
+    : vendors.filter(v => v.id === selectedVendorId);
 
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories(prev => {
@@ -285,10 +297,10 @@ export function SupportMatrixAdmin() {
     <Card>
       <CardHeader>
         <CardTitle>Feature Support Matrix Management</CardTitle>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div>
             <Label htmlFor="market-select">Market:</Label>
-            <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+            <Select value={selectedMarket} onValueChange={handleMarketChange}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Choose a market..." />
               </SelectTrigger>
@@ -301,6 +313,24 @@ export function SupportMatrixAdmin() {
               </SelectContent>
             </Select>
           </div>
+          {vendors.length > 0 && (
+            <div>
+              <Label>Vendor:</Label>
+              <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </CardHeader>
       
@@ -313,11 +343,11 @@ export function SupportMatrixAdmin() {
           <div className="space-y-6">
             {/* Desktop Header with vendor names */}
             {!isMobile && (
-              <div className="grid gap-4 border-b pb-4" style={{ gridTemplateColumns: `300px repeat(${vendors.length}, 120px)` }}>
+              <div className="grid gap-4 border-b pb-4" style={{ gridTemplateColumns: `300px repeat(${displayedVendors.length}, 120px)` }}>
                 <div className="font-semibold text-sm text-gray-600">
                   Features
                 </div>
-                {vendors.map(vendor => (
+                {displayedVendors.map(vendor => (
                   <div key={vendor.id} className="text-center">
                     <div className="font-medium text-sm text-gray-900">
                       {vendor.name}
@@ -337,7 +367,7 @@ export function SupportMatrixAdmin() {
                   Feature Support Matrix - Admin
                 </div>
                 <div className="text-sm text-gray-500">
-                  {vendors.length} vendors • {features.length} features
+                  {displayedVendors.length} vendor{displayedVendors.length !== 1 ? "s" : ""} • {features.length} features
                 </div>
               </div>
             )}
@@ -400,11 +430,11 @@ export function SupportMatrixAdmin() {
                   {/* Desktop Collapsed view - Show vendor totals */}
                   {isCollapsed && !isMobile && (
                     <div className="ml-8 bg-gray-50 rounded-lg p-4">
-                      <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${vendors.length}, 120px)` }}>
+                      <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${displayedVendors.length}, 120px)` }}>
                         <div className="font-medium text-sm text-gray-700">
                           Category Totals
                         </div>
-                        {vendors.map(vendor => {
+                        {displayedVendors.map(vendor => {
                           const { totalScore, percentage } = getVendorCategoryScore(vendor.id);
                           return (
                             <div key={vendor.id} className="text-center bg-white rounded p-2 border">
@@ -428,7 +458,7 @@ export function SupportMatrixAdmin() {
                         Category Totals ({categoryFeatures.length} features)
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        {vendors.map(vendor => {
+                        {displayedVendors.map(vendor => {
                           const { totalScore, percentage } = getVendorCategoryScore(vendor.id);
                           return (
                             <div key={vendor.id} className="bg-white rounded p-3 border">
@@ -455,7 +485,7 @@ export function SupportMatrixAdmin() {
                         <div 
                           key={feature.id} 
                           className="grid gap-4 py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg px-2"
-                          style={{ gridTemplateColumns: `280px repeat(${vendors.length}, 120px)` }}
+                          style={{ gridTemplateColumns: `280px repeat(${displayedVendors.length}, 120px)` }}
                         >
                           <div className="flex flex-col justify-center">
                             <div className="font-medium text-sm text-gray-900">
@@ -468,7 +498,7 @@ export function SupportMatrixAdmin() {
                             )}
                           </div>
                           
-                          {vendors.map(vendor => {
+                          {displayedVendors.map(vendor => {
                             const supportKey = `${vendor.id}-${feature.id}`;
                             const supportData = supportLookup.get(supportKey);
                             const supportLevel = supportData?.level || 0;
@@ -519,7 +549,7 @@ export function SupportMatrixAdmin() {
                           </div>
                           
                           <div className="space-y-3">
-                            {vendors.map(vendor => {
+                            {displayedVendors.map(vendor => {
                               const supportKey = `${vendor.id}-${feature.id}`;
                               const supportData = supportLookup.get(supportKey);
                               const supportLevel = supportData?.level || 0;
