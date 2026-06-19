@@ -31,7 +31,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, ExternalLink, RefreshCw, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { NewsArticle, Market, Vendor } from "@shared/schema";
+import type { NewsArticle, Market, Vendor, CanonicalVendor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 
 type NewsArticleExtended = NewsArticle & {
@@ -47,7 +47,7 @@ export function NewsArticlesAdmin() {
   const [selectedVendor, setSelectedVendor] = useState<string>("all");
   const [selectedImpact, setSelectedImpact] = useState<string>("all");
 
-  // Fetch markets and vendors for filtering
+  // Fetch markets, vendors, and canonical vendors for filtering
   const { data: markets } = useQuery<Market[]>({
     queryKey: ['/api/markets']
   });
@@ -55,6 +55,41 @@ export function NewsArticlesAdmin() {
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors']
   });
+
+  const { data: canonicalVendors } = useQuery<CanonicalVendor[]>({
+    queryKey: ['/api/admin/canonical-vendors']
+  });
+
+  // Build a deduplicated vendor dropdown list:
+  // - canonical-linked vendors: one entry per canonical vendor (labeled with
+  //   canonical name + "· N markets"), value = representative vendor ID so the
+  //   backend expands it to the full canonical group.
+  // - unlinked vendors: one entry per vendor (by unique name to avoid showing
+  //   the same company name once per market).
+  type VendorOption = { label: string; value: string };
+  const vendorOptions: VendorOption[] = (() => {
+    if (!vendors) return [];
+    const canonicalNameMap = new Map((canonicalVendors ?? []).map(c => [c.id, c.name]));
+    const options: VendorOption[] = [];
+    const seenCanonicals = new Map<string, string>();    // canonicalId → representative vendorId
+    const seenUnlinkedNames = new Set<string>();
+
+    for (const v of vendors) {
+      if (v.canonicalVendorId) {
+        if (!seenCanonicals.has(v.canonicalVendorId)) {
+          seenCanonicals.set(v.canonicalVendorId, v.id);
+          const label = canonicalNameMap.get(v.canonicalVendorId) ?? v.name;
+          options.push({ label, value: v.id });
+        }
+      } else {
+        if (!seenUnlinkedNames.has(v.name)) {
+          seenUnlinkedNames.add(v.name);
+          options.push({ label: v.name, value: v.id });
+        }
+      }
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  })();
 
   // Build filter params
   const filterParams = new URLSearchParams();
@@ -210,9 +245,9 @@ export function NewsArticlesAdmin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vendors</SelectItem>
-                  {vendors?.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
+                  {vendorOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

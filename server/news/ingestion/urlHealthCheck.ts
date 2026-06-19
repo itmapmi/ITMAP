@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { vendors, canonicalVendors } from '@shared/schema';
-import { isNotNull, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 
 export interface UrlHealthResult {
   vendorId: string;
@@ -114,16 +114,19 @@ export async function checkSingleNewsroomUrl(vendorId: string): Promise<UrlHealt
     inArray(vendors.id, [vendorId])
   );
   const vendor = rows[0];
-  if (!vendor || !vendor.newsroomUrl) return null;
+  if (!vendor) return null;
 
-  // Resolve effective URL via canonical vendor if linked
-  let effectiveUrl = vendor.newsroomUrl;
+  // Resolve effective URL: canonical first, then vendor's own URL
+  let effectiveUrl: string | null = vendor.newsroomUrl ?? null;
   if (vendor.canonicalVendorId) {
     const cRows = await db.select().from(canonicalVendors)
       .where(inArray(canonicalVendors.id, [vendor.canonicalVendorId]));
     const canonical = cRows[0];
     if (canonical?.newsroomUrl) effectiveUrl = canonical.newsroomUrl;
   }
+
+  // No URL anywhere — nothing to check
+  if (!effectiveUrl) return null;
 
   const outcome = await checkUrl(effectiveUrl);
   const result: UrlHealthResult = {
@@ -139,31 +142,28 @@ export async function checkSingleNewsroomUrl(vendorId: string): Promise<UrlHealt
 }
 
 export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
-  const allVendors = await db.select().from(vendors).where(isNotNull(vendors.newsroomUrl));
-  const vendorsWithUrls = allVendors.filter(v => v.newsroomUrl);
+  // Fetch ALL vendors — including those whose only newsroom URL comes from a
+  // linked canonical vendor (per-vendor newsroomUrl may be null for those).
+  const allVendors = await db.select().from(vendors);
 
-  // Fetch canonical vendors for those that have one set
-  const canonicalIds = [...new Set(
-    vendorsWithUrls
-      .filter(v => v.canonicalVendorId)
-      .map(v => v.canonicalVendorId as string)
-  )];
+  // Fetch all canonical vendors to resolve effective URLs
+  const allCanonicals = await db.select().from(canonicalVendors);
   const canonicalMap = new Map<string, typeof canonicalVendors.$inferSelect>();
-  if (canonicalIds.length > 0) {
-    const cRows = await db.select().from(canonicalVendors)
-      .where(inArray(canonicalVendors.id, canonicalIds));
-    for (const c of cRows) canonicalMap.set(c.id, c);
-  }
+  for (const c of allCanonicals) canonicalMap.set(c.id, c);
 
   // Build deduplication map: effective URL → lead vendor row
   // (same logic as scraper: canonical URL takes precedence, then vendor URL)
   const urlToLead = new Map<string, { vendorId: string; vendorName: string; url: string; siblingIds: string[] }>();
-  for (const v of vendorsWithUrls) {
-    let effectiveUrl = v.newsroomUrl!;
+  for (const v of allVendors) {
+    // Resolve effective URL: canonical first, then vendor's own
+    let effectiveUrl: string | null = v.newsroomUrl ?? null;
     if (v.canonicalVendorId) {
       const c = canonicalMap.get(v.canonicalVendorId);
       if (c?.newsroomUrl) effectiveUrl = c.newsroomUrl;
     }
+
+    // No effective URL — skip
+    if (!effectiveUrl) continue;
 
     const existing = urlToLead.get(effectiveUrl);
     if (existing) {
@@ -178,10 +178,16 @@ export async function checkAllNewsroomUrls(): Promise<UrlHealthResult[]> {
     }
   }
 
+  const vendorsWithEffectiveUrl = allVendors.filter(v => {
+    const effectiveUrl = v.canonicalVendorId
+      ? (canonicalMap.get(v.canonicalVendorId)?.newsroomUrl || v.newsroomUrl)
+      : v.newsroomUrl;
+    return !!effectiveUrl;
+  });
   console.log(
     `[URLHealthCheck] Checking ${urlToLead.size} unique newsroom URL(s)` +
-    (urlToLead.size < vendorsWithUrls.length
-      ? ` (${vendorsWithUrls.length - urlToLead.size} duplicate(s) skipped via canonical vendor)`
+    (urlToLead.size < vendorsWithEffectiveUrl.length
+      ? ` (${vendorsWithEffectiveUrl.length - urlToLead.size} duplicate(s) skipped via canonical vendor)`
       : '') + '…'
   );
 
