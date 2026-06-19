@@ -639,6 +639,242 @@ export async function runSingleStage(
   }
 }
 
+// ── Per-item (vendor × criterion/feature) refresh ─────────────────────────
+//
+// Re-runs the LLM for a SINGLE (vendor, criterion) pair (stages 2–3) or a
+// SINGLE (vendor, category, feature) triple (stages 5, 6, 8, 9), then
+// splices just that one row back into the existing result blob.
+
+export interface ItemRefreshOpts extends VendorRefreshOpts {
+  criterionName?: string;       // stages 2, 3
+  categoryName?: string;        // stages 5, 6, 8, 9
+  featureName?: string;         // stages 5, 6, 8, 9
+}
+
+export async function runItemRefresh(
+  res: Response,
+  job: MarketBuilderJob,
+  stageNum: number,
+  vendorName: string,
+  opts: ItemRefreshOpts = {},
+): Promise<void> {
+  const { id: jobId, inputName } = job;
+
+  const effectiveJob = opts.llmOverride
+    ? { ...job, llmProvider: opts.llmOverride.provider as any, llmModel: opts.llmOverride.model }
+    : job;
+  const llmConfig: LLMConfig = await buildLLMConfig(effectiveJob as any);
+
+  const allSources = await storage.listMarketBuilderSources(jobId);
+  const sourceContext = buildSourceContext(allSources, stageNum);
+  const progress = makeProgress(res, jobId, stageNum);
+
+  const mkPrompt =
+    (stage: string, promptType: "scoring" | "commentary") =>
+    (a: string, b?: string): Promise<string> =>
+      opts.promptOverride
+        ? Promise.resolve(opts.promptOverride!)
+        : resolvePromptContent({ jobId, stage, promptType, criterionName: a, categoryName: a, featureName: b });
+
+  sendEvent(res, { type: "stage_start", stage: stageNum });
+
+  try {
+    const stage1 = await loadStageResult(jobId, 1);
+    const targetVendorObj = (stage1.vendors ?? []).find((v: any) => v.name === vendorName);
+    if (!targetVendorObj) throw new Error(`Vendor "${vendorName}" not found in stage 1 results`);
+    const stage1Single = { ...stage1, vendors: [targetVendorObj] };
+
+    switch (stageNum) {
+      // ── Stage 2: re-score one (vendor × criterion) ──────────────────────
+      case 2: {
+        const cn = opts.criterionName;
+        if (!cn) throw new Error("criterionName is required for stage 2 item refresh");
+        const allCriteria = await storage.getAllCriteria();
+        const thisCriterion = allCriteria.filter(c => c.name === cn);
+        if (!thisCriterion.length) throw new Error(`Criterion "${cn}" not found`);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 2))?.result ?? {}) as any;
+        await progress(`Re-scoring "${cn}" for ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage2Scoring(
+          inputName, stage1Single, thisCriterion, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: mkPrompt("vendor_evaluation", "scoring"),
+            onProgress: progress,
+            reuseWeights: existing.criteriaWeights,
+          },
+        );
+        const kept = (existing.scores ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.criterionName === cn),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 2, {
+          result: { ...existing, scores: [...kept, ...newResult.scores] },
+        });
+        break;
+      }
+
+      // ── Stage 3: re-comment one (vendor × criterion) ────────────────────
+      case 3: {
+        const cn = opts.criterionName;
+        if (!cn) throw new Error("criterionName is required for stage 3 item refresh");
+        const allCriteria = await storage.getAllCriteria();
+        const thisCriterion = allCriteria.filter(c => c.name === cn);
+        if (!thisCriterion.length) throw new Error(`Criterion "${cn}" not found`);
+        const stage2 = await loadStageResult(jobId, 2);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 3))?.result ?? {}) as any;
+        await progress(`Re-writing commentary for "${cn}" × ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage2Commentary(
+          inputName, stage1Single, thisCriterion, stage2, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: mkPrompt("vendor_evaluation", "commentary"),
+            onProgress: progress,
+          },
+        );
+        const kept = (existing.scores ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.criterionName === cn),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 3, {
+          result: { ...existing, scores: [...kept, ...newResult.scores] },
+        });
+        break;
+      }
+
+      // ── Stage 5: re-score one (vendor × feature) ────────────────────────
+      case 5: {
+        const { categoryName: cat, featureName: feat } = opts;
+        if (!cat || !feat) throw new Error("categoryName and featureName are required for stage 5 item refresh");
+        const stage4 = await loadStageResult(jobId, 4);
+        const targetCat = (stage4.categories ?? []).find((c: any) => c.name === cat);
+        if (!targetCat) throw new Error(`Category "${cat}" not found in stage 4`);
+        const targetFeat = (targetCat.features ?? []).find((f: any) => f.name === feat);
+        if (!targetFeat) throw new Error(`Feature "${feat}" not found in category "${cat}"`);
+        const filteredStage4 = { ...stage4, categories: [{ ...targetCat, features: [targetFeat] }] };
+        const existing = ((await storage.getMarketBuilderStage(jobId, 5))?.result ?? {}) as any;
+        await progress(`Re-scoring "${feat}" for ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage4Scoring(
+          inputName, stage1Single, filteredStage4, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: (c, f) => mkPrompt("product_evaluation", "scoring")(c, f),
+            onBatchComplete: async () => {},
+            onVendorComplete: async () => {},
+          },
+        );
+        const kept = (existing.support ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 5, {
+          result: { ...existing, support: [...kept, ...newResult.support] },
+        });
+        break;
+      }
+
+      // ── Stage 6: re-comment one (vendor × feature) ──────────────────────
+      case 6: {
+        const { categoryName: cat, featureName: feat } = opts;
+        if (!cat || !feat) throw new Error("categoryName and featureName are required for stage 6 item refresh");
+        const stage4 = await loadStageResult(jobId, 4);
+        const targetCat = (stage4.categories ?? []).find((c: any) => c.name === cat);
+        if (!targetCat) throw new Error(`Category "${cat}" not found`);
+        const targetFeat = (targetCat.features ?? []).find((f: any) => f.name === feat);
+        if (!targetFeat) throw new Error(`Feature "${feat}" not found`);
+        const filteredStage4 = { ...stage4, categories: [{ ...targetCat, features: [targetFeat] }] };
+        const stage5 = await loadStageResult(jobId, 5);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 6))?.result ?? {}) as any;
+        await progress(`Re-writing commentary for "${feat}" × ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage4Commentary(
+          inputName, stage1Single, filteredStage4, stage5, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (c, f) => mkPrompt("product_evaluation", "commentary")(c, f),
+            onBatchComplete: async () => {},
+            onVendorComplete: async () => {},
+            onVendorStart: (v) => addInFlightVendor(jobId, 6, v),
+            onVendorEnd: (v) => removeInFlightVendor(jobId, 6, v),
+          },
+        );
+        const kept = (existing.support ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 6, {
+          result: { ...existing, support: [...kept, ...newResult.support] },
+        });
+        break;
+      }
+
+      // ── Stage 8: re-score one (vendor × integration) ────────────────────
+      case 8: {
+        const { categoryName: cat, featureName: feat } = opts;
+        if (!cat || !feat) throw new Error("categoryName and featureName are required for stage 8 item refresh");
+        const stage7 = await loadStageResult(jobId, 7);
+        const targetCat = (stage7.categories ?? []).find((c: any) => c.name === cat);
+        if (!targetCat) throw new Error(`Category "${cat}" not found in stage 7`);
+        const targetFeat = (targetCat.features ?? []).find((f: any) => f.name === feat);
+        if (!targetFeat) throw new Error(`Feature "${feat}" not found`);
+        const filteredStage7 = { ...stage7, categories: [{ ...targetCat, features: [targetFeat] }] };
+        const existing = ((await storage.getMarketBuilderStage(jobId, 8))?.result ?? {}) as any;
+        await progress(`Re-scoring "${feat}" for ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage8Scoring(
+          inputName, stage1Single, filteredStage7, llmConfig, sourceContext,
+          {
+            resolveScoringPrompt: (c, f) => mkPrompt("ecosystem_evaluation", "scoring")(c, f),
+            onProgress: async (msg) => { await progress(msg); },
+            onVendorComplete: async () => {},
+          },
+        );
+        const kept = (existing.support ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 8, {
+          result: { ...existing, support: [...kept, ...newResult.support] },
+        });
+        break;
+      }
+
+      // ── Stage 9: re-comment one (vendor × integration) ──────────────────
+      case 9: {
+        const { categoryName: cat, featureName: feat } = opts;
+        if (!cat || !feat) throw new Error("categoryName and featureName are required for stage 9 item refresh");
+        const stage7 = await loadStageResult(jobId, 7);
+        const targetCat = (stage7.categories ?? []).find((c: any) => c.name === cat);
+        if (!targetCat) throw new Error(`Category "${cat}" not found`);
+        const targetFeat = (targetCat.features ?? []).find((f: any) => f.name === feat);
+        if (!targetFeat) throw new Error(`Feature "${feat}" not found`);
+        const filteredStage7 = { ...stage7, categories: [{ ...targetCat, features: [targetFeat] }] };
+        const stage8 = await loadStageResult(jobId, 8);
+        const existing = ((await storage.getMarketBuilderStage(jobId, 9))?.result ?? {}) as any;
+        await progress(`Re-writing commentary for "${feat}" × ${vendorName} (${llmConfig.provider}/${llmConfig.model})…`);
+        const newResult = await runStage9Commentary(
+          inputName, stage1Single, filteredStage7, stage8, llmConfig, sourceContext,
+          {
+            resolveCommentaryPrompt: (c, f) => mkPrompt("ecosystem_evaluation", "commentary")(c, f),
+            onBatchComplete: async () => {},
+            onVendorComplete: async () => {},
+            onVendorStart: (v) => addInFlightVendor(jobId, 9, v),
+            onVendorEnd: (v) => removeInFlightVendor(jobId, 9, v),
+          },
+        );
+        const kept = (existing.support ?? []).filter(
+          (s: any) => !(s.vendorName === vendorName && s.categoryName === cat && s.featureName === feat),
+        );
+        await storage.upsertMarketBuilderStage(jobId, 9, {
+          result: { ...existing, support: [...kept, ...newResult.support] },
+        });
+        break;
+      }
+
+      default:
+        throw new Error(`Stage ${stageNum} does not support per-item refresh (use stages 2, 3, 5, 6, 8, 9).`);
+    }
+
+    await progress(`✓ Item refreshed successfully`);
+    sendEvent(res, { type: "stage_complete", stage: stageNum, vendorName });
+  } catch (err: any) {
+    console.error(`[MarketBuilder] Item refresh error stage=${stageNum} vendor="${vendorName}" job=${jobId}:`, err);
+    await progress(`✗ Error: ${err.message}`);
+    sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message });
+  } finally {
+    clearInFlightVendors(jobId, stageNum);
+    res.end();
+  }
+}
+
 // ── Single-vendor refresh ─────────────────────────────────────────────────
 //
 // Re-runs exactly one named vendor through a per-vendor stage (2, 3, 5, 6, 8, 9),

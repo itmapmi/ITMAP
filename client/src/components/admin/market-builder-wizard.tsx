@@ -400,7 +400,7 @@ const AUTO_COMPUTED_LABELS: Record<string, string> = {
   "ISV Ecosystem":        "Auto-computed from Stages 8–9",
 };
 
-function Stage2Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
+function Stage2Editor({ result, onChange, onRefreshVendor, onRefreshItem }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, criterion: string) => void }) {
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
   const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
@@ -480,6 +480,12 @@ function Stage2Editor({ result, onChange, onRefreshVendor }: { result: any; onCh
             </div>
             <div className="flex gap-2">
               <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
+              {onRefreshItem && selected && (
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                  onClick={() => { onRefreshItem(selected.v, selected.c); setSelected(null); }}>
+                  <RefreshCw className="h-3 w-3" />Re-run AI
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
             </div>
           </div>
@@ -609,7 +615,7 @@ function Stage3Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
-function HarveyBallGrid({ support, onChange, label, onRefreshVendor }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void }) {
+function HarveyBallGrid({ support, onChange, label, onRefreshVendor, onRefreshItem }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, cat: string, feat: string) => void }) {
   const vendors = [...new Set<string>(support.map((s: any) => s.vendorName))];
   const features = [...new Set<string>(support.map((s: any) => s.featureName))];
   const [selected, setSelected] = useState<{ v: string; f: string } | null>(null);
@@ -660,6 +666,15 @@ function HarveyBallGrid({ support, onChange, label, onRefreshVendor }: { support
             </div>
             <div className="flex gap-2">
               <Button size="sm" className="h-7 text-xs" onClick={save}><Save className="h-3 w-3 mr-1" />Save</Button>
+              {onRefreshItem && selected && (() => {
+                const cat = support.find((s: any) => s.vendorName === selected.v && s.featureName === selected.f)?.categoryName ?? "";
+                return (
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                    onClick={() => { onRefreshItem(selected.v, cat, selected.f); setSelected(null); }}>
+                    <RefreshCw className="h-3 w-3" />Re-run AI
+                  </Button>
+                );
+              })()}
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
             </div>
           </div>
@@ -714,7 +729,7 @@ function HarveyBallGrid({ support, onChange, label, onRefreshVendor }: { support
   );
 }
 
-function Stage4Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
+function Stage4Editor({ result, onChange, onRefreshVendor, onRefreshItem }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, cat: string, feat: string) => void }) {
   const support = result?.support ?? [];
   const cats = result?.categories ?? [];
   const totalFeatures = cats.length > 0
@@ -731,6 +746,7 @@ function Stage4Editor({ result, onChange, onRefreshVendor }: { result: any; onCh
         onChange={s => onChange({ ...result, support: s })}
         label="Product Capability Scores"
         onRefreshVendor={onRefreshVendor}
+        onRefreshItem={onRefreshItem}
       />
     </div>
   );
@@ -750,7 +766,7 @@ function Stage5Editor({ result, onChange }: { result: any; onChange: (r: any) =>
   );
 }
 
-function Stage6Editor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
+function Stage6Editor({ result, onChange, onRefreshVendor, onRefreshItem }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, cat: string, feat: string) => void }) {
   const cats = result?.categories ?? [];
   const support = result?.support ?? [];
   const totalFeatures = cats.length > 0
@@ -767,6 +783,7 @@ function Stage6Editor({ result, onChange, onRefreshVendor }: { result: any; onCh
         onChange={s => onChange({ ...result, support: s })}
         label="Ecosystem Integration Scores"
         onRefreshVendor={onRefreshVendor}
+        onRefreshItem={onRefreshItem}
       />
     </div>
   );
@@ -784,10 +801,12 @@ const REFRESH_STAGE_LABELS: Record<number, string> = {
 };
 
 function VendorRefreshDialog({
-  jobId, stageNum, vendorName, defaultProvider, defaultModel, apiBase,
+  jobId, stageNum, vendorName, criterion, category, feature,
+  defaultProvider, defaultModel, apiBase,
   onComplete, onClose,
 }: {
   jobId: string; stageNum: number; vendorName: string;
+  criterion?: string; category?: string; feature?: string;
   defaultProvider: string; defaultModel: string; apiBase: string;
   onComplete: () => void; onClose: () => void;
 }) {
@@ -808,6 +827,9 @@ function VendorRefreshDialog({
     setStatus("running");
     const params = new URLSearchParams({ stage: String(stageNum), vendor: vendorName, provider, model });
     if (promptOverride.trim()) params.set("promptOverride", promptOverride.trim());
+    if (criterion) params.set("criterion", criterion);
+    if (category)  params.set("category", category);
+    if (feature)   params.set("feature", feature);
     const es = new EventSource(`${apiBase}/jobs/${jobId}/refresh-vendor?${params}`);
     esRef.current = es;
     es.onmessage = (e) => {
@@ -839,9 +861,15 @@ function VendorRefreshDialog({
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div>
             <p className="text-sm font-semibold text-gray-900">
-              Refresh Vendor — Stage {stageNum}: {REFRESH_STAGE_LABELS[stageNum]}
+              {criterion || feature
+                ? `Refresh Item — Stage ${stageNum}: ${REFRESH_STAGE_LABELS[stageNum]}`
+                : `Refresh Vendor — Stage ${stageNum}: ${REFRESH_STAGE_LABELS[stageNum]}`}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5 font-medium">{vendorName}</p>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium">
+              {vendorName}
+              {criterion && <span className="text-gray-400"> · {criterion}</span>}
+              {feature    && <span className="text-gray-400"> · {feature}</span>}
+            </p>
           </div>
           <button onClick={onClose} disabled={status === "running"} className="text-gray-400 hover:text-gray-700 disabled:opacity-40"><X className="h-4 w-4" /></button>
         </div>
@@ -997,7 +1025,7 @@ function StageLlmPicker({ jobId, stageNum, defaultProvider, defaultModel, apiBas
 
 // ── Stage 2: Scoring-only editor (numeric, no commentary) ─────────────────
 
-function Stage2ScoringEditor({ result, onChange, onRefreshVendor }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void }) {
+function Stage2ScoringEditor({ result, onChange, onRefreshVendor, onRefreshItem }: { result: any; onChange: (r: any) => void; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, criterion: string) => void }) {
   const weights: any[] = result?.criteriaWeights ?? [];
   const scores: any[] = result?.scores ?? [];
   const [selected, setSelected] = useState<{ v: string; c: string } | null>(null);
@@ -1054,6 +1082,12 @@ function Stage2ScoringEditor({ result, onChange, onRefreshVendor }: { result: an
           <p className="text-xs text-gray-500">Commentary will be written in Stage 3.</p>
           <div className="flex gap-2">
             <Button size="sm" className="h-7 text-xs" onClick={saveScore}><Save className="h-3 w-3 mr-1" />Save</Button>
+            {onRefreshItem && selected && (
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                onClick={() => { onRefreshItem(selected.v, selected.c); setSelected(null); }}>
+                <RefreshCw className="h-3 w-3" />Re-run AI
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelected(null)}>Cancel</Button>
           </div>
         </div>
@@ -1118,7 +1152,7 @@ function Stage2ScoringEditor({ result, onChange, onRefreshVendor }: { result: an
 
 // ── Harvey Ball scores-only grid (no commentary edit) ────────────────────
 
-function HarveyBallScoreOnlyGrid({ support, onChange, label, onRefreshVendor }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void }) {
+function HarveyBallScoreOnlyGrid({ support, onChange, label, onRefreshVendor, onRefreshItem }: { support: any[]; onChange: (s: any[]) => void; label?: string; onRefreshVendor?: (v: string) => void; onRefreshItem?: (v: string, cat: string, feat: string) => void }) {
   const vendors  = [...new Set<string>(support.map((s: any) => s.vendorName))];
   const features = [...new Set<string>(support.map((s: any) => s.featureName))];
   const PAGE_SIZE = 22;
@@ -1162,15 +1196,27 @@ function HarveyBallScoreOnlyGrid({ support, onChange, label, onRefreshVendor }: 
               </td>
               {pageFeatures.map(f => {
                 const s = get(v, f);
+                const cat = s?.categoryName ?? support.find((x: any) => x.featureName === f)?.categoryName ?? "";
                 return (
                   <td key={f} className="p-1 text-center">
-                    <button
-                      onClick={() => cycle(v, f)}
-                      className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel ?? 0)}`}
-                      title={`Click to cycle: ${HARVEY[s?.supportLevel ?? 0]}`}
-                    >
-                      {HARVEY[s?.supportLevel ?? 0]?.split(" ")[0] ?? "✕"}
-                    </button>
+                    <div className="relative group/cell inline-flex items-center gap-0.5">
+                      <button
+                        onClick={() => cycle(v, f)}
+                        className={`text-base hover:scale-110 transition-transform ${lcolor(s?.supportLevel ?? 0)}`}
+                        title={`Click to cycle: ${HARVEY[s?.supportLevel ?? 0]}`}
+                      >
+                        {HARVEY[s?.supportLevel ?? 0]?.split(" ")[0] ?? "✕"}
+                      </button>
+                      {onRefreshItem && (
+                        <button
+                          onClick={() => onRefreshItem(v, cat, f)}
+                          title={`Re-run AI for ${v} × ${f}`}
+                          className="opacity-0 group-hover/cell:opacity-100 transition-opacity text-gray-400 hover:text-cyan-500 shrink-0"
+                        >
+                          <RefreshCw className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 );
               })}
@@ -1296,13 +1342,20 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
 }) {
   const [localResult, setLocalResult] = useState(result);
   const [isDirty, setIsDirty] = useState(false);
-  const [refreshVendor, setRefreshVendor] = useState<string | null>(null);
+  const [refreshTarget, setRefreshTarget] = useState<{
+    vendor: string; criterion?: string; category?: string; feature?: string;
+  } | null>(null);
   useEffect(() => { setLocalResult(result); setIsDirty(false); onDirtyChange?.(stageNum, null); }, [result, stageNum]);
   const handleChange = (r: any) => { setLocalResult(r); setIsDirty(true); onDirtyChange?.(stageNum, r); };
 
   // Refresh stages that support per-vendor re-runs
   const VENDOR_REFRESH_STAGES = [2, 3, 5, 6, 8, 9];
   const supportsRefresh = VENDOR_REFRESH_STAGES.includes(stageNum);
+
+  // Handlers — vendor-level and item-level open the same dialog; context differs
+  const openVendorRefresh = supportsRefresh ? (v: string) => setRefreshTarget({ vendor: v }) : undefined;
+  const openCriterionRefresh = supportsRefresh ? (v: string, c: string) => setRefreshTarget({ vendor: v, criterion: c }) : undefined;
+  const openFeatureRefresh = supportsRefresh ? (v: string, cat: string, f: string) => setRefreshTarget({ vendor: v, category: cat, feature: f }) : undefined;
 
   // Called when the dialog's SSE stream completes — reload from server
   const handleRefreshComplete = async () => {
@@ -1319,21 +1372,24 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
         }
       }
     } catch (_) {}
-    setRefreshVendor(null);
+    setRefreshTarget(null);
   };
 
   return (
     <div className="space-y-5">
-      {refreshVendor && (
+      {refreshTarget && (
         <VendorRefreshDialog
           jobId={jobId}
           stageNum={stageNum}
-          vendorName={refreshVendor}
+          vendorName={refreshTarget.vendor}
+          criterion={refreshTarget.criterion}
+          category={refreshTarget.category}
+          feature={refreshTarget.feature}
           defaultProvider="openai"
           defaultModel="gpt-4o-mini"
           apiBase={apiBase}
           onComplete={handleRefreshComplete}
-          onClose={() => setRefreshVendor(null)}
+          onClose={() => setRefreshTarget(null)}
         />
       )}
       <SourcesPanel jobId={jobId} currentStage={stageNum} apiBase={apiBase} />
@@ -1348,14 +1404,14 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
         {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
-        {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openCriterionRefresh} />}
+        {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openCriterionRefresh} />}
         {stageNum === 4 && <Stage3Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 5 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Product Feature Scores (Harvey Ball)" onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
-        {stageNum === 6 && <Stage4Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 5 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Product Feature Scores (Harvey Ball)" onRefreshVendor={openVendorRefresh} onRefreshItem={openFeatureRefresh} />}
+        {stageNum === 6 && <Stage4Editor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openFeatureRefresh} />}
         {stageNum === 7 && <Stage5Editor result={localResult} onChange={handleChange} />}
-        {stageNum === 8 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Ecosystem Integration Scores (Harvey Ball)" onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
-        {stageNum === 9 && <Stage6Editor result={localResult} onChange={handleChange} onRefreshVendor={supportsRefresh ? setRefreshVendor : undefined} />}
+        {stageNum === 8 && <HarveyBallScoreOnlyGrid support={localResult?.support ?? []} onChange={s => handleChange({ ...localResult, support: s })} label="Ecosystem Integration Scores (Harvey Ball)" onRefreshVendor={openVendorRefresh} onRefreshItem={openFeatureRefresh} />}
+        {stageNum === 9 && <Stage6Editor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openFeatureRefresh} />}
       </div>
     </div>
   );

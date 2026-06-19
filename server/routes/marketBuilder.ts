@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { requireAdmin, requireAuth } from "../auth";
 import { requireFeature } from "../featureAccess";
 import { insertMarketBuilderJobSchema } from "@shared/schema";
-import { initSSE, sendEvent, runSingleStage, runVendorRefresh, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
+import { initSSE, sendEvent, runSingleStage, runVendorRefresh, runItemRefresh, buildLLMConfig, MissingLlmKeyError } from "../market-builder/runner";
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 import { listInFlightVendors } from "../market-builder/inflight";
@@ -237,10 +237,23 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       initSSE(res);
       req.on("close", () => {});
-      runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
-        console.error(`[MarketBuilder] Vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
-        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
-      });
+      {
+        const criterionName = (req.query.criterion as string) || undefined;
+        const categoryName  = (req.query.category  as string) || undefined;
+        const featureName   = (req.query.feature   as string) || undefined;
+        const isItem = !!(criterionName || (categoryName && featureName));
+        if (isItem) {
+          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName }).catch(err => {
+            console.error(`[MarketBuilder] Admin item refresh error stage=${stageNum} vendor="${vendorName}":`, err);
+            try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+          });
+        } else {
+          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
+            console.error(`[MarketBuilder] Vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
+            try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+          });
+        }
+      }
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
@@ -944,10 +957,23 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       initSSE(res);
       req.on("close", () => {});
-      runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
-        console.error(`[MarketBuilder] User vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
-        try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
-      });
+      {
+        const criterionName = (req.query.criterion as string) || undefined;
+        const categoryName  = (req.query.category  as string) || undefined;
+        const featureName   = (req.query.feature   as string) || undefined;
+        const isItem = !!(criterionName || (categoryName && featureName));
+        if (isItem) {
+          runItemRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride, criterionName, categoryName, featureName }).catch(err => {
+            console.error(`[MarketBuilder] User item refresh error stage=${stageNum} vendor="${vendorName}":`, err);
+            try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+          });
+        } else {
+          runVendorRefresh(res, job, stageNum, vendorName, { llmOverride, promptOverride }).catch(err => {
+            console.error(`[MarketBuilder] User vendor refresh error stage=${stageNum} vendor="${vendorName}":`, err);
+            try { sendEvent(res, { type: "stage_error", stage: stageNum, error: err.message }); res.end(); } catch (_) {}
+          });
+        }
+      }
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
