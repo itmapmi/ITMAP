@@ -640,6 +640,7 @@ export default function MarketDetails() {
               key={`mq-${editingLabels ? "edit" : "view"}`}
               marketId={marketId!}
               marketName={market.name}
+              marketType={(market as any).marketType ?? "mature"}
               enableDrag={editingLabels}
               onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
               quadrantSettings={{

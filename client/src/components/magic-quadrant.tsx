@@ -65,6 +65,7 @@ const COLOR_THEMES: Record<string, ColorTheme> = {
 interface MagicQuadrantProps {
   marketId: string;
   marketName: string;
+  marketType?: "mature" | "emerging";
   enableDrag?: boolean;
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
   quadrantSettings?: QuadrantSettings;
@@ -83,7 +84,7 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
-export default function MagicQuadrant({ marketId, marketName, enableDrag = false, onLabelPositionChange, quadrantSettings }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, quadrantSettings }: MagicQuadrantProps) {
   const settings = { ...DEFAULT_SETTINGS, ...quadrantSettings };
   const theme = COLOR_THEMES[settings.colorTheme] ?? COLOR_THEMES["dark-blue-gold"];
   const svgRef = useRef<SVGSVGElement>(null);
@@ -252,8 +253,9 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
   // Initialize weights when data loads
   useEffect(() => {
     if (weights && criteria) {
-      // Default weights mapping based on criteria names
-      const defaultWeightsByName: { [name: string]: number } = {
+      // Default weights vary by market maturity type.
+      // Emerging markets use lower weights for Business Model, Revenue, and Partner Ecosystem.
+      const matureDefaults: { [name: string]: number } = {
         'ISV Ecosystem': 100,
         'Innovation': 50,
         'Pricing Strategy': 100,
@@ -263,6 +265,14 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
         'Partner Ecosystem': 75,
         'Revenue': 100,
       };
+      const emergingOverrides: { [name: string]: number } = {
+        'Business Model': 10,
+        'Revenue': 10,
+        'Partner Ecosystem': 10,
+      };
+      const defaultWeightsByName = marketType === "emerging"
+        ? { ...matureDefaults, ...emergingOverrides }
+        : matureDefaults;
 
       const initialWeights: { [id: string]: number } = {};
       criteria.forEach(c => {
@@ -277,7 +287,7 @@ export default function MagicQuadrant({ marketId, marketName, enableDrag = false
       });
       setCriteriaWeights(initialWeights);
     }
-  }, [weights, criteria]);
+  }, [weights, criteria, marketType]);
 
   // Load saved label positions
   useEffect(() => {

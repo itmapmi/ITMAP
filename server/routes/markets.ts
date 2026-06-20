@@ -86,6 +86,20 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const marketData = insertMarketSchema.parse(req.body);
       const market = await storage.createMarket(marketData);
+      // For emerging markets, persist the non-default weights immediately
+      // so they are picked up by the frontend without guessing.
+      if (market.marketType === "emerging") {
+        const EMERGING_OVERRIDES: Record<string, number> = {
+          "Business Model": 10,
+          "Revenue": 10,
+          "Partner Ecosystem": 10,
+        };
+        const allCriteria = await storage.getAllCriteria();
+        for (const c of allCriteria) {
+          const w = EMERGING_OVERRIDES[c.name];
+          if (w !== undefined) await storage.updateMarketCriteriaWeight(market.id, c.id, w);
+        }
+      }
       res.status(201).json(market);
     } catch (error) {
       console.error("Error creating market:", error);

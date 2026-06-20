@@ -572,6 +572,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
           name: job.inputName,
           description: stage1.marketSummary,
           shortDescription: job.inputDescription,
+          marketType: (job as any).marketType ?? "mature",
         });
       } else {
         market = await storage.createMarket({
@@ -582,6 +583,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
           isVisible,
           ownerUserId: isEndUserJob ? owner!.id : null,
           visibility,
+          marketType: (job as any).marketType ?? "mature",
         });
       }
 
@@ -621,15 +623,16 @@ export function registerMarketBuilderRoutes(app: Express): void {
 
       // Save market-specific weights — use product-defined defaults for new markets,
       // ignoring whatever the LLM proposed. Admins can adjust per-market via the UI.
+      const isEmerging = (job as any).marketType === "emerging";
       const DEFAULT_WEIGHTS: Record<string, number> = {
         'ISV Ecosystem': 100,
         'Innovation': 50,
         'Pricing Strategy': 100,
         'Product Capabilities': 100,
-        'Business Model': 50,
+        'Business Model': isEmerging ? 10 : 50,
         'Customer Experience': 100,
-        'Partner Ecosystem': 75,
-        'Revenue': 100,
+        'Partner Ecosystem': isEmerging ? 10 : 75,
+        'Revenue': isEmerging ? 10 : 100,
       };
       for (const c of allCriteria) {
         const w = DEFAULT_WEIGHTS[c.name];

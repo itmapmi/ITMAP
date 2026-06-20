@@ -1617,13 +1617,14 @@ function SetupForm({ onBack, onCreate, mode = "admin" }: {
   const [context, setContext] = useState("");
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4.1-mini");
+  const [marketType, setMarketType] = useState<"mature" | "emerging">("mature");
 
   const handleSubmit = () => {
     if (!name.trim() || !description.trim()) {
       toast({ title: "Please fill in the market name and description", variant: "destructive" });
       return;
     }
-    onCreate({ inputName: name.trim(), inputDescription: description.trim(), inputCategory: category || undefined, inputContext: context.trim() || undefined, llmProvider: provider, llmModel: model });
+    onCreate({ inputName: name.trim(), inputDescription: description.trim(), inputCategory: category || undefined, inputContext: context.trim() || undefined, llmProvider: provider, llmModel: model, marketType });
   };
 
   return (
@@ -1658,6 +1659,39 @@ function SetupForm({ onBack, onCreate, mode = "admin" }: {
               <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
               <SelectContent>{CATEGORIES.map(c=><SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Market Type</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setMarketType("mature")}
+              className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                marketType === "mature"
+                  ? "border-blue-500 bg-blue-50 text-blue-900"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div>
+                <div className="font-medium text-sm">Mature</div>
+                <div className="text-xs text-gray-500">Standard default weights</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketType("emerging")}
+              className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                marketType === "emerging"
+                  ? "border-green-500 bg-green-50 text-green-900"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div>
+                <div className="font-medium text-sm">Emerging</div>
+                <div className="text-xs text-gray-500">Business Model, Revenue &amp; Partner Ecosystem at 10%</div>
+              </div>
+            </button>
           </div>
         </div>
         <div className="space-y-1.5">

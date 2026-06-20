@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, TrendingUp, Upload, Plus, Eye, EyeOff } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Upload, Plus, Eye, EyeOff, Sprout, Building2 } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
 import { SimpleImageUploader } from "@/components/SimpleImageUploader";
 
@@ -37,6 +37,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      marketType: "mature",
     },
   });
 
@@ -159,6 +160,7 @@ export default function MarketManagement() {
       category: market.category || "",
       imageUrl: market.imageUrl || "",
       isVisible: market.isVisible !== false,
+      marketType: (market as any).marketType || "mature",
     });
   };
 
@@ -172,6 +174,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      marketType: "mature",
     });
   };
 
@@ -184,6 +187,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      marketType: "mature",
     });
   };
 
@@ -281,6 +285,51 @@ export default function MarketManagement() {
                   value={field.value || ""}
                   onChange={handleImageChange}
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="marketType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Market Type</FormLabel>
+              <FormControl>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("mature")}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                      field.value === "mature" || !field.value
+                        ? "border-blue-500 bg-blue-50 text-blue-900"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <div>
+                      <div className="font-medium text-sm">Mature</div>
+                      <div className="text-xs text-muted-foreground">Standard default weights</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("emerging")}
+                    className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                      field.value === "emerging"
+                        ? "border-green-500 bg-green-50 text-green-900"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <Sprout className="h-4 w-4 shrink-0" />
+                    <div>
+                      <div className="font-medium text-sm">Emerging</div>
+                      <div className="text-xs text-muted-foreground">Business Model, Revenue &amp; Partner Ecosystem default to 10%</div>
+                    </div>
+                  </button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

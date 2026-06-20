@@ -80,6 +80,8 @@ export const markets = pgTable("markets", {
   quadrantTopLabel: text("quadrant_top_label").default("DCIG Leaders"),
   quadrantColorTheme: text("quadrant_color_theme").default("dark-blue-gold"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
+  // 'mature' | 'emerging'. Affects default criteria weights.
+  marketType: text("market_type").notNull().default("mature"),
   // Ownership: null = platform-owned (admin-created public market).
   ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "set null" }),
   // 'public' | 'private'. Private markets only visible to owner + admins.
@@ -789,6 +791,9 @@ export const marketBuilderJobs = pgTable("market_builder_jobs", {
   // LLM configuration
   llmProvider: text("llm_provider").notNull().default("openai"),
   llmModel: text("llm_model").notNull().default("gpt-4.1-mini"),
+
+  // Market maturity type — affects default criteria weights on publish
+  marketType: text("market_type").notNull().default("mature"),
 
   // Error message if the job failed at the job level
   error: text("error"),
