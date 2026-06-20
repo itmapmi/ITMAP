@@ -112,6 +112,18 @@ export function registerMarketRoutes(app: Express): void {
       console.log("Market update request:", { id: req.params.id, body: req.body });
       const marketData = insertMarketSchema.partial().parse(req.body);
       const market = await storage.updateMarket(req.params.id, marketData);
+      // When switching an existing market to emerging, apply the weight overrides.
+      // When switching back to mature, apply the mature defaults so the chart resets.
+      if (marketData.marketType === "emerging" || marketData.marketType === "mature") {
+        const EMERGING_WEIGHTS: Record<string, number> = { "Business Model": 10, "Revenue": 10, "Partner Ecosystem": 10 };
+        const MATURE_WEIGHTS: Record<string, number>   = { "Business Model": 50, "Revenue": 100, "Partner Ecosystem": 75 };
+        const overrides = marketData.marketType === "emerging" ? EMERGING_WEIGHTS : MATURE_WEIGHTS;
+        const allCriteria = await storage.getAllCriteria();
+        for (const c of allCriteria) {
+          const w = overrides[c.name];
+          if (w !== undefined) await storage.updateMarketCriteriaWeight(market.id, c.id, w);
+        }
+      }
       res.json(market);
     } catch (error) {
       console.error("Error updating market:", error);
