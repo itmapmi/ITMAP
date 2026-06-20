@@ -42,6 +42,14 @@ export function setupPassport(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
+      if (!user) return done(null, false as any);
+      // Enforce access control for non-admin accounts.
+      if (user.role !== 'admin') {
+        if (user.isBlocked) return done(null, false as any);
+        if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
+          return done(null, false as any);
+        }
+      }
       done(null, user);
     } catch (error) {
       done(error, null);

@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Eye, Trash2, Upload, Mail, Loader2 } from "lucide-react";
+import { Eye, Trash2, Upload, Mail, Loader2, Clock, X } from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -535,6 +535,117 @@ function ManageAudienceDialog({
   );
 }
 
+// ── Access-control cell ─────────────────────────────────────────────────────
+function AccessControlCell({
+  user,
+  onBlock,
+  onSetExpiry,
+  isPending,
+}: {
+  user: AdminUser;
+  onBlock: (blocked: boolean) => void;
+  onSetExpiry: (days: number | null) => void;
+  isPending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [days, setDays] = useState("");
+
+  const expiry = user.accessExpiresAt ? new Date(user.accessExpiresAt) : null;
+  const isExpired = expiry && expiry < new Date();
+  const isBlocked = user.isBlocked;
+
+  const applyDays = () => {
+    const n = parseInt(days, 10);
+    if (!days.trim()) {
+      onSetExpiry(null);
+    } else if (n > 0) {
+      onSetExpiry(n);
+    }
+    setOpen(false);
+    setDays("");
+  };
+
+  const clearExpiry = () => {
+    onSetExpiry(null);
+    setOpen(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {/* Block toggle */}
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <Switch
+          checked={!!isBlocked}
+          disabled={isPending}
+          onCheckedChange={onBlock}
+          className="data-[state=checked]:bg-red-600"
+        />
+        <span className={`text-xs font-medium ${isBlocked ? "text-red-600" : "text-gray-400"}`}>
+          {isBlocked ? "Blocked" : "Active"}
+        </span>
+      </label>
+
+      {/* Expiry picker trigger */}
+      <button
+        disabled={isPending}
+        onClick={() => { setDays(""); setOpen(true); }}
+        className={`flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 border transition-colors w-fit ${
+          isExpired
+            ? "border-red-300 text-red-600 bg-red-50 hover:bg-red-100"
+            : expiry
+            ? "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100"
+            : "border-gray-200 text-gray-400 hover:bg-gray-50"
+        }`}
+      >
+        <Clock className="h-3 w-3 shrink-0" />
+        {expiry
+          ? isExpired
+            ? `Expired ${expiry.toLocaleDateString()}`
+            : `Until ${expiry.toLocaleDateString()}`
+          : "No expiry"}
+      </button>
+
+      {/* Expiry dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Set access duration</DialogTitle>
+            <DialogDescription>
+              Access will expire after this many days from today. Leave blank to remove any expiry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 items-center py-2">
+            <Input
+              type="number"
+              min={1}
+              placeholder="e.g. 30"
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              className="h-8 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && applyDays()}
+              autoFocus
+            />
+            <span className="text-sm text-gray-500 whitespace-nowrap">days</span>
+          </div>
+          {expiry && (
+            <p className="text-xs text-gray-500">
+              Current: {expiry.toLocaleDateString()}{isExpired ? " (expired)" : ""}
+            </p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <Button className="flex-1" onClick={applyDays}>Apply</Button>
+            {expiry && (
+              <Button variant="outline" className="gap-1 text-red-500 hover:text-red-700" onClick={clearExpiry}>
+                <X className="h-3.5 w-3.5" /> Clear
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export function UserAccessAdmin() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -659,6 +770,35 @@ export function UserAccessAdmin() {
     onError: () => toast({ title: "Failed to remove user", variant: "destructive" }),
   });
 
+  const accessControlMutation = useMutation({
+    mutationFn: async ({ id, isBlocked, accessExpiresAt }: { id: string; isBlocked?: boolean; accessExpiresAt?: string | null }) =>
+      apiRequestJson(`/api/admin/users/${id}/access-control`, "PATCH", { isBlocked, accessExpiresAt }),
+    onMutate: async ({ id, isBlocked, accessExpiresAt }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/users"] });
+      const previous = queryClient.getQueryData<AdminUser[]>(["/api/admin/users"]);
+      queryClient.setQueryData<AdminUser[]>(["/api/admin/users"], (old) =>
+        (old ?? []).map((u) => {
+          if (u.id !== id) return u;
+          const updated = { ...u };
+          if (isBlocked !== undefined) updated.isBlocked = isBlocked;
+          if (accessExpiresAt !== undefined) updated.accessExpiresAt = accessExpiresAt ? new Date(accessExpiresAt) : null;
+          return updated;
+        }),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["/api/admin/users"], context.previous);
+      toast({ title: "Failed to update access control", variant: "destructive" });
+    },
+    onSuccess: (updated: any) => {
+      queryClient.setQueryData<AdminUser[]>(["/api/admin/users"], (old) =>
+        (old ?? []).map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
+      );
+      toast({ title: "Access control updated" });
+    },
+  });
+
   const filtered = useMemo(() => {
     const list = users ?? [];
     const q = search.trim().toLowerCase();
@@ -764,13 +904,14 @@ export function UserAccessAdmin() {
               ))}
               <TableHead className="min-w-[200px] whitespace-nowrap">Vendor seat (leads)</TableHead>
               <TableHead className="min-w-[140px] whitespace-nowrap">Watched audience</TableHead>
+              <TableHead className="min-w-[150px] whitespace-nowrap">Block / Expiry</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={LOCKABLE_FEATURES.length + 4} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={LOCKABLE_FEATURES.length + 5} className="text-center text-gray-500 py-8">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -865,6 +1006,26 @@ export function UserAccessAdmin() {
                         <span className="text-xs text-gray-400">—</span>
                       ) : (
                         <ManageAudienceDialog seat={user} markets={markets} endUsers={endUsers} />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isAdminUser ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : (
+                        <AccessControlCell
+                          user={user}
+                          isPending={accessControlMutation.isPending}
+                          onBlock={(blocked) =>
+                            accessControlMutation.mutate({ id: user.id, isBlocked: blocked })
+                          }
+                          onSetExpiry={(days) => {
+                            const accessExpiresAt =
+                              days === null
+                                ? null
+                                : new Date(Date.now() + days * 86400_000).toISOString();
+                            accessControlMutation.mutate({ id: user.id, accessExpiresAt });
+                          }}
+                        />
                       )}
                     </TableCell>
                     <TableCell>

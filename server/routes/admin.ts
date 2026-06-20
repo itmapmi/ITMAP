@@ -188,6 +188,31 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // Block/unblock a user or set a time-limited access window.
+  app.patch("/api/admin/users/:id/access-control", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        isBlocked: z.boolean().optional(),
+        accessExpiresAt: z.string().datetime().nullable().optional(),
+      });
+      const body = schema.parse(req.body);
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (target.role === "admin") return res.status(403).json({ error: "Cannot restrict admin accounts" });
+      const updates: { isBlocked?: boolean; accessExpiresAt?: Date | null } = {};
+      if (body.isBlocked !== undefined) updates.isBlocked = body.isBlocked;
+      if (body.accessExpiresAt !== undefined) {
+        updates.accessExpiresAt = body.accessExpiresAt ? new Date(body.accessExpiresAt) : null;
+      }
+      const updated = await storage.updateUserAccessControl(req.params.id, updates);
+      const { password, ...safe } = updated;
+      res.json(safe);
+    } catch (error) {
+      console.error("Error updating user access control:", error);
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update access control" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/vendor-scope", requireAdmin, async (req, res) => {
     try {
       const schema = z.object({ vendorScopeIds: z.array(z.string().min(1)) });

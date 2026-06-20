@@ -116,6 +116,21 @@ export async function deleteInvitedUser(id: string): Promise<boolean> {
   return true;
 }
 
+// Block/unblock a user or set a time-limited access window.
+// isBlocked=true denies all access. accessExpiresAt=null means no expiry.
+// Pass both fields together; null explicitly clears a field.
+export async function updateUserAccessControl(
+  id: string,
+  updates: { isBlocked?: boolean; accessExpiresAt?: Date | null },
+): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 // Stamp the last-invite-sent time (used by resend-invite rate-limit + UI).
 export async function updateUserLastInviteSentAt(id: string): Promise<User> {
   const [updated] = await db

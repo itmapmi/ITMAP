@@ -40,6 +40,13 @@ export const users = pgTable("users", {
   googleId: text("google_id").unique(),
   linkedinId: text("linkedin_id").unique(),
 
+  // Access control: admins can hard-block a user or grant time-limited access.
+  // isBlocked=true → always denied, regardless of accessExpiresAt.
+  // accessExpiresAt → user is denied after this timestamp (null = no expiry).
+  // Admin accounts are never affected by these flags.
+  isBlocked: boolean("is_blocked").notNull().default(false),
+  accessExpiresAt: timestamp("access_expires_at"),
+
   // Set when a placeholder account is created via CSV audience import.
   // Cleared (set to null) when the user completes registration. Null for all
   // normal self-registered accounts.

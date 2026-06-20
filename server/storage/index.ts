@@ -173,6 +173,7 @@ export interface IStorage {
   updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
   updateUserVendorScope(id: string, vendorScopeIds: string[]): Promise<User>;
   updateUserLastInviteSentAt(id: string): Promise<User>;
+  updateUserAccessControl(id: string, updates: { isBlocked?: boolean; accessExpiresAt?: Date | null }): Promise<User>;
   deleteInvitedUser(id: string): Promise<boolean>;
 
   getAlertSettings(): Promise<AdminAlertSettings | null>;
