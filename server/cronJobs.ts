@@ -199,8 +199,8 @@ export class CronJobManager {
 
     this.jobs.set('signalCleanup', signalCleanupJob);
 
-    // Signal collection every 12 hours — 8:00 AM and 8:00 PM UTC
-    const signalCollectionJob = cron.schedule('0 8,20 * * *', async () => {
+    // Signal collection once daily — 8:00 AM UTC (reduced from twice daily to cut noise volume)
+    const signalCollectionJob = cron.schedule('0 8 * * *', async () => {
       console.log('[Cron] Starting vendor signal collection...');
       try {
         const { collectSignalsForAllVendors } = await import('./signals/orchestrator');
@@ -369,7 +369,7 @@ export class CronJobManager {
 
     status['signalCollection'] = {
       running: this.jobs.has('signalCollection'),
-      nextRun: 'Every 12 hours (8:00 AM and 8:00 PM UTC)',
+      nextRun: 'Daily at 8:00 AM UTC',
       lastRun: this.lastRun.get('signalCollection')
     };
 

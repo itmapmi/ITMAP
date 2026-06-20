@@ -1,6 +1,11 @@
 /**
  * Sentiment classifier — GPT-4o-mini classifies each raw signal's
  * sentiment, sentiment_score, and impact_label.
+ *
+ * Changes vs original:
+ * - Accepts optional vendorMarket for richer context (e.g. "data storage")
+ * - "when uncertain" default flipped to FALSE (fail-safe, drop the signal)
+ * - Parse-error fallback also sets isRelevant: false
  */
 
 import OpenAI from 'openai';
@@ -9,7 +14,7 @@ export interface ClassificationResult {
   sentiment: 'positive' | 'negative' | 'neutral' | 'mixed';
   sentimentScore: number; // -1.0 to 1.0
   impactLabel: 'HIGH' | 'MEDIUM' | 'LOW';
-  isRelevant: boolean; // false = not about this tech vendor (homonym, unrelated industry, etc.)
+  isRelevant: boolean; // false = not about this tech vendor
 }
 
 let _openai: OpenAI | null = null;
@@ -28,8 +33,13 @@ export async function classifySignal(
   title: string,
   content: string,
   vendorName: string,
+  vendorMarket?: string,
 ): Promise<ClassificationResult> {
-  const prompt = `You are an enterprise technology market analyst. Classify this ${sourceType} signal for the technology vendor "${vendorName}".
+  const vendorContext = vendorMarket
+    ? `"${vendorName}" (a technology vendor in the ${vendorMarket} market)`
+    : `"${vendorName}" the technology company`;
+
+  const prompt = `You are an enterprise technology market analyst. Classify this ${sourceType} signal for the vendor ${vendorContext}.
 
 Title: ${title}
 Content: ${content ? content.slice(0, 500) : '(no content excerpt)'}
@@ -43,7 +53,10 @@ Return ONLY valid JSON with no markdown:
 }
 
 Rules:
-- relevant: true ONLY if this signal is actually about "${vendorName}" the technology company. Set false if the title/content is about an unrelated person, place, concept, food, or industry that happens to share the same word (e.g. "quantum physics" is not about Quantum Corporation; "wasabi sauce" is not about Wasabi Technologies). When uncertain, set true.
+- relevant: true ONLY if this signal is clearly and specifically about ${vendorContext} as a tech company. Set false when:
+  • The vendor name appears as a common word, concept, or unrelated industry (e.g. "quantum physics" ≠ Quantum Corporation; "wasabi sauce" ≠ Wasabi Technologies; "pure math" ≠ Pure Storage)
+  • The signal is about a different company that shares part of the name
+  • You are uncertain — when in doubt, set false. Only set true when confident.
 - sentiment: "positive" (growth/praise/feature launch), "negative" (criticism/outage/layoff/churn), "neutral" (factual/informational), "mixed" (both positive and negative aspects)
 - sentiment_score: -1.0 (very negative) to +1.0 (very positive), 0.0 = neutral
 - impact_label:
@@ -67,7 +80,8 @@ Rules:
 
     const parsed = JSON.parse(cleaned.slice(start, end + 1));
 
-    const isRelevant = parsed.relevant !== false; // default true if missing
+    // Strict: missing or non-boolean relevant → treat as false (fail-safe)
+    const isRelevant = parsed.relevant === true;
     const sentimentOptions = ['positive', 'negative', 'neutral', 'mixed'] as const;
     const sentiment = sentimentOptions.includes(parsed.sentiment) ? parsed.sentiment : 'neutral';
     const sentimentScore = Math.max(-1, Math.min(1, parseFloat(parsed.sentiment_score) || 0));
@@ -78,7 +92,8 @@ Rules:
 
     return { sentiment, sentimentScore, impactLabel, isRelevant };
   } catch (err: any) {
-    console.warn(`[Classifier] Failed for "${title.slice(0, 60)}": ${err.message} — defaulting to neutral/LOW`);
-    return { sentiment: 'neutral', sentimentScore: 0, impactLabel: 'LOW', isRelevant: true };
+    console.warn(`[Classifier] Failed for "${title.slice(0, 60)}": ${err.message} — dropping signal (fail-safe)`);
+    // Fail-safe: parse errors drop the signal rather than accepting it
+    return { sentiment: 'neutral', sentimentScore: 0, impactLabel: 'LOW', isRelevant: false };
   }
 }

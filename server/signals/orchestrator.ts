@@ -1,7 +1,14 @@
 /**
  * Signal orchestrator — runs all four collectors for each vendor,
- * classifies results, upserts into vendor_signals, and feeds HIGH/MEDIUM
+ * classifies results, upserts into vendor_signals, and feeds HIGH
  * HN + Layoffs signals into the existing AI suggestion pipeline.
+ *
+ * Changes vs original:
+ * - Passes marketName to HN collector (quoted query + market keyword)
+ * - Passes marketName to classifier for better vendor identity context
+ * - HN signals only feed suggestions on HIGH impact (MEDIUM removed)
+ * - collectSignalsForAllVendors / collectSignalsForMarket join markets table
+ *   to surface the market name for each vendor
  */
 
 import { db } from '../db';
@@ -29,7 +36,7 @@ export interface SignalCollectionResult {
   error: string | null;
 }
 
-// Sources that feed into AI suggestions when HIGH or MEDIUM
+// Sources that feed into AI suggestions
 const SUGGESTION_SOURCES = new Set(['hackernews', 'layoffs']);
 
 export async function collectSignalsForVendor(
@@ -37,17 +44,21 @@ export async function collectSignalsForVendor(
   vendorName: string,
   marketId: string,
   vendorWebsite?: string | null,
+  marketName?: string | null,
 ): Promise<SignalCollectionResult> {
   let collected = 0;
   let newCount = 0;
   let suggestionsTriggered = 0;
 
+  // Derive a short market keyword for HN query narrowing
+  // Strip the "ITMAP for " prefix that may be stored in the DB
+  const marketKeyword = marketName
+    ? marketName.replace(/^ITMAP for /i, '').split(' ').slice(0, 2).join(' ')
+    : undefined;
+
   try {
-    // Run all four collectors concurrently.
-    // GitHub receives the vendor's website so it can parse a GitHub org URL
-    // directly instead of guessing from the vendor name.
     const [hnSignals, redditSignals, layoffsSignals, githubSignals] = await Promise.allSettled([
-      collectHnSignals(vendorName),
+      collectHnSignals(vendorName, marketKeyword),
       collectRedditSignals(vendorName),
       collectLayoffsSignals(vendorName),
       collectGithubSignals(vendorName, vendorWebsite ?? undefined),
@@ -88,7 +99,6 @@ export async function collectSignalsForVendor(
 
     collected = allRaw.length;
 
-    // Process each signal: dedup, classify, store
     for (const raw of allRaw) {
       // Dedup: exact URL → normalized URL → title fallback (60 days)
       const existing = await findExistingVendorSignal({
@@ -99,16 +109,21 @@ export async function collectSignalsForVendor(
       });
       if (existing) continue;
 
-      // Classify with GPT-4o-mini — also checks relevance
-      const classification = await classifySignal(raw.sourceType, raw.title, raw.content, vendorName);
+      // Classify — pass market name for vendor identity context
+      const classification = await classifySignal(
+        raw.sourceType,
+        raw.title,
+        raw.content,
+        vendorName,
+        marketKeyword,
+      );
 
-      // Drop signals that are not about this tech vendor (e.g. "quantum physics" ≠ Quantum Corp)
+      // Drop signals that are not about this tech vendor
       if (!classification.isRelevant) {
         console.log(`[Orchestrator] Skipping irrelevant signal for ${vendorName}: "${raw.title.slice(0, 80)}"`);
         continue;
       }
 
-      // Store the signal
       const signal = await insertVendorSignal({
         vendorId,
         marketId,
@@ -127,25 +142,20 @@ export async function collectSignalsForVendor(
 
       newCount++;
 
-      // Feed signals into the AI suggestion pipeline:
-      //   - HN and Layoffs: HIGH and MEDIUM only
-      //   - Reddit: all signals regardless of impact label
+      // Suggestion pipeline gates:
+      //   HN / Layoffs → HIGH only (MEDIUM HN signals are mostly blog reposts)
+      //   Reddit       → all signals regardless of impact label
       //
       // Three observable states for a qualifying signal row:
-      //   fed=false, suggestionId=null  → not yet evaluated (LOW or non-qualifying source)
+      //   fed=false, suggestionId=null  → not yet evaluated
       //   fed=true,  suggestionId=null  → evaluated; LLM found no evidence-backed change
       //   fed=true,  suggestionId=set   → evaluated; suggestion created and linked
-      //
-      // markVendorSignalFeedAttempted fires first so every qualifying signal
-      // records that it entered the suggestion pipeline, regardless of outcome.
       const qualifiesForSuggestion =
-        (SUGGESTION_SOURCES.has(raw.sourceType) &&
-          (classification.impactLabel === 'HIGH' || classification.impactLabel === 'MEDIUM')) ||
+        (SUGGESTION_SOURCES.has(raw.sourceType) && classification.impactLabel === 'HIGH') ||
         raw.sourceType === 'reddit';
 
       if (qualifiesForSuggestion) {
         try {
-          // Always record that this signal was submitted to the suggestion pipeline
           await markVendorSignalFeedAttempted(signal.id);
 
           const suggestionId = await generateSuggestionsFromSignal(vendorId, {
@@ -160,7 +170,6 @@ export async function collectSignalsForVendor(
           });
 
           if (suggestionId) {
-            // Upgrade to full linkage: store the created suggestion ID
             await updateVendorSignalSuggestionLink(signal.id, suggestionId);
             suggestionsTriggered++;
           }
@@ -169,7 +178,6 @@ export async function collectSignalsForVendor(
         }
       }
 
-      // Small delay between classifier calls to avoid rate limits
       await new Promise(r => setTimeout(r, 200));
     }
 
@@ -185,17 +193,27 @@ export async function collectSignalsForVendor(
 }
 
 export async function collectSignalsForMarket(marketId: string): Promise<SignalCollectionResult[]> {
-  const marketVendors = await db
-    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, website: vendors.website })
-    .from(vendors)
-    .where(eq(vendors.marketId, marketId));
+  // Fetch market name alongside vendors so we can pass context to collectors
+  const [marketRows, marketVendors] = await Promise.all([
+    db.select({ id: markets.id, name: markets.name }).from(markets).where(eq(markets.id, marketId)),
+    db
+      .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, website: vendors.website })
+      .from(vendors)
+      .where(eq(vendors.marketId, marketId)),
+  ]);
 
+  const marketName = marketRows[0]?.name ?? null;
   const results: SignalCollectionResult[] = [];
 
   for (const vendor of marketVendors) {
-    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website);
+    const result = await collectSignalsForVendor(
+      vendor.id,
+      vendor.name,
+      vendor.marketId,
+      vendor.website,
+      marketName,
+    );
     results.push(result);
-    // Pause between vendors to avoid hammering external APIs
     await new Promise(r => setTimeout(r, 2000));
   }
 
@@ -203,14 +221,28 @@ export async function collectSignalsForMarket(marketId: string): Promise<SignalC
 }
 
 export async function collectSignalsForAllVendors(): Promise<SignalCollectionResult[]> {
-  const allVendors = await db
-    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, website: vendors.website })
-    .from(vendors);
+  // Join vendors with markets to get market name for each vendor
+  const rows = await db
+    .select({
+      id: vendors.id,
+      name: vendors.name,
+      marketId: vendors.marketId,
+      website: vendors.website,
+      marketName: markets.name,
+    })
+    .from(vendors)
+    .leftJoin(markets, eq(vendors.marketId, markets.id));
 
   const results: SignalCollectionResult[] = [];
 
-  for (const vendor of allVendors) {
-    const result = await collectSignalsForVendor(vendor.id, vendor.name, vendor.marketId, vendor.website);
+  for (const vendor of rows) {
+    const result = await collectSignalsForVendor(
+      vendor.id,
+      vendor.name,
+      vendor.marketId,
+      vendor.website,
+      vendor.marketName ?? null,
+    );
     results.push(result);
     await new Promise(r => setTimeout(r, 2000));
   }
