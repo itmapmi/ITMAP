@@ -183,6 +183,22 @@ export class CronJobManager {
 
     this.jobs.set('newPlayersDiscovery', newPlayersDiscoveryJob);
 
+    // Weekly signal cleanup — Sundays 5:00 AM UTC (remove signals older than 120 days + linked suggestions)
+    const signalCleanupJob = cron.schedule('0 5 * * 0', async () => {
+      console.log('[Cron] Starting weekly signal cleanup (>120 days)...');
+      try {
+        const { pruneOldSignals } = await import('./storage/signals');
+        const { signals, suggestions } = await pruneOldSignals(120);
+        console.log(`[Cron] Signal cleanup done: ${signals} signal(s) removed, ${suggestions} suggestion(s) removed`);
+        this.lastRun.set('signalCleanup', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in signal cleanup:', error);
+        this.lastRun.set('signalCleanup', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+
+    this.jobs.set('signalCleanup', signalCleanupJob);
+
     // Signal collection every 12 hours — 8:00 AM and 8:00 PM UTC
     const signalCollectionJob = cron.schedule('0 8,20 * * *', async () => {
       console.log('[Cron] Starting vendor signal collection...');
@@ -355,6 +371,12 @@ export class CronJobManager {
       running: this.jobs.has('signalCollection'),
       nextRun: 'Every 12 hours (8:00 AM and 8:00 PM UTC)',
       lastRun: this.lastRun.get('signalCollection')
+    };
+
+    status['signalCleanup'] = {
+      running: this.jobs.has('signalCleanup'),
+      nextRun: 'Weekly on Sunday at 5:00 AM UTC (removes signals >120 days old)',
+      lastRun: this.lastRun.get('signalCleanup')
     };
 
     return status;

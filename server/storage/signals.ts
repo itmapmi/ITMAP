@@ -186,6 +186,34 @@ export async function findExistingVendorSignal(params: {
   return candidates.find(r => (r.title ?? '').trim().toLowerCase().replace(/\s+/g, ' ') === normTitle);
 }
 
+// Delete all signals older than `days` days, along with their linked AI suggestions.
+// Returns counts of what was removed.
+export async function pruneOldSignals(days = 120): Promise<{ signals: number; suggestions: number }> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  // Collect suggestion IDs linked to the signals we are about to delete.
+  const old = await db
+    .select({ id: vendorSignals.id, aiSuggestionId: vendorSignals.aiSuggestionId })
+    .from(vendorSignals)
+    .where(sql`${vendorSignals.collectedAt} < ${cutoff}`);
+
+  if (old.length === 0) return { signals: 0, suggestions: 0 };
+
+  const signalIds = old.map(r => r.id);
+  const suggestionIds = old.map(r => r.aiSuggestionId).filter((id): id is string => !!id);
+
+  // Delete signals first (FK set-null fires, but suggestion rows remain until we delete them).
+  await db.delete(vendorSignals).where(sql`${vendorSignals.id} = ANY(${signalIds})`);
+
+  let deletedSuggestions = 0;
+  if (suggestionIds.length > 0) {
+    const result = await db.delete(aiSuggestions).where(sql`${aiSuggestions.id} = ANY(${suggestionIds})`);
+    deletedSuggestions = result.rowCount ?? 0;
+  }
+
+  return { signals: old.length, suggestions: deletedSuggestions };
+}
+
 export async function deleteVendorSignal(id: string): Promise<void> {
   const [signal] = await db.select({ aiSuggestionId: vendorSignals.aiSuggestionId })
     .from(vendorSignals).where(eq(vendorSignals.id, id));
