@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { vendorSignals, vendors, markets } from '@shared/schema';
+import { vendorSignals, aiSuggestions, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
 import { eq, and, desc, count, gte, lte, ilike, sql } from 'drizzle-orm';
 
@@ -187,7 +187,12 @@ export async function findExistingVendorSignal(params: {
 }
 
 export async function deleteVendorSignal(id: string): Promise<void> {
+  const [signal] = await db.select({ aiSuggestionId: vendorSignals.aiSuggestionId })
+    .from(vendorSignals).where(eq(vendorSignals.id, id));
   await db.delete(vendorSignals).where(eq(vendorSignals.id, id));
+  if (signal?.aiSuggestionId) {
+    await db.delete(aiSuggestions).where(eq(aiSuggestions.id, signal.aiSuggestionId));
+  }
 }
 
 /**
