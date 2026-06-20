@@ -90,6 +90,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
+  const [showGrid, setShowGrid] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
@@ -600,30 +601,32 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
 
-    // Add subtle grid lines for better readability
-    svg.selectAll(".grid-line-x")
-      .data(xScale.ticks(10))
-      .enter()
-      .append("line")
-      .attr("class", "grid-line-x")
-      .attr("x1", d => xScale(d))
-      .attr("x2", d => xScale(d))
-      .attr("y1", margin.top)
-      .attr("y2", height - margin.bottom)
-      .attr("stroke", "#f1f5f9")
-      .attr("stroke-width", 1);
+    // Add subtle grid lines for better readability (toggleable)
+    if (showGrid) {
+      svg.selectAll(".grid-line-x")
+        .data(xScale.ticks(10))
+        .enter()
+        .append("line")
+        .attr("class", "grid-line-x")
+        .attr("x1", d => xScale(d))
+        .attr("x2", d => xScale(d))
+        .attr("y1", margin.top)
+        .attr("y2", height - margin.bottom)
+        .attr("stroke", "#f1f5f9")
+        .attr("stroke-width", 1);
 
-    svg.selectAll(".grid-line-y")
-      .data(yScale.ticks(10))
-      .enter()
-      .append("line")
-      .attr("class", "grid-line-y")
-      .attr("x1", margin.left)
-      .attr("x2", width - margin.right)
-      .attr("y1", d => yScale(d))
-      .attr("y2", d => yScale(d))
-      .attr("stroke", "#f1f5f9")
-      .attr("stroke-width", 1);
+      svg.selectAll(".grid-line-y")
+        .data(yScale.ticks(10))
+        .enter()
+        .append("line")
+        .attr("class", "grid-line-y")
+        .attr("x1", margin.left)
+        .attr("x2", width - margin.right)
+        .attr("y1", d => yScale(d))
+        .attr("y2", d => yScale(d))
+        .attr("stroke", "#f1f5f9")
+        .attr("stroke-width", 1);
+    }
 
     // ── Two-band Spectio chart layout ────────────────────────────────────────
     const defs = svg.append("defs");
@@ -679,13 +682,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("stroke-width", 3)
       .style("filter", `drop-shadow(0 0 4px ${theme.topStroke})`);
 
-    // Add professional-looking axes
+    // Add professional-looking axes (tick lines hidden when grid is off)
     const xAxis = d3.axisBottom(xScale)
-      .tickSize(-chartHeight)
+      .tickSize(showGrid ? -chartHeight : 0)
       .tickSizeOuter(0)
       .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
-      .tickSize(-chartWidth)
+      .tickSize(showGrid ? -chartWidth : 0)
       .tickSizeOuter(0)
       .tickFormat(d => d === 50 || d === 100 ? `${d}` : '');
 
@@ -1026,7 +1029,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, quadrantSettings]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, quadrantSettings, showGrid]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1056,8 +1059,22 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
           <Card>
-            <CardHeader className={isMobile ? "pb-3" : ""}>
+            <CardHeader className={`${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
+              <button
+                onClick={() => setShowGrid(g => !g)}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  showGrid
+                    ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"
+                }`}
+                title={showGrid ? "Hide grid lines" : "Show grid lines"}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4.5h12M1 9.5h12M4.5 1v12M9.5 1v12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+                {showGrid ? "Grid on" : "Grid off"}
+              </button>
             </CardHeader>
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
