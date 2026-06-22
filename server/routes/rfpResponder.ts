@@ -361,10 +361,23 @@ export function registerRfpResponderRoutes(app: Express): void {
 
       setImmediate(async () => {
         try {
+          // Two-phase ordering: technical specifications first (KB-grounded,
+          // slower), then non-technical acknowledgements (lightweight, fast).
+          // This ensures the higher-value responses appear first in the UI
+          // as generation progresses.
+          const isTechnical = (r: typeof requirements[0]) =>
+            r.category === "technical_specification" ||
+            r.category === "functional" ||
+            r.category === "technical";
+          const orderedRequirements = [
+            ...requirements.filter(isTechnical),
+            ...requirements.filter((r) => !isTechnical(r)),
+          ];
+
           // Generate in batches of 5 (parallel per batch, sequential batches)
           const BATCH_SIZE = 5;
-          for (let i = 0; i < requirements.length; i += BATCH_SIZE) {
-            const batch = requirements.slice(i, i + BATCH_SIZE);
+          for (let i = 0; i < orderedRequirements.length; i += BATCH_SIZE) {
+            const batch = orderedRequirements.slice(i, i + BATCH_SIZE);
             await Promise.all(
               batch.map(async (req_) => {
                 try {

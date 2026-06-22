@@ -176,16 +176,19 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
             <p className="text-sm text-slate-300 mb-1">
               Review the decomposed requirements. Correct any misclassifications before generating responses.
             </p>
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-4 mt-2 flex-wrap">
               <span className="flex items-center gap-1.5 text-xs text-slate-400">
                 <span className="h-2 w-2 rounded-full bg-violet-400 inline-block" />
-                <span className="font-medium text-violet-300">{techReqs.length}</span> Technical
+                <span className="font-medium text-violet-300">{techReqs.length}</span> Technical Specifications
               </span>
               <span className="flex items-center gap-1.5 text-xs text-slate-400">
                 <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
                 <span className="font-medium text-amber-300">{nonTechReqs.length}</span> Non-Technical
               </span>
-              <span className="text-xs text-slate-500">{requirements.length} total</span>
+              <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="h-2 w-2 rounded-full bg-slate-600 inline-block" />
+                Boilerplate items (GST numbers, TOC entries, date tables) automatically filtered
+              </span>
             </div>
           </div>
           <Button
@@ -1557,6 +1560,20 @@ export default function RfpSessionDetailPage() {
   const answerByReqId = new Map(answers.map((a) => [a.requirementId, a]));
   const totalAnswered = answers.filter((a) => a.coverageFlag !== "pending").length;
 
+  // Per-group progress for the generating state
+  const techReqIds = new Set(
+    requirements.filter((r) => getPrimaryGroup(r.category) === "technical").map((r) => r.id),
+  );
+  const nonTechReqIds = new Set(
+    requirements.filter((r) => getPrimaryGroup(r.category) === "non_technical").map((r) => r.id),
+  );
+  const techAnswered = answers.filter(
+    (a) => techReqIds.has(a.requirementId) && a.coverageFlag !== "pending",
+  ).length;
+  const nonTechAnswered = answers.filter(
+    (a) => nonTechReqIds.has(a.requirementId) && a.coverageFlag !== "pending",
+  ).length;
+
   return (
     <div className="min-h-screen bg-slate-950">
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -1656,13 +1673,30 @@ export default function RfpSessionDetailPage() {
             <div className="rounded-xl bg-slate-900 border border-white/5 px-8 py-10 flex flex-col items-center text-center mb-6">
               <Loader2 className="h-8 w-8 text-cyan-400 animate-spin mb-3" />
               <h2 className="text-base font-medium text-white mb-1">Generating responses…</h2>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 mb-4">
                 {totalAnswered} / {requirements.length} complete · Page auto-refreshes every 3 seconds
               </p>
-              {/* Progress bar */}
-              <div className="w-full max-w-sm mt-4 bg-slate-800 rounded-full h-1.5">
+              {/* Per-group progress */}
+              <div className="flex gap-6 text-xs mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-violet-400 flex-shrink-0" />
+                  <span className="text-slate-400">Technical:</span>
+                  <span className="font-medium text-violet-300">
+                    {techAnswered} / {techReqIds.size}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" />
+                  <span className="text-slate-400">Non-Technical:</span>
+                  <span className="font-medium text-amber-300">
+                    {nonTechAnswered} / {nonTechReqIds.size}
+                  </span>
+                </div>
+              </div>
+              {/* Overall progress bar */}
+              <div className="w-full max-w-sm bg-slate-800 rounded-full h-1.5">
                 <div
-                  className="bg-gradient-to-r from-cyan-500 to-violet-600 h-1.5 rounded-full transition-all"
+                  className="bg-gradient-to-r from-violet-500 to-amber-400 h-1.5 rounded-full transition-all"
                   style={{ width: `${requirements.length > 0 ? (totalAnswered / requirements.length) * 100 : 0}%` }}
                 />
               </div>

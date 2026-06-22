@@ -22,7 +22,7 @@ const requirementItemSchema = z.object({
 });
 
 const decompositionSchema = z.object({
-  requirements: z.array(z.unknown()).min(1).max(500),
+  requirements: z.array(z.unknown()).max(500),
 });
 
 // Exported type — only the two real categories reach callers
