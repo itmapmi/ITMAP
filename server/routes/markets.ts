@@ -65,6 +65,36 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Lightweight vendor-name index for client-side market search.
+  // Returns [{ id, vendorNames }] for every market visible to the caller.
+  // Must be registered before /:id so the path isn't swallowed by that handler.
+  app.get("/api/markets/vendor-index", async (req, res) => {
+    try {
+      const isAuth = req.isAuthenticated();
+      const user = isAuth ? (req.user as any) : null;
+      const isAdmin = !!user && user.role === 'admin';
+      const allMarkets = await storage.getAllMarkets();
+      const visibleMarkets = isAdmin
+        ? allMarkets
+        : allMarkets.filter(m => {
+            if (m.visibility === "private") return user && m.ownerUserId === user.id;
+            return m.isVisible !== false;
+          });
+      const visibleIds = new Set(visibleMarkets.map(m => m.id));
+      const allVendors = await storage.getAllVendors();
+      const index: Record<string, string[]> = {};
+      for (const v of allVendors) {
+        if (!visibleIds.has(v.marketId)) continue;
+        if (!index[v.marketId]) index[v.marketId] = [];
+        index[v.marketId].push(v.name);
+      }
+      const result = visibleMarkets.map(m => ({ id: m.id, vendorNames: index[m.id] ?? [] }));
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/markets/:id", async (req, res) => {
     try {
       const market = await storage.getMarketById(req.params.id);

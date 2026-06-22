@@ -53,6 +53,17 @@ const upload = multer({
   },
 });
 
+// Separate multer instance for image uploads (stencil / appliance images)
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml", "image/webp"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Unsupported image type. Allowed: PNG, JPG, SVG, WebP"));
+  },
+});
+
 // ── Auth helpers ──────────────────────────────────────────────────────────
 
 function requireVendorScope(req: Request, res: Response, next: () => void) {
@@ -553,7 +564,7 @@ export function registerRfpResponderRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/rfp/kb/node-images", ...guard, upload.single("file"), async (req: Request, res: Response) => {
+  app.post("/api/rfp/kb/node-images", ...guard, imageUpload.single("file"), async (req: Request, res: Response) => {
     try {
       const vendorId = primaryVendorId(req)!;
       const file = req.file;

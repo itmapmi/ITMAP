@@ -6,7 +6,8 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
-import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { BarChart3, TrendingUp, Globe2, Filter, ArrowRight, ChevronRight, Sparkles, Lock, FileText, Plus, Search, X } from "lucide-react";
 import type { Market } from "@shared/schema";
 
 export const FREE_MARKET_ID = "130ee3b2-16b1-4803-a8f0-8c4ed3a61d96";
@@ -22,6 +23,8 @@ const fadeUp = {
   transition: { duration: 0.55, ease: [0.25, 0.25, 0, 1] as any },
 };
 
+interface VendorIndexEntry { id: string; vendorNames: string[] }
+
 export default function Markets() {
   useSeo({
     title: "Markets — DCIG | Browse Enterprise IT Vendor Markets",
@@ -30,8 +33,20 @@ export default function Markets() {
   });
   const { isAuthenticated, user } = useAuth();
   const { data: markets, isLoading, error } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const { data: vendorIndex } = useQuery<VendorIndexEntry[]>({ queryKey: ["/api/markets/vendor-index"] });
+
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [tab, setTab] = useState<"all" | "mine">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Build a fast lookup: marketId → lowercase vendor names
+  const vendorMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const entry of vendorIndex ?? []) {
+      map[entry.id] = entry.vendorNames.map(n => n.toLowerCase());
+    }
+    return map;
+  }, [vendorIndex]);
 
   // Authenticated user's own private markets (from the Market Builder).
   const myMarkets = useMemo(() => {
@@ -51,8 +66,18 @@ export default function Markets() {
   }, [publicMarkets]);
 
   const filtered = useMemo(() => {
-    return publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
-  }, [publicMarkets, selectedCategory]);
+    let list = publicMarkets.filter(m => selectedCategory === "all" || m.category === selectedCategory);
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(m => {
+      // Match on market name or description
+      if (cleanName(m.name).toLowerCase().includes(q)) return true;
+      if (m.shortDescription?.toLowerCase().includes(q)) return true;
+      if (m.description?.toLowerCase().includes(q)) return true;
+      // Match on any vendor name in this market
+      return (vendorMap[m.id] ?? []).some(v => v.includes(q));
+    });
+  }, [publicMarkets, selectedCategory, searchQuery, vendorMap]);
 
   // Track page visit and dwell time so the intent engine picks up browse activity.
   // market_viewed without a specific marketId signals general market browsing.
@@ -239,30 +264,54 @@ export default function Markets() {
           </div>
         )}
 
-        {/* Filter */}
-        {tab === "all" && categories.length > 0 && (
+        {/* Search + Filter — All Markets tab only */}
+        {tab === "all" && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex items-center gap-3 mb-10 flex-wrap"
+            className="mb-8 space-y-4"
           >
-            <div className="flex items-center gap-1.5 text-slate-500 text-sm mr-1">
-              <Filter className="h-3.5 w-3.5" /> Filter:
+            {/* Search bar */}
+            <div className="relative max-w-lg">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search markets or vendors…"
+                className="pl-10 pr-10 bg-slate-900 border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-cyan-500/40 focus-visible:border-cyan-500/50 rounded-xl h-11"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            {["all", ...categories].map(cat => (
-              <button
-                key={cat}
-                onClick={() => { setSelectedCategory(cat); track("filter_applied", { metadata: { category: cat } }); }}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  selectedCategory === cat
-                    ? "bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]"
-                    : "bg-slate-900 border border-white/5 text-slate-400 hover:text-white hover:border-white/15"
-                }`}
-              >
-                {cat === "all" ? "All Categories" : cat}
-              </button>
-            ))}
+
+            {/* Category pills */}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-slate-500 text-sm mr-1">
+                  <Filter className="h-3.5 w-3.5" /> Filter:
+                </div>
+                {["all", ...categories].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => { setSelectedCategory(cat); track("filter_applied", { metadata: { category: cat } }); }}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === cat
+                        ? "bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(14,165,233,0.2)]"
+                        : "bg-slate-900 border border-white/5 text-slate-400 hover:text-white hover:border-white/15"
+                    }`}
+                  >
+                    {cat === "all" ? "All Categories" : cat}
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -375,17 +424,32 @@ export default function Markets() {
         ) : (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-slate-900 border border-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Filter className="h-7 w-7 text-slate-600" />
+              <Search className="h-7 w-7 text-slate-600" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">No markets found</h3>
-            <p className="text-slate-500 mb-5">Try adjusting your filter.</p>
-            <Button
-              variant="outline"
-              onClick={() => setSelectedCategory("all")}
-              className="border-white/10 text-slate-300 hover:text-white bg-transparent"
-            >
-              Clear Filter
-            </Button>
+            <p className="text-slate-500 mb-5">
+              {searchQuery ? `No results for "${searchQuery}".` : "Try adjusting your filter."}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  onClick={() => setSearchQuery("")}
+                  className="border-white/10 text-slate-300 hover:text-white bg-transparent"
+                >
+                  Clear Search
+                </Button>
+              )}
+              {selectedCategory !== "all" && (
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedCategory("all")}
+                  className="border-white/10 text-slate-300 hover:text-white bg-transparent"
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </div>
           </div>
         )}</>)}
 
