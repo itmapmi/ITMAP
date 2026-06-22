@@ -248,9 +248,11 @@ export function SupportMatrixAdmin() {
     (a, b) => a.category.displayOrder - b.category.displayOrder
   );
 
-  // Calculate ecosystem support totals
-  const ecosystemFeatures = features.filter(feature => 
-    feature.category.name.toLowerCase().includes('ecosystem')
+  // Calculate ecosystem support totals — use isEcosystem flag (set by Market
+  // Builder) so domain-specific category names like "Applicant Tracking &
+  // Recruiting Systems" are correctly identified as ecosystem, not product.
+  const ecosystemFeatures = features.filter((feature: any) =>
+    feature.category?.isEcosystem === true,
   );
 
   const getEcosystemTotals = () => {
