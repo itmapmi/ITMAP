@@ -29,6 +29,10 @@ interface SessionData {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
+  // New two-category system
+  technical_specification: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  non_technical_requirement: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  // Legacy categories — displayed gracefully for old sessions
   functional: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
   technical: "bg-violet-500/10 text-violet-400 border-violet-500/20",
   commercial: "bg-amber-500/10 text-amber-400 border-amber-500/20",
@@ -36,6 +40,29 @@ const CATEGORY_COLORS: Record<string, string> = {
   support: "bg-teal-500/10 text-teal-400 border-teal-500/20",
   other: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
+
+const CATEGORY_DISPLAY: Record<string, string> = {
+  technical_specification: "Technical",
+  non_technical_requirement: "Non-Technical",
+  functional: "Functional",
+  technical: "Technical",
+  commercial: "Commercial",
+  compliance: "Compliance",
+  support: "Support",
+  other: "Other",
+};
+
+/** Map any category value into one of the two primary groups */
+function getPrimaryGroup(category: string): "technical" | "non_technical" {
+  if (
+    category === "technical_specification" ||
+    category === "functional" ||
+    category === "technical"
+  ) {
+    return "technical";
+  }
+  return "non_technical";
+}
 
 const RESPONSE_TYPE_LABELS: Record<string, string> = {
   yes_no: "Yes/No", descriptive: "Descriptive", scored: "Scored", reference: "Reference",
@@ -88,8 +115,28 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Review Phase ──────────────────────────────────────────────────────────
 
+const PRIMARY_GROUPS = [
+  {
+    key: "technical" as const,
+    label: "Technical Specifications",
+    description: "Hardware specs, performance, features, integration, test criteria",
+    accent: "violet",
+    accentCls: "text-violet-400 border-violet-500/30 bg-violet-500/10",
+    dotCls: "bg-violet-400",
+  },
+  {
+    key: "non_technical" as const,
+    label: "Non-Technical Requirements",
+    description: "Commercial terms, payment, warranty, delivery, compliance obligations",
+    accent: "amber",
+    accentCls: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+    dotCls: "bg-amber-400",
+  },
+] as const;
+
 function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId: string }) {
   const { toast } = useToast();
+  const [activeGroup, setActiveGroup] = useState<"technical" | "non_technical">("technical");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const updateReqMutation = useMutation({
@@ -113,94 +160,160 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
   });
 
   const { requirements } = data;
-  const sections = Array.from(new Set(requirements.map((r) => r.section ?? "General"))).sort();
+
+  const techReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "technical");
+  const nonTechReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "non_technical");
+
+  const activeReqs = activeGroup === "technical" ? techReqs : nonTechReqs;
+  const sections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
 
   return (
     <div>
-      {/* Header bar */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <p className="text-sm text-slate-400">
-            Review the decomposed requirement tree. Correct any misclassifications before generating responses.
-          </p>
+      {/* Summary banner */}
+      <div className="mb-5 rounded-xl bg-slate-900 border border-white/5 px-5 py-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-sm text-slate-300 mb-1">
+              Review the decomposed requirements. Correct any misclassifications before generating responses.
+            </p>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                <span className="h-2 w-2 rounded-full bg-violet-400 inline-block" />
+                <span className="font-medium text-violet-300">{techReqs.length}</span> Technical
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
+                <span className="font-medium text-amber-300">{nonTechReqs.length}</span> Non-Technical
+              </span>
+              <span className="text-xs text-slate-500">{requirements.length} total</span>
+            </div>
+          </div>
+          <Button
+            onClick={() => confirmMutation.mutate()}
+            disabled={confirmMutation.isPending}
+            className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white flex-shrink-0"
+          >
+            {confirmMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            Confirm Review
+          </Button>
         </div>
-        <Button
-          onClick={() => confirmMutation.mutate()}
-          disabled={confirmMutation.isPending}
-          className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white"
-        >
-          {confirmMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <CheckCircle className="h-4 w-4 mr-2" />
-          )}
-          Confirm Review
-        </Button>
       </div>
 
-      {/* Requirements grouped by section */}
-      <div className="space-y-4">
-        {sections.map((section) => {
-          const sectionReqs = requirements.filter((r) => (r.section ?? "General") === section);
-          const isCollapsed = collapsed.has(section);
+      {/* Group tabs */}
+      <div className="flex gap-2 mb-4">
+        {PRIMARY_GROUPS.map((g) => {
+          const count = g.key === "technical" ? techReqs.length : nonTechReqs.length;
+          const isActive = activeGroup === g.key;
           return (
-            <div key={section} className="rounded-xl bg-slate-900 border border-white/5 overflow-hidden">
-              <button
-                onClick={() => setCollapsed((prev) => {
-                  const next = new Set(prev);
-                  isCollapsed ? next.delete(section) : next.add(section);
-                  return next;
-                })}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/3 transition-colors"
-              >
-                <span className="text-sm font-medium text-slate-200 text-left">{section}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">{sectionReqs.length} req{sectionReqs.length !== 1 ? "s" : ""}</span>
-                  {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-500" />}
-                </div>
-              </button>
-              {!isCollapsed && (
-                <div className="divide-y divide-white/4">
-                  {sectionReqs.map((req) => (
-                    <div key={req.id} className="px-4 py-3">
-                      <p className="text-sm text-slate-200 mb-3 leading-relaxed">{req.requirementText}</p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <select
-                          value={req.category}
-                          onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { category: e.target.value } })}
-                          className="rounded-lg bg-slate-800 border border-white/8 text-xs text-slate-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-                        >
-                          {["functional", "technical", "commercial", "compliance", "support", "other"].map((c) => (
-                            <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={req.responseType}
-                          onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { responseType: e.target.value } })}
-                          className="rounded-lg bg-slate-800 border border-white/8 text-xs text-slate-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-                        >
-                          {["yes_no", "descriptive", "scored", "reference"].map((t) => (
-                            <option key={t} value={t}>{RESPONSE_TYPE_LABELS[t]}</option>
-                          ))}
-                        </select>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={req.mandatory}
-                            onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { mandatory: e.target.checked } })}
-                            className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/50"
-                          />
-                          <span className="text-xs text-slate-400">Mandatory</span>
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              key={g.key}
+              onClick={() => setActiveGroup(g.key)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border transition-all ${
+                isActive
+                  ? g.accentCls + " border-opacity-100"
+                  : "text-slate-500 border-white/5 bg-slate-900 hover:text-slate-300 hover:bg-white/3"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${isActive ? g.dotCls : "bg-slate-600"}`} />
+              {g.label}
+              <span className={`rounded-full px-1.5 py-px text-xs ${isActive ? "bg-white/10" : "bg-slate-800"}`}>
+                {count}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {/* Active group description */}
+      <p className="text-xs text-slate-500 mb-4 pl-1">
+        {PRIMARY_GROUPS.find((g) => g.key === activeGroup)?.description}
+      </p>
+
+      {/* Requirements grouped by section within the active group */}
+      {activeReqs.length === 0 ? (
+        <div className="rounded-xl bg-slate-900 border border-white/5 px-5 py-8 text-center text-sm text-slate-500">
+          No requirements in this group.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sections.map((section) => {
+            const sectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
+            const colKey = `${activeGroup}:${section}`;
+            const isCollapsed = collapsed.has(colKey);
+            return (
+              <div key={section} className="rounded-xl bg-slate-900 border border-white/5 overflow-hidden">
+                <button
+                  onClick={() => setCollapsed((prev) => {
+                    const next = new Set(prev);
+                    isCollapsed ? next.delete(colKey) : next.add(colKey);
+                    return next;
+                  })}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/3 transition-colors"
+                >
+                  <span className="text-sm font-medium text-slate-200 text-left">{section}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{sectionReqs.length} req{sectionReqs.length !== 1 ? "s" : ""}</span>
+                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-500" />}
+                  </div>
+                </button>
+                {!isCollapsed && (
+                  <div className="divide-y divide-white/4">
+                    {sectionReqs.map((req) => (
+                      <div key={req.id} className="px-4 py-3">
+                        <p className="text-sm text-slate-200 mb-3 leading-relaxed">{req.requirementText}</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {/* Category reclassification */}
+                          <select
+                            value={req.category}
+                            onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { category: e.target.value } })}
+                            className="rounded-lg bg-slate-800 border border-white/8 text-xs text-slate-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                          >
+                            <optgroup label="New Classification">
+                              <option value="technical_specification">Technical Specification</option>
+                              <option value="non_technical_requirement">Non-Technical Requirement</option>
+                            </optgroup>
+                            {["functional", "technical", "commercial", "compliance", "support", "other"].includes(req.category) && (
+                              <optgroup label="Legacy (original)">
+                                <option value={req.category}>{CATEGORY_DISPLAY[req.category] ?? req.category} (keep)</option>
+                              </optgroup>
+                            )}
+                          </select>
+                          <select
+                            value={req.responseType}
+                            onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { responseType: e.target.value } })}
+                            className="rounded-lg bg-slate-800 border border-white/8 text-xs text-slate-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                          >
+                            {["yes_no", "descriptive", "scored", "reference"].map((t) => (
+                              <option key={t} value={t}>{RESPONSE_TYPE_LABELS[t]}</option>
+                            ))}
+                          </select>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={req.mandatory}
+                              onChange={(e) => updateReqMutation.mutate({ reqId: req.id, patch: { mandatory: e.target.checked } })}
+                              className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/50"
+                            />
+                            <span className="text-xs text-slate-400">Mandatory</span>
+                          </label>
+                          {/* Current category badge */}
+                          <span className={`text-[10px] border rounded-full px-1.5 py-px ${CATEGORY_COLORS[req.category] ?? CATEGORY_COLORS.other}`}>
+                            {CATEGORY_DISPLAY[req.category] ?? req.category}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -251,7 +364,7 @@ function AnswerPanel({
       <div className="flex items-center gap-3 flex-wrap">
         <CoverageBadge flag={answer.coverageFlag} />
         <span className={`text-xs border rounded-full px-2 py-0.5 ${CATEGORY_COLORS[req.category] ?? CATEGORY_COLORS.other}`}>
-          {req.category}
+          {CATEGORY_DISPLAY[req.category] ?? req.category}
         </span>
         <span className="text-xs text-slate-500">{RESPONSE_TYPE_LABELS[req.responseType] ?? req.responseType}</span>
         {req.mandatory && (
@@ -455,6 +568,7 @@ function AnswerPanel({
 // ── Complete Phase (split-panel) ──────────────────────────────────────────
 
 function CompleteView({ data, sessionId }: { data: SessionData; sessionId: string }) {
+  const [activeGroup, setActiveGroup] = useState<"technical" | "non_technical">("technical");
   const [selectedReqId, setSelectedReqId] = useState<string | null>(
     data.requirements[0]?.id ?? null,
   );
@@ -477,7 +591,11 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
 
   const { requirements, answers } = data;
   const answerByReqId = new Map(answers.map((a) => [a.requirementId, a]));
-  const sections = Array.from(new Set(requirements.map((r) => r.section ?? "General"))).sort();
+
+  const techReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "technical");
+  const nonTechReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "non_technical");
+  const activeReqs = activeGroup === "technical" ? techReqs : nonTechReqs;
+  const sections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
 
   const selectedReq = requirements.find((r) => r.id === selectedReqId);
   const selectedAnswer = selectedReqId ? answerByReqId.get(selectedReqId) : undefined;
@@ -486,12 +604,35 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
     <div className="flex gap-4 min-h-[600px]">
       {/* Left: requirement list */}
       <div className="w-80 flex-shrink-0 rounded-xl bg-slate-900 border border-white/5 overflow-hidden flex flex-col">
-        <div className="px-3 pt-3 pb-2 border-b border-white/5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Requirements</p>
+        {/* Group tabs */}
+        <div className="border-b border-white/5 p-2 flex gap-1">
+          {PRIMARY_GROUPS.map((g) => {
+            const count = g.key === "technical" ? techReqs.length : nonTechReqs.length;
+            const isActive = activeGroup === g.key;
+            return (
+              <button
+                key={g.key}
+                onClick={() => setActiveGroup(g.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all ${
+                  isActive
+                    ? g.accentCls
+                    : "text-slate-500 hover:text-slate-300 hover:bg-white/3"
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? g.dotCls : "bg-slate-600"}`} />
+                {g.key === "technical" ? "Technical" : "Non-Technical"}
+                <span className={`rounded-full px-1 text-[10px] ${isActive ? "bg-white/15" : "bg-slate-800"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
         <div className="overflow-y-auto flex-1">
-          {sections.map((section) => {
-            const sectionReqs = requirements.filter((r) => (r.section ?? "General") === section);
+          {activeReqs.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs text-slate-500">No requirements in this group.</div>
+          ) : sections.map((section) => {
+            const sectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
             return (
               <div key={section}>
                 <div className="px-3 py-1.5 bg-slate-800/50 border-b border-white/4">
@@ -529,7 +670,7 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
                         </p>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className={`text-[10px] border rounded-full px-1.5 py-px ${CATEGORY_COLORS[req.category] ?? CATEGORY_COLORS.other}`}>
-                            {req.category}
+                            {CATEGORY_DISPLAY[req.category] ?? req.category}
                           </span>
                           {req.mandatory && (
                             <span className="text-[10px] text-rose-400">Must</span>

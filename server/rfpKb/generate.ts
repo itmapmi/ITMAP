@@ -76,6 +76,30 @@ Respond ONLY with valid JSON:
 }`;
 }
 
+function buildNonTechnicalSystemPrompt(vendorName: string): string {
+  return `You are an expert RFP compliance writer for ${vendorName}. Your task is to draft a brief, professional acknowledgement of a non-technical commercial/contractual requirement.
+
+INSTRUCTIONS:
+1. Confirm ${vendorName}'s compliance with or acceptance of the stated requirement in professional business language.
+2. If the requirement mentions specific figures (payment terms, warranty duration, delivery milestones, etc.) echo them back in the confirmation so the client knows you have read and understood the obligation.
+3. Flag any item that may require legal/commercial team sign-off with "Subject to contract review" — do not fabricate numbers.
+4. Keep the response to 1–2 concise sentences. Do NOT write essays.
+5. Write in professional first-person-plural: "We confirm… / We acknowledge… / We agree to…"
+
+Coverage assessment for non-technical requirements:
+- "green": obligation is clearly acknowledged with no reservations.
+- "amber": obligation noted but subject to review / clarification / negotiation.
+- "red": requirement cannot be confirmed as stated (flag clearly).
+
+Respond ONLY with valid JSON:
+{
+  "answer": "...",
+  "coverageAssessment": "green|amber|red",
+  "coverageReason": "...",
+  "competitiveClaims": []
+}`;
+}
+
 function buildUserMessage(
   requirementText: string,
   section: string | null | undefined,
@@ -198,14 +222,65 @@ async function fetchExternalUrl(url: string): Promise<{ url: string; content: st
   }
 }
 
-export async function generateRequirementResponse(params: {
-  vendorId: string;
+// ── Non-technical requirement: lightweight compliance generation ───────────
+
+async function generateNonTechnicalResponse(params: {
+  vendorName: string;
   requirementText: string;
   section?: string | null;
-  vendorName: string;
-  topK?: number;
 }): Promise<GenerationResult> {
-  const { vendorId, requirementText, section, vendorName, topK = 8 } = params;
+  const { vendorName, requirementText, section } = params;
+
+  let output: z.infer<typeof generationOutputSchema> | undefined;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: buildNonTechnicalSystemPrompt(vendorName) },
+          {
+            role: "user",
+            content: `NON-TECHNICAL REQUIREMENT (section: ${section ?? "Unspecified"}):\n${requirementText}\n\nGenerate the JSON compliance acknowledgement now.`,
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_tokens: 500,
+      });
+
+      const raw = response.choices[0]?.message?.content ?? "{}";
+      output = generationOutputSchema.parse(JSON.parse(raw));
+      break;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+
+  if (!output) {
+    throw new Error(`Non-technical generation failed after 3 attempts: ${String(lastError)}`);
+  }
+
+  return {
+    generatedText: output.answer,
+    coverageFlag: output.coverageAssessment,
+    sources: [],
+    competitiveClaims: [],
+  };
+}
+
+// ── Technical requirement: full KB-grounded generation ───────────────────
+
+async function generateTechnicalResponse(params: {
+  vendorId: string;
+  vendorName: string;
+  requirementText: string;
+  section?: string | null;
+  topK: number;
+}): Promise<GenerationResult> {
+  const { vendorId, vendorName, requirementText, section, topK } = params;
 
   // 1. Load vendor-level KB sources (market links + external URLs)
   const [kbMarketLinks, kbExternalUrls] = await Promise.all([
@@ -234,7 +309,7 @@ export async function generateRequirementResponse(params: {
   const rankedDataPoints = spectioCtx ? selectTopDataPoints(spectioCtx, 12) : [];
 
   // 4. Generate response
-  let output: z.infer<typeof generationOutputSchema>;
+  let output: z.infer<typeof generationOutputSchema> | undefined;
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -262,9 +337,8 @@ export async function generateRequirementResponse(params: {
     }
   }
 
-  // @ts-expect-error set in loop above
-  if (!output!) {
-    throw new Error(`Generation failed after 3 attempts: ${String(lastError)}`);
+  if (!output) {
+    throw new Error(`Technical generation failed after 3 attempts: ${String(lastError)}`);
   }
 
   const coverageFlag = computeCoverageFlag(output.coverageAssessment, chunks);
@@ -284,4 +358,25 @@ export async function generateRequirementResponse(params: {
     sources,
     competitiveClaims,
   };
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+
+export async function generateRequirementResponse(params: {
+  vendorId: string;
+  requirementText: string;
+  section?: string | null;
+  vendorName: string;
+  category?: string | null;
+  topK?: number;
+}): Promise<GenerationResult> {
+  const { vendorId, requirementText, section, vendorName, category, topK = 8 } = params;
+
+  // Route to the appropriate generation path based on category
+  if (category === "non_technical_requirement") {
+    return generateNonTechnicalResponse({ vendorName, requirementText, section });
+  }
+
+  // technical_specification or any legacy/unknown category → full KB-grounded pipeline
+  return generateTechnicalResponse({ vendorId, vendorName, requirementText, section, topK });
 }

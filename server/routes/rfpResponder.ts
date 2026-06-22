@@ -284,7 +284,12 @@ export function registerRfpResponderRoutes(app: Express): void {
         const schema = z.object({
           section: z.string().optional(),
           category: z
-            .enum(["functional", "technical", "commercial", "compliance", "support", "other"])
+            .enum([
+              "technical_specification",
+              "non_technical_requirement",
+              // Legacy values — kept for backward compat with old sessions
+              "functional", "technical", "commercial", "compliance", "support", "other",
+            ])
             .optional(),
           mandatory: z.boolean().optional(),
           responseType: z.enum(["yes_no", "descriptive", "scored", "reference"]).optional(),
@@ -368,6 +373,7 @@ export function registerRfpResponderRoutes(app: Express): void {
                     requirementText: req_.requirementText,
                     section: req_.section,
                     vendorName,
+                    category: req_.category,
                   });
                   await upsertRfpResponseAnswer({
                     requirementId: req_.id,
