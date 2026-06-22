@@ -137,7 +137,28 @@ const PRIMARY_GROUPS = [
 function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId: string }) {
   const { toast } = useToast();
   const [activeGroup, setActiveGroup] = useState<"technical" | "non_technical">("technical");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const storageKey = `rfp-collapsed-${sessionId}`;
+  const [collapsed, setCollapsedRaw] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      return saved ? new Set<string>(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  const setCollapsed = (updater: (prev: Set<string>) => Set<string>) => {
+    setCollapsedRaw((prev) => {
+      const next = updater(prev);
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+      } catch {
+        // sessionStorage unavailable — silently ignore
+      }
+      return next;
+    });
+  };
 
   const updateReqMutation = useMutation({
     mutationFn: async ({ reqId, patch }: { reqId: string; patch: Record<string, any> }) => {
