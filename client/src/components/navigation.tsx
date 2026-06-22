@@ -28,7 +28,10 @@ export default function Navigation() {
   });
   const vendorSeatName = vendorScope?.vendor?.name;
 
-  const isAdminArea = ADMIN_PATHS.some(p => location.startsWith(p));
+  // /lead-gen/me/* paths are for vendor seat users, NOT the admin area.
+  // Only /lead-gen (admin dashboard) and paths that don't start with /lead-gen/me
+  // should trigger the light admin nav.
+  const isAdminArea = ADMIN_PATHS.some(p => location.startsWith(p)) && !location.startsWith("/lead-gen/me");
 
   const handleLogout = async () => {
     try {
