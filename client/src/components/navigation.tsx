@@ -63,6 +63,7 @@ export default function Navigation() {
     { href: marketBuilderHref,   label: "Market Builder",   active: isMarketBuilderActive,   featureKey: "market_builder",   vendorHidden: true },
     { href: "/forecast-builder", label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder", vendorHidden: true },
     { href: "/datasheets",       label: "Datasheets",                                        featureKey: "datasheets",        vendorHidden: true },
+    { href: "/rfp-responder",    label: "RFP Responder",                                     featureKey: "rfp" },
   ].filter(item => {
     if (!vendorOnly || !item.vendorHidden) return true;
     return item.featureKey ? hasFeature(item.featureKey) : false;
