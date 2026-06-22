@@ -120,7 +120,7 @@ export default function About() {
                 Giving enterprise buyers the intelligence they deserve
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-6">
-                For too long, enterprise technology research has been a product sold to vendors first, and to buyers second. Gartner Magic Quadrants, Forrester Waves, IDC MarketScapes — all funded, in part, by the very companies they rank.
+                For too long, enterprise technology research has been a product sold to vendors first, and to buyers second.
               </p>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
                 DCIG is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
