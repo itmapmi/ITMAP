@@ -203,75 +203,25 @@ export default function About() {
       {/* Team */}
       <section className="py-24 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div {...fadeUp}>
-              <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-                <div className="h-px w-8 bg-cyan-400" /> THE TEAM
-              </div>
-              <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-                Practitioners building for practitioners
-              </h2>
-              <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                DCIG is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
-              </p>
-              <ul className="space-y-3">
-                {TEAM_VALUES.map((t) => (
-                  <li key={t} className="flex items-start gap-3 text-slate-300">
-                    <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-10 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(14,165,233,0.08)_0%,transparent_60%)]" />
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="flex -space-x-2">
-                    {["P", "A", "S", "R"].map((l, i) => (
-                      <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30 border-2 border-slate-900 flex items-center justify-center text-sm font-bold text-cyan-400">
-                        {l}
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold">Core Team</p>
-                    <p className="text-slate-500 text-sm">Dubai · Global</p>
-                  </div>
-                </div>
-
-                <blockquote className="text-slate-300 text-lg leading-relaxed italic mb-6">
-                  "We were tired of paying six figures for research that told us what vendors had already paid to say. So we built the alternative."
-                </blockquote>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-sm font-bold text-white">P</div>
-                  <div>
-                    <p className="text-white font-medium text-sm">Priyanka</p>
-                    <p className="text-slate-500 text-xs">Founder, DCIG</p>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-8 border-t border-white/5 flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    <Database className="h-4 w-4 text-cyan-400" />
-                    Dubai, UAE (DMCC)
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-500 text-sm">
-                    <Users className="h-4 w-4 text-violet-400" />
-                    +971-569221785
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+          <motion.div {...fadeUp} className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
+              <div className="h-px w-8 bg-cyan-400" /> THE TEAM
+            </div>
+            <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
+              Practitioners building for practitioners
+            </h2>
+            <p className="text-slate-400 text-lg leading-relaxed mb-8">
+              DCIG is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
+            </p>
+            <ul className="space-y-3">
+              {TEAM_VALUES.map((t) => (
+                <li key={t} className="flex items-start gap-3 text-slate-300">
+                  <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         </div>
       </section>
 
