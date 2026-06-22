@@ -17,15 +17,15 @@ const CONTACT_DETAILS = [
   {
     icon: <Mail className="h-5 w-5 text-cyan-400" />,
     label: "Email",
-    value: "support@dcig.com",
-    href: "mailto:support@dcig.com",
+    value: "sales@dcig.com",
+    href: "mailto:sales@dcig.com",
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
     icon: <Phone className="h-5 w-5 text-violet-400" />,
     label: "Phone",
-    value: "+971-569221785",
-    href: "tel:+971569221785",
+    value: "844.324.4552",
+    href: "tel:8443244552",
     color: "from-violet-500/15 to-violet-400/5",
   },
   {
@@ -145,7 +145,7 @@ export default function Contact() {
 
                 <Button
                   className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
-                  onClick={() => window.location.href = "mailto:support@dcig.com"}
+                  onClick={() => window.location.href = "mailto:sales@dcig.com"}
                 >
                   Send Message <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
