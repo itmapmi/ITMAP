@@ -60,6 +60,7 @@ export async function getMarketFeatures(marketId: string): Promise<FeatureWithCa
         id: featureCategories.id,
         name: featureCategories.name,
         displayOrder: featureCategories.displayOrder || 0,
+        isEcosystem: featureCategories.isEcosystem,
       },
     })
     .from(features)

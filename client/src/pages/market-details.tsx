@@ -160,9 +160,9 @@ export default function MarketDetails() {
     enabled: !!marketId && showOwnerControls,
   });
   const hasProductPhase = featureCategories.some((c: any) =>
-    !/(ecosystem|integration|partnership|third-party|isv)/i.test(c.name));
+    c.isEcosystem === false || (!c.isEcosystem && !/(ecosystem|integration|partnership|third-party|isv)/i.test(c.name)));
   const hasEcosystemPhase = featureCategories.some((c: any) =>
-    /(ecosystem|integration|partnership|third-party|isv)/i.test(c.name));
+    c.isEcosystem === true || (c.isEcosystem !== false && /(ecosystem|integration|partnership|third-party|isv)/i.test(c.name)));
   const { data: myJobs = [] } = useQuery<any[]>({
     queryKey: ["/api/market-builder/jobs"],
     enabled: showOwnerControls,
