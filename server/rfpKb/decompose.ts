@@ -216,6 +216,17 @@ Respond ONLY with valid JSON:
  */
 const WHOLE_DOC_CHAR_LIMIT = 400_000;
 
+/**
+ * Maximum chars sent to GPT-4o in a single extraction call (~50 K chars ≈ 12 K tokens,
+ * leaving plenty of headroom for the response).
+ */
+const CHUNK_TARGET_SIZE = 50_000;
+
+/**
+ * How far before/after the ideal split point to search for a natural boundary.
+ */
+const CHUNK_SNAP_WINDOW = 2_000;
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function parseRequirementsResponse(
@@ -245,6 +256,111 @@ function parseRequirementsResponse(
     }
   }
   return results;
+}
+
+/**
+ * Split `text` into chunks that each target `targetSize` chars.
+ *
+ * Split points are chosen by scanning a ±`snapWindow`-char window around the
+ * ideal cut position and snapping to the nearest natural boundary in this order:
+ *   1. Section heading (numbered headings, "Section N", ALL-CAPS headers, page breaks)
+ *   2. Paragraph boundary (blank line)
+ *   3. Hard character cut (fallback — never cuts mid-word by convention)
+ *
+ * When a natural seam is found within the snap window, splits land at a clean
+ * section or paragraph boundary rather than mid-sentence. The hard-character
+ * fallback is only used when no natural boundary exists in the entire window.
+ */
+export function buildChunks(
+  text: string,
+  targetSize = CHUNK_TARGET_SIZE,
+  snapWindow = CHUNK_SNAP_WINDOW,
+): string[] {
+  if (text.length <= targetSize) return [text];
+
+  const chunks: string[] = [];
+  let pos = 0;
+
+  while (pos < text.length) {
+    if (text.length - pos <= targetSize) {
+      chunks.push(text.slice(pos));
+      break;
+    }
+
+    const idealEnd = pos + targetSize;
+    const winStart = Math.max(pos + 1, idealEnd - snapWindow);
+    const winEnd = Math.min(text.length, idealEnd + snapWindow);
+    const window = text.slice(winStart, winEnd);
+
+    // ── 1. Section heading boundary ──────────────────────────────────────
+    // Two separate regexes to avoid the case-insensitive `i` flag leaking
+    // into the ALL-CAPS branch and matching ordinary mixed-case lines:
+    //
+    //   keywordRe (case-insensitive): "Section 2", "Chapter 3", "1.2.3 Title", \f
+    //   capsRe    (case-sensitive):   ALL-CAPS HEADER lines only
+    //
+    // A match is only a valid boundary candidate if it starts at a real line
+    // boundary within the window (not mid-line).
+
+    const keywordRe =
+      /(?:^|\n)[ \t]*(?:(?:section|chapter|part|appendix)\s+\d[\d.]*\.?(?:[ \t]|$)|\d+(?:\.\d+)+\.?[ \t]+\S|\f)/gi;
+
+    // ALL-CAPS: uppercase letters, digits, spaces, and a limited set of
+    // punctuation — the entire line must be uppercase and end with a newline
+    // so we never match a capitalised first word inside a sentence.
+    const capsRe =
+      /(?:^|\n)[ \t]*([A-Z][A-Z0-9 &/()\-]{4,})[ \t]*\r?\n/g;
+
+    let bestPos = -1;
+    let bestDist = Infinity;
+    let m: RegExpExecArray | null;
+
+    for (const re of [keywordRe, capsRe]) {
+      while ((m = re.exec(window)) !== null) {
+        const rawOff = m.index + (m[0].startsWith("\n") ? 1 : 0);
+        const absPos = winStart + rawOff;
+        if (absPos <= pos) continue;
+        const dist = Math.abs(absPos - idealEnd);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestPos = absPos;
+        }
+      }
+    }
+
+    if (bestPos !== -1) {
+      chunks.push(text.slice(pos, bestPos));
+      pos = bestPos;
+      continue;
+    }
+
+    // ── 2. Paragraph boundary (blank line) ───────────────────────────────
+    const paraRe = /\n[ \t]*\n/g;
+    bestPos = -1;
+    bestDist = Infinity;
+
+    while ((m = paraRe.exec(window)) !== null) {
+      const absPos = winStart + m.index + m[0].length;
+      if (absPos <= pos) continue;
+      const dist = Math.abs(absPos - idealEnd);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestPos = absPos;
+      }
+    }
+
+    if (bestPos !== -1) {
+      chunks.push(text.slice(pos, bestPos));
+      pos = bestPos;
+      continue;
+    }
+
+    // ── 3. Hard character fallback ────────────────────────────────────────
+    chunks.push(text.slice(pos, idealEnd));
+    pos = idealEnd;
+  }
+
+  return chunks.filter((c) => c.trim().length > 0);
 }
 
 function deduplicateRequirements(
@@ -415,7 +531,38 @@ async function getDocumentOutline(rfpText: string): Promise<SectionOutline[]> {
 }
 
 /**
+ * Extract requirements from a single text chunk using GPT-4o.
+ */
+async function extractFromChunk(
+  chunkText: string,
+  sectionName: string,
+  chunkLabel: string,
+): Promise<DecomposedRequirement[]> {
+  return withRetry(async () => {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: SECTION_EXTRACT_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `RFP section — ${sectionName}:\n\n${chunkText}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0,
+      max_tokens: 8000,
+    });
+    const raw = response.choices[0]?.message?.content ?? "{}";
+    return parseRequirementsResponse(raw, chunkLabel);
+  }, `Tier 2 extraction: ${chunkLabel}`);
+}
+
+/**
  * Pass 2: Extract requirements from a single located section using GPT-4o.
+ *
+ * If the section text exceeds CHUNK_TARGET_SIZE, it is first split by
+ * buildChunks() at natural section boundaries before sending to the LLM —
+ * so no requirement is ever cut mid-sentence between two API calls.
  * Technical sections and non-technical sections are processed in parallel.
  */
 async function extractFromSection(
@@ -425,23 +572,34 @@ async function extractFromSection(
 ): Promise<DecomposedRequirement[]> {
   const label = `section "${section.outline.name}" (${index + 1}/${total})`;
   try {
-    return await withRetry(async () => {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: SECTION_EXTRACT_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `RFP section — ${section.outline.name}:\n\n${section.text}`,
-          },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0,
-        max_tokens: 8000,
-      });
-      const raw = response.choices[0]?.message?.content ?? "{}";
-      return parseRequirementsResponse(raw, label);
-    }, `Tier 2 extraction: ${label}`);
+    const chunks = buildChunks(section.text);
+
+    if (chunks.length === 1) {
+      return await extractFromChunk(chunks[0], section.outline.name, label);
+    }
+
+    console.log(
+      `[rfp-decompose] Tier 2: ${label} is ${section.text.length.toLocaleString()} chars — ` +
+      `splitting into ${chunks.length} chunks`,
+    );
+
+    const chunkResults = await Promise.all(
+      chunks.map((chunk, ci) =>
+        extractFromChunk(
+          chunk,
+          section.outline.name,
+          `${label} chunk ${ci + 1}/${chunks.length}`,
+        ).catch((err) => {
+          console.warn(
+            `[rfp-decompose] Tier 2: extraction failed for ${label} chunk ${ci + 1} — skipping:`,
+            err instanceof Error ? err.message : err,
+          );
+          return [] as DecomposedRequirement[];
+        }),
+      ),
+    );
+
+    return chunkResults.flat();
   } catch (err) {
     console.warn(
       `[rfp-decompose] Tier 2: extraction failed for ${label} — skipping:`,
