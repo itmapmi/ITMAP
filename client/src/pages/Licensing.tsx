@@ -29,8 +29,8 @@ const STEPS = [
   {
     num: "01",
     title: "Submit a request",
-    desc: "Email priyanka@dcig.com with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
-    cta: { label: "Email us", href: "mailto:priyanka@dcig.com" },
+    desc: "Email support@dcig.com with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
+    cta: { label: "Email us", href: "mailto:support@dcig.com" },
   },
   {
     num: "02",
@@ -176,9 +176,9 @@ export default function Licensing() {
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Questions about licensing?</h3>
             <p className="text-slate-400 mb-6">Our team typically responds within 2 business days.</p>
-            <a href="mailto:priyanka@dcig.com">
+            <a href="mailto:support@dcig.com">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact priyanka@dcig.com <ArrowRight className="ml-2 h-4 w-4" />
+                Contact support@dcig.com <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>
