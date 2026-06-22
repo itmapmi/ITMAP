@@ -10,6 +10,7 @@ import {
   AlertCircle, ToggleLeft, ToggleRight, Info, Clock, Play, Network,
   Download, Trophy, ThumbsDown, HelpCircle, FileDown, TableProperties,
   Presentation, FileText as FilePdf, ScanEye, X, History, Copy, ClipboardCheck,
+  Search,
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
@@ -159,6 +160,7 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
       return next;
     });
   };
+  const [searchQuery, setSearchQuery] = useState("");
 
   const updateReqMutation = useMutation({
     mutationFn: async ({ reqId, patch }: { reqId: string; patch: Record<string, any> }) => {
@@ -186,7 +188,18 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
   const nonTechReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "non_technical");
 
   const activeReqs = activeGroup === "technical" ? techReqs : nonTechReqs;
-  const sections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
+  const allSections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
+
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const sections = trimmedQuery
+    ? allSections.filter((section) => {
+        const sectionMatches = section.toLowerCase().includes(trimmedQuery);
+        const anyReqMatches = activeReqs
+          .filter((r) => (r.section ?? "General") === section)
+          .some((r) => r.requirementText.toLowerCase().includes(trimmedQuery));
+        return sectionMatches || anyReqMatches;
+      })
+    : allSections;
 
   return (
     <div>
@@ -253,19 +266,47 @@ function ReviewRequirements({ data, sessionId }: { data: SessionData; sessionId:
       </div>
 
       {/* Active group description */}
-      <p className="text-xs text-slate-500 mb-4 pl-1">
+      <p className="text-xs text-slate-500 mb-3 pl-1">
         {PRIMARY_GROUPS.find((g) => g.key === activeGroup)?.description}
       </p>
+
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search sections or requirements…"
+          className="w-full rounded-lg bg-slate-900 border border-white/8 pl-8 pr-8 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       {/* Requirements grouped by section within the active group */}
       {activeReqs.length === 0 ? (
         <div className="rounded-xl bg-slate-900 border border-white/5 px-5 py-8 text-center text-sm text-slate-500">
           No requirements in this group.
         </div>
+      ) : sections.length === 0 && trimmedQuery ? (
+        <div className="rounded-xl bg-slate-900 border border-white/5 px-5 py-8 text-center text-sm text-slate-500">
+          No results for <span className="text-slate-300">"{searchQuery}"</span>
+        </div>
       ) : (
         <div className="space-y-3">
           {sections.map((section) => {
-            const sectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
+            const allSectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
+            const sectionNameMatches = section.toLowerCase().includes(trimmedQuery);
+            const sectionReqs = trimmedQuery && !sectionNameMatches
+              ? allSectionReqs.filter((r) => r.requirementText.toLowerCase().includes(trimmedQuery))
+              : allSectionReqs;
             const colKey = `${activeGroup}:${section}`;
             const isCollapsed = collapsed.has(colKey);
             return (
@@ -597,6 +638,7 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
     data.requirements[0]?.id ?? null,
   );
   const [copiedReqId, setCopiedReqId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleCopyResponse = (
     e: React.MouseEvent,
@@ -619,7 +661,17 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
   const techReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "technical");
   const nonTechReqs = requirements.filter((r) => getPrimaryGroup(r.category) === "non_technical");
   const activeReqs = activeGroup === "technical" ? techReqs : nonTechReqs;
-  const sections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
+  const allSections = Array.from(new Set(activeReqs.map((r) => r.section ?? "General"))).sort();
+
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const sections = trimmedQuery
+    ? allSections.filter((section) => {
+        if (section.toLowerCase().includes(trimmedQuery)) return true;
+        return activeReqs
+          .filter((r) => (r.section ?? "General") === section)
+          .some((r) => r.requirementText.toLowerCase().includes(trimmedQuery));
+      })
+    : allSections;
 
   const selectedReq = requirements.find((r) => r.id === selectedReqId);
   const selectedAnswer = selectedReqId ? answerByReqId.get(selectedReqId) : undefined;
@@ -636,7 +688,7 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
             return (
               <button
                 key={g.key}
-                onClick={() => setActiveGroup(g.key)}
+                onClick={() => { setActiveGroup(g.key); setSearchQuery(""); }}
                 className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all ${
                   isActive
                     ? g.accentCls
@@ -652,11 +704,36 @@ function CompleteView({ data, sessionId }: { data: SessionData; sessionId: strin
             );
           })}
         </div>
+        {/* Search bar */}
+        <div className="relative border-b border-white/5 px-2 py-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search…"
+            className="w-full rounded-md bg-slate-800 border border-white/8 pl-7 pr-6 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
         <div className="overflow-y-auto flex-1">
           {activeReqs.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-slate-500">No requirements in this group.</div>
+          ) : sections.length === 0 && trimmedQuery ? (
+            <div className="px-3 py-6 text-center text-xs text-slate-500">No results for "{searchQuery}"</div>
           ) : sections.map((section) => {
-            const sectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
+            const allSectionReqs = activeReqs.filter((r) => (r.section ?? "General") === section);
+            const sectionNameMatches = section.toLowerCase().includes(trimmedQuery);
+            const sectionReqs = trimmedQuery && !sectionNameMatches
+              ? allSectionReqs.filter((r) => r.requirementText.toLowerCase().includes(trimmedQuery))
+              : allSectionReqs;
             return (
               <div key={section}>
                 <div className="px-3 py-1.5 bg-slate-800/50 border-b border-white/4">
