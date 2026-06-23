@@ -595,9 +595,9 @@ export function registerAdminRoutes(app: Express): void {
       const allFeatures = await storage.getMarketFeatures(marketId);
       const ecosystemFeatures = allFeatures.filter(feature => {
         const categoryName = feature.category?.name?.toLowerCase() || '';
-        // isEcosystem flag is primary; name-keyword fallback for markets where flag isn't set
+        // isEcosystem flag is authoritative when explicitly set to true;
+        // name-based detection is the fallback (is_ecosystem=false is just the DB default, not intentional)
         if ((feature.category as any)?.isEcosystem === true) return true;
-        if ((feature.category as any)?.isEcosystem === false) return false;
         return categoryName.includes('ecosystem') ||
                categoryName.includes('integration') ||
                categoryName.includes('partnership') ||

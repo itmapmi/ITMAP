@@ -382,16 +382,15 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     if (!features || !supportMatrix) return 0;
     
     // Filter to only ecosystem-related features
-    // isEcosystem flag is primary; name-keyword (including 'isv') is the legacy fallback
+    // isEcosystem flag is authoritative when true; name-based is the fallback
+    // (is_ecosystem=false is just the DB default, not an intentional exclusion)
     const ecosystemFeatures = features.filter(feature => 
       (feature.category as any).isEcosystem === true ||
-      ((feature.category as any).isEcosystem !== false && (
-        feature.category.name.toLowerCase().includes('ecosystem') ||
-        feature.category.name.toLowerCase().includes('integration') ||
-        feature.category.name.toLowerCase().includes('partnership') ||
-        feature.category.name.toLowerCase().includes('third-party') ||
-        feature.category.name.toLowerCase().includes('isv')
-      ))
+      feature.category.name.toLowerCase().includes('ecosystem') ||
+      feature.category.name.toLowerCase().includes('integration') ||
+      feature.category.name.toLowerCase().includes('partnership') ||
+      feature.category.name.toLowerCase().includes('third-party') ||
+      feature.category.name.toLowerCase().includes('isv')
     );
 
     if (ecosystemFeatures.length === 0) return 0;
