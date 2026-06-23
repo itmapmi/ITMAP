@@ -38,7 +38,7 @@ const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
         description: `Updated Product Capabilities scores for ${data.updatedScores} vendors`,
       });
       // Invalidate vendor evaluation queries to refresh the visualization
-      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "vendor-scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "scores"] });
       queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "vendors"] });
     },
     onError: (error: any) => {

@@ -552,7 +552,13 @@ export function registerAdminRoutes(app: Express): void {
       const allFeatures = await storage.getMarketFeatures(marketId);
       const features = allFeatures.filter(feature => {
         const categoryName = feature.category?.name?.toLowerCase() || '';
-        return !categoryName.includes('ecosystem') && !categoryName.includes('integration') && !categoryName.includes('partnership') && !categoryName.includes('third-party');
+        // isEcosystem flag is primary; name-keyword fallback mirrors the frontend filter exactly
+        if ((feature.category as any)?.isEcosystem === true) return false;
+        return !categoryName.includes('ecosystem') &&
+               !categoryName.includes('integration') &&
+               !categoryName.includes('partnership') &&
+               !categoryName.includes('third-party') &&
+               !categoryName.includes('isv');
       });
       const supportData = await storage.getVendorFeatureSupport(marketId);
       const allCriteria = await storage.getAllCriteria();
@@ -587,9 +593,17 @@ export function registerAdminRoutes(app: Express): void {
       if (!marketId) return res.status(400).json({ error: "Market ID is required" });
       const vendors = await storage.getVendorsByMarket(marketId);
       const allFeatures = await storage.getMarketFeatures(marketId);
-      const ecosystemFeatures = allFeatures.filter(feature =>
-        (feature.category as any).isEcosystem === true,
-      );
+      const ecosystemFeatures = allFeatures.filter(feature => {
+        const categoryName = feature.category?.name?.toLowerCase() || '';
+        // isEcosystem flag is primary; name-keyword fallback for markets where flag isn't set
+        if ((feature.category as any)?.isEcosystem === true) return true;
+        if ((feature.category as any)?.isEcosystem === false) return false;
+        return categoryName.includes('ecosystem') ||
+               categoryName.includes('integration') ||
+               categoryName.includes('partnership') ||
+               categoryName.includes('third-party') ||
+               categoryName.includes('isv');
+      });
       const supportData = await storage.getVendorFeatureSupport(marketId);
       const allCriteria = await storage.getAllCriteria();
       const isvEcosystemCriteria = allCriteria.find(c => c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem'));
