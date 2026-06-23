@@ -331,11 +331,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     if (!features || !supportMatrix) return 0;
     
     // Filter out ecosystem features for product capabilities scoring
+    // Matches support-matrix.tsx exactly: isEcosystem flag (primary) + name-keyword fallback
     const productCapabilityFeatures = features.filter(feature => 
+      (feature.category as any).isEcosystem !== true &&
       !feature.category.name.toLowerCase().includes('ecosystem') &&
       !feature.category.name.toLowerCase().includes('integration') &&
       !feature.category.name.toLowerCase().includes('partnership') &&
-      !feature.category.name.toLowerCase().includes('third-party')
+      !feature.category.name.toLowerCase().includes('third-party') &&
+      !feature.category.name.toLowerCase().includes('isv')
     );
     
     // Create support lookup map
@@ -379,11 +382,16 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     if (!features || !supportMatrix) return 0;
     
     // Filter to only ecosystem-related features
+    // isEcosystem flag is primary; name-keyword (including 'isv') is the legacy fallback
     const ecosystemFeatures = features.filter(feature => 
-      feature.category.name.toLowerCase().includes('ecosystem') ||
-      feature.category.name.toLowerCase().includes('integration') ||
-      feature.category.name.toLowerCase().includes('partnership') ||
-      feature.category.name.toLowerCase().includes('third-party')
+      (feature.category as any).isEcosystem === true ||
+      ((feature.category as any).isEcosystem !== false && (
+        feature.category.name.toLowerCase().includes('ecosystem') ||
+        feature.category.name.toLowerCase().includes('integration') ||
+        feature.category.name.toLowerCase().includes('partnership') ||
+        feature.category.name.toLowerCase().includes('third-party') ||
+        feature.category.name.toLowerCase().includes('isv')
+      ))
     );
 
     if (ecosystemFeatures.length === 0) return 0;
@@ -535,6 +543,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       isHistorical: false
     };
   });
+
+  // Build live-computed scores map for VendorComparison so the comparison table
+  // shows the same Product Capabilities and ISV Ecosystem scores as the chart/eval tabs
+  const computedScoresForComparison: Record<string, Record<string, number>> =
+    (features && supportMatrix)
+      ? Object.fromEntries(vendorsWithRawScores.map(v => [v.vendor.id, v.vendorScores]))
+      : {};
 
   // Separate current and historical vendors for normalization
   const currentVendors = vendorsWithRawScores.filter(v => !v.isHistorical);
@@ -1172,7 +1187,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       </div>
 
       <div className="mt-8">
-        <VendorComparison marketId={marketId} />
+        <VendorComparison marketId={marketId} computedScores={computedScoresForComparison} />
       </div>
 
       <Dialog open={!!selectedVendor} onOpenChange={() => setSelectedVendor(null)}>

@@ -11,9 +11,10 @@ import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 
 interface VendorComparisonProps {
   marketId: string;
+  computedScores?: Record<string, Record<string, number>>;
 }
 
-export default function VendorComparison({ marketId }: VendorComparisonProps) {
+export default function VendorComparison({ marketId, computedScores }: VendorComparisonProps) {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const isMobile = useIsMobile();
@@ -39,6 +40,9 @@ export default function VendorComparison({ marketId }: VendorComparisonProps) {
   };
 
   const getVendorScore = (vendorId: string, criteriaId: string): number => {
+    // Prefer live-computed score (Product Capabilities, ISV Ecosystem) over stale DB value
+    const computed = computedScores?.[vendorId]?.[criteriaId];
+    if (computed !== undefined) return computed;
     const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
     return score?.score ? parseFloat(score.score.toString()) : 0;
   };
