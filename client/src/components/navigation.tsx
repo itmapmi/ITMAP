@@ -52,8 +52,6 @@ export default function Navigation() {
   const isForecastBuilderActive = location.includes("forecast-builder");
   const vendorOnly = isVendorScoped && !isAdmin;
 
-  const isToolsActive = location.startsWith("/battle-cards") || location.startsWith("/me/tools");
-
   const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey; vendorHidden?: boolean }[] = [
     { href: "/platform",          label: "Platform" },
     { href: "/markets",           label: "Markets" },
