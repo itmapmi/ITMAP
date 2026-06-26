@@ -151,8 +151,6 @@ export async function runStartupMigrations(): Promise<void> {
       { table: 'market_builder_llm_settings', column: 'provider',  constraint: 'market_builder_llm_settings_provider_unique' },
       { table: 'external_api_keys',           column: 'key_hash',  constraint: 'external_api_keys_key_hash_unique' },
       { table: 'users',                       column: 'email',     constraint: 'users_email_unique' },
-      { table: 'users',                       column: 'google_id', constraint: 'users_google_id_unique' },
-      { table: 'users',                       column: 'linkedin_id', constraint: 'users_linkedin_id_unique' },
     ];
     for (const { table, column, constraint } of uniqueConstraints) {
       await client.query(`

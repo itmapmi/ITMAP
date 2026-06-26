@@ -20,15 +20,6 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   return user || undefined;
 }
 
-export async function getUserByGoogleId(googleId: string): Promise<User | undefined> {
-  const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
-  return user || undefined;
-}
-
-export async function getUserByLinkedinId(linkedinId: string): Promise<User | undefined> {
-  const [user] = await db.select().from(users).where(eq(users.linkedinId, linkedinId));
-  return user || undefined;
-}
 
 export async function createUser(insertUser: InsertUser): Promise<User> {
   const [user] = await db.insert(users).values(insertUser).returning();

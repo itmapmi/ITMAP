@@ -36,10 +36,6 @@ export const users = pgTable("users", {
   vendorScopeId: varchar("vendor_scope_id").references((): any => vendors.id, { onDelete: "set null" }),
   vendorScopeIds: text("vendor_scope_ids").array(),
 
-  // OAuth provider info
-  googleId: text("google_id").unique(),
-  linkedinId: text("linkedin_id").unique(),
-
   // Access control: admins can hard-block a user or grant time-limited access.
   // isBlocked=true → always denied, regardless of accessExpiresAt.
   // accessExpiresAt → user is denied after this timestamp (null = no expiry).
