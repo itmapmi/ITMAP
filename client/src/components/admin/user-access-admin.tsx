@@ -45,6 +45,7 @@ import type { User } from "@shared/schema";
 type AdminUser = Omit<User, "password">;
 
 type FilterTab = "all" | "invited" | "active";
+type PersonaFilter = "all" | "buyer" | "vendor";
 
 const stripMarket = (name: string | null | undefined) =>
   (name ?? "").replace(/^ITMAP for /i, "");
@@ -650,6 +651,7 @@ export function UserAccessAdmin() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [personaFilter, setPersonaFilter] = useState<PersonaFilter>("all");
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -811,13 +813,19 @@ export function UserAccessAdmin() {
       tabFiltered = list.filter((u) => !u.invitedAt);
     }
 
+    // Apply persona filter — null/missing persona is neutral and excluded from buyer/vendor filters
+    const personaFiltered =
+      personaFilter === "all"
+        ? tabFiltered
+        : tabFiltered.filter((u) => u.persona === personaFilter);
+
     // Apply text search
     const searched = q
-      ? tabFiltered.filter((u) => {
+      ? personaFiltered.filter((u) => {
           const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
           return name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
         })
-      : tabFiltered;
+      : personaFiltered;
 
     // Sort: invited placeholders first, then by createdAt desc
     return [...searched].sort((a, b) => {
@@ -826,7 +834,7 @@ export function UserAccessAdmin() {
       if (aInvited !== bInvited) return aInvited ? -1 : 1;
       return 0;
     });
-  }, [users, search, filterTab]);
+  }, [users, search, filterTab, personaFilter]);
 
   const toggleFeature = (user: AdminUser, key: LockableFeatureKey, enabled: boolean) => {
     const current = (user.featureAccess ?? []) as string[];
@@ -866,30 +874,55 @@ export function UserAccessAdmin() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
-        {(["all", "active", "invited"] as FilterTab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilterTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${
-              filterTab === tab
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-            data-testid={`tab-users-${tab}`}
-          >
-            {tab === "invited" && invitedCount > 0 ? (
-              <span className="flex items-center gap-1.5">
-                Invited
-                <span className="inline-flex items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 min-w-[18px]">
-                  {invitedCount}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-1 border-b border-gray-200">
+          {(["all", "active", "invited"] as FilterTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilterTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${
+                filterTab === tab
+                  ? "border-gray-900 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              data-testid={`tab-users-${tab}`}
+            >
+              {tab === "invited" && invitedCount > 0 ? (
+                <span className="flex items-center gap-1.5">
+                  Invited
+                  <span className="inline-flex items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 min-w-[18px]">
+                    {invitedCount}
+                  </span>
                 </span>
-              </span>
-            ) : (
-              tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1)
-            )}
-          </button>
-        ))}
+              ) : (
+                tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1)
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Persona filter pills */}
+        <div className="flex items-center gap-1.5 pb-1">
+          <span className="text-xs text-gray-500 mr-0.5">Persona:</span>
+          {(["all", "buyer", "vendor"] as PersonaFilter[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPersonaFilter(p)}
+              data-testid={`pill-persona-${p}`}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                personaFilter === p
+                  ? p === "buyer"
+                    ? "bg-cyan-100 border-cyan-300 text-cyan-800"
+                    : p === "vendor"
+                    ? "bg-violet-100 border-violet-300 text-violet-800"
+                    : "bg-gray-200 border-gray-300 text-gray-800"
+                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {p === "all" ? "All" : p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto border rounded-lg">
@@ -897,6 +930,7 @@ export function UserAccessAdmin() {
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[200px]">User</TableHead>
+              <TableHead className="whitespace-nowrap">Persona</TableHead>
               {LOCKABLE_FEATURES.map((f) => (
                 <TableHead key={f.key} className="text-center whitespace-nowrap">
                   {f.label}
@@ -911,7 +945,7 @@ export function UserAccessAdmin() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={LOCKABLE_FEATURES.length + 5} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={LOCKABLE_FEATURES.length + 6} className="text-center text-gray-500 py-8">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -975,6 +1009,21 @@ export function UserAccessAdmin() {
                           </div>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.persona === "vendor" ? (
+                        <span className="inline-flex items-center rounded-full bg-violet-100 border border-violet-300 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                          Vendor
+                        </span>
+                      ) : user.persona === "buyer" ? (
+                        <span className="inline-flex items-center rounded-full bg-cyan-100 border border-cyan-300 px-2.5 py-0.5 text-xs font-medium text-cyan-800">
+                          Buyer
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+                          —
+                        </span>
+                      )}
                     </TableCell>
                     {LOCKABLE_FEATURES.map((f) => (
                       <TableCell key={f.key} className="text-center">
