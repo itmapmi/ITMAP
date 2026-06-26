@@ -65,7 +65,7 @@ export default function Navigation() {
     return item.featureKey ? hasFeature(item.featureKey) : false;
   });
 
-  const isToolsActive = toolItems.some(t => t.active || location.startsWith(t.href));
+  const isToolsActive = location.startsWith("/battle-cards") || location.startsWith("/me/tools");
 
   if (isAdminArea) {
     return (
