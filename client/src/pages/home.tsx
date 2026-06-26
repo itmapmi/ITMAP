@@ -279,13 +279,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       statLabel: "saved comparisons",
     },
     {
-      label: "AI Chat",
-      description: "Ask our AI assistant anything about vendors, markets and competitive positioning.",
-      icon: <MessageSquare className="h-5 w-5" />,
-      href: "/markets",
-      accent: "cyan",
-    },
-    {
       label: "Methodology",
       description: "How we score and evaluate vendors — transparent, independent criteria.",
       icon: <BookOpen className="h-5 w-5" />,
