@@ -343,15 +343,55 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
 
 // ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
 
-function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName }: {
+function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, vendorScopeLoading }: {
   user: any;
   myMarkets?: Market[];
   isLoading: boolean;
   hasFeature: (key: LockableFeatureKey) => boolean;
   vendorName?: string;
+  vendorScopeLoading?: boolean;
 }) {
-  const companyLabel = vendorName || "Your Company";
-  const vendorMarkets = myMarkets;
+  const isLinked = !!vendorName;
+  const companyLabel = vendorName ?? "";
+
+  // While the scope API is still in flight, show a skeleton header
+  if (vendorScopeLoading) {
+    return (
+      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Account has vendorScopeId set but the vendor record couldn't be resolved
+  if (!isLinked) {
+    return (
+      <div className="min-h-screen bg-[#1e2130]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="max-w-lg mx-auto mt-24 bg-slate-900 border border-amber-500/20 rounded-2xl p-10 text-center">
+            <div className="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-6">
+              <Building2 className="h-6 w-6 text-amber-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Account not linked to a vendor</h2>
+            <p className="text-slate-400 text-sm leading-relaxed mb-6">
+              Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet.
+              This is done by a <span className="text-white font-medium">spectio.ai administrator</span> — please contact your account manager to complete the setup.
+            </p>
+            <div className="bg-slate-800 rounded-xl p-4 text-left mb-6">
+              <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Your account</p>
+              <p className="text-sm text-white">{user?.firstName} {user?.lastName}</p>
+              <p className="text-sm text-slate-400">{user?.email}</p>
+            </div>
+            <a href="mailto:sales@dcig.com"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-all">
+              Contact sales@dcig.com
+            </a>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#1e2130]">
@@ -367,7 +407,7 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName }:
                 <span className="text-white font-semibold text-lg">{companyLabel}</span>
                 <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">Vendor seat</span>
               </div>
-              <p className="text-slate-400 text-sm">Intelligence Hub · {user?.firstName} {user?.lastName}</p>
+              <p className="text-slate-400 text-sm">{user?.firstName} {user?.lastName} · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></p>
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white">
@@ -727,7 +767,7 @@ export default function Home() {
   const { isAuthenticated, isLoading: authLoading, isVendorScoped, isAdmin, user, hasFeature } = useAuth();
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 
-  const { data: vendorScope } = useQuery<{ vendor: { name?: string } }>({
+  const { data: vendorScope, isLoading: vendorScopeLoading } = useQuery<{ vendor: { name?: string } }>({
     queryKey: ["/api/lead-gen/me/scope"],
     enabled: isVendorScoped && !isAdmin,
     staleTime: 5 * 60_000,
@@ -764,6 +804,7 @@ export default function Home() {
           isLoading={myMarketsLoading}
           hasFeature={hasFeature}
           vendorName={vendorScope?.vendor?.name}
+          vendorScopeLoading={vendorScopeLoading}
         />
       );
     }
