@@ -59,7 +59,9 @@ export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
   const isMobile = useIsMobile();
-  const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
+  const { isAuthenticated, user, isAdmin, hasFeature, isVendorScoped } = useAuth();
+  // Technology buyers should not see the Intelligence section
+  const isBuyerUser = isAuthenticated && !isVendorScoped && (user as any)?.persona !== "vendor" && !isAdmin;
   const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
   const isFreeMarket = marketId === FREE_MARKET_ID;
@@ -493,39 +495,41 @@ export default function MarketDetails() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    className={groupTriggerClass(isInGroup(intelligenceItems))}
-                    data-testid="tab-group-intelligence"
-                  >
-                    {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {intelligenceItems.map(item => (
-                      item.locked ? (
-                        <LockedFeatureTooltip key={item.value}>
-                          <div
-                            className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
-                            data-testid={`tab-${item.value}-locked`}
+                {!isBuyerUser && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className={groupTriggerClass(isInGroup(intelligenceItems))}
+                      data-testid="tab-group-intelligence"
+                    >
+                      {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {intelligenceItems.map(item => (
+                        item.locked ? (
+                          <LockedFeatureTooltip key={item.value}>
+                            <div
+                              className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
+                              data-testid={`tab-${item.value}-locked`}
+                            >
+                              <span>{item.label}</span>
+                              <Lock className="h-3 w-3" />
+                            </div>
+                          </LockedFeatureTooltip>
+                        ) : (
+                          <DropdownMenuItem
+                            key={item.value}
+                            onSelect={() => setActiveTab(item.value)}
+                            className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
+                            data-testid={`tab-${item.value}`}
                           >
-                            <span>{item.label}</span>
-                            <Lock className="h-3 w-3" />
-                          </div>
-                        </LockedFeatureTooltip>
-                      ) : (
-                        <DropdownMenuItem
-                          key={item.value}
-                          onSelect={() => setActiveTab(item.value)}
-                          className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
-                          data-testid={`tab-${item.value}`}
-                        >
-                          {item.label}
-                        </DropdownMenuItem>
-                      )
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                            {item.label}
+                          </DropdownMenuItem>
+                        )
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 {researchReportsLocked ? (
                   <LockedFeatureTooltip>
