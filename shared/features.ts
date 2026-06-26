@@ -19,6 +19,7 @@ export const LOCKABLE_FEATURES = [
   { key: "rfp", label: "RFP Responder" },
   { key: "news", label: "News" },
   { key: "intelligence_feed", label: "Intelligence Feed" },
+  { key: "battle_cards", label: "Battle Cards" },
 ] as const;
 
 export type LockableFeatureKey = (typeof LOCKABLE_FEATURES)[number]["key"];

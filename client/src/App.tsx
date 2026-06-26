@@ -42,6 +42,9 @@ import LeadGenAudienceDetailPage from "@/pages/lead-gen/me-audience-detail";
 import FactReviewPage from "@/pages/lead-gen/fact-review";
 import RfpResponderPage from "@/pages/rfp-responder/index";
 import RfpSessionDetailPage from "@/pages/rfp-responder/session-detail";
+import BattleCardsIndexPage from "@/pages/battle-cards/index";
+import BattleCardDetailPage from "@/pages/battle-cards/detail";
+import MyToolsPage from "@/pages/me/tools";
 
 function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
@@ -97,6 +100,8 @@ function Router() {
         <Route path="/lead-gen/me/fact-review" component={() => <ProtectedRoute component={FactReviewPage} />} />
         <Route path="/rfp-responder" component={() => <ProtectedRoute component={RfpResponderPage} />} />
         <Route path="/rfp-responder/sessions/:id" component={() => <ProtectedRoute component={RfpSessionDetailPage} />} />
+        <Route path="/battle-cards" component={() => <ProtectedRoute component={BattleCardsIndexPage} />} />
+        <Route path="/battle-cards/:marketId" component={() => <ProtectedRoute component={BattleCardDetailPage} />} />
         <Route path="/lead-gen/me/audience/:marketId/:endUserId" component={() => <ProtectedRoute component={LeadGenAudienceDetailPage} />} />
         <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
@@ -110,6 +115,7 @@ function Router() {
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
         <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
         <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />
+        <Route path="/me/tools"    component={() => <ProtectedRoute component={MyToolsPage} />} />
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route path="/datasheets" component={DatasheetsIndexPage} />
         <Route path="/me/comparisons" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />

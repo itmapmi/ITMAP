@@ -5,7 +5,7 @@ import { sql, eq } from "drizzle-orm";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
-import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, vendorSeatAudience, markets, vendors, users as usersTable } from "@shared/schema";
+import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, vendorSeatAudience, markets, vendors, users as usersTable, featureCategories, features, vendorFeatureSupport } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
 import { sendWatchlistInviteEmail, buildInviteHtml } from "../emailService";
 
@@ -591,40 +591,93 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const { marketId } = req.body;
       if (!marketId) return res.status(400).json({ error: "Market ID is required" });
-      const vendors = await storage.getVendorsByMarket(marketId);
-      const allFeatures = await storage.getMarketFeatures(marketId);
-      const ecosystemFeatures = allFeatures.filter(feature => {
-        const categoryName = feature.category?.name?.toLowerCase() || '';
-        // isEcosystem flag is authoritative when explicitly set to true;
-        // name-based detection is the fallback (is_ecosystem=false is just the DB default, not intentional)
-        if ((feature.category as any)?.isEcosystem === true) return true;
-        return categoryName.includes('ecosystem') ||
-               categoryName.includes('integration') ||
-               categoryName.includes('partnership') ||
-               categoryName.includes('third-party') ||
-               categoryName.includes('isv');
-      });
-      const supportData = await storage.getVendorFeatureSupport(marketId);
+
+      const marketVendors = await storage.getVendorsByMarket(marketId);
+
+      // Use isEcosystem flag directly — reliable regardless of category name
+      const ecosystemFeatureRows = await db
+        .select({ id: features.id, name: features.name, categoryId: features.categoryId })
+        .from(features)
+        .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+        .where(eq(featureCategories.marketId, marketId));
+
+      // Filter: use isEcosystem=true categories if any exist, else fall back to name matching
+      const allCatRows = await db
+        .select({ id: featureCategories.id, name: featureCategories.name, isEcosystem: featureCategories.isEcosystem })
+        .from(featureCategories)
+        .where(eq(featureCategories.marketId, marketId));
+
+      const ecosystemCatIds = new Set(
+        allCatRows
+          .filter(c => c.isEcosystem ||
+            c.name.toLowerCase().includes('ecosystem') ||
+            c.name.toLowerCase().includes('integration') ||
+            c.name.toLowerCase().includes('partnership') ||
+            c.name.toLowerCase().includes('third-party'))
+          .map(c => c.id)
+      );
+
+      const ecosystemFeatures = ecosystemFeatureRows.filter(f => ecosystemCatIds.has(f.categoryId));
+      console.log(`[ISV Ecosystem] Market ${marketId}: ${allCatRows.length} categories, ${ecosystemCatIds.size} ecosystem cats, ${ecosystemFeatures.length} ecosystem features`);
+
+      if (ecosystemFeatures.length === 0) {
+        return res.status(400).json({ error: `No ecosystem features found. Categories: ${allCatRows.map(c => c.name).join(', ')}` });
+      }
+
+      // Find ISV Ecosystem criterion — search by 'isv' OR 'ecosystem', not AND
       const allCriteria = await storage.getAllCriteria();
-      const isvEcosystemCriteria = allCriteria.find(c => c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem'));
-      if (!isvEcosystemCriteria) return res.status(404).json({ error: "ISV Ecosystem criteria not found" });
-      if (ecosystemFeatures.length === 0) return res.status(400).json({ error: "No ecosystem features found in this market" });
+      let isvEcosystemCriteria = allCriteria.find(c =>
+        c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
+      );
+      if (!isvEcosystemCriteria) {
+        // Widen: just look for 'isv' or 'ecosystem' in the criterion name
+        isvEcosystemCriteria = allCriteria.find(c =>
+          c.name.toLowerCase().includes('isv') || c.name.toLowerCase().includes('ecosystem')
+        );
+      }
+      if (!isvEcosystemCriteria) {
+        // Last resort: check market criteria weights for any criterion linked to this market
+        const weights = await storage.getMarketCriteriaWeights(marketId);
+        const found = weights.find(w =>
+          w.criteria.name.toLowerCase().includes('isv') || w.criteria.name.toLowerCase().includes('ecosystem')
+        );
+        if (found) isvEcosystemCriteria = found.criteria;
+      }
+      if (!isvEcosystemCriteria) {
+        return res.status(404).json({
+          error: `ISV Ecosystem criteria not found. Available: ${allCriteria.map(c => c.name).join(', ')}`
+        });
+      }
+
+      // Build support lookup from vendor_feature_support for this market
+      const supportRows = await db
+        .select({
+          vendorId: vendorFeatureSupport.vendorId,
+          featureId: vendorFeatureSupport.featureId,
+          supportLevel: vendorFeatureSupport.supportLevel,
+        })
+        .from(vendorFeatureSupport)
+        .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
+        .where(eq(vendors.marketId, marketId));
+
       const supportLookup = new Map<string, number>();
-      supportData.forEach(support => supportLookup.set(`${support.vendorId}-${support.featureId}`, support.supportLevel));
+      supportRows.forEach(s => supportLookup.set(`${s.vendorId}-${s.featureId}`, s.supportLevel));
+
       let updatedScores = 0;
-      for (const vendor of vendors) {
+      for (const vendor of marketVendors) {
         const totalScore = ecosystemFeatures.reduce((sum, feature) => {
           const supportLevel = supportLookup.get(`${vendor.id}-${feature.id}`) || 0;
           let score = 0;
-          switch (supportLevel) { case 4: score = 1.0; break; case 3: score = 0.75; break; case 2: score = 0.5; break; }
+          switch (supportLevel) { case 4: score = 1.0; break; case 3: score = 0.75; break; case 2: score = 0.5; break; case 1: score = 0.25; break; }
           return sum + score;
         }, 0);
-        const maxScore = ecosystemFeatures.length * 1.0;
-        const normalizedScore = maxScore > 0 ? Number(((Number(totalScore.toFixed(2)) / maxScore) * 10).toFixed(2)) : 0;
+        const maxScore = ecosystemFeatures.length;
+        const normalizedScore = maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
         await storage.createOrUpdateVendorScore({ vendorId: vendor.id, criteriaId: isvEcosystemCriteria.id, score: normalizedScore });
         updatedScores++;
-        console.log(`Updated ISV Ecosystem score for ${vendor.name}: ${normalizedScore}/10`);
+        console.log(`[ISV Ecosystem] ${vendor.name}: ${normalizedScore}/10 (${totalScore}/${maxScore})`);
       }
+
       res.json({ success: true, message: `Updated ISV Ecosystem scores for ${updatedScores} vendors`, updatedScores, marketId, ecosystemFeatures: ecosystemFeatures.length });
     } catch (error) {
       console.error("Error updating ISV ecosystem scores:", error);

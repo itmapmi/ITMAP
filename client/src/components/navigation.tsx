@@ -52,21 +52,16 @@ export default function Navigation() {
   const isForecastBuilderActive = location.includes("forecast-builder");
   const vendorOnly = isVendorScoped && !isAdmin;
 
-  // Core nav items — always visible
-  const coreNavItems = [
-    { href: "/platform", label: "Platform" },
-    { href: "/markets",  label: "Markets" },
-    { href: "/licensing", label: "Licensing" },
-    { href: "/about",    label: "About Us" },
-  ];
+  const isToolsActive = location.startsWith("/battle-cards") || location.startsWith("/me/tools");
 
-  // Tools dropdown items — builder products
-  type ToolItem = { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey; vendorHidden?: boolean };
-  const toolItems: ToolItem[] = [
-    { href: marketBuilderHref,   label: "Market Builder",   active: isMarketBuilderActive,   featureKey: "market_builder",   vendorHidden: true },
-    { href: "/forecast-builder", label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder", vendorHidden: true },
-    { href: "/datasheets",       label: "Datasheets",                                        featureKey: "datasheets",        vendorHidden: true },
-    { href: "/rfp-responder",    label: "RFP Responder",                                     featureKey: "rfp" },
+  const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey; vendorHidden?: boolean }[] = [
+    { href: "/platform",          label: "Platform" },
+    { href: "/markets",           label: "Markets" },
+    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive, featureKey: "market_builder", vendorHidden: true },
+    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder", vendorHidden: true },
+    { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets", vendorHidden: true },
+    { href: "/licensing",         label: "Licensing" },
+    { href: "/about",             label: "About Us" },
   ].filter(item => {
     if (!vendorOnly || !item.vendorHidden) return true;
     return item.featureKey ? hasFeature(item.featureKey) : false;
@@ -121,52 +116,65 @@ export default function Navigation() {
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1">
-              {/* Core links */}
-              {coreNavItems.map(({ href, label }) => (
-                <Link key={label} href={href}>
-                  <span className={`px-3 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                    location === href ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                  }`}>{label}</span>
-                </Link>
-              ))}
-
-              {/* Tools dropdown */}
-              {toolItems.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+              {navItems.map(({ href, label, active, featureKey }) => {
+                const isActive = active !== undefined ? active : location === href;
+                const locked = featureKey ? !hasFeature(featureKey) : false;
+                if (locked) {
+                  return (
+                    <LockedFeatureTooltip key={label}>
+                      <span className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-400 hover:text-slate-300 cursor-not-allowed select-none transition-colors">
+                        {label}<Lock className="h-3 w-3 text-amber-400/90" />
+                      </span>
+                    </LockedFeatureTooltip>
+                  );
+                }
+                return (
+                  <Link key={label} href={href}>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                      isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}>{label}</span>
+                  </Link>
+                );
+              })}
+              {isAuthenticated && (
+                <>
+                  <Link href="/me/tools">
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
                       isToolsActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}>
-                      Tools <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-52 bg-slate-900 border-white/10 text-white">
-                    {toolItems.map(({ href, label, active, featureKey }) => {
-                      const locked = featureKey ? !hasFeature(featureKey) : false;
-                      if (locked) {
-                        return (
-                          <LockedFeatureTooltip key={label}>
-                            <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 cursor-not-allowed select-none">
-                              {label}<Lock className="h-3 w-3 text-amber-400/90" />
-                            </div>
-                          </LockedFeatureTooltip>
-                        );
-                      }
-                      const isActive = active !== undefined ? active : location.startsWith(href);
-                      return (
-                        <DropdownMenuItem key={label} asChild className={`cursor-pointer ${isActive ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                          <Link href={href}>{label}</Link>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
-              {isAdmin && (
-                <Link href="/admin">
-                  <span className="px-3 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
-                </Link>
+                    }`}>Tools</span>
+                  </Link>
+                  <Link href="/me/reports">
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                      location.includes("reports") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                    }`}>My Reports</span>
+                  </Link>
+                  {isVendorScoped && !isAdmin && (
+                    <Link href="/lead-gen/me">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>My Leads</span>
+                    </Link>
+                  )}
+                  {isVendorScoped && !isAdmin && (
+                    <Link href="/lead-gen/me/fact-review">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>Fact Review</span>
+                    </Link>
+                  )}
+                  {isVendorScoped && !isAdmin && hasFeature("rfp") && (
+                    <Link href="/rfp-responder">
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
+                        location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                      }`}>RFP Responder</span>
+                    </Link>
+                  )}
+                  {isAdmin && (
+                    <Link href="/admin">
+                      <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
 
@@ -248,84 +256,74 @@ export default function Navigation() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden bg-[#1e2130] border-t border-white/5 px-4 py-4 space-y-1">
-            {coreNavItems.map(({ href, label }) => (
-              <Link key={label} href={href}>
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${
-                    location === href ? "text-white bg-white/10" : "text-slate-400"
-                  }`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {label}
-                </div>
-              </Link>
-            ))}
-
-            {/* Tools section in mobile */}
-            {toolItems.length > 0 && (
-              <>
-                <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Tools</div>
-                {toolItems.map(({ href, label, active, featureKey }) => {
-                  const locked = featureKey ? !hasFeature(featureKey) : false;
-                  if (locked) {
-                    return (
-                      <div key={label} className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-500 cursor-not-allowed select-none">
-                        {label}<Lock className="h-3 w-3 text-amber-400/90" />
-                      </div>
-                    );
-                  }
-                  const isActive = active !== undefined ? active : location.startsWith(href);
-                  return (
-                    <Link key={label} href={href}>
-                      <div
-                        className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${isActive ? "text-white bg-white/10" : "text-slate-400"}`}
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        {label}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </>
-            )}
-
-            {/* User-specific items in mobile */}
-            {isAuthenticated && (
-              <>
-                <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">My Account</div>
-                <Link href="/me/reports">
-                  <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>
-                    My Reports
+            {navItems.map(({ href, label, active, featureKey }) => {
+              const isActive = active !== undefined ? active : location === href;
+              const locked = featureKey ? !hasFeature(featureKey) : false;
+              if (locked) {
+                return (
+                  <div key={label} className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-500 cursor-not-allowed select-none">
+                    {label}<Lock className="h-3 w-3 text-amber-400/90" />
+                  </div>
+                );
+              }
+              return (
+                <Link key={label} href={href}>
+                  <div
+                    className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${isActive ? "text-white bg-white/10" : "text-slate-400"}`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {label}
                   </div>
                 </Link>
-                {isVendorScoped && !isAdmin && (
-                  <Link href="/lead-gen/me">
-                    <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>
-                      My Leads
-                    </div>
-                  </Link>
-                )}
-                {isVendorScoped && !isAdmin && (
-                  <Link href="/lead-gen/me/fact-review">
-                    <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>
-                      Fact Review
-                    </div>
-                  </Link>
-                )}
-                {isVendorScoped && !isAdmin && hasFeature("rfp") && (
-                  <Link href="/rfp-responder">
-                    <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>
-                      RFP Responder
-                    </div>
-                  </Link>
-                )}
-              </>
+              );
+            })}
+            {isAuthenticated && (
+              <Link href="/me/tools">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${isToolsActive ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Tools
+                </div>
+              </Link>
             )}
-
-            {isAdmin && (
-              <Link href="/admin">
-                <div className="px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-amber-400" onClick={() => setMobileOpen(false)}>
-                  Admin
+            {isAuthenticated && (
+              <Link href="/me/reports">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  My Reports
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && (
+              <Link href="/lead-gen/me">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  My Leads
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && (
+              <Link href="/lead-gen/me/fact-review">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Fact Review
+                </div>
+              </Link>
+            )}
+            {isVendorScoped && !isAdmin && hasFeature("rfp") && (
+              <Link href="/rfp-responder">
+                <div
+                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400"}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  RFP Responder
                 </div>
               </Link>
             )}
