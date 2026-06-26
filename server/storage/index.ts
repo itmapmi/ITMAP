@@ -133,6 +133,7 @@ export interface IStorage {
 
   getMarketResearchReports(marketId: string): Promise<ResearchReport[]>;
   getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]>;
+  countAllResearchReports(): Promise<number>;
   getResearchReportById(id: string): Promise<ResearchReport | undefined>;
   createResearchReport(report: InsertResearchReport): Promise<ResearchReport>;
   updateResearchReport(id: string, report: Partial<InsertResearchReport>): Promise<ResearchReport | undefined>;

@@ -232,6 +232,21 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
     staleTime: 30_000,
     retry: false,
   });
+  const { data: reportsCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/research-reports/count"],
+    staleTime: 60_000,
+    retry: false,
+  });
+  const { data: forecasts } = useQuery<any[]>({
+    queryKey: ["/api/forecast-builder/forecasts"],
+    staleTime: 30_000,
+    retry: false,
+  });
+  const { data: mbJobs } = useQuery<any[]>({
+    queryKey: ["/api/market-builder/jobs"],
+    staleTime: 30_000,
+    retry: false,
+  });
 
   const buyerBento: BentoCfg[] = [
     {
@@ -241,7 +256,7 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       href: "/markets",
       accent: "cyan",
       size: "1x2",
-      stat: markets ? `${markets.length}` : undefined,
+      stat: markets != null ? `${markets.length}` : "—",
       statLabel: "live markets",
     },
     {
@@ -250,6 +265,8 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <FileText className="h-5 w-5" />,
       href: "/me/reports",
       accent: "violet",
+      stat: reportsCount != null ? `${reportsCount.count}` : "—",
+      statLabel: "reports available",
     },
     {
       label: "RFP Builder",
@@ -257,7 +274,7 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <ClipboardList className="h-5 w-5" />,
       href: "/me/rfps",
       accent: "cyan",
-      stat: rfpStatus ? `${rfpStatus.activeCount}` : undefined,
+      stat: rfpStatus != null ? `${rfpStatus.activeCount}` : "—",
       statLabel: "active RFPs",
     },
     {
@@ -266,7 +283,7 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <Layers className="h-5 w-5" />,
       href: "/datasheets",
       accent: "violet",
-      stat: savedSheets ? `${savedSheets.length}` : undefined,
+      stat: savedSheets != null ? `${savedSheets.length}` : "—",
       statLabel: "saved comparisons",
     },
     {
@@ -289,6 +306,8 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <TrendingUp className="h-5 w-5" />,
       href: "/forecast-builder",
       accent: "violet",
+      stat: forecasts != null ? `${forecasts.length}` : "—",
+      statLabel: "forecasts",
     },
     {
       label: "Market Builder",
@@ -296,6 +315,8 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <Globe2 className="h-5 w-5" />,
       href: "/me/market-builder",
       accent: "cyan",
+      stat: mbJobs != null ? `${mbJobs.length}` : "—",
+      statLabel: "custom markets",
     },
   ];
 

@@ -383,6 +383,15 @@ export function registerFileRoutes(app: Express): void {
 
   // ── Research Reports ──────────────────────────────────────────────────────
 
+  app.get("/api/research-reports/count", requireAuth, async (_req, res) => {
+    try {
+      const total = await storage.countAllResearchReports();
+      res.json({ count: total });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to count research reports" });
+    }
+  });
+
   app.get("/api/markets/:marketId/research-reports", requireFeature("research_reports"), async (req, res) => {
     try {
       // Gate by market visibility — private-market reports are

@@ -4,12 +4,17 @@ import {
   researchReports, researchMethodology,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 
 // ── Research Reports ───────────────────────────────────────────────────────
 
 export async function getMarketResearchReports(marketId: string): Promise<ResearchReport[]> {
   return await db.select().from(researchReports).where(eq(researchReports.marketId, marketId)).orderBy(researchReports.publishedAt);
+}
+
+export async function countAllResearchReports(): Promise<number> {
+  const [row] = await db.select({ value: count() }).from(researchReports);
+  return row?.value ?? 0;
 }
 
 export async function getResearchReportsByMarket(marketId: string): Promise<ResearchReport[]> {
