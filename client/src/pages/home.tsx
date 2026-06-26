@@ -102,6 +102,14 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     featureKey: "fact_review",
     accent: "violet",
   },
+  {
+    label: "Battle Cards",
+    description: "Competitive battle cards for every market where you compete — ready to use in sales.",
+    icon: <Shield className="h-5 w-5" />,
+    href: "/battle-cards",
+    featureKey: "battle_cards",
+    accent: "cyan",
+  },
 ];
 
 // ─── Misc static data ────────────────────────────────────────────────────────
@@ -281,13 +289,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <MessageSquare className="h-5 w-5" />,
       href: "/markets",
       accent: "cyan",
-    },
-    {
-      label: "Battle Cards",
-      description: "Competitive intelligence battle cards for every IT market.",
-      icon: <Shield className="h-5 w-5" />,
-      href: "/battle-cards",
-      accent: "violet",
     },
     {
       label: "Methodology",
