@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { Swords, Lock, ChevronRight, Wrench } from "lucide-react";
-import { LOCKABLE_FEATURES } from "@shared/features";
 import type { LockableFeatureKey } from "@shared/features";
 
 const TOOL_DEFS: {

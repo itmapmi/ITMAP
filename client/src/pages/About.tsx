@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Shield, Zap, Eye, Users, Globe2, ArrowRight, CheckCircle2, Database, Brain, Mail, Phone, MapPin, Clock, MessageSquare } from "lucide-react";
+import { Shield, Zap, Eye, Globe2, ArrowRight, CheckCircle2, Brain, Mail, Phone, MapPin, Clock, MessageSquare } from "lucide-react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },

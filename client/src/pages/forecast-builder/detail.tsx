@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ForecastThemeToggle } from "@/components/forecast/forecast-theme";
 import { useAuth } from "@/hooks/useAuth";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";

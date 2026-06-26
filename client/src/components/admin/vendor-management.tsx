@@ -14,7 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, RefreshCw, Clock, BellOff, Zap, Link2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { insertVendorSchema, insertVendorScoreSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type CanonicalVendor } from "@shared/schema";
+import { insertVendorSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type CanonicalVendor } from "@shared/schema";
 
 interface UrlHealthResult {
   vendorId: string;

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";

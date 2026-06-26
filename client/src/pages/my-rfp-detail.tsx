@@ -16,7 +16,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navigation from "@/components/navigation";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpRequirement, InsertRfpOutreachEntry } from "@shared/schema";
+import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpOutreachEntry } from "@shared/schema";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
 interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; invitedAt: string | null; respondedAt: string | null; vendor: { id: string; name: string } | null }

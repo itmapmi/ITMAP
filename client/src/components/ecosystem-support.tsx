@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, Settings, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, Award, TrendingUp, Sparkles, Info, FileDown } from "lucide-react";
+import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";

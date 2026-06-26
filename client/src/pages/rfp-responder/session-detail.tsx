@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import DiagramEngine from "./diagram-engine";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { RfpResponseSession, RfpResponseReq, RfpResponseAnswer, ResponseSource, CompetitiveClaim, RfpDiagram } from "@shared/schema";
 
 // ── Types ──────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Link2, FileText, Trash2, Loader2, Plus, Globe, ChevronDown, ChevronUp } from "lucide-react";
+import { Link2, FileText, Trash2, Loader2, Globe, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Source {
   id: string;

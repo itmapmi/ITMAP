@@ -1,6 +1,5 @@
 import { ExternalLink, Zap, Briefcase, Code2 } from "lucide-react";
 import { SiYcombinator, SiReddit, SiGithub } from "react-icons/si";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

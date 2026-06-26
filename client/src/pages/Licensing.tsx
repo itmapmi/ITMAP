@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Link } from "wouter";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Shield, FileText, CheckCircle2, XCircle, ArrowRight, Mail } from "lucide-react";

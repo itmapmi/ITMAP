@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Edit, Trash2, TrendingUp, Upload, Plus, Eye, EyeOff, Sprout, Building2 } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Eye, EyeOff, Sprout, Building2 } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
 import { SimpleImageUploader } from "@/components/SimpleImageUploader";
 

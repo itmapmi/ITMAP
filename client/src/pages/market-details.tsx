@@ -15,7 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import MagicQuadrant from "@/components/magic-quadrant";
 import SupportMatrix from "@/components/support-matrix";
 import EcosystemSupport from "@/components/ecosystem-support";
-import GenerateReports from "@/components/generate-reports";
 import ResearchMethodology from "@/components/research-methodology";
 import { NewPlayers } from "@/components/new-players";
 import { ResearchReports } from "@/components/research-reports";
