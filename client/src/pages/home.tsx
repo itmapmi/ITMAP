@@ -49,6 +49,8 @@ interface VendorBentoCfg {
   accent: BentoAccent;
   // When set, overrides the default hasFeature(featureKey) lock check
   lockedOverride?: (isAdminLinked: boolean) => boolean;
+  // When set, hides the card entirely when the predicate returns false
+  visibleWhen?: (isAdminLinked: boolean, hasMarkets: boolean) => boolean;
 }
 
 // ─── Module-level static config (icons use JSX; safe with Vite JSX transform) ─
@@ -103,9 +105,12 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     href: "/lead-gen/me/fact-review",
     featureKey: "fact_review",
     accent: "violet",
-    // Fact Review is free the moment admin links the user to a vendor —
-    // the backend already enforces this with requireVendorScope, not requireFeature.
-    lockedOverride: (isAdminLinked) => !isAdminLinked,
+    // Only shown when admin has linked this user to a vendor AND that vendor
+    // appears in at least one market. Hidden entirely otherwise.
+    visibleWhen: (_isAdminLinked, hasMarkets) => hasMarkets,
+    // Unlocked automatically once visible — the backend enforces requireVendorScope,
+    // not requireFeature, so no separate feature grant is needed.
+    lockedOverride: () => false,
   },
   {
     label: "Battle Cards",
@@ -363,6 +368,8 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
   // differently from "resolved but no vendor found" so we never blank the page.
   const isLinked = !!vendorName;
   const companyLabel = vendorName ?? (user?.firstName ? `${user.firstName}'s Vendor Hub` : "Vendor Hub");
+  // True only when admin has linked this user to a vendor that appears in ≥1 market
+  const hasMarkets = isAdminLinked && !!(myMarkets && myMarkets.length > 0);
 
   // Only show the "not linked" warning for admin-linked accounts where the
   // vendor record couldn't be resolved. Self-registered vendor-persona users
@@ -477,17 +484,19 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <p className="text-slate-500 text-sm mt-1">Powerful tools for lead generation, competitive response and market intelligence — plan upgrade required.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {VENDOR_DASHBOARD_TOOLS_CFG.map((card) => (
-              <BentoCard
-                key={card.label}
-                label={card.label}
-                description={card.description}
-                icon={card.icon}
-                href={card.href}
-                locked={card.lockedOverride ? card.lockedOverride(isAdminLinked) : !hasFeature(card.featureKey)}
-                accent={card.accent}
-              />
-            ))}
+            {VENDOR_DASHBOARD_TOOLS_CFG
+              .filter((card) => card.visibleWhen ? card.visibleWhen(isAdminLinked, hasMarkets) : true)
+              .map((card) => (
+                <BentoCard
+                  key={card.label}
+                  label={card.label}
+                  description={card.description}
+                  icon={card.icon}
+                  href={card.href}
+                  locked={card.lockedOverride ? card.lockedOverride(isAdminLinked) : !hasFeature(card.featureKey)}
+                  accent={card.accent}
+                />
+              ))}
           </div>
         </motion.div>
 
