@@ -50,15 +50,19 @@ export function useAuth() {
     },
   });
 
+  const isVendorScoped = !!(user?.vendorScopeId || (user as any)?.vendorScopeIds?.length);
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user && !error,
     isAdmin: user?.role === 'admin',
+    isBuyer: !!user && !isVendorScoped && user.role !== 'admin',
     vendorScopeId: user?.vendorScopeId ?? null,
-    isVendorScoped: !!(user?.vendorScopeId || user?.vendorScopeIds?.length),
+    isVendorScoped,
+    // Buyers get all features unlocked; vendor-scoped users are gated per featureAccess list
     hasFeature: (featureKey: LockableFeatureKey) =>
-      hasFeatureAccess(user?.role, user?.featureAccess, featureKey),
+      hasFeatureAccess(user?.role, user?.featureAccess, featureKey, isVendorScoped),
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

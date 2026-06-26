@@ -4,6 +4,8 @@
 // LOCKABLE features are locked by default and must be enabled per-user by an
 // admin (global per user — enabling grants access across all markets).
 // Admins always have access to everything.
+// Buyers (non-vendor, non-admin users) have unrestricted access to all features.
+// Vendors (users with a vendorScopeId) must have features explicitly enabled.
 //
 // Both the frontend (greying-out / tooltips) and the backend (route
 // enforcement) import from this file so the three surfaces — gating, admin
@@ -38,13 +40,20 @@ export function featureLabel(key: LockableFeatureKey): string {
 
 // Resolve whether a user can access a given lockable feature.
 // - Admins: always true.
-// - Everyone else: only if the feature key is in their granted list.
+// - Buyers (non-vendor, non-admin): always true — all features unlocked.
+// - Vendors (isVendorScoped=true): only if the feature key is in their granted list.
+//
+// isVendorScoped defaults to true so existing backend callers that don't pass it
+// preserve the old gating behaviour. Frontend callers pass the actual value.
 export function hasFeatureAccess(
   role: string | null | undefined,
   grantedFeatures: readonly string[] | null | undefined,
   featureKey: LockableFeatureKey,
+  isVendorScoped = true,
 ): boolean {
   if (role === "admin") return true;
+  // Buyers get unrestricted access
+  if (!isVendorScoped) return true;
   return (grantedFeatures ?? []).includes(featureKey);
 }
 
@@ -52,8 +61,10 @@ export function hasFeatureAccess(
 export function resolveAccessibleFeatures(
   role: string | null | undefined,
   grantedFeatures: readonly string[] | null | undefined,
+  isVendorScoped = true,
 ): LockableFeatureKey[] {
   if (role === "admin") return [...LOCKABLE_FEATURE_KEYS];
+  if (!isVendorScoped) return [...LOCKABLE_FEATURE_KEYS];
   const granted = grantedFeatures ?? [];
   return LOCKABLE_FEATURE_KEYS.filter((k) => granted.includes(k));
 }

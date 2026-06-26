@@ -6,11 +6,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
+import { BentoCard } from "@/components/bento-card";
 import type { Market } from "@shared/schema";
 import {
   ArrowRight, BarChart3, TrendingUp, Shield, Zap, Globe2,
   CheckCircle2, ChevronRight, Star, Eye, Database, Brain,
-  Newspaper, FileSearch, Target, LineChart, Users
+  Newspaper, FileSearch, Target, LineChart, Users,
+  FileText, ClipboardList, Layers, BookOpen, Activity,
+  Building2, MessageSquare,
 } from "lucide-react";
 
 const fadeUp = {
@@ -18,11 +21,6 @@ const fadeUp = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
-};
-
-const staggerContainer = {
-  whileInView: { transition: { staggerChildren: 0.1 } },
-  viewport: { once: true },
 };
 
 function MarketName(name: string) {
@@ -68,7 +66,7 @@ const HOW_IT_WORKS = [
   },
 ];
 
-const FEATURES = [
+const PLATFORM_FEATURES = [
   {
     icon: <Eye className="h-5 w-5 text-cyan-400" />,
     title: "Vendor Evaluation Maps",
@@ -107,85 +105,380 @@ const FEATURES = [
   },
 ];
 
-export default function Home() {
-  useSeo({
-    title: "DCIG — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
-    description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
-    path: "/",
-  });
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { data: markets, isLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+// ─── Market Card ────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    track("filter_applied", { metadata: { context: "home" } });
-    const endDwell = trackDwell({ metadata: { page: "home" } });
-    return endDwell;
-  }, []);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#1e2130]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <motion.div {...fadeUp} className="mb-10">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Welcome back, {markets ? "" : ""}
-            </h1>
-            <p className="text-slate-400">Select a market to explore vendor intelligence.</p>
-          </motion.div>
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />
-              ))}
+function MarketCard({ market, href, accentViolet = false }: { market: Market; href: string; accentViolet?: boolean }) {
+  return (
+    <Link href={href}>
+      <div className={`group relative bg-slate-900 border border-white/5 rounded-2xl p-6 cursor-pointer transition-all duration-300 overflow-hidden ${
+        accentViolet
+          ? "hover:border-violet-500/30 hover:shadow-[0_0_50px_rgba(139,92,246,0.07)]"
+          : "hover:border-cyan-500/30 hover:shadow-[0_0_50px_rgba(14,165,233,0.07)]"
+      }`}>
+        <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-all duration-500 ${
+          accentViolet ? "from-violet-500/5 to-cyan-500/5" : "from-cyan-500/5 to-violet-600/5"
+        }`} />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-4">
+            <div className={`p-2 rounded-lg ${accentViolet ? "bg-violet-500/15" : "bg-gradient-to-br from-cyan-500/15 to-violet-500/15"}`}>
+              <BarChart3 className={`h-4 w-4 ${accentViolet ? "text-violet-400" : "text-cyan-400"}`} />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {markets?.map((market, i) => (
-                <motion.div
-                  key={market.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07, duration: 0.5 }}
-                >
-                  <Link href={`/markets/${market.id}`}>
-                    <div className="group bg-slate-900 border border-white/5 hover:border-cyan-500/40 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_40px_rgba(14,165,233,0.08)]">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="p-2 bg-gradient-to-br from-cyan-500/10 to-violet-600/10 rounded-lg border border-white/5">
-                          <BarChart3 className="h-5 w-5 text-cyan-400" />
-                        </div>
-                        <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2 py-1 rounded-full">{market.category}</span>
-                      </div>
-                      <h3 className="font-semibold text-white mb-2 group-hover:text-cyan-300 transition-colors leading-snug">
-                        {MarketName(market.name)}
-                      </h3>
-                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-2">
-                        {market.shortDescription || market.description}
-                      </p>
-                      <div className="mt-4 flex items-center text-cyan-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        Explore <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              accentViolet ? "text-violet-400 bg-violet-400/10" : "text-violet-400 bg-violet-400/10"
+            }`}>{market.category}</span>
+          </div>
+          <h3 className={`font-semibold text-white mb-2 transition-colors leading-snug ${
+            accentViolet ? "group-hover:text-violet-300" : "group-hover:text-cyan-300"
+          }`}>
+            {MarketName(market.name)}
+          </h3>
+          <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
+            {market.shortDescription || market.description}
+          </p>
+          <div className="mt-5 flex items-center justify-between">
+            <div className="flex -space-x-1">
+              {["V", "C", "R", "P"].map((l, j) => (
+                <div key={j} className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-900 flex items-center justify-center text-xs text-slate-300 font-bold">
+                  {l}
+                </div>
               ))}
+              <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-900 flex items-center justify-center text-xs text-slate-400">+</div>
             </div>
-          )}
+            <span className={`text-xs text-slate-500 group-hover:text-cyan-400 transition-colors flex items-center gap-1`}>
+              Explore <ChevronRight className="h-3 w-3" />
+            </span>
+          </div>
         </div>
       </div>
+    </Link>
+  );
+}
+
+// ─── Market Grid (skeleton + cards) ─────────────────────────────────────────
+
+function MarketGrid({ markets, isLoading, linkToLogin = false, accentViolet = false }: {
+  markets?: Market[];
+  isLoading: boolean;
+  linkToLogin?: boolean;
+  accentViolet?: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-44 bg-slate-800/40 rounded-2xl animate-pulse" />
+        ))}
+      </div>
     );
   }
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {markets?.map((market, i) => (
+        <motion.div
+          key={market.id}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.07, duration: 0.5 }}
+        >
+          <MarketCard
+            market={market}
+            href={linkToLogin ? "/login" : `/markets/${market.id}`}
+            accentViolet={accentViolet}
+          />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Section header ──────────────────────────────────────────────────────────
+
+function SectionLabel({ accent, children }: { accent: "cyan" | "violet"; children: React.ReactNode }) {
+  const color = accent === "cyan" ? "text-cyan-400" : "text-violet-400";
+  const bg = accent === "cyan" ? "bg-cyan-400" : "bg-violet-400";
+  return (
+    <div className={`inline-flex items-center gap-2 ${color} text-xs font-semibold tracking-widest uppercase mb-3`}>
+      <div className={`h-px w-6 ${bg}`} />
+      {children}
+      <div className={`h-px w-6 ${bg}`} />
+    </div>
+  );
+}
+
+// ─── BUYER DASHBOARD ─────────────────────────────────────────────────────────
+
+function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Market[]; isLoading: boolean }) {
+  return (
+    <div className="min-h-screen bg-[#1e2130]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Welcome header */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold">
+              {user?.firstName?.[0] ?? "U"}
+            </div>
+            <span className="text-slate-400 text-sm">Welcome back, <span className="text-white font-medium">{user?.firstName}</span></span>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-1">Your Intelligence Dashboard</h1>
+          <p className="text-slate-400">All platform features are unlocked for your account.</p>
+        </motion.div>
+
+        {/* Bento grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12"
+        >
+          {/* Markets — large */}
+          <div className="md:col-span-2 md:row-span-2">
+            <BentoCard
+              label="Markets"
+              description="Explore AI-scored vendor evaluations across all live IT markets. Interactive quadrant maps, feature matrices, news impact and research reports."
+              icon={<BarChart3 className="h-5 w-5" />}
+              href="/markets"
+              stat={markets ? `${markets.length}` : "—"}
+              statLabel="live markets"
+              accent="cyan"
+              size="1x1"
+              className="h-full min-h-[200px]"
+            />
+          </div>
+
+          {/* Reports */}
+          <BentoCard
+            label="Research Reports"
+            description="AI-generated deep-dive reports for every market."
+            icon={<FileText className="h-5 w-5" />}
+            href="/me/reports"
+            accent="violet"
+          />
+
+          {/* RFP Builder */}
+          <BentoCard
+            label="RFP Builder"
+            description="Create, manage and respond to vendor RFPs with AI."
+            icon={<ClipboardList className="h-5 w-5" />}
+            href="/me/rfps"
+            accent="cyan"
+          />
+
+          {/* Datasheets */}
+          <BentoCard
+            label="Datasheets"
+            description="Side-by-side vendor feature comparisons, shareable."
+            icon={<Layers className="h-5 w-5" />}
+            href="/datasheets"
+            accent="violet"
+          />
+
+          {/* Battle Cards */}
+          <BentoCard
+            label="Battle Cards"
+            description="Competitive intelligence cards for every market."
+            icon={<Shield className="h-5 w-5" />}
+            href="/battle-cards"
+            accent="cyan"
+          />
+
+          {/* Methodology */}
+          <BentoCard
+            label="Methodology"
+            description="How we score and evaluate vendors — transparent criteria."
+            icon={<BookOpen className="h-5 w-5" />}
+            href="/platform"
+            accent="emerald"
+          />
+
+          {/* Forecast Builder */}
+          <BentoCard
+            label="Forecast Builder"
+            description="AI-native market sizing and multi-scenario forecasts."
+            icon={<TrendingUp className="h-5 w-5" />}
+            href="/forecast-builder"
+            accent="violet"
+          />
+
+          {/* Market Builder */}
+          <BentoCard
+            label="Market Builder"
+            description="Build custom markets with your own criteria and weights."
+            icon={<Globe2 className="h-5 w-5" />}
+            href="/me/market-builder"
+            accent="cyan"
+          />
+        </motion.div>
+
+        {/* Markets section */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <SectionLabel accent="cyan">Live Markets</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">Explore Markets</h2>
+            </div>
+            <Link href="/markets">
+              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+          <MarketGrid markets={markets} isLoading={isLoading} />
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
+
+function VendorDashboard({ user, markets, isLoading, hasFeature, vendorName }: {
+  user: any;
+  markets?: Market[];
+  isLoading: boolean;
+  hasFeature: (key: any) => boolean;
+  vendorName?: string;
+}) {
+  const companyLabel = vendorName || "Your Company";
+
+  return (
+    <div className="min-h-screen bg-[#1e2130]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Vendor header */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-12">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-base font-bold">
+              {companyLabel[0]}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-white font-semibold text-lg">{companyLabel}</span>
+                <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">Vendor seat</span>
+              </div>
+              <p className="text-slate-400 text-sm">Intelligence Hub · {user?.firstName} {user?.lastName}</p>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-white">
+            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub
+          </h1>
+          <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — some features require plan upgrade.</p>
+        </motion.div>
+
+        {/* My Markets */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <SectionLabel accent="violet">Your Markets</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">My Markets</h2>
+            </div>
+            <Link href="/markets">
+              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+          <MarketGrid markets={markets} isLoading={isLoading} accentViolet />
+        </motion.div>
+
+        {/* Intelligence section */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mb-10">
+          <div className="mb-6">
+            <SectionLabel accent="cyan">Intelligence</SectionLabel>
+            <h2 className="text-2xl font-bold text-white">Market Intelligence</h2>
+            <p className="text-slate-500 text-sm mt-1">Advanced analytics and forecasting tools for your markets.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <BentoCard
+              label="Signals & News"
+              description="AI-scored news impact analysis across all your markets in real-time."
+              icon={<Activity className="h-5 w-5" />}
+              href="/markets"
+              locked={!hasFeature("news")}
+              accent="cyan"
+            />
+            <BentoCard
+              label="Forecast Builder"
+              description="AI-native market sizing, multi-scenario projections and sensitivity tables."
+              icon={<TrendingUp className="h-5 w-5" />}
+              href="/forecast-builder"
+              locked={!hasFeature("forecast_builder")}
+              accent="violet"
+            />
+            <BentoCard
+              label="Market Builder"
+              description="Build custom vendor evaluations weighted to your specific criteria."
+              icon={<Globe2 className="h-5 w-5" />}
+              href="/me/market-builder"
+              locked={!hasFeature("market_builder")}
+              accent="cyan"
+            />
+          </div>
+        </motion.div>
+
+        {/* Tools section */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+          <div className="mb-6">
+            <SectionLabel accent="violet">Tools</SectionLabel>
+            <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
+            <p className="text-slate-500 text-sm mt-1">Competitive intelligence and response tools for your team.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <BentoCard
+              label="RFP Responder"
+              description="AI-assisted RFP response generation using your product knowledge base."
+              icon={<MessageSquare className="h-5 w-5" />}
+              href="/rfp-responder"
+              locked={!hasFeature("rfp")}
+              accent="violet"
+            />
+            <BentoCard
+              label="Battle Cards"
+              description="Competitive battle cards for every market where you compete."
+              icon={<Shield className="h-5 w-5" />}
+              href="/battle-cards"
+              locked={!hasFeature("battle_cards")}
+              accent="cyan"
+            />
+            <BentoCard
+              label="Datasheets"
+              description="Side-by-side vendor feature comparisons — shareable with prospects."
+              icon={<Layers className="h-5 w-5" />}
+              href="/datasheets"
+              locked={!hasFeature("datasheets")}
+              accent="violet"
+            />
+          </div>
+        </motion.div>
+
+        {/* Lead Gen quick links */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-10 flex flex-wrap gap-3">
+          <Link href="/lead-gen/me">
+            <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+              My Leads <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+          <Link href="/lead-gen/me/fact-review">
+            <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+              Fact Review <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PUBLIC LANDING ──────────────────────────────────────────────────────────
+
+function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
+  const handlePersonaSelect = (persona: "buyer" | "vendor") => {
+    localStorage.setItem("spectio_persona", persona);
+    window.location.href = `/login?persona=${persona}`;
+  };
 
   return (
     <div className="bg-[#1e2130] text-white overflow-x-hidden">
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative min-h-[92vh] flex items-center overflow-x-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(14,165,233,0.12)_0%,transparent_55%)]" />
@@ -201,70 +494,105 @@ export default function Home() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-          <div className="max-w-4xl">
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-slate-300 mb-8"
-            >
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center mb-8"
+          >
+            <span className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-slate-300">
               <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
               AI-Powered · Independent · Real-Time
-            </motion.div>
+            </span>
+          </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.25, 0, 1] }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.1] mb-6"
-            >
-              The IT Vendor Landscape:{" "}
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
-                Decoded.
-              </span>
-            </motion.h1>
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1, ease: [0.25, 0.25, 0, 1] }}
+            className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.1] mb-4 text-center"
+          >
+            See Every Vendor.{" "}
+            <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
+              Know Every Move.
+            </span>
+          </motion.h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="text-lg sm:text-xl text-slate-400 max-w-2xl leading-relaxed mb-10"
-            >
-              DCIG delivers independent, AI-powered enterprise IT intelligence — vendor rankings, feature evaluations, news impact analysis and research reports. No vendor bias. No guesswork.
-            </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-12 text-center"
+          >
+            Independent, AI-powered enterprise IT intelligence for technology buyers and vendors. No bias. No guesswork.
+          </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
-              className="flex flex-col sm:flex-row gap-4 mb-16"
+          {/* Persona cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl mx-auto mb-16"
+          >
+            {/* Buyer card */}
+            <button
+              onClick={() => handlePersonaSelect("buyer")}
+              className="group relative text-left bg-slate-900 border border-white/8 hover:border-cyan-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_50px_rgba(14,165,233,0.12)]"
             >
-              <Link href="/markets">
-                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-8 py-6 text-base font-semibold shadow-[0_0_40px_rgba(14,165,233,0.25)] hover:shadow-[0_0_60px_rgba(14,165,233,0.35)] transition-all">
-                  Explore Markets <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 hover:border-white/25 px-8 py-6 text-base bg-transparent">
-                  Get Free Access
-                </Button>
-              </Link>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-6"
-            >
-              {STATS.map((s) => (
-                <div key={s.label}>
-                  <div className="text-2xl font-bold text-white mb-0.5">{s.value}</div>
-                  <div className="text-sm text-slate-500">{s.label}</div>
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/8 group-hover:to-violet-500/5 transition-all duration-500" />
+              <div className="relative">
+                <div className="h-11 w-11 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center mb-4">
+                  <Users className="h-5 w-5 text-cyan-400" />
                 </div>
-              ))}
-            </motion.div>
-          </div>
+                <h3 className="font-bold text-white text-lg mb-1.5 group-hover:text-cyan-300 transition-colors">
+                  Technology Buyer
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                  Evaluate vendors, compare products, build RFPs and access independent market research — all features unlocked.
+                </p>
+                <div className="flex items-center gap-1.5 text-cyan-400 text-sm font-medium">
+                  Get buyer access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </button>
+
+            {/* Vendor card */}
+            <button
+              onClick={() => handlePersonaSelect("vendor")}
+              className="group relative text-left bg-slate-900 border border-white/8 hover:border-violet-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_50px_rgba(139,92,246,0.12)]"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500/0 to-violet-500/0 group-hover:from-violet-500/8 group-hover:to-cyan-500/5 transition-all duration-500" />
+              <div className="relative">
+                <div className="h-11 w-11 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center mb-4">
+                  <Building2 className="h-5 w-5 text-violet-400" />
+                </div>
+                <h3 className="font-bold text-white text-lg mb-1.5 group-hover:text-violet-300 transition-colors">
+                  IT Vendor
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                  Monitor your market position, respond to RFPs, track competitive signals and showcase your products to buyers.
+                </p>
+                <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium">
+                  Get vendor access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </button>
+          </motion.div>
+
+          {/* Stats bar */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto"
+          >
+            {STATS.map((s) => (
+              <div key={s.label} className="text-center">
+                <div className="text-2xl font-bold text-white mb-0.5">{s.value}</div>
+                <div className="text-sm text-slate-500">{s.label}</div>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
@@ -278,7 +606,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Live Vendor Ticker */}
+      {/* Vendor ticker */}
       <section className="py-6 border-y border-white/5 bg-slate-900/50 overflow-hidden">
         <div className="relative flex gap-8">
           {[...VENDOR_SHOWCASE, ...VENDOR_SHOWCASE].map((v, i) => (
@@ -286,7 +614,7 @@ export default function Home() {
               key={i}
               className="flex-shrink-0 flex items-center gap-3 bg-slate-800/60 border border-white/5 rounded-full px-5 py-2.5"
               animate={{ x: [0, -100 * VENDOR_SHOWCASE.length] }}
-              transition={{ repeat: Infinity, duration: 30, ease: "linear", delay: 0 }}
+              transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
               style={{ position: "relative" }}
             >
               <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-violet-400 rounded-full" />
@@ -298,7 +626,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Markets Section */}
+      {/* Markets preview */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div {...fadeUp} className="text-center mb-16">
           <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
@@ -315,65 +643,12 @@ export default function Home() {
           </p>
         </motion.div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-44 bg-slate-800/40 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {markets?.map((market, i) => (
-              <motion.div
-                key={market.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-              >
-                <Link href="/login">
-                  <div className="group relative bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-2xl p-6 cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(14,165,233,0.07)]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-violet-600/0 group-hover:from-cyan-500/5 group-hover:to-violet-600/5 transition-all duration-500" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="p-2 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 rounded-lg">
-                          <BarChart3 className="h-4 w-4 text-cyan-400" />
-                        </div>
-                        <span className="text-xs font-medium text-violet-400 bg-violet-400/10 px-2 py-0.5 rounded-full">{market.category}</span>
-                      </div>
-                      <h3 className="font-semibold text-white mb-2 group-hover:text-cyan-300 transition-colors leading-snug">
-                        {MarketName(market.name)}
-                      </h3>
-                      <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
-                        {market.shortDescription || market.description}
-                      </p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className="flex -space-x-1">
-                          {["V", "C", "R", "P"].map((l, j) => (
-                            <div key={j} className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-900 flex items-center justify-center text-xs text-slate-300 font-bold">
-                              {l}
-                            </div>
-                          ))}
-                          <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-900 flex items-center justify-center text-xs text-slate-400">+</div>
-                        </div>
-                        <span className="text-xs text-slate-500 group-hover:text-cyan-400 transition-colors flex items-center gap-1">
-                          Explore <ChevronRight className="h-3 w-3" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        <MarketGrid markets={markets} isLoading={isLoading} linkToLogin />
 
         <motion.div {...fadeUp} className="text-center mt-10">
-          <Link href="/markets">
-            <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-              View All Markets <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+          <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
+            Sign in to explore <ArrowRight className="h-4 w-4" />
+          </button>
         </motion.div>
       </section>
 
@@ -453,7 +728,7 @@ export default function Home() {
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {FEATURES.map((f, i) => (
+              {PLATFORM_FEATURES.map((f, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
@@ -475,7 +750,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* News Impact Preview */}
+      {/* News Preview */}
       <section className="py-24 border-t border-white/5 bg-slate-900/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-14">
@@ -509,9 +784,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full">{item.category}</span>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    item.impact === "positive"
-                      ? "text-emerald-400 bg-emerald-400/10"
-                      : "text-red-400 bg-red-400/10"
+                    item.impact === "positive" ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
                   }`}>
                     {item.delta} impact
                   </span>
@@ -533,85 +806,39 @@ export default function Home() {
           </div>
 
           <motion.div {...fadeUp} className="text-center mt-10">
-            <Link href="/login">
-              <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                Sign in to access live news analysis <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
+            <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-6 py-3 rounded-lg font-semibold text-sm transition-all">
+              Access Full Intelligence Feed <ArrowRight className="h-4 w-4" />
+            </button>
           </motion.div>
         </div>
       </section>
 
-      {/* Why DCIG */}
+      {/* Bottom CTA */}
       <section className="py-24 border-t border-white/5">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div {...fadeUp}>
-            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <div className="h-px w-8 bg-cyan-400" />
-              THE DCIG DIFFERENCE
-            </div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
-              Analyst-grade research,{" "}
-              <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">without the agenda</span>
-            </h2>
-            <p className="text-slate-400 text-xl leading-relaxed max-w-3xl mx-auto mb-14">
-              Traditional analyst firms charge vendors for placement. We don't. DCIG's evaluations are built on publicly verifiable data, scored by AI, and reviewed by independent technologists. Every rating is explainable, every source is public.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-14">
-              {[
-                { icon: <Shield className="h-5 w-5 text-cyan-400" />, title: "Zero vendor influence", desc: "No paid placements, no sponsored research, no undisclosed relationships — ever." },
-                { icon: <Zap className="h-5 w-5 text-violet-400" />, title: "Always current", desc: "Scores update continuously as news, releases and market events occur — not quarterly." },
-                { icon: <Star className="h-5 w-5 text-cyan-400" />, title: "Fully transparent", desc: "Every score shows its data sources and weighting criteria. See exactly why a vendor ranks where it does." },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="bg-slate-900 border border-white/5 rounded-2xl p-6"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div {...fadeUp} className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-cyan-500/10 to-violet-600/10 border border-white/8 p-12 md:p-16 text-center">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(14,165,233,0.15)_0%,transparent_60%)]" />
+            <div className="relative">
+              <Zap className="h-10 w-10 text-cyan-400 mx-auto mb-6" />
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+                Ready to see clearly?
+              </h2>
+              <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">
+                Join enterprise IT teams that trust DCIG for unbiased, AI-powered vendor intelligence.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => handlePersonaSelect("buyer")}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]"
                 >
-                  <div className="p-2.5 bg-slate-800 rounded-xl w-fit mb-4">{item.icon}</div>
-                  <h4 className="font-semibold text-white mb-2">{item.title}</h4>
-                  <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-24 border-t border-white/5">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div {...fadeUp}>
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-14 overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.08)_0%,transparent_70%)]" />
-              <div className="relative">
-                <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
-                  Start seeing clearly.
-                </h2>
-                <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-                  Join enterprise IT and procurement teams who rely on DCIG for vendor decisions that matter.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link href="/register">
-                    <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-10 py-6 text-base font-semibold shadow-[0_0_40px_rgba(14,165,233,0.25)]">
-                      Get Free Access <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/markets">
-                    <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 bg-transparent px-10 py-6 text-base">
-                      Browse Markets
-                    </Button>
-                  </Link>
-                  <Link href="/datasheets">
-                    <Button variant="outline" size="lg" className="border-white/15 text-white hover:bg-white/5 bg-transparent px-10 py-6 text-base" data-testid="link-home-datasheets">
-                      Compare Datasheets
-                    </Button>
-                  </Link>
-                </div>
+                  <Users className="h-4 w-4" /> Get Buyer Access
+                </button>
+                <button
+                  onClick={() => handlePersonaSelect("vendor")}
+                  className="inline-flex items-center justify-center gap-2 border border-white/15 text-white hover:bg-white/5 hover:border-white/25 px-8 py-4 rounded-xl font-semibold text-base transition-all"
+                >
+                  <Building2 className="h-4 w-4" /> Get Vendor Access
+                </button>
               </div>
             </div>
           </motion.div>
@@ -619,53 +846,68 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <img src="/dcig-logo-white.png" alt="DCIG" style={{ height: 28, width: "auto", objectFit: "contain" }} />
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                AI-powered enterprise IT intelligence. Independent. Transparent. Always current.
-              </p>
-            </div>
-            <div>
-              <h5 className="text-white font-medium text-sm mb-4">Platform</h5>
-              <ul className="space-y-2.5">
-                {[["Markets", "/markets"], ["Platform", "/platform"], ["Market Builder", "/me/market-builder"], ["Datasheet Comparison", "/datasheets"]].map(([l, h]) => (
-                  <li key={l}><Link href={h}><span className="text-slate-500 text-sm hover:text-slate-300 cursor-pointer transition-colors">{l}</span></Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h5 className="text-white font-medium text-sm mb-4">Company</h5>
-              <ul className="space-y-2.5">
-                {[["About", "/about"], ["Licensing", "/licensing"], ["Contact", "/contact"]].map(([l, h]) => (
-                  <li key={l}><Link href={h}><span className="text-slate-500 text-sm hover:text-slate-300 cursor-pointer transition-colors">{l}</span></Link></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h5 className="text-white font-medium text-sm mb-4">Get Started</h5>
-              <ul className="space-y-2.5">
-                {[["Sign In", "/login"], ["Create Account", "/register"]].map(([l, h]) => (
-                  <li key={l}><Link href={h}><span className="text-slate-500 text-sm hover:text-slate-300 cursor-pointer transition-colors">{l}</span></Link></li>
-                ))}
-              </ul>
-              <div className="mt-5">
-                <a href="mailto:support@dcig.com" className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors">
-                  support@dcig.com
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-slate-600 text-sm">© 2025 DCIG. All rights reserved.</p>
-            <p className="text-slate-600 text-sm">Independent AI-powered IT intelligence · Dubai, UAE</p>
+      <footer className="border-t border-white/5 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="text-slate-500 text-sm">© {new Date().getFullYear()} DCIG. All rights reserved.</div>
+          <div className="flex items-center gap-6 text-sm text-slate-500">
+            <Link href="/platform"><span className="hover:text-white transition-colors cursor-pointer">Platform</span></Link>
+            <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">About</span></Link>
+            <Link href="/licensing"><span className="hover:text-white transition-colors cursor-pointer">Licensing</span></Link>
+            <Link href="/contact"><span className="hover:text-white transition-colors cursor-pointer">Contact</span></Link>
           </div>
         </div>
       </footer>
     </div>
   );
+}
+
+// ─── ROOT EXPORT ─────────────────────────────────────────────────────────────
+
+export default function Home() {
+  useSeo({
+    title: "DCIG — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
+    description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
+    path: "/",
+  });
+
+  const { isAuthenticated, isLoading: authLoading, isVendorScoped, isAdmin, user, hasFeature } = useAuth();
+  const { data: markets, isLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+
+  const { data: vendorScope } = useQuery<{ vendor: { name?: string } }>({
+    queryKey: ["/api/lead-gen/me/scope"],
+    enabled: isVendorScoped && !isAdmin,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    track("filter_applied", { metadata: { context: "home" } });
+    const endDwell = trackDwell({ metadata: { page: "home" } });
+    return endDwell;
+  }, []);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated && !isAdmin) {
+    if (isVendorScoped) {
+      return (
+        <VendorDashboard
+          user={user}
+          markets={markets}
+          isLoading={isLoading}
+          hasFeature={hasFeature}
+          vendorName={vendorScope?.vendor?.name}
+        />
+      );
+    }
+    return <BuyerDashboard user={user} markets={markets} isLoading={isLoading} />;
+  }
+
+  return <PublicLanding markets={markets} isLoading={isLoading} />;
 }

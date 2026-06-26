@@ -47,25 +47,44 @@ export default function Navigation() {
     return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
   };
 
-  const marketBuilderHref = isAuthenticated ? "/me/market-builder" : "/login";
   const isMarketBuilderActive = location.includes("market-builder") && !location.includes("forecast");
   const isForecastBuilderActive = location.includes("forecast-builder");
   const vendorOnly = isVendorScoped && !isAdmin;
+  const buyerOnly = isAuthenticated && !isVendorScoped && !isAdmin;
 
-  const navItems: { href: string; label: string; active?: boolean; featureKey?: LockableFeatureKey; vendorHidden?: boolean }[] = [
-    { href: "/platform",          label: "Platform" },
-    { href: "/markets",           label: "Markets" },
-    { href: marketBuilderHref,    label: "Market Builder", active: isMarketBuilderActive, featureKey: "market_builder", vendorHidden: true },
-    { href: "/forecast-builder",  label: "Forecast Builder", active: isForecastBuilderActive, featureKey: "forecast_builder", vendorHidden: true },
-    { href: "/datasheets",        label: "Datasheets", featureKey: "datasheets", vendorHidden: true },
-    { href: "/licensing",         label: "Licensing" },
-    { href: "/about",             label: "About Us" },
-  ].filter(item => {
-    if (!vendorOnly || !item.vendorHidden) return true;
-    return item.featureKey ? hasFeature(item.featureKey) : false;
-  });
+  // Public nav (unauthenticated)
+  const publicNavItems = [
+    { href: "/platform", label: "Platform" },
+    { href: "/markets", label: "Markets" },
+    { href: "/licensing", label: "Licensing" },
+    { href: "/about", label: "About Us" },
+  ];
 
-  const isToolsActive = location.startsWith("/battle-cards") || location.startsWith("/me/tools");
+  // Buyer nav (all features unlocked — no locks needed)
+  const buyerNavItems = [
+    { href: "/markets", label: "Markets" },
+    { href: "/me/reports", label: "Reports" },
+    { href: "/me/rfps", label: "RFP Builder" },
+    { href: "/datasheets", label: "Datasheets" },
+    { href: "/platform", label: "Methodology" },
+  ];
+
+  // Vendor nav — intelligence and tools dropdowns
+  const intelligenceItems: { href: string; label: string; featureKey: LockableFeatureKey }[] = [
+    { href: "/forecast-builder", label: "Forecast Builder", featureKey: "forecast_builder" },
+    { href: "/me/market-builder", label: "Market Builder", featureKey: "market_builder" },
+    { href: "/markets", label: "News & Signals", featureKey: "news" },
+  ];
+  const toolsItems: { href: string; label: string; featureKey: LockableFeatureKey }[] = [
+    { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
+    { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
+    { href: "/datasheets", label: "Datasheets", featureKey: "datasheets" },
+  ];
+
+  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets");
+  const isIntelligenceActive = isForecastBuilderActive || isMarketBuilderActive;
+  const intelligenceAllLocked = intelligenceItems.every(i => !hasFeature(i.featureKey));
+  const toolsAllLocked = toolsItems.every(i => !hasFeature(i.featureKey));
 
   if (isAdminArea) {
     return (
@@ -114,65 +133,91 @@ export default function Navigation() {
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1">
-              {navItems.map(({ href, label, active, featureKey }) => {
-                const isActive = active !== undefined ? active : location === href;
-                const locked = featureKey ? !hasFeature(featureKey) : false;
-                if (locked) {
-                  return (
-                    <LockedFeatureTooltip key={label}>
-                      <span className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-400 hover:text-slate-300 cursor-not-allowed select-none transition-colors">
-                        {label}<Lock className="h-3 w-3 text-amber-400/90" />
-                      </span>
-                    </LockedFeatureTooltip>
-                  );
-                }
+              {/* Buyer nav — all features unlocked */}
+              {buyerOnly && buyerNavItems.map(({ href, label }) => {
+                const isActive = location === href || (href !== "/markets" && location.startsWith(href));
                 return (
                   <Link key={label} href={href}>
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                      isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}>{label}</span>
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${isActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{label}</span>
                   </Link>
                 );
               })}
-              {isAuthenticated && (
+
+              {/* Vendor nav — My Markets, My Leads, Intelligence dropdown, Tools dropdown, Methodology */}
+              {vendorOnly && (
                 <>
-                  <Link href="/me/tools">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                      isToolsActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}>Tools</span>
+                  <Link href="/markets">
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>My Markets</span>
                   </Link>
-                  <Link href="/me/reports">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                      location.includes("reports") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                    }`}>My Reports</span>
+                  <Link href="/lead-gen/me">
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>My Leads</span>
                   </Link>
-                  {isVendorScoped && !isAdmin && (
-                    <Link href="/lead-gen/me">
-                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                        location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                      }`}>My Leads</span>
-                    </Link>
-                  )}
-                  {isVendorScoped && !isAdmin && (
-                    <Link href="/lead-gen/me/fact-review">
-                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                        location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                      }`}>Fact Review</span>
-                    </Link>
-                  )}
-                  {isVendorScoped && !isAdmin && hasFeature("rfp") && (
-                    <Link href="/rfp-responder">
-                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
-                        location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
-                      }`}>RFP Responder</span>
-                    </Link>
-                  )}
-                  {isAdmin && (
-                    <Link href="/admin">
-                      <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
-                    </Link>
-                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1 select-none ${isIntelligenceActive ? "text-white bg-white/10" : intelligenceAllLocked ? "text-slate-500" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>
+                        Intelligence
+                        {intelligenceAllLocked ? <Lock className="h-3 w-3 text-amber-400/70" /> : <ChevronDown className="h-3 w-3" />}
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-slate-900 border-white/10 min-w-[190px]">
+                      {intelligenceItems.map(({ href, label, featureKey }) => {
+                        const locked = !hasFeature(featureKey);
+                        return locked ? (
+                          <LockedFeatureTooltip key={label}>
+                            <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 cursor-not-allowed select-none w-full">
+                              {label}<Lock className="h-3 w-3 text-amber-400/70 ml-auto" />
+                            </div>
+                          </LockedFeatureTooltip>
+                        ) : (
+                          <DropdownMenuItem key={label} asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                            <Link href={href}>{label}</Link>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1 select-none ${isToolsActive ? "text-white bg-white/10" : toolsAllLocked ? "text-slate-500" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>
+                        Tools
+                        {toolsAllLocked ? <Lock className="h-3 w-3 text-amber-400/70" /> : <ChevronDown className="h-3 w-3" />}
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-slate-900 border-white/10 min-w-[190px]">
+                      {toolsItems.map(({ href, label, featureKey }) => {
+                        const locked = !hasFeature(featureKey);
+                        return locked ? (
+                          <LockedFeatureTooltip key={label}>
+                            <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 cursor-not-allowed select-none w-full">
+                              {label}<Lock className="h-3 w-3 text-amber-400/70 ml-auto" />
+                            </div>
+                          </LockedFeatureTooltip>
+                        ) : (
+                          <DropdownMenuItem key={label} asChild className="text-slate-300 hover:text-white hover:bg-white/10 cursor-pointer">
+                            <Link href={href}>{label}</Link>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Link href="/platform">
+                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>Methodology</span>
+                  </Link>
                 </>
+              )}
+
+              {/* Public nav (unauthenticated) */}
+              {!isAuthenticated && publicNavItems.map(({ href, label }) => (
+                <Link key={label} href={href}>
+                  <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === href ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>{label}</span>
+                </Link>
+              ))}
+
+              {/* Admin link (always shown for admins) */}
+              {isAdmin && (
+                <Link href="/admin">
+                  <span className="px-4 py-2 text-sm font-medium rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 transition-all cursor-pointer">Admin</span>
+                </Link>
               )}
             </div>
 
@@ -254,76 +299,54 @@ export default function Navigation() {
         {/* Mobile menu */}
         {mobileOpen && (
           <div className="md:hidden bg-[#1e2130] border-t border-white/5 px-4 py-4 space-y-1">
-            {navItems.map(({ href, label, active, featureKey }) => {
-              const isActive = active !== undefined ? active : location === href;
-              const locked = featureKey ? !hasFeature(featureKey) : false;
-              if (locked) {
-                return (
-                  <div key={label} className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-500 cursor-not-allowed select-none">
-                    {label}<Lock className="h-3 w-3 text-amber-400/90" />
-                  </div>
-                );
-              }
-              return (
-                <Link key={label} href={href}>
-                  <div
-                    className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${isActive ? "text-white bg-white/10" : "text-slate-400"}`}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {label}
-                  </div>
-                </Link>
-              );
-            })}
-            {isAuthenticated && (
-              <Link href="/me/tools">
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${isToolsActive ? "text-white bg-white/10" : "text-slate-400"}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Tools
-                </div>
+            {/* Buyer mobile nav */}
+            {buyerOnly && buyerNavItems.map(({ href, label }) => (
+              <Link key={label} href={href}>
+                <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === href || location.startsWith(href) ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div>
               </Link>
+            ))}
+
+            {/* Vendor mobile nav */}
+            {vendorOnly && (
+              <>
+                <Link href="/markets"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>My Markets</div></Link>
+                <Link href="/lead-gen/me"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>My Leads</div></Link>
+                <Link href="/lead-gen/me/fact-review"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>Fact Review</div></Link>
+                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">Intelligence</div>
+                {intelligenceItems.map(({ href, label, featureKey }) => {
+                  const locked = !hasFeature(featureKey);
+                  return locked ? (
+                    <div key={label} className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
+                      {label}<Lock className="h-3 w-3 text-amber-400/70" />
+                    </div>
+                  ) : (
+                    <Link key={label} href={href}><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith(href) ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div></Link>
+                  );
+                })}
+                <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">Tools</div>
+                {toolsItems.map(({ href, label, featureKey }) => {
+                  const locked = !hasFeature(featureKey);
+                  return locked ? (
+                    <div key={label} className="px-4 py-3 text-sm font-medium rounded-lg flex items-center gap-1.5 text-slate-600 cursor-not-allowed select-none">
+                      {label}<Lock className="h-3 w-3 text-amber-400/70" />
+                    </div>
+                  ) : (
+                    <Link key={label} href={href}><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith(href) ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div></Link>
+                  );
+                })}
+                <Link href="/platform"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/platform" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>Methodology</div></Link>
+              </>
             )}
-            {isAuthenticated && (
-              <Link href="/me/reports">
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-400"}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  My Reports
-                </div>
+
+            {/* Public mobile nav */}
+            {!isAuthenticated && publicNavItems.map(({ href, label }) => (
+              <Link key={label} href={href}>
+                <div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === href ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>{label}</div>
               </Link>
-            )}
-            {isVendorScoped && !isAdmin && (
-              <Link href="/lead-gen/me">
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  My Leads
-                </div>
-              </Link>
-            )}
-            {isVendorScoped && !isAdmin && (
-              <Link href="/lead-gen/me/fact-review">
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Fact Review
-                </div>
-              </Link>
-            )}
-            {isVendorScoped && !isAdmin && hasFeature("rfp") && (
-              <Link href="/rfp-responder">
-                <div
-                  className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location.startsWith("/rfp-responder") ? "text-white bg-white/10" : "text-slate-400"}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  RFP Responder
-                </div>
-              </Link>
+            ))}
+
+            {isAdmin && (
+              <Link href="/admin"><div className="px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-amber-400" onClick={() => setMobileOpen(false)}>Admin</div></Link>
             )}
 
             <div className="pt-3 border-t border-white/5 flex flex-col gap-2">

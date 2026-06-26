@@ -73,35 +73,49 @@ export default function Register() {
     window.location.href = `/auth/${provider}`;
   };
 
+  const persona = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const qp = params.get("persona");
+    if (qp === "buyer" || qp === "vendor") return qp;
+    const stored = localStorage.getItem("spectio_persona");
+    if (stored === "buyer" || stored === "vendor") return stored;
+    return null;
+  })();
+  const isVendorPersona = persona === "vendor";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#1e2130] py-12 px-4 sm:px-6 lg:px-8 relative">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className={`absolute inset-0 ${isVendorPersona ? "bg-[radial-gradient(ellipse_at_50%_30%,rgba(139,92,246,0.10),transparent_60%)]" : "bg-[radial-gradient(ellipse_at_50%_30%,rgba(14,165,233,0.10),transparent_60%)]"}`} />
+      </div>
+      <Card className="relative w-full max-w-md bg-slate-900 border border-white/8 shadow-2xl">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <SpectioLogo variant="dark" size="lg" />
+            <SpectioLogo size="lg" />
           </div>
-          <CardTitle className="text-2xl text-center">Join DCIG</CardTitle>
-          <CardDescription className="text-center">
-            <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
-            Create your account to start your free trial
+          {persona && (
+            <div className={`flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold mx-auto w-fit ${
+              isVendorPersona ? "bg-violet-500/15 text-violet-300 border border-violet-400/20" : "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20"
+            }`}>
+              {isVendorPersona ? "Vendor Access" : "Buyer Access"}
+            </div>
+          )}
+          <CardTitle className="text-2xl text-center text-white">
+            {isVendorPersona ? "Create your Vendor account" : "Create your account"}
+          </CardTitle>
+          <CardDescription className="text-center text-slate-400">
+            {isVendorPersona
+              ? "Monitor your market position and access vendor intelligence tools"
+              : "Get access to independent enterprise IT vendor intelligence"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* OAuth Buttons */}
           <div className="space-y-3">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleOAuthLogin('google')}
-            >
+            <Button variant="outline" className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white hover:border-white/20" onClick={() => handleOAuthLogin('google')}>
               <Chrome className="mr-2 h-4 w-4" />
               Continue with Google
             </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleOAuthLogin('linkedin')}
-            >
+            <Button variant="outline" className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white hover:border-white/20" onClick={() => handleOAuthLogin('linkedin')}>
               <Linkedin className="mr-2 h-4 w-4" />
               Continue with LinkedIn
             </Button>
@@ -109,106 +123,64 @@ export default function Register() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
+              <Separator className="w-full bg-white/10" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or register with email
-              </span>
+              <span className="bg-slate-900 px-2 text-slate-500">Or register with email</span>
             </div>
           </div>
 
-          {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {registerError && (
               <Alert variant="destructive">
                 <AlertDescription>{registerError}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  placeholder="John"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  required
-                />
-                {errors.firstName && (
-                  <p className="text-sm text-red-600">{errors.firstName}</p>
-                )}
+                <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
+                <Input id="firstName" placeholder="John" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="bg-white/5 border-white/10 text-white placeholder:text-slate-500" required />
+                {errors.firstName && <p className="text-sm text-red-400">{errors.firstName}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  required
-                />
-                {errors.lastName && (
-                  <p className="text-sm text-red-600">{errors.lastName}</p>
-                )}
+                <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
+                <Input id="lastName" placeholder="Doe" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="bg-white/5 border-white/10 text-white placeholder:text-slate-500" required />
+                {errors.lastName && <p className="text-sm text-red-400">{errors.lastName}</p>}
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-              />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email}</p>
-              )}
+              <Label htmlFor="email" className="text-slate-300">Email</Label>
+              <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-white/5 border-white/10 text-white placeholder:text-slate-500" required />
+              {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a secure password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password}</p>
-              )}
+              <Label htmlFor="password" className="text-slate-300">Password</Label>
+              <Input id="password" type="password" placeholder="Create a secure password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="bg-white/5 border-white/10 text-white placeholder:text-slate-500" required />
+              {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                required
-              />
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
+              <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
+              <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} className="bg-white/5 border-white/10 text-white placeholder:text-slate-500" required />
+              {errors.confirmPassword && <p className="text-sm text-red-400">{errors.confirmPassword}</p>}
             </div>
-            
-            <Button type="submit" className="w-full" disabled={isRegistering}>
+
+            <Button
+              type="submit"
+              className={`w-full text-white border-0 font-semibold ${isVendorPersona ? "bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400" : "bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"}`}
+              disabled={isRegistering}
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               {isRegistering ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
 
-          <div className="text-center text-sm">
+          <div className="text-center text-sm text-slate-400">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link href={`/login${persona ? `?persona=${persona}` : ""}`} className="text-cyan-400 hover:text-cyan-300 hover:underline">
               Sign in
             </Link>
           </div>
