@@ -336,22 +336,24 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
 
 // ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
 
-function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, vendorScopeLoading }: {
+function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, vendorScopeLoading, isAdminLinked }: {
   user: any;
   myMarkets?: Market[];
   isLoading: boolean;
   hasFeature: (key: LockableFeatureKey) => boolean;
   vendorName?: string;
   vendorScopeLoading?: boolean;
+  isAdminLinked: boolean;
 }) {
   // isLinked is false until the scope query resolves — treat "still loading"
   // differently from "resolved but no vendor found" so we never blank the page.
   const isLinked = !!vendorName;
-  const companyLabel = vendorName ?? "";
+  const companyLabel = vendorName ?? (user?.firstName ? `${user.firstName}'s Vendor Hub` : "Vendor Hub");
 
-  // Account has vendorScopeId set but the vendor record couldn't be resolved
-  // (only show this panel once loading is done, so we don't flash it)
-  if (!vendorScopeLoading && !isLinked) {
+  // Only show the "not linked" warning for admin-linked accounts where the
+  // vendor record couldn't be resolved. Self-registered vendor-persona users
+  // are NOT admin-linked and should see the full tool dashboard instead.
+  if (isAdminLinked && !vendorScopeLoading && !isLinked) {
     return (
       <div className="min-h-screen bg-[#1e2130]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -387,52 +389,57 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-12">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-base font-bold">
-              {vendorScopeLoading ? <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (companyLabel[0] || "?")}
+              {vendorScopeLoading ? <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (user?.firstName?.[0] || "V")}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                {vendorScopeLoading
-                  ? <div className="h-5 w-32 bg-slate-700 rounded animate-pulse" />
-                  : <span className="text-white font-semibold text-lg">{companyLabel}</span>
-                }
-                <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">Vendor seat</span>
+                <span className="text-white font-semibold text-lg">
+                  {user?.firstName} {user?.lastName}
+                </span>
+                <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">
+                  {isAdminLinked && isLinked ? "Vendor seat" : "IT Vendor"}
+                </span>
               </div>
               <p className="text-slate-400 text-sm">
-                {user?.firstName} {user?.lastName}
-                {!vendorScopeLoading && companyLabel && <> · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></>}
+                {user?.email}
+                {isAdminLinked && isLinked && <> · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></>}
               </p>
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white">
-            {vendorScopeLoading
+            {isAdminLinked && vendorScopeLoading
               ? <div className="h-8 w-64 bg-slate-700 rounded animate-pulse inline-block" />
-              : <><span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub</>
+              : isAdminLinked && isLinked
+              ? <><span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub</>
+              : <>Your <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">Vendor Hub</span></>
             }
           </h1>
-          <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — some features require plan upgrade.</p>
+          <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — locked features require a plan upgrade.</p>
         </motion.div>
 
-        {/* My Markets — scoped to vendor's markets */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <SectionLabel accent="violet">Your Markets</SectionLabel>
-              <h2 className="text-2xl font-bold text-white">My Markets</h2>
-              {vendorMarkets && vendorMarkets.length > 0 && (
-                <p className="text-slate-500 text-sm mt-0.5">{vendorMarkets.length} market{vendorMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
-              )}
+        {/* My Markets — only for admin-linked vendor seats with a resolved company */}
+        {isAdminLinked && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <SectionLabel accent="violet">Your Markets</SectionLabel>
+                <h2 className="text-2xl font-bold text-white">My Markets</h2>
+                {vendorMarkets && vendorMarkets.length > 0 && (
+                  <p className="text-slate-500 text-sm mt-0.5">{vendorMarkets.length} market{vendorMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
+                )}
+              </div>
+              <Link href="/markets">
+                <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                  All markets <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </div>
-            <Link href="/markets">
-              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                All markets <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
-            </Link>
-          </div>
-          <MarketGrid markets={vendorMarkets} isLoading={isLoading && !vendorMarkets} accentViolet />
-        </motion.div>
+            <MarketGrid markets={vendorMarkets} isLoading={isLoading && !vendorMarkets} accentViolet />
+          </motion.div>
+        )}
 
         {/* Intelligence — config-driven */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mb-10">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.2 : 0.1 }} className="mb-10">
           <div className="mb-6">
             <SectionLabel accent="cyan">Intelligence</SectionLabel>
             <h2 className="text-2xl font-bold text-white">Market Intelligence</h2>
@@ -454,7 +461,7 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
         </motion.div>
 
         {/* Tools — config-driven */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }}>
           <div className="mb-6">
             <SectionLabel accent="violet">Tools</SectionLabel>
             <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
@@ -475,19 +482,21 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
           </div>
         </motion.div>
 
-        {/* Lead gen quick links */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-10 flex flex-wrap gap-3">
-          <Link href="/lead-gen/me">
-            <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-              My Leads <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-          </Link>
-          <Link href="/lead-gen/me/fact-review">
-            <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-              Fact Review <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </motion.div>
+        {/* Lead gen quick links — only for admin-linked vendor seats */}
+        {isAdminLinked && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-10 flex flex-wrap gap-3">
+            <Link href="/lead-gen/me">
+              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                My Leads <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+            <Link href="/lead-gen/me/fact-review">
+              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                Fact Review <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </motion.div>
+        )}
       </div>
     </div>
   );
@@ -803,6 +812,7 @@ export default function Home() {
           hasFeature={hasFeature}
           vendorName={vendorScope?.vendor?.name}
           vendorScopeLoading={vendorScopeLoading}
+          isAdminLinked={isVendorScoped}
         />
       );
     }

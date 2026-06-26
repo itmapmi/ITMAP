@@ -49,8 +49,9 @@ export default function Navigation() {
 
   const isMarketBuilderActive = location.includes("market-builder") && !location.includes("forecast");
   const isForecastBuilderActive = location.includes("forecast-builder");
-  const vendorOnly = isVendorScoped && !isAdmin;
-  const buyerOnly = isAuthenticated && !isVendorScoped && !isAdmin;
+  const isVendorPersona = (user as any)?.persona === "vendor";
+  const vendorOnly = (isVendorScoped || isVendorPersona) && !isAdmin;
+  const buyerOnly = isAuthenticated && !isVendorScoped && !isVendorPersona && !isAdmin;
 
   // Public nav (unauthenticated)
   const publicNavItems = [

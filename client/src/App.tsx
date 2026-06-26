@@ -46,9 +46,13 @@ import BattleCardsIndexPage from "@/pages/battle-cards/index";
 import BattleCardDetailPage from "@/pages/battle-cards/detail";
 import MyToolsPage from "@/pages/me/tools";
 
-function ProtectedRoute({ component: Component, requireAdmin = false }: { component: React.ComponentType, requireAdmin?: boolean }) {
-  const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  
+function ProtectedRoute({ component: Component, requireAdmin = false, buyerOnly = false }: {
+  component: React.ComponentType;
+  requireAdmin?: boolean;
+  buyerOnly?: boolean;
+}) {
+  const { isAuthenticated, isAdmin, isLoading, isVendorScoped, user } = useAuth();
+
   if (isLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
@@ -64,6 +68,13 @@ function ProtectedRoute({ component: Component, requireAdmin = false }: { compon
         <p>You don't have permission to access this page.</p>
       </div>
     </div>;
+  }
+
+  // Buyer-only routes: redirect vendor-persona users back to their dashboard
+  const isVendorUser = isVendorScoped || (user as any)?.persona === "vendor";
+  if (buyerOnly && isVendorUser && !isAdmin) {
+    window.location.replace("/");
+    return null;
   }
 
   return <Component />;
@@ -108,9 +119,9 @@ function Router() {
         <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />
         <Route path="/forecast-builder/:id/report" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastReportPage} /></ForecastThemeProvider>} />
         <Route path="/forecast-builder/:id" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastDetailPage} /></ForecastThemeProvider>} />
-        <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} />} />
-        <Route path="/me/rfps" component={() => <ProtectedRoute component={MyRfpsPage} />} />
-        <Route path="/me/rfps/:id" component={() => <ProtectedRoute component={MyRfpDetailPage} />} />
+        <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} buyerOnly={true} />} />
+        <Route path="/me/rfps" component={() => <ProtectedRoute component={MyRfpsPage} buyerOnly={true} />} />
+        <Route path="/me/rfps/:id" component={() => <ProtectedRoute component={MyRfpDetailPage} buyerOnly={true} />} />
         <Route path="/me/markets/:marketId/vendors" component={() => <ProtectedRoute component={MyMarketVendorsPage} />} />
         <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
         <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
