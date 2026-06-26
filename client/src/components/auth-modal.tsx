@@ -4,12 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { LogIn, UserPlus, Chrome, Linkedin } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
 
 interface AuthModalProps {
@@ -112,14 +111,6 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
     }
   };
 
-  const handleOAuthLogin = (provider: 'google' | 'linkedin') => {
-    // Store the intended destination for after OAuth
-    if (selectedMarketId) {
-      sessionStorage.setItem('oauth_redirect', `/markets/${selectedMarketId}`);
-    }
-    window.location.href = `/auth/${provider}`;
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -144,39 +135,6 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
               Sign in to access your technology intelligence platform
             </div>
             
-            {/* OAuth Buttons */}
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleOAuthLogin('google')}
-                data-testid="button-google-login"
-              >
-                <Chrome className="mr-2 h-4 w-4" />
-                Continue with Google
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleOAuthLogin('linkedin')}
-                data-testid="button-linkedin-login"
-              >
-                <Linkedin className="mr-2 h-4 w-4" />
-                Continue with LinkedIn
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
-            </div>
-
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               {loginError && (
@@ -224,39 +182,6 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
               Create your account to start your free trial
             </div>
             
-            {/* OAuth Buttons */}
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleOAuthLogin('google')}
-                data-testid="button-google-register"
-              >
-                <Chrome className="mr-2 h-4 w-4" />
-                Continue with Google
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleOAuthLogin('linkedin')}
-                data-testid="button-linkedin-register"
-              >
-                <Linkedin className="mr-2 h-4 w-4" />
-                Continue with LinkedIn
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or register with email
-                </span>
-              </div>
-            </div>
-
             {/* Register Form */}
             <form onSubmit={handleRegister} className="space-y-4">
               {registerError && (
