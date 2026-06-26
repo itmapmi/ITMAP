@@ -81,15 +81,20 @@ export function BentoCard({
   className,
 }: BentoCardProps) {
   const a = accents[accent];
+  const spanCn = sizeClasses[size];
 
-  const inner = (
+  // The visual card content — same markup regardless of lock/nav state
+  const cardContent = (
     <div
-      onClick={onClick}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border p-5 transition-all duration-200",
-        sizeClasses[size],
+        "group relative flex flex-col gap-3 rounded-2xl border p-5 transition-all duration-200 h-full min-h-[120px]",
         locked
-          ? "border-white/5 bg-slate-900/40 cursor-default opacity-70"
+          ? cn(
+              "border-white/5 bg-slate-900/40 opacity-70",
+              href
+                ? "cursor-pointer hover:opacity-80 hover:border-white/10"
+                : "cursor-default",
+            )
           : cn(
               "border-white/8 bg-slate-900 cursor-pointer",
               a.border,
@@ -97,19 +102,23 @@ export function BentoCard({
             ),
         className,
       )}
+      onClick={!locked ? onClick : undefined}
     >
+      {/* Lock badge */}
       {locked && (
         <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-400">
           <Lock className="h-2.5 w-2.5" /> Locked
         </span>
       )}
 
+      {/* Icon */}
       <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", locked ? "bg-white/5" : a.iconBg)}>
         <span className={cn("h-5 w-5", locked ? "text-slate-500 grayscale" : a.icon)}>
           {icon}
         </span>
       </div>
 
+      {/* Label + description */}
       <div className="flex-1">
         <p className={cn("font-semibold text-sm", locked ? "text-slate-500" : "text-white")}>{label}</p>
         {description && (
@@ -119,6 +128,7 @@ export function BentoCard({
         )}
       </div>
 
+      {/* Stat */}
       {stat && (
         <div className="mt-auto">
           <p className={cn("text-xl font-bold tabular-nums", locked ? "text-slate-600" : a.stat)}>{stat}</p>
@@ -130,21 +140,20 @@ export function BentoCard({
     </div>
   );
 
+  // Build inner content: locked cards navigate to href so the destination
+  // LockedFeaturePanel handles gating; tooltip remains as a hover affordance.
+  let inner: ReactNode;
   if (locked) {
-    return (
-      <LockedFeatureTooltip>
-        <div className={cn(sizeClasses[size])}>{inner}</div>
-      </LockedFeatureTooltip>
-    );
+    const wrapped = href
+      ? <Link href={href} className="block h-full">{cardContent}</Link>
+      : cardContent;
+    inner = <LockedFeatureTooltip>{wrapped}</LockedFeatureTooltip>;
+  } else if (href) {
+    inner = <Link href={href} className="block h-full">{cardContent}</Link>;
+  } else {
+    inner = cardContent;
   }
 
-  if (href) {
-    return (
-      <Link href={href}>
-        <div className={cn(sizeClasses[size])}>{inner}</div>
-      </Link>
-    );
-  }
-
-  return inner;
+  // Outer wrapper applies grid spanning only; empty string means no extra div needed
+  return spanCn ? <div className={spanCn}>{inner}</div> : <>{inner}</>;
 }
