@@ -94,6 +94,7 @@ export function registerAuthRoutes(app: Express): void {
             firstName: userData.firstName ?? null,
             lastName: userData.lastName ?? null,
             password: hashedPassword,
+            persona: userData.persona ?? "buyer",
           });
           req.logIn(activated, async (err) => {
             if (err) return res.status(500).json({ error: "Login failed after activation" });

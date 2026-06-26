@@ -61,10 +61,10 @@ export async function updateUserFeatureAccess(id: string, featureAccess: string[
   return updated!;
 }
 
-// Activate a placeholder "invited" account: set password + name, clear invitedAt.
+// Activate a placeholder "invited" account: set password + name + persona, clear invitedAt.
 export async function activateInvitedUser(
   id: string,
-  data: { firstName?: string | null; lastName?: string | null; password: string },
+  data: { firstName?: string | null; lastName?: string | null; password: string; persona?: string },
 ): Promise<User> {
   const [updated] = await db
     .update(users)
