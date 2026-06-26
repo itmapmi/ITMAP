@@ -35,31 +35,32 @@ export function registerAuthRoutes(app: Express): void {
     res.sendFile(path.join(process.cwd(), 'public', 'llms.txt'));
   });
 
-  // Track user activity for existing sessions (restored from cookie)
-  app.use(async (req, _res, next) => {
+  // Track user activity for existing sessions (restored from cookie).
+  // next() is called immediately so the request is never blocked by this work.
+  app.use((req, _res, next) => {
+    next();
     if (req.isAuthenticated() && req.sessionID && req.user) {
       if (!loggedSessions.has(req.sessionID)) {
-        try {
-          const user = req.user as any;
-          const sessionLogs = await storage.getUserActivityLogs({ limit: 1000, offset: 0 });
-          const hasSessionLog = sessionLogs.some((log: any) => log.sessionId === req.sessionID);
-          if (!hasSessionLog) {
-            await storage.recordUserLogin({
-              userId: user.id,
-              sessionId: req.sessionID,
-              ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-              userAgent: req.get('user-agent') || 'unknown',
-              loginAt: new Date(),
-            });
-            console.log(`Logged restored session for user ${user.id} (session: ${req.sessionID.substring(0, 8)})`);
-          }
-          loggedSessions.add(req.sessionID);
-        } catch (error) {
-          console.error("Error tracking session activity:", error);
-        }
+        loggedSessions.add(req.sessionID);
+        const user = req.user as any;
+        const sid = req.sessionID;
+        const ip = req.ip || req.socket.remoteAddress || 'unknown';
+        const ua = req.get('user-agent') || 'unknown';
+        storage.recordUserLogin({
+          userId: user.id,
+          sessionId: sid,
+          ipAddress: ip,
+          userAgent: ua,
+          loginAt: new Date(),
+        })
+          .then(() => {
+            console.log(`Logged restored session for user ${user.id} (session: ${sid.substring(0, 8)})`);
+          })
+          .catch((error) => {
+            console.error("Error tracking session activity:", error);
+          });
       }
     }
-    next();
   });
 
   app.post("/auth/register", async (req, res) => {
