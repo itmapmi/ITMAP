@@ -1,7 +1,5 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { Strategy as LinkedInStrategy } from 'passport-linkedin-oauth2';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
@@ -80,120 +78,6 @@ export function setupPassport(app: Express) {
       }
     }
   ));
-
-  // Google OAuth strategy
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
-    let baseURL = process.env.BASE_URL;
-    if (!baseURL) {
-      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-      const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
-      baseURL = customDomain 
-        ? `https://${customDomain}` 
-        : `https://${process.env.REPLIT_DEV_DOMAIN}`;
-    }
-    
-    passport.use(new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: `${baseURL}/auth/google/callback`,
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          // Check if user exists with Google ID
-          let user = await storage.getUserByGoogleId(profile.id);
-          
-          if (!user) {
-            // Check if user exists with email
-            const email = profile.emails?.[0]?.value;
-            if (email) {
-              user = await storage.getUserByEmail(email);
-            }
-            
-            if (!user) {
-              // Create new user
-              const newUser = await storage.createUser({
-                email: email || '',
-                firstName: profile.name?.givenName || '',
-                lastName: profile.name?.familyName || '',
-                profileImageUrl: profile.photos?.[0]?.value || '',
-                googleId: profile.id,
-                role: 'user',
-              });
-              return done(null, newUser);
-            } else {
-              // Link Google account to existing user
-              // Note: You might want to implement an update method in storage
-              user.googleId = profile.id;
-              return done(null, user);
-            }
-          }
-          
-          return done(null, user);
-        } catch (error) {
-          return done(error);
-        }
-      }
-    ));
-  }
-
-  // LinkedIn OAuth strategy
-  if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
-    // Use BASE_URL if available, otherwise prefer custom domain over .replit.app
-    let baseURL = process.env.BASE_URL;
-    if (!baseURL) {
-      const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
-      const customDomain = domains.find(d => !d.includes('.replit.app')) || domains[0];
-      baseURL = customDomain 
-        ? `https://${customDomain}` 
-        : `https://${process.env.REPLIT_DEV_DOMAIN}`;
-    }
-    
-    passport.use(new LinkedInStrategy(
-      {
-        clientID: process.env.LINKEDIN_CLIENT_ID,
-        clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-        callbackURL: `${baseURL}/auth/linkedin/callback`,
-        scope: ['r_emailaddress', 'r_liteprofile'],
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          // Check if user exists with LinkedIn ID
-          let user = await storage.getUserByLinkedinId(profile.id);
-          
-          if (!user) {
-            // Check if user exists with email
-            const email = profile.emails?.[0]?.value;
-            if (email) {
-              user = await storage.getUserByEmail(email);
-            }
-            
-            if (!user) {
-              // Create new user
-              const newUser = await storage.createUser({
-                email: email || '',
-                firstName: profile.name?.givenName || '',
-                lastName: profile.name?.familyName || '',
-                profileImageUrl: profile.photos?.[0]?.value || '',
-                linkedinId: profile.id,
-                role: 'user',
-              });
-              return done(null, newUser);
-            } else {
-              // Link LinkedIn account to existing user
-              user.linkedinId = profile.id;
-              return done(null, user);
-            }
-          }
-          
-          return done(null, user);
-        } catch (error) {
-          return done(error);
-        }
-      }
-    ));
-  }
 }
 
 // Middleware to check if user is authenticated

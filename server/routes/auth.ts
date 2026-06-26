@@ -63,9 +63,25 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // Consumer email domains that are not allowed — enterprise/company emails only.
+  const CONSUMER_EMAIL_DOMAINS = new Set([
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
+    "live.com", "aol.com", "protonmail.com", "me.com", "msn.com",
+    "ymail.com", "googlemail.com", "yahoo.co.uk", "yahoo.co.in",
+  ]);
+
   app.post("/auth/register", async (req, res) => {
     try {
       const userData = registerUserSchema.parse(req.body);
+
+      // Reject consumer/free email providers — company emails only.
+      const emailDomain = userData.email.split("@")[1]?.toLowerCase() ?? "";
+      if (CONSUMER_EMAIL_DOMAINS.has(emailDomain)) {
+        return res.status(400).json({
+          error: "Please use your company email address. Consumer email providers are not accepted.",
+        });
+      }
+
       const existingUser = await storage.getUserByEmail(userData.email);
 
       // If an invited placeholder exists for this email, activate it rather
@@ -101,7 +117,12 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       const hashedPassword = await bcrypt.hash(userData.password, 10);
-      const user = await storage.createUser({ ...userData, password: hashedPassword, role: 'user' });
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+        role: 'user',
+        persona: userData.persona ?? "buyer",
+      });
       req.logIn(user, async (err) => {
         if (err) return res.status(500).json({ error: "Login failed after registration" });
         try {
@@ -155,49 +176,6 @@ export function registerAuthRoutes(app: Express): void {
     });
   });
 
-  app.get("/auth/google", passport.authenticate('google', { scope: ['profile', 'email'] }));
-  app.get("/auth/google/callback",
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    async (req, res) => {
-      try {
-        const user = req.user as any;
-        await storage.recordUserLogin({
-          userId: user.id,
-          sessionId: req.sessionID,
-          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-          userAgent: req.get('user-agent') || 'unknown',
-          loginAt: new Date(),
-        });
-        res.redirect(loginLandingPath(user));
-      } catch (error) {
-        console.error("Error recording OAuth login:", error);
-        const user = req.user as any;
-        res.redirect(loginLandingPath(user));
-      }
-    }
-  );
-
-  app.get("/auth/linkedin", passport.authenticate('linkedin'));
-  app.get("/auth/linkedin/callback",
-    passport.authenticate('linkedin', { failureRedirect: '/login' }),
-    async (req, res) => {
-      try {
-        const user = req.user as any;
-        await storage.recordUserLogin({
-          userId: user.id,
-          sessionId: req.sessionID,
-          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-          userAgent: req.get('user-agent') || 'unknown',
-          loginAt: new Date(),
-        });
-        res.redirect(loginLandingPath(user));
-      } catch (error) {
-        console.error("Error recording OAuth login:", error);
-        const user = req.user as any;
-        res.redirect(loginLandingPath(user));
-      }
-    }
-  );
 
   app.get("/api/auth/user", (req, res) => {
     if (req.isAuthenticated()) {

@@ -237,16 +237,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
     staleTime: 60_000,
     retry: false,
   });
-  const { data: forecasts } = useQuery<any[]>({
-    queryKey: ["/api/forecast-builder/forecasts"],
-    staleTime: 30_000,
-    retry: false,
-  });
-  const { data: mbJobs } = useQuery<any[]>({
-    queryKey: ["/api/market-builder/jobs"],
-    staleTime: 30_000,
-    retry: false,
-  });
 
   const buyerBento: BentoCfg[] = [
     {
@@ -270,7 +260,7 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
     },
     {
       label: "RFP Builder",
-      description: "Create, manage and respond to vendor RFPs with AI assistance.",
+      description: "Create, manage and send RFPs to vendors with AI assistance.",
       icon: <ClipboardList className="h-5 w-5" />,
       href: "/me/rfps",
       accent: "cyan",
@@ -299,24 +289,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       icon: <BookOpen className="h-5 w-5" />,
       href: "/platform",
       accent: "emerald",
-    },
-    {
-      label: "Forecast Builder",
-      description: "AI-native market sizing, multi-scenario projections and sensitivity tables.",
-      icon: <TrendingUp className="h-5 w-5" />,
-      href: "/forecast-builder",
-      accent: "violet",
-      stat: forecasts != null ? `${forecasts.length}` : "—",
-      statLabel: "forecasts",
-    },
-    {
-      label: "Market Builder",
-      description: "Build custom markets with your own criteria and weights.",
-      icon: <Globe2 className="h-5 w-5" />,
-      href: "/me/market-builder",
-      accent: "cyan",
-      stat: mbJobs != null ? `${mbJobs.length}` : "—",
-      statLabel: "custom markets",
     },
   ];
 
@@ -820,7 +792,9 @@ export default function Home() {
   }
 
   if (isAuthenticated && !isAdmin) {
-    if (isVendorScoped) {
+    // Show vendor dashboard for admin-linked vendor seats OR for users who
+    // self-registered with the vendor persona (persona saved to DB at registration).
+    if (isVendorScoped || user?.persona === "vendor") {
       return (
         <VendorDashboard
           user={user}

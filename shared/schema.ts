@@ -47,6 +47,10 @@ export const users = pgTable("users", {
   isBlocked: boolean("is_blocked").notNull().default(false),
   accessExpiresAt: timestamp("access_expires_at"),
 
+  // Persona chosen at registration: "buyer" (technology buyer) or "vendor" (IT vendor).
+  // Drives dashboard branching on the home page independently of vendorScopeId.
+  persona: text("persona").default("buyer"),
+
   // Set when a placeholder account is created via CSV audience import.
   // Cleared (set to null) when the user completes registration. Null for all
   // normal self-registered accounts.
@@ -441,6 +445,7 @@ export const registerUserSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   password: z.string().min(6),
+  persona: z.enum(["buyer", "vendor"]).optional().default("buyer"),
 });
 
 export const insertCanonicalVendorSchema = createInsertSchema(canonicalVendors).omit({
