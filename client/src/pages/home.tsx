@@ -249,12 +249,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
     staleTime: 30_000,
     retry: false,
   });
-  const { data: reportsCount } = useQuery<{ count: number }>({
-    queryKey: ["/api/research-reports/count"],
-    staleTime: 60_000,
-    retry: false,
-  });
-
   const buyerBento: BentoCfg[] = [
     {
       label: "Markets",
@@ -265,15 +259,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       size: "1x2",
       stat: markets != null ? `${markets.length}` : "—",
       statLabel: "live markets",
-    },
-    {
-      label: "Research Reports",
-      description: "AI-generated deep-dive analyst reports for every market.",
-      icon: <FileText className="h-5 w-5" />,
-      href: "/me/reports",
-      accent: "violet",
-      stat: reportsCount != null ? `${reportsCount.count}` : "—",
-      statLabel: "reports available",
     },
     {
       label: "RFP Builder",

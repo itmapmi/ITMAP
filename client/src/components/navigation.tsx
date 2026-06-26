@@ -64,7 +64,6 @@ export default function Navigation() {
   // Buyer nav (all features unlocked — no locks needed)
   const buyerNavItems = [
     { href: "/markets", label: "Markets" },
-    { href: "/me/reports", label: "Reports" },
     { href: "/me/rfps", label: "RFP Builder" },
     { href: "/datasheets", label: "Datasheets" },
     { href: "/platform", label: "Methodology" },
@@ -250,9 +249,11 @@ export default function Navigation() {
                       <Link href="/me/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
-                    <DropdownMenuItem asChild className={`cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                      <Link href="/me/reports"><FileText className="mr-2 h-4 w-4" />My Reports</Link>
-                    </DropdownMenuItem>
+                    {!buyerOnly && (
+                      <DropdownMenuItem asChild className={`cursor-pointer ${location.includes("reports") ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
+                        <Link href="/me/reports"><FileText className="mr-2 h-4 w-4" />My Reports</Link>
+                      </DropdownMenuItem>
+                    )}
                     {isVendorScoped && !isAdmin && (
                       <DropdownMenuItem asChild className={`cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
                         <Link href="/lead-gen/me/fact-review"><Star className="mr-2 h-4 w-4" />Fact Review</Link>
