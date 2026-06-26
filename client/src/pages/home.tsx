@@ -11,7 +11,7 @@ import type { BentoAccent, BentoSize } from "@/components/bento-card";
 import type { Market } from "@shared/schema";
 import type { LockableFeatureKey } from "@shared/features";
 import {
-  ArrowRight, BarChart3, TrendingUp, Shield, Zap, Globe2,
+  ArrowRight, BarChart3, BarChart2, TrendingUp, Shield, Zap, Globe2,
   CheckCircle2, ChevronRight, Eye, Database, Brain,
   Newspaper, FileSearch, Target, LineChart, Users,
   FileText, ClipboardList, Layers, BookOpen,
@@ -438,52 +438,23 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
           <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — locked features require a plan upgrade.</p>
         </motion.div>
 
-        {/* My Markets — only for admin-linked vendor seats with a resolved company */}
-        {isAdminLinked && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <SectionLabel accent="violet">Your Markets</SectionLabel>
-                <h2 className="text-2xl font-bold text-white">My Markets</h2>
-                {myMarkets && myMarkets.length > 0 && (
-                  <p className="text-slate-500 text-sm mt-0.5">{myMarkets.length} market{myMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
-                )}
-              </div>
-              <Link href="/markets">
-                <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                  All markets <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </div>
-            <MarketGrid markets={myMarkets} isLoading={isLoading && !myMarkets} accentViolet />
-          </motion.div>
-        )}
-
-        {/* All Markets — always free for vendor users */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.2 : 0.1 }} className="mb-14">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <SectionLabel accent="cyan">Markets</SectionLabel>
-              <h2 className="text-2xl font-bold text-white">All Markets</h2>
-              <p className="text-slate-500 text-sm mt-0.5">Vendor Evaluation, Product Evaluation, Ecosystem Evaluation, News and AI Chat — fully accessible.</p>
-            </div>
-            <Link href="/markets">
-              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                Explore <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
-            </Link>
-          </div>
-          <MarketGrid markets={allMarkets} isLoading={allMarketsLoading} />
-        </motion.div>
-
-        {/* Platform Tools — all locked; require plan upgrade */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }} className="mb-10">
+        {/* Platform Tools — shown first; Markets widget scrolls down to market sections */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="mb-14">
           <div className="mb-6">
             <SectionLabel accent="violet">Platform Tools</SectionLabel>
             <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
             <p className="text-slate-500 text-sm mt-1">Powerful tools for lead generation, competitive response and market intelligence — plan upgrade required.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Markets — always free, scrolls to markets section */}
+            <BentoCard
+              label="Markets"
+              description="Browse all markets and explore vendor evaluations, product comparisons and ecosystem data."
+              icon={<BarChart2 className="h-5 w-5" />}
+              accent="cyan"
+              locked={false}
+              onClick={() => document.getElementById("vendor-markets-section")?.scrollIntoView({ behavior: "smooth" })}
+            />
             {VENDOR_DASHBOARD_TOOLS_CFG
               .filter((card) => card.visibleWhen ? card.visibleWhen(isAdminLinked, hasMarkets) : true)
               .map((card) => (
@@ -499,6 +470,46 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
               ))}
           </div>
         </motion.div>
+
+        {/* My Markets — only for admin-linked vendor seats with a resolved company */}
+        <div id="vendor-markets-section">
+          {isAdminLinked && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mb-14">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <SectionLabel accent="violet">Your Markets</SectionLabel>
+                  <h2 className="text-2xl font-bold text-white">My Markets</h2>
+                  {myMarkets && myMarkets.length > 0 && (
+                    <p className="text-slate-500 text-sm mt-0.5">{myMarkets.length} market{myMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
+                  )}
+                </div>
+                <Link href="/markets">
+                  <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                    All markets <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+              <MarketGrid markets={myMarkets} isLoading={isLoading && !myMarkets} accentViolet />
+            </motion.div>
+          )}
+
+          {/* All Markets — always free for vendor users */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }} className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <SectionLabel accent="cyan">Markets</SectionLabel>
+                <h2 className="text-2xl font-bold text-white">All Markets</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Vendor Evaluation, Product Evaluation, Ecosystem Evaluation, News and AI Chat — fully accessible.</p>
+              </div>
+              <Link href="/markets">
+                <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
+                  Explore <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+            <MarketGrid markets={allMarkets} isLoading={allMarketsLoading} />
+          </motion.div>
+        </div>
 
         {/* My Reports — only when Market Builder is accessible */}
         {hasFeature("market_builder") && (
