@@ -77,12 +77,13 @@ export default function Navigation() {
     { href: "/markets", label: "News & Signals", featureKey: "news" },
   ];
   const toolsItems: { href: string; label: string; featureKey: LockableFeatureKey }[] = [
+    { href: "/lead-gen/me", label: "Lead Generator", featureKey: "lead_gen" },
     { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
     { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
     { href: "/datasheets", label: "Datasheets", featureKey: "datasheets" },
   ];
 
-  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets");
+  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets") || location.startsWith("/lead-gen/me");
   const isIntelligenceActive = isForecastBuilderActive || isMarketBuilderActive;
   const intelligenceAllLocked = intelligenceItems.every(i => !hasFeature(i.featureKey));
   const toolsAllLocked = toolsItems.every(i => !hasFeature(i.featureKey));
@@ -144,14 +145,11 @@ export default function Navigation() {
                 );
               })}
 
-              {/* Vendor nav — My Markets, My Leads, Intelligence dropdown, Tools dropdown, Methodology */}
+              {/* Vendor nav — My Markets, Intelligence dropdown, Tools dropdown, Methodology */}
               {vendorOnly && (
                 <>
                   <Link href="/markets">
                     <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>My Markets</span>
-                  </Link>
-                  <Link href="/lead-gen/me">
-                    <span className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"}`}>My Leads</span>
                   </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -256,11 +254,6 @@ export default function Navigation() {
                       <Link href="/me/reports"><FileText className="mr-2 h-4 w-4" />My Reports</Link>
                     </DropdownMenuItem>
                     {isVendorScoped && !isAdmin && (
-                      <DropdownMenuItem asChild className={`cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
-                        <Link href="/lead-gen/me"><ClipboardList className="mr-2 h-4 w-4" />My Leads</Link>
-                      </DropdownMenuItem>
-                    )}
-                    {isVendorScoped && !isAdmin && (
                       <DropdownMenuItem asChild className={`cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/10"}`}>
                         <Link href="/lead-gen/me/fact-review"><Star className="mr-2 h-4 w-4" />Fact Review</Link>
                       </DropdownMenuItem>
@@ -311,8 +304,6 @@ export default function Navigation() {
             {vendorOnly && (
               <>
                 <Link href="/markets"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/markets" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>My Markets</div></Link>
-                <Link href="/lead-gen/me"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>My Leads</div></Link>
-                <Link href="/lead-gen/me/fact-review"><div className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer ${location === "/lead-gen/me/fact-review" ? "text-white bg-white/10" : "text-slate-400"}`} onClick={() => setMobileOpen(false)}>Fact Review</div></Link>
                 <div className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-slate-600 uppercase">Intelligence</div>
                 {intelligenceItems.map(({ href, label, featureKey }) => {
                   const locked = !hasFeature(featureKey);
