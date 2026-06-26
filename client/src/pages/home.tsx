@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -343,28 +343,15 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
 
 // ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
 
-function VendorDashboard({ user, markets, isLoading, hasFeature, vendorName, vendorIndex }: {
+function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName }: {
   user: any;
-  markets?: Market[];
+  myMarkets?: Market[];
   isLoading: boolean;
   hasFeature: (key: LockableFeatureKey) => boolean;
   vendorName?: string;
-  vendorIndex?: { id: number; vendorNames: string[] }[];
 }) {
   const companyLabel = vendorName || "Your Company";
-
-  // Filter markets to those containing this vendor (case-insensitive name match)
-  const vendorMarkets = useMemo(() => {
-    if (!markets) return undefined;
-    if (!vendorIndex || !vendorName) return markets;
-    const matchingIds = new Set(
-      vendorIndex
-        .filter(m => m.vendorNames.some(n => n.toLowerCase() === vendorName.toLowerCase()))
-        .map(m => m.id)
-    );
-    const filtered = matchingIds.size > 0 ? markets.filter(m => matchingIds.has(m.id)) : markets;
-    return filtered;
-  }, [markets, vendorIndex, vendorName]);
+  const vendorMarkets = myMarkets;
 
   return (
     <div className="min-h-screen bg-[#1e2130]">
@@ -747,8 +734,8 @@ export default function Home() {
     retry: false,
   });
 
-  const { data: vendorIndex } = useQuery<{ id: number; vendorNames: string[] }[]>({
-    queryKey: ["/api/markets/vendor-index"],
+  const { data: myMarkets, isLoading: myMarketsLoading } = useQuery<Market[]>({
+    queryKey: ["/api/markets/my-markets"],
     enabled: isVendorScoped && !isAdmin,
     staleTime: 5 * 60_000,
     retry: false,
@@ -773,11 +760,10 @@ export default function Home() {
       return (
         <VendorDashboard
           user={user}
-          markets={markets}
-          isLoading={marketsLoading}
+          myMarkets={myMarkets}
+          isLoading={myMarketsLoading}
           hasFeature={hasFeature}
           vendorName={vendorScope?.vendor?.name}
-          vendorIndex={vendorIndex}
         />
       );
     }

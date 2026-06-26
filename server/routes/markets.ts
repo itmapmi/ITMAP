@@ -65,6 +65,31 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Markets scoped to the authenticated vendor-seat user.
+  // Returns only markets where the user's vendor(s) have at least one score row.
+  // Must be registered before /:id so the path isn't swallowed by that handler.
+  app.get("/api/markets/my-markets", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+      const user = req.user as any;
+      const vendorIds: string[] = user.vendorScopeIds?.length
+        ? user.vendorScopeIds
+        : user.vendorScopeId
+        ? [user.vendorScopeId]
+        : [];
+      if (!vendorIds.length) return res.json([]);
+      const marketIds = await storage.getMarketIdsWithScoresForVendors(vendorIds);
+      const marketIdSet = new Set(marketIds);
+      const allMarkets = await storage.getAllMarkets();
+      const filtered = allMarkets.filter(m =>
+        marketIdSet.has(m.id) && m.visibility !== "private" && m.isVisible !== false
+      );
+      res.json(filtered);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Lightweight vendor-name index for client-side market search.
   // Returns [{ id, vendorNames }] for every market visible to the caller.
   // Must be registered before /:id so the path isn't swallowed by that handler.

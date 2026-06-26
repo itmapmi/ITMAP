@@ -6,7 +6,7 @@ import {
   criteria, vendorScores, marketCriteriaWeights, vendors,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 // ── Criteria ───────────────────────────────────────────────────────────────
 
@@ -32,6 +32,16 @@ export async function deleteCriteria(id: string): Promise<void> {
 
 export async function getVendorScores(vendorId: string): Promise<VendorScore[]> {
   return await db.select().from(vendorScores).where(eq(vendorScores.vendorId, vendorId));
+}
+
+export async function getMarketIdsWithScoresForVendors(vendorIds: string[]): Promise<string[]> {
+  if (!vendorIds.length) return [];
+  const rows = await db
+    .selectDistinct({ marketId: vendors.marketId })
+    .from(vendorScores)
+    .innerJoin(vendors, eq(vendorScores.vendorId, vendors.id))
+    .where(inArray(vendorScores.vendorId, vendorIds));
+  return rows.map(r => r.marketId);
 }
 
 export async function getMarketVendorScores(
