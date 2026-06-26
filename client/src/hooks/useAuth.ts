@@ -51,18 +51,20 @@ export function useAuth() {
   });
 
   const isVendorScoped = !!(user?.vendorScopeId || (user as any)?.vendorScopeIds?.length);
+  const isVendorPersona = (user as any)?.persona === "vendor";
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user && !error,
     isAdmin: user?.role === 'admin',
-    isBuyer: !!user && !isVendorScoped && user.role !== 'admin',
+    isBuyer: !!user && !isVendorScoped && !isVendorPersona && user.role !== 'admin',
     vendorScopeId: user?.vendorScopeId ?? null,
     isVendorScoped,
-    // Buyers get all features unlocked; vendor-scoped users are gated per featureAccess list
+    isVendorPersona,
+    // Buyers get all features unlocked; vendor users (scoped or persona) are gated
     hasFeature: (featureKey: LockableFeatureKey) =>
-      hasFeatureAccess(user?.role, user?.featureAccess, featureKey, isVendorScoped),
+      hasFeatureAccess(user?.role, user?.featureAccess, featureKey, isVendorScoped, isVendorPersona),
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

@@ -5,7 +5,8 @@
 // admin (global per user — enabling grants access across all markets).
 // Admins always have access to everything.
 // Buyers (non-vendor, non-admin users) have unrestricted access to all features.
-// Vendors (users with a vendorScopeId) must have features explicitly enabled.
+// Vendors (isVendorScoped OR persona="vendor") get VENDOR_FREE_FEATURES for free;
+//   all other features must be explicitly enabled by an admin.
 //
 // Both the frontend (greying-out / tooltips) and the backend (route
 // enforcement) import from this file so the three surfaces — gating, admin
@@ -14,14 +15,16 @@
 export const SALES_CONTACT_EMAIL = "sales@dcig.com";
 
 export const LOCKABLE_FEATURES = [
-  { key: "market_builder", label: "Market Builder" },
+  { key: "market_builder",   label: "Market Builder"   },
   { key: "forecast_builder", label: "Forecast Builder" },
   { key: "research_reports", label: "Research Reports" },
-  { key: "datasheets", label: "Datasheets" },
-  { key: "rfp", label: "RFP Responder" },
-  { key: "news", label: "News" },
-  { key: "intelligence_feed", label: "Intelligence Feed" },
-  { key: "battle_cards", label: "Battle Cards" },
+  { key: "datasheets",       label: "Datasheets"       },
+  { key: "rfp",              label: "RFP Responder"    },
+  { key: "news",             label: "News"             },
+  { key: "intelligence_feed",label: "Intelligence Feed"},
+  { key: "battle_cards",     label: "Battle Cards"     },
+  { key: "lead_gen",         label: "Lead Generator"   },
+  { key: "fact_review",      label: "Fact Review"      },
 ] as const;
 
 export type LockableFeatureKey = (typeof LOCKABLE_FEATURES)[number]["key"];
@@ -29,6 +32,13 @@ export type LockableFeatureKey = (typeof LOCKABLE_FEATURES)[number]["key"];
 export const LOCKABLE_FEATURE_KEYS: LockableFeatureKey[] = LOCKABLE_FEATURES.map(
   (f) => f.key,
 );
+
+// Features that every vendor user gets for free (no admin grant needed).
+// This covers market-content access that vendors should always be able to view.
+export const VENDOR_FREE_FEATURES: readonly LockableFeatureKey[] = [
+  "news",
+  "intelligence_feed",
+] as const;
 
 export function isLockableFeatureKey(key: string): key is LockableFeatureKey {
   return LOCKABLE_FEATURE_KEYS.includes(key as LockableFeatureKey);
@@ -40,20 +50,26 @@ export function featureLabel(key: LockableFeatureKey): string {
 
 // Resolve whether a user can access a given lockable feature.
 // - Admins: always true.
-// - Buyers (non-vendor, non-admin): always true — all features unlocked.
-// - Vendors (isVendorScoped=true): only if the feature key is in their granted list.
+// - Buyers (not a vendor in any way): always true — all features unlocked.
+// - Vendors (isVendorScoped OR isVendorPersona): VENDOR_FREE_FEATURES always true;
+//   all other features require an explicit admin grant.
 //
 // isVendorScoped defaults to true so existing backend callers that don't pass it
 // preserve the old gating behaviour. Frontend callers pass the actual value.
+// isVendorPersona is false by default for backward compat.
 export function hasFeatureAccess(
   role: string | null | undefined,
   grantedFeatures: readonly string[] | null | undefined,
   featureKey: LockableFeatureKey,
   isVendorScoped = true,
+  isVendorPersona = false,
 ): boolean {
   if (role === "admin") return true;
-  // Buyers get unrestricted access
-  if (!isVendorScoped) return true;
+  // Pure buyers (no vendor association at all) get everything unlocked
+  if (!isVendorScoped && !isVendorPersona) return true;
+  // All vendor users get market-content features for free
+  if ((VENDOR_FREE_FEATURES as readonly string[]).includes(featureKey)) return true;
+  // Everything else requires an explicit admin grant
   return (grantedFeatures ?? []).includes(featureKey);
 }
 
@@ -62,9 +78,12 @@ export function resolveAccessibleFeatures(
   role: string | null | undefined,
   grantedFeatures: readonly string[] | null | undefined,
   isVendorScoped = true,
+  isVendorPersona = false,
 ): LockableFeatureKey[] {
   if (role === "admin") return [...LOCKABLE_FEATURE_KEYS];
-  if (!isVendorScoped) return [...LOCKABLE_FEATURE_KEYS];
+  if (!isVendorScoped && !isVendorPersona) return [...LOCKABLE_FEATURE_KEYS];
   const granted = grantedFeatures ?? [];
-  return LOCKABLE_FEATURE_KEYS.filter((k) => granted.includes(k));
+  return LOCKABLE_FEATURE_KEYS.filter(
+    (k) => (VENDOR_FREE_FEATURES as readonly string[]).includes(k) || granted.includes(k),
+  );
 }

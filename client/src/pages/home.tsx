@@ -14,7 +14,7 @@ import {
   ArrowRight, BarChart3, TrendingUp, Shield, Zap, Globe2,
   CheckCircle2, ChevronRight, Eye, Database, Brain,
   Newspaper, FileSearch, Target, LineChart, Users,
-  FileText, ClipboardList, Layers, BookOpen, Activity,
+  FileText, ClipboardList, Layers, BookOpen,
   Building2, MessageSquare,
 } from "lucide-react";
 
@@ -51,13 +51,31 @@ interface VendorBentoCfg {
 
 // ─── Module-level static config (icons use JSX; safe with Vite JSX transform) ─
 
-const VENDOR_INTELLIGENCE_CFG: VendorBentoCfg[] = [
+// Vendor platform tools — all require a plan upgrade (locked by default).
+// Shown on the vendor dashboard with a lock overlay when not granted.
+const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
   {
-    label: "Signals & News",
-    description: "AI-scored news impact analysis across all your markets in real-time.",
-    icon: <Activity className="h-5 w-5" />,
-    href: "/markets",
-    featureKey: "news",
+    label: "Lead Generator",
+    description: "Capture and qualify inbound buyer interest mapped to your vendor profile.",
+    icon: <Target className="h-5 w-5" />,
+    href: "/lead-gen/me",
+    featureKey: "lead_gen",
+    accent: "cyan",
+  },
+  {
+    label: "RFP Responder",
+    description: "AI-assisted RFP response generation using your product knowledge base.",
+    icon: <MessageSquare className="h-5 w-5" />,
+    href: "/rfp-responder",
+    featureKey: "rfp",
+    accent: "violet",
+  },
+  {
+    label: "Market Builder",
+    description: "Build custom vendor evaluations weighted to your specific criteria.",
+    icon: <Globe2 className="h-5 w-5" />,
+    href: "/me/market-builder",
+    featureKey: "market_builder",
     accent: "cyan",
   },
   {
@@ -69,38 +87,19 @@ const VENDOR_INTELLIGENCE_CFG: VendorBentoCfg[] = [
     accent: "violet",
   },
   {
-    label: "Market Builder",
-    description: "Build custom vendor evaluations weighted to your specific criteria.",
-    icon: <Globe2 className="h-5 w-5" />,
-    href: "/me/market-builder",
-    featureKey: "market_builder",
-    accent: "cyan",
-  },
-];
-
-const VENDOR_TOOLS_CFG: VendorBentoCfg[] = [
-  {
-    label: "RFP Responder",
-    description: "AI-assisted RFP response generation using your product knowledge base.",
-    icon: <MessageSquare className="h-5 w-5" />,
-    href: "/rfp-responder",
-    featureKey: "rfp",
-    accent: "violet",
-  },
-  {
-    label: "Battle Cards",
-    description: "Competitive battle cards for every market where you compete.",
-    icon: <Shield className="h-5 w-5" />,
-    href: "/battle-cards",
-    featureKey: "battle_cards",
-    accent: "cyan",
-  },
-  {
     label: "Datasheets",
     description: "Side-by-side vendor feature comparisons — shareable with prospects.",
     icon: <Layers className="h-5 w-5" />,
     href: "/datasheets",
     featureKey: "datasheets",
+    accent: "cyan",
+  },
+  {
+    label: "Fact Review",
+    description: "Review and approve AI-generated facts about your products across markets.",
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    href: "/lead-gen/me/fact-review",
+    featureKey: "fact_review",
     accent: "violet",
   },
 ];
@@ -277,11 +276,18 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       statLabel: "saved comparisons",
     },
     {
+      label: "AI Chat",
+      description: "Ask our AI assistant anything about vendors, markets and competitive positioning.",
+      icon: <MessageSquare className="h-5 w-5" />,
+      href: "/markets",
+      accent: "cyan",
+    },
+    {
       label: "Battle Cards",
       description: "Competitive intelligence battle cards for every IT market.",
       icon: <Shield className="h-5 w-5" />,
       href: "/battle-cards",
-      accent: "cyan",
+      accent: "violet",
     },
     {
       label: "Methodology",
@@ -336,9 +342,11 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
 
 // ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
 
-function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, vendorScopeLoading, isAdminLinked }: {
+function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoading, hasFeature, vendorName, vendorScopeLoading, isAdminLinked }: {
   user: any;
   myMarkets?: Market[];
+  allMarkets?: Market[];
+  allMarketsLoading: boolean;
   isLoading: boolean;
   hasFeature: (key: LockableFeatureKey) => boolean;
   vendorName?: string;
@@ -424,8 +432,8 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
               <div>
                 <SectionLabel accent="violet">Your Markets</SectionLabel>
                 <h2 className="text-2xl font-bold text-white">My Markets</h2>
-                {vendorMarkets && vendorMarkets.length > 0 && (
-                  <p className="text-slate-500 text-sm mt-0.5">{vendorMarkets.length} market{vendorMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
+                {myMarkets && myMarkets.length > 0 && (
+                  <p className="text-slate-500 text-sm mt-0.5">{myMarkets.length} market{myMarkets.length !== 1 ? "s" : ""} where {companyLabel} appears</p>
                 )}
               </div>
               <Link href="/markets">
@@ -434,66 +442,68 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
                 </Button>
               </Link>
             </div>
-            <MarketGrid markets={vendorMarkets} isLoading={isLoading && !vendorMarkets} accentViolet />
+            <MarketGrid markets={myMarkets} isLoading={isLoading && !myMarkets} accentViolet />
           </motion.div>
         )}
 
-        {/* Intelligence — config-driven */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.2 : 0.1 }} className="mb-10">
-          <div className="mb-6">
-            <SectionLabel accent="cyan">Intelligence</SectionLabel>
-            <h2 className="text-2xl font-bold text-white">Market Intelligence</h2>
-            <p className="text-slate-500 text-sm mt-1">Advanced analytics and forecasting tools for your markets.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {VENDOR_INTELLIGENCE_CFG.map((card) => (
-              <BentoCard
-                key={card.label}
-                label={card.label}
-                description={card.description}
-                icon={card.icon}
-                href={card.href}
-                locked={!hasFeature(card.featureKey)}
-                accent={card.accent}
-              />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Tools — config-driven */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }}>
-          <div className="mb-6">
-            <SectionLabel accent="violet">Tools</SectionLabel>
-            <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
-            <p className="text-slate-500 text-sm mt-1">Competitive intelligence and response tools for your team.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {VENDOR_TOOLS_CFG.map((card) => (
-              <BentoCard
-                key={card.label}
-                label={card.label}
-                description={card.description}
-                icon={card.icon}
-                href={card.href}
-                locked={!hasFeature(card.featureKey)}
-                accent={card.accent}
-              />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Lead gen quick links — only for admin-linked vendor seats */}
-        {isAdminLinked && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-10 flex flex-wrap gap-3">
-            <Link href="/lead-gen/me">
+        {/* All Markets — always free for vendor users */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.2 : 0.1 }} className="mb-14">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <SectionLabel accent="cyan">Markets</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">All Markets</h2>
+              <p className="text-slate-500 text-sm mt-0.5">Vendor Evaluation, Product Evaluation, Ecosystem Evaluation, News and AI Chat — fully accessible.</p>
+            </div>
+            <Link href="/markets">
               <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                My Leads <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                Explore <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Button>
             </Link>
-            <Link href="/lead-gen/me/fact-review">
-              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                Fact Review <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
+          </div>
+          <MarketGrid markets={allMarkets} isLoading={allMarketsLoading} />
+        </motion.div>
+
+        {/* Platform Tools — all locked; require plan upgrade */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: isAdminLinked ? 0.3 : 0.2 }} className="mb-10">
+          <div className="mb-6">
+            <SectionLabel accent="violet">Platform Tools</SectionLabel>
+            <h2 className="text-2xl font-bold text-white">Vendor Tools</h2>
+            <p className="text-slate-500 text-sm mt-1">Powerful tools for lead generation, competitive response and market intelligence — plan upgrade required.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {VENDOR_DASHBOARD_TOOLS_CFG.map((card) => (
+              <BentoCard
+                key={card.label}
+                label={card.label}
+                description={card.description}
+                icon={card.icon}
+                href={card.href}
+                locked={!hasFeature(card.featureKey)}
+                accent={card.accent}
+              />
+            ))}
+          </div>
+        </motion.div>
+
+        {/* My Reports — only when Market Builder is accessible */}
+        {hasFeature("market_builder") && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-2">
+            <div className="mb-6">
+              <SectionLabel accent="cyan">Reports</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">My Reports</h2>
+              <p className="text-slate-500 text-sm mt-1">Markets you've built through Market Builder.</p>
+            </div>
+            <Link href="/me/market-builder">
+              <div className="inline-flex items-center gap-3 bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-xl px-5 py-4 transition-all group cursor-pointer">
+                <div className="p-2 rounded-lg bg-cyan-500/10">
+                  <FileText className="h-4 w-4 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Open Market Builder</p>
+                  <p className="text-xs text-slate-500">View and manage your custom market reports</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-cyan-400 transition-colors ml-2" />
+              </div>
             </Link>
           </motion.div>
         )}
@@ -808,6 +818,8 @@ export default function Home() {
         <VendorDashboard
           user={user}
           myMarkets={myMarkets}
+          allMarkets={markets}
+          allMarketsLoading={marketsLoading}
           isLoading={myMarketsLoading}
           hasFeature={hasFeature}
           vendorName={vendorScope?.vendor?.name}

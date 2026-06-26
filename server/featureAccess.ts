@@ -18,7 +18,8 @@ export function requireFeature(featureKey: LockableFeatureKey) {
     }
     const user = req.user as any;
     const isVendorScoped = !!(user.vendorScopeId || user.vendorScopeIds?.length);
-    if (hasFeatureAccess(user.role, user.featureAccess, featureKey, isVendorScoped)) {
+    const isVendorPersona = user.persona === "vendor";
+    if (hasFeatureAccess(user.role, user.featureAccess, featureKey, isVendorScoped, isVendorPersona)) {
       return next();
     }
     return res.status(403).json({
