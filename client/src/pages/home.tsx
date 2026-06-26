@@ -372,20 +372,14 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
   vendorName?: string;
   vendorScopeLoading?: boolean;
 }) {
+  // isLinked is false until the scope query resolves — treat "still loading"
+  // differently from "resolved but no vendor found" so we never blank the page.
   const isLinked = !!vendorName;
   const companyLabel = vendorName ?? "";
 
-  // While the scope API is still in flight, show a skeleton header
-  if (vendorScopeLoading) {
-    return (
-      <div className="min-h-screen bg-[#1e2130] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   // Account has vendorScopeId set but the vendor record couldn't be resolved
-  if (!isLinked) {
+  // (only show this panel once loading is done, so we don't flash it)
+  if (!vendorScopeLoading && !isLinked) {
     return (
       <div className="min-h-screen bg-[#1e2130]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -421,18 +415,27 @@ function VendorDashboard({ user, myMarkets, isLoading, hasFeature, vendorName, v
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-12">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-base font-bold">
-              {companyLabel[0]}
+              {vendorScopeLoading ? <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (companyLabel[0] || "?")}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-white font-semibold text-lg">{companyLabel}</span>
+                {vendorScopeLoading
+                  ? <div className="h-5 w-32 bg-slate-700 rounded animate-pulse" />
+                  : <span className="text-white font-semibold text-lg">{companyLabel}</span>
+                }
                 <span className="text-[10px] font-semibold tracking-widest uppercase bg-violet-500/15 text-violet-300 border border-violet-400/20 px-2 py-0.5 rounded-full">Vendor seat</span>
               </div>
-              <p className="text-slate-400 text-sm">{user?.firstName} {user?.lastName} · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></p>
+              <p className="text-slate-400 text-sm">
+                {user?.firstName} {user?.lastName}
+                {!vendorScopeLoading && companyLabel && <> · linked as <span className="text-violet-300 font-medium">{companyLabel}</span></>}
+              </p>
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white">
-            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub
+            {vendorScopeLoading
+              ? <div className="h-8 w-64 bg-slate-700 rounded animate-pulse inline-block" />
+              : <><span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{companyLabel}</span> Intelligence Hub</>
+            }
           </h1>
           <p className="text-slate-400 mt-1">Market data, competitive signals and vendor tools — some features require plan upgrade.</p>
         </motion.div>

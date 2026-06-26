@@ -9,11 +9,10 @@ import path from "path";
 const loggedSessions = new Set<string>();
 
 // Decide where a user lands after a successful login. Admins go to the admin
-// portal, vendor-scoped seats go straight to their leads dashboard, and
-// everyone else lands on the home page.
+// portal; everyone else (buyers and vendor seats) goes to the home page where
+// the dashboard branches by persona.
 function loginLandingPath(user: any): string {
   if (user?.role === 'admin') return '/admin';
-  if (user?.vendorScopeId) return '/lead-gen/me';
   return '/';
 }
 
