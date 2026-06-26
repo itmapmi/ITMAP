@@ -47,6 +47,8 @@ interface VendorBentoCfg {
   href: string;
   featureKey: LockableFeatureKey;
   accent: BentoAccent;
+  // When set, overrides the default hasFeature(featureKey) lock check
+  lockedOverride?: (isAdminLinked: boolean) => boolean;
 }
 
 // ─── Module-level static config (icons use JSX; safe with Vite JSX transform) ─
@@ -101,6 +103,9 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     href: "/lead-gen/me/fact-review",
     featureKey: "fact_review",
     accent: "violet",
+    // Fact Review is free the moment admin links the user to a vendor —
+    // the backend already enforces this with requireVendorScope, not requireFeature.
+    lockedOverride: (isAdminLinked) => !isAdminLinked,
   },
   {
     label: "Battle Cards",
@@ -479,7 +484,7 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
                 description={card.description}
                 icon={card.icon}
                 href={card.href}
-                locked={!hasFeature(card.featureKey)}
+                locked={card.lockedOverride ? card.lockedOverride(isAdminLinked) : !hasFeature(card.featureKey)}
                 accent={card.accent}
               />
             ))}
