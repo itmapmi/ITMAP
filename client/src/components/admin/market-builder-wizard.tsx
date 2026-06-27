@@ -17,7 +17,7 @@ import {
   ChevronRight, ChevronLeft, RefreshCw, Trash2, RotateCcw,
   ExternalLink, Eye, EyeOff, Building2, BarChart3, Grid3X3, Layers, Save,
   Plus, X, Globe, PencilLine, PlayCircle, FileSearch, Clock, Zap,
-  ArrowRight, MoreHorizontal, FolderOpen, Cpu, ChevronDown,
+  ArrowRight, MoreHorizontal, FolderOpen, Cpu, ChevronDown, Download,
 } from "lucide-react";
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
@@ -1578,6 +1578,16 @@ function ProjectCard({ job, onResume, onDelete, mode = "admin" }: {
                 <ExternalLink className="h-3.5 w-3.5" />View
               </Button>
             )}
+            {isPublished && job.marketId && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-emerald-600 hover:text-emerald-700" onClick={() => {
+                const a = document.createElement("a");
+                a.href = `/api/markets/${job.marketId}/export`;
+                a.download = "";
+                a.click();
+              }}>
+                <Download className="h-3.5 w-3.5" />Export
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={e => { e.stopPropagation(); onDelete(job.id); }}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -2108,10 +2118,20 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
           </div>
           <div className="flex gap-3">
             {publishedMarketId && <Button variant="outline" className="flex-1 text-sm gap-2" onClick={() => window.open(`/markets/${publishedMarketId}`, "_blank")}><ExternalLink className="h-4 w-4"/>Preview</Button>}
-            <Button className="flex-1 text-sm gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => { setView("dashboard"); setActiveJob(null); setStageResults({}); setStagePhases({}); setPublishedMarketId(null); refetchJobs(); }}>
-              <FolderOpen className="h-4 w-4"/>Back to Projects
-            </Button>
+            {publishedMarketId && (
+              <Button variant="outline" className="flex-1 text-sm gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => {
+                const a = document.createElement("a");
+                a.href = `/api/markets/${publishedMarketId}/export`;
+                a.download = "";
+                a.click();
+              }}>
+                <Download className="h-4 w-4"/>Export Excel
+              </Button>
+            )}
           </div>
+          <Button className="w-full text-sm gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => { setView("dashboard"); setActiveJob(null); setStageResults({}); setStagePhases({}); setPublishedMarketId(null); refetchJobs(); }}>
+            <FolderOpen className="h-4 w-4"/>Back to Projects
+          </Button>
         </div>
       </div>
     );

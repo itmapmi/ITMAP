@@ -468,6 +468,14 @@ export async function runSingleStage(
           result = checkpoint6;
           break;
         }
+        // Pre-compute existing vendors' support rows so we can preserve them
+        // in intermediate checkpoints (onVendorComplete) and the final result.
+        // Without this, markComplete would overwrite stage 6 with only the
+        // new vendor's commentary, wiping all existing vendor comments.
+        const newVendorNames6 = new Set(scope6.vendors.map((v: any) => v.name));
+        const existingSupport6: any[] = newOnly
+          ? (checkpoint6?.support ?? []).filter((r: any) => !newVendorNames6.has(r?.vendorName))
+          : [];
         const stage1ForRun6 = newOnly ? { ...stage1, vendors: scope6.vendors } : stage1;
         if (newOnly) {
           await progress(`Incremental run — writing product commentary for ${scope6.vendors.length} new vendor(s) across ${totalFeatures} features…`);
@@ -487,12 +495,21 @@ export async function runSingleStage(
             },
             checkpoint: resumeCheckpoint6,
             onVendorComplete: async (partial) => {
-              await storage.upsertMarketBuilderStage(jobId, 6, { result: partial as any });
+              // Merge existing vendor support into the intermediate checkpoint so a
+              // crash/resume won't lose pre-existing commentary.
+              const merged = existingSupport6.length
+                ? { ...partial, support: [...existingSupport6, ...(partial.support ?? [])] }
+                : partial;
+              await storage.upsertMarketBuilderStage(jobId, 6, { result: merged as any });
             },
             onVendorStart: (vendorName) => addInFlightVendor(jobId, 6, vendorName),
             onVendorEnd: (vendorName) => removeInFlightVendor(jobId, 6, vendorName),
           }
         );
+        // Merge existing vendor commentary into the final result before saving.
+        if (existingSupport6.length) {
+          result = { ...result, support: [...existingSupport6, ...(result.support ?? [])] };
+        }
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} product feature scores`);
         break;
       }
@@ -565,6 +582,14 @@ export async function runSingleStage(
           result = checkpoint9;
           break;
         }
+        // Pre-compute existing vendors' support rows so we can preserve them
+        // in intermediate checkpoints (onVendorComplete) and the final result.
+        // Without this, markComplete would overwrite stage 9 with only the
+        // new vendor's commentary, wiping all existing vendor comments.
+        const newVendorNames9 = new Set(scope9.vendors.map((v: any) => v.name));
+        const existingSupport9: any[] = newOnly
+          ? (checkpoint9?.support ?? []).filter((r: any) => !newVendorNames9.has(r?.vendorName))
+          : [];
         const stage1ForRun9 = newOnly ? { ...stage1, vendors: scope9.vendors } : stage1;
         if (newOnly) {
           await progress(`Incremental run — writing ecosystem commentary for ${scope9.vendors.length} new vendor(s) across ${totalEcoFeatures} integrations…`);
@@ -582,12 +607,21 @@ export async function runSingleStage(
             onProgress: async (msg: string) => { await progress(msg); },
             checkpoint: resumeCheckpoint9,
             onVendorComplete: async (partial) => {
-              await storage.upsertMarketBuilderStage(jobId, 9, { result: partial as any });
+              // Merge existing vendor support into the intermediate checkpoint so a
+              // crash/resume won't lose pre-existing commentary.
+              const merged = existingSupport9.length
+                ? { ...partial, support: [...existingSupport9, ...(partial.support ?? [])] }
+                : partial;
+              await storage.upsertMarketBuilderStage(jobId, 9, { result: merged as any });
             },
             onVendorStart: (vendorName) => addInFlightVendor(jobId, 9, vendorName),
             onVendorEnd: (vendorName) => removeInFlightVendor(jobId, 9, vendorName),
           }
         );
+        // Merge existing vendor commentary into the final result before saving.
+        if (existingSupport9.length) {
+          result = { ...result, support: [...existingSupport9, ...(result.support ?? [])] };
+        }
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} ecosystem integration scores`);
         break;
       }
