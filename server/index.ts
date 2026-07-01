@@ -131,6 +131,34 @@ app.use((req, res, next) => {
     cronJobManager.startAllJobs();
     log("✓ Cron jobs initialized and started");
 
+    // Catch-up: if the news pipeline hasn't run in >23 hours (e.g. due to a server
+    // restart between cron windows), fire it immediately so no articles are missed.
+    try {
+      const { db } = await import("./db");
+      const { newsFetchLogs } = await import("../shared/schema");
+      const { desc } = await import("drizzle-orm");
+      const [lastLog] = await db
+        .select({ fetchedAt: newsFetchLogs.fetchedAt })
+        .from(newsFetchLogs)
+        .orderBy(desc(newsFetchLogs.fetchedAt))
+        .limit(1);
+
+      const hoursAgo = lastLog
+        ? (Date.now() - new Date(lastLog.fetchedAt).getTime()) / 3_600_000
+        : Infinity;
+
+      if (hoursAgo > 23) {
+        log(`[Startup] News pipeline last ran ${Math.round(hoursAgo)}h ago — triggering catch-up run...`);
+        cronJobManager.runNewsIngestion().catch(err =>
+          log('[Startup] Catch-up pipeline error:', String(err))
+        );
+      } else {
+        log(`[Startup] News pipeline ran ${Math.round(hoursAgo)}h ago — no catch-up needed`);
+      }
+    } catch (catchUpErr) {
+      log('[Startup] Could not check news pipeline catch-up:', String(catchUpErr));
+    }
+
     // Graceful shutdown
     process.on('SIGTERM', () => {
       log('SIGTERM received, stopping cron jobs...');

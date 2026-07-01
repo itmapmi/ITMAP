@@ -2,8 +2,8 @@ import OpenAI from 'openai';
 import { newsStorage } from '../storage';
 import { db } from '../../db';
 import { generateSuggestionsForVendorById } from '../suggestions/generator';
-import { vendors, canonicalVendors } from '@shared/schema';
-import { isNotNull, eq, inArray } from 'drizzle-orm';
+import { vendors, canonicalVendors, newsFetchLogs } from '@shared/schema';
+import { isNotNull, eq, inArray, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 
 let _openai: OpenAI | null = null;
@@ -63,23 +63,55 @@ export interface ScrapeResult {
 
 // ─── OpenAI Web Search ────────────────────────────────────────────────────
 
+/**
+ * Returns how many days back the scraper should look for a given vendor.
+ * Uses the gap since the last recorded fetch, capped between 2 and 14 days.
+ * This ensures articles are never permanently missed due to pipeline gaps
+ * caused by server restarts or deployment events.
+ */
+async function getVendorLookbackDays(vendorId: string): Promise<number> {
+  const rows = await db
+    .select({ fetchedAt: newsFetchLogs.fetchedAt })
+    .from(newsFetchLogs)
+    .where(eq(newsFetchLogs.sourceId, vendorId))
+    .orderBy(desc(newsFetchLogs.fetchedAt))
+    .limit(1);
+
+  if (rows.length === 0) return 3;
+
+  const msAgo = Date.now() - new Date(rows[0].fetchedAt).getTime();
+  const daysAgo = Math.ceil(msAgo / 86_400_000);
+  return Math.min(14, Math.max(2, daysAgo));
+}
+
+/** Returns an array of YYYY-MM-DD strings for the last N days (inclusive of today). */
+function buildDateList(lookbackDays: number): string[] {
+  const dates: string[] = [];
+  for (let i = 0; i < lookbackDays; i++) {
+    dates.push(new Date(Date.now() - i * 86_400_000).toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
 async function fetchAndAnalyzeVendorNews(
   vendor: VendorRecord
 ): Promise<{ articles: AnalyzedArticle[]; error: string | null }> {
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const twoDaysAgo = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+  const lookbackDays = await getVendorLookbackDays(vendor.id);
+  const dates = buildDateList(lookbackDays);
+  const today = dates[0];
+  const oldest = dates[dates.length - 1];
+  const dateList = dates.join(', ');
 
   const prompt = `You are an enterprise technology industry analyst. Use your web search to visit the newsroom at ${vendor.newsroomUrl} for the company ${vendor.name}.
 
-Today's date is ${today}. Find ALL news articles, press releases, and blog posts published in the last 48 hours (${twoDaysAgo}, ${yesterday}, or ${today}).
+Today's date is ${today}. Find ALL news articles, press releases, and blog posts published in the last ${lookbackDays} days (${oldest} through ${today}).
 
 For every article you find from those dates, provide a complete structured analysis.
 
 IMPORTANT:
 - Actually visit and read the newsroom page
-- Only include articles published on ${today}, ${yesterday}, or ${twoDaysAgo} — skip anything older
-- If no articles were published in the last 48 hours, return {"articles": []}
+- Only include articles published on one of these dates: ${dateList} — skip anything older
+- If no articles were published in this window, return {"articles": []}
 - Make sure article URLs are complete and correct
 
 Return ONLY valid JSON with no markdown fences:

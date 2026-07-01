@@ -115,30 +115,8 @@ export class CronJobManager {
     this.jobs.set('newsroomHealthCheck', newsroomHealthCheckJob);
 
     // Daily news pipeline at 7:00 AM UTC — scrape then analyze in sequence
-    const newsIngestionJob = cron.schedule('0 7 * * *', async () => {
-      console.log('[Cron] Starting daily news pipeline (scrape + analyze)...');
-      try {
-        const { storage } = await import('./storage');
-        const allVendors = await storage.getAllVendors();
-        const missingUrl = allVendors.filter(v => !v.newsroomUrl);
-        if (missingUrl.length > 0) {
-          console.warn(
-            `[Cron] WARNING: ${missingUrl.length} vendor(s) are missing a newsroom URL and will be skipped by the scraper: ${missingUrl.map(v => v.name).join(', ')}`
-          );
-        }
-
-        const scrapeResults = await scrapeAllVendors();
-        const totalNew = scrapeResults.reduce((sum, r) => sum + r.newCount, 0);
-        console.log(`[Cron] Scrape done: ${totalNew} new articles across ${scrapeResults.length} vendors`);
-
-        const { analyzed } = await analyzeAllPending(50);
-        console.log(`[Cron] Analysis done: ${analyzed} articles analyzed`);
-
-        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
-      } catch (error) {
-        console.error('[Cron] Error in daily news pipeline:', error);
-        this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
-      }
+    const newsIngestionJob = cron.schedule('0 7 * * *', () => {
+      this.runNewsIngestion();
     }, {
       timezone: 'UTC'
     });
@@ -312,6 +290,35 @@ export class CronJobManager {
     }
     console.error(`Cron job not found: ${jobName}`);
     return false;
+  }
+
+  /**
+   * Run the news ingestion pipeline (scrape + analyze).
+   * Called by the daily cron and also on startup when a pipeline gap is detected.
+   */
+  public async runNewsIngestion(): Promise<void> {
+    console.log('[Cron] Starting daily news pipeline (scrape + analyze)...');
+    try {
+      const allVendors = await storage.getAllVendors();
+      const missingUrl = allVendors.filter(v => !v.newsroomUrl);
+      if (missingUrl.length > 0) {
+        console.warn(
+          `[Cron] WARNING: ${missingUrl.length} vendor(s) are missing a newsroom URL and will be skipped by the scraper: ${missingUrl.map(v => v.name).join(', ')}`
+        );
+      }
+
+      const scrapeResults = await scrapeAllVendors();
+      const totalNew = scrapeResults.reduce((sum, r) => sum + r.newCount, 0);
+      console.log(`[Cron] Scrape done: ${totalNew} new articles across ${scrapeResults.length} vendors`);
+
+      const { analyzed } = await analyzeAllPending(50);
+      console.log(`[Cron] Analysis done: ${analyzed} articles analyzed`);
+
+      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'success' });
+    } catch (error) {
+      console.error('[Cron] Error in daily news pipeline:', error);
+      this.lastRun.set('newsIngestion', { timestamp: new Date(), status: 'failed', error: String(error) });
+    }
   }
 
   /**
