@@ -173,7 +173,11 @@ Category values (choose one): Product Announcement, Partnership, M&A, Financial 
       return { articles: [], error: null };
     }
 
-    return parseAnalyzedArticles(rawText, vendor.name);
+    const result = parseAnalyzedArticles(rawText, vendor.name);
+    if (result.articles.length === 0) {
+      console.warn(`[Scraper] ${vendor.name}: 0 articles — raw response (first 800 chars): ${rawText.slice(0, 800)}`);
+    }
+    return result;
   } catch (err: any) {
     console.error(`[Scraper] OpenAI web search failed for ${vendor.name}: ${err.message}`);
     return { articles: [], error: err.message };
