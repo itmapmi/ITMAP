@@ -346,11 +346,13 @@ function SuggestionCard({
     enabled: isPending,
   });
 
-  // Look up current row for the *selected* target (not the AI's original target)
-  const selectedScoreRow = isScore && evalType === "vendor_evaluation" && selectedSubjectId
+  // Look up current row for the *selected* target (not the AI's original target).
+  // Use evalType (the admin's current selection), NOT isScore (the suggestion's original type),
+  // so that criterion_score suggestions can also be applied to product/ecosystem features.
+  const selectedScoreRow = evalType === "vendor_evaluation" && selectedSubjectId
     ? marketScores.find(r => r.vendorId === s.vendorId && r.criteriaId === selectedSubjectId) ?? null
     : null;
-  const selectedSupportRow = !isScore && selectedSubjectId
+  const selectedSupportRow = evalType !== "vendor_evaluation" && selectedSubjectId
     ? marketSupport.find(r => r.vendorId === s.vendorId && r.featureId === selectedSubjectId) ?? null
     : null;
 
