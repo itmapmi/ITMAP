@@ -224,9 +224,10 @@ export function registerNewsRoutes(app: Express): void {
 
   app.post("/api/news/ingest/run", requireAdmin, async (req, res) => {
     try {
-      const { vendor_id } = req.query;
+      const { vendor_id, lookback_days } = req.query;
+      const forceLookback = lookback_days ? parseInt(lookback_days as string, 10) : undefined;
       const scrapeResults = vendor_id
-        ? [await scrapeSingleVendor(vendor_id as string)]
+        ? [await scrapeSingleVendor(vendor_id as string, forceLookback)]
         : await scrapeAllVendors();
       const { analyzed } = await analyzeAllPending(50);
       res.json({ success: true, results: scrapeResults, analyzed });

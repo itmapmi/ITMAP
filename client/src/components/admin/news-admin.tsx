@@ -269,6 +269,43 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
     },
   });
 
+  const runVendorForceScrapeMutation = useMutation({
+    mutationFn: async (vendorId: string): Promise<RunPipelineResponse> => {
+      setScrapingVendorIds((prev) => new Set(prev).add(vendorId));
+      return await apiRequestJson(`/api/news/ingest/run?vendor_id=${encodeURIComponent(vendorId)}&lookback_days=14`, "POST");
+    },
+    onSuccess: (data, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      const result = data.results?.[0];
+      if (result) {
+        setVendorScrapeResults((prev) => ({ ...prev, [vendorId]: result }));
+      }
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.startsWith("/api/news");
+        },
+      });
+      const newCount = data.results?.reduce((s, r) => s + r.newCount, 0) ?? 0;
+      toast({
+        title: "Full scan complete",
+        description: `14-day scan found ${newCount} new article(s).`,
+      });
+    },
+    onError: (error: Error, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      setVendorScrapeResults((prev) => ({
+        ...prev,
+        [vendorId]: { vendorId, vendor: vendorId, newCount: 0, error: error.message || "Failed" },
+      }));
+      toast({
+        title: "Full scan failed",
+        description: error.message || "Failed to run scrape",
+        variant: "destructive",
+      });
+    },
+  });
+
   const analyzeMutation = useMutation({
     mutationFn: async (): Promise<AnalyzeResponse> => {
       return await apiRequestJson("/api/news/analyze", "POST");
@@ -557,6 +594,18 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
                             >
                               <Zap className="h-3 w-3 mr-1" />
                               {isScrapingThis ? "…" : "Scrape"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-violet-600 border-violet-200 hover:bg-violet-50"
+                              disabled={isScrapingThis || runScrapeMutation.isPending}
+                              onClick={() => runVendorForceScrapeMutation.mutate(v.id)}
+                              title="Force a 14-day lookback scan (bypasses the automatic window)"
+                              data-testid={`button-force-scrape-vendor-${v.id}`}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              {isScrapingThis ? "…" : "14d"}
                             </Button>
                           </div>
                         </div>

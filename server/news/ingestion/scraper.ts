@@ -94,9 +94,10 @@ function buildDateList(lookbackDays: number): string[] {
 }
 
 async function fetchAndAnalyzeVendorNews(
-  vendor: VendorRecord
+  vendor: VendorRecord,
+  forceLookbackDays?: number
 ): Promise<{ articles: AnalyzedArticle[]; error: string | null }> {
-  const lookbackDays = await getVendorLookbackDays(vendor.id);
+  const lookbackDays = forceLookbackDays ?? await getVendorLookbackDays(vendor.id);
   const dates = buildDateList(lookbackDays);
   const today = dates[0];
   const oldest = dates[dates.length - 1];
@@ -422,7 +423,7 @@ export async function scrapeAllVendors(): Promise<ScrapeResult[]> {
   return results;
 }
 
-export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult> {
+export async function scrapeSingleVendor(vendorId: string, forceLookbackDays?: number): Promise<ScrapeResult> {
   const rows = await db.select().from(vendors).where(eq(vendors.id, vendorId));
   const vendor = rows[0];
   if (!vendor) throw new Error(`Vendor ${vendorId} not found`);
@@ -479,7 +480,7 @@ export async function scrapeSingleVendor(vendorId: string): Promise<ScrapeResult
   const startTime = Date.now();
 
   try {
-    const { articles, error } = await fetchAndAnalyzeVendorNews(v);
+    const { articles, error } = await fetchAndAnalyzeVendorNews(v, forceLookbackDays);
 
     const newArticleIds: string[] = [];
     for (const article of articles) {
