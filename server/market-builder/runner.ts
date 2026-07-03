@@ -538,8 +538,15 @@ export async function runSingleStage(
           }
         );
         // Merge existing vendor commentary into the final result before saving.
+        // IMPORTANT: runStage4Commentary seeds its internal updatedSupport from
+        // the full stage5 result (all vendors, empty comments). In newOnly mode
+        // only the new vendor gets processed, so result.support contains empty-
+        // comment rows for every existing vendor. Filter those out before merging
+        // with existingSupport6 so the empty rows don't overwrite the good ones
+        // when publish iterates the combined array.
         if (existingSupport6.length) {
-          result = { ...result, support: [...existingSupport6, ...(result.support ?? [])] };
+          const newVendorOnlySupport6 = (result.support ?? []).filter((r: any) => newVendorNames6.has(r?.vendorName));
+          result = { ...result, support: [...existingSupport6, ...newVendorOnlySupport6] };
         }
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} product feature scores`);
         break;
@@ -679,8 +686,12 @@ export async function runSingleStage(
           }
         );
         // Merge existing vendor commentary into the final result before saving.
+        // Same reasoning as stage 6: filter result.support to new-vendor rows
+        // only so the empty-comment rows from the stage8 seed don't overwrite
+        // the good rows from existingSupport9 in the publish upsert loop.
         if (existingSupport9.length) {
-          result = { ...result, support: [...existingSupport9, ...(result.support ?? [])] };
+          const newVendorOnlySupport9 = (result.support ?? []).filter((r: any) => newVendorNames9.has(r?.vendorName));
+          result = { ...result, support: [...existingSupport9, ...newVendorOnlySupport9] };
         }
         await progress(`✓ Generated commentary for ${result.support?.length ?? 0} ecosystem integration scores`);
         break;

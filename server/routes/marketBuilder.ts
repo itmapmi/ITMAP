@@ -726,7 +726,20 @@ export function registerMarketBuilderRoutes(app: Express): void {
           }
         }
 
+        // Deduplicate support rows by (vendorName, featureName): prefer the row
+        // with non-empty comments. The stage 6 result may contain both a good row
+        // (from existingSupport6) and an empty-comment row (from the stage5 seed
+        // inside runStage4Commentary) for the same vendor×feature. Without this
+        // dedup the empty row overwrites the good one in the upsert loop.
+        const deduped4 = new Map<string, any>();
         for (const s of (stage4.support ?? [])) {
+          const key = `${s.vendorName}::${s.featureName}`;
+          const prev = deduped4.get(key);
+          const hasComments = (s.comments?.trim().length ?? 0) > 0;
+          const prevHasComments = (prev?.comments?.trim().length ?? 0) > 0;
+          if (!prev || (hasComments && !prevHasComments)) deduped4.set(key, s);
+        }
+        for (const s of deduped4.values()) {
           const vendorId = vendorIdMap.get(s.vendorName);
           const featureId = productFeatureIdMap.get(s.featureName);
           if (!vendorId || !featureId) continue;
@@ -803,7 +816,16 @@ export function registerMarketBuilderRoutes(app: Express): void {
           }
         }
 
+        // Same dedup as product phase: prefer row with non-empty comments.
+        const deduped6 = new Map<string, any>();
         for (const s of (stage6.support ?? [])) {
+          const key = `${s.vendorName}::${s.featureName}`;
+          const prev = deduped6.get(key);
+          const hasComments = (s.comments?.trim().length ?? 0) > 0;
+          const prevHasComments = (prev?.comments?.trim().length ?? 0) > 0;
+          if (!prev || (hasComments && !prevHasComments)) deduped6.set(key, s);
+        }
+        for (const s of deduped6.values()) {
           const vendorId = vendorIdMap.get(s.vendorName);
           const featureId = ecoFeatureIdMap.get(s.featureName);
           if (!vendorId || !featureId) continue;
