@@ -835,27 +835,37 @@ export function registerMarketBuilderRoutes(app: Express): void {
         // Product Capabilities — from stage4.support (only when product phase ran)
         if (havePhaseProduct && productCapCriterionId && productFeatureIds.size > 0) {
           const prodSupport = (stage4.support ?? []).filter((s: any) => s.vendorName === vendorName);
-          const prodSum = prodSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
-          const prodScore = Number(((prodSum / productFeatureIds.size) * 10).toFixed(1));
-          await storage.createOrUpdateVendorScore({
-            vendorId,
-            criteriaId: productCapCriterionId,
-            score: prodScore,
-            notes: `Auto-computed from ${productFeatureIds.size} product evaluation features.`,
-          });
+          // Only write the score if this vendor appears in the stage result.
+          // In incremental ("new only") runs the stage result only contains the new
+          // vendor; skipping absent vendors prevents overwriting their existing scores
+          // with 0.
+          if (prodSupport.length > 0) {
+            const prodSum = prodSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
+            const prodScore = Number(((prodSum / productFeatureIds.size) * 10).toFixed(1));
+            await storage.createOrUpdateVendorScore({
+              vendorId,
+              criteriaId: productCapCriterionId,
+              score: prodScore,
+              notes: `Auto-computed from ${productFeatureIds.size} product evaluation features.`,
+            });
+          }
         }
 
         // ISV Ecosystem — from stage6.support (only when ecosystem phase ran)
         if (havePhaseEcosystem && isvEcoCriterionId && ecoFeatureIds.size > 0) {
           const ecoSupport = (stage6.support ?? []).filter((s: any) => s.vendorName === vendorName);
-          const ecoSum = ecoSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
-          const ecoScore = Number(((ecoSum / ecoFeatureIds.size) * 10).toFixed(1));
-          await storage.createOrUpdateVendorScore({
-            vendorId,
-            criteriaId: isvEcoCriterionId,
-            score: ecoScore,
-            notes: `Auto-computed from ${ecoFeatureIds.size} ISV ecosystem features.`,
-          });
+          // Same guard: skip vendors absent from the incremental stage result so
+          // their existing Harvey Ball scores are not reset to 0.
+          if (ecoSupport.length > 0) {
+            const ecoSum = ecoSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
+            const ecoScore = Number(((ecoSum / ecoFeatureIds.size) * 10).toFixed(1));
+            await storage.createOrUpdateVendorScore({
+              vendorId,
+              criteriaId: isvEcoCriterionId,
+              score: ecoScore,
+              notes: `Auto-computed from ${ecoFeatureIds.size} ISV ecosystem features.`,
+            });
+          }
         }
       }
 
