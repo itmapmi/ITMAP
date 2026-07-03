@@ -658,35 +658,74 @@ export function registerMarketBuilderRoutes(app: Express): void {
         });
       }
 
-      // ── Product phase (stages 4–6) — only materialise when both result ──
-      // rows are present. On republish, wipe existing non-ecosystem feature
-      // categories first so the phase is fully refreshed (cascade clears
-      // child features + vendor support rows).
+      // ── Product phase (stages 4–6) — upsert categories/features by name ──
+      // On republish we update existing categories/features in place rather than
+      // deleting and recreating them. This preserves the existing feature IDs so
+      // that vendor_feature_support rows (all vendors' commentary) are NOT cascade-
+      // deleted. New categories/features are created; ones removed from the stage
+      // result are deleted individually after the upsert loop.
       const productFeatureIdMap = new Map<string, string>();
       if (havePhaseProduct) {
-        const existingCategories = await storage.getMarketFeatureCategories(market.id);
-        for (const cat of existingCategories) {
-          if ((cat as any).isEcosystem) continue;
-          await storage.deleteFeatureCategory(cat.id);
-        }
+        const existingAllCats = await storage.getMarketFeatureCategories(market.id);
+        const existingProdCats = existingAllCats.filter(c => !(c as any).isEcosystem);
+
         let catOrder = 0;
         for (const cat of (stage3.categories ?? [])) {
-          const category = await storage.createFeatureCategory({
-            name: cat.name,
-            description: cat.description,
-            marketId: market.id,
-            isEcosystem: false,
-            displayOrder: catOrder++,
-          });
+          const existingCat = existingProdCats.find(c => c.name === cat.name);
+          let categoryId: string;
+          if (existingCat) {
+            await storage.updateFeatureCategory(existingCat.id, {
+              description: cat.description,
+              displayOrder: catOrder,
+            });
+            categoryId = existingCat.id;
+          } else {
+            const newCat = await storage.createFeatureCategory({
+              name: cat.name,
+              description: cat.description,
+              marketId: market.id,
+              isEcosystem: false,
+              displayOrder: catOrder,
+            });
+            categoryId = newCat.id;
+          }
+          catOrder++;
+
+          const existingFeats = existingCat?.features ?? [];
           let featOrder = 0;
           for (const f of (cat.features ?? [])) {
-            const feature = await storage.createFeature({
-              name: f.name, description: f.description,
-              categoryId: category.id, displayOrder: featOrder++,
-            });
-            productFeatureIdMap.set(f.name, feature.id);
+            const existingFeat = existingFeats.find(ef => ef.name === f.name);
+            if (existingFeat) {
+              await storage.updateFeature(existingFeat.id, {
+                description: f.description,
+                displayOrder: featOrder,
+              });
+              productFeatureIdMap.set(f.name, existingFeat.id);
+            } else {
+              const newFeat = await storage.createFeature({
+                name: f.name, description: f.description,
+                categoryId, displayOrder: featOrder,
+              });
+              productFeatureIdMap.set(f.name, newFeat.id);
+            }
+            featOrder++;
+          }
+
+          // Remove features no longer present in the stage result
+          for (const ef of existingFeats) {
+            if (!(cat.features ?? []).some((f: any) => f.name === ef.name)) {
+              await storage.deleteFeature(ef.id);
+            }
           }
         }
+
+        // Remove categories no longer present in the stage result
+        for (const ec of existingProdCats) {
+          if (!(stage3.categories ?? []).some((c: any) => c.name === ec.name)) {
+            await storage.deleteFeatureCategory(ec.id);
+          }
+        }
+
         for (const s of (stage4.support ?? [])) {
           const vendorId = vendorIdMap.get(s.vendorName);
           const featureId = productFeatureIdMap.get(s.featureName);
@@ -701,32 +740,69 @@ export function registerMarketBuilderRoutes(app: Express): void {
         }
       }
 
-      // ── Ecosystem phase (stages 7–9) — same idempotent pattern ──────────
+      // ── Ecosystem phase (stages 7–9) — same upsert-by-name pattern ──────
       const ecoFeatureIdMap = new Map<string, string>();
       if (havePhaseEcosystem) {
-        const existingCategories = await storage.getMarketFeatureCategories(market.id);
-        for (const cat of existingCategories) {
-          if (!(cat as any).isEcosystem) continue;
-          await storage.deleteFeatureCategory(cat.id);
-        }
+        const existingAllCats2 = await storage.getMarketFeatureCategories(market.id);
+        const existingEcoCats = existingAllCats2.filter(c => !!(c as any).isEcosystem);
+
         let ecoCatOrder = 0;
         for (const cat of (stage5.categories ?? [])) {
-          const category = await storage.createFeatureCategory({
-            name: cat.name,
-            description: cat.description,
-            marketId: market.id,
-            isEcosystem: true,
-            displayOrder: ecoCatOrder++,
-          });
+          const existingCat = existingEcoCats.find(c => c.name === cat.name);
+          let categoryId: string;
+          if (existingCat) {
+            await storage.updateFeatureCategory(existingCat.id, {
+              description: cat.description,
+              displayOrder: ecoCatOrder,
+            });
+            categoryId = existingCat.id;
+          } else {
+            const newCat = await storage.createFeatureCategory({
+              name: cat.name,
+              description: cat.description,
+              marketId: market.id,
+              isEcosystem: true,
+              displayOrder: ecoCatOrder,
+            });
+            categoryId = newCat.id;
+          }
+          ecoCatOrder++;
+
+          const existingFeats = existingCat?.features ?? [];
           let featOrder = 0;
           for (const f of (cat.features ?? [])) {
-            const feature = await storage.createFeature({
-              name: f.name, description: f.description,
-              categoryId: category.id, displayOrder: featOrder++,
-            });
-            ecoFeatureIdMap.set(f.name, feature.id);
+            const existingFeat = existingFeats.find(ef => ef.name === f.name);
+            if (existingFeat) {
+              await storage.updateFeature(existingFeat.id, {
+                description: f.description,
+                displayOrder: featOrder,
+              });
+              ecoFeatureIdMap.set(f.name, existingFeat.id);
+            } else {
+              const newFeat = await storage.createFeature({
+                name: f.name, description: f.description,
+                categoryId, displayOrder: featOrder,
+              });
+              ecoFeatureIdMap.set(f.name, newFeat.id);
+            }
+            featOrder++;
+          }
+
+          // Remove integration points no longer present in the stage result
+          for (const ef of existingFeats) {
+            if (!(cat.features ?? []).some((f: any) => f.name === ef.name)) {
+              await storage.deleteFeature(ef.id);
+            }
           }
         }
+
+        // Remove ecosystem categories no longer present in the stage result
+        for (const ec of existingEcoCats) {
+          if (!(stage5.categories ?? []).some((c: any) => c.name === ec.name)) {
+            await storage.deleteFeatureCategory(ec.id);
+          }
+        }
+
         for (const s of (stage6.support ?? [])) {
           const vendorId = vendorIdMap.get(s.vendorName);
           const featureId = ecoFeatureIdMap.get(s.featureName);

@@ -414,12 +414,43 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage4 = await loadStageResult(jobId, 4);
         const totalFeatures = (stage4.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        const existingStage5 = await storage.getMarketBuilderStage(jobId, 5);
+        const checkpoint5 = (existingStage5?.result as any) ?? undefined;
+
+        // "New vendors only": seed the existing scoring result as the checkpoint so
+        // runStage4Scoring's resume logic skips every vendor already present, then
+        // only scores the new vendor(s) and merges them into the final result.
+        if (newOnly) {
+          const scope5 = scopeNewVendors(stage1, checkpoint5, newOnly);
+          if (scope5.isNoop) {
+            await progress("No newly added vendors to score — existing product scores left unchanged.");
+            result = checkpoint5;
+            break;
+          }
+          await progress(`Incremental run — scoring ${scope5.vendors.length} new vendor(s) across ${totalFeatures} product features…`);
+          result = await runStage4Scoring(
+            inputName, stage1, stage4, llmConfig, sourceContext,
+            {
+              resolveScoringPrompt: (categoryName, featureName) =>
+                resolvePromptContent({ jobId, stage: "product_evaluation", promptType: "scoring", categoryName, featureName }),
+              onBatchComplete: async (done, total, vendorName, featureRange) => {
+                await progress(`Batch ${done}/${total} — Scoring: ${vendorName} | Features ${featureRange}`);
+              },
+              checkpoint: checkpoint5,
+              onVendorComplete: async (partial) => {
+                await storage.upsertMarketBuilderStage(jobId, 5, { result: partial as any });
+              },
+            }
+          );
+          await progress(`✓ Generated ${result.support?.length ?? 0} product Harvey Ball scores`);
+          break;
+        }
+
+        // Normal path: resume an interrupted run, or re-run from scratch.
         // Load checkpoint from any previous failed/interrupted run so fully-scored
         // vendors can be skipped on resume. Only use it when the stage was NOT
         // already completed — a "Re-run all vendors" on a completed stage must
         // start fresh, not skip vendors that were scored in the previous run.
-        const existingStage5 = await storage.getMarketBuilderStage(jobId, 5);
-        const checkpoint5 = (existingStage5?.result as any) ?? undefined;
         const resumeCheckpoint5 = stageWasCompleted ? undefined : checkpoint5;
         if (resumeCheckpoint5?.support?.length > 0) {
           await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint5.support.length} feature scores already saved`);
@@ -531,11 +562,40 @@ export async function runSingleStage(
         const stage1 = await loadStageResult(jobId, 1);
         const stage7 = await loadStageResult(jobId, 7);
         const totalEcoFeatures = (stage7.categories ?? []).reduce((n: number, c: any) => n + (c.features?.length ?? 0), 0);
+        const existingStage8 = await storage.getMarketBuilderStage(jobId, 8);
+        const checkpoint8 = (existingStage8?.result as any) ?? undefined;
+
+        // "New vendors only": seed the existing ecosystem scoring result as the
+        // checkpoint so runStage8Scoring's resume logic skips every vendor already
+        // present, scores only the new vendor(s), and merges them into the result.
+        if (newOnly) {
+          const scope8 = scopeNewVendors(stage1, checkpoint8, newOnly);
+          if (scope8.isNoop) {
+            await progress("No newly added vendors to score — existing ecosystem scores left unchanged.");
+            result = checkpoint8;
+            break;
+          }
+          await progress(`Incremental run — scoring ${scope8.vendors.length} new vendor(s) across ${totalEcoFeatures} ecosystem integrations…`);
+          result = await runStage8Scoring(
+            inputName, stage1, stage7, llmConfig, sourceContext,
+            {
+              resolveScoringPrompt: (categoryName, featureName) =>
+                resolvePromptContent({ jobId, stage: "ecosystem_evaluation", promptType: "scoring", categoryName, featureName }),
+              onProgress: async (msg: string) => { await progress(msg); },
+              checkpoint: checkpoint8,
+              onVendorComplete: async (partial) => {
+                await storage.upsertMarketBuilderStage(jobId, 8, { result: partial as any });
+              },
+            }
+          );
+          await progress(`✓ Generated ${result.support?.length ?? 0} ecosystem Harvey Ball scores`);
+          break;
+        }
+
+        // Normal path: resume an interrupted run, or re-run from scratch.
         // Load checkpoint from any previous failed/interrupted run. Only use it
         // when the stage was NOT already completed — a "Re-run all vendors" on a
         // completed stage must start fresh, not skip already-scored vendors.
-        const existingStage8 = await storage.getMarketBuilderStage(jobId, 8);
-        const checkpoint8 = (existingStage8?.result as any) ?? undefined;
         const resumeCheckpoint8 = stageWasCompleted ? undefined : checkpoint8;
         if (resumeCheckpoint8?.support?.length > 0) {
           await progress(`↩ Resuming from checkpoint — ${resumeCheckpoint8.support.length} ecosystem scores already saved`);
