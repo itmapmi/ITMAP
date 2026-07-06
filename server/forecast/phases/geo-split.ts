@@ -189,7 +189,6 @@ async function callJson(
   const resp = await client.chat.completions.create({
     model,
     response_format: { type: "json_object" },
-    temperature: 0.25,
     max_completion_tokens: maxTokens,
     messages: [
       { role: "system", content: systemPrompt },

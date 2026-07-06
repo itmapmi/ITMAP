@@ -114,7 +114,6 @@ async function resolveWithOpenAI(
   webEvidence: string[],
   apiKey: string,
   baseURL: string | undefined,
-  temperature: number,
 ): Promise<ResolverOutput> {
   const client = new OpenAI({ apiKey, baseURL });
   const prompt = `Independently evaluate this market forecast assumption and propose your best estimate.
@@ -138,7 +137,6 @@ Produce a resolution matching this schema:\n${RESOLUTION_SCHEMA_DESCRIPTION}`;
       { role: "user", content: prompt },
     ],
     response_format: { type: "json_object" },
-    temperature,
     max_completion_tokens: 800,
   });
   const content = response.choices[0]?.message?.content;
@@ -180,11 +178,11 @@ export async function runTargetedChallenge(
   // Step 1: web search for market evidence
   const webEvidence = await webSearchForAssumption(description, marketTitle, apiKey, baseURL);
 
-  // Step 2: two independent resolver calls (different temperatures → diversity)
+  // Step 2: two independent resolver calls for diversity
   const [resolverA, resolverB] = await Promise.all([
-    resolveWithOpenAI(description, currentValue, unit, marketTitle, webEvidence, apiKey, baseURL, 0.2)
+    resolveWithOpenAI(description, currentValue, unit, marketTitle, webEvidence, apiKey, baseURL)
       .catch(() => null as ResolverOutput | null),
-    resolveWithOpenAI(description, currentValue, unit, marketTitle, webEvidence, apiKey, baseURL, 0.5)
+    resolveWithOpenAI(description, currentValue, unit, marketTitle, webEvidence, apiKey, baseURL)
       .catch(() => null as ResolverOutput | null),
   ]);
 

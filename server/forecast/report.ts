@@ -255,7 +255,6 @@ async function callLLM(
   const resp = await client.chat.completions.create({
     model,
     max_completion_tokens: maxTokens,
-    temperature: 0.3,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
@@ -969,7 +968,6 @@ async function qcNarrativeCoherence(
   const resp = await client.chat.completions.create({
     model: "gpt-5-mini",
     max_completion_tokens: 200,
-    temperature: 0,
     messages: [
       {
         role: "system",

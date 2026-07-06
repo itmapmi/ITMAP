@@ -315,7 +315,6 @@ of the eligible IDs provided.`;
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      temperature: 0,
       max_completion_tokens: 80,
     });
 
