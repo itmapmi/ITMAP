@@ -131,8 +131,8 @@ export async function runDebate(
 
   send({ type: "phase_start", phase: 1, label: "Independent drafts" });
   progress(1, anthropicKey
-    ? "GPT-4o and Claude Sonnet generating independent drafts in parallel…"
-    : "Generating two independent drafts via OpenAI (no Anthropic key configured)…"
+    ? "o3-mini and Claude Sonnet generating independent drafts in parallel…"
+    : "Generating two independent drafts via OpenAI o3-mini (no Anthropic key configured)…"
   );
 
   try {
@@ -142,7 +142,7 @@ export async function runDebate(
 
     // Per-model-call audit entries (granular provenance)
     await writeAuditEntry(forecastId, "draft_generated", "system", {
-      model: "gpt-4o",
+      model: "o3-mini",
       persona: "analyst-a",
       marketSizeBaseYear: analystA.marketSizeBaseYear,
       assumptionCount: analystA.assumptions.length,
@@ -168,7 +168,7 @@ export async function runDebate(
       usedFallback: result.usedFallback,
     });
 
-    progress(1, `Analyst-A (GPT-4o): market size ${context.boundary.currency}${analystA.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystA.assumptions.length} assumptions`);
+    progress(1, `Analyst-A (o3-mini): market size ${context.boundary.currency}${analystA.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystA.assumptions.length} assumptions`);
     progress(1, `Analyst-B (${anthropicKey ? "Claude Sonnet" : "GPT-4o Alt"}): market size ${context.boundary.currency}${analystB.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystB.assumptions.length} assumptions`);
 
     send({ type: "phase_complete", phase: 1, summary: `2 independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(analystA.marketSizeBaseYear, analystB.marketSizeBaseYear).toLocaleString()}–${context.boundary.currency}${Math.max(analystA.marketSizeBaseYear, analystB.marketSizeBaseYear).toLocaleString()} ${context.boundary.unitOfMeasurement}` });

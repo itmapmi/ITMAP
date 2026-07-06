@@ -101,14 +101,13 @@ async function callRoleOpenAI(
   const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "o3-mini",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.4,
-    max_tokens: 2048,
+    max_completion_tokens: 2048,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -190,14 +189,13 @@ async function callRoleOpenAIFallback(
   const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\n${draftsStr}\n\nAs the ${role.toUpperCase()}, produce your objections matching this schema:\n${CRITIQUE_SCHEMA_DESCRIPTION}\n\nReturn a JSON object with key "objections" containing the array.`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "o3-mini",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.6,
-    max_tokens: 2048,
+    max_completion_tokens: 2048,
   });
 
   const content = response.choices[0]?.message?.content;

@@ -310,14 +310,13 @@ async function resolveWithOpenAI(
   const userPrompt = buildResolverPrompt(crux, relevantObjns, webEvidence);
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "o3-mini",
     messages: [
       { role: "system", content: SYSTEM_RESOLVER },
       { role: "user", content: userPrompt },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.2,
-    max_tokens: 1500,
+    max_completion_tokens: 1500,
   });
 
   const content = response.choices[0]?.message?.content;

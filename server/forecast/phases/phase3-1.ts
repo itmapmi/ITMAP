@@ -187,15 +187,13 @@ async function generateDraftOpenAI(
   const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your independent forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "${persona}".${constrainedRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: "o3-mini",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     response_format: { type: "json_object" },
-    // Lower temperature on retries to reduce creative deviation
-    temperature: attempt > 0 ? 0.1 : (persona === "analyst-a" ? 0.3 : 0.7),
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
   });
 
   const content = response.choices[0]?.message?.content;
