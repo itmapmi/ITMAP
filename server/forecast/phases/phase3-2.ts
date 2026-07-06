@@ -160,7 +160,7 @@ async function callRoleAnthropic(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 2048,
+    max_completion_tokens: 2048,
     system: systemPrompt + "\n\nAlways respond with ONLY a valid JSON array of objection objects — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });

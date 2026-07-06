@@ -190,7 +190,7 @@ async function callJson(
     model,
     response_format: { type: "json_object" },
     temperature: 0.25,
-    max_tokens: maxTokens,
+    max_completion_tokens: maxTokens,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },

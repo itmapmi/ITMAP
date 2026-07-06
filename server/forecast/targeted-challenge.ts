@@ -139,7 +139,7 @@ Produce a resolution matching this schema:\n${RESOLUTION_SCHEMA_DESCRIPTION}`;
     ],
     response_format: { type: "json_object" },
     temperature,
-    max_tokens: 800,
+    max_completion_tokens: 800,
   });
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error("Resolver returned empty response");

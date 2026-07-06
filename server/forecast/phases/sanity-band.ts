@@ -98,7 +98,7 @@ Respond with ONLY a JSON object:
     ],
     response_format: { type: "json_object" },
     temperature: 0.1,
-    max_tokens: 800,
+    max_completion_tokens: 800,
   });
 
   const text = response.choices[0]?.message?.content;

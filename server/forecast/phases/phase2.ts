@@ -316,7 +316,7 @@ of the eligible IDs provided.`;
       ],
       response_format: { type: "json_object" },
       temperature: 0,
-      max_tokens: 80,
+      max_completion_tokens: 80,
     });
 
     const content = response.choices[0]?.message?.content;

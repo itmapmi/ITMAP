@@ -108,7 +108,7 @@ async function callLLM(
     ],
     response_format: { type: "json_object" },
     temperature: 0.2,
-    max_tokens: 1200,
+    max_completion_tokens: 1200,
   });
 
   const text = response.choices[0]?.message?.content;

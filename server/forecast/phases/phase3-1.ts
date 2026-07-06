@@ -179,7 +179,7 @@ async function generateDraftAnthropic(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
     system: SYSTEM_ANALYST_B + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });

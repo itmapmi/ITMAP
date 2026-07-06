@@ -132,7 +132,7 @@ Limit to 5 cruxes maximum. Focus on assumptions where the analysts genuinely div
     ],
     response_format: { type: "json_object" },
     temperature: 0.1,
-    max_tokens: 3000,
+    max_completion_tokens: 3000,
   });
 
   const content = response.choices[0]?.message?.content;

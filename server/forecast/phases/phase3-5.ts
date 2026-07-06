@@ -141,7 +141,7 @@ Produce a JSON object matching this schema:\n${CONSENSUS_CHECK_SCHEMA_DESCRIPTIO
     ],
     response_format: { type: "json_object" },
     temperature: 0.1,
-    max_tokens: 2000,
+    max_completion_tokens: 2000,
   });
 
   const content = response.choices[0]?.message?.content;

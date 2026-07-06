@@ -344,7 +344,7 @@ async function resolveWithAnthropic(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 1500,
+    max_completion_tokens: 1500,
     system: SYSTEM_RESOLVER + "\n\nAlways respond with ONLY a valid JSON object — no markdown, no explanation.",
     messages: [{ role: "user", content: userPrompt }],
   });
