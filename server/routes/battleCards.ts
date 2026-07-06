@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
+import path from "path";
 import { requireAuth } from "../auth";
 import { requireFeature } from "../featureAccess";
 import { db } from "../db";
@@ -552,7 +553,7 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
       // ── Title slide ──────────────────────────────────────────────────────
       const titleSlide = prs.addSlide();
       titleSlide.background = { fill: NAVY };
-      const logoPath = require("path").join(process.cwd(), "attached_assets/DCIG-Logo-WHITE_1781593294046.png");
+      const logoPath = path.join(process.cwd(), "attached_assets/DCIG-Logo-WHITE_1781593294046.png");
       try {
         titleSlide.addImage({ path: logoPath, x: 5.15, y: 0.25, w: 3.0, h: 0.9 });
       } catch {
@@ -683,27 +684,42 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
           }
         }
 
-        // ── Slide notes: full commentary for every feature + vendor ──────
-        const notesLines: string[] = [`${section.title} — Speaker Notes\n`];
-        let hasNotes = false;
+        // ── Slide notes: every feature with Harvey ball levels + commentary ─
+        const HARVEY_LABELS = ["None", "Limited", "Partial", "Good", "Full"];
+        const notesLines: string[] = [
+          `${section.title}`,
+          "=".repeat(section.title.length),
+          "",
+        ];
         for (const row of section.rows) {
-          const rowNotes = body.vendorIds
-            .map(vid => {
+          // Header line: feature name + each vendor's level in brackets
+          if (section.type === "criteria") {
+            const vendorScores = body.vendorIds.map(vid => {
               const cell = row.cells.find(c => c.vendorId === vid);
-              if (!cell?.notes) return null;
+              const score = parseFloat(String(cell?.value ?? 0)) || 0;
               const vn = body.vendorNames[body.vendorIds.indexOf(vid)] ?? vid;
-              return `  ${vn}: ${cell.notes}`;
-            })
-            .filter(Boolean);
-          if (rowNotes.length > 0) {
-            hasNotes = true;
-            notesLines.push(`${row.name}:`);
-            notesLines.push(...rowNotes as string[]);
-            notesLines.push("");
+              return `${vn}: ${score.toFixed(1)}/10`;
+            }).join(" | ");
+            notesLines.push(`${row.name}  [${vendorScores}]`);
+          } else {
+            const vendorLevels = body.vendorIds.map(vid => {
+              const cell = row.cells.find(c => c.vendorId === vid);
+              const val = cell?.value ?? 0;
+              const level = Math.min(4, Math.max(0, typeof val === "number" ? val : parseInt(String(val)) || 0));
+              const vn = body.vendorNames[body.vendorIds.indexOf(vid)] ?? vid;
+              return `${vn}: ${HARVEY_LABELS[level]}`;
+            }).join(" | ");
+            notesLines.push(`${row.name}  [${vendorLevels}]`);
           }
-        }
-        if (!hasNotes) {
-          notesLines.push("(No commentary recorded for this section.)");
+          // Commentary lines indented below
+          for (const vid of body.vendorIds) {
+            const cell = row.cells.find(c => c.vendorId === vid);
+            if (cell?.notes) {
+              const vn = body.vendorNames[body.vendorIds.indexOf(vid)] ?? vid;
+              notesLines.push(`  ${vn}: ${cell.notes}`);
+            }
+          }
+          notesLines.push("");
         }
         slide.addNotes(notesLines.join("\n"));
       }
