@@ -484,10 +484,10 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
             if (section.type === "criteria") {
               const score = parseFloat(String(val)) || 0;
               const pct = Math.round((score / 10) * 100);
-              html += `<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;${bgStyle}">${score.toFixed(1)}/10<br/><div style="background:#e2e8f0;border-radius:2px;height:4px;margin-top:3px;"><div style="background:${isFocal ? "#2563eb" : "#0ea5e9"};height:4px;width:${pct}%;border-radius:2px;"></div></div>${cell?.notes ? `<p style="font-size:8px;color:#64748b;margin:2px 0 0;text-align:left;">${escapeHtml(cell.notes.slice(0, 120))}${cell.notes.length > 120 ? "…" : ""}</p>` : ""}</td>`;
+              html += `<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;${bgStyle}">${score.toFixed(1)}/10<br/><div style="background:#e2e8f0;border-radius:2px;height:4px;margin-top:3px;"><div style="background:${isFocal ? "#2563eb" : "#0ea5e9"};height:4px;width:${pct}%;border-radius:2px;"></div></div>${cell?.notes ? `<p style="font-size:8px;color:#64748b;margin:2px 0 0;text-align:left;word-wrap:break-word;white-space:pre-wrap;">${escapeHtml(cell.notes)}</p>` : ""}</td>`;
             } else {
               const level = Math.min(4, Math.max(0, typeof val === "number" ? val : parseInt(String(val)) || 0));
-              html += `<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;${bgStyle}">${harveyBallSvg(level)} <span style="font-size:9px;color:#718096;">${harveyBallLabel(level)}</span>${cell?.notes ? `<p style="font-size:8px;color:#64748b;margin:2px 0 0;text-align:left;">${escapeHtml(cell.notes.slice(0, 100))}${cell.notes.length > 100 ? "…" : ""}</p>` : ""}</td>`;
+              html += `<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;${bgStyle}">${harveyBallSvg(level)} <span style="font-size:9px;color:#718096;">${harveyBallLabel(level)}</span>${cell?.notes ? `<p style="font-size:8px;color:#64748b;margin:2px 0 0;text-align:left;word-wrap:break-word;white-space:pre-wrap;">${escapeHtml(cell.notes)}</p>` : ""}</td>`;
             }
           }
           html += `</tr>`;
