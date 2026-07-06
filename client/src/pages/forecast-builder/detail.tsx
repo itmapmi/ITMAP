@@ -1112,6 +1112,10 @@ function ReviewStep({
               <ReviewKV k="Time horizon" v={forecast.boundary.timeHorizon ?? "—"} />
               <ReviewKV k="Currency" v={forecast.currency ?? "USD"} />
               <ReviewKV k="Unit" v={forecast.boundary.unitOfMeasurement ?? "—"} />
+              <ReviewKV
+                k="Market type"
+                v={MARKET_TYPE_OPTIONS.find((o) => o.value === forecast.boundary!.marketType)?.label ?? "—"}
+              />
             </div>
             {(forecast.boundary.includedCategories?.length ?? 0) > 0 && (
               <div className="mt-3">
