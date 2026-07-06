@@ -103,6 +103,9 @@ interface DBCrux {
   resolutionStatus: "resolved" | "unresolved" | "scenario_variable";
   resolutionPath: string | null;
   estimatedImpact: string | null;
+  analystCValue?: string | null;
+  analystCUnit?: string | null;
+  analystCReasoning?: string | null;
   scenarioValues: {
     finalValue: number | null;
     bullValue: number | null;
@@ -160,6 +163,49 @@ interface DebateCruxEvent {
   analystAUnit: string;
   analystBValue: number;
   analystBUnit: string;
+  analystCValue?: number | null;
+  analystCUnit?: string | null;
+}
+
+const MARKET_TYPE_LABEL: Record<string, string> = {
+  software_saas: "Software / SaaS",
+  hardware_infrastructure: "Hardware / Infrastructure",
+  services: "Services",
+  hybrid: "Hardware + Software",
+};
+
+const MARKET_TYPE_STYLE: Record<string, string> = {
+  software_saas: "text-cyan-300 bg-cyan-950/40 border-cyan-500/20",
+  hardware_infrastructure: "text-amber-300 bg-amber-950/40 border-amber-500/20",
+  services: "text-violet-300 bg-violet-950/40 border-violet-500/20",
+  hybrid: "text-blue-300 bg-blue-950/40 border-blue-500/20",
+};
+
+const MARKET_TYPE_TOOLTIP: Record<string, string> = {
+  software_saas: "Standard seat-based or subscription market. Analysts size by seats × ASP.",
+  hardware_infrastructure: "Revenue Aggregator (Analyst C) joins to cross-check with a supply-side vendor rollup.",
+  services: "Labour and contract-economics market. Analysts size by billable headcount × rates.",
+  hybrid: "Mixed hardware + software market. Revenue Aggregator (Analyst C) joins to cross-check with a vendor rollup.",
+};
+
+function MarketTypeBadge({ marketType, className = "" }: { marketType: string; className?: string }) {
+  const label = MARKET_TYPE_LABEL[marketType] ?? marketType;
+  const style = MARKET_TYPE_STYLE[marketType] ?? "text-slate-300 bg-slate-800/60 border-white/10";
+  const tooltip = MARKET_TYPE_TOOLTIP[marketType] ?? "";
+  return (
+    <span
+      className={`relative group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border cursor-default ${style} ${className}`}
+      title={tooltip}
+    >
+      <span>{label}</span>
+      <HelpCircle className="h-3 w-3 opacity-60" />
+      {tooltip && (
+        <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 z-50 hidden group-hover:block w-64 rounded-lg bg-slate-800 border border-white/10 text-xs text-slate-300 px-3 py-2 leading-relaxed shadow-xl">
+          {tooltip}
+        </span>
+      )}
+    </span>
+  );
 }
 
 interface DebateProgressEntry {
@@ -504,9 +550,20 @@ function BoundaryStep({
       </p>
 
       {proposal.reasoning && (
-        <div className="bg-cyan-950/30 border border-cyan-500/15 rounded-xl px-4 py-3 mb-6 text-sm text-cyan-300">
+        <div className="bg-cyan-950/30 border border-cyan-500/15 rounded-xl px-4 py-3 mb-4 text-sm text-cyan-300">
           <Sparkles className="h-3.5 w-3.5 inline mr-1.5 opacity-70" />
           {proposal.reasoning}
+        </div>
+      )}
+
+      {(proposal.marketType || forecast.boundary?.marketType) && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-xs text-slate-500">Detected market type</span>
+          <MarketTypeBadge marketType={(proposal.marketType ?? forecast.boundary?.marketType) as string} />
+          {((proposal.marketType ?? forecast.boundary?.marketType) === "hardware_infrastructure" ||
+            (proposal.marketType ?? forecast.boundary?.marketType) === "hybrid") && (
+            <span className="text-xs text-amber-400/70">· Analyst C will join the debate</span>
+          )}
         </div>
       )}
 
@@ -1266,6 +1323,7 @@ function DebateStep({
   const [activePhase, setActivePhase] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(true);
+  const [analystCActive, setAnalystCActive] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -1332,6 +1390,9 @@ function DebateStep({
               } else if (ev.type === "phase_complete") {
                 const phase = ev.phase as number;
                 addLog({ phase, type: "phase_complete", message: `Phase ${phase} complete: ${ev.summary}` });
+                if (phase === 1 && ev.analystCActive) {
+                  setAnalystCActive(true);
+                }
               } else if (ev.type === "crux_found") {
                 const crux = ev.crux as DebateCruxEvent;
                 setCruxes(prev => [...prev, crux]);
@@ -1370,13 +1431,43 @@ function DebateStep({
 
   const PHASE_STEPS = [0, 1, 2, 3, 4, 5];
 
+  const marketType = forecast.boundary?.marketType ?? "software_saas";
+
   return (
     <div className="max-w-2xl">
       <WizardSteps current="debate" />
-      <h2 className="text-2xl font-bold text-white mb-2">Multi-model debate</h2>
-      <p className="text-slate-400 text-sm mb-6">
-        Two independent AI analysts debate the forecast assumptions. Each contested assumption is identified as a crux and resolved with web evidence.
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
+        <h2 className="text-2xl font-bold text-white">Multi-model debate</h2>
+        <MarketTypeBadge marketType={marketType} />
+      </div>
+      <p className="text-slate-400 text-sm mb-4">
+        {analystCActive
+          ? "Three independent AI analysts debate the forecast assumptions — including a Revenue Aggregator cross-checking with supply-side vendor data."
+          : "Two independent AI analysts debate the forecast assumptions. Each contested assumption is identified as a crux and resolved with web evidence."}
       </p>
+
+      {/* Analyst participation row */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <span className="text-xs text-slate-500">Analysts:</span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/60 border border-white/10 text-slate-300">
+          A — Bottom-up
+        </span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/60 border border-white/10 text-slate-300">
+          B — Demand-side
+        </span>
+        {analystCActive && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-950/50 border border-amber-500/30 text-amber-300">
+            <CheckCircle2 className="h-3 w-3" />
+            C — Revenue Aggregator
+          </span>
+        )}
+        {!analystCActive && (marketType === "hardware_infrastructure" || marketType === "hybrid") && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/40 border border-dashed border-amber-500/20 text-amber-400/50">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            C — Revenue Aggregator (pending…)
+          </span>
+        )}
+      </div>
 
       {/* Phase progress bar */}
       <div className="flex items-center gap-1 mb-6">
@@ -1405,7 +1496,11 @@ function DebateStep({
               <div key={c.id} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${IMPACT_COLORS[c.impact]}`}>
                 <span className="font-medium">{c.name}</span>
                 <div className="flex items-center gap-3 shrink-0 ml-2">
-                  <span className="opacity-70">{c.analystAValue} vs {c.analystBValue} {c.analystAUnit}</span>
+                  <span className="opacity-70">
+                    A:{c.analystAValue} · B:{c.analystBValue}
+                    {c.analystCValue != null && <span className="text-amber-300/80"> · C:{c.analystCValue}</span>}
+                    {" "}{c.analystAUnit}
+                  </span>
                   <span className="font-mono">{c.divergencePct.toFixed(0)}% gap</span>
                 </div>
               </div>
@@ -1645,10 +1740,18 @@ function DebateResultsStep({
     scenario_variable: "text-violet-300 bg-violet-950/40 border-violet-500/20",
   };
 
+  const marketType = forecast.boundary?.marketType ?? "software_saas";
+  const debateAnalystCActive = cruxes.some(
+    c => c.analystCValue != null || c.positions.some(p => p.model === "analyst-c")
+  ) || (summary?.models?.some(m => m.includes("Analyst C")) ?? false);
+
   return (
     <div className="max-w-2xl">
       <WizardSteps current="debate" />
-      <h2 className="text-2xl font-bold text-white mb-2">Debate complete</h2>
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
+        <h2 className="text-2xl font-bold text-white">Debate complete</h2>
+        <MarketTypeBadge marketType={marketType} />
+      </div>
       <p className="text-slate-400 text-sm mb-6">
         The multi-model debate has finished. Review the findings before proceeding to the calculation engine.
       </p>
@@ -1702,12 +1805,22 @@ function DebateResultsStep({
 
       {/* Models used */}
       {summary?.models && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
           <Brain className="h-3.5 w-3.5" />
           <span>Models: {summary.models.join(" · ")}</span>
           {summary.usedFallback && (
             <span className="text-amber-500/70">(Add Anthropic key in Settings for Claude)</span>
           )}
+        </div>
+      )}
+
+      {/* Analyst C participation notice */}
+      {debateAnalystCActive && (
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/20 border border-amber-500/15 text-xs text-amber-300/80">
+          <CheckCircle2 className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+          <span>
+            <span className="font-medium text-amber-300">Analyst C — Revenue Aggregator</span> participated in this debate, sizing the market via a supply-side vendor revenue rollup. Crux cards show their value labelled "supply-side rollup".
+          </span>
         </div>
       )}
 
@@ -1718,7 +1831,11 @@ function DebateResultsStep({
           <div className="space-y-2">
             {cruxes.filter(c => c.resolutionStatus === "resolved").map((crux) => {
               const analystAPos = crux.positions.find(p => p.model === "analyst-a");
-              const analystBPos = crux.positions.find(p => p.model !== "analyst-a");
+              const analystBPos = crux.positions.find(p => p.model === "analyst-b" || (p.model !== "analyst-a" && p.model !== "analyst-c"));
+              const analystCPos = crux.positions.find(p => p.model === "analyst-c");
+              const hasC = !!(analystCPos || crux.analystCValue);
+              const cValue = crux.analystCValue ?? analystCPos?.value ?? null;
+              const cUnit = crux.analystCUnit ?? "";
               const sv = crux.scenarioValues;
               const unit = sv?.unit ?? "";
               const fmt = (v: number | null | undefined) =>
@@ -1734,8 +1851,8 @@ function DebateResultsStep({
                       Resolved
                     </span>
                   </div>
-                  {/* Values table: Analyst A | Analyst B | Final value */}
-                  <div className="grid grid-cols-3 gap-2 mb-2">
+                  {/* Values table: Analyst A | Analyst B | [Analyst C] | Final value */}
+                  <div className={`grid gap-2 mb-2 ${hasC ? "grid-cols-4" : "grid-cols-3"}`}>
                     <div className="text-center bg-slate-800/50 rounded-lg px-2 py-2">
                       <p className="text-[10px] text-slate-500 mb-0.5">Analyst A</p>
                       <p className="text-sm font-medium text-slate-200">{analystAPos?.value ?? "—"} {unit}</p>
@@ -1744,6 +1861,13 @@ function DebateResultsStep({
                       <p className="text-[10px] text-slate-500 mb-0.5">Analyst B</p>
                       <p className="text-sm font-medium text-slate-200">{analystBPos?.value ?? "—"} {unit}</p>
                     </div>
+                    {hasC && (
+                      <div className="text-center bg-amber-950/30 border border-amber-500/15 rounded-lg px-2 py-2">
+                        <p className="text-[10px] text-amber-400/70 mb-0.5">Analyst C</p>
+                        <p className="text-[10px] text-amber-400/50 mb-0.5">(supply-side rollup)</p>
+                        <p className="text-sm font-medium text-amber-300">{cValue ?? "—"} {cUnit || unit}</p>
+                      </div>
+                    )}
                     <div className="text-center bg-emerald-950/40 border border-emerald-500/20 rounded-lg px-2 py-2">
                       <p className="text-[10px] text-emerald-400/70 mb-0.5">Final value</p>
                       <p className="text-sm font-semibold text-emerald-300">{fmt(sv?.finalValue)}</p>
@@ -1767,7 +1891,11 @@ function DebateResultsStep({
             {cruxes.filter(c => c.resolutionStatus !== "resolved").map((crux) => {
               const status = crux.resolutionStatus as "unresolved" | "scenario_variable";
               const analystAPos = crux.positions.find(p => p.model === "analyst-a");
-              const analystBPos = crux.positions.find(p => p.model !== "analyst-a");
+              const analystBPos = crux.positions.find(p => p.model === "analyst-b" || (p.model !== "analyst-a" && p.model !== "analyst-c"));
+              const analystCPos = crux.positions.find(p => p.model === "analyst-c");
+              const hasC = !!(analystCPos || crux.analystCValue);
+              const cValue = crux.analystCValue ?? analystCPos?.value ?? null;
+              const cUnit = crux.analystCUnit ?? "";
               const sv = crux.scenarioValues;
               const unit = sv?.unit ?? "";
               const fmt = (v: number | null | undefined) =>
@@ -1784,10 +1912,16 @@ function DebateResultsStep({
                     </span>
                   </div>
                   {/* Analyst positions */}
-                  {(analystAPos || analystBPos) && (
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-2">
+                  {(analystAPos || analystBPos || hasC) && (
+                    <div className="flex items-center gap-4 text-xs text-slate-500 mb-2 flex-wrap">
                       {analystAPos && <span>A: <span className="text-slate-300">{analystAPos.value} {unit}</span></span>}
                       {analystBPos && <span>B: <span className="text-slate-300">{analystBPos.value} {unit}</span></span>}
+                      {hasC && cValue && (
+                        <span>
+                          C: <span className="text-amber-300">{cValue} {cUnit || unit}</span>
+                          <span className="text-amber-500/50 ml-1">(supply-side rollup)</span>
+                        </span>
+                      )}
                     </div>
                   )}
                   {/* Bull / Base / Bear scenario values */}

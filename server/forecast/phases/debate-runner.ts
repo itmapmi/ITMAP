@@ -212,7 +212,7 @@ export async function runDebate(
       }
     }
 
-    send({ type: "phase_complete", phase: 1, summary: `${draftCount} independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(...marketSizes).toLocaleString()}–${context.boundary.currency}${Math.max(...marketSizes).toLocaleString()} ${context.boundary.unitOfMeasurement}` });
+    send({ type: "phase_complete", phase: 1, summary: `${draftCount} independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(...marketSizes).toLocaleString()}–${context.boundary.currency}${Math.max(...marketSizes).toLocaleString()} ${context.boundary.unitOfMeasurement}`, analystCActive });
   } catch (err: any) {
     console.error("[Debate] Phase 1 failed:", err);
     send({ type: "error", phase: 1, message: `Draft generation failed: ${err.message}` });
@@ -318,6 +318,8 @@ export async function runDebate(
           analystAUnit: crux.analystAUnit,
           analystBValue: crux.analystBValue,
           analystBUnit: crux.analystBUnit,
+          analystCValue: crux.analystCValue ?? null,
+          analystCUnit: crux.analystCUnit ?? null,
         },
       });
 
