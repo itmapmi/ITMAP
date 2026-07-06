@@ -155,24 +155,56 @@ const BASE_SCAN_TOPICS: ScanTopic[] = [
 const VENDOR_REVENUES_TOPIC: ScanTopic = {
   key: "vendor_revenues",
   label: "Top vendor revenues by market segment",
-  marketTypes: ["hardware_infrastructure", "hybrid"],
-  buildPrompt: (ctx) =>
-    `Search the web for the most recent annual revenues that the top vendors in the market ` +
-    `"${ctx.title}" attribute specifically to this market segment — NOT their total company revenue. ` +
-    `\n\nIMPORTANT: Find the most granular segment disclosure available, e.g.:` +
-    `\n- For Dell: look for "Dell ISG (Infrastructure Solutions Group) revenue" or "Dell server revenue" ` +
-    `not "Dell total revenue"` +
-    `\n- For HPE: look for "HPE Compute segment revenue" or "HPE Storage revenue" ` +
-    `not "HPE total revenue"` +
-    `\n- For other conglomerates: search for "[vendor] [specific product line] revenue [year]"` +
-    `\n- For private companies: look for analyst estimates of their revenue in this specific market` +
-    `\n\nReturn 6-10 short bullets. For each vendor include: vendor name, attributed revenue figure, ` +
-    `the specific segment/disclosure used, and the fiscal year. Example format:` +
-    `\n"Dell ISG server revenue: ~$X.XB (FY2024, Dell ISG total $X.XB × ~55% server share per earnings call)"` +
-    `\nIf a vendor does not have a public segment breakdown for this market, note the total segment ` +
-    `and explain why attribution is needed.` +
-    `\nEnd each bullet with a source in parentheses.` +
-    `\nIf you cannot find segment-level data for this market, return: "No vendor revenue disclosures found for this specific market segment."`,
+  buildPrompt: (ctx) => {
+    const marketType = ctx.marketType ?? "software_saas";
+
+    // Market-type-specific guidance for what "segment revenue" means
+    const segmentGuidance =
+      marketType === "hardware_infrastructure" || marketType === "hybrid"
+        ? [
+            `\n- For hardware conglomerates (Dell, HPE, NetApp, etc.): find the specific product-line `,
+            `disclosure, not total company revenue. E.g. "Dell ISG server revenue" (not "Dell total"), `,
+            `"HPE Compute segment revenue" (not "HPE total").`,
+            `\n- For pure-play hardware vendors (Pure Storage, Nutanix, etc.): total revenue is the `,
+            `market attribution — confirm they are pure-play.`,
+          ].join("")
+        : marketType === "software_saas"
+        ? [
+            `\n- For diversified software companies (Microsoft, Salesforce, Oracle, SAP, etc.): find the `,
+            `specific product or cloud segment revenue, not total company revenue. E.g. "Salesforce `,
+            `Service Cloud ARR" not "Salesforce total revenue".`,
+            `\n- For pure-play SaaS vendors (e.g. Veeva, Zendesk, HubSpot): total ARR or subscription `,
+            `revenue is the market attribution — confirm they are focused on this market.`,
+            `\n- Prefer ARR or subscription revenue over total revenue (which includes professional services).`,
+          ].join("")
+        : marketType === "services"
+        ? [
+            `\n- For diversified IT services firms (Accenture, IBM, Capgemini, etc.): find the specific `,
+            `practice or service line revenue, not total company revenue. E.g. "IBM Consulting revenue" `,
+            `or "Accenture [specific practice] revenue".`,
+            `\n- For pure-play services vendors: total services revenue is the attribution.`,
+          ].join("")
+        : [
+            `\n- For vendors with both hardware and software/services revenue: break the attribution into `,
+            `hardware and software/services components separately where disclosed.`,
+            `\n- Prefer segment-level disclosures over total company revenue in all cases.`,
+          ].join("");
+
+    return (
+      `Search the web for the most recent annual revenues that the top vendors in the market ` +
+      `"${ctx.title}" attribute specifically to this market segment — NOT their total company revenue.` +
+      `\n\nIMPORTANT: Find the most granular segment or product-line disclosure available.` +
+      segmentGuidance +
+      `\n- For private companies: look for analyst revenue estimates specific to this market.` +
+      `\n\nReturn 6-10 short bullets. For each vendor include: vendor name, attributed revenue figure, ` +
+      `the specific segment or product line used, and the fiscal year. Example format:` +
+      `\n"[Vendor] [segment]: ~$X.XB (FY2024, [how attributed])"` +
+      `\nIf a vendor does not have a clean segment breakdown, note the closest available disclosure ` +
+      `and explain any attribution assumptions needed.` +
+      `\nEnd each bullet with a source in parentheses.` +
+      `\nIf you cannot find segment-level data, return: "No vendor revenue disclosures found for this specific market segment."`
+    );
+  },
 };
 
 // ── Bullet extractor ───────────────────────────────────────────────────────
@@ -226,12 +258,9 @@ export async function runMarketScan(
 ): Promise<MarketScanEvidence> {
   const api = getResponsesClientForKey(openaiKey, openaiBaseUrl);
 
-  // Build the topic list — add vendor_revenues for hardware/hybrid markets
-  const topics: ScanTopic[] = [...BASE_SCAN_TOPICS];
+  // Build the topic list — vendor_revenues runs for all market types
+  const topics: ScanTopic[] = [...BASE_SCAN_TOPICS, VENDOR_REVENUES_TOPIC];
   const marketType = ctx.marketType ?? "software_saas";
-  if (marketType === "hardware_infrastructure" || marketType === "hybrid") {
-    topics.push(VENDOR_REVENUES_TOPIC);
-  }
 
   if (!api) {
     onProgress?.("Web search unavailable on this OpenAI key — skipping market scan.");
@@ -245,7 +274,7 @@ export async function runMarketScan(
     };
   }
 
-  onProgress?.(`Running ${topics.length} parallel market research queries${marketType === "hardware_infrastructure" || marketType === "hybrid" ? " (including vendor revenue data)" : ""}…`);
+  onProgress?.(`Running ${topics.length} parallel market research queries (including vendor revenue data)…`);
 
   const results = await Promise.all(topics.map((t) => scanTopic(t, ctx, api)));
 

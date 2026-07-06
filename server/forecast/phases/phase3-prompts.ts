@@ -214,6 +214,7 @@ Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation 
 
 export const SYSTEM_ANALYST_C = `You are a supply-side market research analyst who sizes markets by aggregating disclosed vendor revenues.
 Your job: produce an independent market size estimate using a vendor revenue rollup methodology.
+This approach is valid for any market type — hardware, software/SaaS, services, or hybrid.
 
 ${ANTI_ANCHORING_INSTRUCTION}
 
@@ -226,30 +227,31 @@ ${MANDATORY_SEGMENTATION_INSTRUCTION}
 SUPPLY-SIDE VENDOR REVENUE ROLLUP METHODOLOGY:
 1. IDENTIFY the top 5–8 vendors competing in this specific market by market share.
 2. ATTRIBUTE revenue to this market for each vendor:
-   - Use the most granular segment disclosure available in the Market Scan Evidence above.
-     Examples: Dell ISG (Infrastructure Solutions Group) server revenue, HPE Compute segment revenue,
-     NetApp product revenue, Pure Storage total revenue (pure-play), Cisco data center switching revenue.
-   - For vendors that combine this market with others in one segment (e.g. Dell ISG covers servers AND storage),
-     estimate the relevant product category share using disclosed product mix data or analyst commentary
-     from the evidence above. Explicitly state your attribution split.
+   - Use the most granular segment or product-line disclosure available in the Market Scan Evidence above.
+   - For diversified vendors (e.g. Microsoft, Salesforce, Dell, HPE, Accenture), NEVER use total
+     company revenue — find the specific product, cloud, or practice segment that maps to this market.
+     Explicitly state the attribution method and any split assumptions (e.g. "Sales Cloud ARR × ~60%
+     CRM market share" or "ISG total × 55% server share per earnings commentary").
+   - For pure-play vendors focused solely on this market, total revenue or ARR is the attribution.
    - For private vendors, use analyst revenue estimates from the Market Scan Evidence.
-   - NEVER use total consolidated company revenue as the market attribution — always attribute to the
-     specific product category in scope.
+   - For SaaS/subscription markets: prefer ARR or subscription revenue over total revenue (which
+     includes professional services not in scope).
+   - For services markets: use practice-level or service-line revenue, not total firm revenue.
 3. SUM the attributed revenues across the top vendors identified.
 4. ADD a 30% long-tail buffer to the vendor sum to account for:
-   - Private/unlisted vendors not captured in the top-vendor list
-   - Distribution and channel revenue not reflected in vendor bookings
+   - Smaller/private vendors not in the top-vendor list
+   - Channel, reseller, and distribution revenue not captured in vendor bookings
    - Long-tail regional vendors with limited public reporting
 5. The result (vendor sum × 1.30) is your marketSizeBaseYear estimate.
-6. ALLOCATE this total across the five mandatory customer-size segments using typical enterprise
-   spending patterns for this market type (e.g. Large Enterprise typically accounts for 40–50% of
-   enterprise infrastructure spend; SMB typically 5–10%).
+6. ALLOCATE this total across the five mandatory customer-size segments using typical spending
+   patterns for this market type (e.g. Large Enterprise typically accounts for 40–50% of enterprise
+   software and infrastructure spend; Government 10–15%; SMB typically 5–10%).
 
 Every segment's baseYearConstruction MUST show how you allocated the vendor revenue rollup total:
-Example: "Vendor rollup total $105B × large-enterprise share ~45% = $47.3B"
+Example: "Vendor rollup total $42B × large-enterprise share ~45% = $18.9B"
 
 In the "methodology" field, list each vendor and its attributed revenue, e.g.:
-"Vendor rollup: Dell ISG servers $X.XB (ISG total × 55% server share), HPE Compute $X.XB, ..."
+"Vendor rollup: [Vendor A] [segment]: $X.XB, [Vendor B] [segment]: $X.XB, ... Sum: $X.XB × 1.30 long-tail = $X.XB"
 
 Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
 

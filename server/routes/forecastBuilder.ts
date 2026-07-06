@@ -592,14 +592,13 @@ export function registerForecastBuilderRoutes(app: Express): void {
 
     // ── Write audit entry and init SSE ─────────────────────────────────
     const boundaryMarketType = context.marketType ?? "software_saas";
-    const analystCExpected = boundaryMarketType === "hardware_infrastructure" || boundaryMarketType === "hybrid";
     await writeAuditEntry(req.params.id, "debate_started", user.id, {
       startedAt: new Date().toISOString(),
       marketType: boundaryMarketType,
-      analystCExpected,
+      analystCExpected: true,
       models: [
         anthropicKey ? "o3-mini (A) + claude-sonnet-4-5 (B)" : "o3-mini (A) + o3-mini alt (B)",
-        ...(analystCExpected ? ["o3-mini (C — Revenue Aggregator, if market scan has data)"] : []),
+        "o3-mini (C — Revenue Aggregator, if market scan has data)",
       ],
       hasAnthropicKey: !!anthropicKey,
     });

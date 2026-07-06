@@ -259,7 +259,7 @@ export async function runPhase31(
   let anthropicSucceeded = false;
 
   const effectiveMarketType = marketType ?? context.marketType ?? "software_saas";
-  const analystCActive = effectiveMarketType === "hardware_infrastructure" || effectiveMarketType === "hybrid";
+  const analystCActive = true; // Analyst C (vendor revenue rollup) runs for all market types
   const hasVendorRevenueData = evidencePack?.hasVendorRevenueData ?? false;
 
   // Analyst C requires vendor revenue evidence from the market scan to perform its
