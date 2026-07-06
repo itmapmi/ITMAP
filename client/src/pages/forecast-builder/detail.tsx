@@ -40,6 +40,15 @@ type ForecastStatus =
   | "calculating"
   | "complete";
 
+type MarketType = "software_saas" | "hardware_infrastructure" | "services" | "hybrid";
+
+const MARKET_TYPE_OPTIONS: { value: MarketType; label: string; description: string }[] = [
+  { value: "software_saas",          label: "Software / SaaS",             description: "Subscription or license-based software products" },
+  { value: "hardware_infrastructure", label: "Hardware / Infrastructure",   description: "Physical devices, chips, networking equipment" },
+  { value: "services",               label: "Professional Services",        description: "Consulting, managed services, outsourcing" },
+  { value: "hybrid",                 label: "Hybrid",                       description: "Combined hardware + software platforms" },
+];
+
 interface ExtractedBoundary {
   inclusions: string[];
   exclusions: string[];
@@ -50,6 +59,7 @@ interface ExtractedBoundary {
   unitOfMeasurement: string;
   customScope: boolean;
   reasoning: string;
+  marketType?: MarketType;
 }
 
 interface DBBoundary {
@@ -61,6 +71,7 @@ interface DBBoundary {
   unitOfMeasurement: string | null;
   timeHorizon: string | null;
   customScope: boolean;
+  marketType: MarketType;
   proposedBySystem: (ExtractedBoundary & { _extractionCount?: number }) | null;
   confirmedByUser: boolean;
   userEdits: Record<string, unknown> | null;
@@ -429,6 +440,7 @@ function BoundaryStep({
       forecastHorizonYears: proposal.forecastHorizonYears,
       currency: proposal.currency,
       unitOfMeasurement: proposal.unitOfMeasurement,
+      marketType: proposal.marketType ?? forecast.boundary?.marketType ?? "software_saas",
     };
     confirmMutation.mutate(edits);
   };
@@ -515,6 +527,10 @@ function BoundaryStep({
           <BoundaryField label="Currency" value={proposal.currency}
             onChange={(v) => setProposal({ ...proposal, currency: v.toUpperCase().slice(0, 3) })} />
         </div>
+        <MarketTypeSelector
+          value={proposal.marketType ?? forecast.boundary?.marketType ?? "software_saas"}
+          onChange={(v) => setProposal({ ...proposal, marketType: v })}
+        />
       </div>
 
       <div className="flex items-center gap-3 mt-8">
@@ -627,6 +643,31 @@ function BoundaryField({ label, value, type = "text", onChange }: {
           <Edit3 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
       )}
+    </div>
+  );
+}
+
+function MarketTypeSelector({ value, onChange }: { value: MarketType; onChange: (v: MarketType) => void }) {
+  return (
+    <div className="bg-slate-900 border border-white/5 rounded-xl px-4 py-3">
+      <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">Market type</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {MARKET_TYPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={`rounded-lg px-3 py-2.5 text-left border transition-colors ${
+              value === opt.value
+                ? "bg-cyan-950/60 border-cyan-500/40 text-cyan-300"
+                : "bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/15 hover:text-slate-200"
+            }`}
+          >
+            <p className="text-xs font-semibold leading-tight">{opt.label}</p>
+            <p className="text-[10px] mt-1 opacity-70 leading-snug">{opt.description}</p>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

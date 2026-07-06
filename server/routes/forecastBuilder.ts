@@ -314,6 +314,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         forecastHorizonYears: z.number().int().min(1).max(20).optional(),
         currency: z.string().max(10).optional(),
         unitOfMeasurement: z.string().optional(),
+        marketType: z.enum(["software_saas", "hardware_infrastructure", "services", "hybrid"]).optional(),
       }).optional();
 
       const edits = editsSchema.parse(req.body.edits ?? undefined);
@@ -329,6 +330,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         geographicScope: edits?.geographicScope ?? existingBoundary.geographicScope ?? undefined,
         unitOfMeasurement: edits?.unitOfMeasurement ?? existingBoundary.unitOfMeasurement ?? undefined,
         timeHorizon: finalTimeHorizon,
+        marketType: edits?.marketType ?? existingBoundary.marketType ?? "software_saas",
         confirmedByUser: true,
         userEdits: edits ? (edits as Record<string, unknown>) : null,
       });
