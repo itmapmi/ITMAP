@@ -1,6 +1,11 @@
 import { z } from "zod";
 import OpenAI from "openai";
 
+// ── Market type enum ───────────────────────────────────────────────────────
+
+export const MARKET_TYPES = ["software_saas", "hardware_infrastructure", "services", "hybrid"] as const;
+export type MarketType = typeof MARKET_TYPES[number];
+
 // ── Zod schema for LLM output validation ──────────────────────────────────
 
 export const ExtractedBoundarySchema = z.object({
@@ -12,6 +17,7 @@ export const ExtractedBoundarySchema = z.object({
   currency: z.string().min(2).max(5).transform((v) => v.toUpperCase().slice(0, 3)),
   unitOfMeasurement: z.string().min(1),
   customScope: z.literal(true),
+  marketType: z.enum(MARKET_TYPES).default("software_saas"),
   reasoning: z.string().default(""),
 });
 
@@ -25,6 +31,12 @@ Convert a natural-language market description into a structured market boundary.
 Be precise about inclusions and exclusions. Choose sensible professional defaults for any
 parameters not explicitly stated in the description.
 
+For marketType, classify the market as one of:
+  - "software_saas"           — software products, SaaS platforms, cloud services, applications
+  - "hardware_infrastructure" — physical hardware, data center equipment, storage, servers, networking, semiconductors, devices
+  - "services"                — professional services, managed services, consulting, outsourcing, staffing
+  - "hybrid"                  — a mix (e.g. a platform with significant hardware AND software components)
+
 Respond with ONLY a valid JSON object matching this exact schema:
 {
   "inclusions": string[],         // segments / products / services / use cases that ARE in scope
@@ -35,7 +47,8 @@ Respond with ONLY a valid JSON object matching this exact schema:
   "currency": string,             // 3-letter ISO code, e.g. "USD"
   "unitOfMeasurement": string,    // e.g. "$B revenue", "$M ARR", "units shipped"
   "customScope": true,
-  "reasoning": string             // 1–2 sentences on the key boundary decisions made
+  "marketType": string,           // one of: "software_saas" | "hardware_infrastructure" | "services" | "hybrid"
+  "reasoning": string             // 1–2 sentences on the key boundary decisions made, including why you chose this marketType
 }`;
 
 export async function extractBoundary(marketDescription: string): Promise<ExtractedBoundary> {
@@ -70,8 +83,8 @@ export async function extractBoundary(marketDescription: string): Promise<Extrac
 
   const result = ExtractedBoundarySchema.safeParse(rawParsed);
   if (!result.success) {
-    // Attempt to salvage with defaults for missing fields
     const partial = rawParsed as Record<string, unknown>;
+    const rawMarketType = typeof partial.marketType === "string" ? partial.marketType : "software_saas";
     const salvaged = ExtractedBoundarySchema.parse({
       inclusions: Array.isArray(partial.inclusions) ? partial.inclusions : [],
       exclusions: Array.isArray(partial.exclusions) ? partial.exclusions : [],
@@ -81,6 +94,7 @@ export async function extractBoundary(marketDescription: string): Promise<Extrac
       currency: typeof partial.currency === "string" ? partial.currency : "USD",
       unitOfMeasurement: typeof partial.unitOfMeasurement === "string" ? partial.unitOfMeasurement : "$B revenue",
       customScope: true,
+      marketType: MARKET_TYPES.includes(rawMarketType as MarketType) ? rawMarketType : "software_saas",
       reasoning: typeof partial.reasoning === "string" ? partial.reasoning : "",
     });
     return salvaged;

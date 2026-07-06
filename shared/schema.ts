@@ -1310,6 +1310,9 @@ export const forecastBoundaries = pgTable("forecast_boundaries", {
   unitOfMeasurement: text("unit_of_measurement"),
   timeHorizon: text("time_horizon"),
   customScope: boolean("custom_scope").notNull().default(true),
+  // Market type detected during boundary extraction — drives methodology guidance and Analyst C activation
+  // software_saas | hardware_infrastructure | services | hybrid
+  marketType: text("market_type").notNull().default("software_saas"),
   // Raw LLM-proposed boundary and user edits
   proposedBySystem: jsonb("proposed_by_system"),
   confirmedByUser: boolean("confirmed_by_user").notNull().default(false),

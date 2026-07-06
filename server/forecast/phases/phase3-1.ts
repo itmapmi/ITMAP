@@ -7,9 +7,11 @@ import {
   DRAFT_SCHEMA_DESCRIPTION,
   SYSTEM_ANALYST_A,
   SYSTEM_ANALYST_B,
+  SYSTEM_ANALYST_C,
   CANONICAL_SEGMENT_NAMES,
 } from "./phase3-prompts";
 import { formatEvidencePackForPrompt, type MarketScanEvidence } from "./market-scan";
+import type { MarketType } from "./phase1";
 
 // ── Zod schema ─────────────────────────────────────────────────────────────
 
@@ -26,8 +28,6 @@ export const DraftSegmentSchema = z.object({
   name: z.string().min(1),
   baseYearValue: z.number(),
   cagr: z.number(),
-  // Required — model must show derivation (e.g. "seats × ASP = value").
-  // No default: omitting triggers Zod failure → withRetry retries the call.
   baseYearConstruction: z.string().min(1, "baseYearConstruction is required and must show derivation"),
 });
 
@@ -37,9 +37,6 @@ export const DraftSourceSchema = z.object({
   type: z.string().default("public"),
 });
 
-// Anti-anchoring protocol: model must declare any known external estimate
-// and explicitly state why it is being set aside.
-// All fields are required — no silent defaults — so omission triggers retry.
 export const ExternalEstimateSchema = z.object({
   source: z.string().min(1, "external_estimate.source is required (use 'none known' if unaware)"),
   value: z.number().nullable(),
@@ -47,8 +44,6 @@ export const ExternalEstimateSchema = z.object({
   why_setting_aside: z.string().min(1, "external_estimate.why_setting_aside is required"),
 });
 
-// Soft-match a segment name to one of the canonical customer-size buckets so
-// minor casing/wording differences don't trigger an unnecessary retry.
 function canonicaliseSegmentName(raw: string): string | null {
   const n = raw.trim().toLowerCase().replace(/[_\-]+/g, " ").replace(/\s+/g, " ");
   if (n === "smb" || n.startsWith("small ") || n.includes("small business")) return "SMB";
@@ -61,8 +56,6 @@ function canonicaliseSegmentName(raw: string): string | null {
 
 export const ForecastDraftSchema = z.object({
   modelLabel: z.string().default("unknown"),
-  // Required — model must surface any known external estimate and set it aside.
-  // No silent default: omission propagates as a Zod error → withRetry retries.
   external_estimate: ExternalEstimateSchema,
   marketSizeBaseYear: z.number(),
   methodology: z.string().min(1, "methodology is required"),
@@ -71,9 +64,6 @@ export const ForecastDraftSchema = z.object({
   anticipatedCruxes: z.array(z.string()).default([]),
   sources: z.array(DraftSourceSchema).default([]),
 }).superRefine((draft, ctx) => {
-  // Enforce mandatory customer-size segmentation: must contain all five
-  // canonical buckets, with no extras. Names are normalised to canonical form
-  // by a post-parse pass below; here we just validate coverage.
   const matched = new Set<string>();
   for (const seg of draft.segments) {
     const canon = canonicaliseSegmentName(seg.name);
@@ -88,9 +78,6 @@ export const ForecastDraftSchema = z.object({
     });
   }
 }).transform(draft => {
-  // Normalise to canonical names + drop any extras + sort to canonical order.
-  // We keep only the FIRST match for each canonical bucket — duplicates from
-  // the model are dropped silently rather than failing the whole call.
   const byCanonical = new Map<string, typeof draft.segments[number]>();
   for (const seg of draft.segments) {
     const canon = canonicaliseSegmentName(seg.name);
@@ -119,38 +106,18 @@ async function withRetry<T>(fn: (attempt: number) => Promise<T>, maxAttempts = 3
       return await fn(attempt);
     } catch (err: any) {
       lastError = err;
-      if (attempt < maxAttempts - 1) {
-        await sleep(1500 * (attempt + 1));
-      }
+      if (attempt < maxAttempts - 1) await sleep(1500 * (attempt + 1));
     }
   }
   throw lastError;
 }
 
-// ── Strict JSON parse (structured retry — no permissive salvage) ──────────
-//
-// Only two parsing passes are attempted:
-//   1. Direct JSON.parse (handles clean JSON from json_object mode)
-//   2. Strip a markdown code fence (legitimate response wrapping pattern)
-// If both fail, the error propagates so the withRetry handler retries the
-// entire LLM call — we never attempt to extract partial objects with regex.
-
 function strictParseJson(text: string): unknown {
-  // Pass 1: direct parse
   try { return JSON.parse(text); } catch {}
-  // Pass 2: strip markdown code fence (well-defined wrapping pattern only)
   const fence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/m);
-  if (fence) {
-    try { return JSON.parse(fence[1].trim()); } catch {}
-  }
+  if (fence) { try { return JSON.parse(fence[1].trim()); } catch {} }
   throw new Error("LLM response was not valid JSON (even after markdown fence stripping)");
 }
-
-// ── Constrained retry hint (appended to user prompt on attempt >= 1) ─────
-//
-// On first failure the model is given explicit field-level requirements and
-// told exactly which fields were missing or malformed.  This avoids repeating
-// the exact same prompt and expecting a different result.
 
 function constrainedRetryHint(attempt: number): string {
   if (attempt === 0) return "";
@@ -176,11 +143,7 @@ async function generateDraftOpenAI(
   openaiBaseUrl: string | undefined,
   attempt: number
 ): Promise<ForecastDraft> {
-  const client = new OpenAI({
-    apiKey: openaiKey,
-    baseURL: openaiBaseUrl,
-  });
-
+  const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
   const systemPrompt = persona === "analyst-a" ? SYSTEM_ANALYST_A : SYSTEM_ANALYST_B;
   const contextStr = buildContextString(context);
   const evidenceStr = formatEvidencePackForPrompt(evidencePack);
@@ -198,9 +161,7 @@ async function generateDraftOpenAI(
 
   const content = response.choices[0]?.message?.content;
   if (!content) throw new Error(`OpenAI ${persona} returned empty response`);
-
-  const raw = strictParseJson(content);
-  return ForecastDraftSchema.parse(raw);
+  return ForecastDraftSchema.parse(strictParseJson(content));
 }
 
 // ── Analyst-B: Anthropic ───────────────────────────────────────────────────
@@ -226,9 +187,39 @@ async function generateDraftAnthropic(
   const block = response.content[0];
   const text = block.type === "text" ? block.text : "";
   if (!text) throw new Error("Anthropic analyst-b returned empty response");
+  return ForecastDraftSchema.parse(strictParseJson(text));
+}
 
-  const raw = strictParseJson(text);
-  return ForecastDraftSchema.parse(raw);
+// ── Analyst-C: Revenue Aggregator (OpenAI o3-mini) ────────────────────────
+//
+// Only invoked for hardware_infrastructure or hybrid markets.
+// Uses the evidence pack's vendor_revenues topic as primary data.
+
+async function generateDraftAnalystC(
+  context: DebateContext,
+  evidencePack: MarketScanEvidence | undefined,
+  openaiKey: string,
+  openaiBaseUrl: string | undefined,
+  attempt: number
+): Promise<ForecastDraft> {
+  const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
+  const contextStr = buildContextString(context);
+  const evidenceStr = formatEvidencePackForPrompt(evidencePack);
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your supply-side revenue rollup forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-c". Use the vendor revenue data in the Market Scan Evidence above as your primary input for the rollup. If vendor revenue data is absent from the evidence, estimate from your knowledge of major vendor earnings for this market.${constrainedRetryHint(attempt)}`;
+
+  const response = await client.chat.completions.create({
+    model: "o3-mini",
+    messages: [
+      { role: "system", content: SYSTEM_ANALYST_C },
+      { role: "user", content: userPrompt },
+    ],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 4096,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error("OpenAI analyst-c returned empty response");
+  return ForecastDraftSchema.parse(strictParseJson(content));
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -236,7 +227,9 @@ async function generateDraftAnthropic(
 export interface Phase31Result {
   analystA: ForecastDraft;
   analystB: ForecastDraft;
+  analystC?: ForecastDraft;
   usedFallback: boolean;
+  analystCActive: boolean;
 }
 
 export async function runPhase31(
@@ -244,11 +237,15 @@ export async function runPhase31(
   openaiKey: string,
   openaiBaseUrl: string | undefined,
   anthropicKey: string | undefined,
-  evidencePack?: MarketScanEvidence
+  evidencePack?: MarketScanEvidence,
+  marketType?: MarketType
 ): Promise<Phase31Result> {
   let anthropicSucceeded = false;
 
-  const [analystA, analystB] = await Promise.all([
+  const effectiveMarketType = marketType ?? context.marketType ?? "software_saas";
+  const analystCActive = effectiveMarketType === "hardware_infrastructure" || effectiveMarketType === "hybrid";
+
+  const [analystA, analystBOrFallback, analystCResult] = await Promise.all([
     withRetry((attempt) => generateDraftOpenAI("analyst-a", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
     anthropicKey
       ? withRetry((attempt) => generateDraftAnthropic(context, evidencePack, anthropicKey, attempt))
@@ -257,11 +254,22 @@ export async function runPhase31(
             withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt))
           )
       : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
+    analystCActive
+      ? withRetry((attempt) => generateDraftAnalystC(context, evidencePack, openaiKey, openaiBaseUrl, attempt))
+          .catch((err) => {
+            console.warn("[Phase3-1] Analyst-C (Revenue Aggregator) failed after retries:", err.message, "— continuing without it");
+            return undefined;
+          })
+      : Promise.resolve(undefined),
   ]);
 
-  // usedFallback = true when Anthropic was requested but fell back to OpenAI,
-  // OR when no Anthropic key was provided at all.
   const usedFallback = !anthropicKey || (!!anthropicKey && !anthropicSucceeded);
 
-  return { analystA, analystB, usedFallback };
+  return {
+    analystA,
+    analystB: analystBOrFallback,
+    analystC: analystCResult ?? undefined,
+    usedFallback,
+    analystCActive,
+  };
 }

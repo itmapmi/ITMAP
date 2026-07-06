@@ -259,6 +259,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         unitOfMeasurement: extracted.unitOfMeasurement,
         timeHorizon: `${baseYear}–${baseYear + horizonYears}`,
         customScope: true,
+        marketType: extracted.marketType ?? "software_saas",
         proposedBySystem: proposedPayload,
         confirmedByUser: false,
       });
@@ -584,6 +585,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         outputFormat: brief.outputFormat ?? "Bull / base / bear scenarios",
         sourceRequirements: brief.sourceRequirements ?? "Any credible sources",
       },
+      marketType: (boundary.marketType as import("../forecast/phases/phase1").MarketType) ?? "software_saas",
     };
 
     // ── Write audit entry and init SSE ─────────────────────────────────

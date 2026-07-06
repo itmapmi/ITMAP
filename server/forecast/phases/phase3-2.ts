@@ -70,18 +70,30 @@ function extractObjectionArray(parsed: unknown): unknown[] {
   return [];
 }
 
-function buildDraftsContext(analystA: ForecastDraft, analystB: ForecastDraft): string {
-  return `ANALYST-A DRAFT:\n${JSON.stringify({
-    marketSizeBaseYear: analystA.marketSizeBaseYear,
-    methodology: analystA.methodology,
-    assumptions: analystA.assumptions,
-    segments: analystA.segments.map(s => ({ name: s.name, baseYearValue: s.baseYearValue, cagr: s.cagr })),
-  }, null, 2)}\n\nANALYST-B DRAFT:\n${JSON.stringify({
-    marketSizeBaseYear: analystB.marketSizeBaseYear,
-    methodology: analystB.methodology,
-    assumptions: analystB.assumptions,
-    segments: analystB.segments.map(s => ({ name: s.name, baseYearValue: s.baseYearValue, cagr: s.cagr })),
-  }, null, 2)}`;
+function buildDraftsContext(analystA: ForecastDraft, analystB: ForecastDraft, analystC?: ForecastDraft): string {
+  const parts = [
+    `ANALYST-A DRAFT:\n${JSON.stringify({
+      marketSizeBaseYear: analystA.marketSizeBaseYear,
+      methodology: analystA.methodology,
+      assumptions: analystA.assumptions,
+      segments: analystA.segments.map(s => ({ name: s.name, baseYearValue: s.baseYearValue, cagr: s.cagr })),
+    }, null, 2)}`,
+    `ANALYST-B DRAFT:\n${JSON.stringify({
+      marketSizeBaseYear: analystB.marketSizeBaseYear,
+      methodology: analystB.methodology,
+      assumptions: analystB.assumptions,
+      segments: analystB.segments.map(s => ({ name: s.name, baseYearValue: s.baseYearValue, cagr: s.cagr })),
+    }, null, 2)}`,
+  ];
+  if (analystC) {
+    parts.push(`ANALYST-C DRAFT (Revenue Aggregator — supply-side vendor rollup):\n${JSON.stringify({
+      marketSizeBaseYear: analystC.marketSizeBaseYear,
+      methodology: analystC.methodology,
+      assumptions: analystC.assumptions,
+      segments: analystC.segments.map(s => ({ name: s.name, baseYearValue: s.baseYearValue, cagr: s.cagr })),
+    }, null, 2)}`);
+  }
+  return parts.join("\n\n");
 }
 
 // ── OpenAI role call ───────────────────────────────────────────────────────
@@ -254,10 +266,11 @@ export async function runPhase32(
   openaiKey: string,
   openaiBaseUrl: string | undefined,
   anthropicKey: string | undefined,
-  evidencePack?: MarketScanEvidence
+  evidencePack?: MarketScanEvidence,
+  analystC?: ForecastDraft
 ): Promise<Phase32Result> {
   const contextStr = buildContextString(context);
-  const draftsStr = buildDraftsContext(analystA, analystB);
+  const draftsStr = buildDraftsContext(analystA, analystB, analystC);
   const evidenceStr = formatEvidencePackForPrompt(evidencePack);
 
   const [bearResult, bullResult, methodResult, histResult] = await Promise.all([

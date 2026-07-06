@@ -6,11 +6,15 @@
  *     estimates or external databases (see ANTI_ANCHORING_INSTRUCTION)
  *   - Any known external estimate must be declared in `external_estimate` and
  *     set aside — it must NOT influence the analyst's own derived value
- *   - Roles in Phase 3.2 critique BOTH drafts from a fixed epistemic standpoint
+ *   - Analyst C (Revenue Aggregator) may cite vendor earnings disclosures as
+ *     primary financial data, but must NOT anchor to published market size totals
+ *   - Roles in Phase 3.2 critique ALL drafts from a fixed epistemic standpoint
  *   - Judge/resolver prompts are neutral and evidence-first
  *
  * All prompts instruct the model to respond with ONLY valid JSON.
  */
+
+import type { MarketType } from "./phase1";
 
 export interface DebateContext {
   title: string;
@@ -33,6 +37,57 @@ export interface DebateContext {
     outputFormat: string;
     sourceRequirements: string;
   };
+  marketType: MarketType;
+}
+
+// ── Market-type-aware methodology guidance ─────────────────────────────────
+//
+// Returns the recommended derivation approach for baseYearConstruction based
+// on market type. Injected into the context string so all analyst prompts
+// receive the appropriate example formula for their market.
+
+export function buildMethodologyGuidance(marketType: MarketType): string {
+  switch (marketType) {
+    case "hardware_infrastructure":
+      return [
+        "METHODOLOGY GUIDANCE (hardware/infrastructure market):",
+        "- Derive segment values from observable capacity or volume data, e.g.:",
+        "  * installed base (units/PB/TB) × $/unit/yr × market share",
+        "  * DC capex spend × storage or compute share %",
+        "  * units shipped × blended ASP",
+        "  * refresh cycle volume × replacement price",
+        "- Do NOT default to seats × ASP — this is a hardware market where capacity and unit economics drive revenue.",
+      ].join("\n");
+
+    case "services":
+      return [
+        "METHODOLOGY GUIDANCE (services market):",
+        "- Derive segment values from labour or contract economics, e.g.:",
+        "  * billable headcount × billable rate × utilization rate",
+        "  * contracts in force × ACV (average contract value)",
+        "  * addressable headcount × outsourcing penetration × ACV",
+        "- Focus on contract value and delivery economics, not seat counts.",
+      ].join("\n");
+
+    case "hybrid":
+      return [
+        "METHODOLOGY GUIDANCE (hybrid market — hardware + software/services):",
+        "- Decompose the market into its hardware and software/services sub-components:",
+        "  * Hardware portion: installed base × $/unit or capex × share %",
+        "  * Software/services portion: seats × ASP or ACV × contracts",
+        "- Show the split between hardware and software/services portions in your methodology.",
+      ].join("\n");
+
+    case "software_saas":
+    default:
+      return [
+        "METHODOLOGY GUIDANCE (software/SaaS market):",
+        "- Derive segment values from user or seat economics, e.g.:",
+        "  * addressable users/seats × ASP × 12 months",
+        "  * total addressable demand × penetration rate × ACV",
+        "  * accounts × seats per account × ASP",
+      ].join("\n");
+  }
 }
 
 export function buildContextString(ctx: DebateContext): string {
@@ -51,22 +106,23 @@ export function buildContextString(ctx: DebateContext): string {
     `ADJACENT MARKETS: ${br.adjacentMarkets.join(", ") || "none specified"}`,
     `OUTPUT FORMAT: ${br.outputFormat}`,
     `SOURCE REQUIREMENTS: ${br.sourceRequirements}`,
+    ``,
+    buildMethodologyGuidance(ctx.marketType),
   ].join("\n");
 }
 
 // ── Anti-anchoring instruction (shared, included verbatim in all Phase 3.1 prompts) ──
-//
-// This is the primary mechanism preventing one model from anchoring to
-// published analyst estimates or to what another model might say.
-// The `external_estimate` field forces the model to explicitly surface and
-// then set aside any known published figure — so the audit trail is preserved
-// but the value cannot silently bias the bottom-up derivation.
+
+export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULES (mandatory — do not omit):
+1. Do NOT retrieve market size estimates from analyst reports (e.g. Gartner, IDC, Forrester,
+   McKinsey) or published industry databases to use as anchor points for your own estimate.
+2. Derive every number from first principles using the market context provided above.
+3. If you are aware of a published analyst estimate for this market, you MUST record it in the
+   "external_estimate" field and then IGNORE it when building your own bottom-up value.
+4. Do NOT speculate about what another analyst on this debate might estimate.
+5. Your estimate may differ substantially from any published figure — that is intentional.`;
 
 // ── Mandatory segmentation (shared, included verbatim in all Phase 3.1 prompts) ──
-//
-// Every forecast must be segmented along a single, fixed customer-size dimension
-// so downstream comparison, MECE rollup, and report rendering work consistently
-// across markets. Segment names are canonical and case-sensitive.
 
 export const CANONICAL_SEGMENT_NAMES = [
   "SMB",
@@ -88,46 +144,39 @@ export const MANDATORY_SEGMENTATION_INSTRUCTION = `MANDATORY SEGMENTATION (requi
    marketSizeBaseYear within ±2%.
 3. Each segment gets its own cagr — segments grow at different rates (e.g. SMB and
    Mid-market typically grow faster than Large Enterprise; Government is steadier).
-4. baseYearConstruction MUST show the per-segment derivation, e.g. "~3M SMB seats × $35 ASP × 12mo = $1.26B".
+4. baseYearConstruction MUST show the per-segment derivation, citing observable data points
+   and the formula used — follow the METHODOLOGY GUIDANCE in the market context above for
+   the appropriate derivation approach for this market type.
 5. Do NOT use any other segmentation dimension (no platform breakdown, no geography,
    no vertical, no deployment model). Customer size is the ONLY allowed dimension.`;
-
-export const ANTI_ANCHORING_INSTRUCTION = `CRITICAL ANTI-ANCHORING RULES (mandatory — do not omit):
-1. Do NOT retrieve market size estimates from analyst reports (e.g. Gartner, IDC, Forrester,
-   McKinsey) or published industry databases to use as anchor points for your own estimate.
-2. Derive every number from first principles using the market context provided above.
-3. If you are aware of a published analyst estimate for this market, you MUST record it in the
-   "external_estimate" field and then IGNORE it when building your own bottom-up value.
-4. Do NOT speculate about what another analyst on this debate might estimate.
-5. Your estimate may differ substantially from any published figure — that is intentional.`;
 
 // ── Phase 3.1 — Independent drafts ────────────────────────────────────────
 
 export const DRAFT_SCHEMA_DESCRIPTION = `{
-  "modelLabel": string,          // your identifier: "analyst-a" or "analyst-b"
+  "modelLabel": string,          // your identifier: "analyst-a", "analyst-b", or "analyst-c"
   "external_estimate": {         // REQUIRED: if you know a published estimate, record it here
     "source": string,            // e.g. "Gartner 2024", "IDC 2023", or "none known"
     "value": number | null,      // published figure, or null if none known
     "unit": string | null,       // e.g. "$B revenue" or null
-    "why_setting_aside": string  // why you are not anchoring to this (1 sentence), e.g. "Deriving independently per anti-anchoring rule"
+    "why_setting_aside": string  // why you are not anchoring to this (1 sentence)
   },
-  "marketSizeBaseYear": number,  // YOUR OWN bottom-up derived estimate for the base year (same unit as context)
+  "marketSizeBaseYear": number,  // YOUR OWN derived estimate for the base year (same unit as context)
   "methodology": string,         // 1-2 sentences describing your sizing approach
   "segments": [
     {
       "name": string,
       "baseYearValue": number,   // absolute value in same unit as marketSizeBaseYear
       "cagr": number,            // % per year over forecast horizon, e.g. 14.5 for 14.5%
-      "baseYearConstruction": string  // REQUIRED: show your work — how did you derive this value? Must cite observable data points or formula, e.g. '~12M enterprise seats × $4.2k ASP = $50.4B'
+      "baseYearConstruction": string  // REQUIRED: show your work — formula and observable data points
     }
   ],
   "assumptions": [
     {
       "id": string,              // stable snake_case slug, e.g. "cloud_penetration_cagr"
-      "name": string,            // human-readable, e.g. "Cloud penetration CAGR"
-      "value": number,           // numeric value
-      "unit": string,            // e.g. "% per year", "% of TAM", "$B"
-      "reasoning": string,       // 1-2 sentences justifying this from observable data
+      "name": string,
+      "value": number,
+      "unit": string,
+      "reasoning": string,
       "sensitivityRank": number  // 1 = highest impact on final forecast number
     }
   ],
@@ -146,7 +195,7 @@ ${MANDATORY_SEGMENTATION_INSTRUCTION}
 
 Methodology: build from observable sub-segments and aggregate up.
 Be conservative on growth assumptions — prefer triangulating from multiple data points.
-Every segment's baseYearConstruction MUST show your derivation explicitly (seats × ASP, or equivalent).
+Follow the METHODOLOGY GUIDANCE in the market context to choose the correct derivation approach for this market type.
 
 Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
 
@@ -159,7 +208,48 @@ ${MANDATORY_SEGMENTATION_INSTRUCTION}
 
 Methodology: start from total addressable demand and apply penetration rates.
 Be willing to take a bolder stance on growth if the structural drivers justify it.
-Every segment's baseYearConstruction MUST show your derivation explicitly (TAM × penetration rate, or equivalent).
+Follow the METHODOLOGY GUIDANCE in the market context to choose the correct derivation approach for this market type.
+
+Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
+
+export const SYSTEM_ANALYST_C = `You are a supply-side market research analyst who sizes markets by aggregating disclosed vendor revenues.
+Your job: produce an independent market size estimate using a vendor revenue rollup methodology.
+
+${ANTI_ANCHORING_INSTRUCTION}
+
+IMPORTANT CLARIFICATION ON ANTI-ANCHORING: Anti-anchoring applies to published MARKET SIZE estimates
+(Gartner TAMs, IDC market forecasts, analyst projections). Vendor earnings disclosures and annual reports
+are primary financial facts — you MAY cite and use them in your derivation.
+
+${MANDATORY_SEGMENTATION_INSTRUCTION}
+
+SUPPLY-SIDE VENDOR REVENUE ROLLUP METHODOLOGY:
+1. IDENTIFY the top 5–8 vendors competing in this specific market by market share.
+2. ATTRIBUTE revenue to this market for each vendor:
+   - Use the most granular segment disclosure available in the Market Scan Evidence above.
+     Examples: Dell ISG (Infrastructure Solutions Group) server revenue, HPE Compute segment revenue,
+     NetApp product revenue, Pure Storage total revenue (pure-play), Cisco data center switching revenue.
+   - For vendors that combine this market with others in one segment (e.g. Dell ISG covers servers AND storage),
+     estimate the relevant product category share using disclosed product mix data or analyst commentary
+     from the evidence above. Explicitly state your attribution split.
+   - For private vendors, use analyst revenue estimates from the Market Scan Evidence.
+   - NEVER use total consolidated company revenue as the market attribution — always attribute to the
+     specific product category in scope.
+3. SUM the attributed revenues across the top vendors identified.
+4. ADD a 30% long-tail buffer to the vendor sum to account for:
+   - Private/unlisted vendors not captured in the top-vendor list
+   - Distribution and channel revenue not reflected in vendor bookings
+   - Long-tail regional vendors with limited public reporting
+5. The result (vendor sum × 1.30) is your marketSizeBaseYear estimate.
+6. ALLOCATE this total across the five mandatory customer-size segments using typical enterprise
+   spending patterns for this market type (e.g. Large Enterprise typically accounts for 40–50% of
+   enterprise infrastructure spend; SMB typically 5–10%).
+
+Every segment's baseYearConstruction MUST show how you allocated the vendor revenue rollup total:
+Example: "Vendor rollup total $105B × large-enterprise share ~45% = $47.3B"
+
+In the "methodology" field, list each vendor and its attributed revenue, e.g.:
+"Vendor rollup: Dell ISG servers $X.XB (ISG total × 55% server share), HPE Compute $X.XB, ..."
 
 Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation outside the JSON.`;
 
@@ -167,9 +257,9 @@ Respond with ONLY a valid JSON object. No markdown, no preamble, no explanation 
 
 export const CRITIQUE_SCHEMA_DESCRIPTION = `[
   {
-    "assumptionId": string,     // matches an assumption id from one of the two drafts
+    "assumptionId": string,     // matches an assumption id from one of the analyst drafts
     "assumptionName": string,
-    "draftModel": string,       // "analyst-a" or "analyst-b" (whose assumption this is)
+    "draftModel": string,       // "analyst-a", "analyst-b", or "analyst-c" (whose assumption this is)
     "objection": string,        // your specific critique of this assumption value
     "severity": "critical" | "significant" | "minor",
     "suggestedValue": number | null,   // your preferred value, null if directional only
@@ -227,7 +317,10 @@ export const CRUX_SCHEMA_DESCRIPTION = `{
       "analystBValue": number,
       "analystBUnit": string,
       "analystBReasoning": string, // summary of analyst-b's position (1 sentence)
-      "divergencePct": number,     // absolute % difference between the two values
+      "analystCValue": number | null,     // null if analyst-c did not participate or did not contest this assumption
+      "analystCUnit": string | null,
+      "analystCReasoning": string | null,
+      "divergencePct": number,     // max pairwise % divergence across all participating analysts
       "objectionSummary": string,  // 1-sentence synthesis of objections raised
       "evidenceRequired": string,  // most actionable evidence to resolve this
       "estimatedImpact": "high" | "medium" | "low",  // impact on final forecast
@@ -237,41 +330,36 @@ export const CRUX_SCHEMA_DESCRIPTION = `{
 }`;
 
 export const SYSTEM_JUDGE_CRUX = `You are a neutral senior analyst acting as JUDGE in a structured market forecast debate.
-Your job: identify the key cruxes — the specific quantitative assumptions where the two analysts diverge most significantly.
+Your job: identify the key cruxes — the specific quantitative assumptions where the analysts diverge most significantly.
 
 Rules:
 1. Only identify cruxes where divergence > 10% or where the difference materially changes the forecast
 2. Rank by impact on the final forecast (not by magnitude of disagreement)
 3. Select the top 5 cruxes maximum (fewer is better if there are fewer genuine disagreements)
-4. For each crux, synthesize the objections from all 4 roles (bear/bull/methodologist/historian)
+4. For each crux, synthesize the objections from all roles (bear/bull/methodologist/historian)
 5. Be precise about what evidence would actually resolve each crux
+6. If a third analyst (analyst-c) participated, include their value and reasoning in analystCValue/analystCUnit/analystCReasoning.
+   Compute divergencePct as the maximum pairwise % difference across all participating analysts.
+   If analyst-c did not participate or did not have a relevant assumption, set analystCValue/Unit/Reasoning to null.
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;
 
 // ── Phase 3.4 — Targeted resolution (dual-model debate per crux) ──────────
-//
-// Each crux is resolved via a two-model pass:
-//   1. Both resolvers (OpenAI + Anthropic, or OpenAI x2 if no Anthropic key)
-//      independently evaluate the web evidence and propose a value
-//   2. Convergence is determined deterministically:
-//      - If |A-B| / avg(A,B) ≤ 15% → "resolved" (finalValue = midpoint)
-//      - If divergence > 15% but both have values → "scenario_variable"
-//      - If either cannot propose a value → "unresolved"
 
 export const RESOLUTION_SCHEMA_DESCRIPTION = `{
-  "canResolve": boolean,          // true if web evidence is sufficient to propose a value
-  "proposedValue": number | null, // your evidence-supported value; null if cannot resolve
+  "canResolve": boolean,
+  "proposedValue": number | null,
   "proposedUnit": string | null,
-  "bullValue": number,            // optimistic scenario value
-  "baseValue": number,            // base case value
-  "bearValue": number,            // pessimistic scenario value
-  "resolutionReasoning": string,  // 2-3 sentences explaining your proposed value
-  "evidenceCited": string[]       // list of evidence points that drove your reasoning
+  "bullValue": number,
+  "baseValue": number,
+  "bearValue": number,
+  "resolutionReasoning": string,
+  "evidenceCited": string[]
 }`;
 
 export const SYSTEM_RESOLVER = `You are a neutral senior market research analyst independently resolving a specific contested forecast assumption.
 You have been provided with:
-1. The two analysts' positions and reasoning
+1. The analysts' positions and reasoning
 2. All role-based objections raised about this assumption
 3. Web search evidence gathered for this specific assumption
 
@@ -282,7 +370,7 @@ Your task:
 - ALWAYS provide bull/base/bear values for scenario planning, even if you cannot resolve the point estimate
 
 Be conservative: only set canResolve=true if you have actual evidence (not just a preference).
-Do NOT anchor to either analyst's value — derive your proposed value from the evidence alone.
+Do NOT anchor to any analyst's value — derive your proposed value from the evidence alone.
 
 Respond with ONLY a valid JSON object. No markdown, no explanation outside the JSON.`;
 
@@ -294,7 +382,7 @@ export const CONSENSUS_CHECK_SCHEMA_DESCRIPTION = `{
       "assumptionId": string,
       "consensusValidated": boolean,
       "flag": "genuine_consensus" | "false_consensus" | "insufficient_evidence" | "scenario_required",
-      "note": string  // 1 sentence
+      "note": string
     }
   ]
 }`;
@@ -303,7 +391,7 @@ export const SYSTEM_CONSENSUS_CHECKER = `You are a senior audit analyst performi
 Your job: for each supposedly "resolved" crux, verify that the resolution is genuine and well-supported.
 
 Flag as "false_consensus" if:
-- The two resolvers simply averaged the two analyst positions without clear third-party evidence
+- The two resolvers simply averaged the analyst positions without clear third-party evidence
 - The "evidence" cited is vague, second-hand, or not specific to the assumption value
 - The bull/base/bear spread is implausibly narrow given the original divergence
 

@@ -4,21 +4,22 @@
  * Runs a best-effort web research pass BEFORE the analyst drafts so the debate
  * is grounded in the current state of the market — not just the user's brief.
  *
- * Uses OpenAI Responses API with `web_search_preview` (same pattern as
- * phase3-4 crux resolution). If the API is unavailable (e.g. no Responses
- * endpoint or a key without web_search), returns an empty pack and the debate
- * proceeds exactly as before.
+ * Uses OpenAI Responses API with `web_search_preview`. If the API is unavailable
+ * returns an empty pack and the debate proceeds exactly as before.
  *
  * The evidence pack is QUALITATIVE — it gives analysts visibility into trends,
  * vendor moves, regulatory shifts, etc. Anti-anchoring still applies for point
  * estimates: analysts must derive their numbers themselves.
+ *
+ * For hardware_infrastructure and hybrid markets an extra topic ("vendor_revenues")
+ * is added to give Analyst C primary financial data for the vendor revenue rollup.
  */
 
 import OpenAI from "openai";
 import type { DebateContext } from "./phase3-prompts";
+import type { MarketType } from "./phase1";
 
 // ── Typed wrapper for OpenAI Responses API (web_search_preview) ────────────
-// Same approach used in phase3-4 — the SDK doesn't expose Responses types.
 
 interface ResponsesApiOutputItem {
   type: string;
@@ -62,31 +63,28 @@ function extractResponseText(response: ResponsesApiResult): string {
 // ── Evidence pack types ────────────────────────────────────────────────────
 
 export interface ScanFinding {
-  topic: string;        // short label, e.g. "Recent vendor moves"
-  bullets: string[];    // 1-line factual statements with implicit/explicit citations
+  topic: string;
+  bullets: string[];
 }
 
 export interface MarketScanEvidence {
-  performed: boolean;       // true if at least one query returned content
-  generatedAt: string;      // ISO timestamp
-  findings: ScanFinding[];  // grouped findings (one per scan topic)
-  rawNotes: string;         // concatenated raw model output for audit
-  failedTopics: string[];   // topics where the search failed
+  performed: boolean;
+  generatedAt: string;
+  findings: ScanFinding[];
+  rawNotes: string;
+  failedTopics: string[];
 }
 
 // ── Scan topics ────────────────────────────────────────────────────────────
-//
-// Each topic produces one focused web_search_preview call. Topics are chosen
-// to give analysts and critics visibility into the things they cannot derive
-// from the user brief alone.
 
 interface ScanTopic {
   key: string;
   label: string;
   buildPrompt: (ctx: DebateContext) => string;
+  marketTypes?: MarketType[];  // if set, only run for these market types
 }
 
-const SCAN_TOPICS: ScanTopic[] = [
+const BASE_SCAN_TOPICS: ScanTopic[] = [
   {
     key: "recent_analyst_commentary",
     label: "Recent analyst commentary & published estimates",
@@ -145,11 +143,36 @@ const SCAN_TOPICS: ScanTopic[] = [
   },
 ];
 
-// ── Bullet extractor ───────────────────────────────────────────────────────
+// ── Vendor revenues topic — only for hardware/infrastructure and hybrid markets ──
 //
-// Models tend to return either a markdown bullet list or a plain newline list.
-// We extract lines that look like bullets and trim. If extraction yields
-// nothing, the whole text is returned as a single bullet so nothing is lost.
+// Provides Analyst C with primary financial data for the vendor revenue rollup.
+// Searches for segment-level disclosures from public companies and analyst estimates
+// for private vendors — not consolidated company revenues.
+
+const VENDOR_REVENUES_TOPIC: ScanTopic = {
+  key: "vendor_revenues",
+  label: "Top vendor revenues by market segment",
+  marketTypes: ["hardware_infrastructure", "hybrid"],
+  buildPrompt: (ctx) =>
+    `Search the web for the most recent annual revenues that the top vendors in the market ` +
+    `"${ctx.title}" attribute specifically to this market segment — NOT their total company revenue. ` +
+    `\n\nIMPORTANT: Find the most granular segment disclosure available, e.g.:` +
+    `\n- For Dell: look for "Dell ISG (Infrastructure Solutions Group) revenue" or "Dell server revenue" ` +
+    `not "Dell total revenue"` +
+    `\n- For HPE: look for "HPE Compute segment revenue" or "HPE Storage revenue" ` +
+    `not "HPE total revenue"` +
+    `\n- For other conglomerates: search for "[vendor] [specific product line] revenue [year]"` +
+    `\n- For private companies: look for analyst estimates of their revenue in this specific market` +
+    `\n\nReturn 6-10 short bullets. For each vendor include: vendor name, attributed revenue figure, ` +
+    `the specific segment/disclosure used, and the fiscal year. Example format:` +
+    `\n"Dell ISG server revenue: ~$X.XB (FY2024, Dell ISG total $X.XB × ~55% server share per earnings call)"` +
+    `\nIf a vendor does not have a public segment breakdown for this market, note the total segment ` +
+    `and explain why attribution is needed.` +
+    `\nEnd each bullet with a source in parentheses.` +
+    `\nIf you cannot find segment-level data for this market, return: "No vendor revenue disclosures found for this specific market segment."`,
+};
+
+// ── Bullet extractor ───────────────────────────────────────────────────────
 
 function extractBullets(raw: string): string[] {
   if (!raw || !raw.trim()) return [];
@@ -158,10 +181,8 @@ function extractBullets(raw: string): string[] {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    // Strip leading bullet markers: -, *, •, 1., 1)
     const cleaned = trimmed.replace(/^([-*•]|\d+[.)])\s+/, "").trim();
     if (cleaned.length === 0) continue;
-    // Skip "no X found" sentinel lines but preserve them as a single bullet
     bullets.push(cleaned);
   }
   return bullets;
@@ -186,10 +207,7 @@ async function scanTopic(
     if (bullets.length === 0) {
       return { finding: null, rawText: text, error: "no bullets returned" };
     }
-    return {
-      finding: { topic: topic.label, bullets },
-      rawText: text,
-    };
+    return { finding: { topic: topic.label, bullets }, rawText: text };
   } catch (err: any) {
     return { finding: null, rawText: "", error: err?.message || String(err) };
   }
@@ -204,6 +222,14 @@ export async function runMarketScan(
   onProgress?: (msg: string) => void
 ): Promise<MarketScanEvidence> {
   const api = getResponsesClientForKey(openaiKey, openaiBaseUrl);
+
+  // Build the topic list — add vendor_revenues for hardware/hybrid markets
+  const topics: ScanTopic[] = [...BASE_SCAN_TOPICS];
+  const marketType = ctx.marketType ?? "software_saas";
+  if (marketType === "hardware_infrastructure" || marketType === "hybrid") {
+    topics.push(VENDOR_REVENUES_TOPIC);
+  }
+
   if (!api) {
     onProgress?.("Web search unavailable on this OpenAI key — skipping market scan.");
     return {
@@ -211,20 +237,20 @@ export async function runMarketScan(
       generatedAt: new Date().toISOString(),
       findings: [],
       rawNotes: "",
-      failedTopics: SCAN_TOPICS.map((t) => t.key),
+      failedTopics: topics.map((t) => t.key),
     };
   }
 
-  onProgress?.(`Running ${SCAN_TOPICS.length} parallel market research queries…`);
+  onProgress?.(`Running ${topics.length} parallel market research queries${marketType === "hardware_infrastructure" || marketType === "hybrid" ? " (including vendor revenue data)" : ""}…`);
 
-  const results = await Promise.all(SCAN_TOPICS.map((t) => scanTopic(t, ctx, api)));
+  const results = await Promise.all(topics.map((t) => scanTopic(t, ctx, api)));
 
   const findings: ScanFinding[] = [];
   const failedTopics: string[] = [];
   const rawParts: string[] = [];
 
-  for (let i = 0; i < SCAN_TOPICS.length; i++) {
-    const topic = SCAN_TOPICS[i];
+  for (let i = 0; i < topics.length; i++) {
+    const topic = topics[i];
     const r = results[i];
     if (r.finding) {
       findings.push(r.finding);
@@ -246,10 +272,6 @@ export async function runMarketScan(
 }
 
 // ── Prompt formatter ──────────────────────────────────────────────────────
-//
-// Formats the evidence pack into a string block that can be injected into
-// analyst / critic prompts. Returns "" when no evidence was collected so
-// callers can append unconditionally.
 
 export function formatEvidencePackForPrompt(pack: MarketScanEvidence | undefined): string {
   if (!pack || !pack.performed || pack.findings.length === 0) return "";
@@ -265,8 +287,9 @@ export function formatEvidencePackForPrompt(pack: MarketScanEvidence | undefined
     "",
     "USAGE RULES FOR THE EVIDENCE ABOVE:",
     "- You MAY use the qualitative trends, vendor moves, headwinds, and adjacent dynamics above to ground your reasoning.",
-    "- You MUST still derive every numeric value from first principles. Anti-anchoring rules still apply to point estimates.",
-    "- If you cite a fact from the evidence above, reference it briefly (e.g. \"per recent vendor M&A activity\").",
+    "- You MUST still derive every numeric value from first principles. Anti-anchoring rules still apply to market size estimates.",
+    "- Vendor revenue figures in the evidence are primary financial disclosures and MAY be used directly in your derivation.",
+    "- If you cite a fact from the evidence above, reference it briefly (e.g. \"per vendor revenue data above\").",
     "──────────────────────────────────────────────────────────",
     "",
   ].join("\n");

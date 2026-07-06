@@ -92,6 +92,8 @@ export async function runDebate(
 
   let analystA: ForecastDraft | undefined;
   let analystB: ForecastDraft | undefined;
+  let analystC: ForecastDraft | undefined;
+  let analystCActive = false;
   let objections: Objection[] = [];
   let identifiedCruxes: IdentifiedCrux[] = [];
   let resolvedCruxes: ResolvedCrux[] = [];
@@ -136,9 +138,11 @@ export async function runDebate(
   );
 
   try {
-    const result = await runPhase31(context, openaiKey, openaiBaseUrl, anthropicKey, evidencePack);
+    const result = await runPhase31(context, openaiKey, openaiBaseUrl, anthropicKey, evidencePack, context.marketType);
     analystA = result.analystA;
     analystB = result.analystB;
+    analystC = result.analystC;
+    analystCActive = result.analystCActive;
 
     // Per-model-call audit entries (granular provenance)
     await writeAuditEntry(forecastId, "draft_generated", "system", {
@@ -158,20 +162,37 @@ export async function runDebate(
       anticipatedCruxes: analystB.anticipatedCruxes,
       usedFallback: result.usedFallback,
     }).catch(() => {});
+    if (analystC) {
+      await writeAuditEntry(forecastId, "draft_generated", "system", {
+        model: "o3-mini",
+        persona: "analyst-c",
+        approach: "vendor-revenue-rollup",
+        marketSizeBaseYear: analystC.marketSizeBaseYear,
+        assumptionCount: analystC.assumptions.length,
+        segmentCount: analystC.segments.length,
+      }).catch(() => {});
+    }
 
     await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
       phase: 1,
       analystAMarketSize: analystA.marketSizeBaseYear,
       analystBMarketSize: analystB.marketSizeBaseYear,
+      analystCMarketSize: analystC?.marketSizeBaseYear ?? null,
+      analystCActive,
       analystAAssumptions: analystA.assumptions.length,
       analystBAssumptions: analystB.assumptions.length,
       usedFallback: result.usedFallback,
     });
 
+    const draftCount = analystC ? 3 : 2;
+    const marketSizes = [analystA.marketSizeBaseYear, analystB.marketSizeBaseYear, ...(analystC ? [analystC.marketSizeBaseYear] : [])];
     progress(1, `Analyst-A (o3-mini): market size ${context.boundary.currency}${analystA.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystA.assumptions.length} assumptions`);
     progress(1, `Analyst-B (${anthropicKey ? "Claude Sonnet" : "GPT-4o Alt"}): market size ${context.boundary.currency}${analystB.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystB.assumptions.length} assumptions`);
+    if (analystC) {
+      progress(1, `Analyst-C (Revenue Aggregator / o3-mini): market size ${context.boundary.currency}${analystC.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | vendor rollup methodology`);
+    }
 
-    send({ type: "phase_complete", phase: 1, summary: `2 independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(analystA.marketSizeBaseYear, analystB.marketSizeBaseYear).toLocaleString()}–${context.boundary.currency}${Math.max(analystA.marketSizeBaseYear, analystB.marketSizeBaseYear).toLocaleString()} ${context.boundary.unitOfMeasurement}` });
+    send({ type: "phase_complete", phase: 1, summary: `${draftCount} independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(...marketSizes).toLocaleString()}–${context.boundary.currency}${Math.max(...marketSizes).toLocaleString()} ${context.boundary.unitOfMeasurement}` });
   } catch (err: any) {
     console.error("[Debate] Phase 1 failed:", err);
     send({ type: "error", phase: 1, message: `Draft generation failed: ${err.message}` });
@@ -187,7 +208,7 @@ export async function runDebate(
 
   let phase2FailedRoles: string[] = [];
   try {
-    const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey, evidencePack);
+    const result = await runPhase32(context, analystA, analystB, openaiKey, openaiBaseUrl, anthropicKey, evidencePack, analystC);
     objections = result.objections;
     phase2FailedRoles = result.failedRoles;
 
@@ -256,7 +277,7 @@ export async function runDebate(
   progress(3, "Judge reviewing drafts and objections to identify key contested assumptions…");
 
   try {
-    identifiedCruxes = await runPhase33(analystA, analystB, objections, openaiKey, openaiBaseUrl);
+    identifiedCruxes = await runPhase33(analystA, analystB, objections, openaiKey, openaiBaseUrl, analystC);
 
     await writeAuditEntry(forecastId, "debate_phase_completed", "system", {
       phase: 3,
@@ -443,7 +464,7 @@ export async function runDebate(
         description: crux.assumptionName,
         value: String(baseValue),
         unit,
-        proposedByModels: ["analyst-a", analystB?.modelLabel ?? "analyst-b"],
+        proposedByModels: ["analyst-a", analystB?.modelLabel ?? "analyst-b", ...(analystC ? ["analyst-c"] : [])],
         currentValueSource: crux.consensusValidated ? "debate_consensus" : "debate_consensus",
         sensitivityRank: crux.rank,
         editableByUser: true,
@@ -586,10 +607,13 @@ export async function runDebate(
 
   // Step 2: Save cruxes
   for (const crux of validatedCruxes) {
-    const positions = [
+    const positions: { model: string; value: string; reasoning: string }[] = [
       { model: "analyst-a", value: String(crux.analystAValue), reasoning: crux.analystAReasoning ?? "" },
       { model: analystB?.modelLabel ?? "analyst-b", value: String(crux.analystBValue), reasoning: crux.analystBReasoning ?? "" },
-    ] as { model: string; value: string; reasoning: string }[];
+    ];
+    if (analystC && crux.analystCValue != null) {
+      positions.push({ model: "analyst-c", value: String(crux.analystCValue), reasoning: crux.analystCReasoning ?? "" });
+    }
 
     try {
       const savedCrux = await createForecastCrux({
