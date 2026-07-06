@@ -238,6 +238,14 @@ export interface Phase31Result {
    *  False means Analyst C fell back to training knowledge — callers should
    *  surface this as a warning in the SSE stream and audit log. */
   analystCHasVendorRevenueData: boolean;
+  /**
+   * Set when Analyst C was expected (hardware/hybrid) but did not produce a draft.
+   * "no_vendor_data" — market scan returned no vendor revenue evidence, so Analyst C
+   *   was explicitly skipped (not attempted).
+   * "generation_failed" — vendor revenue data was present but Analyst C failed after
+   *   retries; caller should surface a distinct failure warning.
+   */
+  analystCSkippedReason?: "no_vendor_data" | "generation_failed";
 }
 
 export async function runPhase31(
@@ -254,6 +262,13 @@ export async function runPhase31(
   const analystCActive = effectiveMarketType === "hardware_infrastructure" || effectiveMarketType === "hybrid";
   const hasVendorRevenueData = evidencePack?.hasVendorRevenueData ?? false;
 
+  // Analyst C requires vendor revenue evidence from the market scan to perform its
+  // supply-side rollup.  When no such data was collected, skip the call entirely
+  // instead of running Analyst C on training knowledge alone — the caller will
+  // surface a clear "analyst_c_skipped" event to the user.
+  let analystCGenerationFailed = false;
+  const shouldRunAnalystC = analystCActive && hasVendorRevenueData;
+
   const [analystA, analystBOrFallback, analystCResult] = await Promise.all([
     withRetry((attempt) => generateDraftOpenAI("analyst-a", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
     anthropicKey
@@ -263,16 +278,23 @@ export async function runPhase31(
             withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt))
           )
       : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
-    analystCActive
+    shouldRunAnalystC
       ? withRetry((attempt) => generateDraftAnalystC(context, evidencePack, hasVendorRevenueData, openaiKey, openaiBaseUrl, attempt))
           .catch((err) => {
             console.warn("[Phase3-1] Analyst-C (Revenue Aggregator) failed after retries:", err.message, "— continuing without it");
+            analystCGenerationFailed = true;
             return undefined;
           })
       : Promise.resolve(undefined),
   ]);
 
   const usedFallback = !anthropicKey || (!!anthropicKey && !anthropicSucceeded);
+
+  // Determine why Analyst C is absent (if it is)
+  let analystCSkippedReason: Phase31Result["analystCSkippedReason"];
+  if (analystCActive && !analystCResult) {
+    analystCSkippedReason = !hasVendorRevenueData ? "no_vendor_data" : "generation_failed";
+  }
 
   return {
     analystA,
@@ -281,5 +303,6 @@ export async function runPhase31(
     usedFallback,
     analystCActive,
     analystCHasVendorRevenueData: hasVendorRevenueData,
+    analystCSkippedReason,
   };
 }

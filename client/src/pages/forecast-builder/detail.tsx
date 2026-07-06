@@ -1324,6 +1324,7 @@ function DebateStep({
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(true);
   const [analystCActive, setAnalystCActive] = useState(false);
+  const [analystCSkippedMessage, setAnalystCSkippedMessage] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -1393,6 +1394,9 @@ function DebateStep({
                 if (phase === 1 && ev.analystCActive) {
                   setAnalystCActive(true);
                 }
+              } else if (ev.type === "analyst_c_skipped") {
+                setAnalystCSkippedMessage(ev.message as string);
+                addLog({ phase: 1, type: "progress", message: ev.message as string });
               } else if (ev.type === "crux_found") {
                 const crux = ev.crux as DebateCruxEvent;
                 setCruxes(prev => [...prev, crux]);
@@ -1446,6 +1450,14 @@ function DebateStep({
           : "Two independent AI analysts debate the forecast assumptions. Each contested assumption is identified as a crux and resolved with web evidence."}
       </p>
 
+      {/* Analyst C skipped notice */}
+      {analystCSkippedMessage && (
+        <div className="flex items-start gap-3 bg-amber-950/30 border border-amber-500/25 rounded-xl px-4 py-3 mb-4 text-sm text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+          <span>{analystCSkippedMessage}</span>
+        </div>
+      )}
+
       {/* Analyst participation row */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
         <span className="text-xs text-slate-500">Analysts:</span>
@@ -1461,7 +1473,13 @@ function DebateStep({
             C — Revenue Aggregator
           </span>
         )}
-        {!analystCActive && (marketType === "hardware_infrastructure" || marketType === "hybrid") && (
+        {analystCSkippedMessage && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/40 border border-dashed border-amber-500/30 text-amber-500/60">
+            <XCircle className="h-3 w-3" />
+            C — Revenue Aggregator (skipped — no vendor data)
+          </span>
+        )}
+        {!analystCActive && !analystCSkippedMessage && (marketType === "hardware_infrastructure" || marketType === "hybrid") && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/40 border border-dashed border-amber-500/20 text-amber-400/50">
             <Loader2 className="h-3 w-3 animate-spin" />
             C — Revenue Aggregator (pending…)

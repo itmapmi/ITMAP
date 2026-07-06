@@ -142,8 +142,28 @@ export async function runDebate(
     analystA = result.analystA;
     analystB = result.analystB;
     analystC = result.analystC;
-    analystCActive = result.analystCActive;
     const analystCHasVendorRevenueData = result.analystCHasVendorRevenueData;
+
+    // If this market type expects Analyst C but it was skipped or failed, surface a
+    // dedicated SSE event so the user knows why C is absent.
+    if (result.analystCActive && !analystC && result.analystCSkippedReason) {
+      const isNoData = result.analystCSkippedReason === "no_vendor_data";
+      send({
+        type: "analyst_c_skipped",
+        phase: 1,
+        reason: result.analystCSkippedReason,
+        message: isNoData
+          ? "Analyst C (Revenue Aggregator) was expected for this hardware/hybrid market but could not run — the market scan returned no vendor revenue data. Add a sources document to improve coverage."
+          : "Analyst C (Revenue Aggregator) was expected but failed to generate a draft after multiple retries. The debate will continue with Analysts A and B only.",
+      });
+      await writeAuditEntry(forecastId, "analyst_c_skipped", "system", {
+        reason: result.analystCSkippedReason,
+        hasVendorRevenueData: analystCHasVendorRevenueData,
+      }).catch(() => {});
+      // analystCActive stays false — C did not produce a draft
+    } else {
+      analystCActive = result.analystCActive;
+    }
 
     // Extract vendor revenue bullets from the evidence pack for audit provenance
     const vendorRevenueBulletsUsed = evidencePack?.findings
