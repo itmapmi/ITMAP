@@ -55,8 +55,5 @@ timeoutMs = 20000
 
 [userenv.shared]
 
-[userenv.production]
-PRIMARY_DOMAIN = "spectio.replit.app"
-
 [objectStorage]
 defaultBucketID = "replit-objstore-974384c9-83d0-4a0f-8403-1b0777fef4ed"
