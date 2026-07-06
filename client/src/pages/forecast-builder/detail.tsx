@@ -456,9 +456,13 @@ function BoundaryStep({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={`e.g. "${forecast.title}" — include geography, product scope, and time horizon if known`}
-          className="bg-slate-900 border-white/10 text-white placeholder:text-slate-500 min-h-[120px] resize-none mb-4"
+          className="bg-slate-900 border-white/10 text-white placeholder:text-slate-500 min-h-[120px] resize-none mb-1"
+          maxLength={10000}
           autoFocus
         />
+        <p className={`text-xs mb-4 text-right ${description.length > 9000 ? "text-amber-400" : "text-slate-500"}`}>
+          {description.length.toLocaleString()} / 10,000
+        </p>
         <Button
           disabled={description.trim().length < 10 || extractMutation.isPending}
           onClick={() => extractMutation.mutate(description.trim())}

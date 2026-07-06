@@ -219,7 +219,7 @@ export function registerForecastBuilderRoutes(app: Express): void {
         });
       }
 
-      const { description } = z.object({ description: z.string().min(5).max(2000) }).parse(req.body);
+      const { description } = z.object({ description: z.string().min(5).max(10000) }).parse(req.body);
 
       // Check extraction attempt count stored inside proposedBySystem._extractionCount
       const existing = await getForecastBoundary(req.params.id);
