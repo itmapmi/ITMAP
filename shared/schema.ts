@@ -1408,13 +1408,17 @@ export const forecastCruxes = pgTable("forecast_cruxes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   forecastId: varchar("forecast_id").notNull().references(() => forecasts.id, { onDelete: "cascade" }),
   contestedAssumptionId: varchar("contested_assumption_id"),
-  // Array of {model, value, reasoning}
+  // Array of {model, value, reasoning} — all participating analysts
   positions: jsonb("positions").$type<{ model: string; value: string; reasoning: string }[]>().default([]),
   evidenceRequiredToResolve: text("evidence_required_to_resolve"),
   // resolved | unresolved | scenario_variable
   resolutionStatus: text("resolution_status").notNull().default("unresolved"),
   resolutionPath: text("resolution_path"),
   estimatedImpact: text("estimated_impact"),
+  // Analyst C (Revenue Aggregator) — nullable; populated only for hardware/hybrid markets
+  analystCValue: text("analyst_c_value"),
+  analystCUnit: text("analyst_c_unit"),
+  analystCReasoning: text("analyst_c_reasoning"),
   // Deterministic scenario values populated by Phase 3.4 resolver:
   //   finalValue  — converged point estimate (resolution="resolved" only, null otherwise)
   //   bullValue   — optimistic scenario bound

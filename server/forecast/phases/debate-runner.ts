@@ -625,6 +625,10 @@ export async function runDebate(
         resolutionStatus: crux.resolution,
         resolutionPath: crux.resolutionReasoning,
         estimatedImpact: crux.estimatedImpact,
+        // First-class Analyst C columns — persisted when Revenue Aggregator participated
+        analystCValue: crux.analystCValue != null ? String(crux.analystCValue) : null,
+        analystCUnit: crux.analystCUnit ?? null,
+        analystCReasoning: crux.analystCReasoning ?? null,
         // Persist deterministic scenario values for downstream calc engine + UI
         scenarioValues: {
           finalValue: crux.finalValue ?? null,
@@ -728,8 +732,9 @@ export async function runDebate(
     scenariosSaved,
     usedFallback: !anthropicKey,
     models: [
-      "gpt-4o",
-      anthropicKey ? "claude-sonnet-4-5" : "gpt-4o (alt persona)",
+      "o3-mini (Analyst A)",
+      anthropicKey ? "claude-sonnet-4-5 (Analyst B)" : "o3-mini / alt persona (Analyst B)",
+      ...(analystCActive && analystC ? ["o3-mini (Analyst C — Revenue Aggregator)"] : []),
     ],
     failedRoles: phase2FailedRoles,
     confidenceBand,
