@@ -198,6 +198,7 @@ async function generateDraftAnthropic(
 async function generateDraftAnalystC(
   context: DebateContext,
   evidencePack: MarketScanEvidence | undefined,
+  hasVendorRevenueData: boolean,
   openaiKey: string,
   openaiBaseUrl: string | undefined,
   attempt: number
@@ -205,7 +206,10 @@ async function generateDraftAnalystC(
   const client = new OpenAI({ apiKey: openaiKey, baseURL: openaiBaseUrl });
   const contextStr = buildContextString(context);
   const evidenceStr = formatEvidencePackForPrompt(evidencePack);
-  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your supply-side revenue rollup forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-c". Use the vendor revenue data in the Market Scan Evidence above as your primary input for the rollup. If vendor revenue data is absent from the evidence, estimate from your knowledge of major vendor earnings for this market.${constrainedRetryHint(attempt)}`;
+  const vendorRevenueInstruction = hasVendorRevenueData
+    ? `Use the "Top vendor revenues by market segment" section in the Market Scan Evidence above as your primary input for the supply-side rollup. Cite it explicitly in your methodology and baseYearConstruction fields.`
+    : `NOTE: No vendor revenue scan data was collected for this market. You MUST estimate vendor revenues from your training knowledge of major vendor earnings disclosures for this market. Make this explicit in your methodology field — write "Estimating from training knowledge (no scan evidence available)".`;
+  const userPrompt = `MARKET CONTEXT:\n${contextStr}\n${evidenceStr}\nProduce your supply-side revenue rollup forecast draft matching this JSON schema:\n${DRAFT_SCHEMA_DESCRIPTION}\n\nSet "modelLabel" to "analyst-c". ${vendorRevenueInstruction}${constrainedRetryHint(attempt)}`;
 
   const response = await client.chat.completions.create({
     model: "o3-mini",
@@ -230,6 +234,10 @@ export interface Phase31Result {
   analystC?: ForecastDraft;
   usedFallback: boolean;
   analystCActive: boolean;
+  /** Whether vendor_revenues scan data was available when Analyst C ran.
+   *  False means Analyst C fell back to training knowledge — callers should
+   *  surface this as a warning in the SSE stream and audit log. */
+  analystCHasVendorRevenueData: boolean;
 }
 
 export async function runPhase31(
@@ -244,6 +252,7 @@ export async function runPhase31(
 
   const effectiveMarketType = marketType ?? context.marketType ?? "software_saas";
   const analystCActive = effectiveMarketType === "hardware_infrastructure" || effectiveMarketType === "hybrid";
+  const hasVendorRevenueData = evidencePack?.hasVendorRevenueData ?? false;
 
   const [analystA, analystBOrFallback, analystCResult] = await Promise.all([
     withRetry((attempt) => generateDraftOpenAI("analyst-a", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
@@ -255,7 +264,7 @@ export async function runPhase31(
           )
       : withRetry((attempt) => generateDraftOpenAI("analyst-b", context, evidencePack, openaiKey, openaiBaseUrl, attempt)),
     analystCActive
-      ? withRetry((attempt) => generateDraftAnalystC(context, evidencePack, openaiKey, openaiBaseUrl, attempt))
+      ? withRetry((attempt) => generateDraftAnalystC(context, evidencePack, hasVendorRevenueData, openaiKey, openaiBaseUrl, attempt))
           .catch((err) => {
             console.warn("[Phase3-1] Analyst-C (Revenue Aggregator) failed after retries:", err.message, "— continuing without it");
             return undefined;
@@ -271,5 +280,6 @@ export async function runPhase31(
     analystC: analystCResult ?? undefined,
     usedFallback,
     analystCActive,
+    analystCHasVendorRevenueData: hasVendorRevenueData,
   };
 }

@@ -73,6 +73,9 @@ export interface MarketScanEvidence {
   findings: ScanFinding[];
   rawNotes: string;
   failedTopics: string[];
+  /** True when vendor_revenues topic returned ≥1 bullet.
+   *  False means Analyst C must fall back to training knowledge. */
+  hasVendorRevenueData: boolean;
 }
 
 // ── Scan topics ────────────────────────────────────────────────────────────
@@ -238,6 +241,7 @@ export async function runMarketScan(
       findings: [],
       rawNotes: "",
       failedTopics: topics.map((t) => t.key),
+      hasVendorRevenueData: false,
     };
   }
 
@@ -262,12 +266,16 @@ export async function runMarketScan(
     }
   }
 
+  const vendorRevenueFinding = findings.find(f => f.topic === VENDOR_REVENUES_TOPIC.label);
+  const hasVendorRevenueData = (vendorRevenueFinding?.bullets.length ?? 0) >= 1;
+
   return {
     performed: findings.length > 0,
     generatedAt: new Date().toISOString(),
     findings,
     rawNotes: rawParts.join("\n\n"),
     failedTopics,
+    hasVendorRevenueData,
   };
 }
 

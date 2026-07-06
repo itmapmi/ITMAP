@@ -143,6 +143,12 @@ export async function runDebate(
     analystB = result.analystB;
     analystC = result.analystC;
     analystCActive = result.analystCActive;
+    const analystCHasVendorRevenueData = result.analystCHasVendorRevenueData;
+
+    // Extract vendor revenue bullets from the evidence pack for audit provenance
+    const vendorRevenueBulletsUsed = evidencePack?.findings
+      .find(f => f.topic === "Top vendor revenues by market segment")
+      ?.bullets ?? [];
 
     // Per-model-call audit entries (granular provenance)
     await writeAuditEntry(forecastId, "draft_generated", "system", {
@@ -170,6 +176,9 @@ export async function runDebate(
         marketSizeBaseYear: analystC.marketSizeBaseYear,
         assumptionCount: analystC.assumptions.length,
         segmentCount: analystC.segments.length,
+        hasVendorRevenueData: analystCHasVendorRevenueData,
+        dataSource: analystCHasVendorRevenueData ? "scan_evidence" : "training_knowledge",
+        vendorRevenueBulletsUsed: analystCHasVendorRevenueData ? vendorRevenueBulletsUsed : [],
       }).catch(() => {});
     }
 
@@ -189,7 +198,18 @@ export async function runDebate(
     progress(1, `Analyst-A (o3-mini): market size ${context.boundary.currency}${analystA.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystA.assumptions.length} assumptions`);
     progress(1, `Analyst-B (${anthropicKey ? "Claude Sonnet" : "GPT-4o Alt"}): market size ${context.boundary.currency}${analystB.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystB.assumptions.length} assumptions`);
     if (analystC) {
-      progress(1, `Analyst-C (Revenue Aggregator / o3-mini): market size ${context.boundary.currency}${analystC.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | vendor rollup methodology`);
+      const analystCDataNote = analystCHasVendorRevenueData
+        ? `using scan evidence (${vendorRevenueBulletsUsed.length} vendor revenue bullets)`
+        : `estimating from training knowledge (no scan data)`;
+      progress(1, `Analyst-C (Revenue Aggregator / o3-mini): market size ${context.boundary.currency}${analystC.marketSizeBaseYear.toLocaleString()} ${context.boundary.unitOfMeasurement} | ${analystCDataNote}`);
+      if (!analystCHasVendorRevenueData) {
+        send({
+          type: "phase_warning",
+          phase: 1,
+          message: "Analyst C (Revenue Aggregator): no vendor revenue scan data was collected — market size estimate derived from training knowledge, not primary financial disclosures. Treat with lower confidence.",
+          analystC: "training_knowledge_fallback",
+        });
+      }
     }
 
     send({ type: "phase_complete", phase: 1, summary: `${draftCount} independent drafts generated. Market size range: ${context.boundary.currency}${Math.min(...marketSizes).toLocaleString()}–${context.boundary.currency}${Math.max(...marketSizes).toLocaleString()} ${context.boundary.unitOfMeasurement}` });
