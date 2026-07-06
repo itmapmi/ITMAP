@@ -963,16 +963,16 @@ export default function BattleCardDetailPage() {
 
         {/* Main content tabs */}
         <Tabs defaultValue="product">
-          <TabsList className="bg-slate-900 border border-white/5 mb-4">
-            <TabsTrigger value="product" className="data-[state=active]:bg-white/10">
+          <TabsList className="bg-slate-800/80 border border-white/10 mb-4">
+            <TabsTrigger value="product" className="text-slate-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
               Product Features
-              <span className="ml-1.5 text-[10px] opacity-60">{visibleProductCats.length}</span>
+              <span className="ml-1.5 text-[10px] opacity-70">{visibleProductCats.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="ecosystem" className="data-[state=active]:bg-white/10">
+            <TabsTrigger value="ecosystem" className="text-slate-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
               Ecosystem
-              <span className="ml-1.5 text-[10px] opacity-60">{visibleEcoCats.length}</span>
+              <span className="ml-1.5 text-[10px] opacity-70">{visibleEcoCats.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="criteria" className="data-[state=active]:bg-white/10">
+            <TabsTrigger value="criteria" className="text-slate-400 data-[state=active]:bg-white/10 data-[state=active]:text-white">
               Criteria Scores
             </TabsTrigger>
           </TabsList>
