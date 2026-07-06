@@ -517,29 +517,47 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
 
       const NAVY = "020617";
       const CYAN = "22D3EE";
-      const VIOLET = "7C3AED";
       const WHITE = "FFFFFF";
       const MUTED = "94A3B8";
       const SLATE = "1E293B";
-      const AMBER = "F59E0B";
-      const BLUE = "3B82F6";
       const EMERALD = "10B981";
+
+      // Harvey ball SVG → base64 data URL for pptxgenjs addImage
+      function harveyBallDataUrl(level: number): string {
+        const cx = 10, cy = 10, r = 8;
+        const stroke = "#64748b";
+        const fill = "#22d3ee";
+        let inner = "";
+        if (level <= 0) {
+          inner = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
+        } else if (level >= 4) {
+          inner = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
+        } else {
+          const startAngle = -Math.PI / 2;
+          const endAngle = startAngle + (level / 4) * 2 * Math.PI;
+          const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+          const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+          const la = level > 2 ? 1 : 0;
+          const path = `M${cx} ${cy} L${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 ${la} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}Z`;
+          inner = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="1.5"/><path d="${path}" fill="${fill}"/>`;
+        }
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 20 20">${inner}</svg>`;
+        return "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+      }
 
       const prs = new pptxgen();
       prs.layout = "LAYOUT_WIDE";
       prs.title = `${focalName} Battle Card — ${marketName}`;
 
-      // Title slide
+      // ── Title slide ──────────────────────────────────────────────────────
       const titleSlide = prs.addSlide();
       titleSlide.background = { fill: NAVY };
-
       const logoPath = require("path").join(process.cwd(), "attached_assets/DCIG-Logo-WHITE_1781593294046.png");
       try {
         titleSlide.addImage({ path: logoPath, x: 5.15, y: 0.25, w: 3.0, h: 0.9 });
       } catch {
         titleSlide.addText("DCIG", { x: 5.5, y: 0.3, w: 2.5, h: 0.6, fontSize: 20, bold: true, color: CYAN, align: "center" });
       }
-
       titleSlide.addText("Battle Card", { x: 0.5, y: 1.2, w: 12, h: 0.5, fontSize: 14, color: MUTED, align: "center" });
       titleSlide.addText(focalName, { x: 0.5, y: 1.7, w: 12, h: 1.0, fontSize: 40, bold: true, color: WHITE, align: "center" });
       titleSlide.addText(`vs  ${body.vendorNames.filter(n => n !== focalName).join("  ·  ")}`, { x: 0.5, y: 2.75, w: 12, h: 0.5, fontSize: 16, color: CYAN, align: "center" });
@@ -547,22 +565,21 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
       titleSlide.addText(`dcig.com  ·  ${today}`, { x: 0.5, y: 3.8, w: 12, h: 0.35, fontSize: 11, color: MUTED, align: "center" });
       titleSlide.addShape(prs.ShapeType.line, { x: 2, y: 4.25, w: 9, h: 0, line: { color: CYAN, width: 2 } });
 
-      // Win summary slide
+      // ── Win summary slide ────────────────────────────────────────────────
       if (body.aiSummary && body.aiSummary.topBullets.length > 0) {
         const summarySlide = prs.addSlide();
         summarySlide.background = { fill: NAVY };
         summarySlide.addText(`Why ${focalName} Leads`, { x: 0.4, y: 0.2, w: 12, h: 0.6, fontSize: 24, bold: true, color: CYAN });
         summarySlide.addText(`${marketName}  ·  vs ${body.vendorNames.filter(n => n !== focalName).join(", ")}`, { x: 0.4, y: 0.8, w: 12, h: 0.3, fontSize: 10, color: MUTED });
         summarySlide.addShape(prs.ShapeType.line, { x: 0.4, y: 1.15, w: 12.5, h: 0, line: { color: SLATE, width: 1 } });
-
-        const bulletRows: pptxgen.TextProps[] = body.aiSummary.topBullets.map((b, i) => ({
-          text: `${["▶", "▶", "▶", "▶", "▶"][i] ?? "▶"}  ${b}`,
+        const bulletRows: pptxgen.TextProps[] = body.aiSummary.topBullets.map(b => ({
+          text: `▶  ${b}`,
           options: { fontSize: 16, color: WHITE, bullet: false, paraSpaceAfter: 10 },
         }));
         summarySlide.addText(bulletRows, { x: 0.6, y: 1.4, w: 11.8, h: 4.8, valign: "top" });
       }
 
-      // One slide per section
+      // ── One slide per section ────────────────────────────────────────────
       for (const section of body.sections) {
         const slide = prs.addSlide();
         slide.background = { fill: NAVY };
@@ -571,11 +588,10 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
         slide.addText(body.vendorNames.join("  ·  "), { x: 0.3, y: 0.68, w: 12, h: 0.28, fontSize: 9, color: MUTED });
         slide.addShape(prs.ShapeType.line, { x: 0.3, y: 1.0, w: 12.7, h: 0, line: { color: SLATE, width: 1 } });
 
-        // Category insight
         const insight = body.aiSummary?.categoryInsights?.[section.categoryName ?? ""] ?? body.aiSummary?.categoryInsights?.[section.title];
         let tableStartY = 1.05;
         if (insight) {
-          slide.addText(insight, { x: 0.3, y: 1.05, w: 12.7, h: 0.4, fontSize: 9, color: "94A3B8", italic: true });
+          slide.addText(insight, { x: 0.3, y: 1.05, w: 12.7, h: 0.4, fontSize: 9, color: MUTED, italic: true });
           tableStartY = 1.5;
         }
 
@@ -598,6 +614,11 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
         ];
 
         const tableRows: pptxgen.TableRow[] = [headerRow];
+        const maxDataRows = Math.min(section.rows.length, 16);
+        const totalTableRows = 1 + maxDataRows + (section.rows.length > 16 ? 1 : 0);
+        const tableHeight = insight ? 4.8 : 5.3;
+        // Fixed row height so we can calculate Harvey ball overlay positions precisely
+        const rowH = Math.min(0.45, tableHeight / totalTableRows);
 
         for (const row of section.rows.slice(0, 16)) {
           const nameCell: pptxgen.TableCell = {
@@ -616,12 +637,10 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
                 options: { fontSize: 8.5, color: isFocal ? EMERALD : CYAN, align: "center" as const, bold: isFocal },
               };
             } else {
-              const level = Math.min(4, Math.max(0, typeof val === "number" ? val : parseInt(String(val)) || 0));
-              const symbols = ["○", "◔", "◑", "◕", "●"];
-              const colors = [MUTED, AMBER, AMBER, isFocal ? EMERALD : CYAN, isFocal ? EMERALD : CYAN];
+              // Empty text — Harvey ball SVG image is overlaid after the table
               return {
-                text: `${symbols[level]} ${harveyBallLabel(level)}`,
-                options: { fontSize: 8, color: colors[level], align: "center" as const },
+                text: "",
+                options: { align: "center" as const },
               };
             }
           });
@@ -629,28 +648,72 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
         }
 
         if (section.rows.length > 16) {
-          const moreRow: pptxgen.TableRow = [
+          tableRows.push([
             { text: `… and ${section.rows.length - 16} more rows`, options: { color: MUTED, fontSize: 7, italic: true } },
             ...body.vendorIds.map(() => ({ text: "", options: {} as pptxgen.TableCellProps })),
-          ];
-          tableRows.push(moreRow);
+          ]);
         }
 
-        const tableHeight = insight ? 4.8 : 5.3;
         slide.addTable(tableRows, {
           x: 0.3, y: tableStartY, w: 12.7, h: tableHeight,
           colW,
+          rowH,
           border: { type: "solid", color: SLATE, pt: 0.5 },
           fill: { color: NAVY },
           fontSize: 7.5,
         });
+
+        // ── Harvey ball SVG overlays (product/ecosystem sections only) ────
+        if (section.type !== "criteria") {
+          const imgSize = Math.min(0.28, rowH * 0.72); // Harvey ball image sized to fit row
+          const imgOffset = (rowH - imgSize) / 2;
+          for (let rowIdx = 0; rowIdx < section.rows.slice(0, 16).length; rowIdx++) {
+            const row = section.rows[rowIdx];
+            // y: skip header row (rowH * 1) then each data row
+            const imgY = tableStartY + rowH * (rowIdx + 1) + imgOffset;
+            for (let vidIdx = 0; vidIdx < body.vendorIds.length; vidIdx++) {
+              const vid = body.vendorIds[vidIdx];
+              const cell = row.cells.find(c => c.vendorId === vid);
+              const val = cell?.value ?? 0;
+              const level = Math.min(4, Math.max(0, typeof val === "number" ? val : parseInt(String(val)) || 0));
+              const cellLeft = 0.3 + featureColW + vidIdx * vendorColW;
+              const imgX = cellLeft + vendorColW / 2 - imgSize / 2;
+              slide.addImage({ data: harveyBallDataUrl(level), x: imgX, y: imgY, w: imgSize, h: imgSize });
+            }
+          }
+        }
+
+        // ── Slide notes: full commentary for every feature + vendor ──────
+        const notesLines: string[] = [`${section.title} — Speaker Notes\n`];
+        let hasNotes = false;
+        for (const row of section.rows) {
+          const rowNotes = body.vendorIds
+            .map(vid => {
+              const cell = row.cells.find(c => c.vendorId === vid);
+              if (!cell?.notes) return null;
+              const vn = body.vendorNames[body.vendorIds.indexOf(vid)] ?? vid;
+              return `  ${vn}: ${cell.notes}`;
+            })
+            .filter(Boolean);
+          if (rowNotes.length > 0) {
+            hasNotes = true;
+            notesLines.push(`${row.name}:`);
+            notesLines.push(...rowNotes as string[]);
+            notesLines.push("");
+          }
+        }
+        if (!hasNotes) {
+          notesLines.push("(No commentary recorded for this section.)");
+        }
+        slide.addNotes(notesLines.join("\n"));
       }
 
-      const buf: ArrayBuffer = await prs.write({ outputType: "arraybuffer" });
+      // ── Write and send ───────────────────────────────────────────────────
+      const buf = await prs.write("nodebuffer") as Buffer;
       const fileName = `battle-card-${focalName.replace(/\s+/g, "-").toLowerCase()}-vs-competition.pptx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-      res.send(Buffer.from(buf));
+      res.send(buf);
     } catch (err: any) {
       if (err?.name === "ZodError") return res.status(400).json({ error: err.message });
       console.error("[BattleCards] PPTX export error:", err);
