@@ -3,30 +3,35 @@
  *
  * ISOLATION ASSERTION: this file must never import from server/news/suggestions/
  * or any vendor scoring pipeline. CVE events are intelligence-only and must
- * never trigger score adjustments. Score pipeline imports are prohibited here.
+ * never trigger score adjustments.
  *
- * Feature gate: BOTH flags must be permissive before any work is done:
- *   FEATURE_CVE_MODULE  !== 'false'  (module enabled; default = on)
- *   FEATURE_CVE_NEWS_EVENTS === 'true'  (feed events; default = off, opt-in)
+ * Feature gate (both required):
+ *   FEATURE_CVE_MODULE  !== 'false'   (CVE module; default = on)
+ *   FEATURE_CVE_NEWS_EVENTS === 'true' (feed events; default = off, opt-in)
  *
- * Precedence (a CVE fires at most one event type per vendor):
+ * Precedence (one event type per CVE per vendor):
  *   kev_added > critical_published > severity_escalated
  *
- * epss_spike is intentionally omitted in v1 (FEATURE_CVE_EPSS_EVENTS, default off).
+ * severity_escalated only fires when lastModified > published + 1 day
+ * (proxy for a post-publication CVSS rescore). severityBefore is set to
+ * 'UNSCORED' as the best-effort prior state.
  *
- * Daily cap (CVE_FEED_DAILY_CAP, default 5): when a vendor has more new qualifying
- * CVEs than the cap in the current sync window, a single daily_digest cve_event row
- * is inserted instead of discrete rows. The publisher reads both types and translates
- * them into vendor_signals entries.
+ * Sync-window scoping (per source):
+ *   CISA_KEV   → candidates scoped by kev.syncedAt >= now()-26h
+ *                (catches existing NVD CVEs newly added to KEV)
+ *   NVD        → candidates scoped by cve.syncedAt >= now()-26h
+ *   FIRST_EPSS → same as NVD (EPSS-specific events off in v1)
  *
- * Scope: only CVEs with syncedAt within the last 26 hours are considered.
- * This ensures emissions are scoped to the current sync cycle and prevents
- * unbounded historical backfill on each run.
+ * Daily cap (CVE_FEED_DAILY_CAP, default 5):
+ *   ≤ cap → discrete cve_event rows inserted (publisher picks them up).
+ *   > cap → digest written directly to vendor_signals from the exact
+ *            overflow candidate set (no round-trip through publisher,
+ *            ensuring payload accuracy). Market fanout applied here.
  */
 
 import { db } from '../../db';
-import { cve, cveCpe, kev, vendors, vendorCpeCrosswalk, cveEvent } from '@shared/schema';
-import { eq, and, inArray, sql, lte } from 'drizzle-orm';
+import { cve, cveCpe, kev, epss, vendors, vendorCpeCrosswalk, cveEvent, vendorSignals } from '@shared/schema';
+import { eq, and, inArray, gte, sql } from 'drizzle-orm';
 
 const CVE_FEED_DAILY_CAP = parseInt(process.env.CVE_FEED_DAILY_CAP ?? '5', 10);
 
@@ -40,29 +45,49 @@ interface CveCandidate {
   published: Date | null;
 }
 
-/**
- * Resolve event type for a CVE using precedence rules.
- * severity_escalated only fires when lastModified significantly exceeds published
- * (proxy for an actual re-scoring event after initial publication).
- */
 function resolveEventType(c: CveCandidate): DiscreteEventType | null {
   if (c.isKev) return 'kev_added';
   if (c.severity === 'CRITICAL') return 'critical_published';
   if (c.severity === 'HIGH') {
-    // Only emit severity_escalated if the CVE was updated >1 day after publication
-    // (indicates a severity score was changed/added post-publication)
+    // severity_escalated only fires when the CVE was re-scored after publication
     if (c.lastModified && c.published) {
-      const diffMs = c.lastModified.getTime() - c.published.getTime();
       const oneDayMs = 24 * 60 * 60 * 1000;
-      if (diffMs > oneDayMs) return 'severity_escalated';
+      if (c.lastModified.getTime() - c.published.getTime() > oneDayMs) {
+        return 'severity_escalated';
+      }
     }
-    return null; // HIGH with no detectable escalation: skip in v1
+    return null;
   }
   return null;
 }
 
+/** Find all (vendorId, marketId, vendorName) pairs that should receive signals for this vendor. */
+async function resolveMarketTargets(
+  primaryVendorId: string,
+): Promise<Array<{ vendorId: string; marketId: string; vendorName: string }>> {
+  const [primaryVendor] = await db
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId, canonicalVendorId: vendors.canonicalVendorId })
+    .from(vendors)
+    .where(eq(vendors.id, primaryVendorId))
+    .limit(1);
+
+  if (!primaryVendor) return [];
+
+  if (!primaryVendor.canonicalVendorId) {
+    return [{ vendorId: primaryVendor.id, marketId: primaryVendor.marketId, vendorName: primaryVendor.name }];
+  }
+
+  const siblings = await db
+    .select({ id: vendors.id, name: vendors.name, marketId: vendors.marketId })
+    .from(vendors)
+    .where(eq(vendors.canonicalVendorId, primaryVendor.canonicalVendorId));
+
+  return siblings.length
+    ? siblings.map(v => ({ vendorId: v.id, marketId: v.marketId, vendorName: v.name }))
+    : [{ vendorId: primaryVendor.id, marketId: primaryVendor.marketId, vendorName: primaryVendor.name }];
+}
+
 export async function runCveEventEmitter(source: 'NVD' | 'CISA_KEV' | 'FIRST_EPSS' = 'NVD'): Promise<void> {
-  // Feature gate: opt-in only. FEATURE_CVE_NEWS_EVENTS must be explicitly 'true'.
   if (process.env.FEATURE_CVE_MODULE === 'false') {
     console.log('[CVE Emitter] FEATURE_CVE_MODULE=false, skipping');
     return;
@@ -72,43 +97,37 @@ export async function runCveEventEmitter(source: 'NVD' | 'CISA_KEV' | 'FIRST_EPS
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
-  // Only emit for CVEs synced in the last 26 hours (current sync window)
-  const syncedSince = new Date(Date.now() - 26 * 60 * 60 * 1000);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const windowStart = new Date(Date.now() - 26 * 60 * 60 * 1000);
 
-  // Get all vendors with confirmed crosswalk mappings
+  // All vendors with confirmed crosswalk mappings
   const crosswalkRows = await db
     .select({
       vendorId: vendorCpeCrosswalk.vendorId,
       cpeVendor: vendorCpeCrosswalk.cpeVendor,
-      marketId: vendors.marketId,
     })
     .from(vendorCpeCrosswalk)
-    .innerJoin(vendors, eq(vendorCpeCrosswalk.vendorId, vendors.id))
     .where(eq(vendorCpeCrosswalk.confidence, 'confirmed'));
 
   if (!crosswalkRows.length) return;
 
-  // Group by vendorId → { cpeTokens, marketId }
-  const vendorMap = new Map<string, { cpeTokens: string[]; marketId: string }>();
+  const vendorMap = new Map<string, string[]>(); // vendorId → cpeTokens
   for (const row of crosswalkRows) {
     if (!row.vendorId) continue;
-    if (!vendorMap.has(row.vendorId)) {
-      vendorMap.set(row.vendorId, { cpeTokens: [], marketId: row.marketId });
-    }
-    vendorMap.get(row.vendorId)!.cpeTokens.push(row.cpeVendor);
+    if (!vendorMap.has(row.vendorId)) vendorMap.set(row.vendorId, []);
+    vendorMap.get(row.vendorId)!.push(row.cpeVendor);
   }
 
   let totalDiscrete = 0;
   let totalDigests = 0;
 
-  for (const [vendorId, { cpeTokens, marketId }] of vendorMap) {
+  for (const [vendorId, cpeTokens] of vendorMap) {
     try {
       const { discrete, digest } = await emitEventsForVendor(
         vendorId,
         cpeTokens,
         todayStr,
-        syncedSince,
+        windowStart,
         source,
       );
       totalDiscrete += discrete;
@@ -119,7 +138,7 @@ export async function runCveEventEmitter(source: 'NVD' | 'CISA_KEV' | 'FIRST_EPS
   }
 
   if (totalDiscrete || totalDigests) {
-    console.log(`[CVE Emitter] Done: ${totalDiscrete} discrete events, ${totalDigests} digest events emitted`);
+    console.log(`[CVE Emitter] Done: ${totalDiscrete} discrete events, ${totalDigests} digest events`);
   }
 }
 
@@ -127,41 +146,55 @@ async function emitEventsForVendor(
   vendorId: string,
   cpeTokens: string[],
   todayStr: string,
-  syncedSince: Date,
+  windowStart: Date,
   source: 'NVD' | 'CISA_KEV' | 'FIRST_EPSS',
 ): Promise<{ discrete: number; digest: number }> {
-  // Get CVE IDs linked to this vendor, scoped to recent sync window
-  const cveIdRows = await db
-    .selectDistinct({ cveId: cveCpe.cveId })
-    .from(cveCpe)
-    .innerJoin(cve, eq(cveCpe.cveId, cve.cveId))
-    .where(
-      and(
-        inArray(cveCpe.cpeVendor, cpeTokens),
-        // Only CVEs that were synced in the current window
-        sql`${cve.syncedAt} >= ${syncedSince}`,
-      ),
-    );
+  let cveIdList: string[];
 
-  const cveIdList = cveIdRows.map(r => r.cveId);
+  if (source === 'CISA_KEV') {
+    // For KEV syncs: scope by kev.syncedAt so we catch CVEs recently added to KEV
+    // regardless of when their NVD record was last updated.
+    const rows = await db
+      .selectDistinct({ cveId: cveCpe.cveId })
+      .from(cveCpe)
+      .innerJoin(kev, eq(cveCpe.cveId, kev.cveId))
+      .where(
+        and(
+          inArray(cveCpe.cpeVendor, cpeTokens),
+          gte(kev.syncedAt, windowStart),
+        ),
+      );
+    cveIdList = rows.map(r => r.cveId);
+  } else {
+    // NVD and EPSS: scope by cve.syncedAt (recently published/modified CVEs)
+    const rows = await db
+      .selectDistinct({ cveId: cveCpe.cveId })
+      .from(cveCpe)
+      .innerJoin(cve, eq(cveCpe.cveId, cve.cveId))
+      .where(
+        and(
+          inArray(cveCpe.cpeVendor, cpeTokens),
+          gte(cve.syncedAt, windowStart),
+        ),
+      );
+    cveIdList = rows.map(r => r.cveId);
+  }
+
   if (!cveIdList.length) return { discrete: 0, digest: 0 };
 
-  // Fetch full CVE details + KEV status in parallel
+  // Fetch CVE details + KEV membership in parallel
   const [cveRows, kevRows] = await Promise.all([
     db.select({
       cveId: cve.cveId,
       cvssSeverity: cve.cvssSeverity,
       lastModified: cve.lastModified,
       published: cve.published,
-    })
-      .from(cve)
-      .where(inArray(cve.cveId, cveIdList)),
+    }).from(cve).where(inArray(cve.cveId, cveIdList)),
     db.select({ cveId: kev.cveId }).from(kev).where(inArray(kev.cveId, cveIdList)),
   ]);
 
   const kevSet = new Set(kevRows.map(r => r.cveId));
 
-  // Build candidates and apply precedence + severity-escalation filter
   const candidates: CveCandidate[] = cveRows.map(c => ({
     cveId: c.cveId,
     severity: c.cvssSeverity,
@@ -172,7 +205,7 @@ async function emitEventsForVendor(
 
   if (!candidates.length) return { discrete: 0, digest: 0 };
 
-  // Filter out CVEs already in cve_event for this vendor (any event type)
+  // Filter already-emitted events for this vendor
   const existingEvents = await db
     .select({ cveId: cveEvent.cveId, eventType: cveEvent.eventType })
     .from(cveEvent)
@@ -193,17 +226,15 @@ async function emitEventsForVendor(
   if (!newCandidates.length) return { discrete: 0, digest: 0 };
 
   if (newCandidates.length <= CVE_FEED_DAILY_CAP) {
-    // Emit discrete events → cve_event table (publisher reads + publishes)
+    // Discrete events → cve_event table → publisher handles fan-out + LLM
     for (const candidate of newCandidates) {
       const eventType = resolveEventType(candidate)!;
       const eventSource = candidate.isKev ? 'CISA_KEV' : source;
-      const severityBefore = eventType === 'severity_escalated' ? 'UNSCORED' : null;
-
       await db.insert(cveEvent).values({
         cveId: candidate.cveId,
         vendorId,
         eventType,
-        severityBefore,
+        severityBefore: eventType === 'severity_escalated' ? 'UNSCORED' : null,
         severityAfter: candidate.severity,
         triggeredAt: new Date(),
         source: eventSource,
@@ -213,38 +244,72 @@ async function emitEventsForVendor(
     return { discrete: newCandidates.length, digest: 0 };
   }
 
-  // Overflow → daily digest cve_event row
-  // Pre-check: is there already a digest event for this vendor today?
+  // Overflow → digest written directly to vendor_signals from exact candidate set.
+  // Fan out across all markets the vendor appears in via canonicalVendorId.
+  const targets = await resolveMarketTargets(vendorId);
+  if (!targets.length) return { discrete: 0, digest: 0 };
+
+  // Idempotency: check if a digest already exists for this vendor today
   const existingDigest = await db
-    .select({ id: cveEvent.id })
-    .from(cveEvent)
+    .select({ id: vendorSignals.id })
+    .from(vendorSignals)
     .where(
       and(
-        eq(cveEvent.vendorId, vendorId),
-        eq(cveEvent.eventType, 'daily_digest'),
-        eq(cveEvent.digestGroupDate, todayStr),
+        eq(vendorSignals.vendorId, vendorId),
+        eq(vendorSignals.sourceType, 'cve'),
+        sql`${vendorSignals.rawData}->>'eventType' = 'daily_digest'`,
+        sql`${vendorSignals.rawData}->>'digestGroupDate' = ${todayStr}`,
       ),
     )
     .limit(1);
 
-  if (existingDigest.length > 0) {
-    return { discrete: 0, digest: 0 }; // Already emitted digest for today
-  }
+  if (existingDigest.length > 0) return { discrete: 0, digest: 0 };
 
-  // Use the first CVE alphabetically as the required FK anchor
-  const representativeCveId = [...newCandidates].sort((a, b) => a.cveId.localeCompare(b.cveId))[0].cveId;
+  // Build digest payload from the exact overflow candidate set
+  const kevCount = newCandidates.filter(c => c.isKev).length;
+  const critCount = newCandidates.filter(c => !c.isKev && c.severity === 'CRITICAL').length;
+  const highCount = newCandidates.filter(c => !c.isKev && c.severity === 'HIGH').length;
+  const totalCount = newCandidates.length;
+  const cveIds = newCandidates.slice(0, 20).map(c => c.cveId);
 
-  await db.insert(cveEvent).values({
-    cveId: representativeCveId,
-    vendorId,
+  const summaryParts: string[] = [];
+  if (kevCount > 0) summaryParts.push(`${kevCount} actively exploited (KEV)`);
+  if (critCount > 0) summaryParts.push(`${critCount} critical`);
+  if (highCount > 0) summaryParts.push(`${highCount} high`);
+
+  const vendorName = targets[0].vendorName;
+  const title = `${totalCount} new vulnerabilities for ${vendorName} (${todayStr})`;
+  const content = summaryParts.length > 0
+    ? `Includes: ${summaryParts.join(', ')}.`
+    : `${totalCount} new vulnerabilities published.`;
+  const impactLabel = kevCount > 0 || critCount > 0 ? 'HIGH' : 'MEDIUM';
+  const rawData = {
     eventType: 'daily_digest',
-    severityBefore: null,
-    severityAfter: null,
-    triggeredAt: new Date(),
-    source,
-    publishedToFeed: false,
     digestGroupDate: todayStr,
-  }).onConflictDoNothing(); // safety net in case of concurrent run
+    totalCount,
+    kevCount,
+    critCount,
+    highCount,
+    cveIds,
+  };
+
+  for (const target of targets) {
+    await db.insert(vendorSignals).values({
+      vendorId: target.vendorId,
+      marketId: target.marketId,
+      sourceType: 'cve',
+      title,
+      content,
+      url: null,
+      sentiment: impactLabel === 'HIGH' ? 'negative' : 'neutral',
+      sentimentScore: null,
+      impactLabel,
+      fedIntoSuggestion: false,
+      aiSuggestionId: null,
+      signalDate: new Date(),
+      rawData,
+    });
+  }
 
   return { discrete: 0, digest: 1 };
 }
