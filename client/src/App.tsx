@@ -45,6 +45,7 @@ import RfpSessionDetailPage from "@/pages/rfp-responder/session-detail";
 import BattleCardsIndexPage from "@/pages/battle-cards/index";
 import BattleCardDetailPage from "@/pages/battle-cards/detail";
 import MyToolsPage from "@/pages/me/tools";
+import SecurityPage from "@/pages/security/index";
 
 function ProtectedRoute({ component: Component, requireAdmin = false, buyerOnly = false }: {
   component: React.ComponentType;
@@ -113,6 +114,7 @@ function Router() {
         <Route path="/rfp-responder/sessions/:id" component={() => <ProtectedRoute component={RfpSessionDetailPage} />} />
         <Route path="/battle-cards" component={() => <ProtectedRoute component={BattleCardsIndexPage} />} />
         <Route path="/battle-cards/:marketId" component={() => <ProtectedRoute component={BattleCardDetailPage} />} />
+        <Route path="/security" component={() => <ProtectedRoute component={SecurityPage} />} />
         <Route path="/lead-gen/me/audience/:marketId/:endUserId" component={() => <ProtectedRoute component={LeadGenAudienceDetailPage} />} />
         <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />

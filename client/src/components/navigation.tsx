@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare } from "lucide-react";
+import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -80,9 +80,10 @@ export default function Navigation() {
     { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
     { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
     { href: "/datasheets", label: "Datasheets", featureKey: "datasheets" },
+    { href: "/security", label: "CVE Intelligence", featureKey: "cve_intelligence" },
   ];
 
-  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets") || location.startsWith("/lead-gen/me");
+  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets") || location.startsWith("/lead-gen/me") || location.startsWith("/security");
   const isIntelligenceActive = isForecastBuilderActive || isMarketBuilderActive;
   const intelligenceAllLocked = intelligenceItems.every(i => !hasFeature(i.featureKey));
   const toolsAllLocked = toolsItems.every(i => !hasFeature(i.featureKey));
