@@ -15,16 +15,17 @@
 export const SALES_CONTACT_EMAIL = "sales@dcig.com";
 
 export const LOCKABLE_FEATURES = [
-  { key: "market_builder",   label: "Market Builder"   },
-  { key: "forecast_builder", label: "Forecast Builder" },
-  { key: "research_reports", label: "Research Reports" },
-  { key: "datasheets",       label: "Datasheets"       },
-  { key: "rfp",              label: "RFP Responder"    },
-  { key: "news",             label: "News"             },
-  { key: "intelligence_feed",label: "Intelligence Feed"},
-  { key: "battle_cards",     label: "Battle Cards"     },
-  { key: "lead_gen",         label: "Lead Generator"   },
-  { key: "fact_review",      label: "Fact Review"      },
+  { key: "market_builder",    label: "Market Builder"    },
+  { key: "forecast_builder",  label: "Forecast Builder"  },
+  { key: "research_reports",  label: "Research Reports"  },
+  { key: "datasheets",        label: "Datasheets"        },
+  { key: "rfp",               label: "RFP Responder"     },
+  { key: "news",              label: "News"              },
+  { key: "intelligence_feed", label: "Intelligence Feed" },
+  { key: "battle_cards",      label: "Battle Cards"      },
+  { key: "lead_gen",          label: "Lead Generator"    },
+  { key: "fact_review",       label: "Fact Review"       },
+  { key: "cve_intelligence",  label: "CVE Intelligence"  },
 ] as const;
 
 export type LockableFeatureKey = (typeof LOCKABLE_FEATURES)[number]["key"];
@@ -38,6 +39,7 @@ export const LOCKABLE_FEATURE_KEYS: LockableFeatureKey[] = LOCKABLE_FEATURES.map
 export const VENDOR_FREE_FEATURES: readonly LockableFeatureKey[] = [
   "news",
   "intelligence_feed",
+  "cve_intelligence",
 ] as const;
 
 export function isLockableFeatureKey(key: string): key is LockableFeatureKey {

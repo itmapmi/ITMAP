@@ -24,6 +24,7 @@ import DatasheetsAdmin from "@/components/admin/datasheets-admin";
 import { UserAccessAdmin } from "@/components/admin/user-access-admin";
 import { FactCheckFlagsAdmin } from "@/components/admin/fact-check-flags-admin";
 import { CanonicalVendorsAdmin } from "@/components/admin/canonical-vendors-admin";
+import { CveCrosswalkAdmin } from "@/components/admin/cve-crosswalk-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
@@ -181,6 +182,7 @@ export default function Admin() {
               Fact-Check
               <FactCheckBadge />
             </TabsTrigger>
+            <TabsTrigger value="cve-crosswalk">CVE Crosswalk</TabsTrigger>
           </TabsList>
 
           <TabsContent value="market-management" className="mt-6">
@@ -280,6 +282,10 @@ export default function Admin() {
 
           <TabsContent value="fact-check-flags" className="mt-6">
             <FactCheckFlagsAdmin />
+          </TabsContent>
+
+          <TabsContent value="cve-crosswalk" className="mt-6">
+            <CveCrosswalkAdmin />
           </TabsContent>
         </Tabs>
       </motion.div>

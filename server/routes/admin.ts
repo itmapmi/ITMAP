@@ -1398,6 +1398,93 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // ── CVE Intelligence — crosswalk + sync admin ────────────────────────────────
+
+  app.get("/api/admin/cve/crosswalk", requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("../db");
+      const { vendorCpeCrosswalk, vendors: vendorsTable } = await import("@shared/schema");
+      const { sql } = await import("drizzle-orm");
+      const rows = await db
+        .select({
+          cpeVendor: vendorCpeCrosswalk.cpeVendor,
+          vendorId: vendorCpeCrosswalk.vendorId,
+          confidence: vendorCpeCrosswalk.confidence,
+          mappedBy: vendorCpeCrosswalk.mappedBy,
+          reviewedAt: vendorCpeCrosswalk.reviewedAt,
+          notes: vendorCpeCrosswalk.notes,
+          suggestedVendorName: vendorsTable.name,
+        })
+        .from(vendorCpeCrosswalk)
+        .leftJoin(vendorsTable, sql`${vendorsTable.id} = ${vendorCpeCrosswalk.vendorId}`)
+        .orderBy(sql`case confidence when 'probable' then 0 when 'unreviewed' then 1 else 2 end, cpe_vendor`);
+      res.json(rows);
+    } catch (err) {
+      console.error("[cve-crosswalk] list error:", err);
+      res.status(500).json({ error: "Failed to load crosswalk" });
+    }
+  });
+
+  app.post("/api/admin/cve/crosswalk/:cpeVendor/confirm", requireAdmin, async (req, res) => {
+    try {
+      const { db } = await import("../db");
+      const { vendorCpeCrosswalk } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const { vendorId } = req.body;
+      if (!vendorId || typeof vendorId !== "string") return res.status(400).json({ error: "vendorId required" });
+      const [row] = await db.update(vendorCpeCrosswalk)
+        .set({ vendorId, confidence: "confirmed", mappedBy: "manual", reviewedAt: new Date() })
+        .where(eq(vendorCpeCrosswalk.cpeVendor, req.params.cpeVendor))
+        .returning();
+      if (!row) return res.status(404).json({ error: "Mapping not found" });
+      res.json(row);
+    } catch (err) {
+      console.error("[cve-crosswalk] confirm error:", err);
+      res.status(500).json({ error: "Failed to confirm mapping" });
+    }
+  });
+
+  app.delete("/api/admin/cve/crosswalk/:cpeVendor", requireAdmin, async (req, res) => {
+    try {
+      const { db } = await import("../db");
+      const { vendorCpeCrosswalk } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      await db.delete(vendorCpeCrosswalk).where(eq(vendorCpeCrosswalk.cpeVendor, req.params.cpeVendor));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[cve-crosswalk] delete error:", err);
+      res.status(500).json({ error: "Failed to remove mapping" });
+    }
+  });
+
+  app.get("/api/admin/cve/sync-runs", requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("../db");
+      const { syncRun } = await import("@shared/schema");
+      const { sql } = await import("drizzle-orm");
+      const rows = await db.select().from(syncRun).orderBy(sql`started_at DESC`).limit(20);
+      res.json(rows);
+    } catch (err) {
+      console.error("[cve-sync-runs] list error:", err);
+      res.status(500).json({ error: "Failed to load sync runs" });
+    }
+  });
+
+  app.post("/api/admin/cve/sync/nvd", requireAdmin, async (_req, res) => {
+    res.json({ ok: true, message: "NVD sync started in background" });
+    import("../cve/sync/nvd").then(m => m.runNvdSync()).catch(e => console.error("[CVE] Manual NVD sync failed:", e));
+  });
+
+  app.post("/api/admin/cve/sync/kev", requireAdmin, async (_req, res) => {
+    res.json({ ok: true, message: "KEV sync started in background" });
+    import("../cve/sync/kev").then(m => m.runKevSync()).catch(e => console.error("[CVE] Manual KEV sync failed:", e));
+  });
+
+  app.post("/api/admin/cve/sync/epss", requireAdmin, async (_req, res) => {
+    res.json({ ok: true, message: "EPSS sync started in background" });
+    import("../cve/sync/epss").then(m => m.runEpssSync()).catch(e => console.error("[CVE] Manual EPSS sync failed:", e));
+  });
+
   // ── Database backup ─────────────────────────────────────────────────────────
   app.get("/api/admin/db-backups", requireAdmin, async (_req, res) => {
     try {

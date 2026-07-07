@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -2265,3 +2265,118 @@ export const insertRfpExportHistorySchema = createInsertSchema(rfpExportHistory)
 
 export type RfpExportHistory = typeof rfpExportHistory.$inferSelect;
 export type InsertRfpExportHistory = z.infer<typeof insertRfpExportHistorySchema>;
+
+// ── CVE Intelligence Module ─────────────────────────────────────────────────
+// Tables for the CVE intelligence feature: NVD mirror, CISA KEV overlay,
+// FIRST EPSS scores, CPE→vendor crosswalk, event emission, and sync run log.
+// All severity values come verbatim from NVD or via fixed CVSS bands only —
+// never inferred. CVEs with no CVSS data are stored as UNSCORED.
+
+export const cve = pgTable("cve", {
+  cveId: text("cve_id").primaryKey(),
+  published: timestamp("published", { withTimezone: true }),
+  lastModified: timestamp("last_modified", { withTimezone: true }),
+  vulnStatus: text("vuln_status"),
+  description: text("description"),
+  cvssVersion: text("cvss_version"),       // '4.0' | '3.1' | '3.0' | '2.0'
+  cvssBaseScore: numeric("cvss_base_score", { precision: 3, scale: 1 }),
+  cvssSeverity: text("cvss_severity"),     // CRITICAL | HIGH | MEDIUM | LOW | NONE | UNSCORED
+  cvssVector: text("cvss_vector"),
+  cweIds: text("cwe_ids").array(),
+  referenceUrls: text("reference_urls").array(),
+  sourceIdentifier: text("source_identifier"),
+  raw: jsonb("raw"),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+}, (t) => ({
+  severityIdx: index("cve_severity_idx").on(t.cvssSeverity),
+  publishedIdx: index("cve_published_idx").on(t.published),
+  lastModifiedIdx: index("cve_last_modified_idx").on(t.lastModified),
+}));
+
+export const cveCpe = pgTable("cve_cpe", {
+  cveId: text("cve_id").notNull().references(() => cve.cveId, { onDelete: "cascade" }),
+  cpe23Uri: text("cpe23_uri").notNull(),
+  cpeVendor: text("cpe_vendor"),   // parsed vendor token from CPE 2.3 string
+  cpeProduct: text("cpe_product"),
+  versionStart: text("version_start"),
+  versionStartType: text("version_start_type"),   // 'including' | 'excluding'
+  versionEnd: text("version_end"),
+  versionEndType: text("version_end_type"),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.cveId, t.cpe23Uri] }),
+  vendorIdx: index("cve_cpe_vendor_idx").on(t.cpeVendor),
+  productIdx: index("cve_cpe_product_idx").on(t.cpeProduct),
+}));
+
+// Entity-resolution layer: maps CPE vendor tokens to Spectio vendor IDs.
+// Only 'confirmed' mappings feed user-facing views. 'probable' and 'unreviewed'
+// are visible in the admin review queue only. Promotion to confirmed is always
+// a human action — never automatic.
+export const vendorCpeCrosswalk = pgTable("vendor_cpe_crosswalk", {
+  cpeVendor: text("cpe_vendor").primaryKey(),
+  vendorId: text("vendor_id").notNull(),   // maps to vendors.id
+  confidence: text("confidence").notNull().default("unreviewed"),  // 'confirmed' | 'probable' | 'unreviewed'
+  mappedBy: text("mapped_by").notNull().default("rule"),           // 'manual' | 'rule'
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  notes: text("notes"),
+});
+
+export const kev = pgTable("kev", {
+  cveId: text("cve_id").primaryKey(),
+  vendorProject: text("vendor_project"),
+  product: text("product"),
+  dateAdded: text("date_added"),      // ISO date string yyyy-mm-dd
+  dueDate: text("due_date"),
+  requiredAction: text("required_action"),
+  ransomwareUse: text("ransomware_use"),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+});
+
+export const epss = pgTable("epss", {
+  cveId: text("cve_id").primaryKey(),
+  epssScore: numeric("epss_score", { precision: 6, scale: 5 }),
+  percentile: numeric("percentile", { precision: 6, scale: 5 }),
+  scoreDate: text("score_date"),      // ISO date string yyyy-mm-dd
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+});
+
+// Structured CVE events emitted by sync jobs into the intelligence feed.
+// Unique on (cveId, vendorId, eventType) — re-runs never duplicate events.
+// Events are only generated for vendors with 'confirmed' crosswalk mappings.
+export const cveEvent = pgTable("cve_event", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cveId: text("cve_id").notNull().references(() => cve.cveId, { onDelete: "cascade" }),
+  vendorId: text("vendor_id").notNull(),   // maps to vendors.id (confirmed crosswalk only)
+  eventType: text("event_type").notNull(), // 'kev_added' | 'critical_published' | 'severity_escalated' | 'epss_spike' | 'daily_digest'
+  severityBefore: text("severity_before"),
+  severityAfter: text("severity_after"),
+  epssPercentile: numeric("epss_percentile", { precision: 6, scale: 5 }),
+  triggeredAt: timestamp("triggered_at", { withTimezone: true }).notNull().default(sql`now()`),
+  source: text("source").notNull(),        // 'NVD' | 'CISA_KEV' | 'FIRST_EPSS'
+  publishedToFeed: boolean("published_to_feed").notNull().default(false),
+  digestGroupDate: text("digest_group_date"),  // ISO date, populated for daily_digest events
+}, (t) => ({
+  uniq: uniqueIndex("cve_event_uniq").on(t.cveId, t.vendorId, t.eventType),
+}));
+
+// Tracks metadata for every sync job run (start/end, counts, errors).
+// Used for resumable NVD initial population (resumeCursor) and data_as_of timestamps.
+export const syncRun = pgTable("sync_run", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  job: text("job").notNull(),              // 'nvd' | 'kev' | 'epss'
+  startedAt: timestamp("started_at", { withTimezone: true }).default(sql`now()`),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  recordsFetched: integer("records_fetched").default(0),
+  recordsUpserted: integer("records_upserted").default(0),
+  status: text("status").notNull().default("running"),  // 'running' | 'success' | 'failed'
+  error: text("error"),
+  resumeCursor: integer("resume_cursor"),  // NVD startIndex for resume on interrupted initial sync
+});
+
+export type Cve = typeof cve.$inferSelect;
+export type CveCpe = typeof cveCpe.$inferSelect;
+export type VendorCpeCrosswalk = typeof vendorCpeCrosswalk.$inferSelect;
+export type Kev = typeof kev.$inferSelect;
+export type Epss = typeof epss.$inferSelect;
+export type CveEvent = typeof cveEvent.$inferSelect;
+export type SyncRun = typeof syncRun.$inferSelect;

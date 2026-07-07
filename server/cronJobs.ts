@@ -225,6 +225,49 @@ export class CronJobManager {
     }, { timezone: 'UTC' });
     this.jobs.set('weeklyDatasheetReextract', weeklyDatasheetReextractJob);
 
+    // ── CVE Intelligence sync jobs ─────────────────────────────────────
+    // NVD: every 2 hours (incremental after initial population)
+    const nvdSyncJob = cron.schedule('0 */2 * * *', async () => {
+      console.log('[Cron] Starting NVD CVE sync...');
+      try {
+        const { runNvdSync } = await import('./cve/sync/nvd');
+        await runNvdSync();
+        this.lastRun.set('nvdSync', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in NVD sync:', error);
+        this.lastRun.set('nvdSync', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+    this.jobs.set('nvdSync', nvdSyncJob);
+
+    // KEV: daily at 05:00 UTC
+    const kevSyncJob = cron.schedule('0 5 * * *', async () => {
+      console.log('[Cron] Starting CISA KEV sync...');
+      try {
+        const { runKevSync } = await import('./cve/sync/kev');
+        await runKevSync();
+        this.lastRun.set('kevSync', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in KEV sync:', error);
+        this.lastRun.set('kevSync', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+    this.jobs.set('kevSync', kevSyncJob);
+
+    // EPSS: daily at 04:00 UTC
+    const epssSyncJob = cron.schedule('0 4 * * *', async () => {
+      console.log('[Cron] Starting FIRST EPSS sync...');
+      try {
+        const { runEpssSync } = await import('./cve/sync/epss');
+        await runEpssSync();
+        this.lastRun.set('epssSync', { timestamp: new Date(), status: 'success' });
+      } catch (error) {
+        console.error('[Cron] Error in EPSS sync:', error);
+        this.lastRun.set('epssSync', { timestamp: new Date(), status: 'failed', error: String(error) });
+      }
+    }, { timezone: 'UTC' });
+    this.jobs.set('epssSync', epssSyncJob);
+
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }
 
