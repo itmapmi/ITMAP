@@ -830,7 +830,7 @@ export function registerMarketRoutes(app: Express): void {
       const parsedLimit = parseInt(req.query.limit as string, 10);
       const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 15;
 
-      const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs'] as const;
+      const VALID_SOURCE_TYPES = ['hackernews', 'reddit', 'github', 'layoffs', 'cve'] as const;
       type ValidSource = typeof VALID_SOURCE_TYPES[number];
       const validatedSource: ValidSource | undefined =
         sourceType && (VALID_SOURCE_TYPES as readonly string[]).includes(sourceType)
