@@ -24,6 +24,7 @@ const SOURCE_FILTERS = [
   { value: "reddit", label: "Reddit" },
   { value: "github", label: "GitHub" },
   { value: "layoffs", label: "Layoffs" },
+  { value: "cve", label: "CVE" },
 ] as const;
 
 interface IntelligenceFeedProps {
@@ -51,7 +52,7 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       <div>
         <h3 className="text-base font-semibold text-gray-900">Intelligence Feed</h3>
         <p className="text-sm text-gray-500 mt-0.5">
-          Real-time signals from Hacker News, Reddit, GitHub, and Layoffs.fyi that inform vendor scoring.
+          Real-time signals from Hacker News, Reddit, GitHub, Layoffs.fyi, and CVE vulnerability data.
         </p>
       </div>
 
@@ -70,14 +71,16 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
         </Select>
 
         {/* Source filter pills */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {SOURCE_FILTERS.map(f => (
             <button
               key={f.value}
               onClick={() => setSourceFilter(f.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 sourceFilter === f.value
-                  ? "bg-gray-900 text-white"
+                  ? f.value === "cve"
+                    ? "bg-violet-700 text-white"
+                    : "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -97,7 +100,9 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       ) : !page || page.data.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">
           {selectedVendorId === "all"
-            ? "No signals collected yet for this market."
+            ? sourceFilter === "cve"
+              ? "No CVE signals yet. CVE events appear here after confirmed crosswalk mappings are set up."
+              : "No signals collected yet for this market."
             : "No signals collected yet for this vendor."}
         </div>
       ) : (

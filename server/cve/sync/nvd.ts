@@ -322,6 +322,16 @@ export async function runNvdSync(): Promise<void> {
 
     // Run crosswalk auto-rule after every successful sync
     await runCrossWalkAutoRule();
+
+    // Emit CVE events and publish to intelligence feed (no-op if flag off)
+    try {
+      const { runCveEventEmitter } = await import('../events/emitter');
+      const { runCveEventPublisher } = await import('../events/publisher');
+      await runCveEventEmitter('NVD');
+      await runCveEventPublisher();
+    } catch (emitErr: any) {
+      console.error('[NVD] CVE event emission failed (non-fatal):', emitErr.message);
+    }
   } catch (err: any) {
     console.error('[NVD] Sync failed:', err.message);
     if (runId!) {

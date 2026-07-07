@@ -3,7 +3,7 @@ import { vendorSignals, aiSuggestions, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
 import { eq, and, desc, count, gte, lte, ilike, sql } from 'drizzle-orm';
 
-export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs';
+export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs' | 'cve';
 
 export interface GetVendorSignalsOptions {
   vendorId?: string;

@@ -1,4 +1,4 @@
-import { ExternalLink, Zap, Briefcase, Code2 } from "lucide-react";
+import { ExternalLink, Zap, Briefcase, Code2, Shield, AlertTriangle } from "lucide-react";
 import { SiYcombinator, SiReddit, SiGithub } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,13 @@ function relativeTime(date: string | null | undefined): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const SEVERITY_COLORS: Record<string, string> = {
+  CRITICAL: "bg-red-100 text-red-700 border-red-200",
+  HIGH: "bg-orange-100 text-orange-700 border-orange-200",
+  MEDIUM: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  LOW: "bg-blue-100 text-blue-700 border-blue-200",
+};
+
 function SourceBadge({ source }: { source: string }) {
   switch (source) {
     case "hackernews":
@@ -74,6 +81,13 @@ function SourceBadge({ source }: { source: string }) {
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
           <Briefcase className="h-3 w-3" />
           Layoffs
+        </span>
+      );
+    case "cve":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-100 text-violet-700 border border-violet-200">
+          <Shield className="h-3 w-3" />
+          CVE
         </span>
       );
     default:
@@ -117,7 +131,79 @@ function ImpactBadge({ impact }: { impact: string | null }) {
   );
 }
 
+// CVE-specific metadata rendered below the excerpt
+function CveDetails({ rawData, url }: { rawData: any; url: string | null }) {
+  if (!rawData) return null;
+
+  const isDigest = rawData.eventType === "daily_digest";
+
+  if (isDigest) {
+    const cveIds: string[] = rawData.cveIds ?? [];
+    return (
+      <div className="mt-1.5 space-y-1">
+        <div className="flex flex-wrap gap-1">
+          {cveIds.slice(0, 5).map((id: string) => (
+            <a
+              key={id}
+              href={`https://nvd.nist.gov/vuln/detail/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 text-[10px] font-mono border border-violet-200 hover:border-violet-400 transition-colors"
+            >
+              {id}
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          ))}
+          {cveIds.length > 5 && (
+            <span className="text-[10px] text-gray-400 self-center">+{cveIds.length - 5} more</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Discrete event
+  const severity: string | null = rawData.severity ?? null;
+  const isKev: boolean = rawData.isKev ?? false;
+  const epssScore: string | null = rawData.epssScore ?? null;
+  const cveId: string | null = rawData.cveId ?? null;
+  const severityCls = severity ? SEVERITY_COLORS[severity] ?? "bg-gray-100 text-gray-600 border-gray-200" : null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+      {cveId && (
+        <a
+          href={`https://nvd.nist.gov/vuln/detail/${cveId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 text-[10px] font-mono border border-violet-200 hover:border-violet-400 transition-colors"
+        >
+          {cveId}
+          <ExternalLink className="h-2.5 w-2.5" />
+        </a>
+      )}
+      {severity && severityCls && (
+        <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border", severityCls)}>
+          {severity}
+        </span>
+      )}
+      {isKev && (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+          <AlertTriangle className="h-2.5 w-2.5" />
+          KEV
+        </span>
+      )}
+      {epssScore && (
+        <span className="text-[10px] text-gray-500">
+          EPSS {(parseFloat(epssScore) * 100).toFixed(1)}%
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function SignalCard({ signal, compact = false, showVendor = false, onCreateSuggestion, onDelete, onViewRaw }: SignalCardProps) {
+  const isCve = signal.sourceType === "cve";
   const excerpt = signal.content
     ? signal.content.length > 160
       ? signal.content.slice(0, 160) + "…"
@@ -129,7 +215,7 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
       <div className="py-2 space-y-1.5 border-b border-gray-100 last:border-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <SourceBadge source={signal.sourceType} />
-          <SentimentChip sentiment={signal.sentiment} />
+          {!isCve && <SentimentChip sentiment={signal.sentiment} />}
           <ImpactBadge impact={signal.impactLabel} />
           {signal.fedIntoSuggestion && (
             <span title="Influenced scoring" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 text-[10px] font-semibold border border-cyan-200">
@@ -139,10 +225,11 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
           <span className="ml-auto text-[11px] text-gray-400 shrink-0">{relativeTime(signal.collectedAt)}</span>
         </div>
         <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{signal.title}</p>
-        {excerpt && (
+        {!isCve && excerpt && (
           <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{excerpt}</p>
         )}
-        {signal.url && (
+        {isCve && <CveDetails rawData={signal.rawData} url={signal.url} />}
+        {!isCve && signal.url && (
           <a href={signal.url} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800">
             <ExternalLink className="h-3 w-3" />
@@ -154,10 +241,13 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-2.5">
+    <div className={cn(
+      "rounded-lg border bg-white p-3.5 space-y-2.5",
+      isCve ? "border-violet-200 bg-violet-50/30" : "border-gray-200"
+    )}>
       <div className="flex items-center gap-2 flex-wrap">
         <SourceBadge source={signal.sourceType} />
-        <SentimentChip sentiment={signal.sentiment} />
+        {!isCve && <SentimentChip sentiment={signal.sentiment} />}
         <ImpactBadge impact={signal.impactLabel} />
         {signal.fedIntoSuggestion && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-100 text-cyan-700 border border-cyan-200">
@@ -176,10 +266,11 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
         {excerpt && (
           <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{excerpt}</p>
         )}
+        {isCve && <CveDetails rawData={signal.rawData} url={signal.url} />}
       </div>
 
       <div className="flex items-center gap-2 pt-0.5">
-        {signal.url && (
+        {!isCve && signal.url && (
           <a
             href={signal.url}
             target="_blank"
@@ -191,7 +282,7 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
           </a>
         )}
         <div className="ml-auto flex items-center gap-1.5">
-          {onViewRaw && signal.rawData && (
+          {onViewRaw && signal.rawData && !isCve && (
             <Button
               size="sm"
               variant="ghost"
@@ -202,7 +293,7 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
               Raw
             </Button>
           )}
-          {onCreateSuggestion && (
+          {onCreateSuggestion && !isCve && (
             <Button
               size="sm"
               variant="outline"

@@ -63,6 +63,16 @@ export async function runKevSync(): Promise<void> {
     }).where(eq(syncRun.id, run.id));
 
     console.log(`[KEV] Sync complete: ${upserted} KEV entries upserted`);
+
+    // Emit CVE events and publish to intelligence feed (no-op if flag off)
+    try {
+      const { runCveEventEmitter } = await import('../events/emitter');
+      const { runCveEventPublisher } = await import('../events/publisher');
+      await runCveEventEmitter('CISA_KEV');
+      await runCveEventPublisher();
+    } catch (emitErr: any) {
+      console.error('[KEV] CVE event emission failed (non-fatal):', emitErr.message);
+    }
   } catch (err: any) {
     await db.update(syncRun).set({
       status: 'failed', finishedAt: new Date(), recordsFetched: fetched, error: err.message,
