@@ -1399,6 +1399,10 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ── CVE Intelligence — crosswalk + sync admin ────────────────────────────────
+  // Gated behind FEATURE_CVE_MODULE (default: enabled). Routes return 404 when
+  // the feature flag is off so clients receive a clear signal at the HTTP layer.
+
+  if (process.env.FEATURE_CVE_MODULE !== 'false') {
 
   app.get("/api/admin/cve/crosswalk", requireAdmin, async (_req, res) => {
     try {
@@ -1484,6 +1488,8 @@ export function registerAdminRoutes(app: Express): void {
     res.json({ ok: true, message: "EPSS sync started in background" });
     import("../cve/sync/epss").then(m => m.runEpssSync()).catch(e => console.error("[CVE] Manual EPSS sync failed:", e));
   });
+
+  } // end FEATURE_CVE_MODULE gate for CVE admin routes
 
   // ── Database backup ─────────────────────────────────────────────────────────
   app.get("/api/admin/db-backups", requireAdmin, async (_req, res) => {

@@ -2314,7 +2314,9 @@ export const cveCpe = pgTable("cve_cpe", {
 // a human action — never automatic.
 export const vendorCpeCrosswalk = pgTable("vendor_cpe_crosswalk", {
   cpeVendor: text("cpe_vendor").primaryKey(),
-  vendorId: text("vendor_id").notNull(),   // maps to vendors.id
+  // Nullable until human confirms the mapping. A NULL vendorId means the token
+  // has no suggested match yet — it sits in the review queue awaiting assignment.
+  vendorId: text("vendor_id"),   // maps to vendors.id; null until confirmed/probable
   confidence: text("confidence").notNull().default("unreviewed"),  // 'confirmed' | 'probable' | 'unreviewed'
   mappedBy: text("mapped_by").notNull().default("rule"),           // 'manual' | 'rule'
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),

@@ -226,6 +226,9 @@ export class CronJobManager {
     this.jobs.set('weeklyDatasheetReextract', weeklyDatasheetReextractJob);
 
     // ── CVE Intelligence sync jobs ─────────────────────────────────────
+    // Gated behind FEATURE_CVE_MODULE env var (set to 'false' to disable).
+    // Defaults to enabled; set FEATURE_CVE_MODULE=false to skip registration.
+    if (process.env.FEATURE_CVE_MODULE !== 'false') {
     // NVD: every 2 hours (incremental after initial population)
     const nvdSyncJob = cron.schedule('0 */2 * * *', async () => {
       console.log('[Cron] Starting NVD CVE sync...');
@@ -267,6 +270,7 @@ export class CronJobManager {
       }
     }, { timezone: 'UTC' });
     this.jobs.set('epssSync', epssSyncJob);
+    } // end FEATURE_CVE_MODULE gate
 
     console.log(`Initialized ${this.jobs.size} cron jobs`);
   }

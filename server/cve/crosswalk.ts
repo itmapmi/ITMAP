@@ -52,21 +52,23 @@ export async function runCrossWalkAutoRule(): Promise<{ inserted: number; promot
     if (norm) vendorMap.set(norm, v.id);
   }
 
-  // 3. Build rows: unreviewed default, probable where rule matches
-  const rows: Array<{ cpeVendor: string; vendorId: string; confidence: string; mappedBy: string }> = [];
+  // 3. Build rows: unreviewed (null vendorId) default; probable where rule matches.
+  // vendorId is intentionally null for unreviewed tokens — it will be assigned
+  // by the admin when confirming the mapping. This preserves FK integrity.
+  const rows: Array<{ cpeVendor: string; vendorId: string | null; confidence: string; mappedBy: string }> = [];
   for (const token of newTokens) {
     const normToken = normalizeToken(token);
-    const matchedVendorId = vendorMap.get(normToken);
+    const matchedVendorId = vendorMap.get(normToken) ?? null;
     rows.push({
       cpeVendor: token,
-      vendorId: matchedVendorId ?? '',
+      vendorId: matchedVendorId,
       confidence: matchedVendorId ? 'probable' : 'unreviewed',
-      mappedBy: matchedVendorId ? 'rule' : 'rule',
+      mappedBy: 'rule',
     });
   }
 
-  // Insert in batches (unreviewed rows with empty vendorId still need a placeholder —
-  // admin will set the correct vendorId when confirming)
+  // Insert in batches. onConflictDoNothing so re-runs don't overwrite an admin's
+  // existing manual mapping if the token was somehow re-discovered.
   const BATCH = 200;
   let inserted = 0;
   let promoted = 0;

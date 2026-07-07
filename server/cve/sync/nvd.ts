@@ -183,21 +183,12 @@ async function upsertCveRecord(item: any): Promise<void> {
     },
   });
 
-  // Upsert CPE matches — delete old then re-insert for this CVE to handle removals
+  // Reconcile CPE matches: delete all existing rows for this CVE first, then
+  // re-insert the current set. This ensures removed CPE matches don't go stale
+  // across NVD updates, which can happen when NVD corrects a configuration.
+  await db.delete(cveCpe).where(eq(cveCpe.cveId, cveId));
   if (cpeMatches.length > 0) {
-    await db.insert(cveCpe).values(
-      cpeMatches.map(m => ({ cveId, ...m }))
-    ).onConflictDoUpdate({
-      target: [cveCpe.cveId, cveCpe.cpe23Uri],
-      set: {
-        cpeVendor: sql`excluded.cpe_vendor`,
-        cpeProduct: sql`excluded.cpe_product`,
-        versionStart: sql`excluded.version_start`,
-        versionStartType: sql`excluded.version_start_type`,
-        versionEnd: sql`excluded.version_end`,
-        versionEndType: sql`excluded.version_end_type`,
-      },
-    });
+    await db.insert(cveCpe).values(cpeMatches.map(m => ({ cveId, ...m }))).onConflictDoNothing();
   }
 }
 
