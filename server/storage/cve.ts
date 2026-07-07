@@ -25,6 +25,18 @@ async function getConfirmedCpeTokens(vendorId: string): Promise<string[]> {
   return rows.map((r) => r.cpeVendor);
 }
 
+export interface MonthlyTrendPoint {
+  month: string;
+  count: number;
+  critical: number;
+  high: number;
+}
+
+export interface ProductBreakdown {
+  product: string;
+  count: number;
+}
+
 export interface CveSummary {
   vendorId: string;
   vendorName: string;
@@ -34,6 +46,8 @@ export interface CveSummary {
   kevCount: number;
   epssHighCount: number;
   products: string[];
+  byProduct: ProductBreakdown[];
+  monthlyTrend: MonthlyTrendPoint[];
   cpeTokens: string[];
 }
 
@@ -51,19 +65,21 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
     getCveDataAsOf(),
   ]);
 
-  if (!cpeTokens.length) {
-    return {
-      vendorId,
-      vendorName: vendor.name,
-      dataAsOf,
-      total: 0,
-      bySeverity: {},
-      kevCount: 0,
-      epssHighCount: 0,
-      products: [],
-      cpeTokens: [],
-    };
-  }
+  const empty: CveSummary = {
+    vendorId,
+    vendorName: vendor.name,
+    dataAsOf,
+    total: 0,
+    bySeverity: {},
+    kevCount: 0,
+    epssHighCount: 0,
+    products: [],
+    byProduct: [],
+    monthlyTrend: [],
+    cpeTokens,
+  };
+
+  if (!cpeTokens.length) return empty;
 
   const cveIdRows = await db
     .selectDistinct({ cveId: cveCpe.cveId })
@@ -71,21 +87,9 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
     .where(inArray(cveCpe.cpeVendor, cpeTokens));
   const cveIdList = cveIdRows.map((r) => r.cveId);
 
-  if (!cveIdList.length) {
-    return {
-      vendorId,
-      vendorName: vendor.name,
-      dataAsOf,
-      total: 0,
-      bySeverity: {},
-      kevCount: 0,
-      epssHighCount: 0,
-      products: [],
-      cpeTokens,
-    };
-  }
+  if (!cveIdList.length) return empty;
 
-  const [severityRows, kevRows, epssRows, productRows] = await Promise.all([
+  const [severityRows, kevRows, epssRows, productRows, trendRows] = await Promise.all([
     db
       .select({
         severity: cve.cvssSeverity,
@@ -94,23 +98,47 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
       .from(cve)
       .where(inArray(cve.cveId, cveIdList))
       .groupBy(cve.cvssSeverity),
+
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(kev)
       .where(inArray(kev.cveId, cveIdList)),
+
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(epss)
       .where(
         and(
           inArray(epss.cveId, cveIdList),
-          sql`${epss.epssScore}::numeric >= 0.5`,
+          sql`${epss.epssScore}::numeric >= 0.90`,
         ),
       ),
+
     db
-      .selectDistinct({ product: cveCpe.cpeProduct })
+      .select({
+        product: cveCpe.cpeProduct,
+        count: sql<number>`count(distinct ${cveCpe.cveId})::int`,
+      })
       .from(cveCpe)
-      .where(inArray(cveCpe.cpeVendor, cpeTokens)),
+      .where(inArray(cveCpe.cpeVendor, cpeTokens))
+      .groupBy(cveCpe.cpeProduct)
+      .orderBy(desc(sql`count(distinct ${cveCpe.cveId})`))
+      .limit(30),
+
+    // 12-month monthly trend using FILTER aggregate
+    db.execute(sql`
+      SELECT
+        to_char(date_trunc('month', published AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
+        count(*)::int AS count,
+        count(*) FILTER (WHERE cvss_severity = 'CRITICAL')::int AS critical,
+        count(*) FILTER (WHERE cvss_severity = 'HIGH')::int AS high
+      FROM cve
+      WHERE cve_id = ANY(${cveIdList})
+        AND published >= now() - interval '12 months'
+        AND published IS NOT NULL
+      GROUP BY month
+      ORDER BY month
+    `),
   ]);
 
   const bySeverity: Record<string, number> = {};
@@ -121,9 +149,18 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
     total += r.count;
   }
 
-  const products = productRows
-    .map((r) => r.product)
-    .filter(Boolean) as string[];
+  const byProduct: ProductBreakdown[] = productRows
+    .filter((r) => r.product)
+    .map((r) => ({ product: r.product as string, count: r.count }));
+
+  const products = byProduct.map((r) => r.product);
+
+  const monthlyTrend: MonthlyTrendPoint[] = (trendRows.rows as any[]).map((r) => ({
+    month: String(r.month),
+    count: Number(r.count),
+    critical: Number(r.critical),
+    high: Number(r.high),
+  }));
 
   return {
     vendorId,
@@ -134,6 +171,8 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
     kevCount: kevRows[0]?.count ?? 0,
     epssHighCount: epssRows[0]?.count ?? 0,
     products,
+    byProduct,
+    monthlyTrend,
     cpeTokens,
   };
 }
@@ -151,6 +190,14 @@ export interface CveListItem {
   referenceUrls: string[] | null;
   vulnStatus: string | null;
   isKev: boolean;
+  kevInfo?: {
+    vendorProject: string | null;
+    product: string | null;
+    dateAdded: string | null;
+    dueDate: string | null;
+    requiredAction: string | null;
+    ransomwareUse: string | null;
+  };
   epssScore: string | null;
   epssPercentile: string | null;
   products: string[];
@@ -160,31 +207,30 @@ export interface CveListResult {
   data: CveListItem[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   dataAsOf: Date | null;
 }
 
 export async function getCvesByVendor(
   vendorId: string,
   opts: {
-    severity?: string;
+    severity?: string | string[];
     kevOnly?: boolean;
-    dateFrom?: string;
-    dateTo?: string;
+    since?: string;
     product?: string;
     page?: number;
-    limit?: number;
+    pageSize?: number;
     sort?: "published" | "severity" | "epss";
     order?: "asc" | "desc";
   },
 ): Promise<CveListResult> {
   const page = Math.max(1, opts.page ?? 1);
-  const limit = Math.min(100, Math.max(1, opts.limit ?? 25));
-  const offset = (page - 1) * limit;
+  const pageSize = Math.min(100, Math.max(1, opts.pageSize ?? 25));
+  const offset = (page - 1) * pageSize;
   const dataAsOf = await getCveDataAsOf();
 
   const cpeTokens = await getConfirmedCpeTokens(vendorId);
-  if (!cpeTokens.length) return { data: [], total: 0, page, limit, dataAsOf };
+  if (!cpeTokens.length) return { data: [], total: 0, page, pageSize, dataAsOf };
 
   const cpeWhere = opts.product
     ? and(inArray(cveCpe.cpeVendor, cpeTokens), eq(cveCpe.cpeProduct, opts.product))
@@ -195,7 +241,7 @@ export async function getCvesByVendor(
     .from(cveCpe)
     .where(cpeWhere);
   let cveIdList = cveIdRows.map((r) => r.cveId);
-  if (!cveIdList.length) return { data: [], total: 0, page, limit, dataAsOf };
+  if (!cveIdList.length) return { data: [], total: 0, page, pageSize, dataAsOf };
 
   if (opts.kevOnly) {
     const kevRows = await db
@@ -203,18 +249,40 @@ export async function getCvesByVendor(
       .from(kev)
       .where(inArray(kev.cveId, cveIdList));
     cveIdList = kevRows.map((r) => r.cveId);
-    if (!cveIdList.length) return { data: [], total: 0, page, limit, dataAsOf };
+    if (!cveIdList.length) return { data: [], total: 0, page, pageSize, dataAsOf };
   }
 
   const conditions: any[] = [inArray(cve.cveId, cveIdList)];
-  if (opts.severity)
-    conditions.push(eq(cve.cvssSeverity, opts.severity.toUpperCase()));
-  if (opts.dateFrom)
-    conditions.push(gte(cve.published, new Date(opts.dateFrom)));
-  if (opts.dateTo)
-    conditions.push(lte(cve.published, new Date(opts.dateTo)));
+
+  if (opts.severity) {
+    const severities = Array.isArray(opts.severity)
+      ? opts.severity.map((s) => s.toUpperCase())
+      : [opts.severity.toUpperCase()];
+    if (severities.length === 1) {
+      conditions.push(eq(cve.cvssSeverity, severities[0]));
+    } else {
+      conditions.push(inArray(cve.cvssSeverity, severities));
+    }
+  }
+
+  if (opts.since) {
+    conditions.push(gte(cve.published, new Date(opts.since)));
+  }
 
   const whereClause = and(...conditions);
+
+  const orderExpr =
+    opts.sort === "severity"
+      ? opts.order === "asc"
+        ? asc(
+            sql`CASE ${cve.cvssSeverity} WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END`,
+          )
+        : desc(
+            sql`CASE ${cve.cvssSeverity} WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END`,
+          )
+      : opts.order === "asc"
+        ? asc(cve.published)
+        : desc(cve.published);
 
   const [countRows, cveRows] = await Promise.all([
     db
@@ -225,34 +293,22 @@ export async function getCvesByVendor(
       .select()
       .from(cve)
       .where(whereClause)
-      .orderBy(
-        opts.sort === "severity"
-          ? opts.order === "asc"
-            ? asc(
-                sql`CASE ${cve.cvssSeverity} WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END`,
-              )
-            : desc(
-                sql`CASE ${cve.cvssSeverity} WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END`,
-              )
-          : opts.order === "asc"
-            ? asc(cve.published)
-            : desc(cve.published),
-      )
-      .limit(limit)
+      .orderBy(orderExpr)
+      .limit(pageSize)
       .offset(offset),
   ]);
 
   const total = countRows[0]?.count ?? 0;
-  if (!cveRows.length) return { data: [], total, page, limit, dataAsOf };
+  if (!cveRows.length) return { data: [], total, page, pageSize, dataAsOf };
 
   const resultIds = cveRows.map((r) => r.cveId);
 
-  const [kevSet2, epssMap, productMap] = await Promise.all([
+  const [kevMap, epssMap, productMap] = await Promise.all([
     db
-      .select({ cveId: kev.cveId })
+      .select()
       .from(kev)
       .where(inArray(kev.cveId, resultIds))
-      .then((rows) => new Set(rows.map((r) => r.cveId))),
+      .then((rows) => new Map(rows.map((r) => [r.cveId, r]))),
     db
       .select()
       .from(epss)
@@ -279,6 +335,7 @@ export async function getCvesByVendor(
 
   const data: CveListItem[] = cveRows.map((c) => {
     const e = epssMap.get(c.cveId);
+    const k = kevMap.get(c.cveId);
     return {
       cveId: c.cveId,
       published: c.published,
@@ -291,14 +348,24 @@ export async function getCvesByVendor(
       cweIds: c.cweIds,
       referenceUrls: c.referenceUrls,
       vulnStatus: c.vulnStatus,
-      isKev: kevSet2.has(c.cveId),
+      isKev: !!k,
+      kevInfo: k
+        ? {
+            vendorProject: k.vendorProject,
+            product: k.product,
+            dateAdded: k.dateAdded,
+            dueDate: k.dueDate,
+            requiredAction: k.requiredAction,
+            ransomwareUse: k.ransomwareUse,
+          }
+        : undefined,
       epssScore: e?.epssScore ?? null,
       epssPercentile: e?.percentile ?? null,
       products: [...(productMap.get(c.cveId) ?? [])],
     };
   });
 
-  return { data, total, page, limit, dataAsOf };
+  return { data, total, page, pageSize, dataAsOf };
 }
 
 export async function getCveById(cveId: string): Promise<CveListItem | null> {
@@ -311,11 +378,7 @@ export async function getCveById(cveId: string): Promise<CveListItem | null> {
   const c = rows[0];
 
   const [kevRow, epssRow, cpeRows] = await Promise.all([
-    db
-      .select({ cveId: kev.cveId })
-      .from(kev)
-      .where(eq(kev.cveId, cveId))
-      .limit(1),
+    db.select().from(kev).where(eq(kev.cveId, cveId)).limit(1),
     db.select().from(epss).where(eq(epss.cveId, cveId)).limit(1),
     db
       .select({ product: cveCpe.cpeProduct })
@@ -326,6 +389,7 @@ export async function getCveById(cveId: string): Promise<CveListItem | null> {
   const products = [
     ...new Set(cpeRows.map((r) => r.product).filter(Boolean)),
   ] as string[];
+  const k = kevRow[0];
 
   return {
     cveId: c.cveId,
@@ -339,7 +403,17 @@ export async function getCveById(cveId: string): Promise<CveListItem | null> {
     cweIds: c.cweIds,
     referenceUrls: c.referenceUrls,
     vulnStatus: c.vulnStatus,
-    isKev: !!kevRow.length,
+    isKev: !!k,
+    kevInfo: k
+      ? {
+          vendorProject: k.vendorProject,
+          product: k.product,
+          dateAdded: k.dateAdded,
+          dueDate: k.dueDate,
+          requiredAction: k.requiredAction,
+          ransomwareUse: k.ransomwareUse,
+        }
+      : undefined,
     epssScore: epssRow[0]?.epssScore ?? null,
     epssPercentile: epssRow[0]?.percentile ?? null,
     products,

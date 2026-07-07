@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import {
@@ -9,18 +9,14 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  Search,
-  Filter,
   Zap,
   TrendingUp,
-  Calendar,
   RefreshCw,
   Info,
   X,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,8 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format, parseISO } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -38,6 +33,18 @@ interface CveVendor {
   name: string;
   marketId: string;
   cpeTokens: string[];
+}
+
+interface MonthlyTrendPoint {
+  month: string;
+  count: number;
+  critical: number;
+  high: number;
+}
+
+interface ProductBreakdown {
+  product: string;
+  count: number;
 }
 
 interface CveSummary {
@@ -49,6 +56,8 @@ interface CveSummary {
   kevCount: number;
   epssHighCount: number;
   products: string[];
+  byProduct: ProductBreakdown[];
+  monthlyTrend: MonthlyTrendPoint[];
   cpeTokens: string[];
 }
 
@@ -65,6 +74,14 @@ interface CveItem {
   referenceUrls: string[] | null;
   vulnStatus: string | null;
   isKev: boolean;
+  kevInfo?: {
+    vendorProject: string | null;
+    product: string | null;
+    dateAdded: string | null;
+    dueDate: string | null;
+    requiredAction: string | null;
+    ransomwareUse: string | null;
+  };
   epssScore: string | null;
   epssPercentile: string | null;
   products: string[];
@@ -74,54 +91,29 @@ interface CveListResult {
   data: CveItem[];
   total: number;
   page: number;
-  limit: number;
+  pageSize: number;
   dataAsOf: string | null;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  CRITICAL: {
-    bg: "bg-red-500/20",
-    text: "text-red-400",
-    border: "border-red-500/40",
-  },
-  HIGH: {
-    bg: "bg-orange-500/20",
-    text: "text-orange-400",
-    border: "border-orange-500/40",
-  },
-  MEDIUM: {
-    bg: "bg-yellow-500/20",
-    text: "text-yellow-400",
-    border: "border-yellow-500/40",
-  },
-  LOW: {
-    bg: "bg-blue-500/20",
-    text: "text-blue-400",
-    border: "border-blue-500/40",
-  },
-  NONE: {
-    bg: "bg-slate-700/50",
-    text: "text-slate-400",
-    border: "border-slate-600/40",
-  },
-  UNSCORED: {
-    bg: "bg-slate-700/50",
-    text: "text-slate-500",
-    border: "border-slate-600/40",
-  },
+const SEVERITY_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
+  CRITICAL: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/40", bar: "bg-red-500" },
+  HIGH:     { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/40", bar: "bg-orange-500" },
+  MEDIUM:   { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/40", bar: "bg-yellow-500" },
+  LOW:      { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/40", bar: "bg-blue-400" },
+  NONE:     { bg: "bg-slate-700/50", text: "text-slate-400", border: "border-slate-600/40", bar: "bg-slate-600" },
+  UNSCORED: { bg: "bg-slate-700/50", text: "text-slate-500", border: "border-slate-600/40", bar: "bg-slate-700" },
 };
 
 const SEVERITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE", "UNSCORED"];
+const SELECTABLE_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"];
 
 function SeverityBadge({ severity }: { severity: string | null }) {
   const s = severity ?? "UNSCORED";
-  const colors = SEVERITY_COLORS[s] ?? SEVERITY_COLORS.UNSCORED;
+  const c = SEVERITY_COLORS[s] ?? SEVERITY_COLORS.UNSCORED;
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${colors.bg} ${colors.text} border ${colors.border}`}
-    >
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${c.bg} ${c.text} border ${c.border}`}>
       {s}
     </span>
   );
@@ -130,18 +122,11 @@ function SeverityBadge({ severity }: { severity: string | null }) {
 function ScoreBadge({ score }: { score: string | null }) {
   if (!score) return <span className="text-slate-500 text-xs">—</span>;
   const n = parseFloat(score);
-  const color =
-    n >= 9
-      ? "text-red-400"
-      : n >= 7
-        ? "text-orange-400"
-        : n >= 4
-          ? "text-yellow-400"
-          : "text-blue-400";
+  const color = n >= 9 ? "text-red-400" : n >= 7 ? "text-orange-400" : n >= 4 ? "text-yellow-400" : "text-blue-400";
   return <span className={`font-mono font-semibold text-sm ${color}`}>{n.toFixed(1)}</span>;
 }
 
-function DataAsOf({ ts }: { ts: string | null }) {
+function DataAsOf({ ts }: { ts: string | null | undefined }) {
   if (!ts) return null;
   return (
     <span className="flex items-center gap-1 text-xs text-slate-500">
@@ -155,20 +140,12 @@ function DataAsOf({ ts }: { ts: string | null }) {
 
 function SeverityMixBar({ bySeverity, total }: { bySeverity: Record<string, number>; total: number }) {
   if (!total) return null;
-  const SEG_COLORS: Record<string, string> = {
-    CRITICAL: "bg-red-500",
-    HIGH: "bg-orange-500",
-    MEDIUM: "bg-yellow-500",
-    LOW: "bg-blue-500",
-    NONE: "bg-slate-600",
-    UNSCORED: "bg-slate-700",
-  };
   return (
     <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
       {SEVERITY_ORDER.filter((s) => bySeverity[s]).map((s) => (
         <div
           key={s}
-          className={`${SEG_COLORS[s]} transition-all`}
+          className={`${SEVERITY_COLORS[s]?.bar ?? "bg-slate-600"} transition-all`}
           style={{ width: `${((bySeverity[s] ?? 0) / total) * 100}%` }}
           title={`${s}: ${bySeverity[s]}`}
         />
@@ -177,15 +154,122 @@ function SeverityMixBar({ bySeverity, total }: { bySeverity: Record<string, numb
   );
 }
 
+// ─── trend sparkline ─────────────────────────────────────────────────────────
+
+function TrendSparkline({ data }: { data: MonthlyTrendPoint[] }) {
+  if (!data.length) {
+    return (
+      <div className="flex items-center justify-center h-24 text-slate-600 text-xs">
+        No trend data in the past 12 months
+      </div>
+    );
+  }
+
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+  const barWidth = Math.floor(Math.min(32, (100 / data.length)));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-1 h-20">
+        {data.map((point) => {
+          const totalH = Math.round((point.count / maxCount) * 72);
+          const critH = Math.round((point.critical / maxCount) * 72);
+          const highH = Math.round((point.high / maxCount) * 72);
+          const otherH = totalH - critH - highH;
+          return (
+            <div
+              key={point.month}
+              className="flex-1 flex flex-col justify-end group relative"
+              title={`${point.month}: ${point.count} CVEs (${point.critical} critical, ${point.high} high)`}
+            >
+              <div className="flex flex-col justify-end" style={{ height: `${totalH}px` }}>
+                {otherH > 0 && (
+                  <div className="bg-blue-500/40 w-full" style={{ height: `${otherH}px` }} />
+                )}
+                {highH > 0 && (
+                  <div className="bg-orange-500/60 w-full" style={{ height: `${highH}px` }} />
+                )}
+                {critH > 0 && (
+                  <div className="bg-red-500 w-full" style={{ height: `${critH}px` }} />
+                )}
+              </div>
+              <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-slate-600 whitespace-nowrap hidden group-hover:block">
+                {point.month.slice(5)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+        <span>{data[0]?.month.slice(0, 7)}</span>
+        <span>{data[data.length - 1]?.month.slice(0, 7)}</span>
+      </div>
+      <div className="flex gap-3 mt-1">
+        {[
+          { label: "Critical", color: "bg-red-500" },
+          { label: "High", color: "bg-orange-500/60" },
+          { label: "Other", color: "bg-blue-500/40" },
+        ].map(({ label, color }) => (
+          <span key={label} className="flex items-center gap-1 text-[10px] text-slate-500">
+            <span className={`w-2 h-2 rounded-sm ${color}`} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── severity multi-select ───────────────────────────────────────────────────
+
+function SeverityMultiSelect({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const toggle = (s: string) => {
+    onChange(selected.includes(s) ? selected.filter((x) => x !== s) : [...selected, s]);
+  };
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {SELECTABLE_SEVERITIES.map((s) => {
+        const active = selected.includes(s);
+        const c = SEVERITY_COLORS[s];
+        return (
+          <button
+            key={s}
+            onClick={() => toggle(s)}
+            className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${
+              active
+                ? `${c.bg} ${c.text} ${c.border}`
+                : "bg-transparent text-slate-600 border-slate-700 hover:text-slate-400"
+            }`}
+          >
+            {s}
+          </button>
+        );
+      })}
+      {selected.length > 0 && (
+        <button
+          onClick={() => onChange([])}
+          className="px-2 py-1 rounded text-[10px] text-slate-500 hover:text-slate-300 border border-slate-700"
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── overview tab ────────────────────────────────────────────────────────────
 
 function OverviewTab({ vendorId }: { vendorId: string }) {
   const { data: summary, isLoading } = useQuery<CveSummary>({
-    queryKey: ["/api/cve/vendors", vendorId, "summary"],
+    queryKey: ["/api/cve/vendor", vendorId, "summary"],
     queryFn: async () => {
-      const res = await fetch(`/api/cve/vendors/${vendorId}/summary`, {
-        credentials: "include",
-      });
+      const res = await fetch(`/api/cve/vendor/${vendorId}/summary`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load summary");
       return res.json();
     },
@@ -216,49 +300,19 @@ function OverviewTab({ vendorId }: { vendorId: string }) {
     );
   }
 
-  const statCards = [
-    {
-      label: "Total CVEs",
-      value: summary.total.toLocaleString(),
-      icon: Shield,
-      color: "text-cyan-400",
-      bg: "bg-cyan-500/10",
-    },
-    {
-      label: "Critical + High",
-      value: (
-        (summary.bySeverity["CRITICAL"] ?? 0) +
-        (summary.bySeverity["HIGH"] ?? 0)
-      ).toLocaleString(),
-      icon: AlertTriangle,
-      color: "text-red-400",
-      bg: "bg-red-500/10",
-    },
-    {
-      label: "Known Exploited (KEV)",
-      value: summary.kevCount.toLocaleString(),
-      icon: Zap,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
-    },
-    {
-      label: "High EPSS (≥50%)",
-      value: summary.epssHighCount.toLocaleString(),
-      icon: TrendingUp,
-      color: "text-violet-400",
-      bg: "bg-violet-500/10",
-    },
-  ];
+  const critHigh = (summary.bySeverity["CRITICAL"] ?? 0) + (summary.bySeverity["HIGH"] ?? 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-          <div
-            key={label}
-            className="bg-slate-900 border border-white/5 rounded-xl p-5"
-          >
+        {[
+          { label: "Total CVEs", value: summary.total.toLocaleString(), icon: Shield, color: "text-cyan-400", bg: "bg-cyan-500/10" },
+          { label: "Critical + High", value: critHigh.toLocaleString(), icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10" },
+          { label: "Known Exploited (KEV)", value: summary.kevCount.toLocaleString(), icon: Zap, color: "text-amber-400", bg: "bg-amber-500/10" },
+          { label: "EPSS ≥ 90%", value: summary.epssHighCount.toLocaleString(), icon: TrendingUp, color: "text-violet-400", bg: "bg-violet-500/10" },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="bg-slate-900 border border-white/5 rounded-xl p-5">
             <div className={`h-9 w-9 rounded-lg ${bg} flex items-center justify-center mb-3`}>
               <Icon className={`h-4.5 w-4.5 ${color}`} />
             </div>
@@ -268,75 +322,76 @@ function OverviewTab({ vendorId }: { vendorId: string }) {
         ))}
       </div>
 
-      {/* Severity breakdown */}
+      {/* Severity breakdown + sparkline */}
       {summary.total > 0 && (
-        <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Severity Breakdown</h3>
-          <SeverityMixBar bySeverity={summary.bySeverity} total={summary.total} />
-          <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {SEVERITY_ORDER.filter(
-              (s) => (summary.bySeverity[s] ?? 0) > 0,
-            ).map((s) => {
-              const colors = SEVERITY_COLORS[s] ?? SEVERITY_COLORS.UNSCORED;
-              const pct = Math.round(
-                ((summary.bySeverity[s] ?? 0) / summary.total) * 100,
-              );
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-white mb-4">Severity Breakdown</h3>
+            <SeverityMixBar bySeverity={summary.bySeverity} total={summary.total} />
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {SEVERITY_ORDER.filter((s) => (summary.bySeverity[s] ?? 0) > 0).map((s) => {
+                const c = SEVERITY_COLORS[s] ?? SEVERITY_COLORS.UNSCORED;
+                const pct = Math.round(((summary.bySeverity[s] ?? 0) / summary.total) * 100);
+                return (
+                  <div key={s} className="text-center">
+                    <div className={`text-lg font-bold ${c.text}`}>{summary.bySeverity[s] ?? 0}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wide">{s}</div>
+                    <div className="text-[10px] text-slate-600">{pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-white/5 rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-white mb-4">12-Month CVE Trend</h3>
+            <TrendSparkline data={summary.monthlyTrend} />
+          </div>
+        </div>
+      )}
+
+      {/* CPE tokens */}
+      {summary.cpeTokens.length > 0 && (
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">CPE Vendor Tokens (confirmed)</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {summary.cpeTokens.map((t) => (
+              <span key={t} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-mono">{t}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top affected products */}
+      {summary.byProduct.length > 0 && (
+        <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">
+            Top Affected Products
+          </h3>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {summary.byProduct.slice(0, 20).map(({ product, count }) => {
+              const maxCount = summary.byProduct[0]?.count ?? 1;
+              const pct = Math.round((count / maxCount) * 100);
               return (
-                <div key={s} className="text-center">
-                  <div className={`text-lg font-bold ${colors.text}`}>
-                    {summary.bySeverity[s] ?? 0}
+                <div key={product} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs text-slate-300 truncate">{product}</span>
+                      <span className="text-xs text-slate-500 ml-2 flex-shrink-0">{count}</span>
+                    </div>
+                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-500/60 to-violet-600/60 rounded-full"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wide">
-                    {s}
-                  </div>
-                  <div className="text-[10px] text-slate-600">{pct}%</div>
                 </div>
               );
             })}
           </div>
         </div>
       )}
-
-      {/* CPE tokens and products */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {summary.cpeTokens.length > 0 && (
-          <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3">CPE Vendor Tokens</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {summary.cpeTokens.map((t) => (
-                <span
-                  key={t}
-                  className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-mono"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        {summary.products.length > 0 && (
-          <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3">
-              Affected Products ({summary.products.length})
-            </h3>
-            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-              {summary.products.slice(0, 40).map((p) => (
-                <span
-                  key={p}
-                  className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs"
-                >
-                  {p}
-                </span>
-              ))}
-              {summary.products.length > 40 && (
-                <span className="text-xs text-slate-500 self-center">
-                  +{summary.products.length - 40} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
       <DataAsOf ts={summary.dataAsOf} />
     </div>
@@ -345,21 +400,12 @@ function OverviewTab({ vendorId }: { vendorId: string }) {
 
 // ─── CVE table tab ───────────────────────────────────────────────────────────
 
-function ExplainButton({
-  cve,
-  vendorName,
-}: {
-  cve: CveItem;
-  vendorName: string;
-}) {
+function ExplainButton({ cve }: { cve: CveItem }) {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleExplain = async () => {
-    if (explanation) {
-      setExplanation(null);
-      return;
-    }
+    if (explanation) { setExplanation(null); return; }
     setLoading(true);
     try {
       const res = await fetch(`/api/cve/${cve.cveId}/explain`, {
@@ -386,11 +432,7 @@ function ExplainButton({
         disabled={loading}
         className="h-7 text-xs gap-1.5 border-violet-500/30 text-violet-400 hover:text-violet-300 hover:border-violet-400/50 bg-violet-500/5 hover:bg-violet-500/10"
       >
-        {loading ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : (
-          <Zap className="h-3 w-3" />
-        )}
+        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
         {explanation ? "Hide AI Explanation" : "Explain with AI"}
       </Button>
       {explanation && (
@@ -399,9 +441,7 @@ function ExplainButton({
             <Info className="h-3.5 w-3.5 text-violet-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-xs text-slate-300 leading-relaxed">{explanation}</p>
-              <p className="text-[10px] text-slate-500 mt-1.5">
-                AI-generated commentary · Always verify with NVD
-              </p>
+              <p className="text-[10px] text-slate-500 mt-1.5">AI-generated commentary · Always verify with NVD and CISA KEV</p>
             </div>
           </div>
         </div>
@@ -410,7 +450,7 @@ function ExplainButton({
   );
 }
 
-function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
+function CveRow({ cve }: { cve: CveItem }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -435,14 +475,12 @@ function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
               <SeverityBadge severity={cve.cvssSeverity} />
               {cve.isKev && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                  <Zap className="h-2.5 w-2.5" />
-                  KEV
+                  <Zap className="h-2.5 w-2.5" />KEV
                 </span>
               )}
-              {cve.epssScore && parseFloat(cve.epssScore) >= 0.5 && (
+              {cve.epssScore && parseFloat(cve.epssScore) >= 0.9 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/20 text-violet-400 border border-violet-500/40">
-                  <TrendingUp className="h-2.5 w-2.5" />
-                  High EPSS
+                  <TrendingUp className="h-2.5 w-2.5" />High EPSS
                 </span>
               )}
             </div>
@@ -465,9 +503,7 @@ function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
             )}
             {cve.published && (
               <div className="text-right hidden sm:block">
-                <span className="text-xs text-slate-400">
-                  {format(new Date(cve.published), "MMM d, yyyy")}
-                </span>
+                <span className="text-xs text-slate-400">{format(new Date(cve.published), "MMM d, yyyy")}</span>
                 <div className="text-[10px] text-slate-600 mt-0.5">Published</div>
               </div>
             )}
@@ -485,27 +521,19 @@ function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {cve.cvssVersion && (
               <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">
-                  CVSS Version
-                </div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">CVSS Version</div>
                 <div className="text-xs text-slate-300">{cve.cvssVersion}</div>
               </div>
             )}
             {cve.cvssVector && (
               <div className="col-span-2">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">
-                  Vector
-                </div>
-                <div className="text-xs text-slate-300 font-mono break-all">
-                  {cve.cvssVector}
-                </div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Vector</div>
+                <div className="text-xs text-slate-300 font-mono break-all">{cve.cvssVector}</div>
               </div>
             )}
             {cve.vulnStatus && (
               <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">
-                  Status
-                </div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Status</div>
                 <div className="text-xs text-slate-300">{cve.vulnStatus}</div>
               </div>
             )}
@@ -513,17 +541,10 @@ function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
 
           {cve.cweIds && cve.cweIds.length > 0 && (
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">
-                Weakness Types
-              </div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Weakness Types</div>
               <div className="flex gap-1.5 flex-wrap">
                 {cve.cweIds.map((cwe) => (
-                  <span
-                    key={cwe}
-                    className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs"
-                  >
-                    {cwe}
-                  </span>
+                  <span key={cwe} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs">{cwe}</span>
                 ))}
               </div>
             </div>
@@ -531,63 +552,76 @@ function CveRow({ cve, vendorName }: { cve: CveItem; vendorName: string }) {
 
           {cve.products.length > 0 && (
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">
-                Affected Products
-              </div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Affected Products</div>
               <div className="flex gap-1.5 flex-wrap">
                 {cve.products.map((p) => (
-                  <span
-                    key={p}
-                    className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs"
-                  >
-                    {p}
-                  </span>
+                  <span key={p} className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">{p}</span>
                 ))}
               </div>
             </div>
           )}
 
-          {cve.lastModified && (
-            <div className="text-[10px] text-slate-500">
-              Last modified:{" "}
-              {format(new Date(cve.lastModified), "MMM d, yyyy")}
+          {cve.isKev && cve.kevInfo && (
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 space-y-1">
+              <div className="text-[11px] font-semibold text-amber-400 flex items-center gap-1">
+                <Zap className="h-3 w-3" /> CISA Known Exploited Vulnerability
+              </div>
+              {cve.kevInfo.dateAdded && (
+                <div className="text-xs text-slate-400">Added to KEV: {cve.kevInfo.dateAdded}</div>
+              )}
+              {cve.kevInfo.dueDate && (
+                <div className="text-xs text-slate-400">Remediation due: {cve.kevInfo.dueDate}</div>
+              )}
+              {cve.kevInfo.requiredAction && (
+                <div className="text-xs text-slate-300 mt-1">{cve.kevInfo.requiredAction}</div>
+              )}
+              {cve.kevInfo.ransomwareUse && cve.kevInfo.ransomwareUse !== "Unknown" && (
+                <div className="text-xs text-red-400 font-medium">Ransomware use: {cve.kevInfo.ransomwareUse}</div>
+              )}
             </div>
           )}
 
-          <ExplainButton cve={cve} vendorName={vendorName} />
+          {cve.lastModified && (
+            <div className="text-[10px] text-slate-500">
+              Last modified: {format(new Date(cve.lastModified), "MMM d, yyyy")}
+            </div>
+          )}
+
+          <ExplainButton cve={cve} />
         </div>
       )}
     </div>
   );
 }
 
-function CveTableTab({ vendorId, vendorName }: { vendorId: string; vendorName: string }) {
-  const [severity, setSeverity] = useState("all");
-  const [kev, setKev] = useState("all");
+function CveTableTab({ vendorId }: { vendorId: string; vendorName: string }) {
+  const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
+  const [kevOnly, setKevOnly] = useState(false);
   const [product, setProduct] = useState("all");
-  const [sort, setSort] = useState<"published" | "severity" | "epss">(
-    "published",
-  );
+  const [since, setSince] = useState("");
+  const [sort, setSort] = useState<"published" | "severity" | "epss">("published");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
-  const limit = 25;
+  const pageSize = 25;
 
-  const params = new URLSearchParams();
-  if (severity !== "all") params.set("severity", severity);
-  if (kev === "true") params.set("kev", "true");
-  if (product !== "all") params.set("product", product);
-  params.set("sort", sort);
-  params.set("order", order);
-  params.set("page", String(page));
-  params.set("limit", String(limit));
+  // Build query params
+  const params = useMemo(() => {
+    const p = new URLSearchParams();
+    if (selectedSeverities.length > 0) p.set("severity", selectedSeverities.join(","));
+    if (kevOnly) p.set("kev_only", "true");
+    if (product !== "all") p.set("product", product);
+    if (since) p.set("since", since);
+    p.set("sort", sort);
+    p.set("order", order);
+    p.set("page", String(page));
+    p.set("page_size", String(pageSize));
+    return p;
+  }, [selectedSeverities, kevOnly, product, since, sort, order, page]);
 
   const { data, isLoading } = useQuery<CveListResult>({
-    queryKey: ["/api/cve/vendors", vendorId, "cves", severity, kev, product, sort, order, page],
+    queryKey: ["/api/cve/vendor", vendorId, "cves", params.toString()],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/cve/vendors/${vendorId}/cves?${params}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/api/cve/vendor/${vendorId}?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load CVEs");
       return res.json();
     },
@@ -595,90 +629,102 @@ function CveTableTab({ vendorId, vendorName }: { vendorId: string; vendorName: s
   });
 
   const { data: summary } = useQuery<CveSummary>({
-    queryKey: ["/api/cve/vendors", vendorId, "summary"],
+    queryKey: ["/api/cve/vendor", vendorId, "summary"],
     queryFn: async () => {
-      const res = await fetch(`/api/cve/vendors/${vendorId}/summary`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to load summary");
+      const res = await fetch(`/api/cve/vendor/${vendorId}/summary`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
     enabled: !!vendorId,
   });
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
+
+  const resetPage = () => setPage(1);
 
   return (
     <div className="space-y-4">
-      {/* Filter bar */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <Select value={severity} onValueChange={(v) => { setSeverity(v); setPage(1); }}>
-          <SelectTrigger className="w-36 bg-slate-900 border-white/10 text-white text-xs h-8">
-            <SelectValue placeholder="All severities" />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-white/10">
-            <SelectItem value="all">All Severities</SelectItem>
-            {["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"].map((s) => (
-              <SelectItem key={s} value={s} className="text-white">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Severity multi-select */}
+      <div className="bg-slate-900 border border-white/5 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-400 flex-shrink-0">Severity:</span>
+          <SeverityMultiSelect
+            selected={selectedSeverities}
+            onChange={(v) => { setSelectedSeverities(v); resetPage(); }}
+          />
+        </div>
 
-        <Select value={kev} onValueChange={(v) => { setKev(v); setPage(1); }}>
-          <SelectTrigger className="w-36 bg-slate-900 border-white/10 text-white text-xs h-8">
-            <SelectValue placeholder="KEV filter" />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-white/10">
-            <SelectItem value="all">All CVEs</SelectItem>
-            <SelectItem value="true" className="text-white">
-              KEV Only
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* KEV toggle */}
+          <button
+            onClick={() => { setKevOnly((p) => !p); resetPage(); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              kevOnly
+                ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-300"
+            }`}
+          >
+            <Zap className="h-3 w-3" />
+            KEV Only
+          </button>
 
-        {summary?.products && summary.products.length > 0 && (
-          <Select value={product} onValueChange={(v) => { setProduct(v); setPage(1); }}>
-            <SelectTrigger className="w-44 bg-slate-900 border-white/10 text-white text-xs h-8">
-              <SelectValue placeholder="All Products" />
+          {/* Product filter */}
+          {summary?.byProduct && summary.byProduct.length > 0 && (
+            <Select value={product} onValueChange={(v) => { setProduct(v); resetPage(); }}>
+              <SelectTrigger className="w-44 bg-slate-800 border-slate-700 text-slate-300 text-xs h-8">
+                <SelectValue placeholder="All Products" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/10 max-h-60">
+                <SelectItem value="all" className="text-white">All Products</SelectItem>
+                {summary.byProduct.map(({ product: p }) => (
+                  <SelectItem key={p} value={p} className="text-white">{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Date range — since */}
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-slate-500" />
+            <span className="text-xs text-slate-400">Since:</span>
+            <input
+              type="date"
+              value={since}
+              onChange={(e) => { setSince(e.target.value); resetPage(); }}
+              className="bg-slate-800 border border-slate-700 rounded text-xs text-slate-300 px-2 py-1 h-8 focus:outline-none focus:border-cyan-500/50"
+            />
+            {since && (
+              <button onClick={() => { setSince(""); resetPage(); }} className="text-slate-500 hover:text-slate-300">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort */}
+          <Select
+            value={`${sort}:${order}`}
+            onValueChange={(v) => {
+              const [s, o] = v.split(":") as ["published" | "severity" | "epss", "asc" | "desc"];
+              setSort(s); setOrder(o); resetPage();
+            }}
+          >
+            <SelectTrigger className="w-44 bg-slate-800 border-slate-700 text-slate-300 text-xs h-8">
+              <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-white/10 max-h-60">
-              <SelectItem value="all">All Products</SelectItem>
-              {summary.products.map((p) => (
-                <SelectItem key={p} value={p} className="text-white">
-                  {p}
-                </SelectItem>
-              ))}
+            <SelectContent className="bg-slate-900 border-white/10">
+              <SelectItem value="published:desc" className="text-white">Newest first</SelectItem>
+              <SelectItem value="published:asc" className="text-white">Oldest first</SelectItem>
+              <SelectItem value="severity:asc" className="text-white">Most severe first</SelectItem>
+              <SelectItem value="severity:desc" className="text-white">Least severe first</SelectItem>
             </SelectContent>
           </Select>
-        )}
 
-        <Select
-          value={`${sort}:${order}`}
-          onValueChange={(v) => {
-            const [s, o] = v.split(":") as ["published" | "severity" | "epss", "asc" | "desc"];
-            setSort(s);
-            setOrder(o);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-44 bg-slate-900 border-white/10 text-white text-xs h-8">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-white/10">
-            <SelectItem value="published:desc" className="text-white">Newest first</SelectItem>
-            <SelectItem value="published:asc" className="text-white">Oldest first</SelectItem>
-            <SelectItem value="severity:asc" className="text-white">Most severe first</SelectItem>
-            <SelectItem value="severity:desc" className="text-white">Least severe first</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {data && (
-          <span className="text-xs text-slate-500 ml-auto">
-            {data.total.toLocaleString()} CVEs
-          </span>
-        )}
+          {data && (
+            <span className="text-xs text-slate-500 ml-auto">
+              {data.total.toLocaleString()} CVEs
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -693,9 +739,7 @@ function CveTableTab({ vendorId, vendorName }: { vendorId: string; vendorName: s
         </div>
       ) : (
         <div className="space-y-2">
-          {data.data.map((cve) => (
-            <CveRow key={cve.cveId} cve={cve} vendorName={vendorName} />
-          ))}
+          {data.data.map((cve) => <CveRow key={cve.cveId} cve={cve} />)}
         </div>
       )}
 
@@ -711,9 +755,7 @@ function CveTableTab({ vendorId, vendorName }: { vendorId: string; vendorName: s
           >
             Previous
           </Button>
-          <span className="text-xs text-slate-400">
-            {page} / {totalPages}
-          </span>
+          <span className="text-xs text-slate-400">{page} / {totalPages}</span>
           <Button
             size="sm"
             variant="outline"
@@ -737,11 +779,9 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const toggleVendor = (id: string) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 8) return prev;
-      return [...prev, id];
-    });
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 8 ? prev : [...prev, id],
+    );
   };
 
   const { data, isLoading } = useQuery<{
@@ -750,10 +790,7 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
   }>({
     queryKey: ["/api/cve/compare", selectedIds.join(",")],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/cve/compare?vendorIds=${selectedIds.join(",")}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/api/cve/compare?entities=${selectedIds.join(",")}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to compare");
       return res.json();
     },
@@ -765,9 +802,7 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
       {/* Vendor selector */}
       <div className="bg-slate-900 border border-white/5 rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-white">
-            Select vendors to compare (up to 8)
-          </h3>
+          <h3 className="text-sm font-semibold text-white">Select vendors to compare (up to 8)</h3>
           {selectedIds.length > 0 && (
             <button
               onClick={() => setSelectedIds([])}
@@ -778,9 +813,7 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
           )}
         </div>
         {vendors.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No vendors with confirmed CVE mappings found.
-          </p>
+          <p className="text-sm text-slate-500">No vendors with confirmed CVE mappings found.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {vendors.map((v) => {
@@ -803,13 +836,10 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
         )}
       </div>
 
-      {/* Results */}
       {selectedIds.length < 2 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Shield className="h-10 w-10 text-slate-700 mb-3" />
-          <p className="text-slate-400 text-sm">
-            Select at least 2 vendors to compare.
-          </p>
+          <p className="text-slate-400 text-sm">Select at least 2 vendors to compare.</p>
         </div>
       )}
 
@@ -821,64 +851,33 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
 
       {data && data.vendors.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {data.vendors.map((summary, idx) => {
+          {data.vendors.map((summary) => {
             if (!summary) return null;
-            const critHigh =
-              (summary.bySeverity["CRITICAL"] ?? 0) +
-              (summary.bySeverity["HIGH"] ?? 0);
+            const critHigh = (summary.bySeverity["CRITICAL"] ?? 0) + (summary.bySeverity["HIGH"] ?? 0);
             return (
-              <div
-                key={summary.vendorId}
-                className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-3"
-              >
+              <div key={summary.vendorId} className="bg-slate-900 border border-white/5 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-white text-sm truncate">
-                    {summary.vendorName}
-                  </h4>
-                  <button
-                    onClick={() => toggleVendor(summary.vendorId)}
-                    className="text-slate-600 hover:text-slate-400"
-                  >
+                  <h4 className="font-semibold text-white text-sm truncate">{summary.vendorName}</h4>
+                  <button onClick={() => toggleVendor(summary.vendorId)} className="text-slate-600 hover:text-slate-400">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
-
-                <SeverityMixBar
-                  bySeverity={summary.bySeverity}
-                  total={summary.total}
-                />
-
+                <SeverityMixBar bySeverity={summary.bySeverity} total={summary.total} />
                 <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="bg-slate-800/50 rounded-lg p-2">
-                    <div className="text-lg font-bold text-white">
-                      {summary.total}
+                  {[
+                    { value: summary.total, label: "Total", color: "text-white", bg: "bg-slate-800/50" },
+                    { value: critHigh, label: "Crit/High", color: "text-red-400", bg: "bg-red-500/10" },
+                    { value: summary.kevCount, label: "KEV", color: "text-amber-400", bg: "bg-amber-500/10" },
+                    { value: summary.epssHighCount, label: "EPSS≥90%", color: "text-violet-400", bg: "bg-violet-500/10" },
+                  ].map(({ value, label, color, bg }) => (
+                    <div key={label} className={`${bg} rounded-lg p-2`}>
+                      <div className={`text-lg font-bold ${color}`}>{value}</div>
+                      <div className="text-[10px] text-slate-500">{label}</div>
                     </div>
-                    <div className="text-[10px] text-slate-500">Total</div>
-                  </div>
-                  <div className="bg-red-500/10 rounded-lg p-2">
-                    <div className="text-lg font-bold text-red-400">
-                      {critHigh}
-                    </div>
-                    <div className="text-[10px] text-slate-500">Crit/High</div>
-                  </div>
-                  <div className="bg-amber-500/10 rounded-lg p-2">
-                    <div className="text-lg font-bold text-amber-400">
-                      {summary.kevCount}
-                    </div>
-                    <div className="text-[10px] text-slate-500">KEV</div>
-                  </div>
-                  <div className="bg-violet-500/10 rounded-lg p-2">
-                    <div className="text-lg font-bold text-violet-400">
-                      {summary.epssHighCount}
-                    </div>
-                    <div className="text-[10px] text-slate-500">High EPSS</div>
-                  </div>
+                  ))}
                 </div>
-
                 {summary.cpeTokens.length === 0 && (
-                  <p className="text-[10px] text-slate-500 text-center">
-                    No confirmed CPE mappings
-                  </p>
+                  <p className="text-[10px] text-slate-500 text-center">No confirmed CPE mappings</p>
                 )}
               </div>
             );
@@ -902,6 +901,7 @@ export default function SecurityPage() {
 
   const { data: vendorsData, isLoading: vendorsLoading } = useQuery<{
     vendors: CveVendor[];
+    dataAsOf: string | null;
   }>({
     queryKey: ["/api/cve/vendors"],
     queryFn: async () => {
@@ -940,49 +940,41 @@ export default function SecurityPage() {
               <Shield className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">
-                CVE Intelligence
-              </h1>
-              <p className="text-slate-400 text-sm">
-                Vulnerability exposure across your vendor landscape
-              </p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">CVE Intelligence</h1>
+              <p className="text-slate-400 text-sm">Vulnerability exposure across your vendor landscape · NVD data</p>
             </div>
           </div>
         </div>
 
-        {/* Vendor selector */}
-        <div className="mb-6">
-          {vendorsLoading ? (
-            <div className="h-9 w-56 bg-slate-800 rounded-lg animate-pulse" />
-          ) : vendors.length === 0 ? (
-            <div className="flex items-center gap-2 text-slate-400 text-sm bg-slate-900 border border-white/5 rounded-xl px-4 py-3">
-              <Info className="h-4 w-4 flex-shrink-0" />
-              <span>
-                No vendors with confirmed CPE mappings yet. Ask an admin to
-                review the CVE Crosswalk.
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm text-slate-400">Vendor:</span>
-              <Select
-                value={selectedVendorId}
-                onValueChange={setSelectedVendorId}
-              >
-                <SelectTrigger className="w-56 bg-slate-900 border-white/10 text-white">
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10">
-                  {vendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id} className="text-white">
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
+        {/* Vendor selector (hidden in compare tab) */}
+        {tab !== "compare" && (
+          <div className="mb-6">
+            {vendorsLoading ? (
+              <div className="h-9 w-56 bg-slate-800 rounded-lg animate-pulse" />
+            ) : vendors.length === 0 ? (
+              <div className="flex items-center gap-2 text-slate-400 text-sm bg-slate-900 border border-white/5 rounded-xl px-4 py-3">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  No vendors with confirmed CPE mappings yet. Ask an admin to review the CVE Crosswalk.
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-400">Vendor:</span>
+                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                  <SelectTrigger className="w-56 bg-slate-900 border-white/10 text-white">
+                    <SelectValue placeholder="Select vendor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/10">
+                    {vendors.map((v) => (
+                      <SelectItem key={v.id} value={v.id} className="text-white">{v.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mb-6 bg-slate-900/50 rounded-xl p-1 w-fit">
@@ -991,9 +983,7 @@ export default function SecurityPage() {
               key={id}
               onClick={() => setTab(id)}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                tab === id
-                  ? "bg-white/10 text-white"
-                  : "text-slate-400 hover:text-white"
+                tab === id ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               {label}
@@ -1012,11 +1002,10 @@ export default function SecurityPage() {
           />
         )}
         {tab === "compare" && (
-          <CompareTab vendors={tab === "compare" ? vendors : []} />
+          <CompareTab vendors={vendors} />
         )}
 
-        {/* Empty state when no vendor selected and vendors exist */}
-        {!selectedVendorId && vendors.length > 0 && (
+        {tab !== "compare" && !selectedVendorId && vendors.length > 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Shield className="h-10 w-10 text-slate-700 mb-3" />
             <p className="text-slate-400 text-sm">Select a vendor to view CVE intelligence.</p>
