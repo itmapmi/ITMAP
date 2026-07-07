@@ -1,33 +1,34 @@
 /**
- * CVE feed publisher — reads unpublished discrete cve_event rows and converts
- * them into vendor_signals rows in the intelligence feed.
+ * CVE feed publisher — reads all unpublished cve_event rows (discrete AND
+ * daily_digest) and converts them into vendor_signals rows.
  *
  * ISOLATION ASSERTION: this file must never import from server/news/suggestions/
  * or any vendor scoring pipeline. CVE events are intelligence-only and must
  * never trigger score adjustments.
  *
- * Feature gate (both required):
- *   FEATURE_CVE_MODULE  !== 'false'   (CVE module; default = on)
+ * Feature gate (BOTH required):
+ *   FEATURE_CVE_MODULE  !== 'false'    (module; default = on)
  *   FEATURE_CVE_NEWS_EVENTS === 'true' (feed events; default = off, opt-in)
  *
- * Only processes discrete event types (kev_added, critical_published,
- * severity_escalated). Daily digest events are written directly to
- * vendor_signals by the emitter and do not flow through this publisher.
- *
  * LLM usage:
- *   kev_added → ALWAYS deterministic headline (no LLM) so "⚠ KEV Added"
- *               label is guaranteed regardless of LLM availability.
- *   critical_published, severity_escalated → LLM for richer headline+body
- *               with deterministic fallback.
+ *   kev_added          → ALWAYS deterministic headline ("⚠ KEV Added: …")
+ *                        — no LLM so the label is guaranteed.
+ *   critical_published,
+ *   severity_escalated → LLM (gpt-4o-mini) for headline+body; deterministic
+ *                        fallback if LLM unavailable or errors.
+ *   daily_digest       → deterministic; no LLM call.
  *
- * Market fanout: one vendor_signals row per market where the vendor appears,
- * resolved via canonicalVendorId linkage.
+ * Market fanout: one vendor_signals row is inserted per market where the vendor
+ * appears. Resolved via canonicalVendorId — all vendor rows sharing the same
+ * canonical vendor receive the signal. Falls back to the single primary market.
  */
 
 import { db } from '../../db';
-import { cveEvent, cve, kev, epss, vendors, vendorSignals } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { cveEvent, cve, kev, epss, vendors, vendorSignals, vendorCpeCrosswalk } from '@shared/schema';
+import { eq, and, inArray, gte } from 'drizzle-orm';
 import OpenAI from 'openai';
+
+// ── LLM helpers ──────────────────────────────────────────────────────────────
 
 function getOpenAI(): OpenAI {
   return new OpenAI({
@@ -36,60 +37,67 @@ function getOpenAI(): OpenAI {
   });
 }
 
-/** kev_added: always deterministic — never call LLM. */
-function buildKevHeadlineAndBody(
+/** kev_added: always deterministic — never call LLM. Guarantees "⚠ KEV Added" label. */
+function buildKevSignal(
   cveId: string,
-  vendorName: string,
   severity: string | null,
   kevProduct: string | null,
   description: string | null,
+  vendorName: string,
 ): { headline: string; body: string } {
   const headline = `⚠ KEV Added: ${cveId} — actively exploited vulnerability`;
-  const severityStr = severity ? `${severity}-severity` : '';
   const productStr = kevProduct ? ` in ${kevProduct}` : '';
-  const bodyParts: string[] = [];
-  bodyParts.push(`CISA added ${cveId}${productStr} (${severityStr}) to the Known Exploited Vulnerabilities catalog, indicating active exploitation in the wild.`);
+  const severityStr = severity ? `${severity.toLowerCase()}-severity ` : '';
+  const bodyParts: string[] = [
+    `CISA added this ${severityStr}vulnerability${productStr} to the Known Exploited Vulnerabilities catalog, confirming active exploitation in the wild.`,
+  ];
   if (description) bodyParts.push(description.slice(0, 240));
   return { headline, body: bodyParts.join(' ') };
 }
 
+function deterministicHeadline(
+  eventType: string,
+  cveId: string,
+  severity: string | null,
+): string {
+  switch (eventType) {
+    case 'critical_published':
+      return `Critical vulnerability ${cveId} published`;
+    case 'severity_escalated':
+      return `${cveId} escalated to ${severity ?? 'High'} severity`;
+    default:
+      return `${cveId} — ${severity ?? 'Unknown'} severity vulnerability`;
+  }
+}
+
 async function generateHeadlineAndBody(
   eventType: string,
-  cveData: {
-    cveId: string;
-    description: string | null;
-    cvssSeverity: string | null;
-    cvssBaseScore: string | null;
-  },
+  cveData: { cveId: string; description: string | null; cvssSeverity: string | null; cvssBaseScore: string | null },
   kevData: { product: string | null; requiredAction: string | null } | null,
   vendorName: string,
 ): Promise<{ headline: string; body: string }> {
-  // kev_added is always deterministic — skip LLM
+  // kev_added is always deterministic — guarantee label, skip LLM
   if (eventType === 'kev_added') {
-    return buildKevHeadlineAndBody(
+    return buildKevSignal(
       cveData.cveId,
-      vendorName,
       cveData.cvssSeverity,
       kevData?.product ?? null,
       cveData.description,
+      vendorName,
     );
   }
-
-  const severityLine = cveData.cvssSeverity
-    ? `Severity: ${cveData.cvssSeverity} (CVSS ${cveData.cvssBaseScore ?? 'N/A'})`
-    : 'Severity: Unknown';
 
   const prompt = [
     'You are a cybersecurity intelligence analyst. Generate a 1-sentence headline and 2-sentence body for this CVE event.',
     `Event type: ${eventType.replace(/_/g, ' ')}`,
     `Vendor: ${vendorName}`,
     `CVE ID: ${cveData.cveId}`,
-    severityLine,
+    cveData.cvssSeverity ? `Severity: ${cveData.cvssSeverity} (CVSS ${cveData.cvssBaseScore ?? 'N/A'})` : 'Severity: Unknown',
     kevData?.requiredAction ? `Required action: ${kevData.requiredAction}` : '',
     `Description: ${cveData.description ?? 'No description available.'}`,
     '',
     'Respond with JSON: {"headline": "...", "body": "..."}',
-    'Use only the supplied information. Do not add assumptions or external knowledge.',
+    'Use only the supplied information. Do not add assumptions.',
   ].filter(Boolean).join('\n');
 
   try {
@@ -101,35 +109,21 @@ async function generateHeadlineAndBody(
       temperature: 0.3,
       response_format: { type: 'json_object' },
     });
-    const text = completion.choices[0]?.message?.content ?? '{}';
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(completion.choices[0]?.message?.content ?? '{}');
     return {
-      headline: parsed.headline ?? deterministicHeadline(eventType, cveData),
+      headline: parsed.headline ?? deterministicHeadline(eventType, cveData.cveId, cveData.cvssSeverity),
       body: parsed.body ?? (cveData.description?.slice(0, 300) ?? ''),
     };
   } catch {
     return {
-      headline: deterministicHeadline(eventType, cveData),
+      headline: deterministicHeadline(eventType, cveData.cveId, cveData.cvssSeverity),
       body: cveData.description?.slice(0, 300) ?? '',
     };
   }
 }
 
-function deterministicHeadline(
-  eventType: string,
-  cveData: { cveId: string; cvssSeverity: string | null },
-): string {
-  switch (eventType) {
-    case 'critical_published':
-      return `Critical vulnerability ${cveData.cveId} published`;
-    case 'severity_escalated':
-      return `${cveData.cveId} escalated to ${cveData.cvssSeverity ?? 'High'} severity`;
-    default:
-      return `${cveData.cveId} — ${cveData.cvssSeverity ?? 'Unknown'} severity vulnerability`;
-  }
-}
+// ── Market fanout ─────────────────────────────────────────────────────────────
 
-/** Resolve all (vendorId, marketId, vendorName) market targets via canonicalVendorId. */
 async function resolveMarketTargets(
   primaryVendorId: string,
 ): Promise<Array<{ vendorId: string; marketId: string; vendorName: string }>> {
@@ -155,6 +149,97 @@ async function resolveMarketTargets(
     : [{ vendorId: primaryVendor.id, marketId: primaryVendor.marketId, vendorName: primaryVendor.name }];
 }
 
+// ── Digest builder ────────────────────────────────────────────────────────────
+
+/**
+ * Build a daily digest signal for a vendor on the given date.
+ * Queries qualifying CVEs (KEV, CRITICAL, HIGH) for the digest date window.
+ */
+async function buildDigestPayload(
+  vendorId: string,
+  digestGroupDate: string,
+  vendorName: string,
+): Promise<{
+  title: string;
+  content: string;
+  impactLabel: string;
+  sentiment: string;
+  rawData: Record<string, unknown>;
+}> {
+  // Get CPE tokens for this vendor
+  const crosswalkRows = await db
+    .select({ cpeVendor: vendorCpeCrosswalk.cpeVendor })
+    .from(vendorCpeCrosswalk)
+    .where(and(
+      eq(vendorCpeCrosswalk.vendorId, vendorId),
+      eq(vendorCpeCrosswalk.confidence, 'confirmed'),
+    ));
+
+  const cpeTokens = crosswalkRows.map(r => r.cpeVendor);
+
+  let totalCount = 0;
+  let kevCount = 0;
+  let critCount = 0;
+  let highCount = 0;
+  const cveIds: string[] = [];
+
+  if (cpeTokens.length > 0) {
+    const { cveCpe: cveCpeTable } = await import('@shared/schema');
+    const dateStart = new Date(digestGroupDate + 'T00:00:00.000Z');
+    const dateEnd = new Date(dateStart.getTime() + 26 * 60 * 60 * 1000);
+
+    const cveIdRows = await db
+      .selectDistinct({ cveId: cveCpeTable.cveId })
+      .from(cveCpeTable)
+      .innerJoin(cve, eq(cveCpeTable.cveId, cve.cveId))
+      .where(and(
+        inArray(cveCpeTable.cpeVendor, cpeTokens),
+        gte(cve.syncedAt, dateStart),
+      ));
+
+    const cveIdList = cveIdRows.map(r => r.cveId);
+    if (cveIdList.length > 0) {
+      const [cveRows, kevRows] = await Promise.all([
+        db.select({ cveId: cve.cveId, cvssSeverity: cve.cvssSeverity }).from(cve).where(inArray(cve.cveId, cveIdList)),
+        db.select({ cveId: kev.cveId }).from(kev).where(inArray(kev.cveId, cveIdList)),
+      ]);
+      const kevSet = new Set(kevRows.map(r => r.cveId));
+      for (const c of cveRows) {
+        cveIds.push(c.cveId);
+        if (kevSet.has(c.cveId)) kevCount++;
+        else if (c.cvssSeverity === 'CRITICAL') critCount++;
+        else if (c.cvssSeverity === 'HIGH') highCount++;
+      }
+      totalCount = cveRows.length;
+    }
+  }
+
+  const parts: string[] = [];
+  if (kevCount > 0) parts.push(`${kevCount} actively exploited (KEV)`);
+  if (critCount > 0) parts.push(`${critCount} critical`);
+  if (highCount > 0) parts.push(`${highCount} high`);
+
+  const impactLabel = kevCount > 0 || critCount > 0 ? 'HIGH' : 'MEDIUM';
+
+  return {
+    title: `${totalCount || 'Multiple'} new vulnerabilities for ${vendorName} (${digestGroupDate})`,
+    content: parts.length > 0 ? `Includes: ${parts.join(', ')}.` : `${totalCount} new vulnerabilities published.`,
+    impactLabel,
+    sentiment: impactLabel === 'HIGH' ? 'negative' : 'neutral',
+    rawData: {
+      eventType: 'daily_digest',
+      digestGroupDate,
+      totalCount,
+      kevCount,
+      critCount,
+      highCount,
+      cveIds: cveIds.slice(0, 20),
+    },
+  };
+}
+
+// ── Publisher entry point ─────────────────────────────────────────────────────
+
 export async function runCveEventPublisher(): Promise<void> {
   if (process.env.FEATURE_CVE_MODULE === 'false') {
     console.log('[CVE Publisher] FEATURE_CVE_MODULE=false, skipping');
@@ -165,22 +250,20 @@ export async function runCveEventPublisher(): Promise<void> {
     return;
   }
 
-  // Only process discrete events — digests are written directly by the emitter
+  // Fetch all unpublished events (discrete + daily_digest)
   const unpublished = await db
     .select()
     .from(cveEvent)
     .where(eq(cveEvent.publishedToFeed, false))
     .limit(50);
 
-  const discreteEvents = unpublished.filter(e => e.eventType !== 'daily_digest');
-  if (!discreteEvents.length) return;
+  if (!unpublished.length) return;
 
   let published = 0;
   let failed = 0;
 
-  for (const event of discreteEvents) {
+  for (const event of unpublished) {
     try {
-      // Resolve market targets for fanout
       const targets = await resolveMarketTargets(event.vendorId);
       if (!targets.length) {
         await db.update(cveEvent).set({ publishedToFeed: true }).where(eq(cveEvent.id, event.id));
@@ -189,85 +272,109 @@ export async function runCveEventPublisher(): Promise<void> {
 
       const vendorName = targets[0].vendorName;
 
-      // Fetch CVE + KEV + EPSS data in parallel
-      const [cveRows, kevRows, epssRows] = await Promise.all([
-        db.select().from(cve).where(eq(cve.cveId, event.cveId)).limit(1),
-        db.select().from(kev).where(eq(kev.cveId, event.cveId)).limit(1),
-        db.select().from(epss).where(eq(epss.cveId, event.cveId)).limit(1),
-      ]);
+      if (event.eventType === 'daily_digest') {
+        // ── Daily digest — deterministic, no LLM ──────────────────────────
+        const digestGroupDate = event.digestGroupDate ?? new Date().toISOString().slice(0, 10);
+        const { title, content, impactLabel, sentiment, rawData } = await buildDigestPayload(
+          event.vendorId,
+          digestGroupDate,
+          vendorName,
+        );
 
-      if (!cveRows[0]) {
-        // No CVE data — mark published to stop retrying
-        await db.update(cveEvent).set({ publishedToFeed: true }).where(eq(cveEvent.id, event.id));
-        continue;
-      }
+        for (const target of targets) {
+          await db.insert(vendorSignals).values({
+            vendorId: target.vendorId,
+            marketId: target.marketId,
+            sourceType: 'cve',
+            title,
+            content,
+            url: null,
+            sentiment,
+            sentimentScore: null,
+            impactLabel,
+            fedIntoSuggestion: false,
+            aiSuggestionId: null,
+            signalDate: event.triggeredAt,
+            rawData,
+          });
+        }
+      } else {
+        // ── Discrete event — LLM for non-KEV; deterministic for KEV ───────
+        const [cveRows, kevRows, epssRows] = await Promise.all([
+          db.select().from(cve).where(eq(cve.cveId, event.cveId)).limit(1),
+          db.select().from(kev).where(eq(kev.cveId, event.cveId)).limit(1),
+          db.select().from(epss).where(eq(epss.cveId, event.cveId)).limit(1),
+        ]);
 
-      const cveRow = cveRows[0];
-      const kevRow = kevRows[0] ?? null;
-      const epssRow = epssRows[0] ?? null;
-      const kevData = kevRow ? { product: kevRow.product, requiredAction: kevRow.requiredAction } : null;
+        if (!cveRows[0]) {
+          await db.update(cveEvent).set({ publishedToFeed: true }).where(eq(cveEvent.id, event.id));
+          continue;
+        }
 
-      // Generate headline + body (LLM for non-KEV events; deterministic for KEV)
-      const { headline, body } = await generateHeadlineAndBody(
-        event.eventType,
-        {
-          cveId: cveRow.cveId,
-          description: cveRow.description,
-          cvssSeverity: cveRow.cvssSeverity,
-          cvssBaseScore: cveRow.cvssBaseScore,
-        },
-        kevData,
-        vendorName,
-      );
+        const cveRow = cveRows[0];
+        const kevRow = kevRows[0] ?? null;
+        const epssRow = epssRows[0] ?? null;
+        const kevData = kevRow ? { product: kevRow.product, requiredAction: kevRow.requiredAction } : null;
 
-      const isKev = event.eventType === 'kev_added' || !!kevRow;
-      const isCritical = cveRow.cvssSeverity === 'CRITICAL';
-      const impactLabel = isKev || isCritical ? 'HIGH' : 'MEDIUM';
-      const sentiment = isKev || isCritical ? 'negative' : 'neutral';
+        const { headline, body } = await generateHeadlineAndBody(
+          event.eventType,
+          {
+            cveId: cveRow.cveId,
+            description: cveRow.description,
+            cvssSeverity: cveRow.cvssSeverity,
+            cvssBaseScore: cveRow.cvssBaseScore,
+          },
+          kevData,
+          vendorName,
+        );
 
-      const rawData = {
-        eventType: event.eventType,
-        cveId: event.cveId,
-        severity: cveRow.cvssSeverity,
-        cvssScore: cveRow.cvssBaseScore,
-        isKev,
-        kevProduct: kevRow?.product ?? null,
-        epssScore: epssRow?.epssScore ?? null,
-        epssPercentile: epssRow?.percentile ?? null,
-        requiredAction: kevRow?.requiredAction ?? null,
-      };
+        const isKev = event.eventType === 'kev_added' || !!kevRow;
+        const isCritical = cveRow.cvssSeverity === 'CRITICAL';
+        const impactLabel = isKev || isCritical ? 'HIGH' : 'MEDIUM';
 
-      // Insert one signal row per market target
-      for (const target of targets) {
-        await db.insert(vendorSignals).values({
-          vendorId: target.vendorId,
-          marketId: target.marketId,
-          sourceType: 'cve',
-          title: headline,
-          content: body,
-          url: `https://nvd.nist.gov/vuln/detail/${event.cveId}`,
-          sentiment,
-          sentimentScore: null,
-          impactLabel,
-          fedIntoSuggestion: false,
-          aiSuggestionId: null,
-          signalDate: event.triggeredAt,
-          rawData,
-        });
+        const rawData = {
+          eventType: event.eventType,
+          cveId: event.cveId,
+          severity: cveRow.cvssSeverity,
+          cvssScore: cveRow.cvssBaseScore,
+          isKev,
+          kevProduct: kevRow?.product ?? null,
+          epssScore: epssRow?.epssScore ?? null,
+          epssPercentile: epssRow?.percentile ?? null,
+          requiredAction: kevRow?.requiredAction ?? null,
+        };
+
+        for (const target of targets) {
+          await db.insert(vendorSignals).values({
+            vendorId: target.vendorId,
+            marketId: target.marketId,
+            sourceType: 'cve',
+            title: headline,
+            content: body,
+            url: `https://nvd.nist.gov/vuln/detail/${event.cveId}`,
+            sentiment: isKev || isCritical ? 'negative' : 'neutral',
+            sentimentScore: null,
+            impactLabel,
+            fedIntoSuggestion: false,
+            aiSuggestionId: null,
+            signalDate: event.triggeredAt,
+            rawData,
+          });
+        }
+
+        // Throttle LLM calls (not needed for KEV which is deterministic)
+        if (event.eventType !== 'kev_added') {
+          await new Promise(r => setTimeout(r, 500));
+        }
       }
 
       await db.update(cveEvent).set({ publishedToFeed: true }).where(eq(cveEvent.id, event.id));
       published++;
-
-      // Throttle OpenAI calls
-      if (event.eventType !== 'kev_added') {
-        await new Promise(r => setTimeout(r, 500));
-      }
     } catch (err: any) {
       console.error(`[CVE Publisher] Failed to publish event ${event.id}:`, err.message);
       failed++;
     }
   }
 
-  console.log(`[CVE Publisher] Published ${published} events (${failed} failed) from batch of ${discreteEvents.length}`);
+  console.log(`[CVE Publisher] Published ${published} events (${failed} failed) from batch of ${unpublished.length}`);
 }
