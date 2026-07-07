@@ -120,6 +120,14 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     featureKey: "battle_cards",
     accent: "cyan",
   },
+  {
+    label: "Security Intelligence",
+    description: "CVE vulnerabilities, CISA KEV alerts and EPSS exploit scores tracked across IT vendors.",
+    icon: <Shield className="h-5 w-5" />,
+    href: "/security",
+    featureKey: "cve_intelligence",
+    accent: "violet",
+  },
 ];
 
 // ─── Misc static data ────────────────────────────────────────────────────────
@@ -277,6 +285,13 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       accent: "violet",
       stat: savedSheets != null ? `${savedSheets.length}` : "—",
       statLabel: "saved comparisons",
+    },
+    {
+      label: "Security Intelligence",
+      description: "Track CVE vulnerabilities, CISA KEV alerts and EPSS exploit probability scores across vendors.",
+      icon: <Shield className="h-5 w-5" />,
+      href: "/security",
+      accent: "violet",
     },
     {
       label: "Methodology",
