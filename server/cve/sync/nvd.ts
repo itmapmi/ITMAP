@@ -37,7 +37,7 @@ async function nvdFetch(url: string, attempt = 0): Promise<Response> {
   };
   if (process.env.NVD_API_KEY) headers['apiKey'] = process.env.NVD_API_KEY;
 
-  const resp = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
+  const resp = await fetch(url, { headers, signal: AbortSignal.timeout(90000) });
 
   if ([403, 429, 503].includes(resp.status)) {
     if (attempt >= 5) throw new Error(`NVD rate limit after ${attempt} retries: HTTP ${resp.status}`);
