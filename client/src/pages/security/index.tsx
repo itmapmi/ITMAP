@@ -784,7 +784,7 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
     );
   };
 
-  const { data, isLoading } = useQuery<{
+  const { data, isLoading, isError } = useQuery<{
     vendors: (CveSummary | null)[];
     dataAsOf: string | null;
   }>({
@@ -846,6 +846,12 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
       {selectedIds.length >= 2 && isLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 text-cyan-500 animate-spin" />
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex items-center justify-center py-12 text-center">
+          <p className="text-red-400 text-sm">Failed to load comparison data. Please try again.</p>
         </div>
       )}
 
