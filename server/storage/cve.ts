@@ -125,17 +125,19 @@ export async function getCveSummary(vendorId: string): Promise<CveSummary | null
       .orderBy(desc(sql`count(distinct ${cveCpe.cveId})`))
       .limit(30),
 
-    // 12-month monthly trend using FILTER aggregate
+    // 12-month monthly trend — join through cve_cpe to avoid serialising a
+    // large JS array into a raw SQL ANY() parameter (triggers PG type error).
     db.execute(sql`
       SELECT
-        to_char(date_trunc('month', published AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
+        to_char(date_trunc('month', c.published AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
         count(*)::int AS count,
-        count(*) FILTER (WHERE cvss_severity = 'CRITICAL')::int AS critical,
-        count(*) FILTER (WHERE cvss_severity = 'HIGH')::int AS high
-      FROM cve
-      WHERE cve_id = ANY(${cveIdList})
-        AND published >= now() - interval '12 months'
-        AND published IS NOT NULL
+        count(*) FILTER (WHERE c.cvss_severity = 'CRITICAL')::int AS critical,
+        count(*) FILTER (WHERE c.cvss_severity = 'HIGH')::int AS high
+      FROM cve c
+      INNER JOIN cve_cpe cc ON cc.cve_id = c.cve_id
+      WHERE cc.cpe_vendor IN (${sql.join(cpeTokens.map((t) => sql`${t}`), sql`, `)})
+        AND c.published >= now() - interval '12 months'
+        AND c.published IS NOT NULL
       GROUP BY month
       ORDER BY month
     `),
