@@ -58,6 +58,7 @@ export default function Navigation() {
     { href: "/platform", label: "Platform" },
     { href: "/markets", label: "Markets" },
     { href: "/licensing", label: "Licensing" },
+    { href: "/pricing", label: "Pricing" },
     { href: "/about", label: "About Us" },
   ];
 

@@ -10,6 +10,7 @@ import About from "@/pages/About";
 import Platform from "@/pages/Platform";
 import Contact from "@/pages/Contact";
 import Licensing from "@/pages/Licensing";
+import Pricing from "@/pages/Pricing";
 import Markets from "@/pages/markets";
 import MarketDetails from "@/pages/market-details";
 import Admin from "@/pages/admin";
@@ -97,6 +98,7 @@ function Router() {
         <Route path="/platform" component={Platform} />
         <Route path="/contact" component={Contact} />
         <Route path="/licensing" component={Licensing} />
+        <Route path="/pricing" component={Pricing} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/markets" component={Markets} />
