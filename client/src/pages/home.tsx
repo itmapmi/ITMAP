@@ -379,7 +379,7 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <h2 className="text-xl font-bold text-white mb-2">Account not linked to a vendor</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
               Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet.
-              This is done by a <span className="text-white font-medium">spectio.ai administrator</span> — please contact your account manager to complete the setup.
+              This is done by a <span className="text-white font-medium">dcig.ai administrator</span> — please contact your account manager to complete the setup.
             </p>
             <div className="bg-slate-800 rounded-xl p-4 text-left mb-6">
               <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Your account</p>

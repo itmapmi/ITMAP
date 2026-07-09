@@ -12,13 +12,13 @@ const app = express();
 app.set('trust proxy', true);
 
 // Canonical domain enforcement.
-// In production a custom domain (e.g. spectio.ai) is served alongside the bare
+// In production a custom domain (e.g. dcig.ai) is served alongside the bare
 // Replit deployment domain (*.replit.app). Without this, an OAuth login can
 // strand the user on the *.replit.app host. We 301-redirect any *.replit.app
 // request to the primary custom domain so the whole session stays on one host.
 // Dev/preview hosts use *.replit.dev and are never matched, so the preview pane
 // keeps working.
-const PRIMARY_DOMAIN = (process.env.PRIMARY_DOMAIN || "spectio.ai")
+const PRIMARY_DOMAIN = (process.env.PRIMARY_DOMAIN || "dcig.ai")
   .toLowerCase()
   .replace(/^https?:\/\//, "")
   .replace(/\/.*$/, "")

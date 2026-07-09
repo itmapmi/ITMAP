@@ -50,7 +50,7 @@ export async function collectHnSignals(
 
   try {
     const resp = await fetch(apiUrl, {
-      headers: { 'User-Agent': 'spectio.ai/1.0 (vendor intelligence; contact@spectio.ai)' },
+      headers: { 'User-Agent': 'dcig.ai/1.0 (vendor intelligence; contact@dcig.ai)' },
       signal: AbortSignal.timeout(10000),
     });
 

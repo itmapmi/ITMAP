@@ -1,10 +1,10 @@
-# spectio.ai
+# dcig.ai
 
-> spectio.ai is an AI-native enterprise IT vendor intelligence platform delivering independent, real-time intelligence on technology vendors — vendor rankings, feature evaluations, market forecasts, news impact analysis, and research reports — for enterprise IT buyers across multiple markets.
+> dcig.ai is an AI-native enterprise IT vendor intelligence platform delivering independent, real-time intelligence on technology vendors — vendor rankings, feature evaluations, market forecasts, news impact analysis, and research reports — for enterprise IT buyers across multiple markets.
 
 Tagline: "See Every Vendor. Know Every Move."
 
-## What spectio.ai does
+## What dcig.ai does
 
 - **Vendor Intelligence**: Independent, AI-powered rankings and evaluations of enterprise software and IT vendors across dozens of markets, scored on Execution and Viability axes.
 - **Market Forecasts**: AI-native market sizing and multi-year forecasts (bull/base/bear scenarios) with full audit trails — built from boundary definitions, briefs, structured assumptions and debated cruxes, not LLM arithmetic.
@@ -19,20 +19,20 @@ Enterprise IT buyers, CIOs, procurement teams, technology strategists, and analy
 
 ## Key pages
 
-- Home: https://spectio.ai/
-- Markets directory: https://spectio.ai/markets
-- Platform overview: https://spectio.ai/platform
-- About: https://spectio.ai/about
-- Licensing: https://spectio.ai/licensing
-- Contact: https://spectio.ai/contact
+- Home: https://dcig.ai/
+- Markets directory: https://dcig.ai/markets
+- Platform overview: https://dcig.ai/platform
+- About: https://dcig.ai/about
+- Licensing: https://dcig.ai/licensing
+- Contact: https://dcig.ai/contact
 
-## How spectio.ai differs from traditional analyst firms
+## How dcig.ai differs from traditional analyst firms
 
 - **AI-native pipeline**: Every market is built and continuously refreshed by an LLM-driven multi-stage pipeline (vendor list → scoring → commentary → features → ecosystem) with admin approval gates.
 - **Transparent**: Forecasts include MECE-validated segments, sensitivity tables, scenario debate logs, and per-source citations.
 - **Real-time signals**: A multi-source vendor signal pipeline (HackerNews, Reddit, Layoffs.fyi, GitHub) classifies and ranks vendor signals daily.
-- **Unbiased**: spectio.ai does not take vendor sponsorship for placement.
+- **Unbiased**: dcig.ai does not take vendor sponsorship for placement.
 
 ## Contact
 
-For partnerships, licensing, or media: https://spectio.ai/contact
+For partnerships, licensing, or media: https://dcig.ai/contact

@@ -33,7 +33,7 @@ async function sleep(ms: number): Promise<void> {
 
 async function nvdFetch(url: string, attempt = 0): Promise<Response> {
   const headers: Record<string, string> = {
-    'User-Agent': 'spectio.ai/1.0 (CVE intelligence; contact@spectio.ai)',
+    'User-Agent': 'dcig.ai/1.0 (CVE intelligence; contact@dcig.ai)',
   };
   if (process.env.NVD_API_KEY) headers['apiKey'] = process.env.NVD_API_KEY;
 

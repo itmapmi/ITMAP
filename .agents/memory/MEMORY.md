@@ -10,3 +10,4 @@
 - [Quadrant label clamping](quadrant-label-clamp.md) — quadrant chart labels use absolute px (saved/fallback); resizing clips them off-screen. Clamp labelX/Y to drawable box at render.
 - [AI chat streaming + context cache](ai-chat-streaming-cache.md) — chat uses SSE streaming + in-memory context cache; EventSource can't POST so use fetch+ReadableStream on client.
 - [RFP decompose section-awareness](rfp-decompose-design.md) — skip classification filters boilerplate; section-annotated chunking prevents commercial text bleeding into technical sections in the LLM window.
+- [Domain/brand canonicalization](domain-brand-canonicalization.md) — brand domain is duplicated across ~15 files (meta tags, robots.txt, sitemap, emails, PDFs, PRIMARY_DOMAIN); rename requires repo-wide grep, not a config edit.

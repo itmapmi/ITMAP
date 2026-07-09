@@ -88,7 +88,7 @@ export async function sendChangeAlertEmail(input: ChangeAlertEmailInput): Promis
     <p style="color:#6b7280;margin:0 0 16px;">Market <strong>${esc(input.marketName)}</strong> — <strong>${esc(input.vendorName)} ${esc(input.productName)}</strong></p>
     <p style="margin:0 0 8px;">Change type: <strong>${esc(input.alert.changeType)}</strong> · Severity: <strong>${esc(input.alert.severity)}</strong></p>
     ${fieldsTable(input.alert.changedFields)}
-    <p style="margin-top:24px;color:#6b7280;font-size:12px;">Sent automatically by spectio.ai datasheet monitoring.</p>
+    <p style="margin-top:24px;color:#6b7280;font-size:12px;">Sent automatically by dcig.ai datasheet monitoring.</p>
   </body></html>`;
   for (const recipient of input.recipients) {
     if (await hasEmailBeenSent({ emailType: "change_alert", changeAlertId: input.alert.id, recipientEmail: recipient })) {
