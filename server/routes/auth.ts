@@ -20,9 +20,53 @@ export function registerAuthRoutes(app: Express): void {
   setupSession(app);
   setupPassport(app);
 
-  // Serve static files
-  app.get('/sitemap.xml', (_req, res) => {
-    res.sendFile(path.join(process.cwd(), 'public', 'sitemap.xml'));
+  // Serve sitemap dynamically so market pages are included
+  app.get('/sitemap.xml', async (_req, res) => {
+    const BASE = 'https://dcig.ai';
+
+    const staticPages = [
+      { loc: '/',          lastmod: '2026-05-11', changefreq: 'daily',   priority: '1.0' },
+      { loc: '/markets',   lastmod: '2026-05-11', changefreq: 'daily',   priority: '0.9' },
+      { loc: '/platform',  lastmod: '2026-05-11', changefreq: 'weekly',  priority: '0.8' },
+      { loc: '/about',     lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.7' },
+      { loc: '/licensing', lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
+      { loc: '/contact',   lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
+    ];
+
+    function marketSlug(name: string): string {
+      return name
+        .replace(/^ITMAP for /i, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    }
+
+    let marketEntries: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [];
+    try {
+      const { getPublicMarkets } = await import('../storage/markets');
+      const publicMarkets = await getPublicMarkets();
+      marketEntries = publicMarkets.map((m) => ({
+        loc: `/markets/${marketSlug(m.name)}`,
+        lastmod: m.updatedAt ? new Date(m.updatedAt).toISOString().split('T')[0] : '2026-05-11',
+        changefreq: 'weekly',
+        priority: '0.8',
+      }));
+    } catch (_err) {
+      // If the DB is unavailable, fall back to static pages only
+    }
+
+    const allEntries = [...staticPages, ...marketEntries];
+    const urlNodes = allEntries
+      .map(
+        (e) =>
+          `  <url>\n    <loc>${BASE}${e.loc}</loc>\n    <lastmod>${e.lastmod}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`
+      )
+      .join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlNodes}\n</urlset>\n`;
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.send(xml);
   });
 
   app.get('/robots.txt', (_req, res) => {
