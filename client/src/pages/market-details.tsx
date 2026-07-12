@@ -110,21 +110,21 @@ export default function MarketDetails() {
 
   // Track market view + dwell time once the market resolves.
   useEffect(() => {
-    if (!marketId || !market) return;
-    track("market_viewed", { marketId, metadata: { name: market.name } });
-    const endDwell = trackDwell({ marketId });
+    if (!resolvedId || !market) return;
+    track("market_viewed", { marketId: resolvedId, metadata: { name: market.name } });
+    const endDwell = trackDwell({ marketId: resolvedId });
     return endDwell;
-  }, [marketId, market?.id]);
+  }, [resolvedId, market?.id]);
 
   // Tab switches are meaningful intent signals (e.g. opening News).
   useEffect(() => {
-    if (!marketId) return;
+    if (!resolvedId) return;
     if (activeTab === "news") {
-      track("news_viewed", { marketId, metadata: { tab: activeTab } });
+      track("news_viewed", { marketId: resolvedId, metadata: { tab: activeTab } });
     } else {
-      track("filter_applied", { marketId, metadata: { tab: activeTab } });
+      track("filter_applied", { marketId: resolvedId, metadata: { tab: activeTab } });
     }
-  }, [activeTab, marketId]);
+  }, [activeTab, resolvedId]);
 
   // Inline label-position editor state for the Vendor Evaluation chart
   const [editingLabels, setEditingLabels] = useState(false);
@@ -146,7 +146,7 @@ export default function MarketDetails() {
         Object.entries(pendingLabelPositions).map(([vendorId, pos]) =>
           apiRequest("/api/label-positions", "POST", {
             vendorId,
-            marketId,
+            marketId: resolvedId ?? marketId,
             labelX: pos.x,
             labelY: pos.y,
           })
@@ -207,7 +207,7 @@ export default function MarketDetails() {
   const handleGenerateFullReport = async (selectedVendorIds: string[]) => {
     setIsGenerating(true);
     for (const vid of selectedVendorIds) {
-      track("vendor_selected", { marketId, vendorId: vid, metadata: { context: "report" } });
+      track("vendor_selected", { marketId: resolvedId ?? marketId, vendorId: vid, metadata: { context: "report" } });
     }
     try {
       const response = await apiRequest(
@@ -252,7 +252,7 @@ export default function MarketDetails() {
   const handleGenerateSummary = async (selectedVendorIds: string[]) => {
     setIsGeneratingSummary(true);
     for (const vid of selectedVendorIds) {
-      track("vendor_selected", { marketId, vendorId: vid, metadata: { context: "summary" } });
+      track("vendor_selected", { marketId: resolvedId ?? marketId, vendorId: vid, metadata: { context: "summary" } });
     }
     try {
       const response = await apiRequest(
@@ -580,7 +580,7 @@ export default function MarketDetails() {
                       disabled={createRfpMutation.isPending}
                       data-testid="tab-generate-rfp"
                       onClick={() => {
-                        track("rfp_clicked", { marketId, metadata: { marketName: market.name } });
+                        track("rfp_clicked", { marketId: resolvedId ?? marketId, metadata: { marketName: market.name } });
                         createRfpMutation.mutate({ marketId: market.id, marketName: market.name });
                       }}
                     >
@@ -659,7 +659,7 @@ export default function MarketDetails() {
             )}
             <MagicQuadrant
               key={`mq-${editingLabels ? "edit" : "view"}`}
-              marketId={marketId!}
+              marketId={resolvedId!}
               marketName={market.name}
               marketType={(market as any).marketType ?? "mature"}
               enableDrag={editingLabels}
@@ -675,21 +675,21 @@ export default function MarketDetails() {
           <TabsContent value="support-matrix" className="mt-6">
             {showOwnerControls && !hasProductPhase
               ? <PhasePlaceholder phase="Product" />
-              : <SupportMatrix marketId={marketId!} />}
+              : <SupportMatrix marketId={resolvedId!} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">
             {showOwnerControls && !hasEcosystemPhase
               ? <PhasePlaceholder phase="Ecosystem" />
-              : <EcosystemSupport marketId={marketId!} />}
+              : <EcosystemSupport marketId={resolvedId!} />}
           </TabsContent>
 
           <TabsContent value="research-methodology" className="mt-6">
-            <ResearchMethodology marketId={marketId!} />
+            <ResearchMethodology marketId={resolvedId!} />
           </TabsContent>
 
           <TabsContent value="new-players" className="mt-6">
-            <NewPlayers marketId={marketId!} />
+            <NewPlayers marketId={resolvedId!} />
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">
@@ -714,11 +714,11 @@ export default function MarketDetails() {
                 {isMobile ? 'Summary' : 'Download Summary'}
               </Button>
             </div>
-            <ResearchReports marketId={marketId!} />
+            <ResearchReports marketId={resolvedId!} />
           </TabsContent>
 
           <TabsContent value="news" className="mt-6">
-            <MarketNews marketId={marketId!} />
+            <MarketNews marketId={resolvedId!} />
           </TabsContent>
 
           {canManageVendors && (
@@ -730,19 +730,19 @@ export default function MarketDetails() {
                     Add a press / newsroom page for each vendor — the daily ingestion at 7:00 AM UTC will pull their news automatically.
                   </p>
                 </div>
-                <Link href={`/me/markets/${marketId}/vendors`}>
+                <Link href={`/me/markets/${resolvedId ?? marketId}/vendors`}>
                   <Button variant="outline" size="sm" className="gap-1.5">
                     Open dedicated page <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </div>
-              <VendorNewsroomManager marketId={marketId!} variant="compact" />
+              <VendorNewsroomManager marketId={resolvedId!} variant="compact" />
             </TabsContent>
           )}
 
           {isAuthenticated && (
             <TabsContent value="intelligence-feed" className="mt-6">
-              <IntelligenceFeed marketId={marketId!} vendors={vendors} />
+              <IntelligenceFeed marketId={resolvedId!} vendors={vendors} />
             </TabsContent>
           )}
 
@@ -770,7 +770,7 @@ export default function MarketDetails() {
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
-            <Chat marketId={marketId!} />
+            <Chat marketId={resolvedId!} />
           </div>
         </SheetContent>
       </Sheet>
