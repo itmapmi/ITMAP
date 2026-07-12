@@ -16,7 +16,9 @@ async function requireMarketAccess(req: Request, res: Response, next: NextFuncti
   try {
     const marketId = (req.params as any).marketId;
     if (!marketId) return res.status(400).json({ error: "Missing marketId" });
-    const market = await storage.getMarketById(marketId);
+    const market = storage.isUuid(marketId)
+      ? await storage.getMarketById(marketId)
+      : await storage.getMarketBySlug(marketId);
     if (!market) return res.status(404).json({ error: "Market not found" });
     if (market.visibility === "private") {
       const isAuth = (req as any).isAuthenticated?.();
@@ -122,7 +124,10 @@ export function registerMarketRoutes(app: Express): void {
 
   app.get("/api/markets/:id", async (req, res) => {
     try {
-      const market = await storage.getMarketById(req.params.id);
+      const param = req.params.id;
+      const market = storage.isUuid(param)
+        ? await storage.getMarketById(param)
+        : await storage.getMarketBySlug(param);
       if (!market) return res.status(404).json({ error: "Market not found" });
       const isAuth = req.isAuthenticated();
       const user = isAuth ? (req.user as any) : null;

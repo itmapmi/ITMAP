@@ -64,7 +64,6 @@ export default function MarketDetails() {
   const isBuyerUser = isAuthenticated && !isVendorScoped && (user as any)?.persona !== "vendor" && !isAdmin;
   const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
-  const isFreeMarket = marketId === FREE_MARKET_ID;
 
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -78,9 +77,15 @@ export default function MarketDetails() {
     enabled: !!marketId,
   });
 
+  // Use the resolved UUID from the market object for all sub-resource API calls.
+  // This ensures slug-based URLs (e.g. /markets/backup_and_recovery) work correctly
+  // because sub-routes only accept UUIDs, not slugs.
+  const resolvedId = market?.id;
+  const isFreeMarket = resolvedId === FREE_MARKET_ID || marketId === FREE_MARKET_ID;
+
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["/api/markets", marketId, "vendors"],
-    enabled: !!marketId,
+    queryKey: ["/api/markets", resolvedId, "vendors"],
+    enabled: !!resolvedId,
   });
 
   // For private (end-user-built) markets the owner can re-enter the wizard to
@@ -134,7 +139,7 @@ export default function MarketDetails() {
           })
         )
       );
-      await queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "label-positions"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/markets", resolvedId, "label-positions"] });
       toast({
         title: "Saved",
         description: `Updated ${Object.keys(pendingLabelPositions).length} label position(s).`,
@@ -157,8 +162,8 @@ export default function MarketDetails() {
     setEditingLabels(false);
   };
   const { data: featureCategories = [] } = useQuery<any[]>({
-    queryKey: ["/api/markets", marketId, "feature-categories"],
-    enabled: !!marketId && showOwnerControls,
+    queryKey: ["/api/markets", resolvedId, "feature-categories"],
+    enabled: !!resolvedId && showOwnerControls,
   });
   const hasProductPhase = featureCategories.some((c: any) =>
     c.isEcosystem === false || (!c.isEcosystem && !/(ecosystem|integration|partnership|third-party|isv)/i.test(c.name)));
@@ -193,7 +198,7 @@ export default function MarketDetails() {
     }
     try {
       const response = await apiRequest(
-        `/api/markets/${marketId}/generate-full-pdf-report`,
+        `/api/markets/${resolvedId ?? marketId}/generate-full-pdf-report`,
         "POST",
         { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
       );
@@ -238,7 +243,7 @@ export default function MarketDetails() {
     }
     try {
       const response = await apiRequest(
-        `/api/markets/${marketId}/generate-summary-pdf`,
+        `/api/markets/${resolvedId ?? marketId}/generate-summary-pdf`,
         "POST",
         { vendorIds: selectedVendorIds.length > 0 ? selectedVendorIds : undefined }
       );

@@ -225,7 +225,7 @@ function MarketGrid({ markets, isLoading, linkToLogin = false, accentViolet = fa
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {markets?.map((market, i) => (
         <motion.div key={market.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07, duration: 0.5 }}>
-          <MarketCard market={market} href={linkToLogin ? "/login" : `/markets/${market.id}`} accentViolet={accentViolet} />
+          <MarketCard market={market} href={linkToLogin ? "/login" : `/markets/${market.name.replace(/^ITMAP for /i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`} accentViolet={accentViolet} />
         </motion.div>
       ))}
     </div>

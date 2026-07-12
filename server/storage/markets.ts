@@ -43,6 +43,34 @@ function withDefaults(rows: Omit<Market, "quadrantDividerY" | "quadrantTopLabel"
   return rows.map(r => ({ ...r, ...QUADRANT_DEFAULTS })) as Market[];
 }
 
+// ── Slug helpers ────────────────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(val: string): boolean {
+  return UUID_RE.test(val);
+}
+
+export function nameToSlug(name: string): string {
+  return name
+    .replace(/^ITMAP for /i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export async function getMarketBySlug(slug: string): Promise<Market | undefined> {
+  try {
+    const all = await db.select().from(markets);
+    return all.find(m => nameToSlug(m.name) === slug);
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const all = await db.select(SAFE_COLUMNS).from(markets);
+    const match = all.find(m => nameToSlug(m.name) === slug);
+    return match ? withDefaults([match])[0] : undefined;
+  }
+}
+
 // ── Markets ────────────────────────────────────────────────────────────────
 
 export async function getAllMarkets(): Promise<Market[]> {

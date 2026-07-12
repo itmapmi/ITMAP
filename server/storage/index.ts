@@ -90,6 +90,8 @@ export interface IStorage {
   getPublicMarkets(): Promise<Market[]>;
   getMarketsByOwner(ownerUserId: string): Promise<Market[]>;
   getMarketById(id: string): Promise<Market | undefined>;
+  getMarketBySlug(slug: string): Promise<Market | undefined>;
+  isUuid(val: string): boolean;
   getMarketByIdForViewer(id: string, viewerUserId: string | null): Promise<Market | undefined>;
   createMarket(market: InsertMarket): Promise<Market>;
   updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market>;

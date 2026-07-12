@@ -168,7 +168,7 @@ export default function MyReportsPage() {
               return (
                 <div key={m.id} className="rounded-lg border bg-white p-4 hover:border-blue-300 hover:shadow-sm transition-colors">
                   <div className="flex items-start justify-between gap-3">
-                    <Link href={`/markets/${m.id}`}>
+                    <Link href={`/markets/${m.name.replace(/^ITMAP for /i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`}>
                       <a className="min-w-0 flex-1">
                         <p className="font-semibold text-gray-900 truncate">{m.name}</p>
                         {m.description && (

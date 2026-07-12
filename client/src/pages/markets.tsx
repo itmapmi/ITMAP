@@ -230,7 +230,7 @@ export default function Markets() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.45, delay: i * 0.06 }}
                   >
-                    <Link href={`/markets/${market.id}`}>
+                    <Link href={`/markets/${market.name.replace(/^ITMAP for /i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`}>
                       <div className="group relative bg-slate-900 border border-violet-500/20 hover:border-violet-400/50 rounded-2xl p-6 h-full cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(139,92,246,0.10)]">
                         <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-cyan-500/0 group-hover:from-violet-500/10 transition-all duration-500" />
                         <div className="relative flex flex-col h-full">
@@ -326,10 +326,11 @@ export default function Markets() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((market, i) => {
               const isFree = market.id === FREE_MARKET_ID;
+              const slug = market.name.replace(/^ITMAP for /i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
               const href = isAuthenticated
-                ? `/markets/${market.id}`
+                ? `/markets/${slug}`
                 : isFree
-                  ? `/markets/${market.id}`
+                  ? `/markets/${slug}`
                   : "/login";
 
               return (
