@@ -24,9 +24,10 @@ export function registerAuthRoutes(app: Express): void {
   app.get('/sitemap.xml', async (_req, res) => {
     const BASE = 'https://dcig.ai';
 
+    const today = new Date().toISOString().split('T')[0];
     const staticPages = [
-      { loc: '/',          lastmod: '2026-05-11', changefreq: 'daily',   priority: '1.0' },
-      { loc: '/markets',   lastmod: '2026-05-11', changefreq: 'daily',   priority: '0.9' },
+      { loc: '/',          lastmod: today,        changefreq: 'daily',   priority: '1.0' },
+      { loc: '/markets',   lastmod: today,        changefreq: 'daily',   priority: '0.9' },
       { loc: '/platform',  lastmod: '2026-05-11', changefreq: 'weekly',  priority: '0.8' },
       { loc: '/about',     lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.7' },
       { loc: '/licensing', lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
