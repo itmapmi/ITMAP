@@ -46,7 +46,7 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const { getPublicMarkets } = await import('../storage/markets');
       const publicMarkets = await getPublicMarkets();
-      marketEntries = publicMarkets.map((m) => ({
+      marketEntries = publicMarkets.filter((m) => m.visibility === 'public').map((m) => ({
         loc: `/markets/${marketSlug(m.name)}`,
         lastmod: m.updatedAt ? new Date(m.updatedAt).toISOString().split('T')[0] : '2026-05-11',
         changefreq: 'weekly',
