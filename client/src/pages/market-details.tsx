@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { getErrorMessage, isMissingLlmKeyError } from "@/lib/rfp-errors";
 import { useLocation } from "wouter";
+import { marketSlug } from "@/lib/market-slug";
 import { useMutation } from "@tanstack/react-query";
 import type { Market, Vendor } from "@shared/schema";
 import { Sparkles } from "lucide-react";
@@ -55,9 +56,12 @@ function useCreateRfpForMarket() {
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function MarketDetails() {
   const [match, params] = useRoute("/markets/:marketId");
   const marketId = params?.marketId;
+  const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const { isAuthenticated, user, isAdmin, hasFeature, isVendorScoped } = useAuth();
   // Technology buyers should not see the Intelligence section
@@ -94,6 +98,15 @@ export default function MarketDetails() {
   const isOwner = !!(market?.ownerUserId && user?.id === market.ownerUserId);
   const showOwnerControls = isOwner && market?.visibility === "private";
   const canManageVendors = isAdmin || showOwnerControls;
+
+  // If the URL contains a UUID instead of a slug, redirect to the slug URL.
+  // This keeps search engines from indexing duplicate UUID-based URLs.
+  useEffect(() => {
+    if (!market || !marketId) return;
+    if (!UUID_RE.test(marketId)) return;
+    const slug = marketSlug(market.name);
+    if (slug) navigate(`/markets/${slug}`, { replace: true });
+  }, [market, marketId]);
 
   // Track market view + dwell time once the market resolves.
   useEffect(() => {
