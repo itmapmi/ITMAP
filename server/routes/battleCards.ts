@@ -557,13 +557,13 @@ Do NOT repeat these existing features: ${existingNames || "none"}.${salesBiasIns
       try {
         titleSlide.addImage({ path: logoPath, x: 5.15, y: 0.25, w: 3.0, h: 0.9 });
       } catch {
-        titleSlide.addText("DCIG", { x: 5.5, y: 0.3, w: 2.5, h: 0.6, fontSize: 20, bold: true, color: CYAN, align: "center" });
+        titleSlide.addText("ITMAP", { x: 5.5, y: 0.3, w: 2.5, h: 0.6, fontSize: 20, bold: true, color: CYAN, align: "center" });
       }
       titleSlide.addText("Battle Card", { x: 0.5, y: 1.2, w: 12, h: 0.5, fontSize: 14, color: MUTED, align: "center" });
       titleSlide.addText(focalName, { x: 0.5, y: 1.7, w: 12, h: 1.0, fontSize: 40, bold: true, color: WHITE, align: "center" });
       titleSlide.addText(`vs  ${body.vendorNames.filter(n => n !== focalName).join("  ·  ")}`, { x: 0.5, y: 2.75, w: 12, h: 0.5, fontSize: 16, color: CYAN, align: "center" });
       titleSlide.addText(marketName, { x: 0.5, y: 3.3, w: 12, h: 0.4, fontSize: 12, color: MUTED, align: "center" });
-      titleSlide.addText(`dcig.com  ·  ${today}`, { x: 0.5, y: 3.8, w: 12, h: 0.35, fontSize: 11, color: MUTED, align: "center" });
+      titleSlide.addText(`itmap.com  ·  ${today}`, { x: 0.5, y: 3.8, w: 12, h: 0.35, fontSize: 11, color: MUTED, align: "center" });
       titleSlide.addShape(prs.ShapeType.line, { x: 2, y: 4.25, w: 9, h: 0, line: { color: CYAN, width: 2 } });
 
       // ── Win summary slide ────────────────────────────────────────────────

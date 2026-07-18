@@ -27,8 +27,8 @@ interface VendorIndexEntry { id: string; vendorNames: string[] }
 
 export default function Markets() {
   useSeo({
-    title: "Markets — DCIG | Browse Enterprise IT Vendor Markets",
-    description: "Browse every enterprise IT market on DCIG — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
+    title: "Markets — ITMAP | Browse Enterprise IT Vendor Markets",
+    description: "Browse every enterprise IT market on ITMAP — vendor rankings, feature support matrices, ecosystem coverage, and AI-driven market forecasts.",
     path: "/markets",
   });
   const { isAuthenticated, user } = useAuth();

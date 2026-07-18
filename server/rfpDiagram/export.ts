@@ -86,7 +86,7 @@ export function exportDrawio(spec: TopologySpec, layout: LayoutResult): string {
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="dcig.ai" modified="${new Date().toISOString()}" agent="Spectio RFP Responder" version="21.6.5">
+<mxfile host="itmap.com" modified="${new Date().toISOString()}" agent="Spectio RFP Responder" version="21.6.5">
   <diagram name="${escXml(spec.title)}" id="spectio-${Date.now()}">
     <mxGraphModel dx="1200" dy="750" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="${layout.canvasWidth}" pageHeight="${layout.canvasHeight}" math="0" shadow="0" background="#0c1222">
       <root>
@@ -155,7 +155,7 @@ export async function exportPdf(svgContent: string, title: string): Promise<Buff
     const doc = new (PDFDocument as any)({
       size: [1200, 750],
       margin: 0,
-      info: { Title: title, Author: "dcig.ai", Creator: "dcig.ai RFP Responder" },
+      info: { Title: title, Author: "itmap.com", Creator: "itmap.com RFP Responder" },
     });
 
     const chunks: Buffer[] = [];

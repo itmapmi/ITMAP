@@ -1,11 +1,8 @@
-import dcigWhite from "@assets/DCIG-Logo-WHITE_1781593294046.png";
-import dcigBlue from "@assets/images_(1)_1781593357016.jpg";
-
 interface SpectioLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   variant?: "light" | "dark";
-  /** Kept for API compatibility — ignored, always renders the full logo */
+  /** Kept for API compatibility — ignored, always renders the full wordmark */
   iconOnly?: boolean;
 }
 
@@ -14,19 +11,26 @@ export default function SpectioLogo({
   size = "md",
   variant = "light",
 }: SpectioLogoProps) {
-  const heights = { sm: 28, md: 38, lg: 56 };
-  const h = heights[size];
+  const sizes = {
+    sm: { fontSize: "16px", letterSpacing: "0.16em", height: 28 },
+    md: { fontSize: "22px", letterSpacing: "0.18em", height: 38 },
+    lg: { fontSize: "32px", letterSpacing: "0.18em", height: 56 },
+  };
 
-  // "light" → dark background → white DCIG logo
-  // "dark"  → light/white background → navy DCIG logo
-  const src = variant === "light" ? dcigWhite : dcigBlue;
+  const s = sizes[size];
+  const color = variant === "light" ? "#ffffff" : "#0f172a";
 
   return (
-    <img
-      src={src}
-      alt="DCIG"
-      style={{ height: h, width: "auto", objectFit: "contain" }}
-      className={className}
-    />
+    <span
+      className={`inline-flex items-center font-['Montserrat'] font-semibold uppercase leading-none ${className}`}
+      style={{
+        fontSize: s.fontSize,
+        letterSpacing: s.letterSpacing,
+        color,
+        height: s.height,
+      }}
+    >
+      ITMAP
+    </span>
   );
 }

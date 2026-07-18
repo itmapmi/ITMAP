@@ -379,16 +379,16 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <h2 className="text-xl font-bold text-white mb-2">Account not linked to a vendor</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
               Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet.
-              This is done by a <span className="text-white font-medium">dcig.ai administrator</span> — please contact your account manager to complete the setup.
+              This is done by a <span className="text-white font-medium">itmap.com administrator</span> — please contact your account manager to complete the setup.
             </p>
             <div className="bg-slate-800 rounded-xl p-4 text-left mb-6">
               <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Your account</p>
               <p className="text-sm text-white">{user?.firstName} {user?.lastName}</p>
               <p className="text-sm text-slate-400">{user?.email}</p>
             </div>
-            <a href="mailto:sales@dcig.com"
+            <a href="mailto:sales@itmap.com"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-all">
-              Contact sales@dcig.com
+              Contact sales@itmap.com
             </a>
           </motion.div>
         </div>
@@ -678,7 +678,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <motion.div {...fadeUp}>
               <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6"><div className="h-px w-8 bg-cyan-400" />CAPABILITIES</div>
               <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">Everything your team needs to choose wisely</h2>
-              <p className="text-slate-400 text-lg leading-relaxed mb-8">DCIG gives enterprise IT and procurement teams the depth of a boutique analyst firm, delivered at the speed of AI — updated daily, without the subscription lag.</p>
+              <p className="text-slate-400 text-lg leading-relaxed mb-8">ITMAP gives enterprise IT and procurement teams the depth of a boutique analyst firm, delivered at the speed of AI — updated daily, without the subscription lag.</p>
               <div className="space-y-3">
                 {["No vendor sponsorships or paid placements", "Public data sources, transparent scoring", "AI analysis refreshed continuously", "Custom market builder for your criteria"].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-slate-300">
@@ -759,7 +759,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <div className="relative">
               <Zap className="h-10 w-10 text-cyan-400 mx-auto mb-6" />
               <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Ready to see clearly?</h2>
-              <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">Join enterprise IT teams that trust DCIG for unbiased, AI-powered vendor intelligence.</p>
+              <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">Join enterprise IT teams that trust ITMAP for unbiased, AI-powered vendor intelligence.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]">
                   <Users className="h-4 w-4" /> Get Buyer Access
@@ -776,7 +776,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
       {/* Footer */}
       <footer className="border-t border-white/5 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-slate-500 text-sm">© {new Date().getFullYear()} DCIG. All rights reserved.</div>
+          <div className="text-slate-500 text-sm">© {new Date().getFullYear()} ITMAP. All rights reserved.</div>
           <div className="flex items-center gap-6 text-sm text-slate-500">
             <Link href="/platform"><span className="hover:text-white transition-colors cursor-pointer">Platform</span></Link>
             <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">About</span></Link>
@@ -793,7 +793,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
 
 export default function Home() {
   useSeo({
-    title: "DCIG — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
+    title: "ITMAP — Enterprise IT Vendor Intelligence | See Every Vendor. Know Every Move.",
     description: "AI-native enterprise IT vendor intelligence — independent vendor rankings, feature evaluations, AI-powered market forecasts, news impact analysis, and research reports for technology buyers.",
     path: "/",
   });

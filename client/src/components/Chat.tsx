@@ -142,7 +142,7 @@ export function Chat({ marketId, conversationId: initialConversationId }: ChatPr
         ) : messages.length === 0 && !isStreaming ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4 py-12">
             <Sparkles className="h-12 w-12 text-primary mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Ask DCIG AI</h3>
+            <h3 className="text-lg font-semibold mb-2">Ask ITMAP AI</h3>
             <p className="text-sm text-muted-foreground max-w-md">
               Get insights about vendors, features, scores, recent news, and market positioning.
               I can answer questions like:

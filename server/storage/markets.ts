@@ -15,7 +15,7 @@ import { eq, desc, and, or, isNull } from "drizzle-orm";
 
 const QUADRANT_DEFAULTS = {
   quadrantDividerY: "50" as string | null,
-  quadrantTopLabel: "DCIG Leaders" as string | null,
+  quadrantTopLabel: "ITMAP Leaders" as string | null,
   quadrantColorTheme: "dark-blue-gold" as string | null,
 };
 

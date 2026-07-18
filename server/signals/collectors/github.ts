@@ -58,7 +58,7 @@ async function githubFetch<T>(path: string): Promise<T | null> {
     const resp = await fetch(`https://api.github.com${path}`, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'dcig.ai/1.0',
+        'User-Agent': 'itmap.com/1.0',
         ...(process.env.GITHUB_TOKEN ? { Authorization: `token ${process.env.GITHUB_TOKEN}` } : {}),
       },
       signal: AbortSignal.timeout(8000),

@@ -177,7 +177,7 @@ function leadsTableHtml(title: string, rows: LeadRow[]): string {
     tr:nth-child(even) td{background:#f8fafc}
   </style></head><body>
     <h1>${escapeHtml(title)}</h1>
-    <div class="sub">dcig.ai — Buyer-Intent Intelligence · Generated ${new Date().toLocaleString()}</div>
+    <div class="sub">itmap.com — Buyer-Intent Intelligence · Generated ${new Date().toLocaleString()}</div>
     <table><thead><tr>
       <th>Buyer</th><th>Email</th><th>Intent</th><th>Top vendor</th><th>Events</th><th>Logins</th><th>Last active</th>
     </tr></thead><tbody>${body || `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">No leads found</td></tr>`}</tbody></table>
@@ -256,7 +256,7 @@ function audienceTableHtml(title: string, rows: AudienceSummaryRow[]): string {
     tr:nth-child(even) td{background:#f8fafc}
   </style></head><body>
     <h1>${escapeHtml(title)}</h1>
-    <div class="sub">dcig.ai — Watched Audience Activity · Generated ${new Date().toLocaleString()}</div>
+    <div class="sub">itmap.com — Watched Audience Activity · Generated ${new Date().toLocaleString()}</div>
     <table><thead><tr>
       <th>User</th><th>Email</th><th>Market</th><th>Intent</th><th>Top vendor</th><th>Events</th><th>Last active</th>
     </tr></thead><tbody>${body || `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">No watched users</td></tr>`}</tbody></table>
@@ -1023,7 +1023,7 @@ function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & ob
     tr:nth-child(even) td{background:#f8fafc}
   </style></head><body>
     <h1>${escapeHtml(name)}</h1>
-    <div class="sub">${escapeHtml(d.user.email ?? "")} · dcig.ai Buyer-Intent Report · ${new Date().toLocaleString()}</div>
+    <div class="sub">${escapeHtml(d.user.email ?? "")} · itmap.com Buyer-Intent Report · ${new Date().toLocaleString()}</div>
     <div style="margin-top:16px"><span class="score">${d.intent.score}</span> <span class="band">${d.intent.band} intent</span></div>
     <div class="sub">${d.totalEvents} events · ${d.logins} logins · last active ${d.lastActivityAt ? new Date(d.lastActivityAt).toLocaleString() : "—"}</div>
     <h2>Intent score breakdown</h2>

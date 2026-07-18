@@ -609,7 +609,7 @@ export default function RfpResponderPage() {
             <DialogHeader>
               <DialogTitle>Upload Client RFP</DialogTitle>
               <DialogDescription className="text-slate-400">
-                Upload the client's RFP document. DCIG will decompose it into a requirement tree for your review before generating responses.
+                Upload the client's RFP document. ITMAP will decompose it into a requirement tree for your review before generating responses.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-2">
@@ -932,10 +932,10 @@ export default function RfpResponderPage() {
           )}
         </div>
 
-        {/* ── DCIG Market Intelligence ───────────────────────────────── */}
+        {/* ── ITMAP Market Intelligence ───────────────────────────────── */}
         <div className="mt-8">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">DCIG Market Intelligence</h2>
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">ITMAP Market Intelligence</h2>
             {kbMarketLinks.length > 0 && (
               <span className="inline-flex items-center rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-[10px] font-medium text-cyan-400">
                 {kbMarketLinks.length} linked
@@ -943,7 +943,7 @@ export default function RfpResponderPage() {
             )}
           </div>
           <p className="text-xs text-slate-500 mb-4">
-            Select DCIG markets to include vendor evaluation, product evaluation, and ecosystem data as a live intelligence source when generating RFP responses.
+            Select ITMAP markets to include vendor evaluation, product evaluation, and ecosystem data as a live intelligence source when generating RFP responses.
           </p>
           <div className="rounded-xl bg-slate-900/70 border border-white/8 overflow-hidden">
             {kbMarketLinksLoading ? (

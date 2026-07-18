@@ -1,14 +1,14 @@
-# dcig.ai — Enterprise IT Vendor Intelligence Platform
+# itmap.com — Enterprise IT Vendor Intelligence Platform
 
 ## Overview
 
-dcig.ai (formerly ITMAP, briefly spectio.ai) is a premium enterprise IT vendor selection platform delivering independent, AI-powered intelligence — vendor rankings, feature evaluations, news impact analysis, and research reports. The company tagline is "See Every Vendor. Know Every Move." The platform serves enterprise IT buyers who need unbiased, real-time intelligence on technology vendors across multiple markets.
+itmap.com (formerly ITMAP, briefly spectio.ai) is a premium enterprise IT vendor selection platform delivering independent, AI-powered intelligence — vendor rankings, feature evaluations, news impact analysis, and research reports. The company tagline is "See Every Vendor. Know Every Move." The platform serves enterprise IT buyers who need unbiased, real-time intelligence on technology vendors across multiple markets.
 
 ## Brand & Design System
 
-- **Brand name**: dcig.ai — primary domain and canonical brand as of July 2026 (previously spectio.ai)
+- **Brand name**: itmap.com — primary domain and canonical brand as of July 2026 (previously spectio.ai)
 - **Tagline**: "See Every Vendor. Know Every Move."
-- **Logo**: Custom SVG eye/radar icon + dcig.ai wordmark — `client/src/components/spectio-logo.tsx`
+- **Logo**: Custom SVG eye/radar icon + itmap.com wordmark — `client/src/components/spectio-logo.tsx`
 - **Design aesthetic**: Dark premium (inspired by igloo.inc) — deep navy/slate backgrounds, cyan + violet gradient accents
 - **Base color**: `bg-slate-950` (#020617)
 - **Primary accent**: `text-cyan-400` / `from-cyan-500`

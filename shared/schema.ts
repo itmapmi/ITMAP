@@ -84,7 +84,7 @@ export const markets = pgTable("markets", {
   quadrantImageUpdatedAt: timestamp("quadrant_image_updated_at"),
   // Two-band Spectio chart settings (per market, admin-configurable)
   quadrantDividerY: numeric("quadrant_divider_y").default("50"),
-  quadrantTopLabel: text("quadrant_top_label").default("DCIG Leaders"),
+  quadrantTopLabel: text("quadrant_top_label").default("ITMAP Leaders"),
   quadrantColorTheme: text("quadrant_color_theme").default("dark-blue-gold"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   // 'mature' | 'emerging'. Affects default criteria weights.

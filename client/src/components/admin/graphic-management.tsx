@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Market } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
-const TOP_LABEL_OPTIONS = ["DCIG Leaders", "DCIG Top 5", "DCIG Top 3", "Market Leaders"] as const;
+const TOP_LABEL_OPTIONS = ["ITMAP Leaders", "ITMAP Top 5", "ITMAP Top 3", "Market Leaders"] as const;
 
 const THEME_OPTIONS: { value: string; label: string; topSwatch: string; bottomSwatch: string }[] = [
   { value: "dark-blue-gold", label: "Navy & Gold", topSwatch: "#1e40af", bottomSwatch: "#f59e0b" },
@@ -27,7 +27,7 @@ export default function GraphicManagement() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [pendingSettings, setPendingSettings] = useState<QuadrantSettings>({
     dividerY: 50,
-    topLabel: "DCIG Leaders",
+    topLabel: "ITMAP Leaders",
     colorTheme: "dark-blue-gold",
   });
   const { toast } = useToast();
@@ -42,7 +42,7 @@ export default function GraphicManagement() {
     if (!selectedMarket) return;
     setPendingSettings({
       dividerY: selectedMarket.quadrantDividerY != null ? Number(selectedMarket.quadrantDividerY) : 50,
-      topLabel: selectedMarket.quadrantTopLabel ?? "DCIG Leaders",
+      topLabel: selectedMarket.quadrantTopLabel ?? "ITMAP Leaders",
       colorTheme: selectedMarket.quadrantColorTheme ?? "dark-blue-gold",
     });
   }, [selectedMarket?.id]);

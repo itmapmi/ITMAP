@@ -413,7 +413,7 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const schema = z.object({
         quadrantDividerY: z.number().min(0).max(100),
-        quadrantTopLabel: z.enum(["DCIG Leaders", "DCIG Top 5", "DCIG Top 3", "Market Leaders"]),
+        quadrantTopLabel: z.enum(["ITMAP Leaders", "ITMAP Top 5", "ITMAP Top 3", "Market Leaders"]),
         quadrantColorTheme: z.enum(["dark-blue-gold", "emerald-coral", "violet-rose"]),
       });
       const data = schema.parse(req.body);

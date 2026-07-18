@@ -225,7 +225,7 @@ export default function MarketDetails() {
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `DCIG for ${cleanMarketName}.pdf`;
+      a.download = `ITMAP for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -270,7 +270,7 @@ export default function MarketDetails() {
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = market?.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `DCIG Summary for ${cleanMarketName}.pdf`;
+      a.download = `ITMAP Summary for ${cleanMarketName}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -666,7 +666,7 @@ export default function MarketDetails() {
               onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
               quadrantSettings={{
                 dividerY: market.quadrantDividerY != null ? Number(market.quadrantDividerY) : 50,
-                topLabel: market.quadrantTopLabel ?? "DCIG Leaders",
+                topLabel: market.quadrantTopLabel ?? "ITMAP Leaders",
                 colorTheme: market.quadrantColorTheme ?? "dark-blue-gold",
               }}
             />

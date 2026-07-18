@@ -844,7 +844,7 @@ const FORMAT_META: Record<ExportFormat, { label: string; desc: string; icon: Rea
 type ClientTemplateFormat = "none" | "docx_table" | "xlsx_grid" | "pptx_deck";
 
 const TEMPLATE_FORMAT_META: Record<ClientTemplateFormat, { label: string; desc: string; applicableTo: ExportFormat[] }> = {
-  none: { label: "None — use DCIG standard layout", desc: "DCIG assembles the document in its own professional format", applicableTo: ["docx","pdf","xlsx","pptx"] },
+  none: { label: "None — use ITMAP standard layout", desc: "ITMAP assembles the document in its own professional format", applicableTo: ["docx","pdf","xlsx","pptx"] },
   docx_table: { label: "DOCX Table — client response template", desc: "Writes responses into a requirements table matching the client's DOCX column format", applicableTo: ["docx"] },
   xlsx_grid: { label: "Excel Grid — client response template", desc: "Populates the Excel matrix using column headings from the client's spreadsheet template", applicableTo: ["xlsx"] },
   pptx_deck: { label: "PPTX Deck — client presentation template", desc: "Structures slides to match the client's expected deck format", applicableTo: ["pptx"] },
@@ -1691,7 +1691,7 @@ export default function RfpSessionDetailPage() {
             </div>
             <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-slate-500">
               {session.rfpFileName && <span>{session.rfpFileName}</span>}
-              {session.marketId && <span>· With DCIG intelligence</span>}
+              {session.marketId && <span>· With ITMAP intelligence</span>}
               <span>· {new Date(session.createdAt!).toLocaleDateString()}</span>
             </div>
           </div>
@@ -1747,7 +1747,7 @@ export default function RfpSessionDetailPage() {
             </div>
             <h2 className="text-lg font-medium text-white mb-2">Ready to Generate</h2>
             <p className="text-sm text-slate-400 max-w-sm mb-6">
-              {requirements.length} requirement{requirements.length !== 1 ? "s" : ""} reviewed and confirmed. Generate grounded responses using your vendor KB and DCIG intelligence.
+              {requirements.length} requirement{requirements.length !== 1 ? "s" : ""} reviewed and confirmed. Generate grounded responses using your vendor KB and ITMAP intelligence.
             </p>
             <Button
               onClick={() => generateMutation.mutate()}

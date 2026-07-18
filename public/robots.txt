@@ -1,5 +1,5 @@
-# dcig.ai — robots.txt
-# See https://dcig.ai for the live site
+# itmap.com — robots.txt
+# See https://itmap.com for the live site
 
 # Default rules for all crawlers
 User-agent: *
@@ -35,7 +35,7 @@ Disallow: /api/
 User-agent: DuckDuckBot
 Allow: /
 
-# AI crawlers — explicitly allowed so dcig.ai is indexed by
+# AI crawlers — explicitly allowed so itmap.com is indexed by
 # ChatGPT, Claude, Perplexity, Google AI, You.com, etc.
 User-agent: GPTBot
 Allow: /
@@ -85,4 +85,4 @@ Allow: /
 User-agent: YouBot
 Allow: /
 
-Sitemap: https://dcig.ai/sitemap.xml
+Sitemap: https://itmap.com/sitemap.xml

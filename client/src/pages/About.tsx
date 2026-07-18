@@ -48,8 +48,8 @@ const CONTACT_DETAILS = [
   {
     icon: <Mail className="h-5 w-5 text-cyan-400" />,
     label: "Email",
-    value: "sales@dcig.com",
-    href: "mailto:sales@dcig.com",
+    value: "sales@itmap.com",
+    href: "mailto:sales@itmap.com",
     color: "from-cyan-500/15 to-cyan-400/5",
   },
   {
@@ -77,8 +77,8 @@ const CONTACT_DETAILS = [
 
 export default function About() {
   useSeo({
-    title: "About DCIG — Independent AI-Powered Vendor Intelligence",
-    description: "Learn about DCIG's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
+    title: "About ITMAP — Independent AI-Powered Vendor Intelligence",
+    description: "Learn about ITMAP's mission to deliver unbiased, real-time enterprise IT vendor intelligence — faster and more transparent than traditional analyst firms.",
     path: "/about",
   });
   return (
@@ -94,7 +94,7 @@ export default function About() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6">
-              <Globe2 className="h-4 w-4" /> About DCIG
+              <Globe2 className="h-4 w-4" /> About ITMAP
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] mb-8">
               Built to cut through
@@ -102,7 +102,7 @@ export default function About() {
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">the analyst noise</span>
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              DCIG was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
+              ITMAP was created by enterprise IT practitioners who were tired of paying for research that had already been paid for by the vendors they were supposed to be evaluating.
             </p>
           </motion.div>
         </div>
@@ -123,7 +123,7 @@ export default function About() {
                 For too long, enterprise technology research has been a product sold to vendors first, and to buyers second.
               </p>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                DCIG is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
+                ITMAP is different. We believe procurement teams, CIOs and IT architects deserve intelligence that is provably unbiased — built on public data, scored by AI, and never for sale to vendors.
               </p>
               <Link href="/platform">
                 <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
@@ -211,7 +211,7 @@ export default function About() {
               Practitioners building for practitioners
             </h2>
             <p className="text-slate-400 text-lg leading-relaxed mb-8">
-              DCIG is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
+              ITMAP is built by a team of enterprise IT veterans who've led technology selection projects from both sides of the table — as IT leaders making decisions, and as technologists building the platforms being evaluated.
             </p>
             <ul className="space-y-3">
               {TEAM_VALUES.map((t) => (
@@ -275,7 +275,7 @@ export default function About() {
                   </div>
                   <Button
                     className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
-                    onClick={() => window.location.href = "mailto:sales@dcig.com"}
+                    onClick={() => window.location.href = "mailto:sales@itmap.com"}
                   >
                     Send Message <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -320,9 +320,9 @@ export default function About() {
                 <div className="relative">
                   <h3 className="text-lg font-bold text-white mb-3">Exploring a partnership?</h3>
                   <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                    We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating DCIG intelligence into your workflow, let's talk.
+                    We work with research firms, IT consultancies and procurement platforms. If you're interested in integrating ITMAP intelligence into your workflow, let's talk.
                   </p>
-                  <a href="mailto:sales@dcig.com?subject=Partnership Enquiry">
+                  <a href="mailto:sales@itmap.com?subject=Partnership Enquiry">
                     <Button variant="outline" size="sm" className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 bg-transparent">
                       Explore Partnership <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Button>

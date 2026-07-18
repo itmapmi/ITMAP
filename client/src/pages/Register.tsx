@@ -72,7 +72,7 @@ export default function Register() {
     try {
       const { confirmPassword, ...registerData } = formData;
       await register({ ...registerData, persona });
-      toast({ title: "Account created", description: "Welcome to dcig.ai" });
+      toast({ title: "Account created", description: "Welcome to itmap.com" });
       setLocation("/");
     } catch {
       // Error is handled by useAuth hook

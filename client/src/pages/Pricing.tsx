@@ -49,8 +49,8 @@ const PLANS = [
 
 export default function Pricing() {
   useSeo({
-    title: "Pricing — dcig.ai",
-    description: "dcig.ai pricing for enterprise IT buyers and vendors. End User access from $25/user/month, Vendor access from $2,500/user/month. Contact sales for details.",
+    title: "Pricing — itmap.com",
+    description: "itmap.com pricing for enterprise IT buyers and vendors. End User access from $25/user/month, Vendor access from $2,500/user/month. Contact sales for details.",
     path: "/pricing",
   });
 
@@ -74,7 +74,7 @@ export default function Pricing() {
               <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">and vendors</span>
             </h1>
             <p className="text-xl text-slate-400 leading-relaxed max-w-2xl">
-              Whether you're evaluating vendors or selling into enterprise IT, dcig.ai gives you the intelligence tools to move faster.
+              Whether you're evaluating vendors or selling into enterprise IT, itmap.com gives you the intelligence tools to move faster.
             </p>
           </motion.div>
         </div>
@@ -127,7 +127,7 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <a href="mailto:Sales@dcig.com" className="mt-auto">
+                <a href="mailto:Sales@itmap.com" className="mt-auto">
                   <Button
                     className={`w-full ${
                       plan.highlight
@@ -153,9 +153,9 @@ export default function Pricing() {
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Have questions about pricing?</h3>
             <p className="text-slate-400 mb-6">Reach out to our sales team — we'll help you find the right plan.</p>
-            <a href="mailto:Sales@dcig.com">
+            <a href="mailto:Sales@itmap.com">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact Sales@dcig.com <ArrowRight className="ml-2 h-4 w-4" />
+                Contact Sales@itmap.com <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>

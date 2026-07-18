@@ -20,13 +20,13 @@ import { VendorSelectionModal } from "./vendor-selection-modal";
 
 export interface QuadrantSettings {
   dividerY: number;      // 0-100 scale — where the horizontal dividing line sits
-  topLabel: string;      // e.g. "DCIG Leaders", "DCIG Top 5", "DCIG Top 3"
+  topLabel: string;      // e.g. "ITMAP Leaders", "ITMAP Top 5", "ITMAP Top 3"
   colorTheme: string;    // "dark-blue-gold" | "emerald-coral" | "violet-rose"
 }
 
 const DEFAULT_SETTINGS: QuadrantSettings = {
   dividerY: 50,
-  topLabel: "DCIG Leaders",
+  topLabel: "ITMAP Leaders",
   colorTheme: "dark-blue-gold",
 };
 
@@ -214,7 +214,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const a = document.createElement("a");
       a.href = url;
       const cleanMarketName = marketName.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
-      a.download = `DCIG for ${cleanMarketName} - Vendor Evaluation.pdf`;
+      a.download = `ITMAP for ${cleanMarketName} - Vendor Evaluation.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -753,7 +753,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("fill", "#374151")
       .text(isMobile ? "Viability →" : "Vendor Viability →");
 
-    // DCIG Inc. watermark — bottom right, outside the grid
+    // ITMAP Inc. watermark — bottom right, outside the grid
     svg.append("text")
       .attr("x", width - margin.right)
       .attr("y", height - (isMobile ? 4 : 6))
@@ -761,7 +761,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-size", isMobile ? "9px" : "11px")
       .attr("font-weight", "500")
       .attr("fill", "#94a3b8")
-      .text("Powered by DCIG.ai");
+      .text("Powered by itmap.com");
 
     // ── Two-band zone labels ─────────────────────────────────────────────────
     const bandLabelSize = isMobile ? "11px" : "14px";

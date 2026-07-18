@@ -173,7 +173,7 @@ export function registerAdminRoutes(app: Express): void {
       const marketName = rawMarket.replace(/^ITMAP for /i, "");
 
       const base = process.env.APP_BASE_URL?.replace(/\/$/, "")
-        ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://dcig.ai");
+        ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://itmap.com");
       const html = buildInviteHtml(
         { recipientEmail: target.email ?? "recipient@example.com", vendorName, marketName },
         `${base}/register`,
@@ -756,7 +756,7 @@ export function registerAdminRoutes(app: Express): void {
             new Paragraph({ children: [new PageBreak()] }),
             heading1("1. Overview"),
             body("Spectio is a private, enterprise-grade market research platform designed for technology vendor analysis. It provides structured methodologies for evaluating vendors across complex technology markets, combining interactive visualizations, AI-assisted intelligence, and professional-grade PDF reporting. The platform is positioned as an independent and unbiased source of market intelligence for enterprise buyers."),
-            body("The platform is accessible at dcig.ai and is currently live for one market: Public Cloud Object Storage Providers, covering 12 vendors across 98 features and 8 evaluation criteria."),
+            body("The platform is accessible at itmap.com and is currently live for one market: Public Cloud Object Storage Providers, covering 12 vendors across 98 features and 8 evaluation criteria."),
             spacer(),
             heading1("2. User Roles"),
             makeTable(["Role", "Description"], [
@@ -829,7 +829,7 @@ export function registerAdminRoutes(app: Express): void {
               ["Database", "PostgreSQL (Neon serverless)"],
               ["AI", "OpenAI GPT-4.1 mini via Replit AI Integrations"],
               ["PDF Generation", "Puppeteer + system Chromium"],
-              ["Deployment", "Replit, custom domain dcig.ai"],
+              ["Deployment", "Replit, custom domain itmap.com"],
             ]),
             spacer(),
           ],

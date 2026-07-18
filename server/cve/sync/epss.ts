@@ -30,7 +30,7 @@ export async function runEpssSync(): Promise<void> {
 
   try {
     const resp = await fetch(EPSS_URL, {
-      headers: { 'User-Agent': 'dcig.ai/1.0 (CVE intelligence)' },
+      headers: { 'User-Agent': 'itmap.com/1.0 (CVE intelligence)' },
       signal: AbortSignal.timeout(300000),
     });
     if (!resp.ok) throw new Error(`EPSS fetch HTTP ${resp.status}`);
