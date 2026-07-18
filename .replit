@@ -56,4 +56,4 @@ timeoutMs = 20000
 [userenv.shared]
 
 [objectStorage]
-defaultBucketID = "replit-objstore-974384c9-83d0-4a0f-8403-1b0777fef4ed"
+defaultBucketID = "replit-objstore-eecbc4ab-69aa-485e-9419-470dc87d40d9"
