@@ -562,7 +562,7 @@ export function ScenarioFanChart({ data, filters, forecastTitle }: { data: Chart
     // Tooltip
     const tooltip = svg.append("g").style("display", "none");
     const tipBg = tooltip.append("rect").attr("rx", 4).attr("fill", "#0f172a").attr("stroke", "#334155").attr("stroke-width", 1);
-    const tipText = tooltip.append("text").attr("fill", "#f1f5f9").attr("font-size", "11px").attr("font-family", "system-ui");
+    const tipText = tooltip.append("text").attr("fill", "#f1f5f9").attr("font-size", "11px").attr("font-family", "Montserrat, sans-serif");
 
     const overlay = g.append("rect").attr("width", width).attr("height", height).attr("fill", "transparent");
     overlay.on("mousemove", function (event) {
