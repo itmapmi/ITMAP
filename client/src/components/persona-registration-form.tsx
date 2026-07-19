@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -36,6 +37,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
     password: "",
     confirmPassword: "",
   });
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -56,6 +58,9 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
 
     if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    if (!isVendorPersona && !termsAccepted) {
+      newErrors.terms = "You must accept the Terms of Service to create a buyer account";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -177,6 +182,27 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             />
             {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword}</p>}
           </div>
+
+          {!isVendorPersona && (
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id={`terms-${persona}`}
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  className="mt-0.5 border-white/20 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                />
+                <label htmlFor={`terms-${persona}`} className="text-sm text-slate-300 leading-relaxed cursor-pointer">
+                  I agree to the{" "}
+                  <Link href="/terms?returnTo=/buyer" className="text-cyan-400 hover:text-cyan-300 hover:underline">
+                    ITMAP Terms of Service
+                  </Link>
+                  . I understand that my name, company, and email may be shared with vendors whose markets I engage with.
+                </label>
+              </div>
+              {errors.terms && <p className="text-xs text-red-400">{errors.terms}</p>}
+            </div>
+          )}
 
           <Button
             type="submit"

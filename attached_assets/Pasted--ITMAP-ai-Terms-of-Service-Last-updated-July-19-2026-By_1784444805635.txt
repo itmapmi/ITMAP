@@ -1,0 +1,68 @@
+# ITMAP.ai — Terms of Service
+
+**Last updated: July 19, 2026**
+
+By clicking **"I Agree"** and creating an account, you accept these Terms. If you do not agree, click "Disagree" and do not use the platform.
+
+## 1. The Service
+
+ITMAP.ai provides AI-generated IT market intelligence, including vendor landscapes, product comparisons, vendor scores, news intelligence, RFP generation, and related tools ("the Service"). The Service is currently provided **free of charge** to end users. We may modify, gate, or discontinue any feature at any time.
+
+## 2. AI-Generated Content — No Warranty
+
+Content on ITMAP.ai — including vendor scores, landscape placements, comparisons, forecasts, and commentary — is **generated and updated by automated AI systems** using publicly available information. It is provided **"as is," for informational purposes only**, and may contain errors, omissions, or outdated information.
+
+- ITMAP.ai content is **not professional, financial, legal, or purchasing advice**.
+- You are solely responsible for independently verifying information before making any purchasing, investment, or business decision.
+- We make no warranties of accuracy, completeness, fitness for a particular purpose, or merchantability.
+
+## 3. Data We Collect
+
+When you use the Service, we collect:
+
+- **Account data**: your name, company name, email address, and job role.
+- **Activity data**: markets and reports you browse, searches and chat queries, RFPs you create, datasheets you compare, and similar usage and sentiment signals.
+
+We use this data to operate and improve the Service and for the purposes described in Section 4.
+
+## 4. Sharing Your Data with Vendors — Please Read
+
+**By agreeing to these Terms, you consent to ITMAP.ai sharing your name, company name, and email address with technology vendors whose markets or products you engage with on the platform.** Vendors may contact you regarding their products and services. We do not sell your browsing history verbatim, but vendors may be informed of your general interest in a market category.
+
+You may withdraw this consent at any time by emailing **privacy@itmap.ai** or adjusting your account settings. Withdrawal does not affect data already shared.
+
+## 5. Your Responsibilities
+
+You agree to: provide accurate registration information; use the Service only for lawful business purposes; and not scrape, resell, reverse-engineer, or redistribute ITMAP.ai content or data without written permission.
+
+## 6. Intellectual Property
+
+All platform content, scores, models, and reports are the property of ITMAP.ai. We grant you a limited, non-exclusive, non-transferable license to use the Service for your internal business purposes only.
+
+## 7. Limitation of Liability
+
+To the maximum extent permitted by law, ITMAP.ai and its affiliates and partners shall not be liable for any indirect, incidental, consequential, or special damages, or for any loss of profits, revenue, data, or business opportunity, arising from your use of (or inability to use) the Service or reliance on its content. Our total aggregate liability for any claim shall not exceed **USD 100**.
+
+## 8. Indemnification
+
+You agree to indemnify and hold harmless ITMAP.ai from claims arising out of your misuse of the Service or violation of these Terms.
+
+## 9. Termination
+
+We may suspend or terminate your account at any time for violation of these Terms. You may delete your account at any time; deletion requests can be sent to **privacy@itmap.ai**.
+
+## 10. Changes to These Terms
+
+We may update these Terms from time to time. Material changes will be notified via email or in-platform notice. Continued use after changes constitutes acceptance.
+
+## 11. Governing Law
+
+These Terms are governed by the laws of **[the United Arab Emirates / DIFC — confirm with counsel]**, and disputes shall be resolved in the courts of that jurisdiction.
+
+## 12. Contact
+
+Questions: **legal@itmap.ai**
+
+---
+
+**[ I Agree ]  [ Disagree ]**
