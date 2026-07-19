@@ -5,7 +5,9 @@ import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import {
-  Zap, Search, Brain, Database, ArrowRight, GitBranch, ChevronRight
+  Zap, Search, Brain, Database, ArrowRight, GitBranch, ChevronRight,
+  Eye, Target, Newspaper, FileText, LineChart, ClipboardList, TrendingUp,
+  Shield, MessageSquare, CheckCircle2, Sparkles, LayoutGrid
 } from "lucide-react";
 import PlatformVendorGraphic from "@/components/platform-vendor-graphic";
 
@@ -15,6 +17,69 @@ const fadeUp = {
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
 };
+
+const BUYER_TOOLS = [
+  {
+    icon: <Eye className="h-5 w-5 text-cyan-400" />,
+    title: "Vendor Evaluation Maps",
+    desc: "Interactive quadrant visualizations positioning vendors across execution and product strength.",
+  },
+  {
+    icon: <Target className="h-5 w-5 text-violet-400" />,
+    title: "Feature Support Matrix",
+    desc: "Side-by-side comparison across hundreds of product capabilities and dimensions.",
+  },
+  {
+    icon: <Newspaper className="h-5 w-5 text-cyan-400" />,
+    title: "News & Intelligence Feed",
+    desc: "AI-scored news, funding, product launches, and market signals with impact ratings.",
+  },
+  {
+    icon: <FileText className="h-5 w-5 text-violet-400" />,
+    title: "Research Reports",
+    desc: "Deep-dive market and vendor reports, continuously updated and exportable as PDFs.",
+  },
+  {
+    icon: <LineChart className="h-5 w-5 text-cyan-400" />,
+    title: "Market Builder",
+    desc: "Define custom criteria and weights to generate a ranking tailored to your needs.",
+  },
+  {
+    icon: <Database className="h-5 w-5 text-violet-400" />,
+    title: "Datasheets",
+    desc: "Compare vendor datasheets, specifications, and feature claims in one place.",
+  },
+  {
+    icon: <ClipboardList className="h-5 w-5 text-cyan-400" />,
+    title: "RFP Builder",
+    desc: "Generate RFPs from market data, scoring criteria, and vendor requirements.",
+  },
+  {
+    icon: <TrendingUp className="h-5 w-5 text-violet-400" />,
+    title: "Forecast Builder",
+    desc: "Model market trajectories and forecast vendor positioning over time.",
+  },
+  {
+    icon: <MessageSquare className="h-5 w-5 text-cyan-400" />,
+    title: "Battle Cards",
+    desc: "Competitive positioning cards to compare vendors for internal decision-making.",
+  },
+  {
+    icon: <Shield className="h-5 w-5 text-violet-400" />,
+    title: "CVE Intelligence",
+    desc: "Security vulnerability tracking and risk signals for evaluated vendors.",
+  },
+  {
+    icon: <CheckCircle2 className="h-5 w-5 text-cyan-400" />,
+    title: "Fact Review",
+    desc: "Collaborate on flagging and verifying research facts with the ITMAP team.",
+  },
+  {
+    icon: <Sparkles className="h-5 w-5 text-violet-400" />,
+    title: "AI Chat",
+    desc: "Conversational assistant that answers questions about any market or vendor.",
+  },
+];
 
 const HOW_STEPS = [
   {
@@ -200,6 +265,42 @@ export default function Platform() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Buyer Tools */}
+      <section className="py-24 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div {...fadeUp} className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
+              <LayoutGrid className="h-4 w-4" /> INCLUDED FOR BUYERS
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+              Every tool a Technology Buyer needs
+            </h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+              All of these capabilities are unlocked for Technology Buyers and end users — no tiers, no paywalls, no vendor influence.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {BUYER_TOOLS.map((tool, i) => (
+              <motion.div
+                key={tool.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.04, duration: 0.4 }}
+                className="bg-slate-900 border border-white/5 rounded-2xl p-5 hover:border-white/15 hover:bg-slate-800/50 transition-all"
+              >
+                <div className="p-2.5 bg-white/5 border border-white/5 rounded-xl w-fit mb-4">
+                  {tool.icon}
+                </div>
+                <h3 className="text-base font-semibold text-white mb-2">{tool.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{tool.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
