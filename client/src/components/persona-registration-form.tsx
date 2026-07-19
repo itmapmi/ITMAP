@@ -68,7 +68,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
     try {
       const { confirmPassword, ...registerData } = formData;
       await register({ ...registerData, persona });
-      toast({ title: "Account created", description: "Welcome to itmap.com" });
+      toast({ title: "Account created", description: "Welcome to itmap.ai" });
       setLocation("/");
     } catch {
       // Error is handled by useAuth hook

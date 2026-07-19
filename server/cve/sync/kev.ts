@@ -22,7 +22,7 @@ export async function runKevSync(): Promise<void> {
 
   try {
     const resp = await fetch(KEV_URL, {
-      headers: { 'User-Agent': 'itmap.com/1.0 (CVE intelligence)' },
+      headers: { 'User-Agent': 'itmap.ai/1.0 (CVE intelligence)' },
       signal: AbortSignal.timeout(30000),
     });
     if (!resp.ok) throw new Error(`KEV fetch HTTP ${resp.status}`);

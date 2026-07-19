@@ -50,7 +50,7 @@ export async function collectHnSignals(
 
   try {
     const resp = await fetch(apiUrl, {
-      headers: { 'User-Agent': 'itmap.com/1.0 (vendor intelligence; contact@itmap.com)' },
+      headers: { 'User-Agent': 'itmap.ai/1.0 (vendor intelligence; contact@itmap.ai)' },
       signal: AbortSignal.timeout(10000),
     });
 

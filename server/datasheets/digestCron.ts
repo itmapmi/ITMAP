@@ -19,7 +19,7 @@ import { sendWeeklyDigestEmail } from "./email";
 // back to the production hostname so emailed links are never malformed even
 // if PUBLIC_BASE_URL is misconfigured.
 function resolveDigestBaseUrl(): string {
-  const FALLBACK = "https://itmap.com";
+  const FALLBACK = "https://itmap.ai";
   const explicit = (process.env.PUBLIC_BASE_URL ?? "").trim();
   if (explicit) {
     try { return new URL(explicit).origin; }

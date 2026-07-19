@@ -20,7 +20,7 @@ interface LockedFeatureTooltipProps {
 
 /**
  * Wraps a (visually disabled) trigger and shows the standard
- * "Contact sales@itmap.com for access" tooltip on hover/focus.
+ * "Contact sales@itmap.ai for access" tooltip on hover/focus.
  * Use for locked features that are shown greyed-out rather than hidden.
  */
 export function LockedFeatureTooltip({
@@ -48,7 +48,7 @@ interface LockedFeaturePanelProps {
 /**
  * Full-page "premium feature" upsell shown when a user opens a locked feature
  * page directly (e.g. typing a URL or following an old link). Renders a clean
- * "Contact sales@itmap.com for access" panel instead of degrading into API
+ * "Contact sales@itmap.ai for access" panel instead of degrading into API
  * errors or empty states.
  */
 export function LockedFeaturePanel({

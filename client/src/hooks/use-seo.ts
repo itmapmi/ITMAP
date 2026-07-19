@@ -8,7 +8,7 @@ interface SeoOptions {
   type?: "website" | "article";
 }
 
-const SITE = "https://itmap.com";
+const SITE = "https://itmap.ai";
 const DEFAULT_IMAGE = `${SITE}/og-image.png`;
 
 function setMeta(selector: string, attr: "name" | "property", key: string, content: string) {

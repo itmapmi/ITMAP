@@ -368,16 +368,16 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
             <h2 className="text-xl font-bold text-white mb-2">Account not linked to a vendor</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
               Your account is provisioned as a vendor seat but hasn't been linked to a vendor record yet.
-              This is done by a <span className="text-white font-medium">itmap.com administrator</span> — please contact your account manager to complete the setup.
+              This is done by a <span className="text-white font-medium">itmap.ai administrator</span> — please contact your account manager to complete the setup.
             </p>
             <div className="bg-slate-800 rounded-xl p-4 text-left mb-6">
               <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wider">Your account</p>
               <p className="text-sm text-white">{user?.firstName} {user?.lastName}</p>
               <p className="text-sm text-slate-400">{user?.email}</p>
             </div>
-            <a href="mailto:sales@itmap.com"
+            <a href="mailto:sales@itmap.ai"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-all">
-              Contact sales@itmap.com
+              Contact sales@itmap.ai
             </a>
           </motion.div>
         </div>

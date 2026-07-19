@@ -28,8 +28,8 @@ const STEPS = [
   {
     num: "01",
     title: "Submit a request",
-    desc: "Email support@itmap.com with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
-    cta: { label: "Email us", href: "mailto:support@itmap.com" },
+    desc: "Email support@itmap.ai with the asset(s) you want to use, the full context (pages, URLs, channels, languages) and intended audience reach.",
+    cta: { label: "Email us", href: "mailto:support@itmap.ai" },
   },
   {
     num: "02",
@@ -175,9 +175,9 @@ export default function Licensing() {
             <Mail className="h-8 w-8 text-cyan-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Questions about licensing?</h3>
             <p className="text-slate-400 mb-6">Our team typically responds within 2 business days.</p>
-            <a href="mailto:support@itmap.com">
+            <a href="mailto:support@itmap.ai">
               <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                Contact support@itmap.com <ArrowRight className="ml-2 h-4 w-4" />
+                Contact support@itmap.ai <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </a>
           </div>

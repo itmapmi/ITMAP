@@ -12,7 +12,7 @@ const app = express();
 app.set('trust proxy', true);
 
 // Canonical domain enforcement.
-// In production a custom domain (e.g. itmap.com) is served alongside the bare
+// In production a custom domain (e.g. itmap.ai) is served alongside the bare
 // Replit deployment domain (*.replit.app). Without this, an OAuth login can
 // strand the user on the *.replit.app host. We 301-redirect any *.replit.app
 // request to the primary custom domain so the whole session stays on one host.

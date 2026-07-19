@@ -1,10 +1,10 @@
-# itmap.com
+# itmap.ai
 
-> itmap.com is an AI-native enterprise IT vendor intelligence platform delivering independent, real-time intelligence on technology vendors — vendor rankings, feature evaluations, market forecasts, news impact analysis, and research reports — for enterprise IT buyers across multiple markets.
+> itmap.ai is an AI-native enterprise IT vendor intelligence platform delivering independent, real-time intelligence on technology vendors — vendor rankings, feature evaluations, market forecasts, news impact analysis, and research reports — for enterprise IT buyers across multiple markets.
 
 Tagline: "See Every Vendor. Know Every Move."
 
-## What itmap.com does
+## What itmap.ai does
 
 - **Vendor Intelligence**: Independent, AI-powered rankings and evaluations of enterprise software and IT vendors across dozens of markets, scored on Execution and Viability axes.
 - **Market Forecasts**: AI-native market sizing and multi-year forecasts (bull/base/bear scenarios) with full audit trails — built from boundary definitions, briefs, structured assumptions and debated cruxes, not LLM arithmetic.
@@ -19,20 +19,20 @@ Enterprise IT buyers, CIOs, procurement teams, technology strategists, and analy
 
 ## Key pages
 
-- Home: https://itmap.com/
-- Markets directory: https://itmap.com/markets
-- Platform overview: https://itmap.com/platform
-- About: https://itmap.com/about
-- Licensing: https://itmap.com/licensing
-- Contact: https://itmap.com/contact
+- Home: https://itmap.ai/
+- Markets directory: https://itmap.ai/markets
+- Platform overview: https://itmap.ai/platform
+- About: https://itmap.ai/about
+- Licensing: https://itmap.ai/licensing
+- Contact: https://itmap.ai/contact
 
-## How itmap.com differs from traditional analyst firms
+## How itmap.ai differs from traditional analyst firms
 
 - **AI-native pipeline**: Every market is built and continuously refreshed by an LLM-driven multi-stage pipeline (vendor list → scoring → commentary → features → ecosystem) with admin approval gates.
 - **Transparent**: Forecasts include MECE-validated segments, sensitivity tables, scenario debate logs, and per-source citations.
 - **Real-time signals**: A multi-source vendor signal pipeline (HackerNews, Reddit, Layoffs.fyi, GitHub) classifies and ranks vendor signals daily.
-- **Unbiased**: itmap.com does not take vendor sponsorship for placement.
+- **Unbiased**: itmap.ai does not take vendor sponsorship for placement.
 
 ## Contact
 
-For partnerships, licensing, or media: https://itmap.com/contact
+For partnerships, licensing, or media: https://itmap.ai/contact

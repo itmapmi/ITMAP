@@ -38,7 +38,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
     const body = encodeURIComponent(
       `Name: ${formData.firstName} ${formData.lastName}\nCompany: ${formData.company}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
     );
-    window.location.href = `mailto:sales@itmap.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:sales@itmap.ai?subject=${subject}&body=${body}`;
 
     toast({
       title: "Message ready",

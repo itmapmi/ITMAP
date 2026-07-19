@@ -32,13 +32,13 @@ function hasSmtpTransport(): boolean {
 }
 
 function fromAddr(): string {
-  return process.env.ALERT_FROM_EMAIL || process.env.SMTP_USER || 'noreply@itmap.com';
+  return process.env.ALERT_FROM_EMAIL || process.env.SMTP_USER || 'noreply@itmap.ai';
 }
 
 function appBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  return 'https://itmap.com';
+  return 'https://itmap.ai';
 }
 
 function buildHtmlBody(broken: UrlHealthResult[], checkedAt: Date): string {
@@ -149,7 +149,7 @@ export function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string,
   <!-- Header -->
   <div style="margin-bottom:32px;">
     <span style="font-size:20px;font-weight:700;background:linear-gradient(90deg,#06b6d4,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
-      itmap.com
+      itmap.ai
     </span>
     <p style="color:#64748b;font-size:13px;margin:2px 0 0;">See Every Vendor. Know Every Move.</p>
   </div>
@@ -160,7 +160,7 @@ export function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string,
   </h1>
   <p style="color:#475569;line-height:1.6;margin:0 0 16px;">
     <strong>${escapeHtml(vendorName)}</strong> has added you to their audience watchlist on
-    <strong>itmap.com</strong> — an enterprise IT vendor intelligence platform tracking the
+    <strong>itmap.ai</strong> — an enterprise IT vendor intelligence platform tracking the
     <strong>${escapeHtml(marketName)}</strong> market.
   </p>
   <p style="color:#475569;line-height:1.6;margin:0 0 24px;">
@@ -185,7 +185,7 @@ export function buildInviteHtml(opts: WatchlistInviteOptions, signUpUrl: string,
 
   <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0;">
     You received this email because your address was included in a watchlist import on
-    itmap.com. If you did not expect this, you can safely ignore it.
+    itmap.ai. If you did not expect this, you can safely ignore it.
   </p>
 </body>
 </html>`;
@@ -210,7 +210,7 @@ export async function sendWatchlistInviteEmail(
   const base = appBaseUrl();
   const signUpUrl = `${base}/register`;
   const signInUrl = `${base}/login`;
-  const subject = `You've been added to a watchlist on itmap.com`;
+  const subject = `You've been added to a watchlist on itmap.ai`;
 
   try {
     await transport.sendMail({

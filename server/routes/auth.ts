@@ -22,7 +22,7 @@ export function registerAuthRoutes(app: Express): void {
 
   // Serve sitemap dynamically so market pages are included
   app.get('/sitemap.xml', async (_req, res) => {
-    const BASE = 'https://itmap.com';
+    const BASE = 'https://itmap.ai';
 
     const today = new Date().toISOString().split('T')[0];
     const staticPages = [
