@@ -67,6 +67,7 @@ export default function Navigation() {
     { href: "/markets", label: "Markets" },
     { href: "/me/rfps", label: "RFP Builder" },
     { href: "/datasheets", label: "Datasheets" },
+    { href: "/security", label: "Security Intelligence" },
     { href: "/platform", label: "Methodology" },
   ];
 
