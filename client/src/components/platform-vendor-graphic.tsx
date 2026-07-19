@@ -10,35 +10,35 @@ const CHART_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 const VENDORS = [
   { id: "nexora", name: "Nexora", events: [
-    { date: "Jul 2026", title: "Announced $200M AI R&D expansion", impact: "positive" as const },
-    { date: "Jun 2026", title: "Launched unified data fabric platform", impact: "positive" as const },
-    { date: "May 2026", title: "Partnered with three major cloud providers", impact: "positive" as const },
+    { date: "Aug 2027", title: "Announced $200M AI R&D expansion", impact: "positive" as const },
+    { date: "Jul 2027", title: "Launched unified data fabric platform", impact: "positive" as const },
+    { date: "Jun 2027", title: "Partnered with three major cloud providers", impact: "positive" as const },
   ]},
   { id: "datasphere", name: "DataSphere", events: [
-    { date: "Jul 2026", title: "Expanded European data residency", impact: "positive" as const },
-    { date: "Jun 2026", title: "Released real-time streaming engine", impact: "positive" as const },
-    { date: "May 2026", title: "Security audit completed with no critical findings", impact: "positive" as const },
+    { date: "Aug 2027", title: "Expanded European data residency", impact: "positive" as const },
+    { date: "Jul 2027", title: "Released real-time streaming engine", impact: "positive" as const },
+    { date: "Jun 2027", title: "Security audit completed with no critical findings", impact: "positive" as const },
   ]},
   { id: "prismlogic", name: "PrismLogic", events: [
-    { date: "Jul 2026", title: "New GTM leader appointed from enterprise SaaS", impact: "neutral" as const },
-    { date: "Jun 2026", title: "Shipped low-code integration builder", impact: "positive" as const },
-    { date: "May 2026", title: "Pricing redesign targets mid-market", impact: "neutral" as const },
+    { date: "Aug 2027", title: "New GTM leader appointed from enterprise SaaS", impact: "neutral" as const },
+    { date: "Jul 2027", title: "Shipped low-code integration builder", impact: "positive" as const },
+    { date: "Jun 2027", title: "Pricing redesign targets mid-market", impact: "neutral" as const },
   ]},
   { id: "venturestack", name: "VentureStack", events: [
-    { date: "Jul 2026", title: "Closed Series B to scale engineering", impact: "positive" as const },
-    { date: "Jun 2026", title: "Added 40 native integrations", impact: "positive" as const },
-    { date: "May 2026", title: "Experienced brief outage in US-West region", impact: "negative" as const },
+    { date: "Aug 2027", title: "Closed Series B to scale engineering", impact: "positive" as const },
+    { date: "Jul 2027", title: "Added 40 native integrations", impact: "positive" as const },
+    { date: "Jun 2027", title: "Experienced brief outage in US-West region", impact: "negative" as const },
   ]},
   { id: "coregrid", name: "CoreGrid", events: [
-    { date: "Jul 2026", title: "Open-sourced core orchestration layer", impact: "positive" as const },
-    { date: "Jun 2026", title: "Partnered with two global SIs", impact: "positive" as const },
-    { date: "May 2026", title: "Sunset legacy on-premise edition", impact: "neutral" as const },
+    { date: "Aug 2027", title: "Open-sourced core orchestration layer", impact: "positive" as const },
+    { date: "Jul 2027", title: "Partnered with two global SIs", impact: "positive" as const },
+    { date: "Jun 2027", title: "Sunset legacy on-premise edition", impact: "neutral" as const },
   ]},
 ];
 
 const PHASES = [
   {
-    label: "Jan 2024",
+    label: "Jan 2026",
     description: "AI ingests thousands of public signals — press releases, financials, CVEs, and product updates.",
     title: "Continuous data ingestion",
     icon: <Sparkles className="h-4 w-4" />,
@@ -52,7 +52,7 @@ const PHASES = [
     },
   },
   {
-    label: "Apr 2024",
+    label: "May 2026",
     description: "LLMs rescore vendors across execution and viability as new evidence arrives.",
     title: "Scores recalculated continuously",
     icon: <Activity className="h-4 w-4" />,
@@ -66,7 +66,7 @@ const PHASES = [
     },
   },
   {
-    label: "Jul 2024",
+    label: "Sep 2026",
     description: "Vendor positions shift on the map. Leaders pull away, challengers gain ground.",
     title: "Positions move in real time",
     icon: <TrendingUp className="h-4 w-4" />,
@@ -80,7 +80,7 @@ const PHASES = [
     },
   },
   {
-    label: "Oct 2024",
+    label: "Jan 2027",
     description: "ITMAP auto-selects a vendor and surfaces the latest events behind its move.",
     title: "Auto-surface evidence",
     icon: <MousePointer2 className="h-4 w-4" />,
@@ -95,7 +95,7 @@ const PHASES = [
     selectedVendorId: "nexora",
   },
   {
-    label: "Jan 2025",
+    label: "Aug 2027",
     description: "Each event is scored for impact so news becomes a leading indicator.",
     title: "News becomes intelligence",
     icon: <Newspaper className="h-4 w-4" />,
