@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Mail, Phone, MapPin, Clock, ArrowRight, MessageSquare } from "lucide-react";
+import { Mail, MapPin, Clock, ArrowRight, MessageSquare } from "lucide-react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -20,13 +20,6 @@ const CONTACT_DETAILS = [
     value: "sales@itmap.ai",
     href: "mailto:sales@itmap.ai",
     color: "from-cyan-500/15 to-cyan-400/5",
-  },
-  {
-    icon: <Phone className="h-5 w-5 text-violet-400" />,
-    label: "Phone",
-    value: "844.324.4552",
-    href: "tel:8443244552",
-    color: "from-violet-500/15 to-violet-400/5",
   },
   {
     icon: <MapPin className="h-5 w-5 text-cyan-400" />,
