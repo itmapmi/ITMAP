@@ -103,7 +103,7 @@ export default function TermsPage() {
 
             <h2 className="text-xl font-semibold text-white mt-8 mb-3">11. Governing Law</h2>
             <p className="text-slate-300">
-              These Terms are governed by the laws of <strong>[the United Arab Emirates / DIFC — confirm with counsel]</strong>, and disputes shall be resolved in the courts of that jurisdiction.
+              These Terms are governed by the laws of <strong>[the United Arab Emirates]</strong>, and disputes shall be resolved in the courts of that jurisdiction.
             </p>
 
             <h2 className="text-xl font-semibold text-white mt-8 mb-3">12. Contact</h2>
