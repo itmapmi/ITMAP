@@ -1,12 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
-import { PersonaRegistrationForm } from "@/components/persona-registration-form";
+import ContactSalesModal from "@/components/contact-sales-modal";
 import {
-  ArrowRight, Building2, Shield, FileText, MessageSquare, Globe2, TrendingUp, Zap, CheckCircle2, Users
+  ArrowRight, Building2, Shield, FileText, MessageSquare, Globe2, TrendingUp, Zap, CheckCircle2, BarChart3, Layers, Target, Lock
 } from "lucide-react";
 
 const fadeUp = {
@@ -18,41 +18,53 @@ const fadeUp = {
 
 const VENDOR_CAPABILITIES = [
   {
-    icon: <TrendingUp className="h-7 w-7 text-violet-400" />,
-    title: "Market Position Tracking",
-    desc: "See how your company ranks against competitors on execution and product strength. Track movement over time and understand the drivers behind every score.",
+    icon: <Globe2 className="h-7 w-7 text-violet-400" />,
+    title: "Markets",
+    desc: "Explore every IT market ITMAP covers. See who competes in your space, how positions are changing and where buyers are focusing their attention.",
   },
   {
-    icon: <Building2 className="h-7 w-7 text-cyan-400" />,
-    title: "Product & Ecosystem Profiles",
-    desc: "Keep your product capabilities and partner ecosystem accurately represented. Compare against market leaders and identify whitespace opportunities.",
+    icon: <TrendingUp className="h-7 w-7 text-cyan-400" />,
+    title: "ITMAP Live Vendor Intelligence",
+    desc: "Track your real-time market position across execution and product strength. Monitor score movement, news impact and competitive shifts as they happen.",
+  },
+  {
+    icon: <BarChart3 className="h-7 w-7 text-violet-400" />,
+    title: "Lead Generation",
+    desc: "Surface buyer-intent signals from companies researching your market. See which organisations are engaging with your category and prioritise outreach.",
+  },
+  {
+    icon: <Layers className="h-7 w-7 text-cyan-400" />,
+    title: "Forecast Builder",
+    desc: "Build AI-assisted market-size and growth forecasts for your segment. Model scenarios, assumptions and sensitivities to support planning and investor conversations.",
+  },
+  {
+    icon: <Target className="h-7 w-7 text-violet-400" />,
+    title: "Market Builder",
+    desc: "Create custom evaluations using your own criteria and weights. Demonstrate how your product stacks up against competitors on the dimensions that matter to you.",
+  },
+  {
+    icon: <FileText className="h-7 w-7 text-cyan-400" />,
+    title: "RFP Responder",
+    desc: "Respond to buyer RFPs faster with AI-generated answers grounded in your product data, feature support and market positioning.",
   },
   {
     icon: <MessageSquare className="h-7 w-7 text-violet-400" />,
-    title: "News & Signal Intelligence",
-    desc: "Monitor news and AI-scored signals that affect your market position. React faster to competitive moves, CVEs, funding rounds and product launches.",
+    title: "Battlecards",
+    desc: "Generate competitive battlecards for every market where you compete. Arm your sales team with head-to-head comparisons, win themes and objection handling.",
   },
   {
     icon: <Shield className="h-7 w-7 text-cyan-400" />,
     title: "Security Intelligence",
-    desc: "Track vulnerabilities, CISA KEV alerts and EPSS scores across your product portfolio and the wider vendor landscape.",
-  },
-  {
-    icon: <FileText className="h-7 w-7 text-violet-400" />,
-    title: "RFP Responder",
-    desc: "Respond to buyer RFPs with AI-generated answers grounded in your product data, feature support and market positioning.",
-  },
-  {
-    icon: <Globe2 className="h-7 w-7 text-cyan-400" />,
-    title: "Lead Generation & Battle Cards",
-    desc: "Access buyer-intent signals and generate competitive battle cards for every market where you compete.",
+    desc: "Monitor CVEs, CISA KEV alerts and EPSS exploit scores across your portfolio and the wider vendor landscape. Stay ahead of security-related buyer questions.",
   },
 ];
 
 export default function VendorLandingPage() {
+  const [showContactModal, setShowContactModal] = useState(false);
+
   useSeo({
-    title: "IT Vendors — ITMAP | Free Market Intelligence & RFP Tools",
-    description: "Free vendor intelligence hub for IT vendors. Track market position, monitor news and security signals, respond to RFPs and generate battle cards.",
+    title: "IT Vendors — ITMAP | Vendor Intelligence & Sales Tools",
+    description: "ITMAP vendor intelligence, lead generation, forecast builder, market builder, RFP responder, battlecards and security intelligence for IT vendors.",
     path: "/vendor",
   });
 
@@ -84,18 +96,21 @@ export default function VendorLandingPage() {
                 <div className="h-px w-8 bg-violet-400" />
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                Own your market{" "}
+                Intelligence and tools built for{" "}
                 <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                  position
+                  IT vendors
                 </span>
               </h1>
               <p className="text-lg text-slate-400 leading-relaxed mb-8 max-w-xl">
-                Free market intelligence, RFP response tools, security monitoring and competitive battle cards — built for IT vendors who want to stay ahead.
+                Live market positioning, lead generation, RFP response, battlecards, security monitoring and custom forecasting — all in one vendor intelligence platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <a href="#register" className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white border-0 rounded-lg px-6 py-3 h-auto text-base font-semibold transition-all">
-                  Register Free <Zap className="h-4 w-4" />
-                </a>
+                <button
+                  onClick={() => setShowContactModal(true)}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white border-0 rounded-lg px-6 py-3 h-auto text-base font-semibold transition-all"
+                >
+                  Contact Sales <ArrowRight className="h-4 w-4" />
+                </button>
                 <Link href="/markets">
                   <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent px-6 py-3 h-auto text-base">
                     Explore Markets <ArrowRight className="ml-2 h-4 w-4" />
@@ -113,14 +128,14 @@ export default function VendorLandingPage() {
                   <div className="text-sm text-slate-500">Position tracking</div>
                 </div>
                 <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-5 backdrop-blur">
-                  <Users className="h-8 w-8 text-cyan-400 mb-3" />
+                  <BarChart3 className="h-8 w-8 text-cyan-400 mb-3" />
                   <div className="text-2xl font-bold text-white mb-1">Buyer</div>
                   <div className="text-sm text-slate-500">Intent signals</div>
                 </div>
                 <div className="col-span-2 bg-slate-900/80 border border-white/10 rounded-2xl p-5 backdrop-blur flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-white mb-1">Free</div>
-                    <div className="text-sm text-slate-500">Registration and access</div>
+                    <div className="text-2xl font-bold text-white mb-1">8</div>
+                    <div className="text-sm text-slate-500">Vendor tools</div>
                   </div>
                   <CheckCircle2 className="h-10 w-10 text-emerald-400" />
                 </div>
@@ -135,20 +150,20 @@ export default function VendorLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div {...fadeUp} className="text-center mb-16">
             <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4">
-              <div className="h-px w-8 bg-violet-400" />CAPABILITIES<div className="h-px w-8 bg-violet-400" />
+              <div className="h-px w-8 bg-violet-400" />VENDOR CAPABILITIES<div className="h-px w-8 bg-violet-400" />
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">Intelligence built for vendors</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Track your position, respond to opportunities, monitor security and competitive signals.</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">Everything you need to compete and sell</h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">A complete vendor intelligence and go-to-market toolkit for IT vendors.</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {VENDOR_CAPABILITIES.map((cap, i) => (
               <motion.div
                 key={cap.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
+                transition={{ delay: i * 0.06, duration: 0.5 }}
                 className="group bg-slate-900 border border-white/5 hover:border-violet-500/20 rounded-2xl p-6 transition-all"
               >
                 <div className="mb-4">{cap.icon}</div>
@@ -160,23 +175,24 @@ export default function VendorLandingPage() {
         </div>
       </section>
 
-      {/* Register CTA */}
-      <section id="register" className="py-24">
+      {/* Contact / Access CTA */}
+      <section id="contact" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div {...fadeUp}>
               <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
-                <div className="h-px w-8 bg-cyan-400" />GET STARTED<div className="h-px w-8 bg-cyan-400" />
+                <div className="h-px w-8 bg-cyan-400" />GET ACCESS<div className="h-px w-8 bg-cyan-400" />
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Start tracking your market for free</h2>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Talk to our team about vendor access</h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                Registration is free and access is free. Create your vendor account with a company email and get full access to market intelligence, RFP tools and lead signals.
+                Vendor tools are available through ITMAP's vendor programme. Contact sales to learn about access, onboarding and how your team can start using the platform.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "No credit card required",
-                  "Monitor your market position and news signals",
-                  "Company email required to keep the community enterprise-grade",
+                  "Live vendor intelligence and market positioning",
+                  "Lead generation and RFP response tools",
+                  "Battlecards, forecasting and security monitoring",
+                  "Dedicated onboarding and support",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-slate-300">
                     <CheckCircle2 className="h-5 w-5 text-violet-400 flex-shrink-0" />
@@ -184,14 +200,42 @@ export default function VendorLandingPage() {
                   </li>
                 ))}
               </ul>
+              <button
+                onClick={() => setShowContactModal(true)}
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+              >
+                Contact Sales <ArrowRight className="h-4 w-4" />
+              </button>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }}>
-              <PersonaRegistrationForm persona="vendor" />
+              <div className="bg-slate-900 border border-white/8 rounded-2xl p-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Lock className="h-32 w-32 text-violet-400" />
+                </div>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-400/20">
+                      <Building2 className="h-5 w-5 text-violet-400" />
+                    </div>
+                    <span className="text-sm font-semibold text-violet-300">Vendor Access</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Enterprise-ready vendor tools</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    Contact sales to discuss your company's needs, see a demo of the vendor platform, and get your team set up.
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Zap className="h-4 w-4 text-cyan-400" />
+                    <span>One business day response time</span>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
+
+      <ContactSalesModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
     </div>
   );
 }
