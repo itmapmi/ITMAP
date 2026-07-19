@@ -14,10 +14,10 @@ const PLANS = [
   {
     key: "end-user",
     icon: Users,
-    name: "End User Access",
+    name: "Technology Buyer",
     audience: "For enterprise IT buyers evaluating vendors",
-    price: "$25",
-    unit: "/ user / month",
+    price: "Free",
+    unit: "",
     features: [
       "Access to All Markets and Reports",
       "RFP Builder",
@@ -38,6 +38,7 @@ const PLANS = [
       "Lead Generator",
       "Market Builder",
       "Forecast Builder",
+      "Vendor Intelligence",
       "Battle Cards",
       "RFP Responder",
       "Datasheets",
@@ -50,7 +51,7 @@ const PLANS = [
 export default function Pricing() {
   useSeo({
     title: "Pricing — itmap.ai",
-    description: "itmap.ai pricing for enterprise IT buyers and vendors. End User access from $25/user/month, Vendor access from $2,500/user/month. Contact sales for details.",
+    description: "itmap.ai pricing for enterprise IT buyers and vendors. Technology Buyer access is free, Vendor access from $2,500/user/month. Contact sales for details.",
     path: "/pricing",
   });
 
