@@ -13,7 +13,7 @@ import type { LockableFeatureKey } from "@shared/features";
 import {
   ArrowRight, BarChart3, BarChart2, TrendingUp, Shield, Zap, Globe2,
   CheckCircle2, ChevronRight, Database, Brain,
-  Target, Users,
+  Target, Users, Sparkles,
   FileText, ClipboardList, Layers, BookOpen,
   Building2, MessageSquare,
 } from "lucide-react";
@@ -564,13 +564,18 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
             <button onClick={() => handlePersonaSelect("buyer")} className="group relative text-left bg-slate-900 border border-white/8 hover:border-cyan-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_50px_rgba(14,165,233,0.12)]">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/8 group-hover:to-violet-500/5 transition-all duration-500" />
               <div className="relative">
-                <div className="h-11 w-11 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center mb-4">
-                  <Users className="h-5 w-5 text-cyan-400" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-11 w-11 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-3 py-1">
+                    <Sparkles className="h-3 w-3" /> Free Forever
+                  </span>
                 </div>
                 <h3 className="font-bold text-white text-lg mb-1.5 group-hover:text-cyan-300 transition-colors">Technology Buyer</h3>
-                <p className="text-sm text-slate-400 leading-relaxed mb-4">Evaluate vendors, compare products, build RFPs and access independent market research — all features unlocked.</p>
+                <p className="text-sm text-slate-400 leading-relaxed mb-4">Evaluate vendors, compare products, build RFPs and access independent market research — completely free, no paid plan.</p>
                 <div className="flex items-center gap-1.5 text-cyan-400 text-sm font-medium">
-                  Get buyer access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  Get free buyer access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             </button>
@@ -633,7 +638,7 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
         <MarketGrid markets={recentMarkets ?? markets} isLoading={recentMarketsLoading || isLoading} linkToLogin />
         <motion.div {...fadeUp} className="text-center mt-10">
           <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
-            Sign in to explore <ArrowRight className="h-4 w-4" />
+            Create free buyer account <ArrowRight className="h-4 w-4" />
           </button>
         </motion.div>
       </section>
@@ -696,7 +701,7 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
           </div>
           <motion.div {...fadeUp} className="text-center mt-10">
             <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-6 py-3 rounded-lg font-semibold text-sm transition-all">
-              Access Full Intelligence Feed <ArrowRight className="h-4 w-4" />
+              Get free buyer access <ArrowRight className="h-4 w-4" />
             </button>
           </motion.div>
         </div>
@@ -713,10 +718,10 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
               <p className="text-slate-400 text-lg max-w-xl mx-auto mb-10">Join enterprise IT teams that trust ITMAP for unbiased, AI-powered vendor intelligence.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]">
-                  <Users className="h-4 w-4" /> Get Buyer Access
+                  <Users className="h-4 w-4" /> Get Free Buyer Access
                 </button>
                 <button onClick={() => handlePersonaSelect("vendor")} className="inline-flex items-center justify-center gap-2 border border-white/15 text-white hover:bg-white/5 hover:border-white/25 px-8 py-4 rounded-xl font-semibold text-base transition-all">
-                  <Building2 className="h-4 w-4" /> Get Vendor Access
+                  <Building2 className="h-4 w-4" /> Contact Sales for Vendor Access
                 </button>
               </div>
             </div>

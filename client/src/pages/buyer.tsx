@@ -6,7 +6,7 @@ import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import { PersonaRegistrationForm } from "@/components/persona-registration-form";
 import {
-  ArrowRight, Target, Shield, FileText, MessageSquare, Globe2, BarChart3, Eye, Zap, CheckCircle2
+  ArrowRight, Target, Shield, FileText, MessageSquare, Globe2, BarChart3, Eye, Zap, CheckCircle2, Sparkles, Gift
 } from "lucide-react";
 
 const fadeUp = {
@@ -51,8 +51,8 @@ const BUYER_CAPABILITIES = [
 
 export default function BuyerLandingPage() {
   useSeo({
-    title: "Technology Buyers — ITMAP | Free IT Vendor Intelligence",
-    description: "Free, unbiased enterprise IT vendor intelligence for technology buyers. Evaluate vendors, products, ecosystems, monitor security vulnerabilities, and create RFPs.",
+    title: "Technology Buyers — ITMAP | Free IT Vendor Intelligence Forever",
+    description: "Free IT vendor intelligence for technology buyers. Evaluate vendors, compare products, build RFPs, monitor security — always free, no paid plan, no credit card.",
     path: "/buyer",
   });
 
@@ -84,23 +84,23 @@ export default function BuyerLandingPage() {
                 <div className="h-px w-8 bg-cyan-400" />
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-                Buy enterprise IT with{" "}
+                Enterprise IT intelligence,{" "}
                 <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
-                  complete confidence
+                  completely free
                 </span>
               </h1>
               <p className="text-lg text-slate-400 leading-relaxed mb-8 max-w-xl">
-                Independent, AI-powered vendor intelligence across markets, products, ecosystems, security and RFP workflows. No sponsorships. No paywalls.
+                Independent vendor rankings, feature comparisons, security monitoring and RFP tools — all free for buyers. No sponsorships, no paywalls, no plan to charge you. Ever.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
+                <a href="#register" className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 rounded-lg px-6 py-3 h-auto text-base font-semibold transition-all">
+                  Create Free Account <Sparkles className="h-4 w-4" />
+                </a>
                 <Link href="/markets">
-                  <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 px-6 py-3 h-auto text-base">
+                  <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent px-6 py-3 h-auto text-base">
                     Explore Live Markets <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <a href="#register" className="inline-flex items-center justify-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-6 py-3 h-auto text-base transition-all">
-                  Register Free <Zap className="h-4 w-4" />
-                </a>
               </div>
             </motion.div>
 
@@ -117,12 +117,12 @@ export default function BuyerLandingPage() {
                   <div className="text-2xl font-bold text-white mb-1">100%</div>
                   <div className="text-sm text-slate-500">Independent research</div>
                 </div>
-                <div className="col-span-2 bg-slate-900/80 border border-white/10 rounded-2xl p-5 backdrop-blur flex items-center justify-between">
+                <div className="col-span-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 backdrop-blur flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-bold text-white mb-1">Free</div>
-                    <div className="text-sm text-slate-500">Registration and access</div>
+                    <div className="text-2xl font-bold text-emerald-400 mb-1">Free Forever</div>
+                    <div className="text-sm text-emerald-200/70">No credit card · No paid plan</div>
                   </div>
-                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                  <Gift className="h-10 w-10 text-emerald-400" />
                 </div>
               </div>
             </motion.div>
@@ -138,7 +138,7 @@ export default function BuyerLandingPage() {
               <div className="h-px w-8 bg-cyan-400" />CAPABILITIES<div className="h-px w-8 bg-cyan-400" />
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">Everything you need to evaluate vendors</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">One platform for market maps, product comparisons, security monitoring and RFP creation.</p>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">One platform for market maps, product comparisons, security monitoring and RFP creation — all included, always free.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -160,6 +160,21 @@ export default function BuyerLandingPage() {
         </div>
       </section>
 
+      {/* Free promise banner */}
+      <section className="py-20 bg-emerald-500/5 border-y border-emerald-500/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center">
+            <div className="inline-flex items-center gap-2 text-emerald-400 text-sm font-medium mb-4">
+              <Sparkles className="h-4 w-4" /> FREE FOR BUYERS — NO EXCEPTIONS
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">No paywalls. No upsells. No fine print.</h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+              ITMAP is free for technology buyers because our mission is to make enterprise IT selection transparent. We will never charge buyers for access to vendor intelligence, evaluations or RFP tools.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Register CTA */}
       <section id="register" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -168,14 +183,15 @@ export default function BuyerLandingPage() {
               <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium mb-4">
                 <div className="h-px w-8 bg-violet-400" />GET STARTED<div className="h-px w-8 bg-violet-400" />
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Start evaluating for free</h2>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Start evaluating for free today</h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                Registration is free and access is free. Create your buyer account with a company email and get full access to live market intelligence, RFP tools and security monitoring.
+                Registration is free and access is free — today and always. Create your buyer account with a company email and unlock every feature.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
                   "No credit card required",
                   "No vendor sponsorships or paid placements",
+                  "All buyer features included at no cost",
                   "Company email required to keep the community enterprise-grade",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-slate-300">
