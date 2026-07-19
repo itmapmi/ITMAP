@@ -670,6 +670,18 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Last N historical positions for a single vendor, used for trajectory vectors on the quadrant.
+  app.get("/api/markets/:marketId/vendors/:vendorId/trajectory", requireMarketAccess, async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 3, 12);
+      const positions = await storage.getRecentHistoricalPositionsForVendor(req.params.marketId, req.params.vendorId, limit);
+      res.json(positions);
+    } catch (error) {
+      console.error("Error fetching vendor trajectory:", error);
+      res.status(500).json({ error: "Failed to fetch vendor trajectory" });
+    }
+  });
+
   app.post("/api/markets/:marketId/generate-historical-data", requireMarketAccess, async (req, res) => {
     try {
       const marketId = req.params.marketId;

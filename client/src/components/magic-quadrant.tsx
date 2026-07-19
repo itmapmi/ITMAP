@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +85,24 @@ interface VendorModalData {
   position: { x: number; y: number };
 }
 
+interface NewsArticle {
+  id: string;
+  title: string;
+  url: string | null;
+  publishedAt: string | Date;
+  impactLabel: string | null;
+  keyTakeaway: string | null;
+  summary: string | null;
+}
+
+interface HistoricalPoint {
+  id: string;
+  vendorId: string;
+  executionScore: string | number;
+  viabilityScore: string | number;
+  recordedAt: string | Date;
+}
+
 export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, quadrantSettings }: MagicQuadrantProps) {
   const settings = { ...DEFAULT_SETTINGS, ...quadrantSettings };
   const theme = COLOR_THEMES[settings.colorTheme] ?? COLOR_THEMES["dark-blue-gold"];
@@ -92,6 +111,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
   const [showGrid, setShowGrid] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
+  const [evidenceVendor, setEvidenceVendor] = useState<{ vendor: VendorWithScores; pixelX: number; pixelY: number } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
@@ -167,6 +187,30 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   // Query saved label positions
   const { data: savedLabelPositions } = useQuery<any[]>({
     queryKey: ["/api/markets", marketId, "label-positions"],
+  });
+
+  // Evidence popover: last 3 news events for the clicked vendor (news source only).
+  const { data: evidenceNews } = useQuery<NewsArticle[]>({
+    queryKey: ["/api/markets", marketId, "vendors", evidenceVendor?.vendor.id, "news"],
+    queryFn: async () => {
+      if (!evidenceVendor) return [];
+      const res = await fetch(`/api/markets/${marketId}/vendors/${evidenceVendor.vendor.id}/news?limit=3`);
+      if (!res.ok) throw new Error("Failed to fetch vendor news");
+      return res.json();
+    },
+    enabled: !!evidenceVendor?.vendor.id,
+    staleTime: 2 * 60_000,
+  });
+
+  // Trajectory data: last 3 historical positions for each vendor.
+  const { data: allHistoricalPositions } = useQuery<HistoricalPoint[]>({
+    queryKey: ["/api/markets", marketId, "historical-positions"],
+    queryFn: async () => {
+      const res = await fetch(`/api/markets/${marketId}/historical-positions`);
+      if (!res.ok) throw new Error("Failed to fetch historical positions");
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
   });
 
   // Mutation for saving notes
@@ -615,6 +659,65 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
 
+    // ── Three-zone ITMAP chart layout ────────────────────────────────────────
+    const defs = svg.append("defs");
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+
+    // Zone gradients
+    const leadersGradient = defs.append("linearGradient")
+      .attr("id", "leadersGradient")
+      .attr("x1", "0%").attr("y1", "0%").attr("x2", "100%").attr("y2", "100%");
+    leadersGradient.append("stop").attr("offset", "0%").attr("stop-color", "#F7F4FF").attr("stop-opacity", 1);
+    leadersGradient.append("stop").attr("offset", "100%").attr("stop-color", "#EBE4FD").attr("stop-opacity", 1);
+
+    const emergingGradient = defs.append("linearGradient")
+      .attr("id", "emergingGradient")
+      .attr("x1", "0%").attr("y1", "0%").attr("x2", "100%").attr("y2", "100%");
+    emergingGradient.append("stop").attr("offset", "0%").attr("stop-color", "#FCF0D2").attr("stop-opacity", 1);
+    emergingGradient.append("stop").attr("offset", "100%").attr("stop-color", "#FFFBEF").attr("stop-opacity", 1);
+
+    const dotGradient = defs.append("radialGradient")
+      .attr("id", "dotGradient")
+      .attr("cx", "30%").attr("cy", "30%").attr("r", "70%");
+    dotGradient.append("stop").attr("offset", "0%").attr("stop-color", "#9A94F2");
+    dotGradient.append("stop").attr("offset", "50%").attr("stop-color", "#4F46E5");
+    dotGradient.append("stop").attr("offset", "100%").attr("stop-color", "#3730A3");
+
+    // Plot surface
+    svg.append("rect")
+      .attr("x", margin.left).attr("y", margin.top)
+      .attr("width", chartWidth).attr("height", chartHeight)
+      .attr("fill", "#FDFEFF")
+      .attr("stroke", "#E2E8F0")
+      .attr("stroke-width", 1);
+
+    // Zone boundaries in data coordinates
+    const leftX = margin.left;
+    const rightX = width - margin.right;
+    const topY = margin.top;
+    const bottomY = height - margin.bottom;
+    const midX = xScale(50);
+    const midY = yScale(50);
+    const emergingX = xScale(60);
+    const emergingY = yScale(30);
+
+    // Leaders zone: top-right 50x50 (x >= 50, y >= 50)
+    svg.append("rect")
+      .attr("x", midX).attr("y", topY)
+      .attr("width", rightX - midX).attr("height", midY - topY)
+      .attr("fill", "url(#leadersGradient)")
+      .attr("stroke", "#E2E8F0")
+      .attr("stroke-width", 0);
+
+    // Emerging zone: bottom-right 40x30 (x >= 60, y <= 30)
+    svg.append("rect")
+      .attr("x", emergingX).attr("y", emergingY)
+      .attr("width", rightX - emergingX).attr("height", bottomY - emergingY)
+      .attr("fill", "url(#emergingGradient)")
+      .attr("stroke", "#E2E8F0")
+      .attr("stroke-width", 0);
+
     // Add subtle grid lines for better readability (toggleable)
     if (showGrid) {
       svg.selectAll(".grid-line-x")
@@ -626,7 +729,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("x2", d => xScale(d))
         .attr("y1", margin.top)
         .attr("y2", height - margin.bottom)
-        .attr("stroke", "#f1f5f9")
+        .attr("stroke", "#EDF1F7")
         .attr("stroke-width", 1);
 
       svg.selectAll(".grid-line-y")
@@ -638,63 +741,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("x2", width - margin.right)
         .attr("y1", d => yScale(d))
         .attr("y2", d => yScale(d))
-        .attr("stroke", "#f1f5f9")
+        .attr("stroke", "#EDF1F7")
         .attr("stroke-width", 1);
     }
-
-    // ── Two-band Spectio chart layout ────────────────────────────────────────
-    const defs = svg.append("defs");
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
-
-    // ── Metallic 3-stop gradients — tight range gives a polished-surface sheen ──
-    const topGradient = defs.append("linearGradient")
-      .attr("id", "topBandGradient")
-      .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
-    topGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.topFillHighlight).attr("stop-opacity", 1);
-    topGradient.append("stop").attr("offset", "45%")
-      .attr("stop-color", theme.topFill2).attr("stop-opacity", 1);
-    topGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", theme.topFill1).attr("stop-opacity", 1);
-
-    const bottomGradient = defs.append("linearGradient")
-      .attr("id", "bottomBandGradient")
-      .attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
-    bottomGradient.append("stop").attr("offset", "0%")
-      .attr("stop-color", theme.bottomFillHighlight).attr("stop-opacity", 1);
-    bottomGradient.append("stop").attr("offset", "45%")
-      .attr("stop-color", theme.bottomFill2).attr("stop-opacity", 1);
-    bottomGradient.append("stop").attr("offset", "100%")
-      .attr("stop-color", theme.bottomFill1).attr("stop-opacity", 1);
-
-
-    // Compute the Y pixel position of the dividing line
-    const divY = yScale(settings.dividerY);
-    const topBandH = Math.max(0, divY - margin.top);
-    const bottomBandH = Math.max(0, height - margin.bottom - divY);
-
-    // Top band — flat gold, sharp corners
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", margin.top)
-      .attr("width", chartWidth).attr("height", topBandH)
-      .attr("fill", "url(#topBandGradient)")
-      .attr("stroke", theme.topStroke).attr("stroke-width", 1.5);
-
-    // Bottom band — flat navy, sharp corners
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", divY)
-      .attr("width", chartWidth).attr("height", bottomBandH)
-      .attr("fill", "url(#bottomBandGradient)")
-      .attr("stroke", theme.bottomStroke).attr("stroke-width", 1.5);
-
-    // Dividing line — solid, bright, with glow
-    svg.append("line")
-      .attr("x1", margin.left).attr("x2", width - margin.right)
-      .attr("y1", divY).attr("y2", divY)
-      .attr("stroke", theme.topStroke)
-      .attr("stroke-width", 3)
-      .style("filter", `drop-shadow(0 0 4px ${theme.topStroke})`);
 
     // Add professional-looking axes (tick lines hidden when grid is off)
     const xAxis = d3.axisBottom(xScale)
@@ -753,7 +802,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("fill", "#374151")
       .text(isMobile ? "Viability →" : "Vendor Viability →");
 
-    // ITMAP Inc. watermark — bottom right, outside the grid
+    // ITMAP watermark — bottom right, outside the grid
     svg.append("text")
       .attr("x", width - margin.right)
       .attr("y", height - (isMobile ? 4 : 6))
@@ -761,36 +810,44 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-size", isMobile ? "9px" : "11px")
       .attr("font-weight", "500")
       .attr("fill", "#94a3b8")
-      .text("Powered by itmap.com");
+      .text("Powered by itmap.ai");
 
-    // ── Two-band zone labels ─────────────────────────────────────────────────
+    // ── Three-zone labels ─────────────────────────────────────────────────
     const bandLabelSize = isMobile ? "11px" : "14px";
     const labelOffset = isMobile ? 10 : 15;
-    const textShadow = "0 1px 3px rgba(255,255,255,0.9), 0 1px 3px rgba(255,255,255,0.9)";
 
-    // Top band label — white text + coloured glow for glossy contrast
+    // Leaders label — top right
     svg.append("text")
       .attr("x", width - margin.right - labelOffset)
-      .attr("y", margin.top + labelOffset)
+      .attr("y", margin.top + labelOffset + (isMobile ? 8 : 12))
       .attr("text-anchor", "end")
       .attr("font-size", bandLabelSize)
       .attr("font-weight", "800")
-      .attr("fill", "#ffffff")
+      .attr("fill", "#6D5BD0")
       .attr("letter-spacing", "0.5")
-      .style("filter", `drop-shadow(0 1px 4px ${theme.topStroke})`)
-      .text(settings.topLabel);
+      .text("Leaders");
 
-    // Bottom band label — white text + coloured glow
+    // Emerging label — bottom right
     svg.append("text")
       .attr("x", width - margin.right - labelOffset)
       .attr("y", height - margin.bottom - labelOffset)
       .attr("text-anchor", "end")
       .attr("font-size", bandLabelSize)
       .attr("font-weight", "800")
-      .attr("fill", "#ffffff")
+      .attr("fill", "#B07C1F")
       .attr("letter-spacing", "0.5")
-      .style("filter", `drop-shadow(0 1px 4px ${theme.bottomStroke})`)
       .text(isMobile ? "Emerging" : "Emerging Players");
+
+    // Challengers label — center-left
+    svg.append("text")
+      .attr("x", margin.left + labelOffset + (isMobile ? 4 : 8))
+      .attr("y", margin.top + labelOffset + (isMobile ? 8 : 12))
+      .attr("text-anchor", "start")
+      .attr("font-size", bandLabelSize)
+      .attr("font-weight", "800")
+      .attr("fill", "#7C8DA6")
+      .attr("letter-spacing", "0.5")
+      .text("Challengers");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
@@ -807,22 +864,73 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .append("g")
       .attr("class", "vendor-group");
 
-    // Vendor dots — original size, white fill with themed stroke for clean executive look
+    // Trajectory arrows: last 3 historical positions → current position
+    const getVendorTrajectory = (vendorId: string) => {
+      if (!allHistoricalPositions || allHistoricalPositions.length === 0) return null;
+      const history = allHistoricalPositions
+        .filter(p => p.vendorId === vendorId)
+        .sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+        .slice(0, 3);
+      if (history.length < 2) return null;
+      const recent = history[0];
+      const oldest = history[history.length - 1];
+      return {
+        dx: parseFloat(String(recent.executionScore)) - parseFloat(String(oldest.executionScore)),
+        dy: parseFloat(String(recent.viabilityScore)) - parseFloat(String(oldest.viabilityScore)),
+      };
+    };
+
+    vendorGroups.each(function(d) {
+      const traj = getVendorTrajectory(d.id);
+      if (!traj) return;
+      const cx = xScale(d.adjustedX);
+      const cy = yScale(d.adjustedY);
+      const maxLen = isMobile ? 22 : 32;
+      const mag = Math.sqrt(traj.dx * traj.dx + traj.dy * traj.dy) || 1;
+      const len = Math.min(maxLen, 8 + mag * 2);
+      // Scale the vector so both small and large movements are visible
+      const scale = len / (mag || 1);
+      const endX = cx + traj.dx * scale * 0.35;
+      const endY = cy - traj.dy * scale * 0.35; // y axis is inverted in SVG
+      const isRising = traj.dx + traj.dy > 0;
+      const color = isRising ? "#059669" : "#DC2626";
+
+      const group = d3.select(this);
+      group.append("line")
+        .attr("x1", cx)
+        .attr("y1", cy)
+        .attr("x2", endX)
+        .attr("y2", endY)
+        .attr("stroke", color)
+        .attr("stroke-width", 2)
+        .attr("stroke-linecap", "round")
+        .attr("opacity", 0.85);
+
+      // Arrowhead
+      const angle = Math.atan2(endY - cy, endX - cx);
+      const headLen = 5;
+      group.append("polygon")
+        .attr("points", `${endX},${endY} ${endX - headLen * Math.cos(angle - Math.PI / 6)},${endY - headLen * Math.sin(angle - Math.PI / 6)} ${endX - headLen * Math.cos(angle + Math.PI / 6)},${endY - headLen * Math.sin(angle + Math.PI / 6)}`)
+        .attr("fill", color)
+        .attr("opacity", 0.85);
+    });
+
+    // Vendor dots — radial gradient fill, white ring, indigo shadow
     vendorGroups.append("circle")
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.adjustedX))
       .attr("cy", d => yScale(d.adjustedY))
       .attr("r", 6)
-      .attr("fill", "#ffffff")
-      .attr("stroke", theme.dotColor)
-      .attr("stroke-width", 2.5)
+      .attr("fill", "url(#dotGradient)")
+      .attr("stroke", "#FFFFFF")
+      .attr("stroke-width", 2)
       .style("cursor", "pointer")
-      .style("filter", `drop-shadow(0 2px 5px ${theme.dotDark}99)`)
+      .style("filter", "drop-shadow(0 2px 5px rgba(79,70,229,0.35))")
       .on("mouseover", function(event, d) {
         d3.select(this)
           .attr("r", 9)
-          .attr("stroke-width", 3)
-          .style("filter", `drop-shadow(0 3px 8px ${theme.dotDark}cc)`);
+          .attr("stroke-width", 2.5)
+          .style("filter", "drop-shadow(0 3px 8px rgba(79,70,229,0.45))");
         const parentGroup = d3.select(this.parentNode as Element);
         const hoverFontSize = isMobile ? 10 : 12;
         parentGroup.select(".vendor-label")
@@ -832,18 +940,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .on("mouseout", function(event, d) {
         d3.select(this)
           .attr("r", 6)
-          .attr("stroke-width", 2.5)
-          .style("filter", `drop-shadow(0 2px 5px ${theme.dotDark}99)`);
+          .attr("stroke-width", 2)
+          .style("filter", "drop-shadow(0 2px 5px rgba(79,70,229,0.35))");
         const parentGroup = d3.select(this.parentNode as Element);
         const normalFontSize = isMobile ? 9 : 11;
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
           .attr("font-size", `${normalFontSize}px`);
       })
-      .on("click", function(event, d) {
-        setSelectedVendor({
+.on("click", function(event, d) {
+        setEvidenceVendor({
           vendor: d,
-          position: { x: d.adjustedX, y: d.adjustedY }
+          pixelX: xScale(d.adjustedX),
+          pixelY: yScale(d.adjustedY)
         });
         track("chart_interacted", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
         track("vendor_viewed", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
@@ -1003,7 +1112,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("x", labelPos.labelX)
         .attr("y", labelPos.labelY)
         .attr("text-anchor", labelPos.anchor)
-        .attr("fill", inBottomBand ? "#ffffff" : "#1f2937")
+        .attr("fill", "#334155")
         .attr("font-size", `${fontSize}px`)
         .attr("font-weight", "600")
         .style("cursor", "move")
@@ -1043,7 +1152,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, quadrantSettings, showGrid]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, quadrantSettings, showGrid, allHistoricalPositions]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1072,7 +1181,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
-          <Card>
+          <Card className="bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
             <CardHeader className={`${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
               <button
@@ -1093,7 +1202,89 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
                 <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
-                
+
+                {/* Evidence popover for the clicked vendor dot */}
+                <Popover open={!!evidenceVendor} onOpenChange={(open) => { if (!open) setEvidenceVendor(null); }}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="absolute w-1 h-1 p-0 border-0 bg-transparent"
+                      style={{
+                        left: evidenceVendor?.pixelX ?? 0,
+                        top: evidenceVendor?.pixelY ?? 0,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                      aria-hidden="true"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="center"
+                    sideOffset={12}
+                    className="w-80 p-0 bg-white border border-slate-200 shadow-lg rounded-xl overflow-hidden"
+                    onPointerDownOutside={() => setEvidenceVendor(null)}
+                  >
+                    <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-slate-100 p-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-slate-800 text-sm">{evidenceVendor?.vendor.name}</h4>
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Evidence</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">Latest news events</p>
+                    </div>
+                    <div className="max-h-[240px] overflow-y-auto">
+                      {evidenceNews && evidenceNews.length > 0 ? (
+                        <div className="divide-y divide-slate-100">
+                          {evidenceNews.map((article) => (
+                            <a
+                              key={article.id}
+                              href={article.url || undefined}
+                              target={article.url ? "_blank" : undefined}
+                              rel={article.url ? "noopener noreferrer" : undefined}
+                              className="block p-3 hover:bg-slate-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                  article.impactLabel === "POSITIVE" ? "bg-emerald-50 text-emerald-600" :
+                                  article.impactLabel === "NEGATIVE" ? "bg-red-50 text-red-600" :
+                                  "bg-slate-100 text-slate-600"
+                                }`}>
+                                  {article.impactLabel || "NEUTRAL"}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {new Date(article.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-700 font-medium leading-snug line-clamp-2">{article.title}</p>
+                              {article.keyTakeaway && (
+                                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{article.keyTakeaway}</p>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center">
+                          <p className="text-xs text-slate-500">No recent news events for this vendor.</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 border-t border-slate-100 bg-slate-50 text-center">
+                      <button
+                        onClick={() => {
+                          if (evidenceVendor) {
+                            setSelectedVendor({
+                              vendor: evidenceVendor.vendor,
+                              position: { x: evidenceVendor.vendor.executionScore, y: evidenceVendor.vendor.viabilityScore }
+                            });
+                            setEvidenceVendor(null);
+                          }
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                      >
+                        View full vendor details →
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
                 <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
                   <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
@@ -1117,11 +1308,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="h-full flex flex-col">
+          <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
             <CardHeader className={isMobile ? "pb-3" : ""}>
               <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 bg-gray-100 flex flex-col justify-between">
+            <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
               <div className="space-y-4">
                 <h4 className="font-bold text-gray-900 mb-3">Product Strategy and Execution</h4>
                 {executionCriteria.map(criterion => (

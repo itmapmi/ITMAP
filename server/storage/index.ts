@@ -146,6 +146,7 @@ export interface IStorage {
   createOrUpdateResearchMethodology(methodology: InsertResearchMethodology): Promise<ResearchMethodology>;
 
   getHistoricalPositions(marketId: string, vendorId?: string): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
+  getRecentHistoricalPositionsForVendor(marketId: string, vendorId: string, limit?: number): Promise<(HistoricalPosition & { vendor: Vendor })[]>;
   saveHistoricalPosition(position: Omit<HistoricalPosition, 'id' | 'createdAt'>): Promise<HistoricalPosition>;
 
   getVendorLabelPositions(marketId: string): Promise<VendorLabelPosition[]>;

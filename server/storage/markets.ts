@@ -280,6 +280,31 @@ export async function getHistoricalPositions(
   return await baseQuery.where(and(...conditions)).orderBy(desc(historicalPositions.recordedAt));
 }
 
+export async function getRecentHistoricalPositionsForVendor(
+  marketId: string,
+  vendorId: string,
+  limit = 3
+): Promise<(HistoricalPosition & { vendor: Vendor })[]> {
+  const baseQuery = db
+    .select({
+      id: historicalPositions.id,
+      vendorId: historicalPositions.vendorId,
+      marketId: historicalPositions.marketId,
+      executionScore: historicalPositions.executionScore,
+      viabilityScore: historicalPositions.viabilityScore,
+      recordedAt: historicalPositions.recordedAt,
+      createdAt: historicalPositions.createdAt,
+      vendor: vendors,
+    })
+    .from(historicalPositions)
+    .innerJoin(vendors, eq(historicalPositions.vendorId, vendors.id));
+
+  return await baseQuery
+    .where(and(eq(historicalPositions.marketId, marketId), eq(historicalPositions.vendorId, vendorId)))
+    .orderBy(desc(historicalPositions.recordedAt))
+    .limit(limit);
+}
+
 export async function saveHistoricalPosition(
   position: Omit<HistoricalPosition, 'id' | 'createdAt'>
 ): Promise<HistoricalPosition> {

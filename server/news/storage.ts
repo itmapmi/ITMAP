@@ -90,6 +90,19 @@ export class NewsStorage {
     return results[0];
   }
 
+  async getRecentNewsForVendor(vendorId: string, canonicalVendorId?: string | null, limit = 3): Promise<NewsArticle[]> {
+    const conditions: SQL[] = [eq(newsArticles.vendorId, vendorId)];
+    if (canonicalVendorId) {
+      conditions.push(eq(newsArticles.canonicalVendorId, canonicalVendorId));
+    }
+    return db
+      .select()
+      .from(newsArticles)
+      .where(or(...conditions)!)
+      .orderBy(desc(newsArticles.publishedAt))
+      .limit(limit);
+  }
+
   async getArticleByUrl(url: string): Promise<NewsArticle | undefined> {
     const results = await db
       .select()

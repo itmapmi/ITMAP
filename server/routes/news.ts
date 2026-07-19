@@ -29,6 +29,31 @@ export function registerNewsRoutes(app: Express): void {
 
   // RBAC: News is a locked feature. Admins always pass (requireFeature allows
   // admins), so the admin-only ingest/analyze/delete routes still work.
+  // Vendor-specific mini-feed used by the magic quadrant evidence popover.
+  // Registered before the feature-gated /api/news router so it can be read by
+  // anyone who can already view the market.
+  app.get("/api/markets/:marketId/vendors/:vendorId/news", async (req, res) => {
+    try {
+      const { marketId, vendorId } = req.params;
+      const market = await storage.getMarketById(marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
+      if (market.visibility === "private") {
+        const isAuth = req.isAuthenticated?.();
+        const user = isAuth ? (req.user as any) : null;
+        if (!user || (user.role !== "admin" && market.ownerUserId !== user.id)) {
+          return res.status(404).json({ error: "Market not found" });
+        }
+      }
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 3, 10);
+      const vendor = await storage.getVendorById(vendorId);
+      const articles = await newsStorage.getRecentNewsForVendor(vendorId, vendor?.canonicalVendorId, limit);
+      res.json(articles);
+    } catch (error) {
+      console.error("Error fetching vendor news for quadrant:", error);
+      res.status(500).json({ error: "Failed to fetch vendor news" });
+    }
+  });
+
   app.use("/api/news", requireFeature("news"));
 
   app.get("/api/news", requireAuth, async (req, res) => {
