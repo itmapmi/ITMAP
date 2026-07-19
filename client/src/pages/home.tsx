@@ -527,7 +527,7 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
 function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading }: { markets?: Market[]; isLoading: boolean; recentMarkets?: Market[]; recentMarketsLoading: boolean }) {
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
     localStorage.setItem("spectio_persona", persona);
-    window.location.href = `/login?persona=${persona}`;
+    window.location.href = `/${persona}`;
   };
 
   return (

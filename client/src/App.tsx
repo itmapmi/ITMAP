@@ -30,6 +30,8 @@ import MySettings from "@/pages/my-settings";
 import ReportViewer from "@/pages/report-viewer";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import BuyerLandingPage from "@/pages/buyer";
+import VendorLandingPage from "@/pages/vendor";
 import NotFound from "@/pages/not-found";
 import DatasheetsIndexPage from "@/pages/datasheets/index";
 import DatasheetComparePage from "@/pages/datasheets/compare";
@@ -101,6 +103,8 @@ function Router() {
         <Route path="/pricing" component={Pricing} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/buyer" component={BuyerLandingPage} />
+        <Route path="/vendor" component={VendorLandingPage} />
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />
