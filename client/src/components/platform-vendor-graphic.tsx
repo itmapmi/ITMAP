@@ -230,7 +230,7 @@ export default function PlatformVendorGraphic() {
           </span>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white mx-auto" style={{ maxWidth: WIDTH }}>
+        <div className="relative overflow-hidden rounded-xl border border-slate-300 shadow-sm bg-white mx-auto" style={{ maxWidth: WIDTH }}>
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="w-full h-auto block"
@@ -482,6 +482,9 @@ export default function PlatformVendorGraphic() {
               );
             })}
           </svg>
+
+          {/* Grey overlay to soften the white chart against the dark page */}
+          <div className="absolute inset-0 bg-slate-200/50 pointer-events-none" />
 
           {/* Auto-surface events card */}
           <AnimatePresence>
