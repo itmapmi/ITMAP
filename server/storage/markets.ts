@@ -6,7 +6,7 @@ import {
   markets, vendors, historicalPositions, vendorLabelPositions, marketBuilderJobs,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, or, isNull, inArray } from "drizzle-orm";
+import { eq, desc, and, or, isNull, inArray, count, sql } from "drizzle-orm";
 
 // ── Quadrant-column fallback ────────────────────────────────────────────────
 // The three quadrant columns were added after initial production deploy.
@@ -69,6 +69,25 @@ export async function getMarketBySlug(slug: string): Promise<Market | undefined>
     const match = all.find(m => nameToSlug(m.name) === slug);
     return match ? withDefaults([match])[0] : undefined;
   }
+}
+
+// ── Market/vendor counts (public homepage stats) ──────────────────────────
+
+export async function countPublicMarkets(): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(markets)
+    .where(and(eq(markets.visibility, "public"), eq(markets.isVisible, true)));
+  return row?.value ?? 0;
+}
+
+export async function countVendorsInPublicMarkets(): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(vendors)
+    .innerJoin(markets, eq(vendors.marketId, markets.id))
+    .where(and(eq(markets.visibility, "public"), eq(markets.isVisible, true)));
+  return row?.value ?? 0;
 }
 
 // ── Markets ────────────────────────────────────────────────────────────────

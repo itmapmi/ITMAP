@@ -90,6 +90,8 @@ export interface IStorage {
   getPublicMarkets(): Promise<Market[]>;
   getMarketsByOwner(ownerUserId: string): Promise<Market[]>;
   getRecentRepublishedMarkets(limit?: number): Promise<Market[]>;
+  countPublicMarkets(): Promise<number>;
+  countVendorsInPublicMarkets(): Promise<number>;
   getMarketById(id: string): Promise<Market | undefined>;
   getMarketBySlug(slug: string): Promise<Market | undefined>;
   isUuid(val: string): boolean;

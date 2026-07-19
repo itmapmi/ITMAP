@@ -143,9 +143,7 @@ const VENDOR_SHOWCASE = [
   { name: "Veritas", category: "Data Protection", score: 86 },
 ];
 
-const STATS = [
-  { value: "6+", label: "IT Markets Covered" },
-  { value: "50+", label: "Vendors Evaluated" },
+const STATIC_STATS = [
   { value: "100%", label: "Independent Research" },
   { value: "AI-first", label: "Analysis Engine" },
 ];
@@ -524,6 +522,30 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
 
 // ─── PUBLIC LANDING ──────────────────────────────────────────────────────────
 
+function PublicStats() {
+  const { data: stats } = useQuery<{ marketsCount: number; vendorsCount: number }>({
+    queryKey: ["/api/markets/stats"],
+    staleTime: 5 * 60_000,
+  });
+
+  const statItems = [
+    { value: stats ? `${stats.marketsCount}+` : "—", label: "IT Markets Covered" },
+    { value: stats ? `${stats.vendorsCount}+` : "—", label: "Vendors Evaluated" },
+    ...STATIC_STATS,
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }} className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto">
+      {statItems.map((s) => (
+        <div key={s.label} className="text-center">
+          <div className="text-2xl font-bold text-white mb-0.5">{s.value}</div>
+          <div className="text-sm text-slate-500">{s.label}</div>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
 function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading }: { markets?: Market[]; isLoading: boolean; recentMarkets?: Market[]; recentMarketsLoading: boolean }) {
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
     localStorage.setItem("spectio_persona", persona);
@@ -597,14 +619,8 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
           </motion.div>
 
           {/* Stats */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }} className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl mx-auto">
-            {STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-2xl font-bold text-white mb-0.5">{s.value}</div>
-                <div className="text-sm text-slate-500">{s.label}</div>
-              </div>
-            ))}
-          </motion.div>
+          <PublicStats />
+
         </div>
 
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2">

@@ -104,6 +104,20 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Public homepage stats: accurate market and vendor counts.
+  app.get("/api/markets/stats", async (req, res) => {
+    try {
+      const [marketsCount, vendorsCount] = await Promise.all([
+        storage.countPublicMarkets(),
+        storage.countVendorsInPublicMarkets(),
+      ]);
+      res.json({ marketsCount, vendorsCount });
+    } catch (error) {
+      console.error("Error fetching market stats:", error);
+      res.status(500).json({ error: "Failed to fetch market stats" });
+    }
+  });
+
   // Lightweight vendor-name index for client-side market search.
   // Returns [{ id, vendorNames }] for every market visible to the caller.
   // Must be registered before /:id so the path isn't swallowed by that handler.
