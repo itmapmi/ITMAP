@@ -129,13 +129,13 @@ export default function Navigation() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center h-16">
+            <Link href="/" className="justify-self-start">
               <SpectioLogo />
             </Link>
 
             {/* Desktop nav */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center justify-center gap-1">
               {/* Buyer nav — all features unlocked */}
               {buyerOnly && buyerNavItems.map(({ href, label }) => {
                 const isActive = location === href || (href !== "/markets" && location.startsWith(href));
@@ -222,7 +222,7 @@ export default function Navigation() {
             </div>
 
             {/* Desktop auth */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center justify-end gap-3">
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
