@@ -93,7 +93,7 @@ const HOW_STEPS = [
 
 export default function Platform() {
   useSeo({
-    title: "Platform — ITMAP | AI-Native IT Vendor Intelligence",
+    title: "ITMAP | AI-native vendor selection",
     description: "Explore the ITMAP platform: vendor scoring, feature evaluations, market forecasts, news intelligence, and conversational AI — all in one enterprise-grade workspace.",
     path: "/platform",
   });
