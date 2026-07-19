@@ -3,10 +3,10 @@ import {
   type Vendor, type InsertVendor,
   type HistoricalPosition,
   type VendorLabelPosition, type InsertVendorLabelPosition,
-  markets, vendors, historicalPositions, vendorLabelPositions,
+  markets, vendors, historicalPositions, vendorLabelPositions, marketBuilderJobs,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, or, isNull } from "drizzle-orm";
+import { eq, desc, and, or, isNull, inArray } from "drizzle-orm";
 
 // ── Quadrant-column fallback ────────────────────────────────────────────────
 // The three quadrant columns were added after initial production deploy.
@@ -102,6 +102,48 @@ export async function getMarketsByOwner(ownerUserId: string): Promise<Market[]> 
   } catch (err) {
     if (!isColumnMissingError(err)) throw err;
     const rows = await db.select(SAFE_COLUMNS).from(markets).where(eq(markets.ownerUserId, ownerUserId)).orderBy(desc(markets.updatedAt));
+    return withDefaults(rows);
+  }
+}
+
+// The most recently republished public markets. A market is considered
+// republished when it has a market-builder job with status "published" and a
+// linked marketId. Ordered by the job's updatedAt (the republish time) so the
+// homepage "Coverage that matters" section always shows the freshest live
+// markets first.
+export async function getRecentRepublishedMarkets(limit = 9): Promise<Market[]> {
+  try {
+    const rows = await db
+      .select(SAFE_COLUMNS)
+      .from(markets)
+      .innerJoin(marketBuilderJobs, eq(markets.id, marketBuilderJobs.marketId))
+      .where(
+        and(
+          eq(markets.visibility, "public"),
+          eq(markets.isVisible, true),
+          eq(marketBuilderJobs.status, "published"),
+          isNull(markets.ownerUserId)
+        )
+      )
+      .orderBy(desc(marketBuilderJobs.updatedAt))
+      .limit(limit);
+    return withDefaults(rows);
+  } catch (err) {
+    if (!isColumnMissingError(err)) throw err;
+    const rows = await db
+      .select(SAFE_COLUMNS)
+      .from(markets)
+      .innerJoin(marketBuilderJobs, eq(markets.id, marketBuilderJobs.marketId))
+      .where(
+        and(
+          eq(markets.visibility, "public"),
+          eq(markets.isVisible, true),
+          eq(marketBuilderJobs.status, "published"),
+          isNull(markets.ownerUserId)
+        )
+      )
+      .orderBy(desc(marketBuilderJobs.updatedAt))
+      .limit(limit);
     return withDefaults(rows);
   }
 }

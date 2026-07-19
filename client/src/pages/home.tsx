@@ -533,7 +533,7 @@ function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoa
 
 // ─── PUBLIC LANDING ──────────────────────────────────────────────────────────
 
-function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
+function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading }: { markets?: Market[]; isLoading: boolean; recentMarkets?: Market[]; recentMarketsLoading: boolean }) {
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
     localStorage.setItem("spectio_persona", persona);
     window.location.href = `/login?persona=${persona}`;
@@ -639,7 +639,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Coverage that <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">matters</span></h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Deep-dive evaluations across the enterprise infrastructure stack, updated continuously with AI-scored intelligence.</p>
         </motion.div>
-        <MarketGrid markets={markets} isLoading={isLoading} linkToLogin />
+        <MarketGrid markets={recentMarkets ?? markets} isLoading={recentMarketsLoading || isLoading} linkToLogin />
         <motion.div {...fadeUp} className="text-center mt-10">
           <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
             Sign in to explore <ArrowRight className="h-4 w-4" />
@@ -800,6 +800,10 @@ export default function Home() {
 
   const { isAuthenticated, isLoading: authLoading, isVendorScoped, isAdmin, user, hasFeature } = useAuth();
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const { data: recentMarkets, isLoading: recentMarketsLoading } = useQuery<Market[]>({
+    queryKey: ["/api/markets/recent-republished"],
+    staleTime: 2 * 60_000,
+  });
 
   const { data: vendorScope, isLoading: vendorScopeLoading } = useQuery<{ vendor: { name?: string } }>({
     queryKey: ["/api/lead-gen/me/scope"],
@@ -850,5 +854,5 @@ export default function Home() {
     return <BuyerDashboard user={user} markets={markets} isLoading={marketsLoading} />;
   }
 
-  return <PublicLanding markets={markets} isLoading={marketsLoading} />;
+  return <PublicLanding markets={markets} isLoading={marketsLoading} recentMarkets={recentMarkets} recentMarketsLoading={recentMarketsLoading} />;
 }

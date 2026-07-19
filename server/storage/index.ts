@@ -89,6 +89,7 @@ export interface IStorage {
   getAllMarkets(): Promise<Market[]>;
   getPublicMarkets(): Promise<Market[]>;
   getMarketsByOwner(ownerUserId: string): Promise<Market[]>;
+  getRecentRepublishedMarkets(limit?: number): Promise<Market[]>;
   getMarketById(id: string): Promise<Market | undefined>;
   getMarketBySlug(slug: string): Promise<Market | undefined>;
   isUuid(val: string): boolean;

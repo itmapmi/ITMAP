@@ -92,6 +92,18 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Most recently republished public markets for the homepage "Coverage that matters" section.
+  app.get("/api/markets/recent-republished", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 9, 24);
+      const recent = await storage.getRecentRepublishedMarkets(limit);
+      res.json(recent);
+    } catch (error) {
+      console.error("Error fetching recent republished markets:", error);
+      res.status(500).json({ error: "Failed to fetch recent markets" });
+    }
+  });
+
   // Lightweight vendor-name index for client-side market search.
   // Returns [{ id, vendorNames }] for every market visible to the caller.
   // Must be registered before /:id so the path isn't swallowed by that handler.
