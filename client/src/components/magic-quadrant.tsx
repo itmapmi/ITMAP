@@ -839,11 +839,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("letter-spacing", "0.5")
       .text(isMobile ? "Emerging" : "Emerging Players");
 
-    // Challengers label — center-left
+    // Challengers label — bottom right
     svg.append("text")
-      .attr("x", margin.left + labelOffset + (isMobile ? 4 : 8))
-      .attr("y", margin.top + labelOffset + (isMobile ? 8 : 12))
-      .attr("text-anchor", "start")
+      .attr("x", width - margin.right - labelOffset)
+      .attr("y", height - margin.bottom - labelOffset)
+      .attr("text-anchor", "end")
       .attr("font-size", bandLabelSize)
       .attr("font-weight", "800")
       .attr("fill", "#7C8DA6")
