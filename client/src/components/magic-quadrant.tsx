@@ -865,7 +865,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .append("g")
       .attr("class", "vendor-group");
 
-    // Trajectory arrows: last 3 historical positions → current position
+    // Trajectory arrows: last 3 historical positions → current position.
+    // The arrow shows the direction of movement (up/right = improving) and is
+    // drawn at a consistent visible length so it is never hidden by the dot.
     const getVendorTrajectory = (vendorId: string) => {
       if (!allHistoricalPositions || allHistoricalPositions.length === 0) return null;
       const history = allHistoricalPositions
@@ -886,34 +888,51 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       if (!traj) return;
       const cx = xScale(d.adjustedX);
       const cy = yScale(d.adjustedY);
-      const maxLen = isMobile ? 22 : 32;
       const mag = Math.sqrt(traj.dx * traj.dx + traj.dy * traj.dy) || 1;
-      const len = Math.min(maxLen, 8 + mag * 2);
-      // Scale the vector so both small and large movements are visible
-      const scale = len / (mag || 1);
-      const endX = cx + traj.dx * scale * 0.35;
-      const endY = cy - traj.dy * scale * 0.35; // y axis is inverted in SVG
-      const isRising = traj.dx + traj.dy > 0;
+      // Unit direction in SVG coordinates (y is inverted)
+      const dirX = traj.dx / mag;
+      const dirY = -traj.dy / mag;
+      const arrowLen = isMobile ? 30 : 44;
+      const startGap = 9; // start just outside the dot (dot radius 6 + stroke 2 + 1px gap)
+      const startX = cx + dirX * startGap;
+      const startY = cy + dirY * startGap;
+      const endX = cx + dirX * arrowLen;
+      const endY = cy + dirY * arrowLen;
+      // Positive net movement = green; negative = red; mixed uses the net sign
+      const isRising = (traj.dx + traj.dy) > 0;
       const color = isRising ? "#059669" : "#DC2626";
 
       const group = d3.select(this);
+      // Draw a subtle white halo behind the arrow so it stands out on zone fills
       group.append("line")
-        .attr("x1", cx)
-        .attr("y1", cy)
-        .attr("x2", endX)
-        .attr("y2", endY)
-        .attr("stroke", color)
-        .attr("stroke-width", 2)
+        .attr("x1", startX).attr("y1", startY)
+        .attr("x2", endX).attr("y2", endY)
+        .attr("stroke", "#FFFFFF")
+        .attr("stroke-width", 5)
         .attr("stroke-linecap", "round")
-        .attr("opacity", 0.85);
+        .attr("opacity", 0.9);
+
+      group.append("line")
+        .attr("x1", startX).attr("y1", startY)
+        .attr("x2", endX).attr("y2", endY)
+        .attr("stroke", color)
+        .attr("stroke-width", 2.5)
+        .attr("stroke-linecap", "round")
+        .attr("opacity", 1);
 
       // Arrowhead
-      const angle = Math.atan2(endY - cy, endX - cx);
-      const headLen = 5;
+      const angle = Math.atan2(endY - startY, endX - startX);
+      const headLen = 6;
+      const headX1 = endX - headLen * Math.cos(angle - Math.PI / 6);
+      const headY1 = endY - headLen * Math.sin(angle - Math.PI / 6);
+      const headX2 = endX - headLen * Math.cos(angle + Math.PI / 6);
+      const headY2 = endY - headLen * Math.sin(angle + Math.PI / 6);
       group.append("polygon")
-        .attr("points", `${endX},${endY} ${endX - headLen * Math.cos(angle - Math.PI / 6)},${endY - headLen * Math.sin(angle - Math.PI / 6)} ${endX - headLen * Math.cos(angle + Math.PI / 6)},${endY - headLen * Math.sin(angle + Math.PI / 6)}`)
+        .attr("points", `${endX},${endY} ${headX1},${headY1} ${headX2},${headY2}`)
         .attr("fill", color)
-        .attr("opacity", 0.85);
+        .attr("stroke", "#FFFFFF")
+        .attr("stroke-width", 1.5)
+        .attr("opacity", 1);
     });
 
     // Vendor dots — radial gradient fill, white ring, indigo shadow
