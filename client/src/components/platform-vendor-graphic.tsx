@@ -180,24 +180,24 @@ export default function PlatformVendorGraphic() {
   const selectedPos = selectedVendor ? phase.positions[selectedVendor.id] : null;
 
   return (
-    <div className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-[#FDFEFF] shadow-2xl">
+    <div className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-[#161922] shadow-2xl">
       {/* Header / animated description */}
-      <div className="border-b border-slate-200/80 p-6 sm:p-8">
+      <div className="border-b border-white/10 p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 text-cyan-600 text-sm font-medium mb-3">
-              <div className="h-px w-8 bg-cyan-600" /> VENDOR EVALUATION GRAPHIC
+            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-3">
+              <div className="h-px w-8 bg-cyan-400" /> VENDOR EVALUATION GRAPHIC
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-3">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
               See positions move as the market evolves
             </h2>
-            <p className="text-slate-600 text-base leading-relaxed">
+            <p className="text-slate-400 text-base leading-relaxed">
               A live sample market. Watch AI recalculate vendor positions as new evidence arrives, then auto-surface the latest events behind each move.
             </p>
           </div>
 
           <div className="flex-shrink-0 w-full lg:w-80">
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 h-32 flex flex-col justify-center">
+            <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4 h-32 flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={phaseIndex}
@@ -211,8 +211,8 @@ export default function PlatformVendorGraphic() {
                     {phase.icon}
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-1">{phase.title}</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">{phase.description}</p>
+                    <h3 className="text-sm font-semibold text-white mb-1">{phase.title}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">{phase.description}</p>
                   </div>
                 </motion.div>
               </AnimatePresence>
@@ -230,7 +230,7 @@ export default function PlatformVendorGraphic() {
           </span>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-slate-300 shadow-sm bg-white mx-auto" style={{ maxWidth: WIDTH }}>
+        <div className="relative overflow-hidden rounded-xl border border-white/10 shadow-sm bg-[#0f111a] mx-auto" style={{ maxWidth: WIDTH }}>
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="w-full h-auto block"
@@ -238,17 +238,17 @@ export default function PlatformVendorGraphic() {
           >
             <defs>
               <linearGradient id="pg-leaders" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#F7F4FF" stopOpacity={1} />
-                <stop offset="100%" stopColor="#EBE4FD" stopOpacity={1} />
+                <stop offset="0%" stopColor="#312e81" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="#1e1b4b" stopOpacity={0.35} />
               </linearGradient>
               <linearGradient id="pg-emerging" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FCF0D2" stopOpacity={1} />
-                <stop offset="100%" stopColor="#FFFBEF" stopOpacity={1} />
+                <stop offset="0%" stopColor="#78350f" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="#451a03" stopOpacity={0.25} />
               </linearGradient>
               <radialGradient id="pg-dot" cx="30%" cy="30%" r="70%">
-                <stop offset="0%" stopColor="#9A94F2" />
-                <stop offset="50%" stopColor="#4F46E5" />
-                <stop offset="100%" stopColor="#3730A3" />
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="50%" stopColor="#06b6d4" />
+                <stop offset="100%" stopColor="#0891b2" />
               </radialGradient>
             </defs>
 
@@ -258,8 +258,8 @@ export default function PlatformVendorGraphic() {
               y={MARGIN.top}
               width={CHART_W}
               height={CHART_H}
-              fill="#FDFEFF"
-              stroke="#E2E8F0"
+              fill="#0f111a"
+              stroke="rgba(255,255,255,0.15)"
               strokeWidth={1}
             />
 
@@ -287,7 +287,7 @@ export default function PlatformVendorGraphic() {
                   y1={yScale(pct)}
                   x2={WIDTH - MARGIN.right}
                   y2={yScale(pct)}
-                  stroke="#EDF1F7"
+                  stroke="rgba(255,255,255,0.08)"
                   strokeWidth={1}
                 />
                 <line
@@ -295,7 +295,7 @@ export default function PlatformVendorGraphic() {
                   y1={MARGIN.top}
                   x2={xScale(pct)}
                   y2={HEIGHT - MARGIN.bottom}
-                  stroke="#EDF1F7"
+                  stroke="rgba(255,255,255,0.08)"
                   strokeWidth={1}
                 />
               </g>
@@ -307,7 +307,7 @@ export default function PlatformVendorGraphic() {
               y1={HEIGHT - MARGIN.bottom}
               x2={WIDTH - MARGIN.right}
               y2={HEIGHT - MARGIN.bottom}
-              stroke="#E2E8F0"
+              stroke="rgba(255,255,255,0.15)"
               strokeWidth={1}
             />
             <line
@@ -315,7 +315,7 @@ export default function PlatformVendorGraphic() {
               y1={MARGIN.top}
               x2={MARGIN.left}
               y2={HEIGHT - MARGIN.bottom}
-              stroke="#E2E8F0"
+              stroke="rgba(255,255,255,0.15)"
               strokeWidth={1}
             />
 
@@ -333,7 +333,7 @@ export default function PlatformVendorGraphic() {
                 <text
                   x={xScale(pct)}
                   y={HEIGHT - MARGIN.bottom + 18}
-                  fill="#64748b"
+                  fill="#cbd5e1"
                   fontSize={12}
                   fontWeight={600}
                   textAnchor="middle"
@@ -355,7 +355,7 @@ export default function PlatformVendorGraphic() {
                 <text
                   x={MARGIN.left - 10}
                   y={yScale(pct) + 4}
-                  fill="#64748b"
+                  fill="#cbd5e1"
                   fontSize={12}
                   fontWeight={600}
                   textAnchor="end"
@@ -369,7 +369,7 @@ export default function PlatformVendorGraphic() {
             <text
               x={WIDTH / 2}
               y={HEIGHT - MARGIN.bottom + 40}
-              fill="#374151"
+              fill="#ffffff"
               fontSize={14}
               fontWeight={600}
               textAnchor="middle"
@@ -380,7 +380,7 @@ export default function PlatformVendorGraphic() {
               transform="rotate(-90)"
               x={-HEIGHT / 2}
               y={18}
-              fill="#374151"
+              fill="#ffffff"
               fontSize={14}
               fontWeight={600}
               textAnchor="middle"
@@ -392,7 +392,7 @@ export default function PlatformVendorGraphic() {
             <text
               x={WIDTH - MARGIN.right - 15}
               y={MARGIN.top + 22}
-              fill="#6D5BD0"
+              fill="#A5B4FC"
               fontSize={14}
               fontWeight={800}
               letterSpacing={0.5}
@@ -403,7 +403,7 @@ export default function PlatformVendorGraphic() {
             <text
               x={MARGIN.left + 15}
               y={HEIGHT - MARGIN.bottom - 15}
-              fill="#B07C1F"
+              fill="#FBBF24"
               fontSize={14}
               fontWeight={800}
               letterSpacing={0.5}
@@ -414,7 +414,7 @@ export default function PlatformVendorGraphic() {
             <text
               x={WIDTH - MARGIN.right - 15}
               y={HEIGHT - MARGIN.bottom - 15}
-              fill="#7C8DA6"
+              fill="#94a3b8"
               fontSize={14}
               fontWeight={800}
               letterSpacing={0.5}
@@ -459,18 +459,18 @@ export default function PlatformVendorGraphic() {
                     <motion.circle
                       r={18}
                       fill="none"
-                      stroke="#4F46E5"
+                      stroke="#22d3ee"
                       strokeWidth={2}
                       initial={{ opacity: 0.8, scale: 0.8 }}
                       animate={{ opacity: 0, scale: 2 }}
                       transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
                     />
                   )}
-                  <circle r={7} fill="url(#pg-dot)" stroke="#ffffff" strokeWidth={2} />
+                  <circle r={7} fill="url(#pg-dot)" stroke="#0f172a" strokeWidth={2} />
                   <text
                     x={12}
                     y={4}
-                    fill="#1e293b"
+                    fill="#ffffff"
                     fontSize={12}
                     fontWeight={600}
                     textAnchor="start"
@@ -483,8 +483,8 @@ export default function PlatformVendorGraphic() {
             })}
           </svg>
 
-          {/* Grey overlay to soften the white chart against the dark page */}
-          <div className="absolute inset-0 bg-slate-200/50 pointer-events-none" />
+          {/* Dark overlay for subtle vignette */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20 pointer-events-none" />
 
           {/* Auto-surface events card */}
           <AnimatePresence>
@@ -495,27 +495,27 @@ export default function PlatformVendorGraphic() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
                 transition={{ duration: 0.3 }}
-                className="absolute bg-white border border-slate-200 rounded-xl shadow-xl p-4 w-64"
+                className="absolute bg-slate-900 border border-white/10 rounded-xl shadow-xl p-4 w-64"
                 style={{
                   left: `min(calc(${xScale(selectedPos.x) / WIDTH * 100}% + 20px), calc(100% - 280px))`,
                   top: `max(calc(${yScale(selectedPos.y) / HEIGHT * 100}% - 120px), 12px)`,
                 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#4F46E5]" />
-                  <h3 className="font-semibold text-slate-900 text-sm">{selectedVendor.name}</h3>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#06b6d4]" />
+                  <h3 className="font-semibold text-white text-sm">{selectedVendor.name}</h3>
                 </div>
-                <p className="text-xs text-slate-500 mb-3">Latest 3 events driving position</p>
+                <p className="text-xs text-slate-400 mb-3">Latest 3 events driving position</p>
                 <div className="space-y-2.5">
                   {selectedVendor.events.map((event, idx) => (
                     <div key={idx} className="flex items-start gap-2.5">
                       <div
                         className={`mt-0.5 p-1 rounded-md ${
                           event.impact === "positive"
-                            ? "bg-emerald-100 text-emerald-600"
+                            ? "bg-emerald-500/15 text-emerald-400"
                             : event.impact === "negative"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-amber-100 text-amber-600"
+                            ? "bg-red-500/15 text-red-400"
+                            : "bg-amber-500/15 text-amber-400"
                         }`}
                       >
                         {event.impact === "positive" ? (
@@ -527,11 +527,11 @@ export default function PlatformVendorGraphic() {
                         )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-0.5">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-0.5">
                           <Calendar className="h-3 w-3" />
                           {event.date}
                         </div>
-                        <p className="text-xs text-slate-700 leading-snug">{event.title}</p>
+                        <p className="text-xs text-slate-300 leading-snug">{event.title}</p>
                       </div>
                     </div>
                   ))}
@@ -543,13 +543,13 @@ export default function PlatformVendorGraphic() {
 
         {/* Timeline */}
         <div className="mt-6 max-w-2xl mx-auto">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
             <span>{PHASES[0].label}</span>
             <span>{PHASES[PHASES.length - 1].label}</span>
           </div>
-          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-cyan-500 to-violet-600 rounded-full"
+              className="h-full bg-gradient-to-r from-cyan-400 to-violet-500 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.1, ease: "linear" }}
