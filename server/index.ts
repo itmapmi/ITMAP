@@ -18,7 +18,7 @@ app.set('trust proxy', true);
 // request to the primary custom domain so the whole session stays on one host.
 // Dev/preview hosts use *.replit.dev and are never matched, so the preview pane
 // keeps working.
-const PRIMARY_DOMAIN = (process.env.PRIMARY_DOMAIN || "itmap.com")
+const PRIMARY_DOMAIN = (process.env.PRIMARY_DOMAIN || "itmap.ai")
   .toLowerCase()
   .replace(/^https?:\/\//, "")
   .replace(/\/.*$/, "")

@@ -56,7 +56,7 @@ timeoutMs = 20000
 [userenv.shared]
 
 [userenv.production]
-PRIMARY_DOMAIN = ""
+PRIMARY_DOMAIN = "itmap.ai"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-eecbc4ab-69aa-485e-9419-470dc87d40d9"
