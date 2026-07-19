@@ -5,10 +5,9 @@ import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import {
-  BarChart3, TrendingUp, Shield, Zap, Search, FileText, Target,
-  Brain, Database, Globe2, ArrowRight, CheckCircle2, Newspaper,
-  Eye, LineChart, GitBranch, ChevronRight
+  Zap, Search, Brain, Database, ArrowRight, GitBranch, ChevronRight
 } from "lucide-react";
+import PlatformVendorGraphic from "@/components/platform-vendor-graphic";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -16,57 +15,6 @@ const fadeUp = {
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.6, ease: [0.25, 0.25, 0, 1] as any },
 };
-
-const CAPABILITIES = [
-  {
-    icon: <Eye className="h-7 w-7 text-cyan-400" />,
-    title: "Vendor Evaluation Maps",
-    desc: "Interactive quadrant-style visualizations positioning vendors across execution capability and product strength. Drill into scoring rationale for each dimension.",
-    features: ["Magic quadrant positioning", "Drill-down score explanations", "Historical trend overlays", "Multi-vendor comparison view"],
-    color: "from-cyan-500/15 to-cyan-400/5",
-    border: "border-cyan-500/20",
-  },
-  {
-    icon: <Target className="h-7 w-7 text-violet-400" />,
-    title: "Feature Support Matrix",
-    desc: "Side-by-side capability comparison across hundreds of product features — updated as vendors release new versions, patches and functionality.",
-    features: ["Hundreds of feature dimensions", "Real-time product update tracking", "Gap analysis across vendors", "Custom feature prioritisation"],
-    color: "from-violet-500/15 to-violet-400/5",
-    border: "border-violet-500/20",
-  },
-  {
-    icon: <Newspaper className="h-7 w-7 text-cyan-400" />,
-    title: "News Impact Analysis",
-    desc: "Every news event — acquisition, funding round, CVE, executive change, product launch — is automatically scored for its impact on each affected vendor's market position.",
-    features: ["AI-scored news impact (+/-)", "Per-vendor news timelines", "Market-level news filtering", "Impact magnitude scoring"],
-    color: "from-cyan-500/15 to-cyan-400/5",
-    border: "border-cyan-500/20",
-  },
-  {
-    icon: <FileText className="h-7 w-7 text-violet-400" />,
-    title: "Research Reports",
-    desc: "Deep-dive reports covering market dynamics, vendor strengths and weaknesses, strategic guidance and emerging players — AI-generated and continuously updated.",
-    features: ["Full market overview reports", "Vendor-specific analysis", "Emerging player spotlight", "Downloadable PDF exports"],
-    color: "from-violet-500/15 to-violet-400/5",
-    border: "border-violet-500/20",
-  },
-  {
-    icon: <LineChart className="h-7 w-7 text-cyan-400" />,
-    title: "Market Builder",
-    desc: "Define your own evaluation framework with custom criteria and weights. Generate a vendor ranking tailored specifically to your organisation's requirements.",
-    features: ["Custom criteria definition", "Adjustable weight sliders", "Instant re-ranking", "Export custom reports"],
-    color: "from-cyan-500/15 to-cyan-400/5",
-    border: "border-cyan-500/20",
-  },
-  {
-    icon: <Globe2 className="h-7 w-7 text-violet-400" />,
-    title: "Ecosystem Mapping",
-    desc: "Visualise partner networks, integration ecosystems and strategic alliances. Understand the competitive dynamics beyond just product features.",
-    features: ["Partner network graphs", "Integration catalogues", "Alliance strength scores", "Ecosystem gap analysis"],
-    color: "from-violet-500/15 to-violet-400/5",
-    border: "border-violet-500/20",
-  },
-];
 
 const HOW_STEPS = [
   {
@@ -152,47 +100,17 @@ export default function Platform() {
         </div>
       </section>
 
-      {/* Capabilities */}
+      {/* Vendor Evaluation Graphic */}
       <section className="py-24 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div {...fadeUp} className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-4">
-              <div className="h-px w-8 bg-cyan-400" /> CAPABILITIES
-            </div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-              Six lenses on every market
-            </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Each capability is designed to answer a different question your team has when evaluating enterprise technology.
-            </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <PlatformVendorGraphic />
           </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CAPABILITIES.map((cap, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-                className={`bg-slate-900 border ${cap.border} rounded-2xl p-7 hover:border-opacity-60 transition-all group`}
-              >
-                <div className={`p-3 bg-gradient-to-br ${cap.color} border border-white/5 rounded-xl w-fit mb-5`}>
-                  {cap.icon}
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">{cap.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-5">{cap.desc}</p>
-                <ul className="space-y-2">
-                  {cap.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-slate-500">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400/60 flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
