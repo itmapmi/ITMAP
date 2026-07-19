@@ -12,8 +12,8 @@ import type { Market } from "@shared/schema";
 import type { LockableFeatureKey } from "@shared/features";
 import {
   ArrowRight, BarChart3, BarChart2, TrendingUp, Shield, Zap, Globe2,
-  CheckCircle2, ChevronRight, Eye, Database, Brain,
-  Newspaper, FileSearch, Target, LineChart, Users,
+  CheckCircle2, ChevronRight, Database, Brain,
+  Target, Users,
   FileText, ClipboardList, Layers, BookOpen,
   Building2, MessageSquare,
 } from "lucide-react";
@@ -154,15 +154,6 @@ const HOW_IT_WORKS = [
   { icon: <Database className="h-6 w-6" />, step: "01", title: "Data Ingestion", desc: "Our AI continuously ingests public vendor data, news, product releases, financials and analyst commentary across the enterprise IT landscape." },
   { icon: <Brain className="h-6 w-6" />, step: "02", title: "AI-Powered Analysis", desc: "Large language models process and score vendors across 40+ capability dimensions — execution, product depth, ecosystem and financial viability." },
   { icon: <BarChart3 className="h-6 w-6" />, step: "03", title: "Actionable Intelligence", desc: "Get interactive vendor maps, feature matrices, impact-scored news, and AI-generated research reports — updated continuously, without bias." },
-];
-
-const PLATFORM_FEATURES = [
-  { icon: <Eye className="h-5 w-5 text-cyan-400" />, title: "Vendor Evaluation Maps", desc: "Interactive quadrant-style positioning for every vendor across execution and product strength dimensions.", badge: "Live" },
-  { icon: <Target className="h-5 w-5 text-violet-400" />, title: "Feature Support Matrix", desc: "Side-by-side capability comparisons across hundreds of product features — always current.", badge: "Granular" },
-  { icon: <Newspaper className="h-5 w-5 text-cyan-400" />, title: "News Impact Analysis", desc: "Every market-relevant news article is scored for impact — positive, negative or neutral — on each vendor's position.", badge: "AI-scored" },
-  { icon: <FileSearch className="h-5 w-5 text-violet-400" />, title: "Research Reports", desc: "Deep-dive analyst reports generated and updated by AI, covering market dynamics, vendor strengths and strategic guidance.", badge: "In-depth" },
-  { icon: <LineChart className="h-5 w-5 text-cyan-400" />, title: "Market Builder", desc: "Define your own evaluation criteria and weights to build a custom vendor ranking tailored to your organisation's needs.", badge: "Custom" },
-  { icon: <Globe2 className="h-5 w-5 text-violet-400" />, title: "Ecosystem Mapping", desc: "Understand partner networks, integrations and strategic alliances that shape the competitive landscape.", badge: "Visual" },
 ];
 
 function MarketName(name: string) {
@@ -667,46 +658,6 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
                 </div>
               </motion.div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features grid */}
-      <section className="py-24 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div {...fadeUp}>
-              <div className="inline-flex items-center gap-2 text-cyan-400 text-sm font-medium mb-6"><div className="h-px w-8 bg-cyan-400" />CAPABILITIES</div>
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">Everything your team needs to choose wisely</h2>
-              <p className="text-slate-400 text-lg leading-relaxed mb-8">ITMAP gives enterprise IT and procurement teams the depth of a boutique analyst firm, delivered at the speed of AI — updated daily, without the subscription lag.</p>
-              <div className="space-y-3">
-                {["No vendor sponsorships or paid placements", "Public data sources, transparent scoring", "AI analysis refreshed continuously", "Custom market builder for your criteria"].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0" />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-10">
-                <Link href="/platform">
-                  <Button className="bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0">
-                    Explore the Platform <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {PLATFORM_FEATURES.map((f, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5 }} className="group bg-slate-900 border border-white/5 hover:border-cyan-500/20 rounded-2xl p-5 transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2 bg-slate-800 rounded-lg">{f.icon}</div>
-                    <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">{f.badge}</span>
-                  </div>
-                  <h4 className="font-semibold text-white mb-1.5 text-sm">{f.title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{f.desc}</p>
-                </motion.div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
