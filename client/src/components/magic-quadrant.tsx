@@ -699,8 +699,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     const bottomY = height - margin.bottom;
     const midX = xScale(50);
     const midY = yScale(50);
-    const emergingX = xScale(60);
-    const emergingY = yScale(30);
+    const emergingLeftX = margin.left;
+    const emergingRightX = xScale(40);
+    const emergingTopY = yScale(30);
 
     // Leaders zone: top-right 50x50 (x >= 50, y >= 50)
     svg.append("rect")
@@ -710,10 +711,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("stroke", "#E2E8F0")
       .attr("stroke-width", 0);
 
-    // Emerging zone: bottom-right 40x30 (x >= 60, y <= 30)
+    // Emerging zone: bottom-left 40x30 (x <= 40, y <= 30)
     svg.append("rect")
-      .attr("x", emergingX).attr("y", emergingY)
-      .attr("width", rightX - emergingX).attr("height", bottomY - emergingY)
+      .attr("x", emergingLeftX).attr("y", emergingTopY)
+      .attr("width", emergingRightX - emergingLeftX).attr("height", bottomY - emergingTopY)
       .attr("fill", "url(#emergingGradient)")
       .attr("stroke", "#E2E8F0")
       .attr("stroke-width", 0);
@@ -827,11 +828,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("letter-spacing", "0.5")
       .text("Leaders");
 
-    // Emerging label — bottom right
+    // Emerging label — bottom left
     svg.append("text")
-      .attr("x", width - margin.right - labelOffset)
+      .attr("x", margin.left + labelOffset)
       .attr("y", height - margin.bottom - labelOffset)
-      .attr("text-anchor", "end")
+      .attr("text-anchor", "start")
       .attr("font-size", bandLabelSize)
       .attr("font-weight", "800")
       .attr("fill", "#B07C1F")
