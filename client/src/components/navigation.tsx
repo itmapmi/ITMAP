@@ -82,7 +82,7 @@ export default function Navigation() {
     { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
     { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
     { href: "/datasheets", label: "Datasheets", featureKey: "datasheets" },
-    { href: "/security", label: "CVE Intelligence", featureKey: "cve_intelligence" },
+    { href: "/security", label: "Security Intelligence", featureKey: "cve_intelligence" },
   ];
 
   const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets") || location.startsWith("/lead-gen/me") || location.startsWith("/security");
