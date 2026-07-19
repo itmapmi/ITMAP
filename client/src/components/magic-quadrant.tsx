@@ -1353,20 +1353,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   </div>
                 ))}
                 
-                {/* Product Capabilities from Support Matrix */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Capabilities (Auto)
-                  </label>
-                  <div className="bg-green-50 p-2 rounded-md">
-                    <div className="text-xs text-green-700">
-                      Automatically calculated from Support Matrix
-                    </div>
-                    <div className="text-xs text-gray-500 text-right mt-1">
-                      25% (Fixed Weight)
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <hr className="my-6 border-gray-300" />
