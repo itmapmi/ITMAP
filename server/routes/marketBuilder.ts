@@ -395,6 +395,19 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  app.get("/api/admin/market-builder/jobs/:id/stages/:stageNum/export", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Export is only available for stages 2–9" });
+      }
+      const buf = await generateStageTemplate(stageNum, req.params.id);
+      res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-export.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buf);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // End-user variants of the Excel import endpoints (owner only)
   app.post("/api/market-builder/jobs/:id/stages/:stageNum/import", requireAuth, requireJobOwner, stageImportUpload.single("file"), async (req, res) => {
     try {
@@ -443,6 +456,19 @@ export function registerMarketBuilderRoutes(app: Express): void {
       }
       const buf = await generateStageTemplate(stageNum, req.params.id);
       res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-template.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buf);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/market-builder/jobs/:id/stages/:stageNum/export", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Export is only available for stages 2–9" });
+      }
+      const buf = await generateStageTemplate(stageNum, req.params.id);
+      res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-export.xlsx"`);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.send(buf);
     } catch (err: any) { res.status(500).json({ error: err.message }); }

@@ -1412,6 +1412,13 @@ function PublishPanel({ job, stageResults, stagePhases, onPublished, apiBase, mo
 
 // ── Done stage view ───────────────────────────────────────────────────────
 
+function downloadStageExport(apiBase: string, jobId: string, stageNum: number) {
+  const a = document.createElement("a");
+  a.href = `${apiBase}/jobs/${jobId}/stages/${stageNum}/export`;
+  a.download = `stage-${stageNum}-export.xlsx`;
+  a.click();
+}
+
 function StageImportDialog({
   jobId, stageNum, apiBase, onComplete, onClose,
 }: {
@@ -1591,9 +1598,14 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-gray-700">Results — edit anything before approving</p>
           {stageNum >= 2 && stageNum <= 9 && (
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowImport(true)}>
-              <FileUp className="h-3.5 w-3.5" />Import from Excel
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowImport(true)}>
+                <FileUp className="h-3.5 w-3.5" />Import from Excel
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => downloadStageExport(apiBase, jobId, stageNum)}>
+                <Download className="h-3.5 w-3.5" />Export
+              </Button>
+            </div>
           )}
         </div>
         {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
@@ -2600,15 +2612,26 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   ) : (
                     <div className="flex items-center gap-2">
                       {activeStage >= 2 && activeStage <= 9 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-10 text-xs gap-1.5"
-                          onClick={() => setShowImportDialog(true)}
-                          data-testid={`import-stage-${activeStage}`}
-                        >
-                          <FileUp className="h-3.5 w-3.5" />Import from Excel
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-10 text-xs gap-1.5"
+                            onClick={() => setShowImportDialog(true)}
+                            data-testid={`import-stage-${activeStage}`}
+                          >
+                            <FileUp className="h-3.5 w-3.5" />Import from Excel
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-10 text-xs gap-1.5"
+                            onClick={() => downloadStageExport(apiBase, activeJob!.id, activeStage)}
+                            data-testid={`export-stage-${activeStage}`}
+                          >
+                            <Download className="h-3.5 w-3.5" />Export
+                          </Button>
+                        </div>
                       )}
                       <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
                         <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
