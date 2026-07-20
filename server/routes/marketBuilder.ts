@@ -395,6 +395,59 @@ export function registerMarketBuilderRoutes(app: Express): void {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // End-user variants of the Excel import endpoints (owner only)
+  app.post("/api/market-builder/jobs/:id/stages/:stageNum/import", requireAuth, requireJobOwner, stageImportUpload.single("file"), async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Import is only supported for stages 2–9" });
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+      const parsed = await parseStageImport({
+        jobId: req.params.id,
+        stageNum,
+        buffer: req.file.buffer,
+        fileName: req.file.originalname,
+      });
+
+      for (const update of parsed.updates) {
+        await storage.upsertMarketBuilderStage(req.params.id, update.stageNum, {
+          status: "completed",
+          result: update.result as any,
+          completedAt: new Date(),
+          error: null,
+        });
+      }
+
+      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
+      res.json({
+        ok: true,
+        stages: job?.stages,
+        summary: parsed.summary,
+      });
+    } catch (err: any) {
+      if (err instanceof ImportValidationError) {
+        return res.status(400).json({ error: err.message, summary: err.summary });
+      }
+      console.error("[MarketBuilderImport] error:", err);
+      res.status(500).json({ error: err.message ?? "Import failed" });
+    }
+  });
+
+  app.get("/api/market-builder/jobs/:id/stages/:stageNum/import-template", requireAuth, requireJobOwner, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Templates only available for stages 2–9" });
+      }
+      const buf = await generateStageTemplate(stageNum);
+      res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-template.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buf);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── Mark job completed (called after all 5 stages approved) ──────────────
 
   app.post("/api/admin/market-builder/jobs/:id/complete", requireAdmin, async (req, res) => {
