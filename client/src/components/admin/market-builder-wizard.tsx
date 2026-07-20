@@ -17,7 +17,7 @@ import {
   ChevronRight, ChevronLeft, RefreshCw, Trash2, RotateCcw,
   ExternalLink, Eye, EyeOff, Building2, BarChart3, Grid3X3, Layers, Save,
   Plus, X, Globe, PencilLine, PlayCircle, FileSearch, Clock, Zap,
-  ArrowRight, MoreHorizontal, FolderOpen, Cpu, ChevronDown, Download,
+  ArrowRight, MoreHorizontal, FolderOpen, Cpu, ChevronDown, Download, Upload, FileUp,
 } from "lucide-react";
 import { LLMSelector } from "./market-builder-llm-panel";
 import { SourcesPanel } from "./market-builder-sources";
@@ -1412,13 +1412,113 @@ function PublishPanel({ job, stageResults, stagePhases, onPublished, apiBase, mo
 
 // ── Done stage view ───────────────────────────────────────────────────────
 
-function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange, onRefreshComplete }: {
+function StageImportDialog({
+  jobId, stageNum, apiBase, onComplete, onClose,
+}: {
+  jobId: string; stageNum: number; apiBase: string;
+  onComplete: (updatedStages: any[]) => void;
+  onClose: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const downloadTemplate = () => {
+    const a = document.createElement("a");
+    a.href = `${apiBase}/jobs/${jobId}/stages/${stageNum}/import-template`;
+    a.download = `stage-${stageNum}-template.xlsx`;
+    a.click();
+  };
+
+  const upload = async () => {
+    if (!file) return;
+    setIsUploading(true);
+    setError(null);
+    setSummary(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${apiBase}/jobs/${jobId}/stages/${stageNum}/import`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({ error: "Upload failed" }));
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+      setSummary(data.summary);
+      toast({ title: `Stage ${stageNum} imported`, description: `${data.summary.rowsValid} rows imported` });
+      onComplete(data.stages);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Import Stage {stageNum} from Excel</p>
+            <p className="text-xs text-gray-500 mt-0.5">Upload a filled template. Commentary imports also backfill their scoring stage.</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1" onClick={downloadTemplate}>
+            <Download className="h-3.5 w-3.5" />Download empty template
+          </Button>
+          <div>
+            <Label className="text-xs mb-1.5 block">Excel / CSV file</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={e => setFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 max-h-40 overflow-y-auto whitespace-pre-wrap">
+              {error}
+            </div>
+          )}
+          {summary && (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+              <p className="font-medium">Imported {summary.rowsValid} valid rows</p>
+              {summary.warnings.length > 0 && (
+                <p className="mt-1 text-yellow-700">{summary.warnings.length} warning(s)</p>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>Cancel</Button>
+            <Button size="sm" className="h-8 text-xs gap-1" disabled={!file || isUploading} onClick={upload}>
+              {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              Import
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange, onRefreshComplete, onImportComplete }: {
   stageNum: number; result: any; jobId: string; onSave: (r: any) => void; apiBase: string;
   onDirtyChange?: (stageNum: number, dirtyResult: any | null) => void;
   onRefreshComplete?: (result: any) => void;
+  onImportComplete?: (stages: any[]) => void;
 }) {
   const [localResult, setLocalResult] = useState(result);
   const [isDirty, setIsDirty] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [refreshTarget, setRefreshTarget] = useState<{
     vendor: string; criterion?: string; category?: string; feature?: string;
   } | null>(null);
@@ -1478,8 +1578,24 @@ function DoneStageView({ stageNum, result, jobId, onSave, apiBase, onDirtyChange
           </Button>
         </div>
       )}
+      {showImport && (
+        <StageImportDialog
+          jobId={jobId}
+          stageNum={stageNum}
+          apiBase={apiBase}
+          onComplete={stages => { setShowImport(false); onImportComplete?.(stages); }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Results — edit anything before approving</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-700">Results — edit anything before approving</p>
+          {stageNum >= 2 && stageNum <= 9 && (
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowImport(true)}>
+              <FileUp className="h-3.5 w-3.5" />Import from Excel
+            </Button>
+          )}
+        </div>
         {stageNum === 1 && <Stage1Editor result={localResult} onChange={handleChange} />}
         {stageNum === 2 && <Stage2ScoringEditor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openCriterionRefresh} />}
         {stageNum === 3 && <Stage2Editor result={localResult} onChange={handleChange} onRefreshVendor={openVendorRefresh} onRefreshItem={openCriterionRefresh} />}
@@ -2649,6 +2765,19 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   }}
                   onRefreshComplete={r => {
                     setStageResults(prev => ({ ...prev, [activeStage]: r }));
+                  }}
+                  onImportComplete={stages => {
+                    const updatedResults: Record<number, any> = {};
+                    const updatedPhases: Record<number, "done"> = {};
+                    for (const stage of stages) {
+                      updatedResults[stage.stage] = stage.result;
+                      if (stage.status === "completed") updatedPhases[stage.stage] = "done";
+                    }
+                    setStageResults(prev => ({ ...prev, ...updatedResults }));
+                    setStagePhases(prev => ({ ...prev, ...updatedPhases }));
+                    // Bust the job list cache so the dashboard shows the new status.
+                    refetchJobs();
+                    queryClient.invalidateQueries({ queryKey: [apiBase, "jobs"] });
                   }}
                 />
               </>

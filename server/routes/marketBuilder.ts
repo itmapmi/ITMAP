@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { storage } from "../storage";
 import { requireAdmin, requireAuth } from "../auth";
 import { requireFeature } from "../featureAccess";
@@ -7,6 +8,7 @@ import { initSSE, sendEvent, runSingleStage, runVendorRefresh, runItemRefresh, b
 import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 import { listInFlightVendors } from "../market-builder/inflight";
+import { parseStageImport, generateStageTemplate, ImportValidationError } from "../market-builder/import";
 
 // Per-user rate limits for end-user Market Builder runs.
 // These are intentionally generous; tighten if abuse appears.
@@ -326,6 +328,70 @@ export function registerMarketBuilderRoutes(app: Express): void {
       const stageNum = parseInt(req.params.stage, 10);
       const updated = await storage.updateStageResult(req.params.id, stageNum, req.body);
       res.json(updated);
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Excel import into a specific stage (phases 2–9) ─────────────────────
+
+  const stageImportUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const ok = /spreadsheetml|officedocument|csv|text\/plain/i.test(file.mimetype);
+      cb(null, ok || file.originalname.endsWith(".xlsx") || file.originalname.endsWith(".csv") || file.originalname.endsWith(".xls"));
+    },
+  });
+
+  app.post("/api/admin/market-builder/jobs/:id/stages/:stageNum/import", requireAdmin, stageImportUpload.single("file"), async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Import is only supported for stages 2–9" });
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+      const parsed = await parseStageImport({
+        jobId: req.params.id,
+        stageNum,
+        buffer: req.file.buffer,
+        fileName: req.file.originalname,
+      });
+
+      // Persist all updated stages as completed.
+      for (const update of parsed.updates) {
+        await storage.upsertMarketBuilderStage(req.params.id, update.stageNum, {
+          status: "completed",
+          result: update.result as any,
+          completedAt: new Date(),
+          error: null,
+        });
+      }
+
+      const job = await storage.getMarketBuilderJobWithStages(req.params.id);
+      res.json({
+        ok: true,
+        stages: job?.stages,
+        summary: parsed.summary,
+      });
+    } catch (err: any) {
+      if (err instanceof ImportValidationError) {
+        return res.status(400).json({ error: err.message, summary: err.summary });
+      }
+      console.error("[MarketBuilderImport] error:", err);
+      res.status(500).json({ error: err.message ?? "Import failed" });
+    }
+  });
+
+  app.get("/api/admin/market-builder/jobs/:id/stages/:stageNum/import-template", requireAdmin, async (req, res) => {
+    try {
+      const stageNum = parseInt(req.params.stageNum, 10);
+      if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
+        return res.status(400).json({ error: "Templates only available for stages 2–9" });
+      }
+      const buf = await generateStageTemplate(stageNum);
+      res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-template.xlsx"`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.send(buf);
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
