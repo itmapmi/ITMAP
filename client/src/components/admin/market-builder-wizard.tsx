@@ -1849,6 +1849,7 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
   const [stagePhases, setStagePhases] = useState<Record<number, StagePhase>>({});
   const [stageResults, setStageResults] = useState<Record<number, any>>({});
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [publishedMarketId, setPublishedMarketId] = useState<string | null>(null);
   const [publishedVisible, setPublishedVisible] = useState(false);
@@ -2597,9 +2598,22 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                       </p>
                     </div>
                   ) : (
-                    <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
-                      <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {activeStage >= 2 && activeStage <= 9 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 text-xs gap-1.5"
+                          onClick={() => setShowImportDialog(true)}
+                          data-testid={`import-stage-${activeStage}`}
+                        >
+                          <FileUp className="h-3.5 w-3.5" />Import from Excel
+                        </Button>
+                      )}
+                      <Button className="gap-2 bg-blue-600 hover:bg-blue-700 px-6" onClick={() => runStage(activeJob!.id, activeStage)}>
+                        <PlayCircle className="h-4 w-4" />Run Stage {activeStage}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </>
@@ -2744,6 +2758,27 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     categories={(stageResults[7]?.categories ?? []) as Array<{ name: string; features: Array<{ name: string }> }>}
                     apiBase={apiBase}
                     promptsBase={promptsBase} mode={mode}
+                  />
+                )}
+                {showImportDialog && (
+                  <StageImportDialog
+                    jobId={activeJob!.id}
+                    stageNum={activeStage}
+                    apiBase={apiBase}
+                    onComplete={stages => {
+                      setShowImportDialog(false);
+                      const updatedResults: Record<number, any> = {};
+                      const updatedPhases: Record<number, StagePhase> = {};
+                      for (const stage of stages) {
+                        updatedResults[stage.stage] = stage.result;
+                        if (stage.status === "completed") updatedPhases[stage.stage] = "done";
+                      }
+                      setStageResults(prev => ({ ...prev, ...updatedResults }));
+                      setStagePhases(prev => ({ ...prev, ...updatedPhases }));
+                      refetchJobs();
+                      queryClient.invalidateQueries({ queryKey: [apiBase, "jobs"] });
+                    }}
+                    onClose={() => setShowImportDialog(false)}
                   />
                 )}
                 <DoneStageView
