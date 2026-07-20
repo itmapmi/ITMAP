@@ -388,7 +388,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
       if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
         return res.status(400).json({ error: "Templates only available for stages 2–9" });
       }
-      const buf = await generateStageTemplate(stageNum);
+      const buf = await generateStageTemplate(stageNum, req.params.id);
       res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-template.xlsx"`);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.send(buf);
@@ -441,7 +441,7 @@ export function registerMarketBuilderRoutes(app: Express): void {
       if (![2, 3, 4, 5, 6, 7, 8, 9].includes(stageNum)) {
         return res.status(400).json({ error: "Templates only available for stages 2–9" });
       }
-      const buf = await generateStageTemplate(stageNum);
+      const buf = await generateStageTemplate(stageNum, req.params.id);
       res.setHeader("Content-Disposition", `attachment; filename="market-builder-stage-${stageNum}-template.xlsx"`);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.send(buf);
