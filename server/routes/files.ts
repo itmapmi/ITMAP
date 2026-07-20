@@ -140,29 +140,54 @@ export function registerFileRoutes(app: Express): void {
         return row;
       });
 
-      const productEvalHeaders = ['Vendor Name'];
-      productFeatures.forEach((f: any) => productEvalHeaders.push(f.name, `${f.name} - Comments`));
-      const productEvalData = vendors.map(vendor => {
-        const row: any = { 'Vendor Name': vendor.name };
-        productFeatures.forEach((feature: any) => {
-          const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
-          row[feature.name] = support ? support.supportLevel : '';
-          row[`${feature.name} - Comments`] = support?.comments || '';
-        });
-        return row;
-      });
+      // Build category-grouped feature sheets so the Excel export shows the
+      // category hierarchy instead of a flat, unlabeled feature list.
+      const buildFeatureSheet = (features: any[]) => {
+        // Group by category, preserving display order.
+        const featuresByCategory = new Map<string, { category: any; features: any[] }>();
+        [...features]
+          .sort((a: any, b: any) => {
+            const catOrder = (a.category?.displayOrder ?? 0) - (b.category?.displayOrder ?? 0);
+            if (catOrder !== 0) return catOrder;
+            return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+          })
+          .forEach((feature: any) => {
+            const category = feature.category || { id: 'uncategorized', name: 'Uncategorized', displayOrder: 9999 };
+            const existing = featuresByCategory.get(category.id);
+            if (existing) {
+              existing.features.push(feature);
+            } else {
+              featuresByCategory.set(category.id, { category, features: [feature] });
+            }
+          });
 
-      const ecosystemHeaders = ['Vendor Name'];
-      ecosystemFeatures.forEach((f: any) => ecosystemHeaders.push(f.name, `${f.name} - Comments`));
-      const ecosystemData = vendors.map(vendor => {
-        const row: any = { 'Vendor Name': vendor.name };
-        ecosystemFeatures.forEach((feature: any) => {
-          const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
-          row[feature.name] = support ? support.supportLevel : '';
-          row[`${feature.name} - Comments`] = support?.comments || '';
+        const headers = ['Vendor Name', 'Category'];
+        const orderedCategories = Array.from(featuresByCategory.values()).sort(
+          (a, b) => (a.category.displayOrder ?? 0) - (b.category.displayOrder ?? 0)
+        );
+        orderedCategories.forEach(({ features: fs }) => {
+          fs.forEach((feature: any) => {
+            headers.push(feature.name, `${feature.name} - Comments`);
+          });
         });
-        return row;
-      });
+
+        const rows = vendors.flatMap(vendor =>
+          orderedCategories.map(({ category, features: fs }) => {
+            const row: any = { 'Vendor Name': vendor.name, 'Category': category.name };
+            fs.forEach((feature: any) => {
+              const support = supportMatrix.find((s: any) => s.vendorId === vendor.id && s.featureId === feature.id);
+              row[feature.name] = support ? support.supportLevel : '';
+              row[`${feature.name} - Comments`] = support?.comments || '';
+            });
+            return row;
+          })
+        );
+
+        return { headers, rows };
+      };
+
+      const { headers: productEvalHeaders, rows: productEvalData } = buildFeatureSheet(productFeatures);
+      const { headers: ecosystemHeaders, rows: ecosystemData } = buildFeatureSheet(ecosystemFeatures);
 
       const workbook = xlsx.utils.book_new();
       xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(vendorEvalData, { header: vendorEvalHeaders }), 'Vendor Evaluation');
