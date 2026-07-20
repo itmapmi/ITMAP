@@ -2760,27 +2760,6 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                     promptsBase={promptsBase} mode={mode}
                   />
                 )}
-                {showImportDialog && (
-                  <StageImportDialog
-                    jobId={activeJob!.id}
-                    stageNum={activeStage}
-                    apiBase={apiBase}
-                    onComplete={stages => {
-                      setShowImportDialog(false);
-                      const updatedResults: Record<number, any> = {};
-                      const updatedPhases: Record<number, StagePhase> = {};
-                      for (const stage of stages) {
-                        updatedResults[stage.stage] = stage.result;
-                        if (stage.status === "completed") updatedPhases[stage.stage] = "done";
-                      }
-                      setStageResults(prev => ({ ...prev, ...updatedResults }));
-                      setStagePhases(prev => ({ ...prev, ...updatedPhases }));
-                      refetchJobs();
-                      queryClient.invalidateQueries({ queryKey: [apiBase, "jobs"] });
-                    }}
-                    onClose={() => setShowImportDialog(false)}
-                  />
-                )}
                 <DoneStageView
                   stageNum={activeStage}
                   result={currentResult}
@@ -2816,6 +2795,28 @@ export function MarketBuilderWizard({ mode = "admin" }: { mode?: "admin" | "user
                   }}
                 />
               </>
+            )}
+
+            {showImportDialog && (
+              <StageImportDialog
+                jobId={activeJob!.id}
+                stageNum={activeStage}
+                apiBase={apiBase}
+                onComplete={stages => {
+                  setShowImportDialog(false);
+                  const updatedResults: Record<number, any> = {};
+                  const updatedPhases: Record<number, StagePhase> = {};
+                  for (const stage of stages) {
+                    updatedResults[stage.stage] = stage.result;
+                    if (stage.status === "completed") updatedPhases[stage.stage] = "done";
+                  }
+                  setStageResults(prev => ({ ...prev, ...updatedResults }));
+                  setStagePhases(prev => ({ ...prev, ...updatedPhases }));
+                  refetchJobs();
+                  queryClient.invalidateQueries({ queryKey: [apiBase, "jobs"] });
+                }}
+                onClose={() => setShowImportDialog(false)}
+              />
             )}
           </div>
 
