@@ -291,41 +291,106 @@ export function registerFileRoutes(app: Express): void {
       log(`vendor eval done in ${Date.now() - t0}ms — vendors: +${importedVendors} new / ${updatedVendors} updated, scores: ${importedScores}, unknown criteria: ${unknownCriteria.size}`);
 
       // ── Step 2: Auto-create missing feature categories + features ─────────
-      // Feature columns are everything except "Vendor Name" / "*- Comments" headers.
-      const collectFeatureColumns = (sheetName: string): string[] => {
+      // New exports include a "Category" column that groups features. We parse the
+      // header and the first row to map each feature to its category, preserving
+      // the category hierarchy on re-import.
+      const collectFeatureColumns = (sheetName: string): { header: string[]; featureToCategory: Map<string, string> } => {
         const sheet = workbook.Sheets[sheetName];
-        if (!sheet) return [];
-        const header = (xlsx.utils.sheet_to_json(sheet, { header: 1 })[0] as string[]) || [];
-        return header.filter(h => h && h !== 'Vendor Name' && !h.endsWith(' - Comments'));
+        if (!sheet) return { header: [], featureToCategory: new Map() };
+        const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+        const header = (rows[0] || []).filter(Boolean) as string[];
+        const featureToCategory = new Map<string, string>();
+        if (header.includes('Category')) {
+          const categoryIdx = header.indexOf('Category');
+          // Each feature column has a corresponding row in the first data row that
+          // names the category for that feature. We use the first populated row.
+          const firstDataRow = rows.find((r, idx) => idx > 0 && r[categoryIdx]);
+          if (firstDataRow) {
+            header.forEach((h, i) => {
+              if (h === 'Vendor Name' || h === 'Category' || h.endsWith(' - Comments')) return;
+              featureToCategory.set(h, firstDataRow[i] || firstDataRow[categoryIdx] || '');
+            });
+          }
+        }
+        return { header, featureToCategory };
       };
-      const productFeatureCols = collectFeatureColumns('Product Evaluation');
-      const ecosystemFeatureCols = collectFeatureColumns('ISV Ecosystem');
+      const { header: productHeader, featureToCategory: productFeatureToCategory } = collectFeatureColumns('Product Evaluation');
+      const { header: ecosystemHeader, featureToCategory: ecosystemFeatureToCategory } = collectFeatureColumns('ISV Ecosystem');
+      const productFeatureCols = productHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
+      const ecosystemFeatureCols = ecosystemHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
 
       let categories = await storage.getMarketFeatureCategories(marketId);
-      let prodCategory = categories.find((c: any) => c.isEcosystem === false || (c.isEcosystem == null && !c.name.toLowerCase().match(/ecosystem|isv|integration|partnership|third-party/)));
-      let ecoCategory  = categories.find((c: any) => c.isEcosystem === true  || (c.isEcosystem == null &&  c.name.toLowerCase().match(/ecosystem|isv|integration|partnership|third-party/)));
-      if (!prodCategory && productFeatureCols.length > 0) {
-        prodCategory = await storage.createFeatureCategory({ marketId, name: 'Product Capabilities', displayOrder: 0 }) as any;
-        log(`created category "Product Capabilities"`);
+      const categoryByName = new Map<string, any>(categories.map(c => [c.name, c]));
+      let createdCategories = 0;
+
+      const ensureCategory = async (name: string, isEcosystem: boolean, displayOrder: number) => {
+        if (!name || categoryByName.has(name)) return categoryByName.get(name);
+        const c = await storage.createFeatureCategory({ marketId, name, displayOrder, isEcosystem });
+        categoryByName.set(name, c);
+        createdCategories++;
+        return c;
+      };
+
+      // Resolve category for each feature, defaulting to the old flat fallback if the
+      // Category column is missing or blank.
+      const featureCategoryMap = new Map<string, any>();
+      const assignCategories = async (featureCols: string[], isEcosystem: boolean, featureToCategory: Map<string, string>) => {
+        for (let i = 0; i < featureCols.length; i++) {
+          const featureName = featureCols[i];
+          const categoryName = featureToCategory.get(featureName);
+          if (categoryName) {
+            const category = await ensureCategory(categoryName, isEcosystem, i);
+            if (category) featureCategoryMap.set(featureName, category);
+          }
+        }
+      };
+
+      // First pass: create explicit categories from the Category column.
+      await assignCategories(productFeatureCols, false, productFeatureToCategory);
+      await assignCategories(ecosystemFeatureCols, true, ecosystemFeatureToCategory);
+
+      // Fallback: if any feature lacks a category, assign it to the legacy flat category.
+      let prodCategory = Array.from(categoryByName.values()).find((c: any) => c.isEcosystem === false || (c.isEcosystem == null && !c.name.toLowerCase().match(/ecosystem|isv|integration|partnership|third-party/)));
+      let ecoCategory = Array.from(categoryByName.values()).find((c: any) => c.isEcosystem === true || (c.isEcosystem == null && c.name.toLowerCase().match(/ecosystem|isv|integration|partnership|third-party/)));
+      if (!prodCategory && productFeatureCols.some(f => !featureCategoryMap.has(f))) {
+        prodCategory = await storage.createFeatureCategory({ marketId, name: 'Product Capabilities', displayOrder: 0, isEcosystem: false }) as any;
+        categoryByName.set(prodCategory.name, prodCategory);
       }
-      if (!ecoCategory && ecosystemFeatureCols.length > 0) {
-        ecoCategory = await storage.createFeatureCategory({ marketId, name: 'ISV Ecosystem', displayOrder: 1 }) as any;
-        log(`created category "ISV Ecosystem"`);
+      if (!ecoCategory && ecosystemFeatureCols.some(f => !featureCategoryMap.has(f))) {
+        ecoCategory = await storage.createFeatureCategory({ marketId, name: 'ISV Ecosystem', displayOrder: 1, isEcosystem: true }) as any;
+        categoryByName.set(ecoCategory.name, ecoCategory);
       }
+      for (const f of productFeatureCols) if (!featureCategoryMap.has(f)) featureCategoryMap.set(f, prodCategory);
+      for (const f of ecosystemFeatureCols) if (!featureCategoryMap.has(f)) featureCategoryMap.set(f, ecoCategory);
 
       let features = await storage.getMarketFeatures(marketId);
       const featureByName = new Map<string, any>(features.map(f => [f.name, f]));
       let createdFeatures = 0;
-      const ensureFeature = async (name: string, category: any, displayOrder: number) => {
-        if (featureByName.has(name) || !category) return;
+      let movedFeatures = 0;
+
+      const ensureFeature = async (name: string, displayOrder: number) => {
+        const category = featureCategoryMap.get(name);
+        if (!category) return;
+        const existing = featureByName.get(name);
+        if (existing) {
+          // If the existing feature is in a different category, move it to match the import.
+          if (existing.categoryId !== category.id) {
+            await storage.updateFeature(existing.id, { categoryId: category.id, displayOrder });
+            existing.categoryId = category.id;
+            existing.category = category;
+            movedFeatures++;
+          }
+          return;
+        }
         const f = await storage.createFeature({ name, categoryId: category.id, displayOrder, description: null });
         featureByName.set(name, f);
         createdFeatures++;
       };
+
       // Create sequentially with column-order displayOrder so the UI matches the spreadsheet.
-      for (let i = 0; i < productFeatureCols.length; i++) await ensureFeature(productFeatureCols[i], prodCategory, i);
-      for (let i = 0; i < ecosystemFeatureCols.length; i++) await ensureFeature(ecosystemFeatureCols[i], ecoCategory, i);
-      log(`features ensured (${createdFeatures} newly created) in ${Date.now() - t0}ms`);
+      for (let i = 0; i < productFeatureCols.length; i++) await ensureFeature(productFeatureCols[i], i);
+      for (let i = 0; i < ecosystemFeatureCols.length; i++) await ensureFeature(ecosystemFeatureCols[i], i);
+      log(`features ensured in ${Date.now() - t0}ms — created: ${createdFeatures}, moved: ${movedFeatures}, categories created: ${createdCategories}`);
 
       // ── Step 3: Vendor Feature Support — bulk INSERT new + parallel UPDATE existing ──
       const allSupport = await storage.getVendorFeatureSupport(marketId);
@@ -341,7 +406,7 @@ export function registerFileRoutes(app: Express): void {
           const vendor = vendorByName.get(row['Vendor Name']);
           if (!vendor) continue;
           for (const colName of Object.keys(row)) {
-            if (colName === 'Vendor Name' || colName.endsWith(' - Comments')) continue;
+            if (colName === 'Vendor Name' || colName === 'Category' || colName.endsWith(' - Comments')) continue;
             const feature = featureByName.get(colName);
             if (!feature) continue;
             const raw = row[colName];
