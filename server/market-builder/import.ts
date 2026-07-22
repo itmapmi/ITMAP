@@ -1004,6 +1004,246 @@ function buildStyledVendorEvalSheet(
   return ws;
 }
 
+// ── Instructions sheet ────────────────────────────────────────────────────
+
+/**
+ * Build a self-contained "Instructions" worksheet that explains the color
+ * legend, scoring rules, Harvey-ball equivalents, and each sheet's purpose.
+ * The sheet has NO fillable cells; it is pure reference.
+ */
+function buildInstructionsSheet(xlsxStyle: any): any {
+  // Shared styles for the instructions sheet
+  const TITLE: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: '1F3864' } },
+    font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+  };
+  const SUBTITLE: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: '2F5496' } },
+    font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  };
+  const SECTION_HEADER: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: '4472C4' } },
+    font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'left', vertical: 'center' },
+  };
+  const LABEL: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'D9E1F2' } },
+    font: { bold: true, sz: 11 },
+    alignment: { horizontal: 'left', vertical: 'center' },
+  };
+  const BODY: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+    font: { bold: false, sz: 11 },
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+  };
+  const EMPTY: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+    font: { sz: 11 },
+  };
+
+  // Color-legend swatch styles (match the data sheets exactly)
+  const SWATCH_GRAY: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'C0C0C0' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'A0A0A0' } }, right: { style: 'thin', color: { rgb: 'A0A0A0' } } },
+  };
+  const SWATCH_YELLOW: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFF99' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'CCCC00' } }, right: { style: 'thin', color: { rgb: 'CCCC00' } } },
+  };
+  const SWATCH_GREEN: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'C6EFCE' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: '70AD47' } }, right: { style: 'thin', color: { rgb: '70AD47' } } },
+  };
+  const SWATCH_BLUE_EMPTY: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'DDEBF7' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  };
+  const SWATCH_BLUE_FILLED: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'BDD7EE' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  };
+
+  // Harvey-ball table header style
+  const HB_HEADER: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: '5B9BD5' } },
+    font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'medium', color: { rgb: '2F5496' } }, right: { style: 'thin', color: { rgb: 'FFFFFF' } } },
+  };
+  const HB_CELL: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'EBF3FB' } },
+    font: { sz: 12 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  };
+  const HB_LABEL_CELL: object = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'EBF3FB' } },
+    font: { sz: 11 },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  };
+
+  const e = (v: any = '') => sc(v, EMPTY);
+  const b = (v: string) => sc(v, BODY);
+  const lb = (v: string) => sc(v, LABEL);
+
+  // Build the sheet as an array-of-arrays
+  const aoa: object[][] = [
+    // Row 0: Title
+    [sc('AI Market Builder — Workbook Instructions', TITLE), e(), e(), e(), e()],
+    // Row 1: Read-only notice
+    [sc('READ ONLY / REFERENCE — Do not edit this sheet', SUBTITLE), e(), e(), e(), e()],
+    // Row 2: Blank
+    [e(), e(), e(), e(), e()],
+
+    // ── Color Legend ──────────────────────────────────────────────────────
+    // Row 3: Section header
+    [sc('Color Legend', SECTION_HEADER), e(), e(), e(), e()],
+    // Row 4: Column headers for legend table
+    [lb('Swatch'), lb('Color Name'), lb('Meaning'), e(), e()],
+    // Row 5
+    [sc('', SWATCH_GRAY),         b('Gray'),              b('Read-only — identity / vendor name. Do not change.'), e(), e()],
+    // Row 6
+    [sc('', SWATCH_YELLOW),       b('Yellow'),            b('Fill in — this cell needs a score or support level from you.'), e(), e()],
+    // Row 7
+    [sc('', SWATCH_GREEN),        b('Green'),             b('Already filled — the system pre-populated this value.'), e(), e()],
+    // Row 8
+    [sc('', SWATCH_BLUE_EMPTY),   b('Light blue'),        b('Optional — comments / notes column, currently empty.'), e(), e()],
+    // Row 9
+    [sc('', SWATCH_BLUE_FILLED),  b('Medium blue'),       b('Optional — comments / notes column, already has content.'), e(), e()],
+    // Row 10: Blank
+    [e(), e(), e(), e(), e()],
+
+    // ── Scoring Rules ─────────────────────────────────────────────────────
+    // Row 11: Section header
+    [sc('Scoring Rules', SECTION_HEADER), e(), e(), e(), e()],
+    // Row 12
+    [lb('Sheet'), lb('Column type'), lb('Valid values'), lb('Notes'), e()],
+    // Row 13
+    [b('Vendor Evaluation'), b('Score (yellow/green)'), b('Integer 0 – 10'), b('0 = worst, 10 = best. Decimals are not accepted by the importer.'), e()],
+    // Row 14
+    [b('Vendor Evaluation'), b('Notes (light/medium blue)'), b('Free text'), b('Required for Stage 3 commentary. Optional for Stage 2.'), e()],
+    // Row 15
+    [b('Product Evaluation'), b('Support level (yellow/green)'), b('Integer 0 – 4  OR  Harvey-ball symbol'), b('See Harvey-ball table below.'), e()],
+    // Row 16
+    [b('Product Evaluation'), b('Comments (light/medium blue)'), b('Free text'), b('Optional context on the support level.'), e()],
+    // Row 17
+    [b('ISV Ecosystem'), b('Support level (yellow/green)'), b('Integer 0 – 4  OR  Harvey-ball symbol'), b('Same scale as Product Evaluation.'), e()],
+    // Row 18
+    [b('ISV Ecosystem'), b('Comments (light/medium blue)'), b('Free text'), b('Optional context on the support level.'), e()],
+    // Row 19: Blank
+    [e(), e(), e(), e(), e()],
+
+    // ── Harvey-ball equivalents ───────────────────────────────────────────
+    // Row 20: Section header
+    [sc('Support Level / Harvey-Ball Equivalents  (Product Evaluation & ISV Ecosystem)', SECTION_HEADER), e(), e(), e(), e()],
+    // Row 21: Table header
+    [sc('Numeric', HB_HEADER), sc('Symbol', HB_HEADER), sc('Label', HB_HEADER), sc('Meaning', HB_HEADER), e()],
+    // Row 22
+    [sc('0', HB_CELL), sc('✕', HB_CELL), sc('Not supported', HB_LABEL_CELL), sc('The vendor does not offer this feature at all.', HB_LABEL_CELL), e()],
+    // Row 23
+    [sc('1', HB_CELL), sc('◔', HB_CELL), sc('Partial / Roadmap', HB_LABEL_CELL), sc('Limited support or planned but not yet available.', HB_LABEL_CELL), e()],
+    // Row 24
+    [sc('2', HB_CELL), sc('◑', HB_CELL), sc('Half support', HB_LABEL_CELL), sc('Core capability exists but significant gaps remain.', HB_LABEL_CELL), e()],
+    // Row 25
+    [sc('3', HB_CELL), sc('◕', HB_CELL), sc('Mostly supported', HB_LABEL_CELL), sc('Strong support with only minor limitations.', HB_LABEL_CELL), e()],
+    // Row 26
+    [sc('4', HB_CELL), sc('●', HB_CELL), sc('Fully supported', HB_LABEL_CELL), sc('Complete, production-ready support for this feature.', HB_LABEL_CELL), e()],
+    // Row 27: Blank
+    [e(), e(), e(), e(), e()],
+
+    // ── Sheet Descriptions ────────────────────────────────────────────────
+    // Row 28: Section header
+    [sc('Sheet Descriptions', SECTION_HEADER), e(), e(), e(), e()],
+    // Row 29: Header
+    [lb('Sheet name'), lb('Purpose'), e(), e(), e()],
+    // Row 30
+    [b('Instructions'),       b('This sheet. Read-only reference — explains the workbook structure and rules.'), e(), e(), e()],
+    // Row 31
+    [b('Vendor Evaluation'),  b('Score each vendor against execution and viability criteria (0–10). Add analyst notes in the blue columns. Used in Stages 2 and 3.'), e(), e(), e()],
+    // Row 32
+    [b('Product Evaluation'), b('Rate each vendor\'s product feature support (0–4). Add comments in the blue columns. Used in Stages 4, 5, and 6.'), e(), e(), e()],
+    // Row 33
+    [b('ISV Ecosystem'),      b('Rate each vendor\'s ISV / partner ecosystem support (0–4). Add comments in the blue columns. Used in Stages 7, 8, and 9.'), e(), e(), e()],
+    // Row 34: Blank
+    [e(), e(), e(), e(), e()],
+
+    // ── Import Tips ───────────────────────────────────────────────────────
+    // Row 35: Section header
+    [sc('Import Tips', SECTION_HEADER), e(), e(), e(), e()],
+    // Row 36–41: Tips as plain body text
+    [b('1.  Save the file as .xlsx before uploading — the importer only accepts Excel format.'), e(), e(), e(), e()],
+    [b('2.  Do not rename or reorder the data sheets (Vendor Evaluation, Product Evaluation, ISV Ecosystem).'), e(), e(), e(), e()],
+    [b('3.  Do not add, remove, or rename vendor rows — the importer matches rows by the vendor name in column A.'), e(), e(), e(), e()],
+    [b('4.  The Instructions sheet is skipped automatically by the importer.'), e(), e(), e(), e()],
+    [b('5.  Use integers for numeric scores. Harvey-ball symbols are also accepted for support levels.'), e(), e(), e(), e()],
+    [b('6.  Stage 3 notes are required for each vendor/criterion pair — blank notes will be flagged as warnings.'), e(), e(), e(), e()],
+  ];
+
+  const ws = xlsxStyle.utils.aoa_to_sheet(aoa);
+
+  // Merges: title, read-only notice, section headers, sheet-description body cells span 4 cols
+  ws['!merges'] = [
+    // Title row (A1:E1)
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+    // Subtitle (A2:E2)
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+    // Section headers (col A spans all 5 cols)
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } },
+    { s: { r: 11, c: 0 }, e: { r: 11, c: 4 } },
+    { s: { r: 20, c: 0 }, e: { r: 20, c: 4 } },
+    { s: { r: 28, c: 0 }, e: { r: 28, c: 4 } },
+    { s: { r: 35, c: 0 }, e: { r: 35, c: 4 } },
+    // Import tip rows span all 5 cols
+    { s: { r: 36, c: 0 }, e: { r: 36, c: 4 } },
+    { s: { r: 37, c: 0 }, e: { r: 37, c: 4 } },
+    { s: { r: 38, c: 0 }, e: { r: 38, c: 4 } },
+    { s: { r: 39, c: 0 }, e: { r: 39, c: 4 } },
+    { s: { r: 40, c: 0 }, e: { r: 40, c: 4 } },
+    { s: { r: 41, c: 0 }, e: { r: 41, c: 4 } },
+    // Color legend meaning col spans C:E
+    { s: { r: 5, c: 2 }, e: { r: 5, c: 4 } },
+    { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },
+    { s: { r: 7, c: 2 }, e: { r: 7, c: 4 } },
+    { s: { r: 8, c: 2 }, e: { r: 8, c: 4 } },
+    { s: { r: 9, c: 2 }, e: { r: 9, c: 4 } },
+    // Sheet description purpose col spans B:E
+    { s: { r: 30, c: 1 }, e: { r: 30, c: 4 } },
+    { s: { r: 31, c: 1 }, e: { r: 31, c: 4 } },
+    { s: { r: 32, c: 1 }, e: { r: 32, c: 4 } },
+    { s: { r: 33, c: 1 }, e: { r: 33, c: 4 } },
+  ];
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 28 }, // A: swatch / numeric / sheet name / tip text
+    { wch: 22 }, // B: color name / column type / purpose
+    { wch: 20 }, // C: meaning / valid values / label
+    { wch: 52 }, // D: notes / meaning
+    { wch: 4  }, // E: spacer
+  ];
+
+  // Row heights
+  ws['!rows'] = [
+    { hpt: 36 }, // Title
+    { hpt: 24 }, // Subtitle
+  ];
+
+  return ws;
+}
+
 // ── Template generation ───────────────────────────────────────────────────
 
 export async function generateStageTemplate(stageNum: number, jobId: string): Promise<Buffer> {
@@ -1032,6 +1272,10 @@ export async function generateStageTemplate(stageNum: number, jobId: string): Pr
     stage3Result?.scores ?? stage2Result?.scores ?? [];
 
   const workbook = xlsxStyle.utils.book_new();
+
+  // ── Instructions sheet (first tab) ───────────────────────────────────────
+  const instructionsWs = buildInstructionsSheet(xlsxStyle);
+  xlsxStyle.utils.book_append_sheet(workbook, instructionsWs, 'Instructions');
 
   // ── Vendor Evaluation sheet ───────────────────────────────────────────────
   const vendorWs = buildStyledVendorEvalSheet(xlsxStyle, vendors, allCriteria, existingVendorScores);
