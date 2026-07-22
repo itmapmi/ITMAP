@@ -1296,9 +1296,62 @@ export async function generateStageTemplate(stageNum: number, jobId: string): Pr
   const vendorWs = buildStyledVendorEvalSheet(xlsxStyle, vendors, allCriteria, existingVendorScores);
   xlsxStyle.utils.book_append_sheet(workbook, vendorWs, 'Vendor Evaluation');
 
+  // ── Load published DB data when available ──────────────────────────────
+  // When the job has been published (marketId is set), read vendor_feature_support
+  // from the DB using ID-based matching.  This is more reliable than the
+  // name-string matching used by the stage result JSON, which breaks when the
+  // feature names in stage 7/9 differ from each other (e.g. "Salesforce" vs
+  // "Salesforce CRM").  Fall back to stage data for any cell not found in the DB.
+  let dbProductSupport: Array<{ vendorName: string; categoryName: string; featureName: string; supportLevel: number; comments?: string }> = [];
+  let dbEcosystemSupport: Array<{ vendorName: string; categoryName: string; featureName: string; supportLevel: number; comments?: string }> = [];
+
+  if (job.marketId) {
+    try {
+      const [dbVendors, dbFeatures, dbSupportRows] = await Promise.all([
+        storage.getVendorsByMarket(job.marketId),
+        storage.getMarketFeatures(job.marketId),
+        storage.getVendorFeatureSupport(job.marketId),
+      ]);
+
+      // Build lookup maps keyed by ID
+      const vendorNameById = new Map<string, string>(dbVendors.map(v => [v.id, v.name]));
+      const featureById = new Map<string, { name: string; categoryName: string; isEcosystem: boolean }>(
+        dbFeatures.map(f => [f.id, {
+          name: f.name,
+          categoryName: (f.category as any).name as string,
+          isEcosystem: !!(f.category as any).isEcosystem,
+        }])
+      );
+
+      for (const row of dbSupportRows) {
+        const vendorName = vendorNameById.get(row.vendorId);
+        const feature = featureById.get(row.featureId);
+        if (!vendorName || !feature) continue;
+        const entry = {
+          vendorName,
+          categoryName: feature.categoryName,
+          featureName: feature.name,
+          supportLevel: row.supportLevel,
+          comments: row.comments ?? undefined,
+        };
+        if (feature.isEcosystem) {
+          dbEcosystemSupport.push(entry);
+        } else {
+          dbProductSupport.push(entry);
+        }
+      }
+    } catch (err) {
+      // Non-fatal — fall through to stage-data below
+      console.warn('[generateStageTemplate] Could not load DB support data, falling back to stage data:', err);
+    }
+  }
+
   // ── Product Evaluation sheet ────────────────────────────────────────────
   const productCategories = stage4Result?.categories ?? stage5Result?.categories ?? stage6Result?.categories ?? [];
-  const productSupport = stage5Result?.support ?? stage6Result?.support ?? [];
+  // Prefer DB data; fall back to stage name-matched data
+  const productSupport = dbProductSupport.length > 0
+    ? dbProductSupport
+    : (stage5Result?.support ?? stage6Result?.support ?? []);
   if (productCategories.length > 0) {
     const productWs = buildStyledFeatureSheet(xlsxStyle, vendors, productCategories, productSupport);
     xlsxStyle.utils.book_append_sheet(workbook, productWs, 'Product Evaluation');
@@ -1310,7 +1363,10 @@ export async function generateStageTemplate(stageNum: number, jobId: string): Pr
 
   // ── ISV Ecosystem sheet ─────────────────────────────────────────────────
   const ecosystemCategories = stage7Result?.categories ?? stage8Result?.categories ?? stage9Result?.categories ?? [];
-  const ecosystemSupport = stage8Result?.support ?? stage9Result?.support ?? [];
+  // Prefer DB data; fall back to stage name-matched data
+  const ecosystemSupport = dbEcosystemSupport.length > 0
+    ? dbEcosystemSupport
+    : (stage8Result?.support ?? stage9Result?.support ?? []);
   if (ecosystemCategories.length > 0) {
     const ecosystemWs = buildStyledFeatureSheet(xlsxStyle, vendors, ecosystemCategories, ecosystemSupport);
     xlsxStyle.utils.book_append_sheet(workbook, ecosystemWs, 'ISV Ecosystem');

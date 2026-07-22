@@ -215,7 +215,16 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
     }
   };
 
-  // Do not auto-select vendors - require user selection
+  // Auto-select all vendors on initial load so the grid is immediately visible.
+  // Users can still open the vendor filter to narrow down the selection.
+  const hasAutoSelected = useRef(false);
+  useEffect(() => {
+    if (!hasAutoSelected.current && allVendors && allVendors.length > 0) {
+      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+      setShowVendorSelection(false);
+      hasAutoSelected.current = true;
+    }
+  }, [allVendors]);
 
   // Scroll synchronization effect
   useEffect(() => {
