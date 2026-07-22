@@ -250,6 +250,17 @@ export class ImportValidationError extends Error {
 
 // ── Export-format import helpers ────────────────────────────────────────────
 
+/**
+ * Detect whether a sheet has the styled category-band row as its first row.
+ * In the new export format, row 0 is the band (A1 is empty or a placeholder);
+ * the actual "Vendor Name" header is in row 1 (A2).
+ * In the legacy format, A1 = "Vendor Name".
+ */
+function sheetHasBandRow(sheet: any): boolean {
+  const a1 = sheet['A1'];
+  return !a1 || (a1.v !== 'Vendor Name' && a1.v !== 'Vendor Name\r\n');
+}
+
 function parseExportVendorEvalSheet(
   xlsx: any,
   sheet: any,
@@ -260,7 +271,10 @@ function parseExportVendorEvalSheet(
   reportWarning: (rowIdx: number, msg: string) => void,
   requireNotes: boolean,
 ) {
-  const rows = xlsx.utils.sheet_to_json(sheet) as Record<string, any>[];
+  // When the new styled format is present the first row is the category/group band.
+  // Use range: 1 to treat row 1 (0-indexed) as the header row.
+  const hasBand = sheetHasBandRow(sheet);
+  const rows = xlsx.utils.sheet_to_json(sheet, hasBand ? { range: 1 } : {}) as Record<string, any>[];
   const out: VendorScoreRow[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -328,13 +342,19 @@ function parseExportFeatureSheet(
   reportError: (rowIdx: number, msg: string) => void,
   reportWarning: (rowIdx: number, msg: string) => void,
 ) {
+  // When the new styled format is used, row 0 is the category band; actual
+  // column headers are in row 1. Detect and skip accordingly.
+  const hasBand = sheetHasBandRow(sheet);
+  const headerRowIdx = hasBand ? 1 : 0;
+  const dataStartRowIdx = hasBand ? 2 : 1;
+
   const rowsRaw = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-  const header = (rowsRaw[0] || []).filter(Boolean) as string[];
+  const header = (rowsRaw[headerRowIdx] || []).filter(Boolean) as string[];
   const featureCols = header.filter(h => h && h !== "Vendor Name" && h !== "Category" && !h.endsWith(" - Comments"));
 
   const categoryIdx = header.indexOf("Category");
   const featureToCategory = new Map<string, string>();
-  for (let i = 1; i < rowsRaw.length; i++) {
+  for (let i = dataStartRowIdx; i < rowsRaw.length; i++) {
     const row = rowsRaw[i];
     if (!row || categoryIdx < 0 || !row[categoryIdx]) continue;
     const categoryName = String(row[categoryIdx]).trim();
@@ -354,7 +374,8 @@ function parseExportFeatureSheet(
   }
 
   const isScoring = stage === 5 || stage === 8;
-  const rows = xlsx.utils.sheet_to_json(sheet) as Record<string, any>[];
+  // Skip the band row for object-based parsing by starting at the header row.
+  const rows = xlsx.utils.sheet_to_json(sheet, hasBand ? { range: 1 } : {}) as Record<string, any>[];
   const support: FeatureSupportRow[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -696,50 +717,120 @@ function parseSources(value: any): string[] {
 
 interface TemplateVendor { name: string; product?: string; }
 
-function buildVendorEvalSheet(
-  vendors: TemplateVendor[],
-  criteria: { name: string; category: string }[],
-  existingScores?: Array<{ vendorName: string; criterionName: string; score: number; commentary?: string; notes?: string }>,
-) {
-  const executionCriteria = criteria.filter(c => c.category === 'execution');
-  const viabilityCriteria = criteria.filter(c => c.category === 'viability');
-  const headers = ['Vendor Name', 'Product'];
-  executionCriteria.forEach(c => { headers.push(c.name); headers.push(`${c.name} - Notes`); });
-  viabilityCriteria.forEach(c => { headers.push(c.name); headers.push(`${c.name} - Notes`); });
+// ── Excel cell styles ─────────────────────────────────────────────────────
+// xlsx-js-style is used only for export (drop-in of xlsx + `.s` cell styling).
+// The import path continues to use plain `xlsx`.
 
-  const scoreMap = new Map<string, number>();
-  const notesMap = new Map<string, string>();
-  for (const s of existingScores ?? []) {
-    scoreMap.set(`${s.vendorName}::${s.criterionName}`, s.score);
-    notesMap.set(`${s.vendorName}::${s.criterionName}`, s.commentary || s.notes || '');
+const XLS_STYLE = {
+  /** Read-only identity columns: Vendor Name, Category, Product */
+  identity: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'C0C0C0' } },
+    font: { bold: false, sz: 11 },
+    border: { bottom: { style: 'thin', color: { rgb: 'A0A0A0' } }, right: { style: 'thin', color: { rgb: 'A0A0A0' } } },
+  },
+  /** Category group band header (Product / Ecosystem sheets) */
+  categoryBand: {
+    fill: { patternType: 'solid', fgColor: { rgb: '4472C4' } },
+    font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: { right: { style: 'medium', color: { rgb: 'FFFFFF' } } },
+  },
+  /** Execution / Viability group band header (Vendor Evaluation sheet) */
+  groupBand: {
+    fill: { patternType: 'solid', fgColor: { rgb: '5B9BD5' } },
+    font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { right: { style: 'medium', color: { rgb: 'FFFFFF' } } },
+  },
+  /** Column header row (feature names / criterion names) */
+  colHeader: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'D9E1F2' } },
+    font: { bold: true, sz: 11 },
+    alignment: { horizontal: 'center', wrapText: true },
+    border: { bottom: { style: 'medium', color: { rgb: '4472C4' } }, right: { style: 'thin', color: { rgb: 'A0A0A0' } } },
+  },
+  /** Identity column header (top-left corner of header row) */
+  colHeaderIdentity: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'A0A0A0' } },
+    font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+    border: { bottom: { style: 'medium', color: { rgb: '4472C4' } }, right: { style: 'thin', color: { rgb: 'A0A0A0' } } },
+  },
+  /** Score / support-level cell — empty (LLM should fill) */
+  fillMe: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFF99' } },
+    alignment: { horizontal: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: 'CCCC00' } }, right: { style: 'thin', color: { rgb: 'CCCC00' } } },
+  },
+  /** Score / support-level cell — already has data */
+  prefilled: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'C6EFCE' } },
+    alignment: { horizontal: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: '70AD47' } }, right: { style: 'thin', color: { rgb: '70AD47' } } },
+  },
+  /** Comments / Notes column — empty */
+  commentsEmpty: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'DDEBF7' } },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  },
+  /** Comments / Notes column — has content */
+  commentsFilled: {
+    fill: { patternType: 'solid', fgColor: { rgb: 'BDD7EE' } },
+    border: { bottom: { style: 'thin', color: { rgb: 'B8CCE4' } }, right: { style: 'thin', color: { rgb: 'B8CCE4' } } },
+  },
+  /** Band placeholder cells (Vendor Name / Category positions in band row) */
+  bandPlaceholder: {
+    fill: { patternType: 'solid', fgColor: { rgb: '808080' } },
+    border: { right: { style: 'thin', color: { rgb: '606060' } } },
+  },
+};
+
+/** Convert a 0-based column index to an Excel column letter (A, B, …, AA, …). */
+function colLetter(col: number): string {
+  let s = '';
+  col++;
+  while (col > 0) {
+    const r = (col - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    col = Math.floor((col - 1) / 26);
   }
-
-  const rows = vendors.map(v => {
-    const row: any = { 'Vendor Name': v.name, 'Product': v.product || '' };
-    for (const c of executionCriteria) {
-      row[c.name] = scoreMap.get(`${v.name}::${c.name}`) ?? '';
-      row[`${c.name} - Notes`] = notesMap.get(`${v.name}::${c.name}`) ?? '';
-    }
-    for (const c of viabilityCriteria) {
-      row[c.name] = scoreMap.get(`${v.name}::${c.name}`) ?? '';
-      row[`${c.name} - Notes`] = notesMap.get(`${v.name}::${c.name}`) ?? '';
-    }
-    return row;
-  });
-
-  return { headers, rows };
+  return s;
 }
 
-function buildFeatureSheet(
+/** Create a styled xlsx-js-style cell object. */
+function sc(v: any, style: object): object {
+  const t = typeof v === 'number' ? 'n' : v === '' || v === null || v === undefined ? 'z' : 's';
+  return { v: v ?? '', t, s: style };
+}
+
+/**
+ * Build a styled worksheet for Product Evaluation / ISV Ecosystem.
+ *
+ * Layout:
+ *   Row 0 — Category band: gray for identity cols, colored header for each feature group
+ *   Row 1 — Column headers: gray for identity, blue-tinted for features/comments
+ *   Rows 2+ — Data: gray identity cols, yellow/green scores, blue comments
+ *
+ * The import parser detects the band row by checking whether A1 = "Vendor Name"
+ * (old format) or A2 = "Vendor Name" (new format with band). It then uses
+ * `{ range: 1 }` to skip the band when calling sheet_to_json().
+ */
+function buildStyledFeatureSheet(
+  xlsxStyle: any,
   vendors: TemplateVendor[],
   categories: Array<{ name: string; features: Array<{ name: string }> }>,
   existingSupport?: Array<{ vendorName: string; categoryName: string; featureName: string; supportLevel: number; comments?: string }>,
 ) {
-  const headers = ['Vendor Name', 'Category'];
+  // ── Build column metadata ────────────────────────────────────────────────
+  // cols: [ { type: 'identity'|'score'|'comments', cat?, feature? }, … ]
+  type ColMeta = { type: 'identity'; label: string } | { type: 'score'; cat: string; feature: string } | { type: 'comments'; cat: string; feature: string };
+  const cols: ColMeta[] = [
+    { type: 'identity', label: 'Vendor Name' },
+    { type: 'identity', label: 'Category' },
+  ];
   for (const cat of categories) {
     for (const f of cat.features) {
-      headers.push(f.name);
-      headers.push(`${f.name} - Comments`);
+      cols.push({ type: 'score', cat: cat.name, feature: f.name });
+      cols.push({ type: 'comments', cat: cat.name, feature: f.name });
     }
   }
 
@@ -751,27 +842,176 @@ function buildFeatureSheet(
     });
   }
 
-  const rows = [];
+  // ── Row 0: Category band ─────────────────────────────────────────────────
+  const bandRow: object[] = [
+    sc('', XLS_STYLE.bandPlaceholder),
+    sc('', XLS_STYLE.bandPlaceholder),
+  ];
+  // Track merges: one merge per category spanning all its score+comment cols
+  const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+  let colIdx = 2;
+  for (const cat of categories) {
+    const spanCount = cat.features.length * 2; // score + comments per feature
+    bandRow.push(sc(cat.name, XLS_STYLE.categoryBand));
+    for (let i = 1; i < spanCount; i++) bandRow.push(sc('', XLS_STYLE.categoryBand));
+    if (spanCount > 1) {
+      merges.push({ s: { r: 0, c: colIdx }, e: { r: 0, c: colIdx + spanCount - 1 } });
+    }
+    colIdx += spanCount;
+  }
+
+  // ── Row 1: Column header ─────────────────────────────────────────────────
+  const headerRow: object[] = cols.map(col => {
+    if (col.type === 'identity') return sc(col.label, XLS_STYLE.colHeaderIdentity);
+    if (col.type === 'score') return sc(col.feature, XLS_STYLE.colHeader);
+    return sc(`${col.feature} - Comments`, XLS_STYLE.colHeader);
+  });
+
+  // ── Data rows ────────────────────────────────────────────────────────────
+  const dataRows: object[][] = [];
   for (const vendor of vendors) {
     for (const cat of categories) {
-      const row: any = { 'Vendor Name': vendor.name, 'Category': cat.name };
+      const row: object[] = [
+        sc(vendor.name, XLS_STYLE.identity),
+        sc(cat.name, XLS_STYLE.identity),
+      ];
       for (const f of cat.features) {
         const key = `${vendor.name}::${cat.name}::${f.name}`;
         const val = supportMap.get(key);
-        row[f.name] = val?.level ?? '';
-        row[`${f.name} - Comments`] = val?.comments ?? '';
+        const level = val?.level;
+        const comments = val?.comments ?? '';
+        row.push(sc(level ?? '', level !== undefined ? XLS_STYLE.prefilled : XLS_STYLE.fillMe));
+        row.push(sc(comments, comments ? XLS_STYLE.commentsFilled : XLS_STYLE.commentsEmpty));
       }
-      rows.push(row);
+      dataRows.push(row);
     }
   }
 
-  return { headers, rows };
+  const aoa: object[][] = [bandRow, headerRow, ...dataRows];
+  const ws = xlsxStyle.utils.aoa_to_sheet(aoa);
+
+  // Apply merges for category band
+  ws['!merges'] = merges;
+
+  // Column widths: identity cols wider, score cols narrow, comments wider
+  ws['!cols'] = cols.map(col =>
+    col.type === 'identity' ? { wch: 22 } :
+    col.type === 'score'    ? { wch: 14 } :
+                              { wch: 28 },
+  );
+
+  // Row heights: band row taller
+  ws['!rows'] = [{ hpt: 30 }, { hpt: 42 }];
+
+  return ws;
+}
+
+/**
+ * Build a styled worksheet for Vendor Evaluation.
+ *
+ * Layout:
+ *   Row 0 — Group band: "Execution Criteria" spanning exec cols, "Viability Criteria" spanning viab cols
+ *   Row 1 — Column headers
+ *   Rows 2+ — Data
+ */
+function buildStyledVendorEvalSheet(
+  xlsxStyle: any,
+  vendors: TemplateVendor[],
+  criteria: { name: string; category: string }[],
+  existingScores?: Array<{ vendorName: string; criterionName: string; score: number; commentary?: string; notes?: string }>,
+) {
+  const executionCriteria = criteria.filter(c => c.category === 'execution');
+  const viabilityCriteria = criteria.filter(c => c.category === 'viability');
+
+  const scoreMap = new Map<string, number>();
+  const notesMap = new Map<string, string>();
+  for (const s of existingScores ?? []) {
+    scoreMap.set(`${s.vendorName}::${s.criterionName}`, s.score);
+    notesMap.set(`${s.vendorName}::${s.criterionName}`, s.commentary || s.notes || '');
+  }
+
+  // ── Build column metadata ────────────────────────────────────────────────
+  type ColMeta = { type: 'identity'; label: string } | { type: 'score'; group: string; criterion: string } | { type: 'notes'; group: string; criterion: string };
+  const cols: ColMeta[] = [
+    { type: 'identity', label: 'Vendor Name' },
+    { type: 'identity', label: 'Product' },
+  ];
+  for (const c of executionCriteria) {
+    cols.push({ type: 'score', group: 'execution', criterion: c.name });
+    cols.push({ type: 'notes', group: 'execution', criterion: c.name });
+  }
+  for (const c of viabilityCriteria) {
+    cols.push({ type: 'score', group: 'viability', criterion: c.name });
+    cols.push({ type: 'notes', group: 'viability', criterion: c.name });
+  }
+
+  // ── Row 0: Group band ────────────────────────────────────────────────────
+  const bandRow: object[] = [
+    sc('', XLS_STYLE.bandPlaceholder),
+    sc('', XLS_STYLE.bandPlaceholder),
+  ];
+  const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+
+  const execSpan = executionCriteria.length * 2;
+  const viabSpan = viabilityCriteria.length * 2;
+
+  if (execSpan > 0) {
+    bandRow.push(sc('Execution Criteria  (score 0–10)', XLS_STYLE.groupBand));
+    for (let i = 1; i < execSpan; i++) bandRow.push(sc('', XLS_STYLE.groupBand));
+    if (execSpan > 1) merges.push({ s: { r: 0, c: 2 }, e: { r: 0, c: 2 + execSpan - 1 } });
+  }
+  if (viabSpan > 0) {
+    const startCol = 2 + execSpan;
+    bandRow.push(sc('Viability Criteria  (score 0–10)', XLS_STYLE.groupBand));
+    for (let i = 1; i < viabSpan; i++) bandRow.push(sc('', XLS_STYLE.groupBand));
+    if (viabSpan > 1) merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + viabSpan - 1 } });
+  }
+
+  // ── Row 1: Column headers ────────────────────────────────────────────────
+  const headerRow: object[] = cols.map(col => {
+    if (col.type === 'identity') return sc(col.label, XLS_STYLE.colHeaderIdentity);
+    if (col.type === 'score') return sc(col.criterion, XLS_STYLE.colHeader);
+    return sc(`${col.criterion} - Notes`, XLS_STYLE.colHeader);
+  });
+
+  // ── Data rows ────────────────────────────────────────────────────────────
+  const dataRows: object[][] = vendors.map(v => {
+    const row: object[] = [
+      sc(v.name, XLS_STYLE.identity),
+      sc(v.product || '', XLS_STYLE.identity),
+    ];
+    for (const c of [...executionCriteria, ...viabilityCriteria]) {
+      const key = `${v.name}::${c.name}`;
+      const score = scoreMap.get(key);
+      const notes = notesMap.get(key) ?? '';
+      row.push(sc(score ?? '', score !== undefined ? XLS_STYLE.prefilled : XLS_STYLE.fillMe));
+      row.push(sc(notes, notes ? XLS_STYLE.commentsFilled : XLS_STYLE.commentsEmpty));
+    }
+    return row;
+  });
+
+  const aoa: object[][] = [bandRow, headerRow, ...dataRows];
+  const ws = xlsxStyle.utils.aoa_to_sheet(aoa);
+
+  ws['!merges'] = merges;
+  ws['!cols'] = cols.map(col =>
+    col.type === 'identity' ? { wch: 22 } :
+    col.type === 'score'    ? { wch: 14 } :
+                              { wch: 30 },
+  );
+  ws['!rows'] = [{ hpt: 30 }, { hpt: 42 }];
+
+  return ws;
 }
 
 // ── Template generation ───────────────────────────────────────────────────
 
 export async function generateStageTemplate(stageNum: number, jobId: string): Promise<Buffer> {
-  const xlsx = await import("xlsx");
+  // xlsx-js-style is a drop-in of xlsx that adds `.s` cell-style support.
+  // We use it only here (export). The import path uses plain `xlsx`.
+  // Dynamic import() wraps CJS modules under `.default`; unwrap for either shape.
+  const xlsxStyleRaw = await import("xlsx-js-style" as any);
+  const xlsxStyle = (xlsxStyleRaw as any).default ?? xlsxStyleRaw;
   const job = await storage.getMarketBuilderJobWithStages(jobId);
   if (!job) throw new Error("Job not found");
   const stage1 = (job.stages.find(s => s.stage === 1)?.result ?? { vendors: [] }) as Stage1Result;
@@ -791,38 +1031,34 @@ export async function generateStageTemplate(stageNum: number, jobId: string): Pr
   const existingVendorScores =
     stage3Result?.scores ?? stage2Result?.scores ?? [];
 
-  const workbook = xlsx.utils.book_new();
+  const workbook = xlsxStyle.utils.book_new();
 
   // ── Vendor Evaluation sheet ───────────────────────────────────────────────
-  const { headers: vendorHeaders, rows: vendorRows } = buildVendorEvalSheet(
-    vendors,
-    allCriteria,
-    existingVendorScores,
-  );
-  xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(vendorRows, { header: vendorHeaders }), 'Vendor Evaluation');
+  const vendorWs = buildStyledVendorEvalSheet(xlsxStyle, vendors, allCriteria, existingVendorScores);
+  xlsxStyle.utils.book_append_sheet(workbook, vendorWs, 'Vendor Evaluation');
 
   // ── Product Evaluation sheet ────────────────────────────────────────────
   const productCategories = stage4Result?.categories ?? stage5Result?.categories ?? stage6Result?.categories ?? [];
   const productSupport = stage5Result?.support ?? stage6Result?.support ?? [];
   if (productCategories.length > 0) {
-    const { headers: productHeaders, rows: productRows } = buildFeatureSheet(vendors, productCategories, productSupport);
-    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(productRows, { header: productHeaders }), 'Product Evaluation');
+    const productWs = buildStyledFeatureSheet(xlsxStyle, vendors, productCategories, productSupport);
+    xlsxStyle.utils.book_append_sheet(workbook, productWs, 'Product Evaluation');
   } else {
     // Preserve the three-tab shape with an empty sheet so it still matches the export format.
-    const ws = xlsx.utils.aoa_to_sheet([['Vendor Name', 'Category']]);
-    xlsx.utils.book_append_sheet(workbook, ws, 'Product Evaluation');
+    const ws = xlsxStyle.utils.aoa_to_sheet([['Vendor Name', 'Category']]);
+    xlsxStyle.utils.book_append_sheet(workbook, ws, 'Product Evaluation');
   }
 
   // ── ISV Ecosystem sheet ─────────────────────────────────────────────────
   const ecosystemCategories = stage7Result?.categories ?? stage8Result?.categories ?? stage9Result?.categories ?? [];
   const ecosystemSupport = stage8Result?.support ?? stage9Result?.support ?? [];
   if (ecosystemCategories.length > 0) {
-    const { headers: ecosystemHeaders, rows: ecosystemRows } = buildFeatureSheet(vendors, ecosystemCategories, ecosystemSupport);
-    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(ecosystemRows, { header: ecosystemHeaders }), 'ISV Ecosystem');
+    const ecosystemWs = buildStyledFeatureSheet(xlsxStyle, vendors, ecosystemCategories, ecosystemSupport);
+    xlsxStyle.utils.book_append_sheet(workbook, ecosystemWs, 'ISV Ecosystem');
   } else {
-    const ws = xlsx.utils.aoa_to_sheet([['Vendor Name', 'Category']]);
-    xlsx.utils.book_append_sheet(workbook, ws, 'ISV Ecosystem');
+    const ws = xlsxStyle.utils.aoa_to_sheet([['Vendor Name', 'Category']]);
+    xlsxStyle.utils.book_append_sheet(workbook, ws, 'ISV Ecosystem');
   }
 
-  return xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+  return xlsxStyle.write(workbook, { type: "buffer", bookType: "xlsx" });
 }
