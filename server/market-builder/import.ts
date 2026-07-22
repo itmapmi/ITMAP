@@ -100,6 +100,14 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
             })),
           },
         });
+        // Also sync the feature-list stage (4) so its category/feature names always
+        // match the commentary stage (6). Without this, a mismatch between the Excel's
+        // column headers and the AI-generated stage 4 names causes publish to silently
+        // skip all support rows that don't match.
+        const featureList = parseExportFeatureSheet(xlsx, sheet, 4, vendorNames, summary, reportError, reportWarning);
+        if ((featureList as any).categories?.length > 0) {
+          updates.push({ stageNum: 4, result: featureList });
+        }
         break;
       }
       case 7: {
@@ -131,6 +139,13 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
             })),
           },
         });
+        // Also sync the feature-list stage (7) so its category/feature names always
+        // match the commentary stage (9). Without this, a mismatch between the Excel's
+        // column headers and the AI-generated stage 7 names causes publish to silently
+        // skip all support rows whose names don't match.
+        if ((full.categories ?? []).length > 0) {
+          updates.push({ stageNum: 7, result: { categories: full.categories } });
+        }
         break;
       }
       default:
