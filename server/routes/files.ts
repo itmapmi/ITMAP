@@ -294,28 +294,52 @@ export function registerFileRoutes(app: Express): void {
       // New exports include a "Category" column that groups features. We parse the
       // header and the first row to map each feature to its category, preserving
       // the category hierarchy on re-import.
-      const collectFeatureColumns = (sheetName: string): { header: string[]; featureToCategory: Map<string, string> } => {
+      // Detect whether the sheet has a styled band row before the real header
+      // (e.g. ISV Ecosystem export has category spans in row 0, actual column
+      //  names in row 1). Mirrors the same logic used in the Market Builder importer.
+      const sheetHasBand = (sheet: any): boolean => {
+        const a1 = sheet['A1'];
+        return !a1 || (a1.v !== 'Vendor Name' && a1.v !== 'Vendor Name\r\n');
+      };
+
+      const collectFeatureColumns = (sheetName: string): { header: string[]; featureToCategory: Map<string, string>; hasBand: boolean } => {
         const sheet = workbook.Sheets[sheetName];
-        if (!sheet) return { header: [], featureToCategory: new Map() };
-        const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
-        const header = (rows[0] || []).filter(Boolean) as string[];
+        if (!sheet) return { header: [], featureToCategory: new Map(), hasBand: false };
+
+        const hasBand = sheetHasBand(sheet);
+        const headerRowIdx = hasBand ? 1 : 0;
+        const dataStartIdx = hasBand ? 2 : 1;
+
+        const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+        const rawHeader = (rows[headerRowIdx] || []) as any[];
+        const header = rawHeader.map((h: any) => (h != null ? String(h) : '')).filter(Boolean);
         const featureToCategory = new Map<string, string>();
-        if (header.includes('Category')) {
-          const categoryIdx = header.indexOf('Category');
-          // Each feature column has a corresponding row in the first data row that
-          // names the category for that feature. We use the first populated row.
-          const firstDataRow = rows.find((r, idx) => idx > 0 && r[categoryIdx]);
-          if (firstDataRow) {
-            header.forEach((h, i) => {
-              if (h === 'Vendor Name' || h === 'Category' || h.endsWith(' - Comments')) return;
-              featureToCategory.set(h, firstDataRow[i] || firstDataRow[categoryIdx] || '');
-            });
+
+        const categoryIdx = rawHeader.findIndex((h: any) => h === 'Category');
+        if (categoryIdx >= 0) {
+          // Scan ALL data rows: each row has a Category value and non-null scores
+          // only for the features belonging to that category.  Collecting across
+          // all rows gives the correct feature→category mapping regardless of
+          // which vendor/category appears first.
+          for (let i = dataStartIdx; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row) continue;
+            const categoryName = row[categoryIdx] != null ? String(row[categoryIdx]).trim() : '';
+            if (!categoryName || categoryName === 'Category') continue;
+            for (let j = 0; j < rawHeader.length; j++) {
+              const h = rawHeader[j];
+              if (!h || h === 'Vendor Name' || h === 'Category' || String(h).endsWith(' - Comments')) continue;
+              const val = row[j];
+              if (val !== '' && val !== undefined && val !== null) {
+                featureToCategory.set(String(h), categoryName);
+              }
+            }
           }
         }
-        return { header, featureToCategory };
+        return { header, featureToCategory, hasBand };
       };
-      const { header: productHeader, featureToCategory: productFeatureToCategory } = collectFeatureColumns('Product Evaluation');
-      const { header: ecosystemHeader, featureToCategory: ecosystemFeatureToCategory } = collectFeatureColumns('ISV Ecosystem');
+      const { header: productHeader, featureToCategory: productFeatureToCategory, hasBand: productHasBand } = collectFeatureColumns('Product Evaluation');
+      const { header: ecosystemHeader, featureToCategory: ecosystemFeatureToCategory, hasBand: ecoHasBand } = collectFeatureColumns('ISV Ecosystem');
       const productFeatureCols = productHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
       const ecosystemFeatureCols = ecosystemHeader.filter(h => h && h !== 'Vendor Name' && h !== 'Category' && !h.endsWith(' - Comments'));
 
@@ -400,8 +424,15 @@ export function registerFileRoutes(app: Express): void {
       const inserts: { vendorId: string; featureId: string; supportLevel: number; comments: string | null }[] = [];
       const updates: { id: string; supportLevel: number; comments: string | null }[] = [];
 
+      const sheetBandMap: Record<string, boolean> = {
+        'Product Evaluation': productHasBand,
+        'ISV Ecosystem': ecoHasBand,
+      };
       for (const sheetName of ['Product Evaluation', 'ISV Ecosystem']) {
-        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]) as any[];
+        // If the sheet has a styled band row (e.g. ISV Ecosystem), skip that row
+        // so sheet_to_json uses the real header row (row 1) not the band (row 0).
+        const sheetOpts = sheetBandMap[sheetName] ? { range: 1 } : {};
+        const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], sheetOpts) as any[];
         for (const row of sheetData) {
           const vendor = vendorByName.get(row['Vendor Name']);
           if (!vendor) continue;
