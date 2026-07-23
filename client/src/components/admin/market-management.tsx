@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,41 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, TrendingUp, Plus, Eye, EyeOff, Sprout, Building2 } from "lucide-react";
-import { insertMarketSchema, type InsertMarket, type Market } from "@shared/schema";
+import { insertMarketSchema, type InsertMarket, type Market, type Criteria } from "@shared/schema";
 import { SimpleImageUploader } from "@/components/SimpleImageUploader";
+
+// Default criteria weights — mirror the defaults used by the Magic Quadrant so
+// the dot positions match what admins see when no explicit weight is set.
+const MATURE_DEFAULT_WEIGHTS: { [name: string]: number } = {
+  'ISV Ecosystem': 100,
+  'Innovation': 50,
+  'Pricing Strategy': 100,
+  'Product Capabilities': 100,
+  'Business Model': 50,
+  'Customer Experience': 100,
+  'Partner Ecosystem': 75,
+  'Revenue': 100,
+};
+const EMERGING_WEIGHT_OVERRIDES: { [name: string]: number } = {
+  'Business Model': 10,
+  'Revenue': 10,
+  'Partner Ecosystem': 10,
+};
+
+function defaultWeightFor(criterionName: string, marketType: string | null | undefined): number {
+  const base = MATURE_DEFAULT_WEIGHTS[criterionName] ?? 100;
+  if (marketType === "emerging" && criterionName in EMERGING_WEIGHT_OVERRIDES) {
+    return EMERGING_WEIGHT_OVERRIDES[criterionName];
+  }
+  return base;
+}
 
 export default function MarketManagement() {
   const { toast } = useToast();
@@ -27,6 +54,19 @@ export default function MarketManagement() {
   });
   // Hide private (end-user-built) markets — they live in the "User Markets" tab.
   const markets = allMarkets?.filter(m => (m as any).visibility !== "private");
+
+  const { data: criteria } = useQuery<Criteria[]>({
+    queryKey: ["/api/criteria"],
+  });
+
+  // Saved weights for the market being edited
+  const { data: savedWeights, isFetched: savedWeightsFetched } = useQuery<{ criteriaId: string; weight: number }[]>({
+    queryKey: [`/api/markets/${editingMarket?.id}/weights`],
+    enabled: !!editingMarket,
+  });
+
+  // Local weight state keyed by criteria id (0–100)
+  const [criteriaWeights, setCriteriaWeights] = useState<{ [criteriaId: string]: number }>({});
 
   const form = useForm<InsertMarket>({
     resolver: zodResolver(insertMarketSchema),
@@ -41,10 +81,51 @@ export default function MarketManagement() {
     },
   });
 
+  const watchedMarketType = form.watch("marketType");
+
+  // Initialize weights: saved values when editing, marketType defaults when creating.
+  useEffect(() => {
+    if (!criteria) return;
+    // In edit mode, wait for the saved weights to load before seeding —
+    // otherwise defaults could briefly populate and overwrite saved values on a fast submit.
+    if (editingMarket && !savedWeightsFetched) return;
+    const next: { [id: string]: number } = {};
+    criteria.forEach(c => {
+      const saved = editingMarket ? savedWeights?.find(w => w.criteriaId === c.id) : undefined;
+      next[c.id] = saved ? saved.weight : defaultWeightFor(c.name, watchedMarketType);
+    });
+    setCriteriaWeights(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [criteria, savedWeights, editingMarket, watchedMarketType, showCreateDialog]);
+
+  // Save weights after the market itself is persisted. Weight failures must not
+  // fail the whole mutation (the market is already saved) — surface a warning instead.
+  const saveWeights = async (marketId: string) => {
+    if (!criteria) return;
+    try {
+      await Promise.all(
+        criteria.map(c =>
+          apiRequest(`/api/markets/${marketId}/weights/${c.id}`, "PUT", { weight: criteriaWeights[c.id] ?? 100 })
+        )
+      );
+      queryClient.invalidateQueries({ queryKey: [`/api/markets/${marketId}/weights`] });
+    } catch (err) {
+      console.error("Failed to save criteria weights:", err);
+      toast({
+        title: "Weights not fully saved",
+        description: "The market was saved, but some criteria weights failed to save. Re-open the market and update them again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const createMarketMutation = useMutation({
     mutationFn: async (data: InsertMarket) => {
       const response = await apiRequest("/api/markets", "POST", data);
-      return response.json();
+      const created = await response.json();
+      // Persist the chosen criteria weights for the new market.
+      if (created?.id) await saveWeights(created.id);
+      return created;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
@@ -67,7 +148,10 @@ export default function MarketManagement() {
   const updateMarketMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertMarket }) => {
       const response = await apiRequest(`/api/markets/${id}`, "PUT", data);
-      return response.json();
+      const updated = await response.json();
+      // Persist any weight changes made in the edit dialog.
+      await saveWeights(id);
+      return updated;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
@@ -335,6 +419,34 @@ export default function MarketManagement() {
             </FormItem>
           )}
         />
+
+        {/* Criteria Weights — drive the Magic Quadrant dot positions. */}
+        {criteria && criteria.length > 0 && (
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <div className="text-base font-medium">Vendor Evaluation Criteria Weights</div>
+              <div className="text-sm text-muted-foreground">
+                Dot positions on the quadrant are calculated from these weights. End users can still adjust them with sliders on the market page.
+              </div>
+            </div>
+            {criteria.map(c => (
+              <div key={c.id} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span>{c.name}</span>
+                  <span className="tabular-nums text-muted-foreground w-10 text-right">{criteriaWeights[c.id] ?? 100}%</span>
+                </div>
+                <Slider
+                  value={[criteriaWeights[c.id] ?? 100]}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onValueChange={([v]) => setCriteriaWeights(prev => ({ ...prev, [c.id]: v }))}
+                  data-testid={`slider-weight-${c.name.toLowerCase().replace(/\s+/g, '-')}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <FormField
           control={form.control}

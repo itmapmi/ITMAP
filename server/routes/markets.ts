@@ -617,7 +617,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/markets/:marketId/weights/:criteriaId", requireMarketAccess, async (req, res) => {
+  app.put("/api/markets/:marketId/weights/:criteriaId", requireAdmin, async (req, res) => {
     try {
       const { weight } = z.object({ weight: z.number().min(0).max(100) }).parse(req.body);
       const weightRecord = await storage.updateMarketCriteriaWeight(req.params.marketId, req.params.criteriaId, weight);
