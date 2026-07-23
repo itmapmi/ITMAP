@@ -311,9 +311,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         'Revenue': 100,
       };
       const emergingOverrides: { [name: string]: number } = {
-        'Business Model': 10,
-        'Revenue': 10,
-        'Partner Ecosystem': 10,
+        'Business Model': 50,
+        'Revenue': 25,
+        'Partner Ecosystem': 25,
       };
       const defaultWeightsByName = marketType === "emerging"
         ? { ...matureDefaults, ...emergingOverrides }

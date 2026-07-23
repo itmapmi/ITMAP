@@ -30,9 +30,9 @@ const MATURE_DEFAULT_WEIGHTS: { [name: string]: number } = {
   'Revenue': 100,
 };
 const EMERGING_WEIGHT_OVERRIDES: { [name: string]: number } = {
-  'Business Model': 10,
-  'Revenue': 10,
-  'Partner Ecosystem': 10,
+  'Business Model': 50,
+  'Revenue': 25,
+  'Partner Ecosystem': 25,
 };
 
 function defaultWeightFor(criterionName: string, marketType: string | null | undefined): number {
@@ -410,7 +410,7 @@ export default function MarketManagement() {
                     <Sprout className="h-4 w-4 shrink-0" />
                     <div>
                       <div className="font-medium text-sm">Emerging</div>
-                      <div className="text-xs text-muted-foreground">Business Model, Revenue &amp; Partner Ecosystem default to 10%</div>
+                      <div className="text-xs text-muted-foreground">Business Model defaults to 50%, Revenue &amp; Partner Ecosystem to 25%</div>
                     </div>
                   </button>
                 </div>
