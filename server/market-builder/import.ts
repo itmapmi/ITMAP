@@ -48,7 +48,89 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
   const updates: Array<{ stageNum: number; result: unknown }> = [];
 
   if (hasExportSheets) {
-    // New three-tab market-export format.
+    // ── From-scratch full import ────────────────────────────────────────────
+    // When this job has no stage 1 vendor list yet, auto-extract vendors from
+    // the Vendor Evaluation sheet and import ALL stages in one shot so the user
+    // doesn't have to upload the same file three times.
+    if (vendorNames.size === 0) {
+      const veSheet = workbook.Sheets["Vendor Evaluation"];
+      const veRowsRaw = xlsx.utils.sheet_to_json(veSheet, { header: 1 }) as any[][];
+      const veHasBand = sheetHasBandRow(veSheet);
+      const veDataStart = veHasBand ? 2 : 1;
+
+      const extractedVendors: Array<{ name: string; product: string; website: string; description: string; newsroomUrl: string }> = [];
+      for (let i = veDataStart; i < veRowsRaw.length; i++) {
+        const row = veRowsRaw[i];
+        if (!row || !row[0]) continue;
+        const name = String(row[0]).trim();
+        if (!name || name === "Vendor Name") continue;
+        const product = String(row[1] ?? "").trim();
+        extractedVendors.push({ name, product, website: "", description: "", newsroomUrl: "" });
+        vendorNames.add(name);
+      }
+
+      if (extractedVendors.length > 0) {
+        updates.push({
+          stageNum: 1,
+          result: { marketSummary: "", vendors: extractedVendors, nextTenVendors: [] },
+        });
+      }
+
+      // Vendor Evaluation → stages 2 + 3
+      const veFull = parseExportVendorEvalSheet(xlsx, veSheet, vendorNames, criteriaByName, summary, reportError, reportWarning, false);
+      updates.push({
+        stageNum: 2,
+        result: {
+          criteriaWeights: veFull.criteriaWeights,
+          scores: veFull.scores.map(({ vendorName, criterionName, score }: any) => ({ vendorName, criterionName, score })),
+        },
+      });
+      // Stage 3 (commentary) is the same result — notes go in as commentary
+      updates.push({ stageNum: 3, result: veFull });
+
+      // Product Evaluation → stages 4 + 5 + 6
+      const peSheet = workbook.Sheets["Product Evaluation"];
+      const peFull = parseExportFeatureSheet(xlsx, peSheet, 6, vendorNames, summary, reportError, reportWarning);
+      updates.push({ stageNum: 6, result: peFull });
+      updates.push({
+        stageNum: 5,
+        result: {
+          support: (peFull as any).support?.map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
+            vendorName, categoryName, featureName, supportLevel, comments: "", sources: [],
+          })) ?? [],
+        },
+      });
+      const peFeatureList = parseExportFeatureSheet(xlsx, peSheet, 4, vendorNames, summary, reportError, reportWarning);
+      if ((peFeatureList as any).categories?.length > 0) {
+        updates.push({ stageNum: 4, result: peFeatureList });
+      }
+
+      // ISV Ecosystem → stages 7 + 8 + 9
+      const ecoSheet = workbook.Sheets["ISV Ecosystem"];
+      const ecoFull = parseExportFeatureSheet(xlsx, ecoSheet, 9, vendorNames, summary, reportError, reportWarning);
+      updates.push({ stageNum: 9, result: ecoFull });
+      updates.push({
+        stageNum: 8,
+        result: {
+          categories: (ecoFull as any).categories,
+          support: (ecoFull as any).support?.map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
+            vendorName, categoryName, featureName, supportLevel, comments: "", sources: [],
+          })) ?? [],
+        },
+      });
+      if (((ecoFull as any).categories ?? []).length > 0) {
+        updates.push({ stageNum: 7, result: { categories: (ecoFull as any).categories } });
+      }
+
+      summary.rowsRead =
+        (veFull.scores?.length ?? 0) +
+        ((peFull as any).support?.length ?? 0) +
+        ((ecoFull as any).support?.length ?? 0);
+      summary.warnings.push(`Auto-extracted ${extractedVendors.length} vendors from the Vendor Evaluation sheet. All stages (1–9) have been populated from the uploaded Excel.`);
+
+      // Done — skip the stage-specific switch below.
+    } else {
+    // New three-tab market-export format (stage-specific update).
     switch (opts.stageNum) {
       case 2: {
         const sheet = workbook.Sheets["Vendor Evaluation"];
@@ -95,7 +177,7 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
         updates.push({
           stageNum: 5,
           result: {
-            support: full.support.map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
+            support: (full.support ?? []).map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
               vendorName, categoryName, featureName, supportLevel, comments: "", sources: [],
             })),
           },
@@ -134,7 +216,7 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
           stageNum: 8,
           result: {
             categories: full.categories,
-            support: full.support.map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
+            support: (full.support ?? []).map(({ vendorName, categoryName, featureName, supportLevel }: any) => ({
               vendorName, categoryName, featureName, supportLevel, comments: "", sources: [],
             })),
           },
@@ -151,6 +233,7 @@ export async function parseStageImport(opts: StageImportOptions): Promise<StageI
       default:
         throw new Error(`Import not supported for stage ${opts.stageNum}`);
     }
+    } // end of else (vendorNames.size > 0) block
   } else {
     // Legacy single-sheet "Template" format (kept for backward compatibility).
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
