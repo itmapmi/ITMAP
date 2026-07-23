@@ -53,6 +53,21 @@ interface VendorBentoCfg {
   visibleWhen?: (isAdminLinked: boolean, hasMarkets: boolean) => boolean;
 }
 
+// Fixed set of nine featured markets for the homepage "Coverage that matters"
+// section. Kept static so the section renders instantly (no API round-trip,
+// which was slow on mobile). Update this list manually when featured coverage changes.
+const FEATURED_MARKETS = [
+  { id: "d7ac4d1c-018c-4c02-a19d-196169cb4935", name: "ITMAP for Agentic AI Platforms & Agent Orchestration", category: "AI & Automation", shortDescription: "Infrastructure to build, deploy, coordinate, and manage autonomous AI agents that plan multi-step tasks, invoke tools and APIs, and execute complete business processes." },
+  { id: "130ee3b2-16b1-4803-a8f0-8c4ed3a61d96", name: "ITMAP for Backup & Recovery of SaaS Applications", category: "Infrastructure", shortDescription: "Vendors that protect SaaS applications such as Microsoft 365, Salesforce.com, Atlassian and ServiceNow, with e-discovery, archiving and ransomware recovery." },
+  { id: "63955954-0414-42e8-a73c-0caee2a67dbc", name: "ITMAP for Backup Target Appliances", category: "Infrastructure", shortDescription: "Purpose-built storage systems serving as the destination for backup data, with inline deduplication, compression and replication for efficient long-term retention." },
+  { id: "b94e06f1-4c03-4367-b5bb-10659c240633", name: "ITMAP for Backup and Recovery Solutions for Mid-market enterprises", category: "Infrastructure", shortDescription: "Backup and recovery solutions focused on mid-market enterprises with fewer than 100 VMs and under 50TB of data." },
+  { id: "e005fe38-d997-4b9e-abf1-846af58f4d2d", name: "ITMAP for Emerging Virtualization Solution Providers", category: "Infrastructure", shortDescription: "Server and infrastructure virtualization challengers gaining traction amid post-VMware-acquisition disruption — hypervisor, VM management and HCI capabilities." },
+  { id: "b9a22e91-6aef-4434-96f7-3222a9dc3d5e", name: "ITMAP for Enterprise Backup and Recovery Solutions", category: "Infrastructure", shortDescription: "Backup and recovery of on-premise and cloud-based applications including IaaS, PaaS and SaaS workloads — backup software, integrated appliances and BaaS." },
+  { id: "e4601ccf-ba41-44ec-bb48-39033a65d72b", name: "ITMAP for Tech-Specialized Talent Acquisition Platforms", category: "Business Applications", shortDescription: "Digital marketplaces and software services purpose-built to source, match, assess, and hire technology and engineering talent." },
+  { id: "c57edf6c-4a34-4e23-9022-20389c139ff1", name: "ITMAP for Mid-range Storage Arrays", category: "Infrastructure", shortDescription: "Enterprise-class storage systems balancing performance, capacity, scalability and cost — hybrid and all-flash, NVMe, data reduction, snapshots and replication." },
+  { id: "68babfb0-bbbc-4f13-b97a-d9177663ea28", name: "ITMAP for Storage as a Service", category: "Infrastructure", shortDescription: "Consumption-based on-premises storage delivered as a managed, pay-per-use service — cloud-like elasticity and OpEx flexibility with data kept on dedicated arrays." },
+] as unknown as Market[];
+
 // ─── Module-level static config (icons use JSX; safe with Vite JSX transform) ─
 
 // Vendor platform tools — all require a plan upgrade (locked by default).
@@ -546,7 +561,7 @@ function PublicStats() {
   );
 }
 
-function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading }: { markets?: Market[]; isLoading: boolean; recentMarkets?: Market[]; recentMarketsLoading: boolean }) {
+function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
     localStorage.setItem("spectio_persona", persona);
     window.location.href = `/${persona}`;
@@ -651,7 +666,7 @@ function PublicLanding({ markets, isLoading, recentMarkets, recentMarketsLoading
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Coverage that <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">matters</span></h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Deep-dive evaluations across the enterprise infrastructure stack, updated continuously with AI-scored intelligence.</p>
         </motion.div>
-        <MarketGrid markets={recentMarkets ?? markets} isLoading={recentMarketsLoading || isLoading} linkToLogin />
+        <MarketGrid markets={FEATURED_MARKETS} isLoading={false} linkToLogin />
         <motion.div {...fadeUp} className="text-center mt-10">
           <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
             Create free buyer account <ArrowRight className="h-4 w-4" />
@@ -772,10 +787,6 @@ export default function Home() {
 
   const { isAuthenticated, isLoading: authLoading, isVendorScoped, isAdmin, user, hasFeature } = useAuth();
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
-  const { data: recentMarkets, isLoading: recentMarketsLoading } = useQuery<Market[]>({
-    queryKey: ["/api/markets/recent-republished"],
-    staleTime: 2 * 60_000,
-  });
 
   const { data: vendorScope, isLoading: vendorScopeLoading } = useQuery<{ vendor: { name?: string } }>({
     queryKey: ["/api/lead-gen/me/scope"],
@@ -826,5 +837,5 @@ export default function Home() {
     return <BuyerDashboard user={user} markets={markets} isLoading={marketsLoading} />;
   }
 
-  return <PublicLanding markets={markets} isLoading={marketsLoading} recentMarkets={recentMarkets} recentMarketsLoading={recentMarketsLoading} />;
+  return <PublicLanding markets={markets} isLoading={marketsLoading} />;
 }
