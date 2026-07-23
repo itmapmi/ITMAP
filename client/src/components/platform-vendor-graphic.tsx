@@ -420,7 +420,7 @@ export default function PlatformVendorGraphic() {
               letterSpacing={0.5}
               textAnchor="end"
             >
-              Challengers
+              Contenders
             </text>
 
             {/* Watermark */}

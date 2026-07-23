@@ -848,7 +848,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("font-weight", "800")
       .attr("fill", "#7C8DA6")
       .attr("letter-spacing", "0.5")
-      .text("Challengers");
+      .text("Contenders");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
