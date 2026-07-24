@@ -117,6 +117,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1194,6 +1195,108 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     );
   }
 
+  // Export the quadrant graphic as a PDF (market name on top, chart below).
+  // Fully client-side: serialize the SVG → rasterize to PNG at 2x → embed via pdf-lib.
+  const handleExportPdf = async () => {
+    const svgEl = svgRef.current;
+    if (!svgEl || isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const svgWidth = Number(svgEl.getAttribute("width")) || svgEl.clientWidth;
+      const svgHeight = Number(svgEl.getAttribute("height")) || svgEl.clientHeight;
+      if (!svgWidth || !svgHeight || !isFinite(svgWidth) || !isFinite(svgHeight)) {
+        throw new Error("Chart has no size yet");
+      }
+
+      // Serialize the SVG with an explicit xmlns so it loads as an image
+      const clone = svgEl.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      const svgString = new XMLSerializer().serializeToString(clone);
+      const svgUrl = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }));
+
+      const pngDataUrl = await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const scale = 2; // 2x for crisp print quality
+            const canvas = document.createElement("canvas");
+            canvas.width = svgWidth * scale;
+            canvas.height = svgHeight * scale;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("Canvas not supported");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/png"));
+          } catch (e) {
+            reject(e);
+          } finally {
+            URL.revokeObjectURL(svgUrl);
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(svgUrl);
+          reject(new Error("Failed to render chart image"));
+        };
+        img.src = svgUrl;
+      });
+
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const png = await pdfDoc.embedPng(pngDataUrl);
+
+      // Landscape page sized around the chart's aspect ratio
+      const margin = 40;
+      const titleSize = 18;
+      const titleGap = 24;
+      const maxImgWidth = 762 - margin * 2;  // ~A4 landscape width in points
+      const maxImgHeight = 539 - margin * 2 - titleSize - titleGap;
+      const ratio = Math.min(maxImgWidth / svgWidth, maxImgHeight / svgHeight);
+      const imgW = svgWidth * ratio;
+      const imgH = svgHeight * ratio;
+      const pageW = Math.max(imgW + margin * 2, font.widthOfTextAtSize(marketName, titleSize) + margin * 2);
+      const pageH = imgH + margin * 2 + titleSize + titleGap;
+      const page = pdfDoc.addPage([pageW, pageH]);
+
+      page.drawText(marketName, {
+        x: (pageW - font.widthOfTextAtSize(marketName, titleSize)) / 2,
+        y: pageH - margin - titleSize,
+        size: titleSize,
+        font,
+        color: rgb(0.06, 0.09, 0.16),
+      });
+      page.drawImage(png, {
+        x: (pageW - imgW) / 2,
+        y: margin,
+        width: imgW,
+        height: imgH,
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${marketName.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      const downloadUrl = link.href;
+      setTimeout(() => {
+        link.remove();
+        URL.revokeObjectURL(downloadUrl);
+      }, 1000);
+      track("chart_interacted", { marketId, metadata: { action: "pdf_export" } });
+    } catch (e) {
+      toast({
+        title: "Export failed",
+        description: "Could not generate the PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const executionCriteria = criteria?.filter(c => c.category === "execution") || [];
   const viabilityCriteria = criteria?.filter(c => c.category === "viability") || [];
 
@@ -1204,6 +1307,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           <Card className="bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
             <CardHeader className={`${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
+              <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowGrid(g => !g)}
                 className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
@@ -1218,6 +1322,18 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 </svg>
                 {showGrid ? "Grid on" : "Grid off"}
               </button>
+              <button
+                onClick={handleExportPdf}
+                disabled={isExportingPdf}
+                className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                title="Export chart as PDF"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 1v8m0 0L4 6m3 3l3-3M2 11v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {isExportingPdf ? "Exporting…" : "Export PDF"}
+              </button>
+              </div>
             </CardHeader>
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
