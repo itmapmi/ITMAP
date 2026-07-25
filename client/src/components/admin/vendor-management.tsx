@@ -526,7 +526,9 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
       return;
     }
     
-    saveScoreMutation.mutate({ vendorId, criteriaId, score, notes: notes || "" });
+    // Only include notes if the admin has explicitly edited them — omitting the
+    // field entirely tells the server to leave existing commentary untouched.
+    saveScoreMutation.mutate({ vendorId, criteriaId, score, ...(notes !== undefined && { notes }) });
     // Don't clear the pending score until mutation succeeds - it will be handled in onSuccess
   };
 
@@ -583,9 +585,9 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
     // Save all scores
     pendingEntries.forEach(([key, score]) => {
       const [vendorId, criteriaId] = key.split(':::');
-      const notes = vendorNotes[key] || "";
+      const notes = vendorNotes[key]; // undefined if not edited — omit to preserve existing commentary
       console.log("Bulk save - key:", key, "split vendorId:", vendorId, "split criteriaId:", criteriaId);
-      saveScoreMutation.mutate({ vendorId, criteriaId, score, notes });
+      saveScoreMutation.mutate({ vendorId, criteriaId, score, ...(notes !== undefined && { notes }) });
     });
 
     // Clear all pending scores and notes
