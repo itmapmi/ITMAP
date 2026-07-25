@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MarketSelector } from "@/components/admin/market-selector";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -675,18 +676,12 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
           <CardTitle>Select Market</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedMarket} onValueChange={setSelectedMarket}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose a market to manage vendors" />
-            </SelectTrigger>
-            <SelectContent>
-              {markets?.map(market => (
-                <SelectItem key={market.id} value={market.id}>
-                  {market.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MarketSelector
+            markets={markets}
+            selectedMarketId={selectedMarket}
+            onMarketChange={setSelectedMarket}
+            marketPlaceholder="Choose a market to manage vendors"
+          />
         </CardContent>
       </Card>
 

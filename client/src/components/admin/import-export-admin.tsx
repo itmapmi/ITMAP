@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MarketSelector } from "@/components/admin/market-selector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -170,22 +171,12 @@ export default function ImportExportAdmin() {
           <CardDescription>Choose the market/technology for which you want to export or import data</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={selectedMarketId} onValueChange={setSelectedMarketId}>
-            <SelectTrigger data-testid="select-market" className="w-full">
-              <SelectValue placeholder="Select a market..." />
-            </SelectTrigger>
-            <SelectContent>
-              {markets?.map((market) => (
-                <SelectItem 
-                  key={market.id} 
-                  value={market.id}
-                  data-testid={`select-market-option-${market.id}`}
-                >
-                  {market.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MarketSelector
+            markets={markets}
+            selectedMarketId={selectedMarketId}
+            onMarketChange={setSelectedMarketId}
+            marketPlaceholder="Select a market…"
+          />
         </CardContent>
       </Card>
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MarketSelector } from "@/components/admin/market-selector";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -325,18 +326,12 @@ export function FeatureCategoryManagement() {
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Select value={selectedMarket} onValueChange={setSelectedMarket}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a market to manage features" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(markets as Market[] || []).map((market: Market) => (
-                    <SelectItem key={market.id} value={market.id}>
-                      {market.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MarketSelector
+                markets={markets as Market[]}
+                selectedMarketId={selectedMarket}
+                onMarketChange={setSelectedMarket}
+                marketPlaceholder="Select a market to manage features"
+              />
             </div>
             {selectedMarket && (
               <Button

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MarketSelector } from "@/components/admin/market-selector";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -113,25 +114,13 @@ export default function GraphicManagement() {
           </Alert>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Select Market</label>
-            <Select value={selectedMarketId} onValueChange={setSelectedMarketId}>
-              <SelectTrigger data-testid="select-market">
-                <SelectValue placeholder="Choose a market to edit..." />
-              </SelectTrigger>
-              <SelectContent>
-                {marketsLoading ? (
-                  <SelectItem value="loading" disabled>Loading markets...</SelectItem>
-                ) : markets && markets.length > 0 ? (
-                  markets.map(market => (
-                    <SelectItem key={market.id} value={market.id}>
-                      {market.name.replace(/^ITMAP for /i, "")}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-markets" disabled>No markets available</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <MarketSelector
+              markets={markets}
+              selectedMarketId={selectedMarketId}
+              onMarketChange={setSelectedMarketId}
+              marketPlaceholder="Choose a market to edit…"
+              stripPrefix
+            />
           </div>
         </CardContent>
       </Card>
