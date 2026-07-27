@@ -5,6 +5,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import { buildSeoMeta, applySeoToHtml } from "./seo";
 
 const viteLogger = createLogger();
 
@@ -58,7 +59,15 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
-      const page = await vite.transformIndexHtml(url, template);
+      let page = await vite.transformIndexHtml(url, template);
+      // Inject per-route canonical / title / meta before sending so crawlers
+      // see correct metadata without needing to execute JavaScript.
+      try {
+        const seoMeta = await buildSeoMeta(url);
+        page = applySeoToHtml(page, seoMeta);
+      } catch {
+        // Never let SEO injection crash the dev server
+      }
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -78,8 +87,18 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // fall through to index.html if the file doesn't exist; inject per-route
+  // SEO tags so crawlers see correct canonical/title/meta without JavaScript.
+  const indexPath = path.resolve(distPath, "index.html");
+  const baseHtml = fs.readFileSync(indexPath, "utf-8");
+  app.use("*", async (req, res) => {
+    try {
+      const seoMeta = await buildSeoMeta(req.originalUrl);
+      const html = applySeoToHtml(baseHtml, seoMeta);
+      res.set("Content-Type", "text/html").send(html);
+    } catch {
+      // Fallback: serve as-is
+      res.sendFile(indexPath);
+    }
   });
 }
