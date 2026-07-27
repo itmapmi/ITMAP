@@ -30,3 +30,15 @@ id = "FV4q60VaRwMd94k0-gOEh"
 uri = "file://screenshots/itmap-logo-wide-bold-white.png"
 type = "image"
 title = "ITMAP Logo — Wide Bold White"
+
+[[outputs]]
+id = "Zacc_6jxvgELAND0_FxAW"
+uri = "file://attached_assets/ITMAP_logo_transparent_1755237362280.png"
+type = "image"
+title = "ITMAP LinkedIn Logo"
+
+[[outputs]]
+id = "xGWOKnKyuq6XbTBiq5Jg2"
+uri = "file://itmap-linkedin-logo.png"
+type = "image"
+title = "ITMAP LinkedIn Logo (1024×1024 PNG)"
