@@ -327,11 +327,7 @@ export default function Markets() {
             {filtered.map((market, i) => {
               const isFree = market.id === FREE_MARKET_ID;
               const slug = market.name.replace(/^ITMAP for /i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-              const href = isAuthenticated
-                ? `/markets/${slug}`
-                : isFree
-                  ? `/markets/${slug}`
-                  : "/login";
+              const href = `/markets/${slug}`;
 
               return (
                 <motion.div
