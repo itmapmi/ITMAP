@@ -678,7 +678,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     const xAxis = d3.axisBottom(xScale)
       .tickSize(0)
       .tickSizeOuter(0)
-      .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
+      .tickFormat(d => d === 0 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
       .tickSize(0)
       .tickSizeOuter(0)
@@ -713,7 +713,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // X-axis label: sits just below the tick numbers (margin.bottom - 8px clearance)
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - margin.bottom + (isMobile ? 32 : 36))
+      .attr("y", height - margin.bottom + (isMobile ? 38 : 48))
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
