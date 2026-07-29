@@ -643,9 +643,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // Responsive dimensions based on container and device
     const containerWidth = containerRef.current.offsetWidth;
     const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
-    // Square grid on desktop: margins are symmetric (L+R = T+B = 80),
-    // so an equal width/height yields a perfect square quadrant area.
-    const height = isMobile ? 350 : width;
+    // Rectangle on desktop: 3-column × 2-row grid suits a wider aspect ratio.
+    const height = isMobile ? 320 : Math.round(width * 0.72);
     const margin = isMobile 
       ? { top: 15, right: 15, bottom: 50, left: 50 }
       : { top: 20, right: 20, bottom: 60, left: 60 };
@@ -660,23 +659,17 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
 
-    // ── Three-zone ITMAP chart layout ────────────────────────────────────────
+    // ── Six-box ITMAP chart layout (3 cols × 2 rows) ─────────────────────────
     const defs = svg.append("defs");
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
-    // Zone gradients
+    // Leaders gradient (top-right box only)
     const leadersGradient = defs.append("linearGradient")
       .attr("id", "leadersGradient")
       .attr("x1", "0%").attr("y1", "0%").attr("x2", "100%").attr("y2", "100%");
     leadersGradient.append("stop").attr("offset", "0%").attr("stop-color", "#F7F4FF").attr("stop-opacity", 1);
     leadersGradient.append("stop").attr("offset", "100%").attr("stop-color", "#EBE4FD").attr("stop-opacity", 1);
-
-    const emergingGradient = defs.append("linearGradient")
-      .attr("id", "emergingGradient")
-      .attr("x1", "0%").attr("y1", "0%").attr("x2", "100%").attr("y2", "100%");
-    emergingGradient.append("stop").attr("offset", "0%").attr("stop-color", "#FCF0D2").attr("stop-opacity", 1);
-    emergingGradient.append("stop").attr("offset", "100%").attr("stop-color", "#FFFBEF").attr("stop-opacity", 1);
 
     const dotGradient = defs.append("radialGradient")
       .attr("id", "dotGradient")
@@ -685,40 +678,48 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     dotGradient.append("stop").attr("offset", "50%").attr("stop-color", "#4F46E5");
     dotGradient.append("stop").attr("offset", "100%").attr("stop-color", "#3730A3");
 
-    // Plot surface
-    svg.append("rect")
-      .attr("x", margin.left).attr("y", margin.top)
-      .attr("width", chartWidth).attr("height", chartHeight)
-      .attr("fill", "#FDFEFF")
-      .attr("stroke", "#E2E8F0")
-      .attr("stroke-width", 1);
-
-    // Zone boundaries in data coordinates
-    const leftX = margin.left;
-    const rightX = width - margin.right;
-    const topY = margin.top;
+    // Pixel boundaries
+    const leftX   = margin.left;
+    const rightX  = width - margin.right;
+    const topY    = margin.top;
     const bottomY = height - margin.bottom;
-    const midX = xScale(50);
-    const midY = yScale(50);
-    const emergingLeftX = margin.left;
-    const emergingRightX = xScale(40);
-    const emergingTopY = yScale(30);
+    const col1X   = xScale(33);   // left | middle column divider
+    const col2X   = xScale(67);   // middle | right column divider
+    const midY    = yScale(50);   // top | bottom row divider
 
-    // Leaders zone: top-right 50x50 (x >= 50, y >= 50)
-    svg.append("rect")
-      .attr("x", midX).attr("y", topY)
-      .attr("width", rightX - midX).attr("height", midY - topY)
-      .attr("fill", "url(#leadersGradient)")
-      .attr("stroke", "#E2E8F0")
-      .attr("stroke-width", 0);
+    // Six box fills — only Leaders (top-right) is coloured
+    const boxes = [
+      { x: leftX, y: topY,  w: col1X - leftX,  h: midY - topY,    fill: "#FDFEFF"                },
+      { x: col1X, y: topY,  w: col2X - col1X,  h: midY - topY,    fill: "#FDFEFF"                },
+      { x: col2X, y: topY,  w: rightX - col2X, h: midY - topY,    fill: "url(#leadersGradient)"  },
+      { x: leftX, y: midY,  w: col1X - leftX,  h: bottomY - midY, fill: "#FDFEFF"                },
+      { x: col1X, y: midY,  w: col2X - col1X,  h: bottomY - midY, fill: "#FDFEFF"                },
+      { x: col2X, y: midY,  w: rightX - col2X, h: bottomY - midY, fill: "#FDFEFF"                },
+    ];
+    boxes.forEach(b => {
+      svg.append("rect")
+        .attr("x", b.x).attr("y", b.y)
+        .attr("width", b.w).attr("height", b.h)
+        .attr("fill", b.fill);
+    });
 
-    // Emerging zone: bottom-left 40x30 (x <= 40, y <= 30)
+    // Outer border
     svg.append("rect")
-      .attr("x", emergingLeftX).attr("y", emergingTopY)
-      .attr("width", emergingRightX - emergingLeftX).attr("height", bottomY - emergingTopY)
-      .attr("fill", "url(#emergingGradient)")
-      .attr("stroke", "#E2E8F0")
-      .attr("stroke-width", 0);
+      .attr("x", leftX).attr("y", topY)
+      .attr("width", chartWidth).attr("height", chartHeight)
+      .attr("fill", "none")
+      .attr("stroke", "#E2E8F0").attr("stroke-width", 1.5);
+
+    // Internal column dividers
+    [col1X, col2X].forEach(x => {
+      svg.append("line")
+        .attr("x1", x).attr("x2", x).attr("y1", topY).attr("y2", bottomY)
+        .attr("stroke", "#E2E8F0").attr("stroke-width", 1.5);
+    });
+    // Internal row divider
+    svg.append("line")
+      .attr("x1", leftX).attr("x2", rightX).attr("y1", midY).attr("y2", midY)
+      .attr("stroke", "#E2E8F0").attr("stroke-width", 1.5);
 
     // Add subtle grid lines for better readability (toggleable)
     if (showGrid) {
@@ -814,42 +815,35 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("fill", "#94a3b8")
       .text("Powered by itmap.ai");
 
-    // ── Three-zone labels ─────────────────────────────────────────────────
-    const bandLabelSize = isMobile ? "11px" : "14px";
-    const labelOffset = isMobile ? 10 : 15;
+    // ── Six-box labels ────────────────────────────────────────────────────
+    const bandLabelSize = isMobile ? "10px" : "13px";
+    const labelOffset = isMobile ? 8 : 12;
+    const labelY_top    = topY + labelOffset + (isMobile ? 8 : 12);
+    const labelY_bottom = bottomY - labelOffset;
+    const midColX = col1X + (col2X - col1X) / 2;
 
-    // Leaders label — top right
-    svg.append("text")
-      .attr("x", width - margin.right - labelOffset)
-      .attr("y", margin.top + labelOffset + (isMobile ? 8 : 12))
-      .attr("text-anchor", "end")
-      .attr("font-size", bandLabelSize)
-      .attr("font-weight", "800")
-      .attr("fill", "#6D5BD0")
-      .attr("letter-spacing", "0.5")
-      .text("Leaders");
+    // Top row
+    svg.append("text").attr("x", leftX + labelOffset).attr("y", labelY_top)
+      .attr("text-anchor", "start").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#64748b").text("Custodians");
+    svg.append("text").attr("x", midColX).attr("y", labelY_top)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#64748b").text("Contenders");
+    svg.append("text").attr("x", rightX - labelOffset).attr("y", labelY_top)
+      .attr("text-anchor", "end").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#6D5BD0").text("Leaders");
 
-    // Emerging label — bottom left
-    svg.append("text")
-      .attr("x", margin.left + labelOffset)
-      .attr("y", height - margin.bottom - labelOffset)
-      .attr("text-anchor", "start")
-      .attr("font-size", bandLabelSize)
-      .attr("font-weight", "800")
-      .attr("fill", "#B07C1F")
-      .attr("letter-spacing", "0.5")
+    // Bottom row
+    svg.append("text").attr("x", leftX + labelOffset).attr("y", labelY_bottom)
+      .attr("text-anchor", "start").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#64748b")
       .text(isMobile ? "Emerging" : "Emerging Players");
-
-    // Challengers label — bottom right
-    svg.append("text")
-      .attr("x", width - margin.right - labelOffset)
-      .attr("y", height - margin.bottom - labelOffset)
-      .attr("text-anchor", "end")
-      .attr("font-size", bandLabelSize)
-      .attr("font-weight", "800")
-      .attr("fill", "#7C8DA6")
-      .attr("letter-spacing", "0.5")
-      .text("Contenders");
+    svg.append("text").attr("x", midColX).attr("y", labelY_bottom)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#64748b").text("Specialists");
+    svg.append("text").attr("x", rightX - labelOffset).attr("y", labelY_bottom)
+      .attr("text-anchor", "end").attr("font-size", bandLabelSize)
+      .attr("font-weight", "800").attr("fill", "#64748b").text("Catalysts");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
