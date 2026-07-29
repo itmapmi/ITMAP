@@ -594,12 +594,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
     // Responsive dimensions based on container and device
     const containerWidth = containerRef.current.offsetWidth;
-    const width = isMobile ? Math.min(containerWidth - 20, 380) : Math.min(containerWidth, 600);
+    const width = isMobile ? Math.min(containerWidth - 20, 420) : Math.min(containerWidth, 760);
     // Rectangle on desktop: 3-column × 2-row grid suits a wider aspect ratio.
-    const height = isMobile ? 320 : Math.round(width * 0.72);
-    const margin = isMobile 
-      ? { top: 15, right: 15, bottom: 50, left: 50 }
-      : { top: 20, right: 20, bottom: 60, left: 60 };
+    const height = isMobile ? 360 : Math.round(width * 0.72);
+    // Extra top/bottom margin accommodates outside box labels above/below the chart.
+    const margin = isMobile
+      ? { top: 36, right: 15, bottom: 68, left: 50 }
+      : { top: 44, right: 20, bottom: 82, left: 60 };
 
     svg.attr("width", width).attr("height", height).attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
 
@@ -740,35 +741,52 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("fill", "#94a3b8")
       .text("Powered by itmap.ai");
 
-    // ── Six-box labels ────────────────────────────────────────────────────
-    const bandLabelSize = isMobile ? "10px" : "13px";
-    const labelOffset = isMobile ? 8 : 12;
-    const labelY_top    = topY + labelOffset + (isMobile ? 8 : 12);
-    const labelY_bottom = bottomY - labelOffset;
-    const midColX = col1X + (col2X - col1X) / 2;
+    // ── Six-box labels — outside the chart boundary ───────────────────────
+    const bandLabelSize = isMobile ? "10px" : "12px";
+    const col0Mid = (leftX + col1X) / 2;
+    const col1Mid = (col1X + col2X) / 2;
+    const col2Mid = (col2X + rightX) / 2;
 
-    // Top row
-    svg.append("text").attr("x", leftX + labelOffset).attr("y", labelY_top)
-      .attr("text-anchor", "start").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#64748b").text("Custodians");
-    svg.append("text").attr("x", midColX).attr("y", labelY_top)
+    // Top labels — sit above the chart, centred on each column
+    const topLabelY = topY - (isMobile ? 8 : 10);
+    svg.append("text").attr("x", col0Mid).attr("y", topLabelY)
       .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#64748b").text("Contenders");
-    svg.append("text").attr("x", rightX - labelOffset).attr("y", labelY_top)
-      .attr("text-anchor", "end").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#6D5BD0").text("Leaders");
+      .attr("font-weight", "600").attr("fill", "#64748b").text("Custodians");
+    svg.append("text").attr("x", col1Mid).attr("y", topLabelY)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "600").attr("fill", "#64748b").text("Contenders");
+    svg.append("text").attr("x", col2Mid).attr("y", topLabelY)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "700").attr("fill", "#6D5BD0").text("Leaders");
 
-    // Bottom row
-    svg.append("text").attr("x", leftX + labelOffset).attr("y", labelY_bottom)
-      .attr("text-anchor", "start").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#64748b")
+    // Tick marks connecting top labels to the chart top edge
+    [col0Mid, col1Mid, col2Mid].forEach(cx => {
+      svg.append("line")
+        .attr("x1", cx).attr("x2", cx)
+        .attr("y1", topY - (isMobile ? 5 : 6)).attr("y2", topY)
+        .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
+    });
+
+    // Bottom labels — sit below the chart, centred on each column
+    const botLabelY = bottomY + (isMobile ? 18 : 20);
+    svg.append("text").attr("x", col0Mid).attr("y", botLabelY)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "600").attr("fill", "#64748b")
       .text(isMobile ? "Emerging" : "Emerging Players");
-    svg.append("text").attr("x", midColX).attr("y", labelY_bottom)
+    svg.append("text").attr("x", col1Mid).attr("y", botLabelY)
       .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#64748b").text("Specialists");
-    svg.append("text").attr("x", rightX - labelOffset).attr("y", labelY_bottom)
-      .attr("text-anchor", "end").attr("font-size", bandLabelSize)
-      .attr("font-weight", "800").attr("fill", "#64748b").text("Catalysts");
+      .attr("font-weight", "600").attr("fill", "#64748b").text("Specialists");
+    svg.append("text").attr("x", col2Mid).attr("y", botLabelY)
+      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
+      .attr("font-weight", "600").attr("fill", "#64748b").text("Catalysts");
+
+    // Tick marks connecting bottom labels to the chart bottom edge
+    [col0Mid, col1Mid, col2Mid].forEach(cx => {
+      svg.append("line")
+        .attr("x1", cx).attr("x2", cx)
+        .attr("y1", bottomY).attr("y2", bottomY + (isMobile ? 5 : 6))
+        .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
+    });
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
