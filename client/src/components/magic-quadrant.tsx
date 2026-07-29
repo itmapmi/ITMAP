@@ -19,57 +19,12 @@ import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 
-export interface QuadrantSettings {
-  dividerY: number;      // 0-100 scale — where the horizontal dividing line sits
-  topLabel: string;      // e.g. "ITMAP Leaders", "ITMAP Top 5", "ITMAP Top 3"
-  colorTheme: string;    // "dark-blue-gold" | "emerald-coral" | "violet-rose"
-}
-
-const DEFAULT_SETTINGS: QuadrantSettings = {
-  dividerY: 50,
-  topLabel: "ITMAP Leaders",
-  colorTheme: "dark-blue-gold",
-};
-
-interface ColorTheme {
-  topFill1: string; topFill2: string; topFillHighlight: string;
-  bottomFill1: string; bottomFill2: string; bottomFillHighlight: string;
-  topStroke: string; bottomStroke: string;
-  topText: string; bottomText: string;
-  dotColor: string; dotDark: string;
-}
-
-const COLOR_THEMES: Record<string, ColorTheme> = {
-  "dark-blue-gold": {
-    topFillHighlight: "#F0C84A", topFill2: "#C8961E", topFill1: "#9A6E0E",
-    bottomFillHighlight: "#243F7A", bottomFill2: "#1B3A6B", bottomFill1: "#0F2248",
-    topStroke: "#D4A822", bottomStroke: "#1B3A6B",
-    topText: "#ffffff", bottomText: "#ffffff",
-    dotColor: "#C8961E", dotDark: "#7C5209",
-  },
-  "emerald-coral": {
-    topFillHighlight: "#059669", topFill2: "#059669", topFill1: "#059669",
-    bottomFillHighlight: "#ea580c", bottomFill2: "#ea580c", bottomFill1: "#ea580c",
-    topStroke: "#059669", bottomStroke: "#ea580c",
-    topText: "#ffffff", bottomText: "#ffffff",
-    dotColor: "#059669", dotDark: "#064e3b",
-  },
-  "violet-rose": {
-    topFillHighlight: "#7c3aed", topFill2: "#7c3aed", topFill1: "#7c3aed",
-    bottomFillHighlight: "#e11d48", bottomFill2: "#e11d48", bottomFill1: "#e11d48",
-    topStroke: "#7c3aed", bottomStroke: "#e11d48",
-    topText: "#ffffff", bottomText: "#ffffff",
-    dotColor: "#7c3aed", dotDark: "#4c1d95",
-  },
-};
-
 interface MagicQuadrantProps {
   marketId: string;
   marketName: string;
   marketType?: "mature" | "emerging";
   enableDrag?: boolean;
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
-  quadrantSettings?: QuadrantSettings;
 }
 
 interface VendorWithScores extends Vendor {
@@ -103,13 +58,10 @@ interface HistoricalPoint {
   recordedAt: string | Date;
 }
 
-export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, quadrantSettings }: MagicQuadrantProps) {
-  const settings = { ...DEFAULT_SETTINGS, ...quadrantSettings };
-  const theme = COLOR_THEMES[settings.colorTheme] ?? COLOR_THEMES["dark-blue-gold"];
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
-  const [showGrid, setShowGrid] = useState(true);
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [evidenceVendor, setEvidenceVendor] = useState<{ vendor: VendorWithScores; pixelX: number; pixelY: number } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
@@ -721,40 +673,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("x1", leftX).attr("x2", rightX).attr("y1", midY).attr("y2", midY)
       .attr("stroke", "#E2E8F0").attr("stroke-width", 1.5);
 
-    // Add subtle grid lines for better readability (toggleable)
-    if (showGrid) {
-      svg.selectAll(".grid-line-x")
-        .data(xScale.ticks(10))
-        .enter()
-        .append("line")
-        .attr("class", "grid-line-x")
-        .attr("x1", d => xScale(d))
-        .attr("x2", d => xScale(d))
-        .attr("y1", margin.top)
-        .attr("y2", height - margin.bottom)
-        .attr("stroke", "#EDF1F7")
-        .attr("stroke-width", 1);
-
-      svg.selectAll(".grid-line-y")
-        .data(yScale.ticks(10))
-        .enter()
-        .append("line")
-        .attr("class", "grid-line-y")
-        .attr("x1", margin.left)
-        .attr("x2", width - margin.right)
-        .attr("y1", d => yScale(d))
-        .attr("y2", d => yScale(d))
-        .attr("stroke", "#EDF1F7")
-        .attr("stroke-width", 1);
-    }
-
-    // Add professional-looking axes (tick lines hidden when grid is off)
+    // Add professional-looking axes
     const xAxis = d3.axisBottom(xScale)
-      .tickSize(showGrid ? -chartHeight : 0)
+      .tickSize(0)
       .tickSizeOuter(0)
       .tickFormat(d => d === 0 || d === 50 || d === 100 ? `${d}` : '');
     const yAxis = d3.axisLeft(yScale)
-      .tickSize(showGrid ? -chartWidth : 0)
+      .tickSize(0)
       .tickSizeOuter(0)
       .tickFormat(d => d === 50 || d === 100 ? `${d}` : '');
 
@@ -1051,7 +976,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
       // Add the text label positioned around the dot
       const fontSize = isMobile ? 9 : 11;
-      const inBottomBand = vendor.adjustedY < settings.dividerY;
+      const inBottomBand = vendor.adjustedY < 50;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
@@ -1097,7 +1022,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, quadrantSettings, showGrid, allHistoricalPositions]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1232,20 +1157,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             <CardHeader className={`${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
               <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
               <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowGrid(g => !g)}
-                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                  showGrid
-                    ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    : "border-slate-200 bg-white text-slate-400 hover:bg-slate-50"
-                }`}
-                title={showGrid ? "Hide grid lines" : "Show grid lines"}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 4.5h12M1 9.5h12M4.5 1v12M9.5 1v12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                </svg>
-                {showGrid ? "Grid on" : "Grid off"}
-              </button>
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}

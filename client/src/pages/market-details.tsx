@@ -726,11 +726,6 @@ export default function MarketDetails() {
               marketType={(market as any).marketType ?? "mature"}
               enableDrag={editingLabels}
               onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
-              quadrantSettings={{
-                dividerY: market.quadrantDividerY != null ? Number(market.quadrantDividerY) : 50,
-                topLabel: market.quadrantTopLabel ?? "ITMAP Leaders",
-                colorTheme: market.quadrantColorTheme ?? "dark-blue-gold",
-              }}
             />
           </TabsContent>
 
