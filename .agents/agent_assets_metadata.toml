@@ -48,3 +48,9 @@ id = "jBk8slk6n6QqFf7XlvtBk"
 uri = "file://fact-check-responses.docx"
 type = "word_document"
 title = "Vendor Fact-Check Responses — NeuralTrust"
+
+[[outputs]]
+id = "l4YcRpaluxFLMQYu7gly9"
+uri = "file://neuraltrust-fact-check-responses.docx"
+type = "word_document"
+title = "NeuralTrust Fact-Check Responses — All 49 Submissions"
