@@ -42,3 +42,9 @@ id = "xGWOKnKyuq6XbTBiq5Jg2"
 uri = "file://itmap-linkedin-logo.png"
 type = "image"
 title = "ITMAP LinkedIn Logo (1024×1024 PNG)"
+
+[[outputs]]
+id = "jBk8slk6n6QqFf7XlvtBk"
+uri = "file://fact-check-responses.docx"
+type = "word_document"
+title = "Vendor Fact-Check Responses — NeuralTrust"
