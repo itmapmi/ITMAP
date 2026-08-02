@@ -754,22 +754,29 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // Helper: draw a filled rounded-rect badge then the label text on top.
     // cx/y follow the same convention as the plain text calls (x=centre, y=baseline).
     const drawBadge = (cx: number, y: number, text: string, bgColor: string, fw: string) => {
-      const w = Math.ceil(text.length * badgeCharW) + badgePadH * 2;
       const h = bandFontPx + badgePadV * 2;
-      svg.append("rect")
-        .attr("x", cx - w / 2)
+      // Append rect with placeholder position/width; updated after measuring text.
+      const rect = svg.append("rect")
+        .attr("x", cx)
         .attr("y", y - bandFontPx - badgePadV)
-        .attr("width", w)
+        .attr("width", 0)
         .attr("height", h)
         .attr("rx", 4)
         .attr("fill", bgColor);
-      svg.append("text")
+      const textNode = svg.append("text")
         .attr("x", cx).attr("y", y)
         .attr("text-anchor", "middle")
         .attr("font-size", bandLabelSize)
         .attr("font-weight", fw)
         .attr("fill", "#ffffff")
         .text(text);
+      // Use SVG's native measurement for exact pixel width — eliminates clipping on long labels.
+      const textEl = textNode.node();
+      const measuredW = textEl ? textEl.getComputedTextLength() : text.length * badgeCharW;
+      const w = Math.ceil(measuredW) + badgePadH * 2;
+      rect
+        .attr("x", cx - w / 2)
+        .attr("width", w);
     };
 
     // Top labels — sit above the chart, centred on each column
