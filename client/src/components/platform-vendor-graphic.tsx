@@ -263,21 +263,15 @@ export default function PlatformVendorGraphic() {
               strokeWidth={1}
             />
 
-            {/* Zones */}
-            <Zone
-              x={xScale(50)}
-              y={MARGIN.top}
-              width={WIDTH - MARGIN.right - xScale(50)}
-              height={yScale(50) - MARGIN.top}
-              fill="url(#pg-leaders)"
-            />
-            <Zone
-              x={MARGIN.left}
-              y={yScale(30)}
-              width={xScale(40) - MARGIN.left}
-              height={HEIGHT - MARGIN.bottom - yScale(30)}
-              fill="url(#pg-emerging)"
-            />
+            {/* Six-box zones — 3 columns × 2 rows */}
+            {/* Top row (high viability) */}
+            <Zone x={MARGIN.left}    y={MARGIN.top} width={xScale(33.3)-MARGIN.left}             height={yScale(50)-MARGIN.top} fill="rgba(100,116,139,0.07)" />
+            <Zone x={xScale(33.3)}   y={MARGIN.top} width={xScale(66.6)-xScale(33.3)}             height={yScale(50)-MARGIN.top} fill="rgba(30,64,175,0.10)" />
+            <Zone x={xScale(66.6)}   y={MARGIN.top} width={WIDTH-MARGIN.right-xScale(66.6)}        height={yScale(50)-MARGIN.top} fill="url(#pg-leaders)" />
+            {/* Bottom row (low viability) */}
+            <Zone x={MARGIN.left}    y={yScale(50)} width={xScale(33.3)-MARGIN.left}             height={HEIGHT-MARGIN.bottom-yScale(50)} fill="url(#pg-emerging)" />
+            <Zone x={xScale(33.3)}   y={yScale(50)} width={xScale(66.6)-xScale(33.3)}             height={HEIGHT-MARGIN.bottom-yScale(50)} fill="rgba(100,116,139,0.05)" />
+            <Zone x={xScale(66.6)}   y={yScale(50)} width={WIDTH-MARGIN.right-xScale(66.6)}        height={HEIGHT-MARGIN.bottom-yScale(50)} fill="rgba(6,182,212,0.07)" />
 
             {/* Grid lines */}
             {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((pct) => (
@@ -300,6 +294,12 @@ export default function PlatformVendorGraphic() {
                 />
               </g>
             ))}
+
+            {/* Six-box column dividers */}
+            <line x1={xScale(33.3)} y1={MARGIN.top} x2={xScale(33.3)} y2={HEIGHT-MARGIN.bottom} stroke="rgba(255,255,255,0.22)" strokeWidth={1} />
+            <line x1={xScale(66.6)} y1={MARGIN.top} x2={xScale(66.6)} y2={HEIGHT-MARGIN.bottom} stroke="rgba(255,255,255,0.22)" strokeWidth={1} />
+            {/* Row divider */}
+            <line x1={MARGIN.left} y1={yScale(50)} x2={WIDTH-MARGIN.right} y2={yScale(50)} stroke="rgba(255,255,255,0.22)" strokeWidth={1} />
 
             {/* Axes */}
             <line
@@ -388,40 +388,27 @@ export default function PlatformVendorGraphic() {
               Vendor Viability →
             </text>
 
-            {/* Zone labels */}
-            <text
-              x={WIDTH - MARGIN.right - 15}
-              y={MARGIN.top + 22}
-              fill="#A5B4FC"
-              fontSize={14}
-              fontWeight={800}
-              letterSpacing={0.5}
-              textAnchor="end"
-            >
-              Leaders
-            </text>
-            <text
-              x={MARGIN.left + 15}
-              y={HEIGHT - MARGIN.bottom - 15}
-              fill="#FBBF24"
-              fontSize={14}
-              fontWeight={800}
-              letterSpacing={0.5}
-              textAnchor="start"
-            >
-              Emerging Players
-            </text>
-            <text
-              x={WIDTH - MARGIN.right - 15}
-              y={HEIGHT - MARGIN.bottom - 15}
-              fill="#94a3b8"
-              fontSize={14}
-              fontWeight={800}
-              letterSpacing={0.5}
-              textAnchor="end"
-            >
-              Contenders
-            </text>
+            {/* Six-box badge labels — navy pill for 5, purple for Leaders */}
+            {(
+              [
+                { cx: (MARGIN.left + xScale(33.3)) / 2,          y: MARGIN.top + 18,          text: "Custodians",       fill: "#1E3A5F" },
+                { cx: (xScale(33.3) + xScale(66.6)) / 2,          y: MARGIN.top + 18,          text: "Contenders",       fill: "#1E3A5F" },
+                { cx: (xScale(66.6) + WIDTH - MARGIN.right) / 2,  y: MARGIN.top + 18,          text: "Leaders",          fill: "#6D5BD0" },
+                { cx: (MARGIN.left + xScale(33.3)) / 2,          y: HEIGHT - MARGIN.bottom - 12, text: "Emerging Players", fill: "#1E3A5F" },
+                { cx: (xScale(33.3) + xScale(66.6)) / 2,          y: HEIGHT - MARGIN.bottom - 12, text: "Specialists",     fill: "#1E3A5F" },
+                { cx: (xScale(66.6) + WIDTH - MARGIN.right) / 2,  y: HEIGHT - MARGIN.bottom - 12, text: "Catalysts",       fill: "#1E3A5F" },
+              ] as { cx: number; y: number; text: string; fill: string }[]
+            ).map(({ cx, y, text, fill }) => {
+              const fs = 11, padH = 7, padV = 3, charW = 6.5;
+              const w = Math.ceil(text.length * charW) + padH * 2;
+              const h = fs + padV * 2;
+              return (
+                <g key={text}>
+                  <rect x={cx - w / 2} y={y - fs - padV} width={w} height={h} rx={3} fill={fill} />
+                  <text x={cx} y={y} textAnchor="middle" fill="#ffffff" fontSize={fs} fontWeight={700}>{text}</text>
+                </g>
+              );
+            })}
 
             {/* Watermark */}
             <text
