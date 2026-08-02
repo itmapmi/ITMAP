@@ -743,23 +743,39 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
     // ── Six-box labels — outside the chart boundary ───────────────────────
     const bandLabelSize = isMobile ? "10px" : "12px";
+    const bandFontPx   = isMobile ? 10 : 12;
+    const badgeCharW   = isMobile ? 6.0 : 6.7;  // estimated px per char at each font size
+    const badgePadH    = 8;  // horizontal padding each side
+    const badgePadV    = 4;  // vertical padding above & below text
     const col0Mid = (leftX + col1X) / 2;
     const col1Mid = (col1X + col2X) / 2;
     const col2Mid = (col2X + rightX) / 2;
 
+    // Helper: draw a filled rounded-rect badge then the label text on top.
+    // cx/y follow the same convention as the plain text calls (x=centre, y=baseline).
+    const drawBadge = (cx: number, y: number, text: string, bgColor: string, fw: string) => {
+      const w = Math.ceil(text.length * badgeCharW) + badgePadH * 2;
+      const h = bandFontPx + badgePadV * 2;
+      svg.append("rect")
+        .attr("x", cx - w / 2)
+        .attr("y", y - bandFontPx - badgePadV)
+        .attr("width", w)
+        .attr("height", h)
+        .attr("rx", 4)
+        .attr("fill", bgColor);
+      svg.append("text")
+        .attr("x", cx).attr("y", y)
+        .attr("text-anchor", "middle")
+        .attr("font-size", bandLabelSize)
+        .attr("font-weight", fw)
+        .attr("fill", "#ffffff")
+        .text(text);
+    };
+
     // Top labels — sit above the chart, centred on each column
     const topLabelY = topY - (isMobile ? 8 : 10);
-    svg.append("text").attr("x", col0Mid).attr("y", topLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "600").attr("fill", "#64748b").text("Custodians");
-    svg.append("text").attr("x", col1Mid).attr("y", topLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "600").attr("fill", "#64748b").text("Contenders");
-    svg.append("text").attr("x", col2Mid).attr("y", topLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "700").attr("fill", "#6D5BD0").text("Leaders");
 
-    // Tick marks connecting top labels to the chart top edge
+    // Tick marks connecting top badges to the chart top edge (drawn first, behind badges)
     [col0Mid, col1Mid, col2Mid].forEach(cx => {
       svg.append("line")
         .attr("x1", cx).attr("x2", cx)
@@ -767,26 +783,24 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
 
+    drawBadge(col0Mid, topLabelY, "Custodians",  "#1E3A5F", "600");
+    drawBadge(col1Mid, topLabelY, "Contenders",  "#1E3A5F", "600");
+    drawBadge(col2Mid, topLabelY, "Leaders",     "#6D5BD0", "700");
+
     // Bottom labels — sit below the chart, centred on each column
     const botLabelY = bottomY + (isMobile ? 18 : 20);
-    svg.append("text").attr("x", col0Mid).attr("y", botLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "600").attr("fill", "#64748b")
-      .text(isMobile ? "Emerging" : "Emerging Players");
-    svg.append("text").attr("x", col1Mid).attr("y", botLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "600").attr("fill", "#64748b").text("Specialists");
-    svg.append("text").attr("x", col2Mid).attr("y", botLabelY)
-      .attr("text-anchor", "middle").attr("font-size", bandLabelSize)
-      .attr("font-weight", "600").attr("fill", "#64748b").text("Catalysts");
 
-    // Tick marks connecting bottom labels to the chart bottom edge
+    // Tick marks connecting bottom badges to the chart bottom edge (drawn first, behind badges)
     [col0Mid, col1Mid, col2Mid].forEach(cx => {
       svg.append("line")
         .attr("x1", cx).attr("x2", cx)
         .attr("y1", bottomY).attr("y2", bottomY + (isMobile ? 5 : 6))
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
+
+    drawBadge(col0Mid, botLabelY, isMobile ? "Emerging" : "Emerging Players", "#1E3A5F", "600");
+    drawBadge(col1Mid, botLabelY, "Specialists", "#1E3A5F", "600");
+    drawBadge(col2Mid, botLabelY, "Catalysts",   "#1E3A5F", "600");
 
     // Dots are plotted at their EXACT computed (Execution, Viability) coordinates.
     // No layout fudging — labels move to avoid overlap, dots never do.
