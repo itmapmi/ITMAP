@@ -1,5 +1,12 @@
 # itmap.ai — robots.txt
 # See https://itmap.ai for the live site
+#
+# IMPORTANT: this site is client-rendered (React SPA).
+# Googlebot must be able to call the public /api/markets* and
+# /api/datasheets/markets* endpoints during JS execution so it can
+# see real market and vendor data instead of an empty shell.
+# Longest-match wins: the Allow rules below override the Disallow: /api/
+# catch-all for those specific prefixes only.
 
 # Default rules for all crawlers
 User-agent: *
@@ -13,24 +20,56 @@ Disallow: /api/
 Disallow: /market-builder
 Disallow: /forecast-builder
 
-# Major search engines — explicit allow
+# Major search engines — allow the public data APIs needed for rendering
 User-agent: Googlebot
 Allow: /
+# Public read endpoints — required for client-side rendering to work
+Allow: /api/markets
+Allow: /api/datasheets/markets
+# Block everything else under /api/
+Disallow: /api/auth
+Disallow: /api/admin
+Disallow: /api/me
+Disallow: /api/external
+Disallow: /api/track
+Disallow: /api/download
+Disallow: /api/chat
+Disallow: /api/market-builder
+Disallow: /api/forecast-builder
+Disallow: /api/rfp
+Disallow: /api/lead-gen
+Disallow: /api/battle-cards
+Disallow: /api/cve
+Disallow: /api/
 Disallow: /admin
 Disallow: /admin/
 Disallow: /login
 Disallow: /register
 Disallow: /me/
-Disallow: /api/
 
 User-agent: Bingbot
 Allow: /
+Allow: /api/markets
+Allow: /api/datasheets/markets
+Disallow: /api/auth
+Disallow: /api/admin
+Disallow: /api/me
+Disallow: /api/external
+Disallow: /api/track
+Disallow: /api/download
+Disallow: /api/chat
+Disallow: /api/market-builder
+Disallow: /api/forecast-builder
+Disallow: /api/rfp
+Disallow: /api/lead-gen
+Disallow: /api/battle-cards
+Disallow: /api/cve
+Disallow: /api/
 Disallow: /admin
 Disallow: /admin/
 Disallow: /login
 Disallow: /register
 Disallow: /me/
-Disallow: /api/
 
 User-agent: DuckDuckBot
 Allow: /
