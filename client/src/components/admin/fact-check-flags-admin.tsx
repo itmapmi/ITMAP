@@ -6,8 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, FileDown, Sheet } from "lucide-react";
+
+interface VendorSummary {
+  id: string;
+  name: string;
+  marketId: string | null;
+  marketName: string | null;
+}
 
 interface FlagRow {
   id: string;
@@ -80,8 +88,16 @@ export function FactCheckFlagsAdmin() {
   const [rejectNotes, setRejectNotes] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Export state
+  const [exportVendorId, setExportVendorId] = useState<string>("__all__");
+  const [exporting, setExporting] = useState<"docx" | "xlsx" | null>(null);
+
   const { data, isLoading } = useQuery<{ flags: FlagRow[] }>({
     queryKey: ["/api/admin/fact-check-flags"],
+  });
+
+  const { data: exportVendors } = useQuery<VendorSummary[]>({
+    queryKey: ["/api/admin/fact-check-flags/vendors"],
   });
 
   const reviewMutation = useMutation({
@@ -118,6 +134,32 @@ export function FactCheckFlagsAdmin() {
   function submitReject() {
     if (!rejectFlag) return;
     reviewMutation.mutate({ id: rejectFlag.id, body: { status: "rejected", adminNotes: rejectNotes } });
+  }
+
+  async function downloadExport(format: "docx" | "xlsx") {
+    setExporting(format);
+    try {
+      const params = new URLSearchParams({ format });
+      if (exportVendorId && exportVendorId !== "__all__") params.set("vendorId", exportVendorId);
+      const res = await fetch(`/api/admin/fact-check-flags/export?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const vendorName = exportVendorId === "__all__"
+        ? "all-vendors"
+        : (exportVendors?.find((v) => v.id === exportVendorId)?.name ?? "vendor").replace(/\s+/g, "-");
+      a.download = `fact-review-${vendorName}-${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setExporting(null);
+    }
   }
 
   function FlagCard({ flag }: { flag: FlagRow }) {
@@ -211,6 +253,53 @@ export function FactCheckFlagsAdmin() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Fact-Check Flags</h3>
         <p className="text-sm text-gray-500">Vendor-submitted correction requests for feature support rows. Review and apply approved changes.</p>
+      </div>
+
+      {/* ── Export panel ─────────────────────────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm font-semibold text-gray-700 mb-3">Export Fact Review</p>
+        <p className="text-xs text-gray-500 mb-3">
+          Exports all evaluated items (Vendor Evaluation, Product Evaluation, ISV Ecosystem) with current
+          write-ups, scores, and any vendor-proposed corrections.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[180px] max-w-xs">
+            <Select value={exportVendorId} onValueChange={setExportVendorId}>
+              <SelectTrigger className="h-9 text-sm bg-white">
+                <SelectValue placeholder="All vendors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All vendors</SelectItem>
+                {(exportVendors ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                    {v.marketName ? ` · ${v.marketName.replace(/^ITMAP for /i, "")}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            disabled={!!exporting}
+            onClick={() => downloadExport("docx")}
+          >
+            <FileDown className="h-4 w-4" />
+            {exporting === "docx" ? "Generating…" : "Export Word"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            disabled={!!exporting}
+            onClick={() => downloadExport("xlsx")}
+          >
+            <Sheet className="h-4 w-4" />
+            {exporting === "xlsx" ? "Generating…" : "Export Excel"}
+          </Button>
+        </div>
       </div>
 
       {flags.length === 0 && (

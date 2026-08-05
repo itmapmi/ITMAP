@@ -2,6 +2,8 @@ import {
   type VendorFactCheckFlag,
   vendorFactCheckFlags,
   vendorFeatureSupport,
+  vendorScores,
+  criteria,
   features,
   featureCategories,
   vendors,
@@ -55,6 +57,171 @@ export interface AdminFactCheckFlagRow {
   featureSupportId: string;
   createdAt: Date;
   reviewedAt: Date | null;
+}
+
+// ── Export types ────────────────────────────────────────────────────────────
+
+export interface FactReviewExportRow {
+  vendorId: string;
+  vendorName: string;
+  marketId: string | null;
+  marketName: string | null;
+  section: "Vendor Evaluation" | "Product Evaluation" | "ISV Ecosystem";
+  category: string;
+  item: string;
+  currentWriteup: string | null;
+  currentScore: string | null;
+  proposedWriteup: string | null;
+  proposedScore: string | null;
+  flagStatus: string | null;
+  evidenceLinks: string | null;
+}
+
+export interface FactReviewVendorSummary {
+  id: string;
+  name: string;
+  marketId: string | null;
+  marketName: string | null;
+}
+
+// ── Export queries ───────────────────────────────────────────────────────────
+
+const HARVEY_LABELS = ["None", "Minimal", "Partial", "Mostly", "Full"];
+
+/** Returns distinct vendors that have any vendor_feature_support or vendor_scores rows. */
+export async function getVendorsForFactReviewExport(): Promise<FactReviewVendorSummary[]> {
+  const rows = await db
+    .selectDistinct({
+      id: vendors.id,
+      name: vendors.name,
+      marketId: vendors.marketId,
+      marketName: markets.name,
+    })
+    .from(vendors)
+    .leftJoin(markets, eq(vendors.marketId, markets.id))
+    .where(
+      sql`(
+        EXISTS (SELECT 1 FROM vendor_feature_support vfs WHERE vfs.vendor_id = ${vendors.id})
+        OR
+        EXISTS (SELECT 1 FROM vendor_scores vs WHERE vs.vendor_id = ${vendors.id})
+      )`
+    )
+    .orderBy(vendors.name);
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    marketId: r.marketId ?? null,
+    marketName: r.marketName ?? null,
+  }));
+}
+
+/**
+ * Fetches all fact-review data for export. When vendorId is supplied only that
+ * vendor's data is returned; otherwise every vendor with evaluation data is included.
+ *
+ * The result covers three sections per vendor:
+ *  • Vendor Evaluation  – criteria scores from vendor_scores
+ *  • Product Evaluation – non-ecosystem feature support rows + any flags
+ *  • ISV Ecosystem      – ecosystem feature support rows + any flags
+ */
+export async function getFactReviewExportData(
+  vendorId?: string,
+): Promise<FactReviewExportRow[]> {
+  const rows: FactReviewExportRow[] = [];
+
+  // ── 1. Product + Ecosystem features ────────────────────────────────────────
+  const featureRows = await db
+    .select({
+      vendorId: vendors.id,
+      vendorName: vendors.name,
+      marketId: vendors.marketId,
+      marketName: markets.name,
+      isEcosystem: featureCategories.isEcosystem,
+      categoryName: featureCategories.name,
+      featureName: features.name,
+      supportLevel: vendorFeatureSupport.supportLevel,
+      comments: vendorFeatureSupport.comments,
+      flagStatus: vendorFactCheckFlags.status,
+      proposedSupportLevel: vendorFactCheckFlags.proposedSupportLevel,
+      evidenceLinks: vendorFactCheckFlags.evidenceLinks,
+      flagNotes: vendorFactCheckFlags.notes,
+    })
+    .from(vendorFeatureSupport)
+    .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
+    .leftJoin(markets, eq(vendors.marketId, markets.id))
+    .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
+    .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+    .leftJoin(
+      vendorFactCheckFlags,
+      eq(vendorFactCheckFlags.featureSupportId, vendorFeatureSupport.id),
+    )
+    .where(vendorId ? eq(vendors.id, vendorId) : sql`TRUE`)
+    .orderBy(vendors.name, featureCategories.displayOrder, features.displayOrder);
+
+  for (const r of featureRows) {
+    rows.push({
+      vendorId: r.vendorId,
+      vendorName: r.vendorName,
+      marketId: r.marketId ?? null,
+      marketName: r.marketName ?? null,
+      section: r.isEcosystem ? "ISV Ecosystem" : "Product Evaluation",
+      category: r.categoryName,
+      item: r.featureName,
+      currentWriteup: r.comments ?? null,
+      currentScore:
+        r.supportLevel != null
+          ? HARVEY_LABELS[r.supportLevel] ?? String(r.supportLevel)
+          : null,
+      proposedWriteup: r.flagNotes ?? null,
+      proposedScore:
+        r.proposedSupportLevel != null
+          ? HARVEY_LABELS[r.proposedSupportLevel] ?? String(r.proposedSupportLevel)
+          : null,
+      flagStatus: r.flagStatus ?? null,
+      evidenceLinks: r.evidenceLinks ?? null,
+    });
+  }
+
+  // ── 2. Vendor evaluation scores ────────────────────────────────────────────
+  const scoreRows = await db
+    .select({
+      vendorId: vendors.id,
+      vendorName: vendors.name,
+      marketId: vendors.marketId,
+      marketName: markets.name,
+      criteriaName: criteria.name,
+      criteriaCategory: criteria.category,
+      score: vendorScores.score,
+      notes: vendorScores.notes,
+    })
+    .from(vendorScores)
+    .innerJoin(vendors, eq(vendorScores.vendorId, vendors.id))
+    .leftJoin(markets, eq(vendors.marketId, markets.id))
+    .innerJoin(criteria, eq(vendorScores.criteriaId, criteria.id))
+    .where(vendorId ? eq(vendors.id, vendorId) : sql`TRUE`)
+    .orderBy(vendors.name, criteria.name);
+
+  for (const r of scoreRows) {
+    const numScore = r.score != null ? parseFloat(String(r.score)) : null;
+    rows.push({
+      vendorId: r.vendorId,
+      vendorName: r.vendorName,
+      marketId: r.marketId ?? null,
+      marketName: r.marketName ?? null,
+      section: "Vendor Evaluation",
+      category: r.criteriaCategory ?? "Evaluation",
+      item: r.criteriaName,
+      currentWriteup: r.notes ?? null,
+      currentScore: numScore != null ? numScore.toFixed(1) + " / 10" : null,
+      proposedWriteup: null,
+      proposedScore: null,
+      flagStatus: null,
+      evidenceLinks: null,
+    });
+  }
+
+  return rows;
 }
 
 // ── Vendor-facing queries ───────────────────────────────────────────────────

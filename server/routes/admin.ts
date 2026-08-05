@@ -1372,6 +1372,328 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // List of vendors that have any evaluation data (for export dropdown)
+  app.get("/api/admin/fact-check-flags/vendors", requireAdmin, async (_req, res) => {
+    try {
+      const list = await storage.getVendorsForFactReviewExport();
+      res.json(list);
+    } catch (err) {
+      console.error("[fact-check] vendors list error:", err);
+      res.status(500).json({ error: "Failed to load vendor list" });
+    }
+  });
+
+  // Export fact-review data as DOCX or XLSX
+  app.get("/api/admin/fact-check-flags/export", requireAdmin, async (req, res) => {
+    try {
+      const format = (req.query.format as string) || "xlsx";
+      const vendorId = req.query.vendorId as string | undefined;
+
+      const data = await storage.getFactReviewExportData(vendorId || undefined);
+
+      // Group rows by vendor then by section
+      const vendorMap = new Map<string, { name: string; marketName: string | null; rows: typeof data }>();
+      for (const row of data) {
+        if (!vendorMap.has(row.vendorId)) {
+          vendorMap.set(row.vendorId, { name: row.vendorName, marketName: row.marketName, rows: [] });
+        }
+        vendorMap.get(row.vendorId)!.rows.push(row);
+      }
+
+      const vendorLabel = vendorId
+        ? (vendorMap.get(vendorId)?.name ?? "Vendor")
+        : "All Vendors";
+      const dateStr = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+      // ── XLSX export ──────────────────────────────────────────────────────────
+      if (format === "xlsx") {
+        const XLSX = await import("xlsx");
+
+        const headers = [
+          "Vendor",
+          "Market",
+          "Section",
+          "Category",
+          "Feature / Criteria",
+          "Current Write-up",
+          "Current Score",
+          "Proposed Write-up (Fact Review)",
+          "Proposed Score (Fact Review)",
+          "Flag Status",
+          "Evidence Links",
+        ];
+
+        const sheetData: string[][] = [headers];
+        for (const row of data) {
+          sheetData.push([
+            row.vendorName,
+            row.marketName ?? "",
+            row.section,
+            row.category,
+            row.item,
+            row.currentWriteup ?? "",
+            row.currentScore ?? "",
+            row.proposedWriteup ?? "",
+            row.proposedScore ?? "",
+            row.flagStatus ?? "",
+            row.evidenceLinks ?? "",
+          ]);
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // Column widths
+        ws["!cols"] = [
+          { wch: 22 }, // Vendor
+          { wch: 22 }, // Market
+          { wch: 20 }, // Section
+          { wch: 22 }, // Category
+          { wch: 30 }, // Feature / Criteria
+          { wch: 40 }, // Current Write-up
+          { wch: 16 }, // Current Score
+          { wch: 40 }, // Proposed Write-up
+          { wch: 16 }, // Proposed Score
+          { wch: 12 }, // Flag Status
+          { wch: 30 }, // Evidence Links
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Fact Review");
+
+        // Optional: per-vendor summary sheet
+        for (const [, vendor] of Array.from(vendorMap)) {
+          const vHeaders = [
+            "Section",
+            "Category",
+            "Feature / Criteria",
+            "Current Write-up",
+            "Current Score",
+            "Proposed Write-up",
+            "Proposed Score",
+            "Flag Status",
+          ];
+          const vData: string[][] = [vHeaders];
+          for (const row of vendor.rows) {
+            vData.push([
+              row.section,
+              row.category,
+              row.item,
+              row.currentWriteup ?? "",
+              row.currentScore ?? "",
+              row.proposedWriteup ?? "",
+              row.proposedScore ?? "",
+              row.flagStatus ?? "",
+            ]);
+          }
+          const vs = XLSX.utils.aoa_to_sheet(vData);
+          vs["!cols"] = [
+            { wch: 20 }, { wch: 22 }, { wch: 30 },
+            { wch: 40 }, { wch: 16 }, { wch: 40 }, { wch: 16 }, { wch: 12 },
+          ];
+          // Truncate sheet name to Excel's 31-char limit
+          const sheetName = vendor.name.substring(0, 31);
+          XLSX.utils.book_append_sheet(wb, vs, sheetName);
+        }
+
+        const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+        const safeName = vendorLabel.replace(/[^a-z0-9\s-]/gi, "").trim().replace(/\s+/g, "-");
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="fact-review-${safeName}-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+        return res.send(buf);
+      }
+
+      // ── DOCX export ──────────────────────────────────────────────────────────
+      if (format === "docx") {
+        const {
+          Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow,
+          TableCell, WidthType, AlignmentType, ShadingType, PageBreak, BorderStyle,
+        } = await import("docx");
+
+        const NAVY = "1E3A5F";
+        const MID_BLUE = "2D6A9F";
+        const LIGHT_GRAY = "F1F5F9";
+        const WHITE = "FFFFFF";
+
+        const spacer = () => new Paragraph({ text: "", spacing: { after: 80 } });
+
+        const hdrCell = (text: string, fill = NAVY) =>
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text, bold: true, size: 18, color: WHITE })],
+              }),
+            ],
+            shading: { fill, type: ShadingType.CLEAR, color: WHITE },
+          });
+
+        const bodyCell = (text: string, fill?: string) =>
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: text || "—", size: 18 })],
+                spacing: { after: 40 },
+              }),
+            ],
+            ...(fill ? { shading: { fill, type: ShadingType.CLEAR, color: "auto" } } : {}),
+          });
+
+        // Section table builder
+        const SECTION_HEADERS = [
+          "Category",
+          "Feature / Criteria",
+          "Current Write-up",
+          "Current Score",
+          "Proposed Write-up",
+          "Proposed Score",
+          "Flag Status",
+        ];
+        const COL_WIDTHS = [1400, 1800, 2000, 900, 2000, 900, 800]; // in DXA (twips)
+
+        const buildSectionTable = (sectionRows: typeof data) => {
+          const tableRows = [
+            new TableRow({
+              tableHeader: true,
+              children: SECTION_HEADERS.map((h) => hdrCell(h)),
+            }),
+          ];
+
+          sectionRows.forEach((row, idx) => {
+            const fill = idx % 2 === 1 ? LIGHT_GRAY : WHITE;
+            tableRows.push(
+              new TableRow({
+                children: [
+                  bodyCell(row.category, fill),
+                  bodyCell(row.item, fill),
+                  bodyCell(row.currentWriteup ?? "", fill),
+                  bodyCell(row.currentScore ?? "", fill),
+                  bodyCell(row.proposedWriteup ?? "", fill),
+                  bodyCell(row.proposedScore ?? "", fill),
+                  bodyCell(row.flagStatus ?? "", fill),
+                ],
+              })
+            );
+          });
+
+          return new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            columnWidths: COL_WIDTHS,
+            rows: tableRows,
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+              left: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+              right: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+              insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+            },
+          });
+        };
+
+        const docChildren: any[] = [];
+
+        // Cover page
+        docChildren.push(
+          new Paragraph({
+            children: [new TextRun({ text: "ITMAP", bold: true, size: 72, color: NAVY })],
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 1200, after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "Fact Review Report", size: 40, color: MID_BLUE })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: vendorLabel, size: 28, color: "555555" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 160 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: dateStr, size: 22, color: "888888" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 1200 },
+          }),
+          new Paragraph({ children: [new PageBreak()] }),
+        );
+
+        // Per-vendor content
+        for (const [, vendor] of Array.from(vendorMap)) {
+          const sections: Array<"Vendor Evaluation" | "Product Evaluation" | "ISV Ecosystem"> = [
+            "Vendor Evaluation",
+            "Product Evaluation",
+            "ISV Ecosystem",
+          ];
+
+          docChildren.push(
+            new Paragraph({
+              text: vendor.name,
+              heading: HeadingLevel.HEADING_1,
+              spacing: { before: 400, after: 80 },
+            }),
+          );
+          if (vendor.marketName) {
+            docChildren.push(
+              new Paragraph({
+                children: [
+                  new TextRun({ text: vendor.marketName.replace(/^ITMAP for /i, ""), size: 22, color: "64748B", italics: true }),
+                ],
+                spacing: { after: 240 },
+              }),
+            );
+          }
+
+          for (const section of sections) {
+            const sRows = vendor.rows.filter((r) => r.section === section);
+            if (sRows.length === 0) continue;
+
+            docChildren.push(
+              new Paragraph({
+                text: section,
+                heading: HeadingLevel.HEADING_2,
+                spacing: { before: 280, after: 120 },
+              }),
+              buildSectionTable(sRows),
+              spacer(),
+            );
+          }
+
+          docChildren.push(new Paragraph({ children: [new PageBreak()] }));
+        }
+
+        const doc = new Document({
+          styles: {
+            paragraphStyles: [
+              {
+                id: "Heading1",
+                name: "Heading 1",
+                run: { size: 36, bold: true, color: NAVY },
+                paragraph: { spacing: { before: 360, after: 120 } },
+              },
+              {
+                id: "Heading2",
+                name: "Heading 2",
+                run: { size: 26, bold: true, color: MID_BLUE },
+                paragraph: { spacing: { before: 240, after: 80 } },
+              },
+            ],
+          },
+          sections: [{ children: docChildren }],
+        });
+
+        const buf = await Packer.toBuffer(doc);
+        const safeName = vendorLabel.replace(/[^a-z0-9\s-]/gi, "").trim().replace(/\s+/g, "-");
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        res.setHeader("Content-Disposition", `attachment; filename="fact-review-${safeName}-${new Date().toISOString().slice(0, 10)}.docx"`);
+        return res.send(buf);
+      }
+
+      res.status(400).json({ error: "format must be docx or xlsx" });
+    } catch (err) {
+      console.error("[fact-check] export error:", err);
+      res.status(500).json({ error: "Export failed" });
+    }
+  });
+
   app.patch("/api/admin/fact-check-flags/:id", requireAdmin, async (req, res) => {
     try {
       const schema = z.object({
