@@ -29,6 +29,7 @@ const SAFE_COLUMNS = {
   quadrantImageUrl: markets.quadrantImageUrl,
   quadrantImageUpdatedAt: markets.quadrantImageUpdatedAt,
   isVisible: markets.isVisible,
+  isInReview: markets.isInReview,
   ownerUserId: markets.ownerUserId,
   visibility: markets.visibility,
   createdAt: markets.createdAt,
@@ -40,7 +41,7 @@ function isColumnMissingError(err: unknown): boolean {
 }
 
 function withDefaults(rows: Omit<Market, "quadrantDividerY" | "quadrantTopLabel" | "quadrantColorTheme">[]): Market[] {
-  return rows.map(r => ({ ...r, ...QUADRANT_DEFAULTS })) as Market[];
+  return rows.map(r => ({ isInReview: false, ...r, ...QUADRANT_DEFAULTS })) as Market[];
 }
 
 // ── Slug helpers ────────────────────────────────────────────────────────────

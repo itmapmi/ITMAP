@@ -77,6 +77,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      isInReview: false,
       marketType: "mature",
     },
   });
@@ -244,6 +245,7 @@ export default function MarketManagement() {
       category: market.category || "",
       imageUrl: market.imageUrl || "",
       isVisible: market.isVisible !== false,
+      isInReview: (market as any).isInReview === true,
       marketType: (market as any).marketType || "mature",
     });
   };
@@ -258,6 +260,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      isInReview: false,
       marketType: "mature",
     });
   };
@@ -271,6 +274,7 @@ export default function MarketManagement() {
       category: "",
       imageUrl: "",
       isVisible: true,
+      isInReview: false,
       marketType: "mature",
     });
   };
@@ -472,6 +476,30 @@ export default function MarketManagement() {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="isInReview"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-amber-50/50 border-amber-200">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base text-amber-800">
+                  In Review
+                </FormLabel>
+                <div className="text-sm text-amber-700/70">
+                  When enabled, market cards show an "In Review" badge instead of "Live Data". Use while research is still being finalised.
+                </div>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value === true}
+                  onCheckedChange={field.onChange}
+                  data-testid="toggle-market-in-review"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
         <div className="flex space-x-2">
           <Button 
             type="submit" 
@@ -567,6 +595,11 @@ export default function MarketManagement() {
                           >
                             <Eye className="h-3 w-3" />
                             Visible
+                          </span>
+                        )}
+                        {(market as any).isInReview === true && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            In Review
                           </span>
                         )}
                       </div>

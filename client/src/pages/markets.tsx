@@ -402,10 +402,17 @@ export default function Markets() {
                             {market.shortDescription || market.description}
                           </p>
                           <div className="flex items-center justify-between mt-auto">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                              <span className="text-xs text-slate-500">Live data</span>
-                            </div>
+                            {(market as any).isInReview ? (
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                                <span className="text-xs font-medium text-amber-400">In Review</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                                <span className="text-xs text-slate-500">Live Data</span>
+                              </div>
+                            )}
                             <span className="text-xs text-cyan-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               {isAuthenticated ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
                             </span>

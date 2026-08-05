@@ -87,6 +87,7 @@ export const markets = pgTable("markets", {
   quadrantTopLabel: text("quadrant_top_label").default("ITMAP Leaders"),
   quadrantColorTheme: text("quadrant_color_theme").default("dark-blue-gold"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
+  isInReview: boolean("is_in_review").notNull().default(false), // Flag market as "In Review" on frontend cards
   // 'mature' | 'emerging'. Affects default criteria weights.
   marketType: text("market_type").notNull().default("mature"),
   // Ownership: null = platform-owned (admin-created public market).

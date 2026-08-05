@@ -196,12 +196,17 @@ function MarketCard({ market, href, accentViolet = false }: { market: Market; hr
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">{market.shortDescription || market.description}</p>
           <div className="mt-5 flex items-center justify-between">
-            <div className="flex -space-x-1">
-              {["V", "C", "R", "P"].map((l, j) => (
-                <div key={j} className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 border border-slate-900 flex items-center justify-center text-xs text-slate-300 font-bold">{l}</div>
-              ))}
-              <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-900 flex items-center justify-center text-xs text-slate-400">+</div>
-            </div>
+            {(market as any).isInReview ? (
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                <span className="text-xs font-medium text-amber-400">In Review</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-xs text-slate-500">Live Data</span>
+              </div>
+            )}
             <span className="text-xs text-slate-500 group-hover:text-cyan-400 transition-colors flex items-center gap-1">Explore <ChevronRight className="h-3 w-3" /></span>
           </div>
         </div>
