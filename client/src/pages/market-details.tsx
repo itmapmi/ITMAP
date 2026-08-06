@@ -342,21 +342,17 @@ export default function MarketDetails() {
           </div>
           
           <Tabs defaultValue="vendor-evaluation" className="w-full">
-            <TabsList className={`${isMobile ? 'inline-flex overflow-x-auto scrollbar-hide w-full justify-start' : 'grid w-full grid-cols-4'}`}>
-              <TabsTrigger value="vendor-evaluation" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
+            <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
+              <TabsTrigger value="vendor-evaluation" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
               </TabsTrigger>
-              <TabsTrigger value="support-matrix" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
+              <TabsTrigger value="support-matrix" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {isMobile ? 'Product Eval' : 'Product Evaluation'}
               </TabsTrigger>
-              <TabsTrigger value="ecosystem-support" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
-                {isMobile ? 'Ecosystem' : 'Ecosystem Support'}
+              <TabsTrigger value="ecosystem-support" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
+                {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
               </TabsTrigger>
-              {/* Hidden for now - will be enabled later */}
-              {/* <TabsTrigger value="generate-reports" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
-                {isMobile ? 'Reports' : 'Generate Reports'}
-              </TabsTrigger> */}
-              <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-3 text-xs' : ''}>
+              <TabsTrigger value="research-methodology" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {isMobile ? 'Method' : 'Methodology'}
               </TabsTrigger>
             </TabsList>
@@ -527,11 +523,6 @@ export default function MarketDetails() {
         </FadeInSection>
 
         {(() => {
-          const evaluationsItems = [
-            { value: "vendor-evaluation", label: "Vendor Evaluation" },
-            { value: "support-matrix", label: "Product Evaluation" },
-            { value: "ecosystem-support", label: "Ecosystem Support" },
-          ];
           const intelligenceItems: { value: string; label: string; locked?: boolean }[] = [
             { value: "news", label: "News", locked: !hasFeature("news") },
             ...(isAuthenticated ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") }] : []),
@@ -552,28 +543,16 @@ export default function MarketDetails() {
 
           return (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={isMobile ? 'inline-flex overflow-x-auto w-full justify-start' : 'inline-flex w-auto'}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    className={groupTriggerClass(isInGroup(evaluationsItems))}
-                    data-testid="tab-group-evaluations"
-                  >
-                    {isInGroup(evaluationsItems) ? (isMobile ? activeChildLabel(evaluationsItems) : `Evaluations: ${activeChildLabel(evaluationsItems)}`) : 'Evaluations'}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {evaluationsItems.map(item => (
-                      <DropdownMenuItem
-                        key={item.value}
-                        onSelect={() => setActiveTab(item.value)}
-                        className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
-                        data-testid={`tab-${item.value}`}
-                      >
-                        {item.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
+                <TabsTrigger value="vendor-evaluation" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-vendor-evaluation">
+                  {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
+                </TabsTrigger>
+                <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
+                  {isMobile ? 'Product Eval' : 'Product Evaluation'}
+                </TabsTrigger>
+                <TabsTrigger value="ecosystem-support" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-ecosystem-support">
+                  {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
+                </TabsTrigger>
 
                 {!isBuyerUser && (
                   <DropdownMenu>
