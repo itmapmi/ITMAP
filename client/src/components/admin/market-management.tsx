@@ -49,11 +49,9 @@ export default function MarketManagement() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  const { data: allMarkets, isLoading } = useQuery<Market[]>({
-    queryKey: ["/api/markets"],
+  const { data: markets, isLoading } = useQuery<Market[]>({
+    queryKey: ["/api/admin/markets"],
   });
-  // Hide private (end-user-built) markets — they live in the "User Markets" tab.
-  const markets = allMarkets?.filter(m => (m as any).visibility !== "private");
 
   const { data: criteria } = useQuery<Criteria[]>({
     queryKey: ["/api/criteria"],
@@ -130,6 +128,7 @@ export default function MarketManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
       form.reset();
       setShowCreateDialog(false);
       toast({
@@ -156,6 +155,7 @@ export default function MarketManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
       setEditingMarket(null);
       setShowEditDialog(false);
       form.reset();
@@ -180,6 +180,7 @@ export default function MarketManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
       toast({
         title: "Success",
         description: "Market deleted successfully",
@@ -201,6 +202,7 @@ export default function MarketManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
       toast({
         title: "Success",
         description: "Market image updated successfully",

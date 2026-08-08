@@ -40,6 +40,18 @@ function pushCollectionLog(scope: string, results: SignalCollectionResult[]): vo
 
 export function registerAdminRoutes(app: Express): void {
 
+  // ── Admin Markets (all markets, regardless of isVisible) ─────────────────
+  app.get("/api/admin/markets", requireAdmin, async (_req, res) => {
+    try {
+      const all = await storage.getAllMarkets();
+      // Return every market — admins need to see hidden ones too.
+      res.json(all.filter(m => (m as any).visibility !== "private"));
+    } catch (error) {
+      console.error("Error fetching admin markets:", error);
+      res.status(500).json({ error: "Failed to fetch markets" });
+    }
+  });
+
   // ── User Feature Access (RBAC) ───────────────────────────────────────────
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
