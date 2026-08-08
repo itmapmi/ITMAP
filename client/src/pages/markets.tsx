@@ -58,7 +58,10 @@ export default function Markets() {
   // appear under "My Reports").
   const publicMarkets = useMemo(() => {
     if (!markets) return [];
-    return markets.filter((m: any) => !m.ownerUserId || m.ownerUserId !== user?.id);
+    return markets.filter((m: any) =>
+      m.isVisible !== false &&
+      (!m.ownerUserId || m.ownerUserId !== user?.id)
+    );
   }, [markets, user?.id]);
 
   const categories = useMemo(() => {
