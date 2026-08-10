@@ -231,6 +231,15 @@ export async function updateAiSuggestionStatus(id: string, status: 'approved' | 
   return updated!;
 }
 
+export async function updateAiSuggestionProposedRewrite(id: string, proposedCommentaryRewrite: string): Promise<AiSuggestion> {
+  const [updated] = await db
+    .update(aiSuggestions)
+    .set({ proposedCommentaryRewrite })
+    .where(eq(aiSuggestions.id, id))
+    .returning();
+  return updated!;
+}
+
 export async function getPendingAiSuggestionsCount(): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)::int` })

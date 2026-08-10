@@ -738,6 +738,8 @@ export const aiSuggestions = pgTable("ai_suggestions", {
   // Commentary — AI produces the full updated text (addendum merged in)
   currentCommentary: text("current_commentary"),
   suggestedCommentary: text("suggested_commentary"),
+  // Full structural rewrite of the commentary incorporating the news (generated on demand)
+  proposedCommentaryRewrite: text("proposed_commentary_rewrite"),
 
   // AI metadata
   reasoning: text("reasoning").notNull(),

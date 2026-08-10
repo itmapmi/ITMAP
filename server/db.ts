@@ -98,6 +98,12 @@ export async function runStartupMigrations(): Promise<void> {
       )
     `);
 
+    // 6b. proposed_commentary_rewrite column on ai_suggestions (full AI rewrite, on-demand)
+    await client.query(`
+      ALTER TABLE ai_suggestions
+        ADD COLUMN IF NOT EXISTS proposed_commentary_rewrite text
+    `);
+
     // 7. user_llm_api_keys — per-user BYO LLM API keys for Market Builder
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_llm_api_keys (

@@ -188,6 +188,7 @@ export interface IStorage {
   getAiSuggestions(filters?: { status?: string; vendorId?: string; marketId?: string; sourceType?: string; limit?: number; offset?: number }): Promise<import('./admin').AiSuggestionsPage>;
   getAiSuggestionById(id: string): Promise<AiSuggestion | undefined>;
   updateAiSuggestionStatus(id: string, status: 'approved' | 'rejected'): Promise<AiSuggestion>;
+  updateAiSuggestionProposedRewrite(id: string, proposedCommentaryRewrite: string): Promise<AiSuggestion>;
   getPendingAiSuggestionsCount(): Promise<number>;
   hasPendingDuplicateSuggestion(vendorId: string, subjectId: string): Promise<boolean>;
   hasRecentSuggestion(vendorId: string, subjectId: string, suggestedValue: string | null, windowDays?: number): Promise<boolean>;

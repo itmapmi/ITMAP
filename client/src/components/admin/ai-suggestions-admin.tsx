@@ -105,6 +105,7 @@ interface AiSuggestion {
   suggestedValue: string | null;
   currentCommentary: string | null;
   suggestedCommentary: string | null;
+  proposedCommentaryRewrite: string | null;
   reasoning: string;
   confidence: "HIGH" | "MEDIUM";
   triggeredByArticleIds: string[] | null;
@@ -315,6 +316,37 @@ function SuggestionCard({
   const [editedValue, setEditedValue] = useState<string>("");
   const [editedCommentary, setEditedCommentary] = useState<string>(s.currentCommentary ?? "");
   const [detailArticleId, setDetailArticleId] = useState<string | null>(null);
+  const [rewrite, setRewrite] = useState<string | null>(s.proposedCommentaryRewrite ?? null);
+
+  // Keep local rewrite in sync when the list refetches with fresh server data
+  useEffect(() => {
+    if (s.proposedCommentaryRewrite) setRewrite(s.proposedCommentaryRewrite);
+  }, [s.proposedCommentaryRewrite]);
+
+  // On-demand full commentary rewrite (uses web search server-side — slow)
+  const rewriteMutation = useMutation({
+    mutationFn: async () =>
+      await apiRequestJson(`/api/admin/ai-suggestions/${s.id}/rewrite-commentary`, "POST"),
+    onSuccess: (updated: { proposedCommentaryRewrite?: string | null }) => {
+      setRewrite(updated.proposedCommentaryRewrite ?? null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-suggestions"] });
+      toast({ title: "Rewrite ready", description: "Proposed new commentary generated." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Rewrite failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // Last 5 analyzed announcements for this vendor (Recent Announcements section)
+  const { data: recentNews = [], isError: recentNewsError } = useQuery<SourceArticle[]>({
+    queryKey: ["/api/news", { vendor_id: s.vendorId, limit: 5 }],
+    queryFn: async () => {
+      const res = await fetch(`/api/news?vendor_id=${encodeURIComponent(s.vendorId)}&limit=5`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch all criteria (global, not per-market)
   const { data: allCriteria = [] } = useQuery<Criteria[]>({
@@ -559,6 +591,43 @@ function SuggestionCard({
             </div>
           );
         })()}
+
+        {/* Recent Announcements — last 5 analyzed news items for this vendor */}
+        {recentNewsError && (
+          <p className="text-[11px] text-red-500 italic">Couldn't load recent announcements for this vendor.</p>
+        )}
+        {recentNews.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-2">
+              <Newspaper className="h-3 w-3 text-blue-500" />
+              Recent Announcements
+              <span className="text-[10px] text-gray-400 font-normal">(last {recentNews.length})</span>
+            </p>
+            <div className="rounded border border-blue-100 bg-blue-50/30 divide-y divide-blue-100">
+              {recentNews.map(a => (
+                <div key={a.id} className="px-3 py-1.5 flex items-start gap-2">
+                  <span className="text-[10px] text-gray-400 shrink-0 w-20 pt-0.5">
+                    {a.publishedAt
+                      ? new Date(a.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                      : "—"}
+                  </span>
+                  <p className="text-[11px] text-gray-700 leading-relaxed flex-1 min-w-0">
+                    {a.keyTakeaway ?? a.summary ?? a.title}
+                  </p>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-gray-400 hover:text-blue-600 pt-0.5"
+                    title={a.title}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Announcement — full text of the article(s) that triggered the suggestion */}
         {s.triggeredByArticleIds && s.triggeredByArticleIds.length > 0 && (
@@ -807,6 +876,52 @@ function SuggestionCard({
                 </p>
               </div>
             )}
+
+            {/* Proposed New Commentary — full structural rewrite incorporating the news */}
+            <div className="rounded-md border border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Proposed New Commentary
+                </p>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[11px] gap-1 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                    onClick={() => rewriteMutation.mutate()}
+                    disabled={rewriteMutation.isPending}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    {rewriteMutation.isPending ? "Rewriting…" : rewrite ? "Regenerate" : "Generate rewrite"}
+                  </Button>
+                  {rewrite && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[11px] border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                      onClick={() => setEditedCommentary(rewrite)}
+                    >
+                      Use as commentary ↓
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {rewriteMutation.isPending ? (
+                <p className="text-[11px] text-emerald-700/80 italic">
+                  Re-reading sources and rewriting the full commentary — this can take up to a minute…
+                </p>
+              ) : rewrite ? (
+                <p className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap">{rewrite}</p>
+              ) : (
+                <p className="text-[11px] text-emerald-700/80 italic">
+                  Generates a fresh rewrite of the existing commentary — the AI revisits the sources,
+                  keeps the same structure, and folds in one sentence covering the new update.
+                </p>
+              )}
+            </div>
 
             {/* Commentary — editable, pre-filled with the SELECTED target's current commentary */}
             <div className="space-y-1">

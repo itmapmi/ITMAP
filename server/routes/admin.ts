@@ -967,6 +967,23 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // Generate (or regenerate) a full commentary rewrite that folds in the news.
+  // On-demand because it uses web search and is slow/expensive.
+  app.post('/api/admin/ai-suggestions/:id/rewrite-commentary', requireAdmin, async (req, res) => {
+    try {
+      const suggestion = await storage.getAiSuggestionById(req.params.id);
+      if (!suggestion) return res.status(404).json({ error: 'Suggestion not found' });
+
+      const { generateCommentaryRewrite } = await import('../news/suggestions/rewriter');
+      const rewrite = await generateCommentaryRewrite(suggestion);
+      const updated = await storage.updateAiSuggestionProposedRewrite(suggestion.id, rewrite);
+      res.json(updated);
+    } catch (err: any) {
+      console.error('Error generating commentary rewrite:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Vendor Signals ────────────────────────────────────────────────────────
 
   app.get('/api/admin/vendor-signals', requireAdmin, async (req, res) => {
