@@ -8,7 +8,7 @@
 import OpenAI from 'openai';
 import { db } from '../../db';
 import { vendors, markets, newsArticles } from '@shared/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and, or, isNotNull, desc } from 'drizzle-orm';
 import type { AiSuggestion } from '@shared/schema';
 
 let _openai: OpenAI | null = null;
@@ -97,5 +97,58 @@ Return ONLY the rewritten commentary text, nothing else.`;
 
   text = text.trim();
   if (!text) throw new Error('Empty rewrite returned by model');
-  return text;
+
+  // ── Collect sources: web-search citations + triggering article URLs ──────
+  const sourceUrls = new Set<string>();
+  if (Array.isArray(response.output)) {
+    for (const item of response.output) {
+      if (item.type === 'message' && Array.isArray(item.content)) {
+        for (const c of item.content) {
+          for (const ann of c.annotations ?? []) {
+            if (ann.type === 'url_citation' && ann.url) sourceUrls.add(ann.url);
+          }
+        }
+      }
+    }
+  }
+  for (const a of articles) if (a.url) sourceUrls.add(a.url);
+
+  // ── Recent Announcements: only for the Product Capabilities criterion ────
+  let announcementsBlock = '';
+  if ((suggestion.subjectName ?? '').trim().toLowerCase() === 'product capabilities') {
+    // Match articles linked directly to this vendor or via its canonical vendor group
+    const vendorIds = [suggestion.vendorId];
+    if (vendor?.canonicalVendorId) {
+      const siblings = await db.select({ id: vendors.id }).from(vendors)
+        .where(eq(vendors.canonicalVendorId, vendor.canonicalVendorId));
+      for (const sib of siblings) if (!vendorIds.includes(sib.id)) vendorIds.push(sib.id);
+    }
+    const recent = await db
+      .select()
+      .from(newsArticles)
+      .where(and(
+        vendor?.canonicalVendorId
+          ? or(inArray(newsArticles.vendorId, vendorIds), eq(newsArticles.canonicalVendorId, vendor.canonicalVendorId))
+          : eq(newsArticles.vendorId, suggestion.vendorId),
+        isNotNull(newsArticles.keyTakeaway),
+      ))
+      .orderBy(desc(newsArticles.publishedAt))
+      .limit(5);
+    if (recent.length) {
+      announcementsBlock =
+        '\n\nRecent Announcements:\n' +
+        recent
+          .map(a => {
+            const date = a.publishedAt ? new Date(a.publishedAt).toISOString().slice(0, 10) : 'undated';
+            return `- ${date}: ${a.keyTakeaway}${a.url ? ` (${a.url})` : ''}`;
+          })
+          .join('\n');
+    }
+  }
+
+  const sourcesBlock = sourceUrls.size
+    ? '\n\nSources:\n' + Array.from(sourceUrls).map(u => `- ${u}`).join('\n')
+    : '';
+
+  return text + announcementsBlock + sourcesBlock;
 }

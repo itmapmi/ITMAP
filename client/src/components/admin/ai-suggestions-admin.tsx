@@ -337,17 +337,6 @@ function SuggestionCard({
     },
   });
 
-  // Last 5 analyzed announcements for this vendor (Recent Announcements section)
-  const { data: recentNews = [], isError: recentNewsError } = useQuery<SourceArticle[]>({
-    queryKey: ["/api/news", { vendor_id: s.vendorId, limit: 5 }],
-    queryFn: async () => {
-      const res = await fetch(`/api/news?vendor_id=${encodeURIComponent(s.vendorId)}&limit=5`, { credentials: "include" });
-      if (!res.ok) throw new Error(`${res.status}`);
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
   // Fetch all criteria (global, not per-market)
   const { data: allCriteria = [] } = useQuery<Criteria[]>({
     queryKey: ["/api/criteria"],
@@ -591,43 +580,6 @@ function SuggestionCard({
             </div>
           );
         })()}
-
-        {/* Recent Announcements — last 5 analyzed news items for this vendor */}
-        {recentNewsError && (
-          <p className="text-[11px] text-red-500 italic">Couldn't load recent announcements for this vendor.</p>
-        )}
-        {recentNews.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-2">
-              <Newspaper className="h-3 w-3 text-blue-500" />
-              Recent Announcements
-              <span className="text-[10px] text-gray-400 font-normal">(last {recentNews.length})</span>
-            </p>
-            <div className="rounded border border-blue-100 bg-blue-50/30 divide-y divide-blue-100">
-              {recentNews.map(a => (
-                <div key={a.id} className="px-3 py-1.5 flex items-start gap-2">
-                  <span className="text-[10px] text-gray-400 shrink-0 w-20 pt-0.5">
-                    {a.publishedAt
-                      ? new Date(a.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-                      : "—"}
-                  </span>
-                  <p className="text-[11px] text-gray-700 leading-relaxed flex-1 min-w-0">
-                    {a.keyTakeaway ?? a.summary ?? a.title}
-                  </p>
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 text-gray-400 hover:text-blue-600 pt-0.5"
-                    title={a.title}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Announcement — full text of the article(s) that triggered the suggestion */}
         {s.triggeredByArticleIds && s.triggeredByArticleIds.length > 0 && (
