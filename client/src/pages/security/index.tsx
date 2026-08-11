@@ -73,6 +73,7 @@ interface CveItem {
   cweIds: string[] | null;
   referenceUrls: string[] | null;
   vulnStatus: string | null;
+  awaitingAnalysis?: boolean;
   isKev: boolean;
   kevInfo?: {
     vendorProject: string | null;
@@ -481,6 +482,11 @@ function CveRow({ cve }: { cve: CveItem }) {
               {cve.epssScore && parseFloat(cve.epssScore) >= 0.9 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/20 text-violet-400 border border-violet-500/40">
                   <TrendingUp className="h-2.5 w-2.5" />High EPSS
+                </span>
+              )}
+              {cve.awaitingAnalysis && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/40">
+                  Awaiting NVD analysis
                 </span>
               )}
             </div>

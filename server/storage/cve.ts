@@ -1,6 +1,29 @@
 import { db } from "../db";
 import { cve, cveCpe, vendorCpeCrosswalk, kev, epss, syncRun, vendors } from "@shared/schema";
-import { eq, and, inArray, sql, desc, gte, lte, asc } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, gte, lte, asc, ilike } from "drizzle-orm";
+
+// NVD statuses meaning the CVE record exists but affected-product (CPE) data
+// hasn't been assigned yet — these can't be linked to vendors via crosswalk.
+const PENDING_NVD_STATUSES = ["Received", "Awaiting Analysis", "Undergoing Analysis"];
+
+/** CVEs awaiting NVD analysis whose description mentions the vendor by name. */
+async function getPendingCveIdsForVendor(vendorId: string): Promise<string[]> {
+  const [vendor] = await db.select({ name: vendors.name }).from(vendors).where(eq(vendors.id, vendorId));
+  if (!vendor?.name) return [];
+  // Strip parenthetical suffixes like "TrojAI (A10 Networks)" → "TrojAI"
+  const name = vendor.name.split("(")[0].trim();
+  if (name.length < 3) return [];
+  const rows = await db
+    .select({ cveId: cve.cveId })
+    .from(cve)
+    .where(
+      and(
+        inArray(cve.vulnStatus, PENDING_NVD_STATUSES),
+        ilike(cve.description, `%${name}%`),
+      ),
+    );
+  return rows.map((r) => r.cveId);
+}
 
 export async function getCveDataAsOf(): Promise<Date | null> {
   const row = await db
@@ -191,6 +214,7 @@ export interface CveListItem {
   cweIds: string[] | null;
   referenceUrls: string[] | null;
   vulnStatus: string | null;
+  awaitingAnalysis?: boolean;
   isKev: boolean;
   kevInfo?: {
     vendorProject: string | null;
@@ -231,18 +255,27 @@ export async function getCvesByVendor(
   const offset = (page - 1) * pageSize;
   const dataAsOf = await getCveDataAsOf();
 
-  const cpeTokens = await getConfirmedCpeTokens(vendorId);
-  if (!cpeTokens.length) return { data: [], total: 0, page, pageSize, dataAsOf };
+  const [cpeTokens, pendingIdsRaw] = await Promise.all([
+    getConfirmedCpeTokens(vendorId),
+    // Pending CVEs have no product info, so a product filter excludes them
+    opts.product ? Promise.resolve([]) : getPendingCveIdsForVendor(vendorId),
+  ]);
 
-  const cpeWhere = opts.product
-    ? and(inArray(cveCpe.cpeVendor, cpeTokens), eq(cveCpe.cpeProduct, opts.product))
-    : inArray(cveCpe.cpeVendor, cpeTokens);
+  let mappedIds: string[] = [];
+  if (cpeTokens.length) {
+    const cpeWhere = opts.product
+      ? and(inArray(cveCpe.cpeVendor, cpeTokens), eq(cveCpe.cpeProduct, opts.product))
+      : inArray(cveCpe.cpeVendor, cpeTokens);
+    const cveIdRows = await db
+      .selectDistinct({ cveId: cveCpe.cveId })
+      .from(cveCpe)
+      .where(cpeWhere);
+    mappedIds = cveIdRows.map((r) => r.cveId);
+  }
 
-  const cveIdRows = await db
-    .selectDistinct({ cveId: cveCpe.cveId })
-    .from(cveCpe)
-    .where(cpeWhere);
-  let cveIdList = cveIdRows.map((r) => r.cveId);
+  const mappedSet = new Set(mappedIds);
+  const pendingSet = new Set(pendingIdsRaw.filter((id) => !mappedSet.has(id)));
+  let cveIdList = mappedIds.concat(Array.from(pendingSet));
   if (!cveIdList.length) return { data: [], total: 0, page, pageSize, dataAsOf };
 
   if (opts.kevOnly) {
@@ -350,6 +383,7 @@ export async function getCvesByVendor(
       cweIds: c.cweIds,
       referenceUrls: c.referenceUrls,
       vulnStatus: c.vulnStatus,
+      awaitingAnalysis: pendingSet.has(c.cveId),
       isKev: !!k,
       kevInfo: k
         ? {
