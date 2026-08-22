@@ -1,0 +1,165 @@
+Implementation brief: Admin Direct Newsroom Scrape
+Goal
+Add an admin-initiated Direct scrape capability to the existing News admin screen. It must scrape the newsroom configured for one selected vendor, discover recent articles directly from that newsroom, save them through the platform's existing news analysis and suggestion pipeline, and show the results in the normal market News experience.
+
+This is an incremental feature. Preserve all existing behavior, including the scheduled/manual AI web-search scraper, cron jobs, existing News routes, news analysis, and market/news presentation. Do not replace or specialize the normal scraper.
+
+The example target that must work is:
+
+Vendor: Hitachi Vantara
+Newsroom: https://www.hitachivantara.com/en-us/news
+Lookback: 14 days
+
+The expected results include the August 12, 2026 Q1 revenue release at:
+
+https://www.hitachivantara.com/en-us/news/gl260812
+
+Before editing
+Explore the replica project and identify:
+its News admin component and per-vendor scraping controls;
+the existing manual and scheduled news ingestion service;
+article persistence/deduplication;
+article analysis/impact classification;
+canonical-vendor and sibling-market handling, if present;
+suggestion generation triggers;
+its public-URL/SSRF protection and browser rendering utilities.
+Reuse the replica's conventions, types, validation framework, and existing pipeline. Do not copy file paths from another project blindly.
+Add the feature only after confirming the existing scheduled scraper and direct/manual scrape entry points remain separate.
+User-facing behavior
+News admin
+Add a Direct scrape button on each vendor row that has a newsroom URL.
+
+This button is admin-only, matching the authorization model of the existing News admin actions.
+
+Clicking it runs a 14-day scrape for only that selected vendor.
+
+Disable the selected vendor's competing scrape actions while the run is in progress.
+
+On completion, refresh the normal article and fetch-log data and show a clear result message:
+
+Direct scrape completed
+Discovered N, added N, skipped N, failed N.
+
+If warnings occurred, surface that state without hiding the counts.
+
+Do not add a global automatic direct-scrape job. Do not alter the cron schedule or make the scheduled scraper vendor-specific.
+
+API
+Add an admin-only endpoint equivalent to:
+
+POST /api/news/ingest/direct
+{
+  "vendor_id": "<selected vendor id>",
+  "lookback_days": 14
+}
+
+Requirements:
+
+validate vendor_id;
+validate lookback_days as an integer in the range 1–90;
+reject unauthenticated/non-admin callers using the project’s existing auth middleware;
+return structured per-run counts: discovered, added/new, skipped, failed, strategy, and warnings;
+keep existing ingest endpoints unchanged.
+Direct discovery behavior
+Build a generic newsroom extractor. It must only ingest article links explicitly exposed by the selected vendor’s configured newsroom or a structured listing endpoint explicitly declared by that newsroom. Third-party article links are allowed only when the vendor’s newsroom itself lists them.
+
+Use the following discovery order:
+
+RSS or Atom
+Support the provided URL being a feed.
+Support RSS/Atom <link rel="alternate"> feeds exposed by a newsroom page.
+JSON-LD
+Parse Article, NewsArticle, BlogPosting, ItemList, and nested @graph structures where practical.
+Server-rendered article cards and links
+Extract only plausible article links with a nearby parseable publication date.
+Structured page-declared listing endpoint
+Before a browser fallback, support dynamic CMS pages that explicitly expose their listing API in the source HTML.
+Implement this generically, not as a Hitachi-only exception.
+A key required case is AEM resource listing components: data-cmp-is="resourcelisting" or data-cmp-is="resourcelistinglt".
+Read their data-root-path, page size, sorting, display type, search type, asset root, and page-type attributes; call the page’s own jcr:content.hvacsearch.json listing endpoint; parse queryResultDTO.results.
+Accept title, URL/external URL/path, date (blogDate, publishedDate, datePublished, or event date), and optional summary.
+Rendered-page DOM fallback
+Use the existing headless-browser utility only when the earlier strategies find no in-range articles.
+Parse JSON-LD first, then rendered article cards/links.
+For every strategy:
+
+normalize links, remove tracking query strings for the canonical URL, and deduplicate;
+accept only items within the requested lookback window;
+preserve publication dates as actual dates rather than substituting today;
+cap the direct run to a reasonable number of candidates (25 is suitable);
+return diagnostics: strategy used, raw discovered count, duplicate count, warnings, and failed count;
+handle malformed feeds, malformed JSON, unavailable endpoints, and pages with no articles without crashing the whole run.
+Persistence, analysis, and market fan-out
+Directly discovered articles must use the existing article storage, analysis, and suggestion flow; do not create a parallel News system.
+
+Resolve the selected vendor’s canonical vendor group exactly as the existing scraper does.
+Save a newly discovered article with no impact label initially.
+Pass every newly saved article to the existing article analyzer using the real vendor name/context.
+Persist the analyzer’s impact, category, editorial analysis, vendor context, and key takeaway in the existing article fields.
+Maintain canonical-vendor sibling and multi-market fan-out:
+the article should be available to every relevant sibling market;
+high/medium impact suggestion triggers must fan out to all canonical sibling vendors according to existing behavior.
+Write the fetch log after analysis has completed so analysis failures are represented accurately.
+If analysis fails for one article, retain the discovered article as pending or unlabelled, record the error/warning, and continue processing the remaining articles.
+Cross-instance duplicate safety
+An in-memory queue alone is not sufficient in production. Use an atomic database-level guard when choosing whether to insert an article:
+
+normalize the canonical URL and calculate the existing content hash;
+acquire a transaction-scoped PostgreSQL advisory lock based on the normalized URL (or use an already-safe unique constraint);
+recheck URL/canonical URL and content hash inside the transaction;
+insert only if still new.
+Do not add a unique index without first accounting for legacy duplicate data.
+
+Mandatory server-side URL security
+The direct extractor fetches vendor-controlled URLs server-side. Treat this as an SSRF-sensitive feature.
+
+For all newsroom pages, feed URLs, structured listing endpoints, and article content fetches:
+
+allow only http: and https:;
+reject embedded credentials;
+reject localhost, loopback, private, link-local, carrier-grade NAT, documentation/reserved IPv4 ranges, IPv6 loopback, unique-local, link-local, mapped-private addresses, and comparable non-public ranges;
+resolve hostnames and require public answers;
+pin the actual outgoing native HTTP connection to the exact validated IP. Do not validate a hostname and then call ordinary fetch(hostname), because it performs a second DNS lookup and is vulnerable to DNS rebinding.
+Preserve the original Host header and HTTPS SNI while connecting through the pinned public address.
+follow redirects manually; validate and pin every redirect target separately;
+enforce a response-size limit (5 MB is suitable) and request timeout.
+For the rendered-browser fallback:
+
+resolve the initial newsroom host to a validated public address;
+launch Chromium with a host resolver rule mapping that hostname to the validated IP;
+allow only same-origin HTTP(S) requests in the rendered page and block cross-origin resources and redirects;
+do not cache a previous origin validation and then allow later unvalidated requests;
+use request interception and sensible browser/HTML size and timeout limits.
+Chromium may be unavailable or unreliable in deployed environments. The page-declared structured endpoint strategy is therefore essential; the browser must remain a controlled final fallback, not the primary method.
+
+Tests and acceptance criteria
+Add focused tests using fixtures and mocks, without relying on a live website for the test suite.
+
+At minimum, cover:
+
+RSS and Atom parsing;
+JSON-LD article discovery;
+static HTML article cards with nearby dates;
+dynamic AEM-style page-declared listing endpoint discovery;
+the Hitachi-style clickable card/listing response that contains the August 12 Q1 revenue release;
+date-window filtering, URL normalization, and deduplication;
+admin authorization and request validation for the new route;
+canonical vendor/sibling market fan-out;
+successful analysis, analysis failure logging, and suggestion fan-out;
+concurrent saves resulting in exactly one inserted article;
+private URL and private redirect rejection;
+a DNS-rebinding regression test proving the outbound connection uses the already validated public IP rather than performing a second unconstrained DNS resolution.
+Validate before delivery:
+
+Run the focused direct extractor, direct ingestion service, security, and authorization tests.
+Run the production build.
+Restart the application workflow and confirm it starts cleanly.
+Perform one targeted 14-day Hitachi extraction verification only if needed; it should discover the Q1 release through the structured endpoint without requiring Chromium.
+Do not run paid AI web-search tests just to verify this feature.
+Definition of done
+An admin can click Direct scrape beside Hitachi Vantara.
+The 14-day run discovers the newsroom’s recent items, including the Q1 release, without modifying the normal scheduled AI scraper.
+New items are automatically analyzed and appear in the appropriate market News section; manual analysis is not required.
+Duplicate articles are not created, including across concurrent app instances.
+Existing News admin actions, scheduled ingestion, analysis, suggestions, and market News behavior continue working unchanged.
+The feature is protected against SSRF, redirects to internal addresses, and DNS rebinding.
