@@ -15,7 +15,7 @@ import {
   CheckCircle2, ChevronRight, Database, Brain,
   Target, Users, Sparkles,
   FileText, ClipboardList, Layers, BookOpen,
-  Building2, MessageSquare,
+   Building2, MessageSquare, Linkedin,
 } from "lucide-react";
 
 // ─── Animation helpers ───────────────────────────────────────────────────────
@@ -774,6 +774,15 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">About</span></Link>
             <Link href="/licensing"><span className="hover:text-white transition-colors cursor-pointer">Licensing</span></Link>
             <Link href="/contact"><span className="hover:text-white transition-colors cursor-pointer">Contact</span></Link>
+             <a
+               href="https://www.linkedin.com/company/itmap-ai"
+               target="_blank"
+               rel="noreferrer"
+               aria-label="Follow ITMAP on LinkedIn"
+               className="text-slate-500 hover:text-white transition-colors"
+             >
+               <Linkedin className="h-5 w-5" aria-hidden="true" />
+             </a>
           </div>
         </div>
       </footer>
