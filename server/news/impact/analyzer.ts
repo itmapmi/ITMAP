@@ -193,7 +193,8 @@ async function analyzeArticle(
   url: string,
   vendorName: string,
   publishedDate: string | null,
-  summary: string | null
+  summary: string | null,
+  fallbackOnError = true,
 ): Promise<AnalysisResult> {
   console.log(`[Analyzer] Fetching full article content: ${url}`);
   const articleContent = await fetchArticleContent(url);
@@ -337,6 +338,7 @@ Respond with valid JSON only:
     };
   } catch (err: any) {
     console.error('[Analyzer] AI analysis failed:', err.message);
+    if (!fallbackOnError) throw err;
     return generateFallbackAnalysis(title, vendorName);
   }
 }
@@ -428,5 +430,32 @@ export async function analyzeSingleArticle(articleId: string): Promise<AnalysisR
     { id: articleId, vendorId: article.vendorId, title: article.title, impact: analysis.impactLabel, category: analysis.category },
   ]);
 
+  return analysis;
+}
+
+/**
+ * Direct newsroom discovery already knows the selected vendor. Keep its
+ * article unlabelled if the final editorial analysis fails so an admin can
+ * retry it from the normal pending-analysis queue.
+ */
+export async function analyzeSingleArticleForVendor(articleId: string, vendorName: string): Promise<AnalysisResult> {
+  const article = await newsStorage.getArticleById(articleId);
+  if (!article) throw new Error(`Article ${articleId} not found`);
+
+  const analysis = await analyzeArticle(
+    article.title,
+    article.url,
+    vendorName,
+    article.publishedAt ? article.publishedAt.toISOString().split('T')[0] : null,
+    article.summary,
+    false,
+  );
+  await newsStorage.updateArticle(articleId, {
+    impactLabel: analysis.impactLabel,
+    category: analysis.category,
+    opinion: analysis.opinion,
+    vendorContext: analysis.vendorContext,
+    keyTakeaway: analysis.keyTakeaway,
+  });
   return analysis;
 }

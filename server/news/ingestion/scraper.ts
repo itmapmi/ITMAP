@@ -237,12 +237,7 @@ async function saveAnalyzedArticle(
 ): Promise<string | null> {
   const canonicalUrl = article.url.split('?')[0].replace(/\/$/, '');
 
-  const existing = await newsStorage.getArticleByUrl(canonicalUrl);
-  if (existing) return null;
-
   const contentHash = generateContentHash(article.title, canonicalUrl);
-  const existingByHash = await newsStorage.getArticleByContentHash(contentHash);
-  if (existingByHash) return null;
 
   const normalizeImpact = (val: string | undefined): 'HIGH' | 'MEDIUM' | 'LOW' | null => {
     const v = (val ?? '').toUpperCase();
@@ -256,7 +251,7 @@ async function saveAnalyzedArticle(
   ];
   const category = validCategories.includes(article.category) ? article.category : 'General';
 
-  const saved = await newsStorage.createArticle({
+  const saved = await newsStorage.createArticleIfNew({
     sourceId: null,
     vendorId: group.leadVendorId,
     canonicalVendorId: group.canonicalVendorId,
@@ -276,7 +271,7 @@ async function saveAnalyzedArticle(
     keyTakeaway: article.key_takeaway || null,
   });
 
-  return saved.id;
+  return saved?.id ?? null;
 }
 
 // ─── Grouping helpers ────────────────────────────────────────────────────

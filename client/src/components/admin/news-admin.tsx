@@ -53,6 +53,7 @@ import {
   History,
   Newspaper,
   Settings,
+  ScanSearch,
 } from "lucide-react";
 import {
   Dialog,
@@ -88,6 +89,22 @@ type ScrapeResult = {
 type RunPipelineResponse = {
   analyzed: number;
   results: ScrapeResult[];
+};
+
+type DirectScrapeResult = {
+  vendorId: string;
+  vendor: string;
+  discovered: number;
+  added: number;
+  skipped: number;
+  failed: number;
+  strategy: string;
+  warnings: string[];
+  warningCount: number;
+};
+
+type DirectScrapeResponse = {
+  result: DirectScrapeResult;
 };
 
 type AnalyzeResponse = {
@@ -301,6 +318,54 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
       toast({
         title: "Full scan failed",
         description: error.message || "Failed to run scrape",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runVendorDirectScrapeMutation = useMutation({
+    mutationFn: async (vendorId: string): Promise<DirectScrapeResponse> => {
+      setScrapingVendorIds((prev) => new Set(prev).add(vendorId));
+      return await apiRequestJson("/api/news/ingest/direct", "POST", {
+        vendor_id: vendorId,
+        lookback_days: 14,
+      });
+    },
+    onSuccess: (data, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      const result = data.result;
+      setVendorScrapeResults((prev) => ({
+        ...prev,
+        [vendorId]: {
+          vendorId,
+          vendor: result.vendor,
+          newCount: result.added,
+          error: result.failed > 0 && result.added === 0 ? `${result.failed} item(s) failed` : null,
+        },
+      }));
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.startsWith("/api/news");
+        },
+      });
+      toast({
+        title: result.failed > 0 ? "Direct scrape completed with warnings" : "Direct scrape complete",
+        description:
+          `Discovered ${result.discovered}, added ${result.added}, skipped ${result.skipped}, failed ${result.failed}. ` +
+          `Strategy: ${result.strategy || "none"}${result.warningCount ? ` • ${result.warningCount} warning(s)` : ""}.`,
+        variant: result.failed > 0 ? "destructive" : "default",
+      });
+    },
+    onError: (error: Error, vendorId) => {
+      setScrapingVendorIds((prev) => { const s = new Set(prev); s.delete(vendorId); return s; });
+      setVendorScrapeResults((prev) => ({
+        ...prev,
+        [vendorId]: { vendorId, vendor: vendorId, newCount: 0, error: error.message || "Failed" },
+      }));
+      toast({
+        title: "Direct scrape failed",
+        description: error.message || "Failed to run direct scrape",
         variant: "destructive",
       });
     },
@@ -606,6 +671,18 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
                               {isScrapingThis ? "…" : "14d"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                              disabled={isScrapingThis || runScrapeMutation.isPending}
+                              onClick={() => runVendorDirectScrapeMutation.mutate(v.id)}
+                              title="Directly scan this vendor's newsroom for the last 14 days"
+                              data-testid={`button-direct-scrape-vendor-${v.id}`}
+                            >
+                              <ScanSearch className="h-3 w-3 mr-1" />
+                              {isScrapingThis ? "…" : "Direct scrape"}
                             </Button>
                           </div>
                         </div>

@@ -127,6 +127,39 @@ export class NewsStorage {
     return results[0];
   }
 
+  /**
+   * Direct newsroom runs can overlap in separate application instances. The
+   * database advisory lock is keyed by canonical URL, so duplicate detection and
+   * insertion happen in one transaction without imposing a retrospective unique
+   * constraint on legacy news rows.
+   */
+  async createArticleIfNew(article: InsertNewsArticle): Promise<NewsArticle | null> {
+    const canonicalUrl = article.canonicalUrl || article.url;
+    const contentHash = article.contentHash;
+    return db.transaction(async (tx) => {
+      // Lock both identities, in a stable order, so two different URLs carrying
+      // the same article cannot pass the content-hash check concurrently.
+      const lockKeys = [canonicalUrl, contentHash ? `hash:${contentHash}` : null]
+        .filter((key): key is string => Boolean(key))
+        .sort();
+      for (const lockKey of lockKeys) {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+      }
+      const existing = await tx
+        .select({ id: newsArticles.id })
+        .from(newsArticles)
+        .where(
+          contentHash
+            ? or(eq(newsArticles.url, canonicalUrl), eq(newsArticles.canonicalUrl, canonicalUrl), eq(newsArticles.contentHash, contentHash))
+            : or(eq(newsArticles.url, canonicalUrl), eq(newsArticles.canonicalUrl, canonicalUrl))
+        )
+        .limit(1);
+      if (existing.length) return null;
+      const created = await tx.insert(newsArticles).values(article).returning();
+      return created[0];
+    });
+  }
+
   async updateArticle(id: string, updates: Partial<InsertNewsArticle>): Promise<NewsArticle | undefined> {
     const results = await db
       .update(newsArticles)

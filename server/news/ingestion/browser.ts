@@ -1,4 +1,5 @@
 import puppeteer, { type Browser } from 'puppeteer';
+import { fetchPublicText, resolvePinnedPublicAddress } from './secureFetch';
 
 function getChromiumPath(): string {
   const candidates = [
@@ -35,9 +36,7 @@ export async function fetchRenderedHtml(
 ): Promise<string> {
   const { timeout = 30000, waitAfterLoad = 2000 } = options;
 
-  if (!url || !url.startsWith('http')) {
-    throw new Error(`Invalid URL: ${url}`);
-  }
+  const { url: validatedUrl, address } = await resolvePinnedPublicAddress(url);
 
   await waitForBrowserSlot();
   let browser: Browser | undefined;
@@ -53,6 +52,7 @@ export async function fetchRenderedHtml(
         '--no-first-run',
         '--no-zygote',
         '--single-process',
+        `--host-resolver-rules=MAP ${address.hostname} ${address.address},EXCLUDE localhost`,
       ],
     });
 
@@ -61,8 +61,22 @@ export async function fetchRenderedHtml(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
     await page.setViewport({ width: 1280, height: 800 });
+    const origin = validatedUrl.origin;
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      try {
+        const target = new URL(request.url());
+        if ((target.protocol !== 'http:' && target.protocol !== 'https:') || target.origin !== origin) {
+          void request.abort();
+        } else {
+          void request.continue();
+        }
+      } catch {
+        void request.abort();
+      }
+    });
 
-    await page.goto(url, { waitUntil: 'networkidle2', timeout });
+    await page.goto(validatedUrl.toString(), { waitUntil: 'networkidle2', timeout });
 
     if (waitAfterLoad > 0) {
       await new Promise(r => setTimeout(r, waitAfterLoad));
@@ -80,20 +94,13 @@ export async function fetchRenderedHtml(
 export async function fetchPageHtml(url: string): Promise<string> {
   try {
     console.log(`[Browser] Fetching ${url}`);
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      signal: AbortSignal.timeout(20000),
+    const response = await fetchPublicText(url, {
+      timeoutMs: 20000,
+      maxBytes: 4 * 1024 * 1024,
+      headers: { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const html = await response.text();
+    if (response.status < 200 || response.status >= 300) throw new Error(`HTTP ${response.status}`);
+    const html = response.text;
     if (html && html.length > 1000) {
       return html;
     }

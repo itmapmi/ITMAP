@@ -5,6 +5,7 @@ import { newsStorage } from "../news/storage";
 import { storage } from "../storage";
 import { PDFService } from "../pdf-generator/pdf-service";
 import { scrapeAllVendors, scrapeSingleVendor } from "../news/ingestion/scraper";
+import { directScrapeSingleVendor } from "../news/ingestion/directScraper";
 import { analyzeAllPending, analyzeSingleArticle } from "../news/impact/analyzer";
 
 const NEWS_EXPORT_RANGES: Record<number, string> = {
@@ -259,6 +260,33 @@ export function registerNewsRoutes(app: Express): void {
     } catch (error) {
       console.error("Error running news pipeline:", error);
       res.status(500).json({ error: "Failed to run news pipeline" });
+    }
+  });
+
+  app.post("/api/news/ingest/direct", requireAdmin, async (req, res) => {
+    const { vendor_id, lookback_days } = req.body ?? {};
+    if (typeof vendor_id !== "string" || !vendor_id.trim()) {
+      return res.status(400).json({ error: "vendor_id is required" });
+    }
+    const lookbackDays = typeof lookback_days === "number"
+      ? lookback_days
+      : typeof lookback_days === "string" && /^\d+$/.test(lookback_days)
+        ? Number(lookback_days)
+        : NaN;
+    if (!Number.isInteger(lookbackDays) || lookbackDays < 1 || lookbackDays > 90) {
+      return res.status(400).json({ error: "lookback_days must be an integer from 1 to 90" });
+    }
+
+    try {
+      const result = await directScrapeSingleVendor(vendor_id, lookbackDays);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      if (error?.message === "Vendor not found") return res.status(404).json({ error: error.message });
+      if (/has no newsroom URL configured/.test(error?.message ?? "")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error running direct newsroom scrape:", error);
+      res.status(500).json({ error: "Failed to run direct newsroom scrape" });
     }
   });
 
