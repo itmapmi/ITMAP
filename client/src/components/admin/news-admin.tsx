@@ -353,7 +353,8 @@ export function NewsAdmin({ onNavigateToVendor }: NewsAdminProps) {
         title: result.failed > 0 ? "Direct scrape completed with warnings" : "Direct scrape complete",
         description:
           `Discovered ${result.discovered}, added ${result.added}, skipped ${result.skipped}, failed ${result.failed}. ` +
-          `Strategy: ${result.strategy || "none"}${result.warningCount ? ` • ${result.warningCount} warning(s)` : ""}.`,
+          `Strategy: ${result.strategy || "none"}${result.warningCount ? ` • ${result.warningCount} warning(s)` : ""}.` +
+          (result.warnings[0] ? ` ${result.warnings[0]}` : ""),
         variant: result.failed > 0 ? "destructive" : "default",
       });
     },

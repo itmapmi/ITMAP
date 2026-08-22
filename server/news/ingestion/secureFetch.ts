@@ -128,6 +128,20 @@ export interface PinnedAddress {
   family: 4 | 6;
 }
 
+export function createPinnedLookup(address: PinnedAddress) {
+  return (
+    _hostname: string,
+    options: { all?: boolean },
+    callback: (error: NodeJS.ErrnoException | null, address?: string | Array<{ address: string; family: number }>, family?: number) => void,
+  ) => {
+    if (options.all) {
+      callback(null, [{ address: address.address, family: address.family }]);
+    } else {
+      callback(null, address.address, address.family);
+    }
+  };
+}
+
 export async function resolvePinnedPublicAddress(rawUrl: string): Promise<{ url: URL; address: PinnedAddress }> {
   const url = validateUrl(rawUrl);
   const literalFamily = net.isIP(url.hostname);
@@ -201,7 +215,7 @@ async function requestPinned(
           Accept: "text/html,application/xhtml+xml,application/xml,application/json,*/*;q=0.5",
           ...options.headers,
         },
-        lookup: (_hostname, _lookupOptions, callback) => callback(null, address.address, address.family),
+         lookup: createPinnedLookup(address),
         ...(url.protocol === "https:" ? { servername: url.hostname } : {}),
       },
       (response) => {

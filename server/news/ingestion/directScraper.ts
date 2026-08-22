@@ -246,15 +246,29 @@ function listingEndpoints(html: string, baseUrl: string): string[] {
   $('[data-cmp-is="resourcelisting"], [data-cmp-is="resourcelistinglt"], [data-cmp-is="resource-listing"]').each((_index, element) => {
     const root = $(element).attr("data-root-path") || $(element).attr("data-rootpath") || $(element).attr("data-path");
     if (!root) return;
-    const attributes: Record<string, string> = {
-      "data-page-size": "pageSize",
-      "data-page-number": "page",
-      "data-sort": "sort",
-      "data-search-type": "searchType",
-      "data-display-type": "displayType",
-      "data-asset-root": "assetRoot",
-      "data-page-type": "pageType",
+    const attribute = (...names: string[]) => {
+      for (const name of names) {
+        const value = $(element).attr(name);
+        if (value) return value;
+      }
+      return "";
     };
+    // AEM's client-side resource listing calls this endpoint with lower-case
+    // parameter names. The values below come only from the component attributes
+    // rendered on the page; using the legacy camelCase names makes some AEM
+    // installations return 400/500 instead of their result JSON.
+    const query = [
+      ["search", ""],
+      ["pagesize", attribute("data-page-size", "data-pagesize") || "20"],
+      ["offset", attribute("data-page-number", "data-page", "data-pagenumber") || "0"],
+      ["sortfield", attribute("data-sort-field", "data-sortfield", "data-sort") || "@jcr:score"],
+      ["displaytype", attribute("data-display-type", "data-displaytype")],
+      ["searchtype", attribute("data-search-type", "data-searchtype")],
+      ["assetroot", attribute("data-asset-root", "data-assetroot")],
+      ["pagetype", attribute("data-page-type", "data-pagetype")],
+      ["assettype", attribute("data-asset-type", "data-assettype")],
+      ["filters", ""],
+    ];
     // AEM deployments use either a child jcr:content selector or the older
     // `.jcr_content` selector. Both are explicitly derived from the listing
     // component, not guessed from arbitrary page links.
@@ -265,10 +279,7 @@ function listingEndpoints(html: string, baseUrl: string): string[] {
       const endpoint = normalizeUrl(path, baseUrl);
       if (!endpoint) continue;
       const url = new URL(endpoint);
-      for (const [attribute, key] of Object.entries(attributes)) {
-        const value = $(element).attr(attribute);
-        if (value) url.searchParams.set(key, value);
-      }
+      for (const [key, value] of query) url.searchParams.set(key, value);
       endpoints.add(url.toString());
     }
   });

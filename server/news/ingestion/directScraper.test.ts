@@ -13,7 +13,7 @@ import {
   discoverArticlesFromHtml,
   discoverArticlesFromListing,
 } from "./directScraper";
-import { isPublicAddress, resolvePinnedPublicAddress } from "./secureFetch";
+import { createPinnedLookup, isPublicAddress, resolvePinnedPublicAddress } from "./secureFetch";
 
 const TODAY = new Date("2026-08-22T12:00:00.000Z");
 
@@ -46,12 +46,12 @@ describe("direct newsroom discovery fixtures", () => {
     expect(result.staticCards).toHaveLength(1);
   });
 
-  it("recognizes both AEM resource-listing variants and their declared endpoints", () => {
-    const html = `<div data-cmp-is="resourcelistinglt" data-root-path="/content/vendor/news" data-page-size="20" data-sort="date"></div>`;
+  it("recognizes both AEM resource-listing variants and uses AEM's required lower-case query parameters", () => {
+    const html = `<div data-cmp-is="resourcelistinglt" data-root-path="/content/vendor/news" data-pageSize="20" data-sortField="date" data-displayType="horizontal" data-searchType="Pages" data-pageType="news"></div>`;
     const result = discoverArticlesFromHtml(html, "https://vendor.example/newsroom", 14, TODAY);
     expect(result.endpoints).toEqual([
-      "https://vendor.example/content/vendor/news/jcr:content.hvacsearch.json?pageSize=20&sort=date",
-      "https://vendor.example/content/vendor/news.jcr_content.hvacsearch.json?pageSize=20&sort=date",
+      "https://vendor.example/content/vendor/news/jcr:content.hvacsearch.json?search=&pagesize=20&offset=0&sortfield=date&displaytype=horizontal&searchtype=Pages&assetroot=&pagetype=news&assettype=&filters=",
+      "https://vendor.example/content/vendor/news.jcr_content.hvacsearch.json?search=&pagesize=20&offset=0&sortfield=date&displaytype=horizontal&searchtype=Pages&assetroot=&pagetype=news&assettype=&filters=",
     ]);
   });
 
@@ -82,6 +82,18 @@ describe("direct scrape SSRF boundary", () => {
 
   it("rejects a private literal before any outbound request can start", async () => {
     await expect(resolvePinnedPublicAddress("http://127.0.0.1/admin")).rejects.toThrow(/Blocked private/i);
+  });
+
+  it("returns the address-list shape required by Node's auto-select-family lookup", () => {
+    const address = { hostname: "newsroom.example", address: "203.0.113.10", family: 4 as const };
+    const callback = vi.fn();
+    const lookup = createPinnedLookup(address);
+
+    lookup(address.hostname, { all: true }, callback);
+    expect(callback).toHaveBeenLastCalledWith(null, [{ address: address.address, family: address.family }]);
+
+    lookup(address.hostname, { all: false }, callback);
+    expect(callback).toHaveBeenLastCalledWith(null, address.address, address.family);
   });
 
   it("rejects DNS answers that encode loopback as IPv6-compatible or mapped hex", async () => {
