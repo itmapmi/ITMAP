@@ -1,14 +1,17 @@
 import type { Express } from "express";
 
 /**
- * Replit deployments reach the app through two infrastructure hops:
- * the public Google load balancer and Replit's internal reverse proxy.
+ * Replit deployments sanitize and forward the originating client address in
+ * X-Forwarded-For. The exact number of internal hops can vary by deployment
+ * path, so a fixed numeric proxy count can stop at a Google ingress address
+ * instead of the visitor's address.
  *
- * Trusting exactly two hops lets Express select the real client address while
- * still ignoring any additional X-Forwarded-For values supplied by a visitor.
+ * Trust the forwarding headers at the application boundary as Replit
+ * documents for Express. Replit owns the public ingress and protects the
+ * header before it reaches this service.
  */
-export const TRUSTED_PROXY_HOPS = 2;
+export const TRUST_REPLIT_PROXY = true;
 
 export function configureProxyTrust(app: Express): void {
-  app.set("trust proxy", TRUSTED_PROXY_HOPS);
+  app.set("trust proxy", TRUST_REPLIT_PROXY);
 }
