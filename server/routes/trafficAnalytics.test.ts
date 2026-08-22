@@ -1,0 +1,317 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
+import express, { type Express } from "express";
+import request from "supertest";
+
+const h = vi.hoisted(() => {
+  const storage = {
+    upsertTrafficVisitor: vi.fn(),
+    writeTrafficEvent: vi.fn(),
+    incrementLoginCount: vi.fn(),
+    trackEvent: vi.fn(),
+    getTrafficSummary: vi.fn(),
+    getTrafficTrend: vi.fn(),
+    getTrafficGeo: vi.fn(),
+    getTopMarkets: vi.fn(),
+    getTabStats: vi.fn(),
+    getTrafficFilters: vi.fn(),
+    listVisitors: vi.fn(),
+  };
+  const resolveGeo = vi.fn();
+  return { storage, resolveGeo };
+});
+
+vi.mock("../storage", () => ({ storage: h.storage }));
+vi.mock("../geoResolver", () => ({ resolveGeo: h.resolveGeo }));
+vi.mock("../db", () => ({ pool: {}, db: {} }));
+vi.mock("../emailService", () => ({
+  sendWatchlistInviteEmail: vi.fn(),
+  buildInviteHtml: vi.fn(),
+}));
+vi.mock("../pdf-generator/pdf-service", () => ({
+  pdfService: new Proxy({}, { get: () => vi.fn() }),
+}));
+
+import {
+  linkVisitorOnLogin,
+  registerLeadGenRoutes,
+} from "./leadGen";
+import { registerAdminRoutes } from "./admin";
+
+type TestUser = { id: string; role: "user" | "admin"; email?: string } | null;
+let currentUser: TestUser = null;
+
+function buildApp(): Express {
+  const app = express();
+  app.use(express.json());
+  app.use((req: any, _res, next) => {
+    req.isAuthenticated = () => currentUser !== null;
+    req.user = currentUser ?? undefined;
+    Object.defineProperty(req, "ip", {
+      configurable: true,
+      value: req.get("x-test-ip") ?? "198.51.100.1",
+    });
+    next();
+  });
+
+  registerLeadGenRoutes(app);
+  registerAdminRoutes(app);
+
+  // Exercise the same exported helper called by the real login/register routes,
+  // while avoiding Passport and a persistent session store in this route suite.
+  app.post("/__test/login", async (req, res) => {
+    if (!currentUser) return res.status(401).end();
+    await linkVisitorOnLogin(req, res, currentUser.id);
+    res.json({ linked: true });
+  });
+
+  return app;
+}
+
+const app = buildApp();
+const testIpPrefix = `traffic-test-${randomUUID()}`;
+
+function testIp(suffix: string): string {
+  return `${testIpPrefix}-${suffix}`;
+}
+
+function event(eventType = "page_view") {
+  return { eventType, pagePath: "/markets" };
+}
+
+function cookiePair(
+  response: request.Response,
+  name: "tv_vid" | "tv_sid",
+): string {
+  const setCookies = response.headers["set-cookie"] as unknown as string[] | undefined;
+  const cookie = setCookies?.find((value) => value.startsWith(`${name}=`));
+  if (!cookie) throw new Error(`Missing ${name} cookie`);
+  return cookie.split(";", 1)[0];
+}
+
+beforeEach(() => {
+  currentUser = null;
+  vi.clearAllMocks();
+
+  h.resolveGeo.mockResolvedValue({
+    countryCode: "US",
+    country: "United States",
+    region: "California",
+    city: "San Francisco",
+  });
+  h.storage.upsertTrafficVisitor.mockImplementation(async (input: any) => ({
+    id: `visitor-${input.anonymousId}`,
+  }));
+  h.storage.writeTrafficEvent.mockResolvedValue({});
+  h.storage.incrementLoginCount.mockResolvedValue(undefined);
+  h.storage.trackEvent.mockResolvedValue({});
+
+  h.storage.getTrafficSummary.mockResolvedValue({ uniqueVisitors: 2 });
+  h.storage.getTrafficTrend.mockResolvedValue([{ period: "2026-08-22" }]);
+  h.storage.getTrafficGeo.mockResolvedValue([{ countryCode: "US" }]);
+  h.storage.getTopMarkets.mockResolvedValue([{ marketId: "market-1" }]);
+  h.storage.getTabStats.mockResolvedValue([{ tab: "overview" }]);
+  h.storage.getTrafficFilters.mockResolvedValue({ markets: [], countries: [] });
+  h.storage.listVisitors.mockResolvedValue({ visitors: [], total: 0 });
+});
+
+describe("POST /api/track identity and ingestion", () => {
+  it("keeps one browser visitor ID stable while rotating only the later traffic session", async () => {
+    const browser = request.agent(app);
+
+    const first = await browser
+      .post("/api/track")
+      .set("x-test-ip", testIp("identity"))
+      .send({ events: [event()] });
+    expect(first.status).toBe(200);
+
+    const visitorCookie = cookiePair(first, "tv_vid");
+    const firstInput = h.storage.upsertTrafficVisitor.mock.calls[0][0];
+
+    const sameSession = await browser
+      .post("/api/track")
+      .set("x-test-ip", testIp("identity"))
+      .send({ events: [event()] });
+    expect(sameSession.status).toBe(200);
+
+    const secondInput = h.storage.upsertTrafficVisitor.mock.calls[1][0];
+    expect(secondInput.anonymousId).toBe(firstInput.anonymousId);
+    expect(secondInput.sessionId).toBe(firstInput.sessionId);
+
+    // Keep the long-lived visitor cookie but intentionally omit the 30-minute
+    // traffic-session cookie to model the browser returning in a later session.
+    const laterSession = await request(app)
+      .post("/api/track")
+      .set("x-test-ip", testIp("identity-later"))
+      .set("Cookie", visitorCookie)
+      .send({ events: [event()] });
+    expect(laterSession.status).toBe(200);
+
+    const thirdInput = h.storage.upsertTrafficVisitor.mock.calls[2][0];
+    expect(thirdInput.anonymousId).toBe(firstInput.anonymousId);
+    expect(thirdInput.sessionId).not.toBe(firstInput.sessionId);
+  });
+
+  it("accepts anonymous page views without creating buyer-intent events", async () => {
+    const response = await request(app)
+      .post("/api/track")
+      .set("x-test-ip", testIp("anonymous"))
+      .send({ events: [event()] });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ accepted: 1, rejected: 0 });
+    expect(h.storage.writeTrafficEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "page_view",
+        userId: null,
+      }),
+    );
+    expect(h.storage.trackEvent).not.toHaveBeenCalled();
+  });
+
+  it("links the stable visitor on login without duplicating lead-generation events", async () => {
+    const browser = request.agent(app);
+    const anonymous = await browser
+      .post("/api/track")
+      .set("x-test-ip", testIp("login"))
+      .send({ events: [event()] });
+    expect(anonymous.status).toBe(200);
+
+    const anonymousId =
+      h.storage.upsertTrafficVisitor.mock.calls[0][0].anonymousId;
+    expect(h.storage.trackEvent).not.toHaveBeenCalled();
+
+    currentUser = { id: "user-1", role: "user" };
+    const login = await browser
+      .post("/__test/login")
+      .set("x-test-ip", testIp("login"));
+    expect(login.status).toBe(200);
+
+    expect(h.storage.upsertTrafficVisitor).toHaveBeenLastCalledWith(
+      expect.objectContaining({ anonymousId, userId: "user-1" }),
+    );
+    expect(h.storage.incrementLoginCount).toHaveBeenCalledOnce();
+    expect(h.storage.writeTrafficEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        anonymousId,
+        userId: "user-1",
+        eventType: "login",
+      }),
+    );
+    expect(h.storage.trackEvent).not.toHaveBeenCalled();
+
+    const leadEvent = await browser
+      .post("/api/track")
+      .set("x-test-ip", testIp("login"))
+      .send({ events: [event("market_viewed")] });
+    expect(leadEvent.status).toBe(200);
+    expect(h.storage.trackEvent).toHaveBeenCalledOnce();
+    expect(h.storage.trackEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        eventType: "market_viewed",
+        source: "client",
+      }),
+    );
+  });
+});
+
+describe("POST /api/track abuse boundaries", () => {
+  it.each([
+    {
+      name: "more than 50 events",
+      ip: testIp("payload-count"),
+      body: { events: Array.from({ length: 51 }, () => event()) },
+    },
+    {
+      name: "metadata larger than 4 KB",
+      ip: testIp("payload-bytes"),
+      body: {
+        events: [{
+          ...event(),
+          metadata: { oversized: "x".repeat(4097) },
+        }],
+      },
+    },
+    {
+      name: "metadata with more than 20 keys",
+      ip: testIp("payload-keys"),
+      body: {
+        events: [{
+          ...event(),
+          metadata: Object.fromEntries(
+            Array.from({ length: 21 }, (_, index) => [`key${index}`, index]),
+          ),
+        }],
+      },
+    },
+  ])("rejects $name before any writes", async ({ body, ip }) => {
+    const response = await request(app)
+      .post("/api/track")
+      .set("x-test-ip", ip)
+      .send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Invalid beacon payload");
+    expect(h.storage.upsertTrafficVisitor).not.toHaveBeenCalled();
+    expect(h.storage.writeTrafficEvent).not.toHaveBeenCalled();
+  });
+
+  it("reserves event slots and rejects requests beyond 300 events per IP", async () => {
+    const batch = { events: Array.from({ length: 50 }, () => event()) };
+    const rateLimitedIp = testIp("rate-limit");
+
+    for (let index = 0; index < 6; index++) {
+      const accepted = await request(app)
+        .post("/api/track")
+        .set("x-test-ip", rateLimitedIp)
+        .send(batch);
+      expect(accepted.status).toBe(200);
+      expect(accepted.body.accepted).toBe(50);
+    }
+
+    const limited = await request(app)
+      .post("/api/track")
+      .set("x-test-ip", rateLimitedIp)
+      .send({ events: [event()] });
+
+    expect(limited.status).toBe(429);
+    expect(limited.body.error).toBe("Rate limit exceeded");
+    expect(h.storage.writeTrafficEvent).toHaveBeenCalledTimes(300);
+  });
+});
+
+describe("admin traffic authorization", () => {
+  it("rejects anonymous and non-admin traffic-dashboard requests", async () => {
+    const anonymous = await request(app).get("/api/admin/operations/traffic");
+    expect(anonymous.status).toBe(403);
+
+    currentUser = { id: "user-1", role: "user" };
+    const nonAdmin = await request(app).get("/api/admin/operations/traffic");
+    expect(nonAdmin.status).toBe(403);
+
+    expect(h.storage.getTrafficSummary).not.toHaveBeenCalled();
+  });
+
+  it("returns the composed traffic fixture only to an admin", async () => {
+    currentUser = { id: "admin-1", role: "admin" };
+
+    const response = await request(app)
+      .get("/api/admin/operations/traffic")
+      .query({ days: 30, granularity: "week", visitorType: "registered" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      summary: { uniqueVisitors: 2 },
+      trend: [{ period: "2026-08-22" }],
+      geo: [{ countryCode: "US" }],
+      topMarkets: [{ marketId: "market-1" }],
+      tabs: [{ tab: "overview" }],
+      filters: { markets: [], countries: [] },
+    });
+    expect(h.storage.getTrafficTrend).toHaveBeenCalledWith(
+      expect.objectContaining({ visitorType: "registered" }),
+      "week",
+    );
+  });
+});
