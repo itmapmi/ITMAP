@@ -37,6 +37,7 @@ import {
   registerLeadGenRoutes,
 } from "./leadGen";
 import { registerAdminRoutes } from "./admin";
+import { configureProxyTrust } from "../proxyTrust";
 
 type TestUser = { id: string; role: "user" | "admin"; email?: string } | null;
 let currentUser: TestUser = null;
@@ -313,5 +314,36 @@ describe("admin traffic authorization", () => {
       expect.objectContaining({ visitorType: "registered" }),
       "week",
     );
+  });
+});
+
+describe("deployment proxy trust", () => {
+  it("selects the client IP behind Replit's two trusted infrastructure hops", async () => {
+    const proxyApp = express();
+    configureProxyTrust(proxyApp);
+    proxyApp.get("/ip", (req, res) => res.json({ ip: req.ip }));
+
+    const response = await request(proxyApp)
+      .get("/ip")
+      .set("X-Forwarded-For", "203.0.113.25, 35.186.224.1");
+
+    expect(response.status).toBe(200);
+    expect(response.body.ip).toBe("203.0.113.25");
+  });
+
+  it("ignores an extra spoofed address outside the trusted proxy boundary", async () => {
+    const proxyApp = express();
+    configureProxyTrust(proxyApp);
+    proxyApp.get("/ip", (req, res) => res.json({ ip: req.ip }));
+
+    const response = await request(proxyApp)
+      .get("/ip")
+      .set(
+        "X-Forwarded-For",
+        "192.0.2.99, 203.0.113.25, 35.186.224.1",
+      );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ip).toBe("203.0.113.25");
   });
 });

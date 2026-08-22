@@ -5,12 +5,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runStartupMigrations } from "./db";
+import { configureProxyTrust } from "./proxyTrust";
 
 const app = express();
 
-// Replit terminates traffic at one reverse-proxy hop. Trust exactly that hop
-// (rather than every X-Forwarded-For value) so req.ip cannot be freely spoofed.
-app.set('trust proxy', 1);
+configureProxyTrust(app);
 
 // Canonical domain enforcement.
 // In production a custom domain (e.g. itmap.ai) is served alongside the bare
