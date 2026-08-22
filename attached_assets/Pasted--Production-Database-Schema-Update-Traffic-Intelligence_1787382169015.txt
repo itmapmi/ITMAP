@@ -1,0 +1,92 @@
+-- Production Database Schema Update: Traffic Intelligence Tables (Task #22)
+-- Creates three new tables for admin traffic analytics
+-- Safe to run: all tables start empty, no data overwrite
+
+-- ============================================================================
+-- TABLE 1: traffic_visitors
+-- Stable browser identity (cookie-keyed), linked to user when authenticated
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS traffic_visitors (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  anonymous_id text NOT NULL UNIQUE,
+  user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+  ip_address text,
+  country_code text,
+  country text,
+  region text,
+  city text,
+  user_agent text,
+  first_seen_at timestamp NOT NULL DEFAULT now(),
+  last_seen_at timestamp NOT NULL DEFAULT now(),
+  visit_count integer NOT NULL DEFAULT 1,
+  last_session_id text
+);
+
+-- Indexes for traffic_visitors
+CREATE INDEX IF NOT EXISTS tv_anon_id_idx ON traffic_visitors(anonymous_id);
+CREATE INDEX IF NOT EXISTS tv_user_idx ON traffic_visitors(user_id);
+CREATE INDEX IF NOT EXISTS tv_country_idx ON traffic_visitors(country_code);
+CREATE INDEX IF NOT EXISTS tv_last_seen_idx ON traffic_visitors(last_seen_at);
+
+-- ============================================================================
+-- TABLE 2: traffic_events
+-- Raw append-only event stream (one row per beacon event)
+-- Anonymous events have null user_id
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS traffic_events (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  visitor_id varchar REFERENCES traffic_visitors(id) ON DELETE SET NULL,
+  anonymous_id text NOT NULL,
+  user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+  session_id text,
+  event_type text NOT NULL,
+  page_path text,
+  referrer text,
+  utm_source text,
+  utm_medium text,
+  utm_campaign text,
+  utm_term text,
+  utm_content text,
+  market_id varchar REFERENCES markets(id) ON DELETE SET NULL,
+  vendor_id varchar REFERENCES vendors(id) ON DELETE SET NULL,
+  tab_id text,
+  duration_ms integer,
+  ip_address text,
+  country_code text,
+  country text,
+  region text,
+  city text,
+  user_agent text,
+  metadata jsonb,
+  created_at timestamp NOT NULL DEFAULT now()
+);
+
+-- Indexes for traffic_events
+CREATE INDEX IF NOT EXISTS te_created_idx ON traffic_events(created_at);
+CREATE INDEX IF NOT EXISTS te_visitor_idx ON traffic_events(visitor_id);
+CREATE INDEX IF NOT EXISTS te_user_idx ON traffic_events(user_id);
+CREATE INDEX IF NOT EXISTS te_market_idx ON traffic_events(market_id);
+CREATE INDEX IF NOT EXISTS te_country_idx ON traffic_events(country_code);
+CREATE INDEX IF NOT EXISTS te_market_created_idx ON traffic_events(market_id, created_at);
+
+-- ============================================================================
+-- TABLE 3: traffic_login_counts
+-- Per-user login counter, incremented only on register/activate/login
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS traffic_login_counts (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id varchar NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  login_count integer NOT NULL DEFAULT 0,
+  last_login_at timestamp,
+  updated_at timestamp NOT NULL DEFAULT now()
+);
+
+-- Index for traffic_login_counts
+CREATE INDEX IF NOT EXISTS tlc_user_idx ON traffic_login_counts(user_id);
+
+-- ============================================================================
+-- Verification queries (run these after creation to confirm)
+-- ============================================================================
+-- SELECT table_name FROM information_schema.tables 
+-- WHERE table_name IN ('traffic_visitors', 'traffic_events', 'traffic_login_counts')
+-- ORDER BY table_name;
