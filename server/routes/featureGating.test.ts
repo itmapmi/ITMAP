@@ -22,9 +22,23 @@ const h = vi.hoisted(() => {
     getMarketById: vi.fn(),
     getResearchReportById: vi.fn(),
     getResearchReportsByMarket: vi.fn().mockResolvedValue([]),
+    createResearchReport: vi.fn(),
     getVendorSignalsByMarket: vi.fn().mockResolvedValue([]),
   };
-  return { mod, valueProxy, storage };
+  const objectStorage = {
+    normalizeObjectEntityPath: vi.fn(),
+    getSignedDownloadUrl: vi.fn(),
+  };
+  class ObjectStorageService {
+    normalizeObjectEntityPath(rawPath: string) {
+      return objectStorage.normalizeObjectEntityPath(rawPath);
+    }
+
+    getSignedDownloadUrl(storageKey: string, ttlSec: number) {
+      return objectStorage.getSignedDownloadUrl(storageKey, ttlSec);
+    }
+  }
+  return { mod, valueProxy, storage, objectStorage, ObjectStorageService };
 });
 
 vi.mock("../storage", () => ({ storage: h.storage }));
@@ -72,7 +86,11 @@ vi.mock("../storage/datasheets", () =>
     "appendChatMessage",
   ),
 );
-vi.mock("../objectStorage", () => h.mod("ObjectStorageService", "ObjectNotFoundError"));
+vi.mock("../objectStorage", () => ({
+  ObjectStorageService: h.ObjectStorageService,
+  ObjectNotFoundError: class ObjectNotFoundError extends Error {},
+}));
+vi.mock("./leadGen", () => ({ recordEvent: vi.fn() }));
 vi.mock("../pdf-generator/pdf-service", () => ({ pdfService: h.valueProxy() }));
 vi.mock("../market-builder/runner", () =>
   h.mod("initSSE", "sendEvent", "runSingleStage", "buildLLMConfig", "MissingLlmKeyError"),
@@ -188,6 +206,10 @@ beforeEach(() => {
   h.storage.getMarketById.mockResolvedValue({ id: "m1", visibility: "public" });
   h.storage.getResearchReportsByMarket.mockResolvedValue([]);
   h.storage.getVendorSignalsByMarket.mockResolvedValue([]);
+  h.objectStorage.normalizeObjectEntityPath.mockImplementation((value: string) => value);
+  h.objectStorage.getSignedDownloadUrl.mockResolvedValue(
+    "https://storage.googleapis.com/signed-download",
+  );
 });
 
 describe.each(FAMILIES)("gated route family: $name", ({ feature, path }) => {
@@ -261,5 +283,61 @@ describe("GET /api/research-reports/:reportId visibility enforcement", () => {
     const res = await request(app).get("/api/research-reports/r1");
     expect(res.status).toBe(200);
     expect(res.body.id).toBe("r1");
+  });
+});
+
+describe("research report App Storage URLs", () => {
+  it("redirects an authorized download to a short-lived signed GET URL", async () => {
+    currentUser = userWith("research_reports");
+    h.storage.getResearchReportById.mockResolvedValue({
+      id: "r1",
+      marketId: "m1",
+      title: "Report",
+      fileUrl:
+        "https://storage.googleapis.com/reports-bucket/uploads/report.pdf?temporary-put-signature",
+    });
+    h.storage.getMarketById.mockResolvedValue({ id: "m1", visibility: "public" });
+    h.objectStorage.normalizeObjectEntityPath.mockReturnValue(
+      "/objects/uploads/report.pdf",
+    );
+    h.objectStorage.getSignedDownloadUrl.mockResolvedValue(
+      "https://storage.googleapis.com/signed-get-url",
+    );
+
+    const res = await request(app).get("/api/research-reports/r1/download");
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe(
+      "https://storage.googleapis.com/signed-get-url",
+    );
+    expect(h.objectStorage.getSignedDownloadUrl).toHaveBeenCalledWith(
+      "/objects/uploads/report.pdf",
+      15 * 60,
+    );
+  });
+
+  it("stores a stable private object key instead of the temporary upload URL", async () => {
+    currentUser = admin;
+    h.objectStorage.normalizeObjectEntityPath.mockReturnValue(
+      "/objects/uploads/report.pdf",
+    );
+    h.storage.createResearchReport.mockImplementation(async (report: any) => ({
+      id: "r1",
+      ...report,
+    }));
+
+    const res = await request(app).post("/api/research-reports").send({
+      title: "Report",
+      marketId: "m1",
+      fileUrl:
+        "https://storage.googleapis.com/reports-bucket/uploads/report.pdf?temporary-put-signature",
+    });
+
+    expect(res.status).toBe(201);
+    expect(h.storage.createResearchReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileUrl: "/objects/uploads/report.pdf",
+      }),
+    );
   });
 });

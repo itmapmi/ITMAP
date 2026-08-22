@@ -36,4 +36,14 @@ describe("ObjectStorageService", () => {
       "/legacy-bucket/.private",
     );
   });
+
+  it("converts a Reports bucket upload URL into a private storage key", () => {
+    process.env.REPORTS_OBJECT_STORAGE_BUCKET_ID = "reports-bucket";
+
+    expect(
+      new ObjectStorageService().normalizeObjectEntityPath(
+        "https://storage.googleapis.com/reports-bucket/uploads/report.pdf?X-Goog-Signature=temporary",
+      ),
+    ).toBe("/objects/uploads/report.pdf");
+  });
 });

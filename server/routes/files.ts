@@ -547,8 +547,9 @@ export function registerFileRoutes(app: Express): void {
     }
   });
 
-  // Records a download then redirects to the stored file. Used by the public
-  // research-reports list so downloads are captured as lead-gen activity.
+  // Records a download then redirects to a short-lived signed GET URL for
+  // stored reports. Used by the public research-reports list so downloads are
+  // captured as lead-gen activity.
   app.get("/api/research-reports/:reportId/download", requireFeature("research_reports"), async (req, res) => {
     try {
       const report = await storage.getResearchReportById(req.params.reportId);
@@ -562,7 +563,21 @@ export function registerFileRoutes(app: Express): void {
         marketId: report.marketId,
         metadata: { reportType: "research_report", reportId: report.id, title: report.title },
       });
-      res.redirect(report.fileUrl);
+
+      const objectStorageService = new ObjectStorageService();
+      const storageKey = objectStorageService.normalizeObjectEntityPath(report.fileUrl);
+      if (storageKey.startsWith("/objects/")) {
+        const downloadURL = await objectStorageService.getSignedDownloadUrl(
+          storageKey,
+          15 * 60,
+        );
+        return res.redirect(downloadURL);
+      }
+
+      // Legacy reports that intentionally link to an external site retain
+      // their configured destination. App Storage reports are always converted
+      // to /objects/... when created below.
+      return res.redirect(report.fileUrl);
     } catch (error) {
       console.error("Error downloading research report:", error);
       res.status(500).json({ error: "Failed to download research report" });
@@ -572,7 +587,13 @@ export function registerFileRoutes(app: Express): void {
   app.post("/api/research-reports", requireAdmin, async (req, res) => {
     try {
       const report = insertResearchReportSchema.parse(req.body);
-      const newReport = await storage.createResearchReport(report);
+      const objectStorageService = new ObjectStorageService();
+      const newReport = await storage.createResearchReport({
+        ...report,
+        fileUrl: report.fileUrl
+          ? objectStorageService.normalizeObjectEntityPath(report.fileUrl)
+          : report.fileUrl,
+      });
       res.status(201).json(newReport);
     } catch (error) {
       console.error("Error creating research report:", error);
@@ -583,7 +604,13 @@ export function registerFileRoutes(app: Express): void {
   app.put("/api/research-reports/:reportId", requireAdmin, async (req, res) => {
     try {
       const reportData = insertResearchReportSchema.partial().parse(req.body);
-      const updatedReport = await storage.updateResearchReport(req.params.reportId, reportData);
+      const objectStorageService = new ObjectStorageService();
+      const updatedReport = await storage.updateResearchReport(req.params.reportId, {
+        ...reportData,
+        fileUrl: reportData.fileUrl
+          ? objectStorageService.normalizeObjectEntityPath(reportData.fileUrl)
+          : reportData.fileUrl,
+      });
       if (!updatedReport) return res.status(404).json({ error: "Research report not found" });
       res.json(updatedReport);
     } catch (error) {
