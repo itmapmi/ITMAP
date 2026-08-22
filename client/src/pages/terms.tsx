@@ -33,7 +33,7 @@ export default function TermsPage() {
 
         <div className="bg-slate-900/80 border border-white/10 rounded-2xl shadow-2xl p-6 sm:p-10">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">ITMAP.ai — Terms of Service</h1>
-          <p className="text-sm text-slate-400 mb-8">Last updated: July 19, 2026</p>
+          <p className="text-sm text-slate-400 mb-8">Last updated: August 22, 2026</p>
 
           <div className="prose prose-invert prose-slate max-w-none">
             <p className="text-slate-300">
@@ -60,8 +60,14 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-2 text-slate-300">
               <li><strong>Account data</strong>: your name, company name, email address, and job role.</li>
               <li><strong>Activity data</strong>: markets and reports you browse, searches and chat queries, RFPs you create, datasheets you compare, and similar usage and sentiment signals.</li>
+              <li><strong>Traffic and device data</strong>: a random first-party visitor identifier, session identifier, page paths, referring page, campaign parameters, browser user agent, full IP address, and approximate country, region, and city derived from that IP address. We do not use browser fingerprinting or request GPS location.</li>
             </ul>
-            <p className="text-slate-300">We use this data to operate and improve the Service and for the purposes described in Section 4.</p>
+            <p className="text-slate-300">
+              We use this data to operate, secure, analyze, and improve the Service and for the purposes described in Section 4. Traffic records, including full IP addresses, are retained indefinitely unless deletion is required by applicable law or we choose to remove them.
+            </p>
+            <p className="text-slate-300">
+              Traffic collection begins when a page loads, including for anonymous visitors. We send the request IP address to the third-party GeoIP processor ipwho.is solely to derive approximate country, region, and city. See our <Link href="/privacy" className="text-cyan-400 hover:text-cyan-300">Privacy Notice</Link> for details.
+            </p>
 
             <h2 className="text-xl font-semibold text-white mt-8 mb-3">4. Sharing Your Data with Vendors — Please Read</h2>
             <p className="text-slate-300">

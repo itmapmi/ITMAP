@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import multer from "multer";
 import XLSX from "xlsx";
 import { z } from "zod";
+import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../auth";
 import { storage } from "../storage";
 import {
@@ -20,22 +21,180 @@ import {
   type LeadGenEventType,
 } from "@shared/schema";
 import { sendWatchlistInviteEmail } from "../emailService";
+import { resolveGeo } from "../geoResolver";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// UUID regex for validating marketId / vendorId fields.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidOrNull = z
+  .string()
+  .regex(UUID_RE, "must be a UUID")
+  .nullable()
+  .optional();
+
+// Max serialised JSON size for metadata (4 KB).
+const METADATA_MAX_BYTES = 4096;
+
+function metadataValidator(val: Record<string, unknown> | null | undefined): boolean {
+  if (!val) return true;
+  const keys = Object.keys(val);
+  if (keys.length > 20) return false;
+  try {
+    return Buffer.byteLength(JSON.stringify(val), "utf8") <= METADATA_MAX_BYTES;
+  } catch {
+    return false;
+  }
+}
+
+// Extended beacon event schema with traffic-intelligence fields.
+// sessionId is NOT accepted from the client — it is taken from req.sessionID.
 const beaconEventSchema = z.object({
-  eventType: z.string(),
-  marketId: z.string().optional().nullable(),
-  vendorId: z.string().optional().nullable(),
-  metadata: z.record(z.any()).optional().nullable(),
-  durationMs: z.number().int().nonnegative().optional().nullable(),
+  eventType: z.string().max(64),
+  marketId: uuidOrNull,
+  vendorId: uuidOrNull,
+  metadata: z
+    .record(z.unknown())
+    .nullable()
+    .optional()
+    .refine(metadataValidator, "metadata exceeds 4 KB or 20 keys"),
+  durationMs: z.number().int().min(0).max(86_400_000).optional().nullable(),
+  // Traffic fields – client-supplied hints (pagePath must be relative).
+  pagePath: z
+    .string()
+    .max(512)
+    .regex(/^\//, "pagePath must begin with /")
+    .optional()
+    .nullable(),
+  referrer: z.string().max(1024).optional().nullable(),
+  utmSource: z.string().max(128).optional().nullable(),
+  utmMedium: z.string().max(128).optional().nullable(),
+  utmCampaign: z.string().max(256).optional().nullable(),
+  utmTerm: z.string().max(256).optional().nullable(),
+  utmContent: z.string().max(256).optional().nullable(),
+  tabId: z.string().max(128).optional().nullable(),
+  // sessionId is NOT accepted from the client
 });
 
 const beaconBodySchema = z.object({
   events: z.array(beaconEventSchema).max(50),
 });
 
+// Traffic-only event types accepted into traffic_events but NOT user_events.
+// page_view is traffic-only — not in the lead-gen allowlist.
+const TRAFFIC_ONLY_EVENT_TYPES = new Set<string>(["page_view"]);
+
+// Lead-gen client-beacon types (go into user_events when authenticated).
 const allowedBeaconTypes = new Set<string>(CLIENT_BEACON_EVENT_TYPES);
+
+// Combined allowlist for traffic_events acceptance.
+// Accepts both lead-gen beacon types AND traffic-only types.
+const allowedTrafficTypes = new Set<string>([
+  ...Array.from(allowedBeaconTypes),
+  ...Array.from(TRAFFIC_ONLY_EVENT_TYPES),
+]);
+
+// ── Per-IP rate limiter (in-memory, bounded) ──────────────────────────────────
+// Window: 15 minutes. Budget: 300 event slots per IP per window.
+// Rate checked BEFORE awaits, consuming slots (not request count) to bound DB writes.
+const IP_RATE_LIMIT_MAX = 300;           // max event slots per window
+const IP_RATE_LIMIT_WINDOW_MS = 15 * 60_000; // 15 minutes
+
+interface RateLimitEntry { slots: number; windowStart: number }
+const ipRateMap = new Map<string, RateLimitEntry>();
+const IP_RATE_MAP_MAX = 10_000;
+
+/**
+ * Checks whether `slotsNeeded` events from `ip` would exceed the window budget.
+ * Reserves those slots atomically before any DB writes.
+ * Returns true → rate-limited (caller must reject).
+ */
+function isRateLimited(ip: string, slotsNeeded: number): boolean {
+  const now = Date.now();
+  let entry = ipRateMap.get(ip);
+  if (!entry || now - entry.windowStart > IP_RATE_LIMIT_WINDOW_MS) {
+    if (!entry && ipRateMap.size >= IP_RATE_MAP_MAX) {
+      const firstKey = ipRateMap.keys().next().value;
+      if (firstKey) ipRateMap.delete(firstKey);
+    }
+    entry = { slots: 0, windowStart: now };
+    ipRateMap.set(ip, entry);
+  }
+  if (entry.slots + slotsNeeded > IP_RATE_LIMIT_MAX) return true;
+  entry.slots += slotsNeeded;
+  return false;
+}
+
+// ── Visitor cookie helpers ────────────────────────────────────────────────────
+const VISITOR_COOKIE = "tv_vid";
+const TRAFFIC_SESSION_COOKIE = "tv_sid";
+// 10-year retention (seconds)
+const VISITOR_COOKIE_MAX_AGE_S = 10 * 365 * 24 * 60 * 60;
+const TRAFFIC_SESSION_MAX_AGE_MS = 30 * 60 * 1000;
+
+function parseCookies(req: Request): Record<string, string> {
+  const header = req.headers.cookie;
+  if (!header) return {};
+  const result: Record<string, string> = {};
+  try {
+    for (const part of header.split(";")) {
+      const idx = part.indexOf("=");
+      if (idx < 1) continue;
+      const key = part.slice(0, idx).trim();
+      const raw = part.slice(idx + 1).trim();
+      result[key] = decodeURIComponent(raw);
+    }
+  } catch {
+    // Malformed cookie header — return empty rather than throwing.
+  }
+  return result;
+}
+
+/** Validate that a cookie value is a well-formed UUID (v4). */
+function isValidUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
+export function getOrCreateVisitorId(req: Request, res: Response): string {
+  let existing: string | undefined;
+  try {
+    const cookies = parseCookies(req);
+    existing = cookies[VISITOR_COOKIE];
+  } catch {
+    // Swallow malformed cookie errors.
+  }
+  // Validate: must be a non-empty UUID to guard against injected values.
+  if (typeof existing === "string" && existing.length > 0 && isValidUuid(existing)) {
+    return existing;
+  }
+  const newId = crypto.randomUUID();
+  res.cookie(VISITOR_COOKIE, newId, {
+    httpOnly: true,
+    sameSite: "lax",
+    // secure in production only
+    secure: process.env.NODE_ENV === "production",
+    maxAge: VISITOR_COOKIE_MAX_AGE_S * 1000,
+    path: "/",
+  });
+  return newId;
+}
+
+function getOrCreateTrafficSessionId(req: Request, res: Response): string {
+  const existing = parseCookies(req)[TRAFFIC_SESSION_COOKIE];
+  const sessionId = typeof existing === "string" && isValidUuid(existing)
+    ? existing
+    : crypto.randomUUID();
+
+  // Refresh on each accepted beacon so a visit ends after 30 minutes of inactivity.
+  res.cookie(TRAFFIC_SESSION_COOKIE, sessionId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: TRAFFIC_SESSION_MAX_AGE_MS,
+    path: "/",
+  });
+  return sessionId;
+}
 
 const addAudienceSchema = z.object({
   marketId: z.string().min(1),
@@ -113,6 +272,72 @@ function canReadMarket(market: any, req: Request): boolean {
   if (!user) return false;
   if (user.role === "admin") return true;
   return market.ownerUserId === user.id;
+}
+
+// ── Traffic visitor link helper (called by auth routes on register/login) ────
+// Issues/reads the stable visitor cookie, derives trusted server IP/UA/geo,
+// upserts+links the visitor row, increments the login counter, and writes a
+// traffic-only 'login' event into traffic_events.
+// Must only be called on EXPLICIT register/login — NOT on session-restore middleware.
+
+export async function linkVisitorOnLogin(req: Request, res: Response, userId: string): Promise<void> {
+  try {
+    // Issue / read visitor cookie (first-time login callers receive it here).
+    const anonymousId = getOrCreateVisitorId(req, res);
+
+    // Server-derived IP — never read x-forwarded-for; use req.ip then socket.
+    const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();
+    const userAgent = req.get("user-agent") ?? null;
+    const sessionId = getOrCreateTrafficSessionId(req, res);
+
+    // Geo (cached, timeout-bounded).
+    const geo = await resolveGeo(ip);
+
+    // Upsert visitor and link to userId.
+    const visitor = await storage.upsertTrafficVisitor({
+      anonymousId,
+      sessionId,
+      userId,
+      ipAddress: ip || null,
+      countryCode: geo.countryCode,
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
+      userAgent,
+    });
+
+    // Increment per-user login counter.
+    await storage.incrementLoginCount(userId);
+
+    // Write a traffic-only 'login' event (does NOT go to user_events).
+    await storage.writeTrafficEvent({
+      visitorId: visitor.id,
+      anonymousId,
+      userId,
+      sessionId,
+      eventType: "login",
+      pagePath: null,
+      referrer: null,
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+      marketId: null,
+      vendorId: null,
+      tabId: null,
+      durationMs: null,
+      ipAddress: ip || null,
+      countryCode: geo.countryCode,
+      country: geo.country,
+      region: geo.region,
+      city: geo.city,
+      userAgent,
+      metadata: null,
+    });
+  } catch (err) {
+    console.error("[traffic] linkVisitorOnLogin error:", err);
+  }
 }
 
 // ── Server-side capture helper (imported by other route modules) ─────────────
@@ -288,29 +513,106 @@ async function sendAudienceExcel(res: Response, filename: string, rows: Audience
 // ── Route registration ───────────────────────────────────────────────────────
 
 export function registerLeadGenRoutes(app: Express): void {
-  // ── Client beacon (untrusted; allowlist-validated) ──
-  app.post("/api/track", requireAuth, async (req: Request, res: Response) => {
+  // ── Client beacon (anonymous + authenticated; allowlist-validated) ──
+  // No requireAuth — anonymous visitors are accepted. The route issues/reads
+  // a long-lived httpOnly visitor cookie to track stable browser identity.
+  app.post("/api/track", async (req: Request, res: Response) => {
     try {
       const parsed = beaconBodySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid beacon payload" });
       }
-      const userId = (req.user as any).id;
-      const sessionId = (req as any).sessionID ?? null;
 
-      const valid = parsed.data.events.filter((e) => allowedBeaconTypes.has(e.eventType));
+      // Server-derived IP and UA — never read x-forwarded-for; use req.ip then socket.
+      const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();
+      const userAgent = req.get("user-agent") ?? null;
+
+      // Filter to accepted event types BEFORE rate-limiting so slot count is accurate.
+      const valid = parsed.data.events.filter((e) => allowedTrafficTypes.has(e.eventType));
+      if (valid.length === 0) {
+        return res.status(400).json({
+          error: "No accepted event types",
+          accepted: 0,
+          rejected: parsed.data.events.length,
+        });
+      }
+
+      // Per-IP rate limit: reserve slots for the accepted events before any awaits.
+      if (isRateLimited(ip, valid.length)) {
+        return res.status(429).json({ error: "Rate limit exceeded" });
+      }
+
+      // Issue / read visitor cookie.
+      const anonymousId = getOrCreateVisitorId(req, res);
+      const userId: string | null = (req.user as any)?.id ?? null;
+      // Dedicated first-party traffic session; never accepted from the client body.
+      const sessionId = getOrCreateTrafficSessionId(req, res);
+
+      // Geo resolution (cached, timeout-bounded, never fabricated).
+      // Fired once per beacon batch.
+      const geo = await resolveGeo(ip);
+
+      // Upsert the visitor row. visitCount increments only on new session.
+      const visitor = await storage.upsertTrafficVisitor({
+        anonymousId,
+        sessionId,
+        userId,
+        ipAddress: ip || null,
+        countryCode: geo.countryCode,
+        country: geo.country,
+        region: geo.region,
+        city: geo.city,
+        userAgent,
+      });
+
       let accepted = 0;
       for (const e of valid) {
-        await storage.trackEvent({
+        // Metadata is already validated by Zod (size + key count).
+        // Cast to safe type — Zod record(z.unknown()) is compatible.
+        const safeMetadata = (e.metadata as Record<string, unknown> | null | undefined) ?? null;
+
+        // Write to traffic_events (all callers: anonymous + authenticated).
+        await storage.writeTrafficEvent({
+          visitorId: visitor.id,
+          anonymousId,
           userId,
           sessionId,
           eventType: e.eventType,
+          pagePath: e.pagePath ?? null,
+          referrer: e.referrer ?? null,
+          utmSource: e.utmSource ?? null,
+          utmMedium: e.utmMedium ?? null,
+          utmCampaign: e.utmCampaign ?? null,
+          utmTerm: e.utmTerm ?? null,
+          utmContent: e.utmContent ?? null,
           marketId: e.marketId ?? null,
           vendorId: e.vendorId ?? null,
-          metadata: e.metadata ?? null,
+          tabId: e.tabId ?? null,
           durationMs: e.durationMs ?? null,
-          source: "client",
+          ipAddress: ip || null,
+          countryCode: geo.countryCode,
+          country: geo.country,
+          region: geo.region,
+          city: geo.city,
+          userAgent,
+          metadata: safeMetadata,
         });
+
+        // Write to user_events only when authenticated AND the event is a
+        // lead-gen type. Traffic-only types (page_view, login) never go into
+        // user_events.
+        if (userId && allowedBeaconTypes.has(e.eventType)) {
+          await storage.trackEvent({
+            userId,
+            sessionId,
+            eventType: e.eventType,
+            marketId: e.marketId ?? null,
+            vendorId: e.vendorId ?? null,
+            metadata: safeMetadata ?? null,
+            durationMs: e.durationMs ?? null,
+            source: "client",
+          });
+        }
         accepted++;
       }
       res.json({ accepted, rejected: parsed.data.events.length - accepted });

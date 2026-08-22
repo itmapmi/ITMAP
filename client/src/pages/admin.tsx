@@ -74,7 +74,12 @@ function MessagesBadge() {
 }
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<string>("market-management");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window === "undefined") return "market-management";
+    return new URLSearchParams(window.location.search).get("tab") === "operations"
+      ? "operations"
+      : "market-management";
+  });
   const [pendingEditVendor, setPendingEditVendor] = useState<{ id: string; marketId: string } | null>(null);
   const [pendingSignalFeedVendor, setPendingSignalFeedVendor] = useState<string | null>(null);
 

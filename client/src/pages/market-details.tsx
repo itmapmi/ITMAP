@@ -132,7 +132,7 @@ export default function MarketDetails() {
     if (activeTab === "news") {
       track("news_viewed", { marketId: resolvedId, metadata: { tab: activeTab } });
     } else {
-      track("filter_applied", { marketId: resolvedId, metadata: { tab: activeTab } });
+      track("filter_applied", { marketId: resolvedId, tabId: activeTab, metadata: { tab: activeTab } });
     }
   }, [activeTab, resolvedId]);
 

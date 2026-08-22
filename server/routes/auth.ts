@@ -5,6 +5,7 @@ import { storage } from "../storage";
 import { setupSession, setupPassport, requireAuth } from "../auth";
 import { registerUserSchema } from "@shared/schema";
 import path from "path";
+import { linkVisitorOnLogin } from "./leadGen";
 
 const loggedSessions = new Set<string>();
 
@@ -151,6 +152,8 @@ export function registerAuthRoutes(app: Express): void {
                 userAgent: req.get('user-agent') || 'unknown',
                 loginAt: new Date(),
               });
+              // Link visitor cookie + increment login counter (explicit activation).
+              await linkVisitorOnLogin(req, res, activated.id);
             } catch (error) {
               console.error("Error recording activation login:", error);
             }
@@ -179,6 +182,8 @@ export function registerAuthRoutes(app: Express): void {
             userAgent: req.get('user-agent') || 'unknown',
             loginAt: new Date(),
           });
+          // Link visitor cookie + increment login counter (explicit registration).
+          await linkVisitorOnLogin(req, res, user.id);
         } catch (error) {
           console.error("Error recording registration login:", error);
         }
@@ -201,6 +206,8 @@ export function registerAuthRoutes(app: Express): void {
         userAgent: req.get('user-agent') || 'unknown',
         loginAt: new Date(),
       });
+      // Link visitor cookie + increment login counter (explicit login).
+      await linkVisitorOnLogin(req, res, user.id);
       const { password, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {

@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -33,6 +34,7 @@ import Register from "@/pages/Register";
 import BuyerLandingPage from "@/pages/buyer";
 import VendorLandingPage from "@/pages/vendor";
 import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import DatasheetsIndexPage from "@/pages/datasheets/index";
 import DatasheetComparePage from "@/pages/datasheets/compare";
@@ -50,6 +52,17 @@ import BattleCardsIndexPage from "@/pages/battle-cards/index";
 import BattleCardDetailPage from "@/pages/battle-cards/detail";
 import MyToolsPage from "@/pages/me/tools";
 import SecurityPage from "@/pages/security/index";
+import { trackPageView } from "@/lib/track";
+
+function TrafficPageTracker() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    trackPageView();
+  }, [location]);
+
+  return null;
+}
 
 function ProtectedRoute({ component: Component, requireAdmin = false, buyerOnly = false }: {
   component: React.ComponentType;
@@ -95,6 +108,7 @@ function Router() {
   return (
     <div className="min-h-screen">
       <Navigation />
+      <TrafficPageTracker />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/about" component={About} />
@@ -107,6 +121,7 @@ function Router() {
         <Route path="/buyer" component={BuyerLandingPage} />
         <Route path="/vendor" component={VendorLandingPage} />
         <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />

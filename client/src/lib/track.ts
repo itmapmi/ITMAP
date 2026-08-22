@@ -8,6 +8,7 @@
 // failures are swallowed.
 
 export type ClientEventType =
+  | "page_view"
   | "market_viewed"
   | "vendor_viewed"
   | "page_dwell"
@@ -24,6 +25,14 @@ interface QueuedEvent {
   vendorId?: string | null;
   metadata?: Record<string, unknown> | null;
   durationMs?: number | null;
+  pagePath?: string | null;
+  referrer?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  tabId?: string | null;
 }
 
 const QUEUE: QueuedEvent[] = [];
@@ -64,20 +73,75 @@ function ensureStarted(): void {
   window.addEventListener("pagehide", () => void flush(true));
 }
 
+function currentTrafficContext(): Pick<
+  QueuedEvent,
+  "pagePath" | "referrer" | "utmSource" | "utmMedium" | "utmCampaign" | "utmTerm" | "utmContent"
+> {
+  if (typeof window === "undefined") {
+    return {
+      pagePath: null,
+      referrer: null,
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  let referrer: string | null = null;
+  if (document.referrer) {
+    try {
+      const parsed = new URL(document.referrer);
+      referrer = `${parsed.origin}${parsed.pathname}`;
+    } catch {
+      referrer = null;
+    }
+  }
+
+  return {
+    pagePath: window.location.pathname,
+    referrer,
+    utmSource: params.get("utm_source"),
+    utmMedium: params.get("utm_medium"),
+    utmCampaign: params.get("utm_campaign"),
+    utmTerm: params.get("utm_term"),
+    utmContent: params.get("utm_content"),
+  };
+}
+
 /** Queue an activity event. Cheap and non-blocking. */
 export function track(
   eventType: ClientEventType,
-  opts?: { marketId?: string | null; vendorId?: string | null; metadata?: Record<string, unknown>; durationMs?: number },
+  opts?: {
+    marketId?: string | null;
+    vendorId?: string | null;
+    metadata?: Record<string, unknown>;
+    durationMs?: number;
+    tabId?: string | null;
+  },
 ): void {
   ensureStarted();
   QUEUE.push({
+    ...currentTrafficContext(),
     eventType,
     marketId: opts?.marketId ?? null,
     vendorId: opts?.vendorId ?? null,
     metadata: opts?.metadata ?? null,
     durationMs: opts?.durationMs ?? null,
+    tabId: opts?.tabId ?? null,
   });
-  if (QUEUE.length >= MAX_BATCH) void flush();
+  if (eventType === "page_view" || QUEUE.length >= MAX_BATCH) void flush();
+}
+
+/** Record one route view and flush immediately so a new visitor cookie is issued. */
+export function trackPageView(): void {
+  track("page_view", {
+    metadata: {
+      title: typeof document !== "undefined" ? document.title : null,
+    },
+  });
 }
 
 /**

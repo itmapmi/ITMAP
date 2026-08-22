@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, MapPin, Clock, ArrowRight, MessageSquare } from "lucide-react";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -227,7 +228,7 @@ export default function Contact() {
                 </Button>
 
                 <p className="text-xs text-slate-600 text-center">
-                  By sending this message you agree to our privacy policy.
+                  By sending this message you agree to our <Link href="/privacy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.
                 </p>
               </form>
             </div>

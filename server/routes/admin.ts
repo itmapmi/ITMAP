@@ -1900,4 +1900,149 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: String(err) });
     }
   });
+
+  // ── Admin Traffic Intelligence (Task #22) ─────────────────────────────────
+
+  /**
+   * GET /api/admin/operations/traffic
+   * Query params:
+   *   granularity: "day" | "week" | "month"  (default "day")
+   *   days: 7..730  (default 30)
+   *   marketId: UUID string (optional)
+   *   visitorType: "all" | "registered" | "anonymous"  (default "all")
+   *   country: ISO alpha-2 code, max 10 chars (optional)
+   */
+  app.get("/api/admin/operations/traffic", requireAdmin, async (req, res) => {
+    try {
+      // granularity: strict allowlist
+      const granularityRaw = String(req.query.granularity ?? "day");
+      if (!["day", "week", "month"].includes(granularityRaw)) {
+        return res.status(400).json({ error: "granularity must be day, week, or month" });
+      }
+      const granularity = granularityRaw as "day" | "week" | "month";
+
+      // days: integer 7..730
+      const daysRaw = parseInt(String(req.query.days ?? "30"), 10);
+      if (!Number.isFinite(daysRaw) || daysRaw < 7 || daysRaw > 730) {
+        return res.status(400).json({ error: "days must be an integer between 7 and 730" });
+      }
+      const days = daysRaw;
+
+      // marketId: must be a UUID when provided
+      const marketIdRaw = req.query.marketId;
+      let marketId: string | undefined;
+      if (marketIdRaw !== undefined && marketIdRaw !== "") {
+        const s = String(marketIdRaw);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+          return res.status(400).json({ error: "marketId must be a valid UUID" });
+        }
+        marketId = s;
+      }
+
+      // visitorType: strict allowlist
+      const visitorTypeRaw = String(req.query.visitorType ?? "all");
+      if (!["all", "registered", "anonymous"].includes(visitorTypeRaw)) {
+        return res.status(400).json({ error: "visitorType must be all, registered, or anonymous" });
+      }
+      const visitorType = visitorTypeRaw as "all" | "registered" | "anonymous";
+
+      // country: max 10 chars, alpha only
+      const countryRaw = req.query.country;
+      let country: string | undefined;
+      if (countryRaw !== undefined && countryRaw !== "") {
+        const s = String(countryRaw);
+        if (s.length > 10 || !/^[A-Za-z]+$/.test(s)) {
+          return res.status(400).json({ error: "country must be a short alphabetic country code" });
+        }
+        country = s.toUpperCase();
+      }
+
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      const filter = { since, marketId, visitorType, country };
+
+      const [summary, trend, geo, topMarkets, tabs, filters] = await Promise.all([
+        storage.getTrafficSummary(filter),
+        storage.getTrafficTrend(filter, granularity),
+        storage.getTrafficGeo(filter),
+        storage.getTopMarkets(filter),
+        storage.getTabStats(filter),
+        storage.getTrafficFilters(filter),
+      ]);
+
+      res.json({ summary, trend, geo, topMarkets, tabs, filters });
+    } catch (error) {
+      console.error("Error fetching traffic analytics:", error);
+      res.status(500).json({ error: "Failed to fetch traffic analytics" });
+    }
+  });
+
+  /**
+   * GET /api/admin/operations/visitors
+   * Query params:
+   *   page: number (default 1)
+   *   limit: number (default 50, max 200)
+   *   days: number (optional, 1..730)
+   *   marketId: UUID string (optional)
+   *   visitorType: "all" | "registered" | "anonymous"  (default "all")
+   *   country: ISO alpha-2 code, max 10 chars (optional)
+   */
+  app.get("/api/admin/operations/visitors", requireAdmin, async (req, res) => {
+    try {
+      const pageRaw = parseInt(String(req.query.page ?? "1"), 10);
+      const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
+      const limitRaw = parseInt(String(req.query.limit ?? "50"), 10);
+      const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, limitRaw)) : 50;
+
+      const daysRaw = req.query.days ? parseInt(String(req.query.days), 10) : undefined;
+      let since: Date | undefined;
+      if (daysRaw !== undefined) {
+        if (!Number.isFinite(daysRaw) || daysRaw < 1 || daysRaw > 730) {
+          return res.status(400).json({ error: "days must be an integer between 1 and 730" });
+        }
+        const d = new Date();
+        d.setDate(d.getDate() - daysRaw);
+        since = d;
+      }
+
+      // marketId: must be a UUID when provided
+      const marketIdRaw = req.query.marketId;
+      let marketId: string | undefined;
+      if (marketIdRaw !== undefined && marketIdRaw !== "") {
+        const s = String(marketIdRaw);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+          return res.status(400).json({ error: "marketId must be a valid UUID" });
+        }
+        marketId = s;
+      }
+
+      // visitorType: strict allowlist
+      const visitorTypeRaw = String(req.query.visitorType ?? "all");
+      if (!["all", "registered", "anonymous"].includes(visitorTypeRaw)) {
+        return res.status(400).json({ error: "visitorType must be all, registered, or anonymous" });
+      }
+      const visitorType = visitorTypeRaw as "all" | "registered" | "anonymous";
+
+      // country: max 10 chars, alpha only
+      const countryRaw = req.query.country;
+      let country: string | undefined;
+      if (countryRaw !== undefined && countryRaw !== "") {
+        const s = String(countryRaw);
+        if (s.length > 10 || !/^[A-Za-z]+$/.test(s)) {
+          return res.status(400).json({ error: "country must be a short alphabetic country code" });
+        }
+        country = s.toUpperCase();
+      }
+
+      const filter = { since, marketId, visitorType, country };
+      const { visitors, total } = await storage.listVisitors(filter, page, limit);
+
+      res.json({ visitors, total, page, limit });
+    } catch (error) {
+      console.error("Error fetching visitors:", error);
+      res.status(500).json({ error: "Failed to fetch visitors" });
+    }
+  });
 }

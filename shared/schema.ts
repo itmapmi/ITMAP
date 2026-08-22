@@ -2429,3 +2429,121 @@ export type Kev = typeof kev.$inferSelect;
 export type Epss = typeof epss.$inferSelect;
 export type CveEvent = typeof cveEvent.$inferSelect;
 export type SyncRun = typeof syncRun.$inferSelect;
+
+// ── Admin Traffic Intelligence (Task #22) ────────────────────────────────────
+//
+// Three tables:
+//  traffic_visitors  – one row per stable browser identity (cookie-keyed).
+//                      userId is nullable and linked when the visitor authenticates.
+//  traffic_events    – raw append-only event stream (one row per beacon event).
+//                      Anonymous events have a null userId.
+//  traffic_login_counts – per-user login counter table, incremented only on
+//                      explicit register / activate / login (not session restore).
+//
+// Full IPs are stored indefinitely. Private/localhost IPs are classified as
+// Unknown geo. geo fields are coarse-grained (country/region/city).
+
+export const trafficVisitors = pgTable("traffic_visitors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Stable random cookie ID – the browser's identity across sessions.
+  anonymousId: text("anonymous_id").notNull().unique(),
+  // Linked when the visitor authenticates (nullable for anonymous-only).
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  // Geo (coarse, server-resolved)
+  ipAddress: text("ip_address"),
+  countryCode: text("country_code"),
+  country: text("country"),
+  region: text("region"),
+  city: text("city"),
+  // Browser / device metadata
+  userAgent: text("user_agent"),
+  // Aggregates updated on each session boundary.
+  // visitCount increments only when sessionId differs from lastSessionId.
+  firstSeenAt: timestamp("first_seen_at").notNull().default(sql`now()`),
+  lastSeenAt: timestamp("last_seen_at").notNull().default(sql`now()`),
+  visitCount: integer("visit_count").notNull().default(1),
+  // The most recently seen session ID – used to deduplicate same-session batches.
+  lastSessionId: text("last_session_id"),
+}, (t) => ({
+  anonIdIdx:     index("tv_anon_id_idx").on(t.anonymousId),
+  userIdx:       index("tv_user_idx").on(t.userId),
+  countryIdx:    index("tv_country_idx").on(t.countryCode),
+  lastSeenIdx:   index("tv_last_seen_idx").on(t.lastSeenAt),
+}));
+
+export const trafficEvents = pgTable("traffic_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Visitor identity
+  visitorId: varchar("visitor_id").references(() => trafficVisitors.id, { onDelete: "set null" }),
+  anonymousId: text("anonymous_id").notNull(),
+  // Null for anonymous events; set when authenticated
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  sessionId: text("session_id"),
+  // Event classification
+  eventType: text("event_type").notNull(),
+  pagePath: text("page_path"),
+  referrer: text("referrer"),
+  // UTM parameters
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmTerm: text("utm_term"),
+  utmContent: text("utm_content"),
+  // Market/vendor context
+  marketId: varchar("market_id").references(() => markets.id, { onDelete: "set null" }),
+  vendorId: varchar("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+  // Tab/section identifier (e.g., which dashboard tab was active)
+  tabId: text("tab_id"),
+  // Dwell time in milliseconds
+  durationMs: integer("duration_ms"),
+  // Trusted server-derived fields
+  ipAddress: text("ip_address"),
+  countryCode: text("country_code"),
+  country: text("country"),
+  region: text("region"),
+  city: text("city"),
+  userAgent: text("user_agent"),
+  // Flexible payload
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (t) => ({
+  createdIdx:       index("te_created_idx").on(t.createdAt),
+  visitorIdx:       index("te_visitor_idx").on(t.visitorId),
+  userIdx:          index("te_user_idx").on(t.userId),
+  marketIdx:        index("te_market_idx").on(t.marketId),
+  countryIdx:       index("te_country_idx").on(t.countryCode),
+  marketCreatedIdx: index("te_market_created_idx").on(t.marketId, t.createdAt),
+}));
+
+export const trafficLoginCounts = pgTable("traffic_login_counts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  loginCount: integer("login_count").notNull().default(0),
+  lastLoginAt: timestamp("last_login_at"),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+}, (t) => ({
+  userIdx: index("tlc_user_idx").on(t.userId),
+}));
+
+export const insertTrafficVisitorSchema = createInsertSchema(trafficVisitors).omit({
+  id: true,
+  firstSeenAt: true,
+  lastSeenAt: true,
+  visitCount: true,
+  lastSessionId: true,
+});
+export const insertTrafficEventSchema = createInsertSchema(trafficEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertTrafficLoginCountSchema = createInsertSchema(trafficLoginCounts).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type TrafficVisitor = typeof trafficVisitors.$inferSelect;
+export type InsertTrafficVisitor = z.infer<typeof insertTrafficVisitorSchema>;
+export type TrafficEvent = typeof trafficEvents.$inferSelect;
+export type InsertTrafficEvent = z.infer<typeof insertTrafficEventSchema>;
+export type TrafficLoginCount = typeof trafficLoginCounts.$inferSelect;
+export type InsertTrafficLoginCount = z.infer<typeof insertTrafficLoginCountSchema>;
