@@ -521,6 +521,27 @@ export async function runStartupMigrations(): Promise<void> {
         ON rfp_export_history (session_id, created_at DESC)
     `);
 
+    // 29. Public contact-form submissions and admin Messages inbox.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id          varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        first_name  text NOT NULL,
+        last_name   text NOT NULL,
+        email       text NOT NULL,
+        company     text NOT NULL,
+        subject     text NOT NULL,
+        message     text NOT NULL,
+        source      text NOT NULL,
+        vendor_id   varchar REFERENCES vendors(id) ON DELETE SET NULL,
+        vendor_name text,
+        is_read     boolean NOT NULL DEFAULT false,
+        read_at     timestamp,
+        created_at  timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS contact_messages_unread_created_idx
+        ON contact_messages (is_read, created_at);
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

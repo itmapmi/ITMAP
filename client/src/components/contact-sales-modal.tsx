@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, ArrowRight, Building2 } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
+import { apiRequestJson } from "@/lib/queryClient";
 
 interface ContactSalesModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
     email: "",
     company: "",
     message: "",
+    website: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,20 +35,29 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Build a mailto link with the form details so the user's email client opens.
-    const subject = encodeURIComponent("ITMAP Vendor Access Enquiry");
-    const body = encodeURIComponent(
-      `Name: ${formData.firstName} ${formData.lastName}\nCompany: ${formData.company}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    );
-    window.location.href = `mailto:sales@itmap.ai?subject=${subject}&body=${body}`;
-
-    toast({
-      title: "Message ready",
-      description: "Your email client has opened with the enquiry details.",
-    });
-
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await apiRequestJson("/api/contact-messages", "POST", {
+        ...formData,
+        subject: "ITMAP Vendor Access Enquiry",
+        source: "vendor_page",
+      });
+      toast({
+        title: "Message sent",
+        description: "Our sales team will get back to you within one business day.",
+      });
+      setFormData({ firstName: "", lastName: "", email: "", company: "", message: "", website: "" });
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Message not sent",
+        description: error instanceof Error
+          ? error.message.replace(/^\d+:\s*/, "").replace(/^{"error":"|"}$/g, "")
+          : "Please try again or email sales@itmap.ai.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -71,6 +82,17 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
+            <Label htmlFor="contact-website">Website</Label>
+            <Input
+              id="contact-website"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={formData.website}
+              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="contact-firstName" className="text-slate-300">First Name</Label>
@@ -79,6 +101,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
                 placeholder="Jane"
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              autoComplete="given-name"
                 className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
                 required
               />
@@ -90,6 +113,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
                 placeholder="Smith"
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              autoComplete="family-name"
                 className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
                 required
               />
@@ -104,6 +128,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
               placeholder="you@company.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              autoComplete="email"
               className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
               required
             />
@@ -116,6 +141,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
               placeholder="Acme Corp"
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              autoComplete="organization"
               className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
               required
             />
@@ -130,6 +156,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 resize-none"
+              required
             />
           </div>
 
@@ -139,7 +166,7 @@ export default function ContactSalesModal({ isOpen, onClose }: ContactSalesModal
             disabled={isSubmitting}
           >
             <Mail className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Opening email…" : "Contact Sales"}
+            {isSubmitting ? "Sending…" : "Contact Sales"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </form>

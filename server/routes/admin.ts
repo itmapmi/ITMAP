@@ -40,6 +40,42 @@ function pushCollectionLog(scope: string, results: SignalCollectionResult[]): vo
 
 export function registerAdminRoutes(app: Express): void {
 
+  // ── Contact Messages ──────────────────────────────────────────────────────
+  app.get("/api/admin/contact-messages", requireAdmin, async (req, res) => {
+    try {
+      const requestedLimit = Number.parseInt(String(req.query.limit ?? "200"), 10);
+      const limit = Number.isFinite(requestedLimit) ? requestedLimit : 200;
+      res.json(await storage.listContactMessages(limit));
+    } catch (error) {
+      console.error("Error listing contact messages:", error);
+      res.status(500).json({ error: "Failed to list contact messages" });
+    }
+  });
+
+  app.get("/api/admin/contact-messages/unread-count", requireAdmin, async (_req, res) => {
+    try {
+      res.json({ count: await storage.countUnreadContactMessages() });
+    } catch (error) {
+      console.error("Error counting unread contact messages:", error);
+      res.status(500).json({ error: "Failed to count unread contact messages" });
+    }
+  });
+
+  app.patch("/api/admin/contact-messages/:id/read", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({ isRead: z.boolean() }).parse(req.body);
+      const updated = await storage.setContactMessageRead(req.params.id, body.isRead);
+      if (!updated) return res.status(404).json({ error: "Message not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "isRead must be true or false" });
+      }
+      console.error("Error updating contact message:", error);
+      res.status(500).json({ error: "Failed to update contact message" });
+    }
+  });
+
   // ── Admin Markets (all markets, regardless of isVisible) ─────────────────
   app.get("/api/admin/markets", requireAdmin, async (_req, res) => {
     try {

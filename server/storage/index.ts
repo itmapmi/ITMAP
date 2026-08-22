@@ -38,6 +38,7 @@ import {
   type RfpSection, type InsertRfpSection,
   type RfpShortlistEntry, type InsertRfpShortlistEntry,
   type RfpOutreachEntry, type InsertRfpOutreachEntry,
+  type ContactMessage, type InsertContactMessage,
 } from "@shared/schema";
 import type { RfpProjectWithMeta } from "./rfps";
 
@@ -61,6 +62,7 @@ export * from "./factCheck";
 export * from "./rfpKb";
 export * from "./rfpResponder";
 export * from "./rfpDiagrams";
+export * from "./contactMessages";
 
 import * as userStorage from "./users";
 import * as marketStorage from "./markets";
@@ -79,6 +81,7 @@ import * as vendorAudienceStorage from "./vendorAudience";
 import * as factCheckStorage from "./factCheck";
 import * as rfpKbStorage from "./rfpKb";
 import * as rfpResponderStorage from "./rfpResponder";
+import * as contactMessagesStorage from "./contactMessages";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -180,6 +183,11 @@ export interface IStorage {
   updateUserLastInviteSentAt(id: string): Promise<User>;
   updateUserAccessControl(id: string, updates: { isBlocked?: boolean; accessExpiresAt?: Date | null }): Promise<User>;
   deleteInvitedUser(id: string): Promise<boolean>;
+
+  createContactMessage(data: InsertContactMessage): Promise<ContactMessage>;
+  listContactMessages(limit?: number): Promise<ContactMessage[]>;
+  countUnreadContactMessages(): Promise<number>;
+  setContactMessageRead(id: string, isRead: boolean): Promise<ContactMessage | undefined>;
 
   getAlertSettings(): Promise<AdminAlertSettings | null>;
   upsertAlertSettings(settings: Partial<InsertAdminAlertSettings>): Promise<AdminAlertSettings>;
@@ -347,4 +355,5 @@ export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorag
   ...factCheckStorage,
   ...rfpKbStorage,
   ...rfpResponderStorage,
+  ...contactMessagesStorage,
 };

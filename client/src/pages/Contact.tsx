@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Mail, MapPin, Clock, ArrowRight, MessageSquare } from "lucide-react";
+import { apiRequestJson } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -38,6 +41,52 @@ const CONTACT_DETAILS = [
 ];
 
 export default function Contact() {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    company: "",
+    subject: "",
+    message: "",
+    website: "",
+  });
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await apiRequestJson("/api/contact-messages", "POST", {
+        ...formData,
+        source: "contact_page",
+      });
+      toast({
+        title: "Message sent",
+        description: "Thank you. Our team will respond within one business day.",
+      });
+      setFormData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        company: "",
+        subject: "",
+        message: "",
+        website: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Message not sent",
+        description: error instanceof Error
+          ? error.message.replace(/^\d+:\s*/, "").replace(/^{"error":"|"}$/g, "")
+          : "Please try again or email sales@itmap.ai.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   useSeo({
     title: "Contact ITMAP — Talk to the Vendor Intelligence Team",
     description: "Get in touch with ITMAP for partnerships, licensing, enterprise access, or media inquiries.",
@@ -78,14 +127,29 @@ export default function Contact() {
               <h2 className="text-2xl font-bold text-white mb-2">Send us a message</h2>
               <p className="text-slate-500 text-sm mb-8">We typically respond within 1 business day.</p>
 
-              <div className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
+                  <Label htmlFor="contact-page-website">Website</Label>
+                  <Input
+                    id="contact-page-website"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="firstName" className="text-slate-400 text-sm">First Name</Label>
                     <Input
                       id="firstName"
                       placeholder="Jane"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      autoComplete="given-name"
                       className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl"
+                      required
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -93,7 +157,11 @@ export default function Contact() {
                     <Input
                       id="lastName"
                       placeholder="Smith"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      autoComplete="family-name"
                       className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl"
+                      required
                     />
                   </div>
                 </div>
@@ -104,7 +172,11 @@ export default function Contact() {
                     id="email"
                     type="email"
                     placeholder="jane.smith@company.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    autoComplete="email"
                     className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl"
+                    required
                   />
                 </div>
 
@@ -113,7 +185,11 @@ export default function Contact() {
                   <Input
                     id="company"
                     placeholder="Acme Corp"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    autoComplete="organization"
                     className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl"
+                    required
                   />
                 </div>
 
@@ -122,7 +198,10 @@ export default function Contact() {
                   <Input
                     id="subject"
                     placeholder="Platform enquiry / Licensing / Research"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl"
+                    required
                   />
                 </div>
 
@@ -132,21 +211,25 @@ export default function Contact() {
                     id="message"
                     placeholder="Tell us about your technology intelligence needs, or how we can help..."
                     rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl resize-none"
+                    required
                   />
                 </div>
 
                 <Button
+                  type="submit"
                   className="w-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white border-0 py-6 text-base font-semibold"
-                  onClick={() => window.location.href = "mailto:sales@itmap.ai"}
+                  disabled={isSubmitting}
                 >
-                  Send Message <ArrowRight className="ml-2 h-4 w-4" />
+                  {isSubmitting ? "Sending…" : "Send Message"} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
 
                 <p className="text-xs text-slate-600 text-center">
                   By sending this message you agree to our privacy policy.
                 </p>
-              </div>
+              </form>
             </div>
           </motion.div>
 

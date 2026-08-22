@@ -6,7 +6,7 @@ import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import ContactSalesModal from "@/components/contact-sales-modal";
 import {
-  ArrowRight, Building2, Shield, FileText, MessageSquare, Globe2, TrendingUp, Zap, CheckCircle2, BarChart3, Layers, Target, Lock
+  ArrowRight, Building2, Shield, FileText, MessageSquare, Globe2, TrendingUp, Zap, CheckCircle2, BarChart3, Layers, Target, Lock, Mail
 } from "lucide-react";
 
 const fadeUp = {
@@ -105,12 +105,17 @@ export default function VendorLandingPage() {
                 Live market positioning, lead generation, RFP response, battlecards, security monitoring and custom forecasting — all in one vendor intelligence platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => setShowContactModal(true)}
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white border-0 rounded-lg px-6 py-3 h-auto text-base font-semibold transition-all"
-                >
-                  Contact Sales <ArrowRight className="h-4 w-4" />
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={() => setShowContactModal(true)}
+                    className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white border-0 rounded-lg px-6 py-3 h-auto text-base font-semibold transition-all"
+                  >
+                    Contact Sales <ArrowRight className="h-4 w-4" />
+                  </button>
+                  <a href="mailto:sales@itmap.ai" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-300 transition-colors">
+                    <Mail className="h-3.5 w-3.5" /> sales@itmap.ai
+                  </a>
+                </div>
                 <Link href="/markets">
                   <Button variant="outline" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent px-6 py-3 h-auto text-base">
                     Explore Markets <ArrowRight className="ml-2 h-4 w-4" />
@@ -200,12 +205,17 @@ export default function VendorLandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => setShowContactModal(true)}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white px-6 py-3 rounded-lg font-semibold transition-all"
-              >
-                Contact Sales <ArrowRight className="h-4 w-4" />
-              </button>
+              <div className="inline-flex flex-col items-center gap-2">
+                <button
+                  onClick={() => setShowContactModal(true)}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                >
+                  Contact Sales <ArrowRight className="h-4 w-4" />
+                </button>
+                <a href="mailto:sales@itmap.ai" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-cyan-300 transition-colors">
+                  <Mail className="h-4 w-4" /> sales@itmap.ai
+                </a>
+              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }}>

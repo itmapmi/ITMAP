@@ -25,6 +25,7 @@ import { UserAccessAdmin } from "@/components/admin/user-access-admin";
 import { FactCheckFlagsAdmin } from "@/components/admin/fact-check-flags-admin";
 import { CanonicalVendorsAdmin } from "@/components/admin/canonical-vendors-admin";
 import { CveCrosswalkAdmin } from "@/components/admin/cve-crosswalk-admin";
+import { ContactMessagesAdmin } from "@/components/admin/contact-messages-admin";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
@@ -53,6 +54,20 @@ function FactCheckBadge() {
   if (!count) return null;
   return (
     <span className="rounded-full bg-rose-500 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
+      {count}
+    </span>
+  );
+}
+
+function MessagesBadge() {
+  const { data } = useQuery<{ count: number }>({
+    queryKey: ["/api/admin/contact-messages/unread-count"],
+    refetchInterval: 60000,
+  });
+  const count = data?.count ?? 0;
+  if (!count) return null;
+  return (
+    <span className="rounded-full bg-blue-600 text-white text-xs px-1.5 py-0.5 min-w-[1.25rem] text-center leading-none">
       {count}
     </span>
   );
@@ -159,6 +174,10 @@ export default function Admin() {
             <TabsTrigger value="user-access">User Access</TabsTrigger>
             <TabsTrigger value="user-markets">User Markets</TabsTrigger>
             <TabsTrigger value="user-rfps">User RFPs</TabsTrigger>
+            <TabsTrigger value="contact-messages" className="gap-1.5">
+              Messages
+              <MessagesBadge />
+            </TabsTrigger>
             <TabsTrigger value="vendor-management">Vendors</TabsTrigger>
             <TabsTrigger value="canonical-vendors">Canonical Vendors</TabsTrigger>
             <TabsTrigger value="new-players">New Players</TabsTrigger>
@@ -199,6 +218,10 @@ export default function Admin() {
 
           <TabsContent value="user-rfps" className="mt-6">
             <UserRfpsAdmin />
+          </TabsContent>
+
+          <TabsContent value="contact-messages" className="mt-6">
+            <ContactMessagesAdmin />
           </TabsContent>
 
           <TabsContent value="vendor-management" className="mt-6">

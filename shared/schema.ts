@@ -157,6 +157,26 @@ export const adminAlertSettings = pgTable("admin_alert_settings", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Public contact and vendor-sales enquiries, reviewed by admins in the
+// Messages inbox. vendorName is a snapshot so context survives vendor changes.
+export const contactMessages = pgTable("contact_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  company: text("company").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  source: text("source").notNull(), // 'contact_page' | 'vendor_page'
+  vendorId: varchar("vendor_id").references((): any => vendors.id, { onDelete: "set null" }),
+  vendorName: text("vendor_name"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (t) => ({
+  unreadCreatedIdx: index("contact_messages_unread_created_idx").on(t.isRead, t.createdAt),
+}));
+
 export const marketCriteriaWeights = pgTable("market_criteria_weights", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
@@ -549,6 +569,27 @@ export const insertAdminAlertSettingsSchema = createInsertSchema(adminAlertSetti
   updatedAt: true,
 });
 
+export const submitContactMessageSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required").max(100),
+  lastName: z.string().trim().min(1, "Last name is required").max(100),
+  email: z.string().trim().email("Enter a valid email address").max(320),
+  company: z.string().trim().min(1, "Company is required").max(200),
+  subject: z.string().trim().min(1, "Subject is required").max(200),
+  message: z.string().trim().min(1, "Message is required").max(5000),
+  source: z.enum(["contact_page", "vendor_page"]),
+  vendorId: z.string().uuid().nullable().optional(),
+  vendorName: z.string().trim().max(200).nullable().optional(),
+  // Honeypot: real users never see or fill this field.
+  website: z.string().max(200).optional(),
+});
+
+export const insertContactMessageSchema = createInsertSchema(contactMessages).omit({
+  id: true,
+  isRead: true,
+  readAt: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -614,6 +655,9 @@ export type NewsFetchLog = typeof newsFetchLogs.$inferSelect;
 
 export type InsertAdminAlertSettings = z.infer<typeof insertAdminAlertSettingsSchema>;
 export type AdminAlertSettings = typeof adminAlertSettings.$inferSelect;
+export type SubmitContactMessage = z.infer<typeof submitContactMessageSchema>;
+export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
+export type ContactMessage = typeof contactMessages.$inferSelect;
 
 // ── External Partner API ─────────────────────────────────────────────────────
 

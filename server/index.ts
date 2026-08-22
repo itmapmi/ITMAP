@@ -8,8 +8,9 @@ import { runStartupMigrations } from "./db";
 
 const app = express();
 
-// Trust proxy for HTTPS detection in Replit environment
-app.set('trust proxy', true);
+// Replit terminates traffic at one reverse-proxy hop. Trust exactly that hop
+// (rather than every X-Forwarded-For value) so req.ip cannot be freely spoofed.
+app.set('trust proxy', 1);
 
 // Canonical domain enforcement.
 // In production a custom domain (e.g. itmap.ai) is served alongside the bare
@@ -143,7 +144,7 @@ app.use((req, res, next) => {
         .orderBy(desc(newsFetchLogs.fetchedAt))
         .limit(1);
 
-      const hoursAgo = lastLog
+      const hoursAgo = lastLog?.fetchedAt
         ? (Date.now() - new Date(lastLog.fetchedAt).getTime()) / 3_600_000
         : Infinity;
 

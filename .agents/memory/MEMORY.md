@@ -11,3 +11,4 @@
 - [AI chat streaming + context cache](ai-chat-streaming-cache.md) — chat uses SSE streaming + in-memory context cache; EventSource can't POST so use fetch+ReadableStream on client.
 - [RFP decompose section-awareness](rfp-decompose-design.md) — skip classification filters boilerplate; section-annotated chunking prevents commercial text bleeding into technical sections in the LLM window.
 - [Domain/brand canonicalization](domain-brand-canonicalization.md) — brand domain is duplicated across ~15 files (meta tags, robots.txt, sitemap, emails, PDFs, PRIMARY_DOMAIN); rename requires repo-wide grep, not a config edit.
+- [Public contact spam controls](public-contact-spam-controls.md) — reserve rate-limit slots before awaits; honeypots must be parseable but dropped, with proxy trust limited to one hop.
