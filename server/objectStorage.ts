@@ -99,6 +99,15 @@ export class ObjectStorageService {
 
   // Gets the private object directory.
   getPrivateObjectDir(): string {
+    const reportsBucketId = process.env.REPORTS_OBJECT_STORAGE_BUCKET_ID?.trim();
+    if (reportsBucketId) {
+      // App Storage bucket IDs are full storage roots. Keeping uploads at the
+      // bucket root allows every existing ObjectStorageService caller to share
+      // the newly provisioned Reports bucket without relying on a stale
+      // deployment-only private-directory binding.
+      return `/${reportsBucketId}`;
+    }
+
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
     if (!dir) {
       throw new Error(

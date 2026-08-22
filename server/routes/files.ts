@@ -70,6 +70,9 @@ export function registerFileRoutes(app: Express): void {
         sidecarBody: error?.sidecarBody,
         bucketName: error?.bucketName,
         envSummary: {
+          REPORTS_OBJECT_STORAGE_BUCKET_ID_set: Boolean(
+            process.env.REPORTS_OBJECT_STORAGE_BUCKET_ID,
+          ),
           PRIVATE_OBJECT_DIR_set: Boolean(process.env.PRIVATE_OBJECT_DIR),
           PUBLIC_OBJECT_SEARCH_PATHS_set: Boolean(process.env.PUBLIC_OBJECT_SEARCH_PATHS),
           DEFAULT_OBJECT_STORAGE_BUCKET_ID_set: Boolean(process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID),
