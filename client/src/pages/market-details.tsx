@@ -729,27 +729,6 @@ export default function MarketDetails() {
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">
-            <div className="flex flex-wrap gap-2 mb-5">
-              <Button
-                onClick={() => setShowVendorModal(true)}
-                variant="default"
-                size={isMobile ? "sm" : "default"}
-                data-testid="button-generate-full-report"
-              >
-                <FileDown className="mr-2 h-4 w-4" />
-                {isMobile ? 'Report' : 'Generate Reports'}
-              </Button>
-              <Button
-                onClick={() => setShowSummaryModal(true)}
-                variant="outline"
-                size={isMobile ? "sm" : "default"}
-                className="border-violet-500/50 text-violet-700 hover:bg-violet-50"
-                data-testid="button-download-summary"
-              >
-                <FileDown className="mr-2 h-4 w-4" />
-                {isMobile ? 'Summary' : 'Download Summary'}
-              </Button>
-            </div>
             <ResearchReports marketId={resolvedId!} />
           </TabsContent>
 
