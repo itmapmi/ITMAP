@@ -18,6 +18,10 @@ import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@share
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
+import {
+  allHistoricalPositionsQueryKey,
+  historicalPositionsQueryKey,
+} from "@/lib/magic-quadrant-query-keys";
 
 interface MagicQuadrantProps {
   marketId: string;
@@ -128,7 +132,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
   // Query historical positions for the selected date
   const { data: historicalPositions } = useQuery<any[]>({
-    queryKey: ["/api/markets", marketId, "historical-positions"],
+    // The week index is stable across renders and changes whenever the slider
+    // selects a different week. Do not use selectedDate here because it is
+    // recreated from the current time on every render.
+    queryKey: historicalPositionsQueryKey(marketId, currentWeekIndex),
     queryFn: async () => {
       const response = await fetch(`/api/markets/${marketId}/historical-positions?date=${selectedDate.toISOString()}`);
       if (!response.ok) throw new Error('Failed to fetch historical positions');
@@ -157,7 +164,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
   // Trajectory data: last 3 historical positions for each vendor.
   const { data: allHistoricalPositions } = useQuery<HistoricalPoint[]>({
-    queryKey: ["/api/markets", marketId, "historical-positions"],
+    queryKey: allHistoricalPositionsQueryKey(marketId),
     queryFn: async () => {
       const res = await fetch(`/api/markets/${marketId}/historical-positions`);
       if (!res.ok) throw new Error("Failed to fetch historical positions");
