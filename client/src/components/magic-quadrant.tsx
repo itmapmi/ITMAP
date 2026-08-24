@@ -829,7 +829,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .data(adjustedVendors)
       .enter()
       .append("g")
-      .attr("class", "vendor-group");
+      .attr("class", "vendor-group")
+      .attr("data-vendor-id", d => d.id);
 
     // Vendor dots — radial gradient fill, white ring, indigo shadow
     vendorGroups.append("circle")
