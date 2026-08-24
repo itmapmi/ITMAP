@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, numeric, timestamp, boolean, jsonb, uniqueIndex, index, primaryKey, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1179,15 +1179,21 @@ export type VendorSeatAudience = typeof vendorSeatAudience.$inferSelect;
 export type InsertVendorSeatAudience = z.infer<typeof insertVendorSeatAudienceSchema>;
 
 // ── Vendor Fact-Check Flags ─────────────────────────────────────────────────
-// Vendors with a seat assigned can flag their own feature-support rows with a
-// proposed correction + evidence. Admins review and apply approved changes.
+// Vendors with a seat assigned can flag their own feature-support or
+// vendor-evaluation write-ups with evidence. Admins review and apply approved
+// commentary changes.
 // Scope: a flag always belongs to exactly one vendor (the seat's vendorScopeId).
 // Vendors can flag rows for both draft and published markets.
 export const vendorFactCheckFlags = pgTable("vendor_fact_check_flags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
-  featureSupportId: varchar("feature_support_id").notNull().references(() => vendorFeatureSupport.id, { onDelete: "cascade" }),
+  // Exactly one target is populated. This is enforced by both the database
+  // constraint below and the application before it writes a flag.
+  featureSupportId: varchar("feature_support_id").references(() => vendorFeatureSupport.id, { onDelete: "cascade" }),
+  vendorScoreId: varchar("vendor_score_id").references(() => vendorScores.id, { onDelete: "cascade" }),
   reportedByUserId: varchar("reported_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Retained for historical flags created before score proposals were removed
+  // from the vendor-facing Fact Review flow.
   proposedSupportLevel: integer("proposed_support_level"),
   evidenceLinks: text("evidence_links"),
   notes: text("notes"),
@@ -1196,7 +1202,18 @@ export const vendorFactCheckFlags = pgTable("vendor_fact_check_flags", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   reviewedAt: timestamp("reviewed_at"),
   reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
-});
+}, (t) => ({
+  exactlyOneTarget: check(
+    "vendor_fact_check_flags_exactly_one_target",
+    sql`((${t.featureSupportId} IS NOT NULL)::int + (${t.vendorScoreId} IS NOT NULL)::int) = 1`,
+  ),
+  onePendingFeatureFlagPerReporter: uniqueIndex("vendor_fact_check_flags_pending_feature_unique")
+    .on(t.vendorId, t.reportedByUserId, t.featureSupportId)
+    .where(sql`${t.status} = 'pending' AND ${t.featureSupportId} IS NOT NULL`),
+  onePendingVendorEvaluationFlagPerReporter: uniqueIndex("vendor_fact_check_flags_pending_vendor_score_unique")
+    .on(t.vendorId, t.reportedByUserId, t.vendorScoreId)
+    .where(sql`${t.status} = 'pending' AND ${t.vendorScoreId} IS NOT NULL`),
+}));
 
 export const insertVendorFactCheckFlagSchema = createInsertSchema(vendorFactCheckFlags).omit({
   id: true,

@@ -24,18 +24,20 @@ interface FlagRow {
   vendorName: string;
   marketId: string | null;
   marketName: string | null;
-  featureId: string;
-  featureName: string;
+  targetType: "feature_support" | "vendor_evaluation";
+  itemId: string;
+  itemName: string;
   categoryName: string;
   isEcosystem: boolean;
-  currentSupportLevel: number;
+  currentSupportLevel: number | null;
   currentComments: string | null;
   proposedSupportLevel: number | null;
   evidenceLinks: string | null;
   notes: string | null;
   adminNotes: string | null;
   reportedByEmail: string | null;
-  featureSupportId: string;
+  featureSupportId: string | null;
+  vendorScoreId: string | null;
   createdAt: string;
   reviewedAt: string | null;
 }
@@ -119,7 +121,7 @@ export function FactCheckFlagsAdmin() {
 
   function openApprove(flag: FlagRow) {
     setApproveFlag(flag);
-    setApproveLevel(flag.proposedSupportLevel ?? flag.currentSupportLevel);
+    setApproveLevel(flag.proposedSupportLevel ?? flag.currentSupportLevel ?? 0);
     setApproveComments(flag.currentComments ?? "");
   }
 
@@ -127,7 +129,11 @@ export function FactCheckFlagsAdmin() {
     if (!approveFlag) return;
     reviewMutation.mutate({
       id: approveFlag.id,
-      body: { status: "approved", updatedSupportLevel: approveLevel, updatedComments: approveComments },
+      body: {
+        status: "approved",
+        ...(approveFlag.targetType === "feature_support" ? { updatedSupportLevel: approveLevel } : {}),
+        updatedComments: approveComments,
+      },
     });
   }
 
@@ -170,21 +176,27 @@ export function FactCheckFlagsAdmin() {
           className="flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50"
           onClick={() => setExpandedId(expanded ? null : flag.id)}
         >
-          <div className="mt-0.5"><HarveyBall level={flag.currentSupportLevel} /></div>
+          {flag.targetType === "feature_support" && flag.currentSupportLevel != null && (
+            <div className="mt-0.5"><HarveyBall level={flag.currentSupportLevel} /></div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-gray-900">{flag.vendorName}</span>
               <span className="text-gray-400">·</span>
               <span className="text-sm text-gray-600">{stripMarket(flag.marketName)}</span>
               <span className="text-gray-400">·</span>
-              <Badge variant="outline" className="text-xs">{flag.isEcosystem ? "Ecosystem" : "Product"}</Badge>
+              <Badge variant="outline" className="text-xs">
+                {flag.targetType === "vendor_evaluation" ? "Vendor Evaluation" : flag.isEcosystem ? "Ecosystem" : "Product"}
+              </Badge>
               <StatusBadge status={flag.status} />
             </div>
             <div className="mt-0.5 text-sm text-gray-700">
-              <span className="text-gray-500">{flag.categoryName} /</span> {flag.featureName}
+              <span className="text-gray-500">{flag.categoryName} /</span> {flag.itemName}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-gray-500">
-              <span>Current: <span className="font-medium text-gray-700">{HARVEY_LABELS[flag.currentSupportLevel] ?? flag.currentSupportLevel}</span></span>
+              {flag.targetType === "feature_support" && flag.currentSupportLevel != null && (
+                <span>Current: <span className="font-medium text-gray-700">{HARVEY_LABELS[flag.currentSupportLevel] ?? flag.currentSupportLevel}</span></span>
+              )}
               {flag.proposedSupportLevel != null && (
                 <span>Proposed: <span className="font-medium text-blue-700">{HARVEY_LABELS[flag.proposedSupportLevel] ?? flag.proposedSupportLevel}</span></span>
               )}
@@ -252,7 +264,7 @@ export function FactCheckFlagsAdmin() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Fact-Check Flags</h3>
-        <p className="text-sm text-gray-500">Vendor-submitted correction requests for feature support rows. Review and apply approved changes.</p>
+        <p className="text-sm text-gray-500">Vendor-submitted correction requests for evaluation write-ups. Review the evidence and apply approved commentary changes.</p>
       </div>
 
       {/* ── Export panel ─────────────────────────────────────────────────── */}
@@ -338,32 +350,37 @@ export function FactCheckFlagsAdmin() {
             <div className="space-y-4 py-2">
               <div className="rounded-lg bg-gray-50 p-3 text-sm space-y-1">
                 <p><span className="text-gray-500">Vendor:</span> <span className="font-medium">{approveFlag.vendorName}</span></p>
-                <p><span className="text-gray-500">Feature:</span> {approveFlag.categoryName} / {approveFlag.featureName}</p>
+                <p>
+                  <span className="text-gray-500">{approveFlag.targetType === "vendor_evaluation" ? "Criterion" : "Feature"}:</span>
+                  {" "}{approveFlag.categoryName} / {approveFlag.itemName}
+                </p>
                 {approveFlag.proposedSupportLevel != null && (
                   <p><span className="text-gray-500">Proposed level:</span> <span className="font-medium text-blue-700">{HARVEY_LABELS[approveFlag.proposedSupportLevel]}</span></p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label>Support level to apply (0–4)</Label>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3, 4].map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setApproveLevel(v)}
-                      className={`flex-1 rounded-md border py-2 text-xs font-medium transition ${approveLevel === v ? "border-blue-600 bg-blue-50 text-blue-700" : "border-gray-200 hover:border-gray-300"}`}
-                    >
-                      <div className="flex justify-center mb-1"><HarveyBall level={v} /></div>
-                      {HARVEY_LABELS[v]}
-                    </button>
-                  ))}
+              {approveFlag.targetType === "feature_support" && (
+                <div className="space-y-1.5">
+                  <Label>Support level to apply (0–4)</Label>
+                  <div className="flex gap-2">
+                    {[0, 1, 2, 3, 4].map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setApproveLevel(v)}
+                        className={`flex-1 rounded-md border py-2 text-xs font-medium transition ${approveLevel === v ? "border-blue-600 bg-blue-50 text-blue-700" : "border-gray-200 hover:border-gray-300"}`}
+                      >
+                        <div className="flex justify-center mb-1"><HarveyBall level={v} /></div>
+                        {HARVEY_LABELS[v]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="space-y-1.5">
-                <Label>Commentary (optional)</Label>
+                <Label>Write-up (optional)</Label>
                 <Textarea
                   value={approveComments}
                   onChange={(e) => setApproveComments(e.target.value)}
-                  placeholder="Update the commentary for this feature…"
+                  placeholder="Update this evaluation write-up…"
                   rows={3}
                 />
               </div>

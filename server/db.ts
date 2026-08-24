@@ -14,6 +14,13 @@ if (!process.env.DATABASE_URL) {
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle({ client: pool, schema });
 
+class FactReviewMigrationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FactReviewMigrationError";
+  }
+}
+
 /**
  * Run lightweight additive migrations for new schema additions.
  * Uses IF NOT EXISTS / ADD COLUMN IF NOT EXISTS so it is safe to run on any
@@ -542,9 +549,125 @@ export async function runStartupMigrations(): Promise<void> {
         ON contact_messages (is_read, created_at);
     `);
 
+    // 30. Vendor Evaluation Fact Review flags. Preserve existing feature
+    // flags while allowing a flag to target either a feature-support row or a
+    // vendor-score write-up. This transaction never rewrites or deletes vendor
+    // feedback; audit failures roll back every schema change and stop startup.
+    await client.query("BEGIN");
+    try {
+      await client.query(`
+        ALTER TABLE vendor_fact_check_flags
+          ADD COLUMN IF NOT EXISTS vendor_score_id varchar;
+        ALTER TABLE vendor_fact_check_flags
+          ALTER COLUMN feature_support_id DROP NOT NULL;
+      `);
+      await client.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'vendor_fact_check_flags_vendor_score_id_vendor_scores_id_fk'
+              AND conrelid = 'vendor_fact_check_flags'::regclass
+          ) THEN
+          IF EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'vendor_fact_check_flags_vendor_score_id_fkey'
+              AND conrelid = 'vendor_fact_check_flags'::regclass
+          ) THEN
+            ALTER TABLE vendor_fact_check_flags
+              RENAME CONSTRAINT vendor_fact_check_flags_vendor_score_id_fkey
+              TO vendor_fact_check_flags_vendor_score_id_vendor_scores_id_fk;
+          ELSE
+            ALTER TABLE vendor_fact_check_flags
+              ADD CONSTRAINT vendor_fact_check_flags_vendor_score_id_vendor_scores_id_fk
+              FOREIGN KEY (vendor_score_id) REFERENCES vendor_scores(id) ON DELETE CASCADE;
+          END IF;
+          END IF;
+        END $$;
+      `);
+
+      const [invalidTargets, duplicatePendingFeatureFlags, duplicatePendingVendorScoreFlags] =
+        await Promise.all([
+          client.query(`
+            SELECT COUNT(*)::int AS count
+            FROM vendor_fact_check_flags
+            WHERE (feature_support_id IS NULL AND vendor_score_id IS NULL)
+               OR (feature_support_id IS NOT NULL AND vendor_score_id IS NOT NULL)
+          `),
+          client.query(`
+            SELECT COUNT(*)::int AS count
+            FROM (
+              SELECT 1
+              FROM vendor_fact_check_flags
+              WHERE status = 'pending' AND feature_support_id IS NOT NULL
+              GROUP BY vendor_id, reported_by_user_id, feature_support_id
+              HAVING COUNT(*) > 1
+            ) AS duplicates
+          `),
+          client.query(`
+            SELECT COUNT(*)::int AS count
+            FROM (
+              SELECT 1
+              FROM vendor_fact_check_flags
+              WHERE status = 'pending' AND vendor_score_id IS NOT NULL
+              GROUP BY vendor_id, reported_by_user_id, vendor_score_id
+              HAVING COUNT(*) > 1
+            ) AS duplicates
+          `),
+        ]);
+      const auditFailures = [
+        ["invalid targets", invalidTargets.rows[0]?.count ?? 0],
+        ["duplicate pending feature flags", duplicatePendingFeatureFlags.rows[0]?.count ?? 0],
+        ["duplicate pending vendor evaluation flags", duplicatePendingVendorScoreFlags.rows[0]?.count ?? 0],
+      ].filter(([, count]) => Number(count) > 0);
+      if (auditFailures.length > 0) {
+        throw new Error(
+          `Fact Review migration needs manual data cleanup: ${
+            auditFailures.map(([kind, count]) => `${count} ${kind}`).join(", ")
+          }`,
+        );
+      }
+
+      await client.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'vendor_fact_check_flags_exactly_one_target'
+              AND conrelid = 'vendor_fact_check_flags'::regclass
+          ) THEN
+            ALTER TABLE vendor_fact_check_flags
+              ADD CONSTRAINT vendor_fact_check_flags_exactly_one_target
+              CHECK (
+                ((feature_support_id IS NOT NULL)::int + (vendor_score_id IS NOT NULL)::int) = 1
+              );
+          END IF;
+        END $$;
+        CREATE UNIQUE INDEX IF NOT EXISTS vendor_fact_check_flags_pending_feature_unique
+          ON vendor_fact_check_flags (vendor_id, reported_by_user_id, feature_support_id)
+          WHERE status = 'pending' AND feature_support_id IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS vendor_fact_check_flags_pending_vendor_score_unique
+          ON vendor_fact_check_flags (vendor_id, reported_by_user_id, vendor_score_id)
+          WHERE status = 'pending' AND vendor_score_id IS NOT NULL;
+      `);
+      await client.query("COMMIT");
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // The original migration failure is the useful error for the caller.
+      }
+      throw new FactReviewMigrationError(
+        `Fact Review schema migration failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);
+    if (err instanceof FactReviewMigrationError) throw err;
     // Non-fatal: the app can still start; DB push should be run manually
   } finally {
     client.release();

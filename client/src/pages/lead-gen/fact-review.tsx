@@ -15,7 +15,6 @@ import { motion } from "framer-motion";
 interface FactFlag {
   id: string;
   status: string;
-  proposedSupportLevel: number | null;
   evidenceLinks: string | null;
   notes: string | null;
   adminNotes: string | null;
@@ -35,9 +34,23 @@ interface FactRow {
   flag: FactFlag | null;
 }
 
+interface VendorEvaluationRow {
+  vendorScoreId: string;
+  criterionId: string;
+  criterionName: string;
+  categoryName: string;
+  comments: string | null;
+  flag: FactFlag | null;
+}
+
+type FlagTarget =
+  | { type: "feature"; row: FactRow }
+  | { type: "vendor-evaluation"; row: VendorEvaluationRow };
+
 interface FactMarketGroup {
   vendor: { id: string; name: string; marketId: string | null };
   market: { id: string; name: string } | null;
+  vendorEvaluationRows: VendorEvaluationRow[];
   productRows: FactRow[];
   ecosystemRows: FactRow[];
 }
@@ -166,11 +179,6 @@ function FactSection({
                         {row.flag && (
                           <div className="mt-1.5 space-y-1">
                             <FlagStatusChip flag={row.flag} />
-                            {row.flag.proposedSupportLevel != null && (
-                              <p className="text-xs text-slate-500">
-                                Proposed: <span className="text-cyan-400">{HARVEY_LABELS[row.flag.proposedSupportLevel]}</span>
-                              </p>
-                            )}
                             {row.flag.status === "rejected" && row.flag.adminNotes && (
                               <p className="text-xs text-red-400">{row.flag.adminNotes}</p>
                             )}
@@ -201,12 +209,101 @@ function FactSection({
   );
 }
 
+function VendorEvaluationSection({
+  rows,
+  onFlag,
+}: {
+  rows: VendorEvaluationRow[];
+  onFlag: (row: VendorEvaluationRow) => void;
+}) {
+  if (rows.length === 0) return null;
+
+  const byCategory: Record<string, VendorEvaluationRow[]> = {};
+  for (const row of rows) {
+    if (!byCategory[row.categoryName]) byCategory[row.categoryName] = [];
+    byCategory[row.categoryName].push(row);
+  }
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggle = (category: string) =>
+    setCollapsed((previous) => ({ ...previous, [category]: !previous[category] }));
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">Vendor Evaluation</h3>
+      <div className="space-y-2">
+        {Object.entries(byCategory).map(([category, categoryRows]) => {
+          const isOpen = collapsed[category] === true;
+          const pendingCount = categoryRows.filter((row) => row.flag?.status === "pending").length;
+          return (
+            <GlassCard key={category} className="overflow-hidden">
+              <button
+                className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-white/5"
+                onClick={() => toggle(category)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold capitalize text-white">{category}</span>
+                  <span className="text-xs text-slate-500">({categoryRows.length})</span>
+                  {pendingCount > 0 && (
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/20 px-1.5 py-0.5 text-xs text-amber-400">
+                      {pendingCount} pending
+                    </span>
+                  )}
+                </div>
+                {isOpen
+                  ? <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />}
+              </button>
+
+              {isOpen && (
+                <div className="divide-y divide-white/5 border-t border-white/5">
+                  {categoryRows.map((row) => (
+                    <div key={row.vendorScoreId} className="flex items-start gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm font-medium text-white">{row.criterionName}</span>
+                        {row.comments ? (
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-500">{row.comments}</p>
+                        ) : (
+                          <p className="mt-0.5 text-xs italic text-slate-600">No write-up available yet.</p>
+                        )}
+                        {row.flag && (
+                          <div className="mt-1.5 space-y-1">
+                            <FlagStatusChip flag={row.flag} />
+                            {row.flag.status === "rejected" && row.flag.adminNotes && (
+                              <p className="text-xs text-red-400">{row.flag.adminNotes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        {!row.flag ? (
+                          <button
+                            onClick={() => onFlag(row)}
+                            className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-400"
+                          >
+                            <Flag className="h-3 w-3" /> Flag
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-600">Flagged</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FactReviewPage() {
   const { toast } = useToast();
-  const [flagRow, setFlagRow] = useState<FactRow | null>(null);
-  const [flagLevel, setFlagLevel] = useState<number | null>(null);
+  const [flagTarget, setFlagTarget] = useState<FlagTarget | null>(null);
   const [flagLinks, setFlagLinks] = useState("");
   const [flagNotes, setFlagNotes] = useState("");
 
@@ -225,8 +322,7 @@ export default function FactReviewPage() {
       apiRequest("/api/lead-gen/me/fact-review/flags", "POST", body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-gen/me/fact-review"] });
-      setFlagRow(null);
-      setFlagLevel(null);
+      setFlagTarget(null);
       setFlagLinks("");
       setFlagNotes("");
       toast({ title: "Flag submitted", description: "We'll review it and get back to you." });
@@ -237,20 +333,21 @@ export default function FactReviewPage() {
   });
 
   function submitFlag() {
-    if (!flagRow || !flagRow.supportId) return;
-    if (flagLevel == null && !flagLinks.trim() && !flagNotes.trim()) {
-      toast({ title: "Nothing to submit", description: "Provide a proposed level, evidence links, or notes.", variant: "destructive" });
+    if (!flagTarget) return;
+    if (!flagLinks.trim() && !flagNotes.trim()) {
+      toast({ title: "Nothing to submit", description: "Add evidence links or notes before submitting.", variant: "destructive" });
       return;
     }
     flagMutation.mutate({
-      featureSupportId: flagRow.supportId,
-      proposedSupportLevel: flagLevel,
+      ...(flagTarget.type === "feature"
+        ? { featureSupportId: flagTarget.row.supportId }
+        : { vendorScoreId: flagTarget.row.vendorScoreId }),
       evidenceLinks: flagLinks.trim() || null,
       notes: flagNotes.trim() || null,
     });
   }
 
-  const closeFlag = () => { setFlagRow(null); setFlagLevel(null); setFlagLinks(""); setFlagNotes(""); };
+  const closeFlag = () => { setFlagTarget(null); setFlagLinks(""); setFlagNotes(""); };
 
   return (
     <PanelShell>
@@ -262,7 +359,7 @@ export default function FactReviewPage() {
           Fact Review
         </h1>
         <p className="mt-1.5 text-sm text-slate-400">
-          Review your feature support scores and submit corrections.
+          Review the write-ups for your vendor evaluation, product evaluation, and ecosystem evaluation.
         </p>
       </motion.div>
 
@@ -284,8 +381,8 @@ export default function FactReviewPage() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                 <p className="text-sm text-slate-400">
-                  These are your current feature support scores as recorded in our database. If you believe any entry is
-                  inaccurate, click <strong className="text-white">Flag</strong> to submit a correction with evidence.
+                  These are the current evaluation write-ups recorded in our database. If you believe any entry is
+                  inaccurate, click <strong className="text-white">Flag</strong> to submit evidence and notes.
                   Our analysts will review your submission.
                 </p>
               </div>
@@ -298,7 +395,7 @@ export default function FactReviewPage() {
             )}
 
             {factData.markets.map((group) => {
-              const hasRows = group.productRows.length > 0 || group.ecosystemRows.length > 0;
+              const hasRows = group.vendorEvaluationRows.length > 0 || group.productRows.length > 0 || group.ecosystemRows.length > 0;
               return (
                 <div key={group.vendor.id} className="space-y-4">
                   {factData.markets.length > 1 && group.market && (
@@ -313,8 +410,12 @@ export default function FactReviewPage() {
                       <span className="font-medium text-white">{stripMarket(group.market.name)}</span>
                     </div>
                   )}
-                  <FactSection rows={group.productRows} title="Product Evaluation" onFlag={setFlagRow} />
-                  <FactSection rows={group.ecosystemRows} title="Ecosystem Evaluation" onFlag={setFlagRow} />
+                  <VendorEvaluationSection
+                    rows={group.vendorEvaluationRows}
+                    onFlag={(row) => setFlagTarget({ type: "vendor-evaluation", row })}
+                  />
+                  <FactSection rows={group.productRows} title="Product Evaluation" onFlag={(row) => setFlagTarget({ type: "feature", row })} />
+                  <FactSection rows={group.ecosystemRows} title="Ecosystem Evaluation" onFlag={(row) => setFlagTarget({ type: "feature", row })} />
                   {!hasRows && (
                     <GlassCard className="p-6 text-center">
                       <p className="text-sm text-slate-500">No features defined for this market yet.</p>
@@ -328,36 +429,24 @@ export default function FactReviewPage() {
       </div>
 
       {/* Flag dialog */}
-      <Dialog open={!!flagRow} onOpenChange={(o) => { if (!o) closeFlag(); }}>
+      <Dialog open={!!flagTarget} onOpenChange={(o) => { if (!o) closeFlag(); }}>
         <DialogContent className="max-w-md bg-slate-900 border border-white/10 text-white">
           <DialogHeader>
             <DialogTitle className="text-white">Flag a Correction</DialogTitle>
           </DialogHeader>
-          {flagRow && (
+          {flagTarget && (
             <div className="space-y-4 py-2">
               <div className="rounded-lg bg-white/5 p-3 text-sm space-y-1">
-                <p className="text-slate-400">Feature: <span className="text-white font-medium">{flagRow.featureName}</span></p>
-                <p className="text-slate-400">Category: <span className="text-slate-300">{flagRow.categoryName}</span></p>
-                <p className="text-slate-400">Current level: <span className="text-cyan-400">{HARVEY_LABELS[flagRow.supportLevel] ?? flagRow.supportLevel}</span></p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-slate-300">Proposed support level (optional)</Label>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3, 4].map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setFlagLevel(flagLevel === v ? null : v)}
-                      className={`flex-1 rounded-md border py-2 text-xs font-medium transition ${flagLevel === v ? "border-cyan-500 bg-cyan-500/10 text-cyan-400" : "border-white/10 text-slate-400 hover:border-white/20"}`}
-                    >
-                      <div className="flex justify-center mb-1"><HarveyBall level={v} size={16} /></div>
-                      {HARVEY_LABELS[v]}
-                    </button>
-                  ))}
-                </div>
-                {flagLevel != null && (
-                  <p className="text-xs text-slate-500">Selected: {HARVEY_LABELS[flagLevel]}</p>
-                )}
+                <p className="text-slate-400">
+                  {flagTarget.type === "feature" ? "Feature" : "Criterion"}:
+                  <span className="ml-1 font-medium text-white">
+                    {flagTarget.type === "feature" ? flagTarget.row.featureName : flagTarget.row.criterionName}
+                  </span>
+                </p>
+                <p className="text-slate-400">
+                  Category:
+                  <span className="ml-1 text-slate-300">{flagTarget.row.categoryName}</span>
+                </p>
               </div>
 
               <div className="space-y-1.5">
@@ -376,12 +465,12 @@ export default function FactReviewPage() {
                 <Textarea
                   value={flagNotes}
                   onChange={(e) => setFlagNotes(e.target.value)}
-                  placeholder="Explain what's inaccurate and what the correct value should be…"
+                  placeholder="Explain what is inaccurate in this write-up…"
                   rows={3}
                   className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 resize-none"
                 />
               </div>
-              <p className="text-xs text-slate-500">At least one field (proposed level, evidence, or notes) must be filled.</p>
+              <p className="text-xs text-slate-500">Add evidence links or notes before submitting.</p>
             </div>
           )}
           <DialogFooter>

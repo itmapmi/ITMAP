@@ -15,3 +15,4 @@
 - [PostgreSQL test isolation](postgres-test-isolation.md) — shared app databases need a temporary schema and scoped pool; never seed public tables in integration tests.
 - [App Storage bucket replacement](app-storage-bucket-replacement.md) — creating a bucket does not retarget stale upload bindings; select it explicitly and smoke-test signed PUTs.
 - [Pinned DNS lookup shape](pinned-dns-lookup-shape.md) — Node auto-select-family requests lookup arrays; pinned callbacks must honor `options.all`.
+- [Vendor fact-review authorization](vendor-fact-review-authorization.md) — authorize Fact Review only from explicit vendor assignments, never matching vendor names.

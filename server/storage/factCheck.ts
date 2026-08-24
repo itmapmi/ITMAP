@@ -11,7 +11,7 @@ import {
   users,
 } from "@shared/schema";
 import { db } from "../db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,15 @@ export interface FactReviewRow {
   } | null;
 }
 
+export interface VendorEvaluationReviewRow {
+  vendorScoreId: string;
+  criterionId: string;
+  criterionName: string;
+  categoryName: string;
+  comments: string | null;
+  flag: FactReviewRow["flag"];
+}
+
 export interface AdminFactCheckFlagRow {
   id: string;
   status: string;
@@ -43,18 +52,20 @@ export interface AdminFactCheckFlagRow {
   vendorName: string;
   marketId: string | null;
   marketName: string | null;
-  featureId: string;
-  featureName: string;
+  targetType: "feature_support" | "vendor_evaluation";
+  itemId: string;
+  itemName: string;
   categoryName: string;
   isEcosystem: boolean;
-  currentSupportLevel: number;
+  currentSupportLevel: number | null;
   currentComments: string | null;
   proposedSupportLevel: number | null;
   evidenceLinks: string | null;
   notes: string | null;
   adminNotes: string | null;
   reportedByEmail: string | null;
-  featureSupportId: string;
+  featureSupportId: string | null;
+  vendorScoreId: string | null;
   createdAt: Date;
   reviewedAt: Date | null;
 }
@@ -140,26 +151,51 @@ export async function getFactReviewExportData(
       isEcosystem: featureCategories.isEcosystem,
       categoryName: featureCategories.name,
       featureName: features.name,
+      supportId: vendorFeatureSupport.id,
       supportLevel: vendorFeatureSupport.supportLevel,
       comments: vendorFeatureSupport.comments,
-      flagStatus: vendorFactCheckFlags.status,
-      proposedSupportLevel: vendorFactCheckFlags.proposedSupportLevel,
-      evidenceLinks: vendorFactCheckFlags.evidenceLinks,
-      flagNotes: vendorFactCheckFlags.notes,
     })
     .from(vendorFeatureSupport)
     .innerJoin(vendors, eq(vendorFeatureSupport.vendorId, vendors.id))
     .leftJoin(markets, eq(vendors.marketId, markets.id))
     .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
     .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
-    .leftJoin(
-      vendorFactCheckFlags,
-      eq(vendorFactCheckFlags.featureSupportId, vendorFeatureSupport.id),
-    )
     .where(vendorId ? eq(vendors.id, vendorId) : sql`TRUE`)
     .orderBy(vendors.name, featureCategories.displayOrder, features.displayOrder);
 
+  // An export represents the current review state: use only the newest pending
+  // flag per item, even when multiple vendor seats submit feedback.
+  const pendingFlags = await db
+    .select({
+      featureSupportId: vendorFactCheckFlags.featureSupportId,
+      vendorScoreId: vendorFactCheckFlags.vendorScoreId,
+      proposedSupportLevel: vendorFactCheckFlags.proposedSupportLevel,
+      evidenceLinks: vendorFactCheckFlags.evidenceLinks,
+      notes: vendorFactCheckFlags.notes,
+      createdAt: vendorFactCheckFlags.createdAt,
+    })
+    .from(vendorFactCheckFlags)
+    .where(
+      and(
+        eq(vendorFactCheckFlags.status, "pending"),
+        vendorId ? eq(vendorFactCheckFlags.vendorId, vendorId) : sql`TRUE`,
+      ),
+    )
+    .orderBy(desc(vendorFactCheckFlags.createdAt));
+
+  const pendingFeatureFlags = new Map<string, typeof pendingFlags[number]>();
+  const pendingVendorScoreFlags = new Map<string, typeof pendingFlags[number]>();
+  for (const flag of pendingFlags) {
+    if (flag.featureSupportId && !pendingFeatureFlags.has(flag.featureSupportId)) {
+      pendingFeatureFlags.set(flag.featureSupportId, flag);
+    }
+    if (flag.vendorScoreId && !pendingVendorScoreFlags.has(flag.vendorScoreId)) {
+      pendingVendorScoreFlags.set(flag.vendorScoreId, flag);
+    }
+  }
+
   for (const r of featureRows) {
+    const flag = pendingFeatureFlags.get(r.supportId);
     rows.push({
       vendorId: r.vendorId,
       vendorName: r.vendorName,
@@ -173,13 +209,13 @@ export async function getFactReviewExportData(
         r.supportLevel != null
           ? HARVEY_LABELS[r.supportLevel] ?? String(r.supportLevel)
           : null,
-      proposedWriteup: r.flagNotes ?? null,
+      proposedWriteup: flag?.notes ?? null,
       proposedScore:
-        r.proposedSupportLevel != null
-          ? HARVEY_LABELS[r.proposedSupportLevel] ?? String(r.proposedSupportLevel)
+        flag?.proposedSupportLevel != null
+          ? HARVEY_LABELS[flag.proposedSupportLevel] ?? String(flag.proposedSupportLevel)
           : null,
-      flagStatus: r.flagStatus ?? null,
-      evidenceLinks: r.evidenceLinks ?? null,
+      flagStatus: flag ? "pending" : null,
+      evidenceLinks: flag?.evidenceLinks ?? null,
     });
   }
 
@@ -192,6 +228,7 @@ export async function getFactReviewExportData(
       marketName: markets.name,
       criteriaName: criteria.name,
       criteriaCategory: criteria.category,
+      vendorScoreId: vendorScores.id,
       score: vendorScores.score,
       notes: vendorScores.notes,
     })
@@ -203,6 +240,7 @@ export async function getFactReviewExportData(
     .orderBy(vendors.name, criteria.name);
 
   for (const r of scoreRows) {
+    const flag = pendingVendorScoreFlags.get(r.vendorScoreId);
     const numScore = r.score != null ? parseFloat(String(r.score)) : null;
     rows.push({
       vendorId: r.vendorId,
@@ -214,10 +252,10 @@ export async function getFactReviewExportData(
       item: r.criteriaName,
       currentWriteup: r.notes ?? null,
       currentScore: numScore != null ? numScore.toFixed(1) + " / 10" : null,
-      proposedWriteup: null,
+      proposedWriteup: flag?.notes ?? null,
       proposedScore: null,
-      flagStatus: null,
-      evidenceLinks: null,
+      flagStatus: flag ? "pending" : null,
+      evidenceLinks: flag?.evidenceLinks ?? null,
     });
   }
 
@@ -234,7 +272,11 @@ export async function getFactReviewRows(
   vendorId: string,
   marketId: string,
   reportedByUserId: string,
-): Promise<{ productRows: FactReviewRow[]; ecosystemRows: FactReviewRow[] }> {
+): Promise<{
+  vendorEvaluationRows: VendorEvaluationReviewRow[];
+  productRows: FactReviewRow[];
+  ecosystemRows: FactReviewRow[];
+}> {
   const rows = await db
     .select({
       supportId: vendorFeatureSupport.id,
@@ -267,6 +309,7 @@ export async function getFactReviewRows(
       and(
         eq(vendorFactCheckFlags.featureSupportId, vendorFeatureSupport.id),
         eq(vendorFactCheckFlags.reportedByUserId, reportedByUserId),
+        eq(vendorFactCheckFlags.status, "pending"),
       ),
     )
     .where(eq(featureCategories.marketId, marketId))
@@ -297,45 +340,132 @@ export async function getFactReviewRows(
 
   const productRows = rows.filter((r) => !r.isEcosystem).map(toRow);
   const ecosystemRows = rows.filter((r) => r.isEcosystem).map(toRow);
-  return { productRows, ecosystemRows };
+
+  const vendorEvaluationRows = await db
+    .select({
+      vendorScoreId: vendorScores.id,
+      criterionId: criteria.id,
+      criterionName: criteria.name,
+      categoryName: criteria.category,
+      comments: vendorScores.notes,
+      flagId: vendorFactCheckFlags.id,
+      flagStatus: vendorFactCheckFlags.status,
+      flagProposedLevel: vendorFactCheckFlags.proposedSupportLevel,
+      flagEvidenceLinks: vendorFactCheckFlags.evidenceLinks,
+      flagNotes: vendorFactCheckFlags.notes,
+      flagAdminNotes: vendorFactCheckFlags.adminNotes,
+      flagCreatedAt: vendorFactCheckFlags.createdAt,
+    })
+    .from(vendorScores)
+    .innerJoin(criteria, eq(vendorScores.criteriaId, criteria.id))
+    .leftJoin(
+      vendorFactCheckFlags,
+      and(
+        eq(vendorFactCheckFlags.vendorScoreId, vendorScores.id),
+        eq(vendorFactCheckFlags.reportedByUserId, reportedByUserId),
+        eq(vendorFactCheckFlags.status, "pending"),
+      ),
+    )
+    .where(eq(vendorScores.vendorId, vendorId))
+    .orderBy(criteria.category, criteria.name);
+
+  return {
+    vendorEvaluationRows: vendorEvaluationRows.map((r) => ({
+      vendorScoreId: r.vendorScoreId,
+      criterionId: r.criterionId,
+      criterionName: r.criterionName,
+      categoryName: r.categoryName,
+      comments: r.comments ?? null,
+      flag: r.flagId
+        ? {
+            id: r.flagId,
+            status: r.flagStatus!,
+            proposedSupportLevel: r.flagProposedLevel ?? null,
+            evidenceLinks: r.flagEvidenceLinks ?? null,
+            notes: r.flagNotes ?? null,
+            adminNotes: r.flagAdminNotes ?? null,
+            createdAt: r.flagCreatedAt!,
+          }
+        : null,
+    })),
+    productRows,
+    ecosystemRows,
+  };
 }
 
 // Create a new fact-check flag. Enforces:
-// 1. The featureSupportId belongs to this vendor (no cross-vendor access)
-// 2. No duplicate open flag for the same support row by the same user
+// 1. Exactly one supported target is supplied.
+// 2. That target belongs to this vendor (no cross-vendor access).
+// 3. A user cannot open two pending flags for the same target.
 export async function createFactCheckFlag(data: {
-  vendorId: string;
-  featureSupportId: string;
+  authorizedVendorIds: string[];
+  featureSupportId?: string | null;
+  vendorScoreId?: string | null;
   reportedByUserId: string;
-  proposedSupportLevel: number | null;
   evidenceLinks: string | null;
   notes: string | null;
 }): Promise<VendorFactCheckFlag | null> {
-  // Verify the feature support row belongs to this vendor
-  const [supportRow] = await db
-    .select({ id: vendorFeatureSupport.id, vendorId: vendorFeatureSupport.vendorId })
-    .from(vendorFeatureSupport)
+  const featureSupportId = data.featureSupportId ?? null;
+  const vendorScoreId = data.vendorScoreId ?? null;
+  if (
+    data.authorizedVendorIds.length === 0 ||
+    (featureSupportId ? 1 : 0) + (vendorScoreId ? 1 : 0) !== 1
+  ) return null;
+
+  const targetExists = featureSupportId
+    ? await db
+      .select({ id: vendorFeatureSupport.id, vendorId: vendorFeatureSupport.vendorId })
+      .from(vendorFeatureSupport)
+      .where(
+        and(
+          eq(vendorFeatureSupport.id, featureSupportId),
+          inArray(vendorFeatureSupport.vendorId, data.authorizedVendorIds),
+        ),
+      )
+      .limit(1)
+    : await db
+      .select({ id: vendorScores.id, vendorId: vendorScores.vendorId })
+      .from(vendorScores)
+      .where(
+        and(
+          eq(vendorScores.id, vendorScoreId!),
+          inArray(vendorScores.vendorId, data.authorizedVendorIds),
+        ),
+      )
+      .limit(1);
+
+  const targetVendorId = targetExists[0]?.vendorId;
+  if (!targetVendorId) return null;
+
+  const targetFilter = featureSupportId
+    ? eq(vendorFactCheckFlags.featureSupportId, featureSupportId)
+    : eq(vendorFactCheckFlags.vendorScoreId, vendorScoreId!);
+  const [pendingFlag] = await db
+    .select({ id: vendorFactCheckFlags.id })
+    .from(vendorFactCheckFlags)
     .where(
       and(
-        eq(vendorFeatureSupport.id, data.featureSupportId),
-        eq(vendorFeatureSupport.vendorId, data.vendorId),
+        eq(vendorFactCheckFlags.vendorId, targetVendorId),
+        eq(vendorFactCheckFlags.reportedByUserId, data.reportedByUserId),
+        eq(vendorFactCheckFlags.status, "pending"),
+        targetFilter,
       ),
     )
     .limit(1);
-
-  if (!supportRow) return null;
+  if (pendingFlag) return null;
 
   const [flag] = await db
     .insert(vendorFactCheckFlags)
     .values({
-      vendorId: data.vendorId,
-      featureSupportId: data.featureSupportId,
+      vendorId: targetVendorId,
+      featureSupportId,
+      vendorScoreId,
       reportedByUserId: data.reportedByUserId,
-      proposedSupportLevel: data.proposedSupportLevel ?? null,
       evidenceLinks: data.evidenceLinks ?? null,
       notes: data.notes ?? null,
       status: "pending",
     })
+    .onConflictDoNothing()
     .returning();
 
   return flag;
@@ -354,25 +484,32 @@ export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
       marketName: markets.name,
       featureId: features.id,
       featureName: features.name,
-      categoryName: featureCategories.name,
+      featureCategoryName: featureCategories.name,
       isEcosystem: featureCategories.isEcosystem,
       currentSupportLevel: vendorFeatureSupport.supportLevel,
-      currentComments: vendorFeatureSupport.comments,
+      featureComments: vendorFeatureSupport.comments,
+      featureSupportId: vendorFeatureSupport.id,
+      vendorScoreId: vendorScores.id,
+      criterionId: criteria.id,
+      criterionName: criteria.name,
+      criterionCategory: criteria.category,
+      vendorScoreComments: vendorScores.notes,
       proposedSupportLevel: vendorFactCheckFlags.proposedSupportLevel,
       evidenceLinks: vendorFactCheckFlags.evidenceLinks,
       notes: vendorFactCheckFlags.notes,
       adminNotes: vendorFactCheckFlags.adminNotes,
       reportedByEmail: users.email,
-      featureSupportId: vendorFeatureSupport.id,
       createdAt: vendorFactCheckFlags.createdAt,
       reviewedAt: vendorFactCheckFlags.reviewedAt,
     })
     .from(vendorFactCheckFlags)
-    .innerJoin(vendorFeatureSupport, eq(vendorFactCheckFlags.featureSupportId, vendorFeatureSupport.id))
     .innerJoin(vendors, eq(vendorFactCheckFlags.vendorId, vendors.id))
     .leftJoin(markets, eq(vendors.marketId, markets.id))
-    .innerJoin(features, eq(vendorFeatureSupport.featureId, features.id))
-    .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+    .leftJoin(vendorFeatureSupport, eq(vendorFactCheckFlags.featureSupportId, vendorFeatureSupport.id))
+    .leftJoin(features, eq(vendorFeatureSupport.featureId, features.id))
+    .leftJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+    .leftJoin(vendorScores, eq(vendorFactCheckFlags.vendorScoreId, vendorScores.id))
+    .leftJoin(criteria, eq(vendorScores.criteriaId, criteria.id))
     .leftJoin(users, eq(vendorFactCheckFlags.reportedByUserId, users.id))
     .orderBy(sql`${vendorFactCheckFlags.createdAt} desc`);
 
@@ -383,18 +520,20 @@ export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
     vendorName: r.vendorName,
     marketId: r.marketId ?? null,
     marketName: r.marketName ?? null,
-    featureId: r.featureId,
-    featureName: r.featureName,
-    categoryName: r.categoryName,
-    isEcosystem: r.isEcosystem,
-    currentSupportLevel: r.currentSupportLevel,
-    currentComments: r.currentComments ?? null,
+    targetType: r.vendorScoreId ? "vendor_evaluation" : "feature_support",
+    itemId: r.vendorScoreId ?? r.featureId!,
+    itemName: r.criterionName ?? r.featureName!,
+    categoryName: r.criterionCategory ?? r.featureCategoryName ?? "Vendor Evaluation",
+    isEcosystem: r.isEcosystem ?? false,
+    currentSupportLevel: r.currentSupportLevel ?? null,
+    currentComments: r.vendorScoreComments ?? r.featureComments ?? null,
     proposedSupportLevel: r.proposedSupportLevel ?? null,
     evidenceLinks: r.evidenceLinks ?? null,
     notes: r.notes ?? null,
     adminNotes: r.adminNotes ?? null,
     reportedByEmail: r.reportedByEmail ?? null,
-    featureSupportId: r.featureSupportId,
+    featureSupportId: r.featureSupportId ?? null,
+    vendorScoreId: r.vendorScoreId ?? null,
     createdAt: r.createdAt,
     reviewedAt: r.reviewedAt ?? null,
   }));
@@ -416,7 +555,8 @@ export async function getFactCheckFlagById(id: string): Promise<VendorFactCheckF
   return flag;
 }
 
-// Approve a flag: optionally update the vendorFeatureSupport row, mark flag approved.
+// Approve a flag: apply the revised write-up to the correctly typed target,
+// and optionally apply a support level for legacy feature-support flags.
 export async function approveFactCheckFlag(
   flagId: string,
   reviewedByUserId: string,
@@ -426,7 +566,15 @@ export async function approveFactCheckFlag(
   const flag = await getFactCheckFlagById(flagId);
   if (!flag) return null;
 
-  if (updatedSupportLevel !== undefined || updatedComments !== undefined) {
+  if (flag.vendorScoreId) {
+    if (updatedSupportLevel !== undefined) return null;
+    if (updatedComments !== undefined) {
+      await db
+        .update(vendorScores)
+        .set({ notes: updatedComments, updatedAt: new Date() })
+        .where(eq(vendorScores.id, flag.vendorScoreId));
+    }
+  } else if (flag.featureSupportId && (updatedSupportLevel !== undefined || updatedComments !== undefined)) {
     await db
       .update(vendorFeatureSupport)
       .set({
@@ -435,6 +583,8 @@ export async function approveFactCheckFlag(
         updatedAt: new Date(),
       })
       .where(eq(vendorFeatureSupport.id, flag.featureSupportId));
+  } else if (!flag.featureSupportId) {
+    return null;
   }
 
   const [updated] = await db

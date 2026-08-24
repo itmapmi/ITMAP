@@ -229,6 +229,12 @@ function vendorScopeId(req: Request): string | null {
   return vendorScopeIds(req)[0] ?? null;
 }
 
+// Fact Review uses only explicit server-side seat assignments. Matching vendor
+// names across markets is not an authorization boundary.
+function factReviewVendorIds(req: Request): string[] {
+  return vendorScopeIds(req);
+}
+
 // Gate for the vendor-facing surface: only authenticated users that have a
 // vendor seat assigned. Admins are not vendor-scoped, so they use the admin
 // panel rather than this self-service variant.
@@ -1186,40 +1192,26 @@ export function registerLeadGenRoutes(app: Express): void {
   });
 
   // ── Vendor Fact-Check (vendor seat only) ────────────────────────────────
-  // Vendors read their own feature-support rows and submit correction flags.
+  // Vendors read their own evaluation write-ups and submit evidence-backed flags.
   // Hard-pinned to vendorScopeId — no cross-vendor or cross-market access.
 
   app.get("/api/lead-gen/me/fact-review", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const myVendorId = vendorScopeId(req)!;
       const myUserId = (req.user as any).id as string;
-      // Check whether the vendor_scope_ids array was explicitly set (non-null in DB).
-      // If it was, use it directly. If it was never set (NULL — old single-field
-      // accounts), fall back to name-matching so same-named vendors across markets
-      // are all included. vendorScopeIds() always returns at least [vendorScopeId]
-      // so we must check the raw field to distinguish "explicitly set" vs "fallback".
-      const rawArray = (req.user as any)?.vendorScopeIds as string[] | null | undefined;
-      let scopedVendorIds: string[];
-      if (rawArray?.length) {
-        // Explicitly assigned multi-market list — use as-is.
-        scopedVendorIds = rawArray;
-      } else {
-        // No explicit array (legacy single-field account) — name-match across markets.
-        const primaryVendor = await storage.getVendorBrief(myVendorId!);
-        if (!primaryVendor) return res.status(404).json({ error: "Assigned vendor not found" });
-        const byName = await storage.getVendorsByName(primaryVendor.name);
-        scopedVendorIds = byName.length > 0 ? byName.map((v) => v.id) : [myVendorId];
+      const scopedVendorIds = factReviewVendorIds(req);
+      if (scopedVendorIds.length === 0) {
+        return res.status(404).json({ error: "Assigned vendor not found" });
       }
 
       const markets = await Promise.all(
         scopedVendorIds.map(async (vendorId) => {
           const vendor = await storage.getVendorBrief(vendorId);
           if (!vendor?.marketId) return null;
-          const [market, { productRows, ecosystemRows }] = await Promise.all([
+          const [market, { vendorEvaluationRows, productRows, ecosystemRows }] = await Promise.all([
             storage.getMarketById(vendor.marketId),
             storage.getFactReviewRows(vendor.id, vendor.marketId, myUserId),
           ]);
-          return { vendor, market: market ?? null, productRows, ecosystemRows };
+          return { vendor, market: market ?? null, vendorEvaluationRows, productRows, ecosystemRows };
         }),
       );
 
@@ -1232,32 +1224,40 @@ export function registerLeadGenRoutes(app: Express): void {
 
   app.post("/api/lead-gen/me/fact-review/flags", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const myVendorId = vendorScopeId(req)!;
       const myUserId = (req.user as any).id as string;
+      const scopedVendorIds = factReviewVendorIds(req);
+      if (scopedVendorIds.length === 0) {
+        return res.status(404).json({ error: "Assigned vendor not found" });
+      }
       const schema = z.object({
-        featureSupportId: z.string().min(1),
-        proposedSupportLevel: z.number().int().min(0).max(4).nullable().optional(),
+        featureSupportId: z.string().min(1).optional(),
+        vendorScoreId: z.string().min(1).optional(),
         evidenceLinks: z.string().max(2000).nullable().optional(),
         notes: z.string().max(2000).nullable().optional(),
-      }).refine(
-        (d) => d.proposedSupportLevel != null || (d.evidenceLinks?.trim()) || (d.notes?.trim()),
-        { message: "At least one of: proposed level, evidence links, or notes must be provided" },
-      );
+      }).strict()
+        .refine(
+          (d) => Number(Boolean(d.featureSupportId)) + Number(Boolean(d.vendorScoreId)) === 1,
+          { message: "Select exactly one evaluation item to flag" },
+        )
+        .refine(
+          (d) => Boolean(d.evidenceLinks?.trim()) || Boolean(d.notes?.trim()),
+          { message: "Add evidence links or notes before submitting" },
+        );
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid request" });
       }
-      const { featureSupportId, proposedSupportLevel, evidenceLinks, notes } = parsed.data;
+      const { featureSupportId, vendorScoreId, evidenceLinks, notes } = parsed.data;
       const flag = await storage.createFactCheckFlag({
-        vendorId: myVendorId,
+        authorizedVendorIds: scopedVendorIds,
         featureSupportId,
+        vendorScoreId,
         reportedByUserId: myUserId,
-        proposedSupportLevel: proposedSupportLevel ?? null,
-        evidenceLinks: evidenceLinks ?? null,
-        notes: notes ?? null,
+        evidenceLinks: evidenceLinks?.trim() || null,
+        notes: notes?.trim() || null,
       });
       if (!flag) {
-        return res.status(403).json({ error: "Feature not found or does not belong to your vendor" });
+        return res.status(403).json({ error: "Evaluation item is unavailable, already flagged, or does not belong to your vendor" });
       }
       res.status(201).json(flag);
     } catch (err) {

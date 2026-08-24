@@ -1773,6 +1773,11 @@ export function registerAdminRoutes(app: Express): void {
       const { status, updatedSupportLevel, updatedComments, adminNotes } = parsed.data;
       let flag;
       if (status === "approved") {
+        const existing = await storage.getFactCheckFlagById(req.params.id);
+        if (!existing) return res.status(404).json({ error: "Flag not found" });
+        if (existing.vendorScoreId && updatedSupportLevel !== undefined) {
+          return res.status(400).json({ error: "Vendor evaluation scores cannot be changed through Fact Review" });
+        }
         flag = await storage.approveFactCheckFlag(req.params.id, reviewedByUserId, updatedSupportLevel, updatedComments);
       } else {
         flag = await storage.rejectFactCheckFlag(req.params.id, reviewedByUserId, adminNotes);
