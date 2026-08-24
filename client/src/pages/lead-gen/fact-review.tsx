@@ -161,7 +161,7 @@ function FactSection({
                           )}
                         </div>
                         {row.comments && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{row.comments}</p>
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-slate-500">{row.comments}</p>
                         )}
                         {row.flag && (
                           <div className="mt-1.5 space-y-1">
