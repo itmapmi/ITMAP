@@ -62,10 +62,17 @@ interface HistoricalPoint {
   recordedAt: string | Date;
 }
 
+const HISTORICAL_WEEKS = 26; // Six months, shown in two-week intervals
+const HISTORICAL_TICK_INTERVAL = 2;
+const historicalTimelineTicks = Array.from(
+  { length: HISTORICAL_WEEKS / HISTORICAL_TICK_INTERVAL + 1 },
+  (_, index) => index * HISTORICAL_TICK_INTERVAL,
+);
+
 export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [timelineValue, setTimelineValue] = useState([156]); // Start at current week (156 weeks = 3 years)
+  const [timelineValue, setTimelineValue] = useState([HISTORICAL_WEEKS]); // Start at the current week
   const [selectedVendor, setSelectedVendor] = useState<VendorModalData | null>(null);
   const [evidenceVendor, setEvidenceVendor] = useState<{ vendor: VendorWithScores; pixelX: number; pixelY: number } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
@@ -79,10 +86,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
-  // Calculate date range for 36 months (156 weeks)
+  // Calculate date range for the last six months (26 weeks)
   const today = new Date();
   const startDate = new Date(today);
-  startDate.setMonth(startDate.getMonth() - 36);
+  startDate.setMonth(startDate.getMonth() - 6);
   
   // Generate weekly dates from start to current
   const getDateForWeek = (weekIndex: number): Date => {
@@ -1307,14 +1314,30 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
                   </label>
-                  <Slider
-                    value={timelineValue}
-                    onValueChange={setTimelineValue}
-                    max={156}
-                    step={1}
-                    className="w-full"
-                    data-testid="timeline-slider"
-                  />
+                  <div className="relative py-1">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-2 top-1/2 z-10 flex h-3 -translate-y-1/2 justify-between"
+                      data-testid="timeline-ticks"
+                    >
+                      {historicalTimelineTicks.map((tick) => (
+                        <span
+                          key={tick}
+                          className="h-3 w-px bg-slate-400/80"
+                          style={{ visibility: tick === 0 || tick === HISTORICAL_WEEKS ? "hidden" : "visible" }}
+                        />
+                      ))}
+                    </div>
+                    <Slider
+                      value={timelineValue}
+                      onValueChange={setTimelineValue}
+                      max={HISTORICAL_WEEKS}
+                      step={1}
+                      className="relative z-0 w-full"
+                      aria-label="Historical view timeline for the last six months"
+                      data-testid="timeline-slider"
+                    />
+                  </div>
                   <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
                     <span>{isMobile ? formatDate(startDate).replace(', 2022', '') : formatDate(startDate)}</span>
                     <span>{isMobile ? formatDate(today).replace(', 2025', '') : formatDate(today)}</span>
