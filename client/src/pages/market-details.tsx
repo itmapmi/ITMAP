@@ -64,9 +64,7 @@ export default function MarketDetails() {
   const marketId = params?.marketId;
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
-  const { isAuthenticated, user, isAdmin, hasFeature, isVendorScoped } = useAuth();
-  // Technology buyers should not see the Intelligence section
-  const isBuyerUser = isAuthenticated && !isVendorScoped && (user as any)?.persona !== "vendor" && !isAdmin;
+  const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
   const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
 
@@ -554,56 +552,39 @@ export default function MarketDetails() {
                   {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
                 </TabsTrigger>
 
-                {isBuyerUser ? (
-                  <LockedFeatureTooltip message="Intelligence is available to vendor accounts">
-                    <span
-                      className={cn(
-                        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
-                        isMobile && "flex-shrink-0 px-2 text-[10px]"
-                      )}
-                      aria-disabled="true"
-                      data-testid="tab-group-intelligence-locked"
-                    >
-                      Intelligence
-                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                      <Lock className="h-3 w-3" />
-                    </span>
-                  </LockedFeatureTooltip>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className={groupTriggerClass(isInGroup(intelligenceItems))}
-                      data-testid="tab-group-intelligence"
-                    >
-                      {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
-                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {intelligenceItems.map(item => (
-                        item.locked ? (
-                          <LockedFeatureTooltip key={item.value}>
-                            <div
-                              className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
-                              data-testid={`tab-${item.value}-locked`}
-                            >
-                              <span>{item.label}</span>
-                              <Lock className="h-3 w-3" />
-                            </div>
-                          </LockedFeatureTooltip>
-                        ) : (
-                          <DropdownMenuItem
-                            key={item.value}
-                            onSelect={() => setActiveTab(item.value)}
-                            className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
-                            data-testid={`tab-${item.value}`}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    className={groupTriggerClass(isInGroup(intelligenceItems))}
+                    data-testid="tab-group-intelligence"
+                  >
+                    {isInGroup(intelligenceItems) ? (isMobile ? activeChildLabel(intelligenceItems) : `Intelligence: ${activeChildLabel(intelligenceItems)}`) : 'Intelligence'}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {intelligenceItems.map(item => (
+                      item.locked ? (
+                        <LockedFeatureTooltip key={item.value}>
+                          <div
+                            className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
+                            data-testid={`tab-${item.value}-locked`}
                           >
-                            {item.label}
-                          </DropdownMenuItem>
-                        )
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                            <span>{item.label}</span>
+                            <Lock className="h-3 w-3" />
+                          </div>
+                        </LockedFeatureTooltip>
+                      ) : (
+                        <DropdownMenuItem
+                          key={item.value}
+                          onSelect={() => setActiveTab(item.value)}
+                          className={cn(activeTab === item.value && "bg-accent text-accent-foreground")}
+                          data-testid={`tab-${item.value}`}
+                        >
+                          {item.label}
+                        </DropdownMenuItem>
+                      )
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {researchReportsLocked ? (
                   <LockedFeatureTooltip>
