@@ -554,7 +554,22 @@ export default function MarketDetails() {
                   {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
                 </TabsTrigger>
 
-                {!isBuyerUser && (
+                {isBuyerUser ? (
+                  <LockedFeatureTooltip message="Intelligence is available to vendor accounts">
+                    <span
+                      className={cn(
+                        "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
+                        isMobile && "flex-shrink-0 px-2 text-[10px]"
+                      )}
+                      aria-disabled="true"
+                      data-testid="tab-group-intelligence-locked"
+                    >
+                      Intelligence
+                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                      <Lock className="h-3 w-3" />
+                    </span>
+                  </LockedFeatureTooltip>
+                ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       className={groupTriggerClass(isInGroup(intelligenceItems))}
