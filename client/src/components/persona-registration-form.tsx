@@ -92,6 +92,10 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             {isVendorPersona ? <Building2 className="h-3 w-3" /> : <Users className="h-3 w-3" />}
             {isVendorPersona ? "Vendor Access" : "Buyer Access"}
           </div>
+           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs font-bold text-emerald-300">
+             <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+             Free to join · No credit card required
+           </div>
           <h3 className="text-xl font-bold text-white">
             {isVendorPersona ? "Create your Vendor account" : "Create your account"}
           </h3>
@@ -214,7 +218,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             disabled={isRegistering}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            {isRegistering ? "Creating account…" : "Create Account"}
+             {isRegistering ? "Creating account…" : "Create Free Account"}
           </Button>
         </form>
 
