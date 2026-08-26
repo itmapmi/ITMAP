@@ -340,89 +340,50 @@ export default function Markets() {
                   transition={{ duration: 0.45, delay: i * 0.06 }}
                 >
                   <Link href={href}>
-                    {isFree ? (
-                      /* ── Free market card ── */
-                      <div className="group relative rounded-2xl p-[1.5px] cursor-pointer overflow-hidden
-                        bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-500
-                        shadow-[0_0_35px_rgba(52,211,153,0.18)] hover:shadow-[0_0_55px_rgba(52,211,153,0.28)]
-                        transition-all duration-300">
-                        <div className="relative bg-[#111b27] rounded-2xl p-6 h-full overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent group-hover:from-emerald-500/15 transition-all duration-500" />
-                          <div className="relative flex flex-col h-full">
-                            <div className="flex items-start justify-between mb-5">
-                              <div className="flex items-center gap-2">
-                                <div className="p-2.5 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-xl">
-                                  <BarChart3 className="h-5 w-5 text-emerald-400" />
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-400/30 px-2.5 py-1 rounded-full">
-                                <Sparkles className="h-3 w-3 text-emerald-400" />
-                                <span className="text-xs font-semibold text-emerald-400">Free Research</span>
-                              </div>
+                    <div className="group relative bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-2xl p-6 h-full cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(14,165,233,0.07)]">
+                      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-violet-600/0 group-hover:from-cyan-500/5 group-hover:to-violet-600/5 transition-all duration-500" />
+                      <div className="relative flex flex-col h-full">
+                        <div className="flex items-start justify-between mb-5">
+                          <div className="p-2.5 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/5 rounded-xl">
+                            <BarChart3 className="h-5 w-5 text-cyan-400" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {market.category && (
+                              <span className="text-xs font-medium text-violet-400 bg-violet-400/10 border border-violet-400/20 px-2.5 py-1 rounded-full">
+                                {market.category}
+                              </span>
+                            )}
+                            {!isAuthenticated && !isFree && (
+                              <Lock className="h-3.5 w-3.5 text-slate-600" />
+                            )}
+                          </div>
+                        </div>
+                        <h3 className="font-semibold text-white mb-3 group-hover:text-cyan-300 transition-colors leading-snug flex-grow">
+                          {cleanName(market.name)}
+                        </h3>
+                        <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-5">
+                          {market.shortDescription || market.description}
+                        </p>
+                        <div className="flex items-center justify-between mt-auto">
+                          {(market as any).isInReview ? (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                              <span className="text-xs font-medium text-amber-400">In Review</span>
                             </div>
-                            <h3 className="font-semibold text-white mb-3 group-hover:text-emerald-300 transition-colors leading-snug flex-grow">
-                              {cleanName(market.name)}
-                            </h3>
-                            <p className="text-sm text-slate-400 leading-relaxed line-clamp-2 mb-5">
-                              {market.shortDescription || market.description}
-                            </p>
-                            <div className="flex items-center justify-between mt-auto">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                                <span className="text-xs text-slate-500">Live data · No login required</span>
-                              </div>
-                              <span className="text-xs text-emerald-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                Explore <ChevronRight className="h-3 w-3" />
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                              <span className="text-xs text-slate-500">
+                                Live Data{isFree ? " · No login required" : ""}
                               </span>
                             </div>
-                          </div>
+                          )}
+                          <span className="text-xs text-cyan-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {isAuthenticated || isFree ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
+                          </span>
                         </div>
                       </div>
-                    ) : (
-                      /* ── Standard market card ── */
-                      <div className="group relative bg-slate-900 border border-white/5 hover:border-cyan-500/30 rounded-2xl p-6 h-full cursor-pointer transition-all duration-300 overflow-hidden hover:shadow-[0_0_50px_rgba(14,165,233,0.07)]">
-                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-violet-600/0 group-hover:from-cyan-500/5 group-hover:to-violet-600/5 transition-all duration-500" />
-                        <div className="relative flex flex-col h-full">
-                          <div className="flex items-start justify-between mb-5">
-                            <div className="p-2.5 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/5 rounded-xl">
-                              <BarChart3 className="h-5 w-5 text-cyan-400" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {market.category && (
-                                <span className="text-xs font-medium text-violet-400 bg-violet-400/10 border border-violet-400/20 px-2.5 py-1 rounded-full">
-                                  {market.category}
-                                </span>
-                              )}
-                              {!isAuthenticated && (
-                                <Lock className="h-3.5 w-3.5 text-slate-600" />
-                              )}
-                            </div>
-                          </div>
-                          <h3 className="font-semibold text-white mb-3 group-hover:text-cyan-300 transition-colors leading-snug flex-grow">
-                            {cleanName(market.name)}
-                          </h3>
-                          <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-5">
-                            {market.shortDescription || market.description}
-                          </p>
-                          <div className="flex items-center justify-between mt-auto">
-                            {(market as any).isInReview ? (
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                                <span className="text-xs font-medium text-amber-400">In Review</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                                <span className="text-xs text-slate-500">Live Data</span>
-                              </div>
-                            )}
-                            <span className="text-xs text-cyan-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {isAuthenticated ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </Link>
                 </motion.div>
               );
