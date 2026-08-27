@@ -18,6 +18,7 @@ import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@share
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
+import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
 import {
   allHistoricalPositionsQueryKey,
   historicalPositionsQueryKey,
@@ -337,106 +338,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
   }, []);
 
-  // Calculate support matrix scores for product capabilities (excluding ecosystem features)
-  const calculateSupportMatrixScore = (vendorId: string): number => {
-    if (!features || !supportMatrix) return 0;
-    
-    // Filter out ecosystem features for product capabilities scoring
-    // Matches support-matrix.tsx exactly: isEcosystem flag (primary) + name-keyword fallback
-    const productCapabilityFeatures = features.filter(feature => 
-      (feature.category as any).isEcosystem !== true &&
-      !feature.category.name.toLowerCase().includes('ecosystem') &&
-      !feature.category.name.toLowerCase().includes('integration') &&
-      !feature.category.name.toLowerCase().includes('partnership') &&
-      !feature.category.name.toLowerCase().includes('third-party') &&
-      !feature.category.name.toLowerCase().includes('isv')
-    );
-    
-    // Create support lookup map
-    const supportLookup = new Map<string, number>();
-    supportMatrix.forEach(support => {
-      const key = `${support.vendorId}-${support.featureId}`;
-      supportLookup.set(key, support.supportLevel);
-    });
-
-    // Calculate vendor's total score for product capabilities only
-    const totalScore = productCapabilityFeatures.reduce((sum, feature) => {
-      const supportKey = `${vendorId}-${feature.id}`;
-      const supportLevel = supportLookup.get(supportKey) || 0;
-      
-      // Convert support level to score (same as support matrix)
-      let score = 0;
-      switch (supportLevel) {
-        case 4: score = 1.0; break;    // Full support
-        case 3: score = 0.75; break;   // Good support
-        case 2: score = 0.5; break;    // Partial support
-        case 1: score = 0; break;      // Limited support - no score
-        case 0: score = 0; break;      // No support - no score
-      }
-      return sum + score;
-    }, 0);
-
-    // Round total to 2 decimals (exactly like Product Evaluation section does)
-    const roundedTotal = Number(totalScore.toFixed(2));
-
-    // Calculate maximum possible score
-    const maxScore = productCapabilityFeatures.length * 1.0;
-    
-    // Return normalized score out of 10 (match Product Evaluation section exactly)
-    // Product Evaluation: rounds total to 2 decimals, then normalizes, then displays with 1 decimal
-    const normalizedScore = maxScore > 0 ? (roundedTotal / maxScore) * 10 : 0;
-    return Number(normalizedScore.toFixed(1));
-  };
-
-  // Calculate ecosystem support scores
-  const calculateEcosystemScore = (vendorId: string): number => {
-    if (!features || !supportMatrix) return 0;
-    
-    // Filter to only ecosystem-related features
-    // isEcosystem flag is authoritative when true; name-based is the fallback
-    // (is_ecosystem=false is just the DB default, not an intentional exclusion)
-    const ecosystemFeatures = features.filter(feature => 
-      (feature.category as any).isEcosystem === true ||
-      feature.category.name.toLowerCase().includes('ecosystem') ||
-      feature.category.name.toLowerCase().includes('integration') ||
-      feature.category.name.toLowerCase().includes('partnership') ||
-      feature.category.name.toLowerCase().includes('third-party') ||
-      feature.category.name.toLowerCase().includes('isv')
-    );
-
-    if (ecosystemFeatures.length === 0) return 0;
-    
-    // Create support lookup map
-    const supportLookup = new Map<string, number>();
-    supportMatrix.forEach(support => {
-      const key = `${support.vendorId}-${support.featureId}`;
-      supportLookup.set(key, support.supportLevel);
-    });
-
-    // Calculate vendor's total ecosystem score
-    const totalScore = ecosystemFeatures.reduce((sum, feature) => {
-      const supportKey = `${vendorId}-${feature.id}`;
-      const supportLevel = supportLookup.get(supportKey) || 0;
-      
-      // Convert support level to score (same as ecosystem support component)
-      let score = 0;
-      switch (supportLevel) {
-        case 4: score = 1.0; break;    // Full support
-        case 3: score = 0.75; break;   // Good support
-        case 2: score = 0.5; break;    // Partial support
-        case 1: score = 0; break;      // Limited support
-        case 0: score = 0; break;      // No support
-      }
-      return sum + score;
-    }, 0);
-
-    // Calculate maximum possible score
-    const maxScore = ecosystemFeatures.length * 1.0;
-    
-    // Return normalized score out of 10
-    return maxScore > 0 ? Number(((totalScore / maxScore) * 10).toFixed(2)) : 0;
-  };
-
   // Weight to multiplier mapping function
   const weightToMultiplier = (weightPercent: number): number => {
     if (weightPercent <= 25) return 0.5;
@@ -501,47 +402,54 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       });
     }
 
-    // Add Product Capabilities score from support matrix to execution category
-    const supportMatrixScore = calculateSupportMatrixScore(vendor.id);
+    // Product Capabilities and ISV Ecosystem are calculated from the same
+    // feature-support data exported in the companion Excel sheets.
     const productCapabilitiesCriteria = criteria?.find(c => 
       c.name.toLowerCase().includes('product') && c.name.toLowerCase().includes('capabilities')
     );
-    
-    if (productCapabilitiesCriteria) {
-      // Always use the dynamically calculated score from support matrix
-      const weight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
-      const multiplier = weightToMultiplier(weight);
-      
-      // Remove the database score if it exists and replace with calculated score
-      if (vendorScores[productCapabilitiesCriteria.id]) {
-        // Subtract the old database score from execution
-        const oldScore = vendorScores[productCapabilitiesCriteria.id];
-        const oldWeight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
-        const oldMultiplier = weightToMultiplier(oldWeight);
-        executionRawScore -= oldScore * oldMultiplier;
+    if (productCapabilitiesCriteria && features && supportMatrix) {
+      const supportMatrixScore = calculateDerivedFeatureScore(
+        vendor.id, features, supportMatrix, "productCapabilities",
+      );
+      if (supportMatrixScore !== null) {
+        const weight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
+        const multiplier = weightToMultiplier(weight);
+
+        // Replace the stored score so the chart, comparison, and export use
+        // the same feature-derived value.
+        if (Object.hasOwn(vendorScores, productCapabilitiesCriteria.id)) {
+          // Subtract the old database score from execution.
+          const oldScore = vendorScores[productCapabilitiesCriteria.id];
+          const oldWeight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
+          const oldMultiplier = weightToMultiplier(oldWeight);
+          executionRawScore -= oldScore * oldMultiplier;
+        }
+
+        // Add the feature-derived score.
+        executionRawScore += supportMatrixScore * multiplier;
+        vendorScores[productCapabilitiesCriteria.id] = supportMatrixScore;
       }
-      
-      // Add the new calculated score
-      executionRawScore += supportMatrixScore * multiplier;
-      vendorScores[productCapabilitiesCriteria.id] = supportMatrixScore;
     }
 
-    // Add ISV Ecosystem score from support matrix to execution category
-    const ecosystemScore = calculateEcosystemScore(vendor.id);
-    if (ecosystemScore > 0) {
-      // Find ISV Ecosystem criteria to get its weight
-      const isvEcosystemCriteria = criteria?.find(c => 
-        c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
+    const isvEcosystemCriteria = criteria?.find(c => 
+      c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
+    );
+    if (isvEcosystemCriteria && features && supportMatrix) {
+      const ecosystemScore = calculateDerivedFeatureScore(
+        vendor.id, features, supportMatrix, "isvEcosystem",
       );
-      const weight = isvEcosystemCriteria ? criteriaWeights[isvEcosystemCriteria.id] || 100 : 100;
-      const multiplier = weightToMultiplier(weight);
-      
-      executionRawScore += ecosystemScore * multiplier;
-      
-      if (isvEcosystemCriteria) {
+      if (ecosystemScore !== null) {
+        const weight = criteriaWeights[isvEcosystemCriteria.id] || 100;
+        const multiplier = weightToMultiplier(weight);
+
+        // Replace (do not add to) the stored ISV score. Previously both values
+        // were counted, giving ISV Ecosystem twice the intended influence.
+        if (Object.hasOwn(vendorScores, isvEcosystemCriteria.id)) {
+          const oldScore = vendorScores[isvEcosystemCriteria.id];
+          executionRawScore -= oldScore * multiplier;
+        }
+        executionRawScore += ecosystemScore * multiplier;
         vendorScores[isvEcosystemCriteria.id] = ecosystemScore;
-      } else {
-        vendorScores['isv-ecosystem'] = ecosystemScore;
       }
     }
 

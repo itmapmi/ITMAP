@@ -6,6 +6,10 @@ import { requireFeature } from "../featureAccess";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { pdfService } from "../pdf-generator/pdf-service";
 import { insertResearchReportSchema, insertResearchMethodologySchema } from "@shared/schema";
+import {
+  calculateDerivedFeatureScore,
+  getFeaturesForDerivedScore,
+} from "@shared/derived-feature-scores";
 import { recordEvent } from "./leadGen";
 
 /**
@@ -122,17 +126,27 @@ export function registerFileRoutes(app: Express): void {
       const features = await storage.getMarketFeatures(marketId);
       const supportMatrix = await storage.getVendorFeatureSupport(marketId);
 
-      const ecosystemFeatures = features.filter((f: any) => f.category?.isEcosystem === true);
-      const productFeatures = features.filter((f: any) => f.category?.isEcosystem !== true);
+      const ecosystemFeatures = getFeaturesForDerivedScore(features, "isvEcosystem");
+      const productFeatures = getFeaturesForDerivedScore(features, "productCapabilities");
 
       const vendorEvalHeaders = ['Vendor Name', 'Product'];
       executionCriteria.forEach((c: any) => vendorEvalHeaders.push(c.name, `${c.name} - Notes`));
       viabilityCriteria.forEach((c: any) => vendorEvalHeaders.push(c.name, `${c.name} - Notes`));
       const vendorEvalData = vendors.map(vendor => {
         const row: any = { 'Vendor Name': vendor.name, 'Product': vendor.product || '' };
+        const derivedProductScore = calculateDerivedFeatureScore(
+          vendor.id, features, supportMatrix, "productCapabilities",
+        );
+        const derivedIsvScore = calculateDerivedFeatureScore(
+          vendor.id, features, supportMatrix, "isvEcosystem",
+        );
         executionCriteria.forEach((c: any) => {
           const score = scores.find((s: any) => s.vendorId === vendor.id && s.criteriaId === c.id);
-          row[c.name] = score ? Number(score.score) : '';
+          row[c.name] = c.name === "Product Capabilities" && derivedProductScore !== null
+            ? derivedProductScore
+            : c.name === "ISV Ecosystem" && derivedIsvScore !== null
+              ? derivedIsvScore
+              : score ? Number(score.score) : '';
           row[`${c.name} - Notes`] = score?.notes || '';
         });
         viabilityCriteria.forEach((c: any) => {
@@ -486,6 +500,37 @@ export function registerFileRoutes(app: Express): void {
       const importedSupport = insertedCount + updatedCount;
       log(`support done in ${Date.now() - t0}ms — inserted: ${insertedCount}, updated: ${updatedCount}`);
 
+      // Product Capabilities and ISV Ecosystem are feature-derived criteria.
+      // Recalculate them after importing the detailed support sheets so their
+      // stored/exported values cannot drift from the source feature matrix.
+      const [refreshedFeatures, refreshedSupport] = await Promise.all([
+        storage.getMarketFeatures(marketId),
+        storage.getVendorFeatureSupport(marketId),
+      ]);
+      const derivedCriteria = [
+        { name: "Product Capabilities", kind: "productCapabilities" as const },
+        { name: "ISV Ecosystem", kind: "isvEcosystem" as const },
+      ];
+      const derivedScoreWrites: Promise<any>[] = [];
+      for (const vendor of Array.from(vendorByName.values())) {
+        for (const derivedCriterion of derivedCriteria) {
+          const criterion = criteriaByName.get(derivedCriterion.name);
+          const derivedScore = calculateDerivedFeatureScore(
+            vendor.id, refreshedFeatures, refreshedSupport, derivedCriterion.kind,
+          );
+          if (criterion && derivedScore !== null) {
+            derivedScoreWrites.push(storage.createOrUpdateVendorScore({
+              vendorId: vendor.id,
+              criteriaId: criterion.id,
+              score: derivedScore,
+            }));
+          }
+        }
+      }
+      for (let i = 0; i < derivedScoreWrites.length; i += 25) {
+        await Promise.all(derivedScoreWrites.slice(i, i + 25));
+      }
+
       const stats = {
         vendors: importedVendors,
         vendorsUpdated: updatedVendors,
@@ -493,6 +538,7 @@ export function registerFileRoutes(app: Express): void {
         supportLevels: importedSupport,
         supportInserted: insertedCount,
         supportUpdated: updatedCount,
+        derivedScoresUpdated: derivedScoreWrites.length,
         featuresCreated: createdFeatures,
         unknownCriteria: Array.from(unknownCriteria),
         elapsedMs: Date.now() - t0,
