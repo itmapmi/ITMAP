@@ -7,6 +7,7 @@ const marketSlug = "historical-browser-fixture";
 const marketId = "historical-browser-fixture";
 const vendorId = "vendor-alpha";
 const dayMs = 24 * 60 * 60 * 1000;
+const historicalTestWeeks = [6, 20];
 
 const market = {
   id: marketId,
@@ -61,10 +62,11 @@ const selectedWeekRequests = [];
 const allHistoryRequests = [];
 
 function selectedPositions(dateValue) {
-  // Slider positions 52 and 104 are roughly two years and one year ago.
-  // Use the date supplied by the browser so this remains stable across runs.
+  // The six-month slider's early and late positions should resolve to distinct
+  // historical snapshots. Use the browser's requested date so the test stays
+  // stable as calendar months vary in length.
   const date = new Date(dateValue).getTime();
-  const threshold = Date.now() - 548 * dayMs;
+  const threshold = Date.now() - 90 * dayMs;
   const older = date < threshold;
   return older
     ? [
@@ -235,9 +237,9 @@ async function run() {
 
     const coordinatesByWeek = new Map();
     const requestsByWeek = new Map();
-    for (const week of [52, 104]) {
+    for (const week of historicalTestWeeks) {
       await setSliderValue(page, week);
-      const expectedPositionId = week === 52 ? "selected-alpha-old" : "selected-alpha-new";
+      const expectedPositionId = week === historicalTestWeeks[0] ? "selected-alpha-old" : "selected-alpha-new";
       await waitFor(
         () => selectedWeekRequests.some(request =>
           request.positions.some(position => position.id === expectedPositionId)
@@ -253,7 +255,7 @@ async function run() {
         week,
         await waitForVendorCoordinates(
           page,
-          week === 52 ? { execution: 20, viability: 30 } : { execution: 70, viability: 60 },
+          week === historicalTestWeeks[0] ? { execution: 20, viability: 30 } : { execution: 70, viability: 60 },
         ),
       );
       requestsByWeek.set(week, selectedWeekRequests.find(request =>
@@ -262,9 +264,20 @@ async function run() {
     }
 
     assert.equal(selectedWeekRequests.length >= 2, true, "each selected week should issue a dated request");
-    assert.notEqual(requestsByWeek.get(52).date, requestsByWeek.get(104).date, "selected weeks should request different dates");
-    assert.notDeepEqual(coordinatesByWeek.get(52), coordinatesByWeek.get(104), "vendor coordinates should change between selected weeks");
-    for (const [week, scores] of [[52, { execution: 20, viability: 30 }], [104, { execution: 70, viability: 60 }]]) {
+    assert.notEqual(
+      requestsByWeek.get(historicalTestWeeks[0]).date,
+      requestsByWeek.get(historicalTestWeeks[1]).date,
+      "selected weeks should request different dates",
+    );
+    assert.notDeepEqual(
+      coordinatesByWeek.get(historicalTestWeeks[0]),
+      coordinatesByWeek.get(historicalTestWeeks[1]),
+      "vendor coordinates should change between selected weeks",
+    );
+    for (const [week, scores] of [
+      [historicalTestWeeks[0], { execution: 20, viability: 30 }],
+      [historicalTestWeeks[1], { execution: 70, viability: 60 }],
+    ]) {
       const coordinates = coordinatesByWeek.get(week);
       const expectedX = 60 + (scores.execution / 100) * (coordinates.width - 80);
       const expectedY = coordinates.height - 82 - (scores.viability / 100) * (coordinates.height - 126);

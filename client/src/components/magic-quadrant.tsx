@@ -19,6 +19,7 @@ import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
+import { calculateAxisWeightShares } from "@shared/axis-weighting";
 import {
   allHistoricalPositionsQueryKey,
   historicalPositionsQueryKey,
@@ -338,13 +339,15 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
   }, []);
 
-  // Weight to multiplier mapping function
-  const weightToMultiplier = (weightPercent: number): number => {
-    if (weightPercent <= 25) return 0.5;
-    if (weightPercent <= 45) return 1.5;
-    if (weightPercent <= 65) return 2.5;
-    return 3.0; // 65-100%
-  };
+  // Each criterion's share is its configured percentage relative to the other
+  // criteria on the same axis. This keeps the chart aligned with the panel:
+  // four 100% criteria each contribute 25%, while 25/50/12.5/12.5 stays exact.
+  const axisWeightShares = criteria
+    ? {
+        ...calculateAxisWeightShares(criteria, criteriaWeights, "execution"),
+        ...calculateAxisWeightShares(criteria, criteriaWeights, "viability"),
+      }
+    : {};
 
   // Min-max normalization function
   const normalizeToRange = (values: number[], min: number = 18, max: number = 82): number[] => {
@@ -383,20 +386,18 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     }
 
-    // Calculate current scores using new multiplier logic
+    // Calculate current scores using direct, axis-normalized weight shares.
     if (scores && criteria) {
       scores.forEach(score => {
         if (score.vendorId === vendor.id) {
           const scoreValue = parseFloat(score.score);
           vendorScores[score.criteriaId] = scoreValue;
-          
-          const weight = criteriaWeights[score.criteriaId] || 100;
-          const multiplier = weightToMultiplier(weight);
+          const weightShare = axisWeightShares[score.criteriaId] ?? 0;
           
           if (score.criteria.category === "execution") {
-            executionRawScore += scoreValue * multiplier;
+            executionRawScore += scoreValue * weightShare;
           } else if (score.criteria.category === "viability") {
-            viabilityRawScore += scoreValue * multiplier;
+            viabilityRawScore += scoreValue * weightShare;
           }
         }
       });
@@ -412,21 +413,18 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         vendor.id, features, supportMatrix, "productCapabilities",
       );
       if (supportMatrixScore !== null) {
-        const weight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
-        const multiplier = weightToMultiplier(weight);
+        const weightShare = axisWeightShares[productCapabilitiesCriteria.id] ?? 0;
 
         // Replace the stored score so the chart, comparison, and export use
         // the same feature-derived value.
         if (Object.hasOwn(vendorScores, productCapabilitiesCriteria.id)) {
           // Subtract the old database score from execution.
           const oldScore = vendorScores[productCapabilitiesCriteria.id];
-          const oldWeight = criteriaWeights[productCapabilitiesCriteria.id] || 100;
-          const oldMultiplier = weightToMultiplier(oldWeight);
-          executionRawScore -= oldScore * oldMultiplier;
+          executionRawScore -= oldScore * weightShare;
         }
 
         // Add the feature-derived score.
-        executionRawScore += supportMatrixScore * multiplier;
+        executionRawScore += supportMatrixScore * weightShare;
         vendorScores[productCapabilitiesCriteria.id] = supportMatrixScore;
       }
     }
@@ -439,16 +437,15 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         vendor.id, features, supportMatrix, "isvEcosystem",
       );
       if (ecosystemScore !== null) {
-        const weight = criteriaWeights[isvEcosystemCriteria.id] || 100;
-        const multiplier = weightToMultiplier(weight);
+        const weightShare = axisWeightShares[isvEcosystemCriteria.id] ?? 0;
 
         // Replace (do not add to) the stored ISV score. Previously both values
         // were counted, giving ISV Ecosystem twice the intended influence.
         if (Object.hasOwn(vendorScores, isvEcosystemCriteria.id)) {
           const oldScore = vendorScores[isvEcosystemCriteria.id];
-          executionRawScore -= oldScore * multiplier;
+          executionRawScore -= oldScore * weightShare;
         }
-        executionRawScore += ecosystemScore * multiplier;
+        executionRawScore += ecosystemScore * weightShare;
         vendorScores[isvEcosystemCriteria.id] = ecosystemScore;
       }
     }
@@ -1270,14 +1267,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                       {criterion.name}
                     </label>
                     <Slider
-                      value={[criteriaWeights[criterion.id] || 100]}
+                      value={[criteriaWeights[criterion.id] ?? 100]}
                       onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                       max={100}
                       step={1}
                       className="w-full"
                     />
                     <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] || 100}%
+                      {criteriaWeights[criterion.id] ?? 100}%
                     </div>
                   </div>
                 ))}
@@ -1294,14 +1291,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                       {criterion.name}
                     </label>
                     <Slider
-                      value={[criteriaWeights[criterion.id] || 100]}
+                      value={[criteriaWeights[criterion.id] ?? 100]}
                       onValueChange={([value]) => handleWeightChange(criterion.id, value)}
                       max={100}
                       step={1}
                       className="w-full"
                     />
                     <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] || 100}%
+                      {criteriaWeights[criterion.id] ?? 100}%
                     </div>
                   </div>
                 ))}

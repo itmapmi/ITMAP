@@ -8,6 +8,7 @@
 - [MB re-run checkpoint ordering](market-builder-rerun-checkpoint.md) — read stage status into stageWasCompleted BEFORE markRunning(); reading it after always returns "running", breaking the fresh-vs-resume decision.
 - [LLM per-item report summaries](llm-report-summaries.md) — N-items→N-paragraphs LLM JSON: adaptive word target, reconcile/backfill against input list, one repair retry; never trust the model to emit every item.
 - [Quadrant label clamping](quadrant-label-clamp.md) — quadrant chart labels use absolute px (saved/fallback); resizing clips them off-screen. Clamp labelX/Y to drawable box at render.
+- [Magic Quadrant weight semantics](magic-quadrant-weight-semantics.md) — Criteria Weights are relative shares within each axis, never bucketed multiplier bands.
 - [AI chat streaming + context cache](ai-chat-streaming-cache.md) — chat uses SSE streaming + in-memory context cache; EventSource can't POST so use fetch+ReadableStream on client.
 - [RFP decompose section-awareness](rfp-decompose-design.md) — skip classification filters boilerplate; section-annotated chunking prevents commercial text bleeding into technical sections in the LLM window.
 - [Domain/brand canonicalization](domain-brand-canonicalization.md) — brand domain is duplicated across ~15 files (meta tags, robots.txt, sitemap, emails, PDFs, PRIMARY_DOMAIN); rename requires repo-wide grep, not a config edit.

@@ -828,10 +828,9 @@ export function registerAdminRoutes(app: Express): void {
             body("For each feature: Harvey Ball 4 → 1.0 pts, 3 → 0.75 pts, 2 → 0.5 pts, 1 → 0 pts, 0 → 0 pts."),
             body("Normalized Score (0-10) = (Sum of feature points / Number of features) × 10"),
             spacer(),
-            heading2("12.3 Weight-to-Multiplier Conversion"),
-            makeTable(["Weight Range", "Multiplier"], [
-              ["0 – 25%", "0.5×"], ["26 – 45%", "1.5×"], ["46 – 65%", "2.5×"], ["66 – 100%", "3.0×"],
-            ]),
+            heading2("12.3 Criteria Weighting"),
+            body("Each criterion contributes in direct proportion to the percentage shown in Criteria Weights. Within each axis, its contribution is the criterion weight divided by the total of that axis's criterion weights."),
+            body("For example, four criteria each set to 100% contribute 25% each. A 25%, 50%, 12.5%, 12.5% axis contributes in those same proportions."),
             spacer(),
             heading1("20. Technical Architecture"),
             makeTable(["Layer", "Technology"], [
