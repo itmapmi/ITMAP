@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { UserPlus } from "lucide-react";
+import { Timer, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -35,12 +35,15 @@ const EXEMPT_PATHS = new Set(["/login", "/register", "/terms", "/privacy", "/con
 interface TeaserGateContextValue {
   /** True while an anonymous visitor is still inside their free-access window. */
   teaserActive: boolean;
+  /** Milliseconds remaining in the free-access window (0 once expired). */
+  teaserRemainingMs: number;
   /** Open the registration modal directly (e.g. from a locked Reports icon). */
   openRegistrationModal: () => void;
 }
 
 const TeaserGateContext = createContext<TeaserGateContextValue>({
   teaserActive: false,
+  teaserRemainingMs: 0,
   openRegistrationModal: () => {},
 });
 
@@ -118,6 +121,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
 
   const elapsed = startRef.current !== null ? now - startRef.current : 0;
   const teaserActive = !isLoading && !isAuthenticated && elapsed < TEASER_DURATION_MS;
+  const teaserRemainingMs = teaserActive ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
   const expired = !isLoading && !isAuthenticated && startRef.current !== null && elapsed >= TEASER_DURATION_MS;
   const isExempt = EXEMPT_PATHS.has(location);
   const backoffReached = dismissCountRef.current >= MAX_AUTO_REOPENS;
@@ -192,11 +196,16 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     [isAuthenticated]
   );
 
-  const value: TeaserGateContextValue = { teaserActive, openRegistrationModal };
+  const value: TeaserGateContextValue = { teaserActive, teaserRemainingMs, openRegistrationModal };
 
   // Never render the popover/banner chrome on auth-adjacent or legal pages,
   // and never once the visitor is signed in.
   const canShowChrome = !isLoading && !isAuthenticated && !isExempt;
+
+  // Show the countdown only while the free-access clock is actually running —
+  // it steps aside the moment the modal takes over so the two never overlap.
+  const showCountdown = canShowChrome && teaserActive && !modalOpen;
+  const remainingSeconds = Math.ceil(teaserRemainingMs / 1000);
 
   return (
     <TeaserGateContext.Provider value={value}>
@@ -208,6 +217,16 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
             <PersonaRegistrationForm persona="buyer" showToggle={false} compact />
           </DialogContent>
         </Dialog>
+      )}
+
+      {showCountdown && (
+        <div
+          data-testid="badge-teaser-countdown"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-1.5 rounded-full bg-slate-900/90 backdrop-blur text-white text-xs font-medium px-3 py-2 shadow-lg shadow-black/20 border border-white/10"
+        >
+          <Timer className="h-3.5 w-3.5 text-cyan-400" />
+          Free preview: {remainingSeconds}s left
+        </div>
       )}
 
       {canShowChrome && showBanner && !modalOpen && (
