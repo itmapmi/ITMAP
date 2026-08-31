@@ -18,3 +18,4 @@
 - [Pinned DNS lookup shape](pinned-dns-lookup-shape.md) — Node auto-select-family requests lookup arrays; pinned callbacks must honor `options.all`.
 - [Vendor fact-review authorization](vendor-fact-review-authorization.md) — authorize Fact Review only from explicit vendor assignments, never matching vendor names.
 - [Anonymous user feature-gating nuance](anonymous-feature-gating.md) — hasFeatureAccess() reports "unlocked" for anonymous users; always add an explicit !isAuthenticated check too.
+- [Teaser-active UI unlock vs backend auth](teaser-vs-backend-auth.md) — client teaserActive gates are cosmetic; some routes hard-401 anon regardless, so verify server auth before assuming a "sign in" gate is safe to loosen.

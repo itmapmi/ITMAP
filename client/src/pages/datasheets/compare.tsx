@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { track, trackDwell } from "@/lib/track";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
 import { Send, Bookmark, FileSpreadsheet, FileText, MessageSquare, X, Plus, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -32,6 +33,7 @@ export default function DatasheetComparePage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, hasFeature, isLoading: authLoading } = useAuth();
+  const { teaserActive } = useTeaserGate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewProductId, setPreviewProductId] = useState<string | null>(null);
   const [filterVendor, setFilterVendor] = useState<string>("");
@@ -226,6 +228,7 @@ export default function DatasheetComparePage() {
               market={market}
               selectedIds={selectedIds}
               isAuthenticated={isAuthenticated}
+              teaserActive={teaserActive}
             />
           </div>
         </div>
@@ -527,7 +530,7 @@ function SendToRfpInline({ datasheetMarketName, productIds, onClose }: { datashe
 }
 
 // ── Chat panel ───────────────────────────────────────────────────────────
-function ChatPanel({ market, selectedIds, isAuthenticated }: { market: DatasheetMarket; selectedIds: string[]; isAuthenticated: boolean }) {
+function ChatPanel({ market, selectedIds, isAuthenticated, teaserActive }: { market: DatasheetMarket; selectedIds: string[]; isAuthenticated: boolean; teaserActive: boolean }) {
   const { toast } = useToast();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
@@ -570,7 +573,7 @@ function ChatPanel({ market, selectedIds, isAuthenticated }: { market: Datasheet
   });
 
   const send = () => {
-    if (!isAuthenticated) { toast({ title: "Sign in to chat", description: "Log in or create an account to use the datasheet chat." }); return; }
+    if (!isAuthenticated && !teaserActive) { toast({ title: "Sign in to chat", description: "Log in or create an account to use the datasheet chat." }); return; }
     if (selectedIds.length < 2) { toast({ title: "Select at least 2 products" }); return; }
     if (!question.trim()) return;
     askMut.mutate(question.trim());
