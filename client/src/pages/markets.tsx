@@ -423,7 +423,7 @@ export default function Markets() {
           </div>
         )}</>)}
 
-        {tab === "all" && !isAuthenticated && filtered.length > 0 && (
+        {tab === "all" && !isAuthenticated && !teaserActive && filtered.length > 0 && (
           <motion.div {...fadeUp} className="mt-16 relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-12 text-center overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.06)_0%,transparent_70%)]" />
             <div className="relative">
