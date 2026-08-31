@@ -4,6 +4,7 @@ import { track, trackDwell } from "@/lib/track";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ export default function Markets() {
     path: "/markets",
   });
   const { isAuthenticated, user } = useAuth();
+  const { teaserActive } = useTeaserGate();
   const { data: markets, isLoading, error } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
   const { data: vendorIndex } = useQuery<VendorIndexEntry[]>({ queryKey: ["/api/markets/vendor-index"] });
 
@@ -353,7 +355,7 @@ export default function Markets() {
                                 {market.category}
                               </span>
                             )}
-                            {!isAuthenticated && !isFree && (
+                            {!isAuthenticated && !isFree && !teaserActive && (
                               <Lock className="h-3.5 w-3.5 text-slate-600" />
                             )}
                           </div>
@@ -379,7 +381,7 @@ export default function Markets() {
                             </div>
                           )}
                           <span className="text-xs text-cyan-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {isAuthenticated || isFree ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
+                            {isAuthenticated || isFree || teaserActive ? "Explore" : "Sign in"} <ChevronRight className="h-3 w-3" />
                           </span>
                         </div>
                       </div>

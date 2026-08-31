@@ -24,6 +24,7 @@ import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
+import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
@@ -65,6 +66,7 @@ export default function MarketDetails() {
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
+  const { teaserActive, openRegistrationModal } = useTeaserGate();
   const createRfpMutation = useCreateRfpForMarket();
   const { toast } = useToast();
 
@@ -398,7 +400,7 @@ export default function MarketDetails() {
     );
   }
 
-  if (!isAuthenticated && !isFreeMarket) {
+  if (!isAuthenticated && !isFreeMarket && !teaserActive) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back nav */}
@@ -523,11 +525,17 @@ export default function MarketDetails() {
         {(() => {
           const intelligenceItems: { value: string; label: string; locked?: boolean }[] = [
             { value: "news", label: "News", locked: !hasFeature("news") },
-            ...(isAuthenticated ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") }] : []),
+            ...(isAuthenticated || teaserActive ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") }] : []),
             { value: "new-players", label: "New Players" },
             ...(canManageVendors ? [{ value: "vendors", label: "Vendor Newsroom URLs" }] : []),
           ];
-          const researchReportsLocked = !hasFeature("research_reports");
+          // Research Reports stays locked for anonymous visitors even during the
+          // free-access teaser (per explicit product decision) — reports data is
+          // also enforced server-side behind authentication, so this mirrors that.
+          // hasFeature() alone can't be trusted here: it evaluates to "unlocked"
+          // for any non-vendor-scoped user, authenticated or not.
+          const anonymousReportsLock = !isAuthenticated && !isFreeMarket;
+          const researchReportsLocked = anonymousReportsLock || !hasFeature("research_reports");
           const isInGroup = (items: { value: string }[]) => items.some(i => i.value === activeTab);
           const activeChildLabel = (items: { value: string; label: string }[]) =>
             items.find(i => i.value === activeTab)?.label;
@@ -587,18 +595,33 @@ export default function MarketDetails() {
                 </DropdownMenu>
 
                 {researchReportsLocked ? (
-                  <LockedFeatureTooltip>
-                    <span
+                  anonymousReportsLock ? (
+                    <button
+                      type="button"
+                      onClick={openRegistrationModal}
                       className={cn(
-                        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
+                        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
                         isMobile && "flex-shrink-0 px-2 text-[10px]"
                       )}
                       data-testid="tab-research-reports-locked"
                     >
                       Reports
                       <Lock className="h-3 w-3" />
-                    </span>
-                  </LockedFeatureTooltip>
+                    </button>
+                  ) : (
+                    <LockedFeatureTooltip>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none",
+                          isMobile && "flex-shrink-0 px-2 text-[10px]"
+                        )}
+                        data-testid="tab-research-reports-locked"
+                      >
+                        Reports
+                        <Lock className="h-3 w-3" />
+                      </span>
+                    </LockedFeatureTooltip>
+                  )
                 ) : (
                   <TabsTrigger value="research-reports" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-research-reports">
                     Reports

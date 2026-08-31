@@ -17,7 +17,12 @@ export type ClientEventType =
   | "search_performed"
   | "filter_applied"
   | "chart_interacted"
-  | "news_viewed";
+  | "news_viewed"
+  | "teaser_started"
+  | "teaser_expired"
+  | "registration_modal_shown"
+  | "registration_modal_dismissed"
+  | "registration_prompt_backoff";
 
 interface QueuedEvent {
   eventType: ClientEventType;

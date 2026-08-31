@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
 import { Button } from "@/components/ui/button";
@@ -567,6 +568,7 @@ function PublicStats() {
 }
 
 function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
+  const { teaserActive } = useTeaserGate();
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
     localStorage.setItem("spectio_persona", persona);
     window.location.href = `/${persona}`;
@@ -671,7 +673,7 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Coverage that <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">matters</span></h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Deep-dive evaluations across the enterprise infrastructure stack, updated continuously with AI-scored intelligence.</p>
         </motion.div>
-        <MarketGrid markets={FEATURED_MARKETS} isLoading={false} linkToLogin />
+        <MarketGrid markets={FEATURED_MARKETS} isLoading={false} linkToLogin={!teaserActive} />
         <motion.div {...fadeUp} className="text-center mt-10">
           <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 border border-white/10 text-slate-300 hover:text-white hover:border-white/20 rounded-lg px-5 py-2.5 text-sm transition-all">
             Create free buyer account <ArrowRight className="h-4 w-4" />

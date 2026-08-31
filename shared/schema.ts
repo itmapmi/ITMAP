@@ -1255,6 +1255,12 @@ export const LEAD_GEN_EVENT_DEFS = {
   filter_applied:           { label: "Applied filter",          weight: 2,  origin: "client" },
   chart_interacted:         { label: "Explored evaluation chart", weight: 3, origin: "client" },
   news_viewed:              { label: "Read vendor news",        weight: 4,  origin: "client" },
+  // ── Anonymous teaser / registration-nudge funnel (client beacon) ──
+  teaser_started:           { label: "Teaser started",          weight: 1,  origin: "client" },
+  teaser_expired:           { label: "Teaser expired",          weight: 1,  origin: "client" },
+  registration_modal_shown:     { label: "Registration modal shown",     weight: 1, origin: "client" },
+  registration_modal_dismissed: { label: "Registration modal dismissed", weight: 1, origin: "client" },
+  registration_prompt_backoff:  { label: "Registration prompt backed off", weight: 1, origin: "client" },
 } as const;
 
 export type LeadGenEventType = keyof typeof LEAD_GEN_EVENT_DEFS;

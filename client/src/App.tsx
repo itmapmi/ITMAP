@@ -53,6 +53,7 @@ import BattleCardDetailPage from "@/pages/battle-cards/detail";
 import MyToolsPage from "@/pages/me/tools";
 import SecurityPage from "@/pages/security/index";
 import { trackPageView } from "@/lib/track";
+import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
 
 function TrafficPageTracker() {
   const [location] = useLocation();
@@ -109,7 +110,8 @@ function Router() {
     <div className="min-h-screen">
       <Navigation />
       <TrafficPageTracker />
-      <Switch>
+      <TeaserGateProvider>
+        <Switch>
         <Route path="/" component={Home} />
         <Route path="/about" component={About} />
         <Route path="/platform" component={Platform} />
@@ -160,6 +162,7 @@ function Router() {
         <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />
       </Switch>
+      </TeaserGateProvider>
     </div>
   );
 }

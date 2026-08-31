@@ -17,3 +17,4 @@
 - [App Storage bucket replacement](app-storage-bucket-replacement.md) — creating a bucket does not retarget stale upload bindings; select it explicitly and smoke-test signed PUTs.
 - [Pinned DNS lookup shape](pinned-dns-lookup-shape.md) — Node auto-select-family requests lookup arrays; pinned callbacks must honor `options.all`.
 - [Vendor fact-review authorization](vendor-fact-review-authorization.md) — authorize Fact Review only from explicit vendor assignments, never matching vendor names.
+- [Anonymous user feature-gating nuance](anonymous-feature-gating.md) — hasFeatureAccess() reports "unlocked" for anonymous users; always add an explicit !isAuthenticated check too.
