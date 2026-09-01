@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown } from "lucide-react";
+import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,6 +16,10 @@ import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/
 
 interface SupportMatrixProps {
   marketId: string;
+  /** When true, anonymous visitors must register before generating a PDF report. */
+  pdfLocked?: boolean;
+  /** Called instead of opening the vendor-selection modal when pdfLocked is true. */
+  onPdfLockedClick?: () => void;
 }
 
 // Component for updating vendor evaluation scores from product evaluation
@@ -132,7 +136,7 @@ const HarveyBall = ({
   );
 };
 
-export default function SupportMatrix({ marketId }: SupportMatrixProps) {
+export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }: SupportMatrixProps) {
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -589,13 +593,13 @@ export default function SupportMatrix({ marketId }: SupportMatrixProps) {
           <div className={`flex items-center gap-3 ${isMobile ? 'flex-col gap-2 w-full' : ''}`}>
             <div className={`flex items-center gap-2 ${isMobile ? 'w-full flex-wrap' : ''}`}>
               <Button
-                onClick={() => setShowVendorModal(true)}
+                onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
                 variant="outline"
                 size={isMobile ? "default" : "sm"}
-                className={`flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
+                className={`flex items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-blue-50 hover:border-blue-300'} ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
                 data-testid="button-generate-product-evaluation-report"
               >
-                <FileDown className="h-4 w-4" />
+                {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
                 {isMobile ? 'PDF' : 'PDF Report'}
               </Button>
               <Button

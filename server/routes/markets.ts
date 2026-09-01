@@ -863,11 +863,18 @@ export function registerMarketRoutes(app: Express): void {
 
   // ── Vendor Signals (market-scoped, auth-gated) ────────────────────────────
 
-  app.get("/api/markets/:marketId/vendor-signals", requireFeature("intelligence_feed"), requireMarketAccess, async (req, res) => {
+  app.get(
+    "/api/markets/:marketId/vendor-signals",
+    // Anonymous visitors get a read-only preview during their registration
+    // teaser window (client-enforced, see useTeaserGate); once a user is
+    // authenticated, the normal intelligence_feed RBAC gate applies.
+    (req, res, next) => {
+      if (!(req as any).isAuthenticated?.()) return next();
+      return requireFeature("intelligence_feed")(req, res, next);
+    },
+    requireMarketAccess,
+    async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
       const vendorId = typeof req.query.vendorId === 'string' ? req.query.vendorId : undefined;
       const sourceType = typeof req.query.sourceType === 'string' ? req.query.sourceType : undefined;
       const parsedLimit = parseInt(req.query.limit as string, 10);

@@ -730,13 +730,13 @@ export default function MarketDetails() {
           <TabsContent value="support-matrix" className="mt-6">
             {showOwnerControls && !hasProductPhase
               ? <PhasePlaceholder phase="Product" />
-              : <SupportMatrix marketId={resolvedId!} />}
+              : <SupportMatrix marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">
             {showOwnerControls && !hasEcosystemPhase
               ? <PhasePlaceholder phase="Ecosystem" />
-              : <EcosystemSupport marketId={resolvedId!} />}
+              : <EcosystemSupport marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} />}
           </TabsContent>
 
           <TabsContent value="research-methodology" className="mt-6">
@@ -774,7 +774,7 @@ export default function MarketDetails() {
             </TabsContent>
           )}
 
-          {isAuthenticated && (
+          {(isAuthenticated || teaserActive) && (
             <TabsContent value="intelligence-feed" className="mt-6">
               <IntelligenceFeed marketId={resolvedId!} vendors={vendors} />
             </TabsContent>

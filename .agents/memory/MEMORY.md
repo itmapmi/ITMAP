@@ -19,4 +19,5 @@
 - [Vendor fact-review authorization](vendor-fact-review-authorization.md) — authorize Fact Review only from explicit vendor assignments, never matching vendor names.
 - [Anonymous user feature-gating nuance](anonymous-feature-gating.md) — hasFeatureAccess() reports "unlocked" for anonymous users; always add an explicit !isAuthenticated check too.
 - [Teaser-active UI unlock vs backend auth](teaser-vs-backend-auth.md) — client teaserActive gates are cosmetic; some routes hard-401 anon regardless, so verify server auth before assuming a "sign in" gate is safe to loosen.
+- [Making a requireFeature route anon-readable](intelligence-feed-teaser-access.md) — requireFeature() 401s anon before the handler runs; deleting a redundant inline auth check does nothing, must bypass the middleware itself.
 - [Reddit Pixel + CAPI integration](reddit-capi-integration.md) — CAPI v3 endpoint/schema, session-uuid dedup (not conversion_id), and why only SIGN_UP (not PAGE_VISIT) gets server-side CAPI.

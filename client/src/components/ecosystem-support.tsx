@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown } from "lucide-react";
+import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown, Lock } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,10 @@ import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from 
 
 interface EcosystemSupportProps {
   marketId: string;
+  /** When true, anonymous visitors must register before generating a PDF report. */
+  pdfLocked?: boolean;
+  /** Called instead of opening the vendor-selection modal when pdfLocked is true. */
+  onPdfLockedClick?: () => void;
 }
 
 // Harvey Ball icons representing different support levels
@@ -83,7 +87,7 @@ const HarveyBall = ({
   );
 };
 
-export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
+export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick }: EcosystemSupportProps) {
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -551,13 +555,13 @@ export default function EcosystemSupport({ marketId }: EcosystemSupportProps) {
           </div>
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => setShowVendorModal(true)}
+              onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+              className={`flex items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-green-50 hover:border-green-300'}`}
               data-testid="button-generate-ecosystem-report"
             >
-              <FileDown className="h-4 w-4" />
+              {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
               PDF Report
             </Button>
             <Button
