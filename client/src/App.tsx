@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -53,13 +53,26 @@ import BattleCardDetailPage from "@/pages/battle-cards/detail";
 import MyToolsPage from "@/pages/me/tools";
 import SecurityPage from "@/pages/security/index";
 import { trackPageView } from "@/lib/track";
+import { captureRedditClickId, trackRedditPageVisit } from "@/lib/reddit-pixel";
 import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
 
 function TrafficPageTracker() {
   const [location] = useLocation();
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    captureRedditClickId();
+  }, []);
 
   useEffect(() => {
     trackPageView();
+    if (isFirstRender.current) {
+      // The Reddit Pixel base snippet (client/index.html) already fires the
+      // initial PageVisit on document load — skip it here to avoid double-counting.
+      isFirstRender.current = false;
+    } else {
+      trackRedditPageVisit();
+    }
   }, [location]);
 
   return null;

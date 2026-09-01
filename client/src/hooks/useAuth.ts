@@ -3,6 +3,7 @@ import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
+import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
 
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
@@ -31,12 +32,21 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterUser) => {
-      const response = await apiRequestJson('/auth/register', 'POST', userData);
+      // Forward Reddit Ads match keys (if present) so the server can pair
+      // this signup with a Conversions API event for the same conversion.
+      const redditClickId = getRedditClickId();
+      const redditUuid = getRedditUuid();
+      const response = await apiRequestJson('/auth/register', 'POST', {
+        ...userData,
+        ...(redditClickId ? { redditClickId } : {}),
+        ...(redditUuid ? { redditUuid } : {}),
+      });
       return response;
     },
     onSuccess: (user) => {
       queryClient.setQueryData(["/api/auth/user"], user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      trackRedditSignUp();
     },
   });
 

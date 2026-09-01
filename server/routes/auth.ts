@@ -6,6 +6,7 @@ import { setupSession, setupPassport, requireAuth } from "../auth";
 import { registerUserSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
+import { sendRedditConversionEvent } from "../lib/redditConversions";
 
 const loggedSessions = new Set<string>();
 
@@ -172,6 +173,22 @@ export function registerAuthRoutes(app: Express): void {
         role: 'user',
         persona: userData.persona ?? "buyer",
       });
+
+      // Reddit Ads match keys forwarded from the client (best-effort, both optional).
+      // Not part of registerUserSchema — tracking-only, never required for signup.
+      const redditClickId = typeof req.body?.redditClickId === "string" ? req.body.redditClickId.slice(0, 256) : null;
+      const redditUuid = typeof req.body?.redditUuid === "string" ? req.body.redditUuid.slice(0, 256) : null;
+      // Fire-and-forget: never block or fail registration on ad-tracking.
+      void sendRedditConversionEvent({
+        trackingType: "SIGN_UP",
+        clickId: redditClickId,
+        uuid: redditUuid,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventSourceUrl: req.get('referer') || null,
+        conversionId: user.id,
+      });
+
       req.logIn(user, async (err) => {
         if (err) return res.status(500).json({ error: "Login failed after registration" });
         try {
