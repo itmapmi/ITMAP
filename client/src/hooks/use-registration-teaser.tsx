@@ -18,10 +18,21 @@ import { PersonaRegistrationForm } from "@/components/persona-registration-form"
 // from values persisted in sessionStorage (start time, dismiss count, last
 // shown time) rather than from refs that reset on remount — a page refresh
 // must never re-arm nagging that has already been dismissed or backed off.
+//
+// Dismissing the registration prompt does not immediately lock the visitor
+// out: the first dismissal (after the initial free window expires) still
+// leaves full access open, so the prompt can reopen once more without
+// penalty. Only once they've dismissed it a second time does access actually
+// get restricted — see `GRACE_DISMISS_COUNT` below.
 
 const TEASER_DURATION_MS = 45_000;
 const REOPEN_INTERVAL_MS = 30_000;
 const MAX_AUTO_REOPENS = 3;
+// Number of dismissals granted free access for before restricting. The
+// prompt shown right at expiry counts as the first; dismissing that one still
+// leaves access open. Dismissing the second (auto-reopened) prompt is what
+// triggers the restriction.
+const GRACE_DISMISS_COUNT = 2;
 
 const START_KEY = "itmap_teaser_start_at";
 const DISMISS_COUNT_KEY = "itmap_teaser_dismiss_count";
@@ -33,7 +44,13 @@ const EXPIRY_TRACKED_KEY = "itmap_teaser_expiry_tracked";
 const EXEMPT_PATHS = new Set(["/login", "/register", "/terms", "/privacy", "/contact"]);
 
 interface TeaserGateContextValue {
-  /** True while an anonymous visitor is still inside their free-access window. */
+  /**
+   * True while an anonymous visitor still has full access to market
+   * features: either inside the initial free-access window, or in the grace
+   * period after it expires where they've dismissed the registration prompt
+   * at most once. Turns false once they've dismissed the prompt a second
+   * time (see `GRACE_DISMISS_COUNT`) or once they've signed in.
+   */
   teaserActive: boolean;
   /** Milliseconds remaining in the free-access window (0 once expired). */
   teaserRemainingMs: number;
@@ -120,11 +137,18 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const elapsed = startRef.current !== null ? now - startRef.current : 0;
-  const teaserActive = !isLoading && !isAuthenticated && elapsed < TEASER_DURATION_MS;
-  const teaserRemainingMs = teaserActive ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
+  // Whether the visitor is still inside their initial, no-strings-attached
+  // free window (drives the countdown badge).
+  const withinInitialWindow = !isLoading && !isAuthenticated && elapsed < TEASER_DURATION_MS;
+  const teaserRemainingMs = withinInitialWindow ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
   const expired = !isLoading && !isAuthenticated && startRef.current !== null && elapsed >= TEASER_DURATION_MS;
   const isExempt = EXEMPT_PATHS.has(location);
   const backoffReached = dismissCountRef.current >= MAX_AUTO_REOPENS;
+  // Access stays unlocked through the initial window AND through the grace
+  // period after expiry — the visitor can dismiss the first post-expiry
+  // prompt for free. Only dismissing a second time restricts access.
+  const teaserActive =
+    withinInitialWindow || (expired && !isAuthenticated && dismissCountRef.current < GRACE_DISMISS_COUNT);
 
   const nextAutoShowAt =
     lastShownAtRef.current !== null
@@ -204,7 +228,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
 
   // Show the countdown only while the free-access clock is actually running —
   // it steps aside the moment the modal takes over so the two never overlap.
-  const showCountdown = canShowChrome && teaserActive && !modalOpen;
+  const showCountdown = canShowChrome && withinInitialWindow && !modalOpen;
   const remainingSeconds = Math.ceil(teaserRemainingMs / 1000);
 
   return (
