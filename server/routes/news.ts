@@ -55,9 +55,21 @@ export function registerNewsRoutes(app: Express): void {
     }
   });
 
-  app.use("/api/news", requireFeature("news"));
+  app.use("/api/news", (req, res, next) => {
+    // The plain listing GET (used for the market "News" tab) is anonymous-readable
+    // during the client's registration teaser window, mirroring how
+    // /api/markets/:id/vendor-signals (Intelligence Feed) was opened up — see
+    // .agents/memory/intelligence-feed-teaser-access.md. Every other /api/news/*
+    // subroute (export, metrics, fetch-logs, single-article, admin ingest/analyze)
+    // stays behind the normal feature+auth gate.
+    const isPublicListingGet = req.method === "GET" && (req.path === "/" || req.path === "");
+    if (isPublicListingGet && !(req as any).isAuthenticated?.()) {
+      return next();
+    }
+    return requireFeature("news")(req, res, next);
+  });
 
-  app.get("/api/news", requireAuth, async (req, res) => {
+  app.get("/api/news", async (req, res) => {
     try {
       const { q, market, source_id, vendor_id, canonical_vendor_id, since, until, impact, category, limit = '20', offset = '0' } = req.query;
       if (q && typeof q === 'string') {
