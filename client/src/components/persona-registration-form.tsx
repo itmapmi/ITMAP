@@ -197,7 +197,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
                   className="mt-0.5 border-white/20 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
                 />
                 <label htmlFor={`terms-${persona}`} className="text-sm text-slate-300 leading-relaxed cursor-pointer">
-                  I agree that ITMAP.ai may share my name, company, and email with relevant technology vendors. I have read and agree to the{" "}
+                  I have read and agree to the{" "}
                   <Link href="/terms?returnTo=/buyer" className="text-cyan-400 hover:text-cyan-300 hover:underline">
                     ITMAP Terms of Service
                   </Link>
