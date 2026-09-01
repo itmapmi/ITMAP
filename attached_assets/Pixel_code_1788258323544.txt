@@ -1,0 +1,39 @@
+Pixel code
+
+<!-- Reddit Pixel -->
+<script>
+!function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js?pixel_id=a2_jm1855x77sag",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);rdt('init','a2_jm1855x77sag');rdt('track', 'PageVisit');
+</script>
+<!-- DO NOT MODIFY UNLESS TO REPLACE A USER IDENTIFIER -->
+<!-- End Reddit Pixel -->
+
+Advanced matching
+
+<!-- Example of advanced matching in your init call. -->
+rdt('init', 'a2_jm1855x77sag', {
+    email: '<EMAIL-HERE>',
+    phoneNumber: '<PHONE-NUMBER-HERE>',
+    externalId: '<EXTERNAL-ID-HERE>',
+    idfa: '<IDFA-HERE>',
+    aaid: '<AAID-HERE>',
+});
+
+
+
+
+Paste the code inside the <head></head> tags of your ad's landing page and each page where you want to track conversion events.
+
+<!-- Example -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    PASTE PIXEL CODE HERE
+  </head>
+
+
+Add unique conversion IDs
+Go to your website's code editor and manually create an event with a conversion ID for each event you set up in the event setup tool. The conversion ID can be any unique string, like a transaction ID or event ID.
+This call can be made either in the base code or between the <script> tags on the page where the event should happen.
+rdt('track', '{{Conversion event}}', {
+    conversionId: '{{Conversion ID}}'
+});

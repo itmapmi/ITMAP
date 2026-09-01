@@ -46,7 +46,10 @@ export function useAuth() {
     onSuccess: (user) => {
       queryClient.setQueryData(["/api/auth/user"], user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      trackRedditSignUp();
+      // Same conversionId the server sends with its Conversions API SignUp
+      // event (the user's own id) — Reddit's documented way to tie a Pixel
+      // event and a CAPI event to the same conversion.
+      trackRedditSignUp((user as { id?: string })?.id ?? null);
     },
   });
 

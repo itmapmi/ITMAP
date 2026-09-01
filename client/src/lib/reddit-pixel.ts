@@ -73,10 +73,19 @@ export function trackRedditPageVisit(): void {
   }
 }
 
-/** Fire a client-side Reddit Pixel `SignUp` event after successful registration. */
-export function trackRedditSignUp(): void {
+/**
+ * Fire a client-side Reddit Pixel `SignUp` event after successful registration.
+ * Pass the same `conversionId` used on the paired server-side CAPI event
+ * (Reddit's documented method for deduplicating Pixel + CAPI events for one
+ * conversion — see https://ads-api.reddit.com/docs/v3/guides/programs/capi/direct-integration#generate-unique-conversion-ids).
+ */
+export function trackRedditSignUp(conversionId?: string | null): void {
   try {
-    window.rdt?.("track", "SignUp");
+    if (conversionId) {
+      window.rdt?.("track", "SignUp", { conversionId });
+    } else {
+      window.rdt?.("track", "SignUp");
+    }
   } catch {
     // Best-effort only.
   }
