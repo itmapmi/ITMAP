@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Smartphone, X } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
 import { calculateAxisWeightShares } from "@shared/axis-weighting";
@@ -64,6 +65,8 @@ interface HistoricalPoint {
   recordedAt: string | Date;
 }
 
+const ROTATE_HINT_DISMISSED_KEY = "itmap_quadrant_rotate_hint_dismissed";
+
 const HISTORICAL_WEEKS = 26; // Six months, shown in two-week intervals
 const HISTORICAL_TICK_INTERVAL = 2;
 const historicalTimelineTicks = Array.from(
@@ -84,6 +87,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [isPortrait, setIsPortrait] = useState(true);
+  const [rotateHintDismissed, setRotateHintDismissed] = useState(
+    () => typeof window !== "undefined" && window.sessionStorage.getItem(ROTATE_HINT_DISMISSED_KEY) === "1"
+  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -338,6 +345,24 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       window.removeEventListener('orientationchange', updateContainerWidth);
     };
   }, []);
+
+  // Track portrait/landscape so the "rotate your phone" hint only shows while
+  // the phone is actually in portrait, and disappears the moment they flip it.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(orientation: portrait)");
+    const onChange = () => setIsPortrait(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  const dismissRotateHint = () => {
+    setRotateHintDismissed(true);
+    window.sessionStorage.setItem(ROTATE_HINT_DISMISSED_KEY, "1");
+  };
+
+  const showRotateHint = isMobile && isPortrait && !rotateHintDismissed;
 
   // Each criterion's share is its configured percentage relative to the other
   // criteria on the same axis. This keeps the chart aligned with the panel:
@@ -894,7 +919,11 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         }
       }
       
-      // Fallback to right position (may overlap but at least visible)
+      // Fallback to right position (may overlap but at least visible). On
+      // mobile, a later pass over ALL labels (auto-placed and manually
+      // dragged) culls whatever still ends up overlapping once every label's
+      // final, clamped position is known — see the mobile de-overlap pass
+      // below — so this fallback doesn't need to self-censor.
       return {
         labelX: dotX + labelOffset,
         labelY: dotY + 4,
@@ -905,11 +934,22 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       };
     };
 
-    // Add vendor labels positioned in all four directions around dots
-    adjustedVendors.forEach((vendor, index) => {
-      // Check if we have a custom position for this vendor
+    // First pass: work out every vendor's intended label position (manually
+    // dragged custom position if one is saved, otherwise the best slot found
+    // by collision-aware auto-placement above) and clamp it inside the
+    // drawable chart area.
+    type LabelCandidate = {
+      vendor: typeof adjustedVendors[0];
+      index: number;
+      labelX: number;
+      labelY: number;
+      anchor: string;
+      lblWidth: number;
+    };
+
+    const labelCandidates: LabelCandidate[] = adjustedVendors.map((vendor, index) => {
       const customPos = labelPositions[vendor.id];
-      const labelPos = customPos 
+      const labelPos = customPos
         ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX: xScale(vendor.adjustedX), dotY: yScale(vendor.adjustedY) }
         : calculateLabelPosition(vendor, index, adjustedVendors);
 
@@ -922,15 +962,67 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const maxLabelX = width - margin.right - 2;
       const minLabelY = margin.top + 10;
       const maxLabelY = height - margin.bottom - 2;
+      let labelX = labelPos.labelX;
       if (labelPos.anchor === "end") {
-        labelPos.labelX = Math.min(maxLabelX, Math.max(labelPos.labelX, minLabelX + lblWidth));
+        labelX = Math.min(maxLabelX, Math.max(labelX, minLabelX + lblWidth));
       } else if (labelPos.anchor === "middle") {
-        labelPos.labelX = Math.max(minLabelX + lblWidth / 2, Math.min(labelPos.labelX, maxLabelX - lblWidth / 2));
+        labelX = Math.max(minLabelX + lblWidth / 2, Math.min(labelX, maxLabelX - lblWidth / 2));
       } else {
-        labelPos.labelX = Math.max(minLabelX, Math.min(labelPos.labelX, maxLabelX - lblWidth));
+        labelX = Math.max(minLabelX, Math.min(labelX, maxLabelX - lblWidth));
       }
-      labelPos.labelY = Math.max(minLabelY, Math.min(labelPos.labelY, maxLabelY));
+      const labelY = Math.max(minLabelY, Math.min(labelPos.labelY, maxLabelY));
 
+      return { vendor, index, labelX, labelY, anchor: labelPos.anchor, lblWidth };
+    });
+
+    // Second pass (mobile only): a manually dragged position is an absolute
+    // pixel saved from whatever chart size was on screen at drag time — almost
+    // always the wider desktop canvas. Reapplied verbatim on the much
+    // narrower mobile canvas, several different vendors' saved (or
+    // auto-placed) labels can still land on top of each other once clamped
+    // into the smaller box, stacking into unreadable overlapping text. Desktop
+    // never hits this — its canvas is exactly the size positions were saved
+    // for — so it renders every candidate as before. On mobile, walk the
+    // candidates in order and drop (hide) any label whose final box collides
+    // with an already-accepted label or a dot that isn't its own; the dot
+    // itself always stays visible and tappable regardless.
+    const rectOf = (c: LabelCandidate) => {
+      const left = c.anchor === "end" ? c.labelX - c.lblWidth : c.anchor === "middle" ? c.labelX - c.lblWidth / 2 : c.labelX;
+      const right = left + c.lblWidth;
+      return { left, right, top: c.labelY - 12, bottom: c.labelY + 4 };
+    };
+    const rectsOverlap = (a: { left: number; right: number; top: number; bottom: number }, b: { left: number; right: number; top: number; bottom: number }) =>
+      !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+
+    const acceptedIndices = new Set<number>();
+    if (isMobile) {
+      const acceptedRects: ReturnType<typeof rectOf>[] = [];
+      for (const candidate of labelCandidates) {
+        const rect = rectOf(candidate);
+        const collidesWithDot = adjustedVendors.some((other, i) => {
+          if (i === candidate.index) return false;
+          const otherX = xScale(other.adjustedX);
+          const otherY = yScale(other.adjustedY);
+          return Math.sqrt((candidate.labelX - otherX) ** 2 + (candidate.labelY - otherY) ** 2) < 15;
+        });
+        const collidesWithLabel = acceptedRects.some(other => rectsOverlap(rect, other));
+        if (collidesWithDot || collidesWithLabel) continue;
+        acceptedIndices.add(candidate.index);
+        acceptedRects.push(rect);
+      }
+    } else {
+      // Desktop is unaffected: every candidate renders, exactly as before.
+      labelCandidates.forEach(c => acceptedIndices.add(c.index));
+    }
+
+    // Add vendor labels positioned in all four directions around dots
+    labelCandidates.forEach(({ vendor, index, labelX, labelY, anchor }) => {
+      // No room for this label on the crowded mobile canvas — leave the dot
+      // as the only visible marker. It's still tappable and its name is
+      // still reachable via the evidence popover, so nothing is truly lost.
+      if (!acceptedIndices.has(index)) return;
+
+      const labelPos = { labelX, labelY, anchor };
       const labelGroup = vendorGroups.filter((d, i) => i === index);
 
       // Add the text label positioned around the dot
@@ -1131,6 +1223,26 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             </CardHeader>
             <CardContent>
               <div ref={containerRef} className="relative w-full overflow-x-auto">
+                {showRotateHint && (
+                  <div
+                    data-testid="banner-rotate-phone-hint"
+                    className="mb-3 flex items-center gap-2.5 rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2"
+                  >
+                    <Smartphone className="h-5 w-5 shrink-0 text-indigo-500 animate-rotate-hint" />
+                    <p className="flex-1 text-xs font-medium text-indigo-700">
+                      Rotate your phone for a clearer, less crowded view
+                    </p>
+                    <button
+                      type="button"
+                      onClick={dismissRotateHint}
+                      aria-label="Dismiss rotate phone hint"
+                      data-testid="button-dismiss-rotate-hint"
+                      className="shrink-0 rounded-full p-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
                 <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
 
                 {/* Evidence popover for the clicked vendor dot */}

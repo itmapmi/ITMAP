@@ -25,3 +25,15 @@ Scality) past the right/bottom edge of the smaller viewBox.
 appending the text. Don't mutate the saved DB value — only the rendered position.
 If you ever switch saved positions to normalized (0–1) coordinates, this whole
 class of bug goes away.
+
+**Mobile-specific corollary:** the same absolute-pixel saved positions clamped
+into the much narrower mobile canvas don't just clip — several different
+vendors' labels (saved AND collision-auto-placed) can clamp into the same small
+area and stack into unreadable overlapping text. Clamping alone doesn't fix
+this; you also need a final de-overlap pass. Fix: after computing every
+vendor's clamped label rect, do a mobile-only greedy pass (in vendor order)
+that hides a label if its rect collides with another vendor's dot or with an
+already-accepted label's rect — leave the dot visible/tappable so the name is
+still reachable (e.g. via a tap-to-reveal evidence popover). Desktop renders
+every candidate unconditionally, exactly as before, since its canvas is the
+size positions were actually saved/computed for.
