@@ -238,7 +238,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
       {canShowChrome && (
         <Dialog open={modalOpen} onOpenChange={handleOpenChange}>
           <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none [&_button]:text-white/80 [&_button]:opacity-100">
-            <PersonaRegistrationForm persona="buyer" showToggle={false} compact />
+            <PersonaRegistrationForm persona="buyer" compact />
           </DialogContent>
         </Dialog>
       )}
