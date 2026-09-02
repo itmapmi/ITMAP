@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, VerificationRequiredError } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,13 +38,18 @@ interface PersonaRegistrationFormProps {
 
 export function PersonaRegistrationForm({ persona, showToggle = true, compact = false }: PersonaRegistrationFormProps) {
   const [, setLocation] = useLocation();
-  const { register, registerError, isRegistering } = useAuth();
+  const {
+    register, registerError, isRegistering,
+    resendVerification, isResendingVerification,
+  } = useAuth();
   const isVendorPersona = persona === "vendor";
 
   const [email, setEmail] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState<string | null>(null);
+  const [resendSent, setResendSent] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -70,13 +75,64 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
     e.preventDefault();
     if (!validateForm()) return;
 
+    setNeedsVerification(null);
+    setResendSent(false);
     try {
       await register({ email, persona });
       setSentTo(email);
+    } catch (error) {
+      if (error instanceof VerificationRequiredError) {
+        // Signing up with an email that already has an unverified account —
+        // offer to resend the link instead of just showing the raw error.
+        setNeedsVerification(error.email);
+      }
+      // Any other error is surfaced via registerError below.
+    }
+  };
+
+  const handleResend = async () => {
+    if (!needsVerification) return;
+    try {
+      await resendVerification(needsVerification);
+      setResendSent(true);
     } catch {
       // Error is handled by useAuth hook
     }
   };
+
+  if (needsVerification) {
+    return (
+      <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
+        <div className="p-5 sm:p-8 space-y-4 text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-amber-500/15 flex items-center justify-center">
+            <MailCheck className="h-6 w-6 text-amber-400" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-white">Almost there — verify your email</h3>
+          <p className="text-sm text-slate-400">
+            <strong className="text-slate-200">{needsVerification}</strong> already has an account, but it
+            hasn't been verified yet. Click the link we emailed you, or send a new one below.
+          </p>
+          <Button
+            className={`w-full text-white border-0 font-semibold ${
+              isVendorPersona
+                ? "bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400"
+                : "bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
+            }`}
+            disabled={isResendingVerification || resendSent}
+            onClick={handleResend}
+          >
+            {resendSent ? "Email sent — check your inbox" : isResendingVerification ? "Sending…" : "Resend verification email"}
+          </Button>
+          <button
+            onClick={() => { setNeedsVerification(null); setResendSent(false); }}
+            className="text-xs text-slate-500 hover:text-slate-300"
+          >
+            Try a different email
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (sentTo) {
     return (
