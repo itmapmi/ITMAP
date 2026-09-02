@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
-import { UserPlus, Users, Building2, Lock, MailCheck, Globe2, GitCompare, Radar, Shield, FileText, CheckCircle2 } from "lucide-react";
-import { RegistrationScreensCarousel } from "@/components/registration-screens-carousel";
+import { UserPlus, Users, Building2, Lock, Mail, MailCheck, Globe2, GitCompare, Radar, Shield, FileText, CheckCircle2 } from "lucide-react";
 
 // Core platform access every new account gets immediately, regardless of
 // persona — shown on the registration form itself so the value is visible
@@ -82,11 +81,11 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
   if (sentTo) {
     return (
       <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
-        <div className="p-6 sm:p-8 space-y-4 text-center">
+        <div className="p-5 sm:p-8 space-y-4 text-center">
           <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/15 flex items-center justify-center">
             <MailCheck className="h-6 w-6 text-emerald-400" />
           </div>
-          <h3 className="text-xl font-bold text-white">You're in — check your inbox</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-white">You're in — check your inbox</h3>
           <p className="text-sm text-slate-400">
             We've sent a verification link to <strong className="text-slate-200">{sentTo}</strong>. You have full
             access for the next 10 minutes — click the link anytime in that window to keep it permanently.
@@ -107,17 +106,10 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
   }
 
   return (
-    <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
-      <div className="p-6 sm:p-8 space-y-5">
-        <div className="flex flex-col items-center gap-3">
-          <RegistrationScreensCarousel size={compact ? 128 : 176} />
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-            A live look inside the platform
-          </p>
-        </div>
-
+    <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "w-full max-w-md mx-auto"}`}>
+      <div className="p-5 sm:p-8 space-y-5">
         <div className="text-center space-y-2">
-          <div className={`flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold mx-auto w-fit ${
+          <div className={`flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold mx-auto w-fit ${
             isVendorPersona
               ? "bg-violet-500/15 text-violet-300 border border-violet-400/20"
               : "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20"
@@ -125,11 +117,11 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             {isVendorPersona ? <Building2 className="h-3 w-3" /> : <Users className="h-3 w-3" />}
             {isVendorPersona ? "Vendor Access" : "Buyer Access"}
           </div>
-           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs font-bold text-emerald-300">
-             <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-emerald-300 text-center">
+             <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
              Free to join · No credit card required
            </div>
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-lg sm:text-xl font-bold text-white">
             {isVendorPersona ? "Create your Vendor account" : "Create your account"}
           </h3>
           <p className="text-sm text-slate-400">
@@ -137,26 +129,6 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
               ? "Monitor your market position and access vendor intelligence tools"
               : "Get access to independent enterprise IT vendor intelligence"}
           </p>
-        </div>
-
-        <div className={`rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] ${compact ? "p-3" : "p-4"}`}>
-          <p className={`font-semibold text-emerald-300 ${compact ? "text-[11px] mb-2" : "text-xs mb-3"}`}>
-            What you get, free the moment you sign up
-          </p>
-          <ul className={`grid gap-x-3 gap-y-2 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-            {REGISTRATION_BENEFITS.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-2 text-slate-300">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                <span className={compact ? "text-xs" : "text-sm"}>{label}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex items-center gap-1.5 border-t border-emerald-400/10 pt-3 text-xs font-medium text-emerald-300">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>All included, always free — no credit card, no trial limit</span>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -167,19 +139,53 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
           )}
 
           <div className="space-y-2">
-            <Label htmlFor={`email-${persona}`} className="text-slate-300">Work email</Label>
-            <Input
-              id={`email-${persona}`}
-              type="email"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-              autoComplete="email"
-              required
-            />
+            <Label htmlFor={`email-${persona}`} className="text-sm font-semibold text-white">
+              Company email address
+            </Label>
+            <div className="relative">
+              <Mail className={`pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${
+                isVendorPersona ? "text-violet-400" : "text-cyan-400"
+              }`} />
+              <Input
+                id={`email-${persona}`}
+                type="email"
+                inputMode="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`h-12 pl-10 text-base bg-white/5 text-white placeholder:text-slate-500 border-2 focus-visible:ring-0 ${
+                  isVendorPersona
+                    ? "border-violet-400/30 focus-visible:border-violet-400/70"
+                    : "border-cyan-400/30 focus-visible:border-cyan-400/70"
+                }`}
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                required
+              />
+            </div>
             {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
             <p className="text-xs text-slate-500">No password needed — we'll email you a verification link.</p>
+          </div>
+
+          <div className={`rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] ${compact ? "p-3" : "p-4"}`}>
+            <p className={`font-semibold text-emerald-300 ${compact ? "text-[11px] mb-2" : "text-xs mb-3"}`}>
+              What you get, free the moment you sign up
+            </p>
+            <ul className={`grid gap-x-3 gap-y-2 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+              {REGISTRATION_BENEFITS.map(({ icon: Icon, label }) => (
+                <li key={label} className="flex items-center gap-2 text-slate-300">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className={compact ? "text-xs" : "text-sm"}>{label}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center gap-1.5 border-t border-emerald-400/10 pt-3 text-xs font-medium text-emerald-300">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span>All included, always free — no credit card, no trial limit</span>
+            </div>
           </div>
 
           {!isVendorPersona && (
