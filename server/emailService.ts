@@ -100,7 +100,7 @@ function buildVerificationEmailHtml(verifyUrl: string): string {
   <h2 style="margin-bottom:4px;">Verify your email</h2>
   <p style="color:#374151;">
     Thanks for signing up for itmap.ai. Confirm this is your email address to keep your account
-    active beyond the first two hours.
+    active beyond the first 10 minutes.
   </p>
   <p style="margin:28px 0;">
     <a href="${escapeHtml(verifyUrl)}"

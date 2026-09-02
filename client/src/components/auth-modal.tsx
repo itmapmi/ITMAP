@@ -178,7 +178,7 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
                 </div>
                 <p className="text-sm text-gray-600">
                   We've sent a verification link to <strong>{sentTo}</strong>. You have full access for the next
-                  2 hours — click the link anytime in that window to keep it permanently.
+                  10 minutes — click the link anytime in that window to keep it permanently.
                 </p>
                 <Button
                   className="w-full"

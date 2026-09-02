@@ -57,8 +57,9 @@ export const users = pgTable("users", {
   lastInviteSentAt: timestamp("last_invite_sent_at"),
 
   // Passwordless signup: a new self-registered account starts unverified and
-  // gets a 2-hour grace period (measured from createdAt) to browse freely
-  // while a verification email is out for delivery. Defaults to true so
+  // gets a short grace period (measured from createdAt, see
+  // EMAIL_VERIFICATION_GRACE_MS in server/auth.ts) to browse freely while a
+  // verification email is out for delivery. Defaults to true so
   // pre-existing accounts and any account created outside the public
   // /auth/register flow (admin-created, etc.) are never retroactively locked.
   emailVerified: boolean("email_verified").notNull().default(true),
@@ -465,7 +466,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
 // Authentication schemas — passwordless. Entering a company email either
 // creates a new account or logs into the existing one matching that email;
 // new accounts must verify the email (link sent on registration) within a
-// 2-hour grace period or access is blocked until they do.
+// short grace period (EMAIL_VERIFICATION_GRACE_MS in server/auth.ts) or
+// access is blocked until they do.
 export const loginUserSchema = z.object({
   email: z.string().email(),
 });

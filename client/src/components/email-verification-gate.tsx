@@ -1,27 +1,51 @@
 import { useEffect, useState } from "react";
 import { MailCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, getPendingVerification, type PendingVerification } from "@/hooks/useAuth";
 
-const GRACE_MS = 2 * 60 * 60 * 1000; // keep in sync with server/auth.ts EMAIL_VERIFICATION_GRACE_MS
+const GRACE_MS = 10 * 60 * 1000; // keep in sync with server/auth.ts EMAIL_VERIFICATION_GRACE_MS
+// After this much of the grace period has elapsed, show a one-time dismissible
+// reminder popup. Dismissing it does not extend access — the account is still
+// blocked at GRACE_MS regardless.
+const REMINDER_AFTER_MS = 5 * 60 * 1000;
+const REMINDER_DISMISSED_KEY = "itmap_verification_reminder_dismissed";
 
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return "0m";
-  const totalMinutes = Math.ceil(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  if (ms <= 0) return "0m 0s";
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
 }
 
-function useNow(intervalMs = 30_000) {
+function useNow(intervalMs = 5_000) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
+}
+
+// Dismissal is remembered per-account (keyed by email) so a page refresh
+// within the grace window doesn't re-show a popup the user already closed,
+// but a different / newly-registered account still gets its own reminder.
+function isReminderDismissed(email: string): boolean {
+  try {
+    return localStorage.getItem(REMINDER_DISMISSED_KEY) === email;
+  } catch {
+    return false;
+  }
+}
+
+function dismissReminder(email: string) {
+  try {
+    localStorage.setItem(REMINDER_DISMISSED_KEY, email);
+  } catch {
+    // ignore
+  }
 }
 
 function ResendButton({ email, className }: { email: string; className?: string }) {
@@ -55,7 +79,7 @@ function ResendButton({ email, className }: { email: string; className?: string 
 }
 
 // Slim, dismissible-by-nature (goes away once verified) banner shown while a
-// signed-in user is still inside their 2-hour verification grace period.
+// signed-in user is still inside their verification grace period.
 export function VerificationBanner() {
   const { user } = useAuth();
   const now = useNow();
@@ -97,7 +121,7 @@ export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
         <div>
           <h1 className="text-xl font-bold text-white">Verify your email to continue</h1>
           <p className="text-sm text-slate-400 mt-2">
-            Your 2-hour trial access for <strong className="text-slate-200">{pending.email}</strong> has ended.
+            Your 10-minute trial access for <strong className="text-slate-200">{pending.email}</strong> has ended.
             Click the verification link we emailed you to unlock your account again.
           </p>
         </div>
@@ -112,6 +136,58 @@ export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
         </div>
       </div>
     </div>
+  );
+}
+
+// One-time popup shown partway through the grace period (once REMINDER_AFTER_MS
+// has elapsed) nudging the user to verify. Closing it does not pause or extend
+// the countdown — the account is still blocked once the full grace period is up.
+export function VerificationReminderDialog() {
+  const { user } = useAuth();
+  const now = useNow();
+  const [manuallyDismissed, setManuallyDismissed] = useState(false);
+
+  const unverified = !!user && (user as any).emailVerified === false && !!user.createdAt;
+  const email = unverified ? (user!.email as string) : null;
+  const createdAtMs = unverified ? new Date(user!.createdAt as unknown as string).getTime() : 0;
+  const elapsed = unverified ? now - createdAtMs : 0;
+  const deadline = createdAtMs + GRACE_MS;
+  const remaining = deadline - now;
+
+  const shouldShow =
+    unverified &&
+    !!email &&
+    elapsed >= REMINDER_AFTER_MS &&
+    remaining > 0 &&
+    !manuallyDismissed &&
+    !isReminderDismissed(email);
+
+  const handleClose = () => {
+    if (email) dismissReminder(email);
+    setManuallyDismissed(true);
+  };
+
+  return (
+    <Dialog open={shouldShow} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="mx-auto h-12 w-12 rounded-full bg-amber-500/15 flex items-center justify-center mb-2">
+            <MailCheck className="h-6 w-6 text-amber-500" />
+          </div>
+          <DialogTitle className="text-center">Don't forget to verify your email</DialogTitle>
+          <DialogDescription className="text-center">
+            We sent a verification link to <strong>{email}</strong>. Verify now to keep your access —
+            you have {email ? formatRemaining(remaining) : ""} left before it's locked.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2 pt-2">
+          {email && <ResendButton email={email} className="w-full" />}
+          <Button variant="ghost" size="sm" onClick={handleClose}>
+            I'll do it later
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

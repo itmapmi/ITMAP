@@ -75,7 +75,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
           <h3 className="text-xl font-bold text-white">You're in — check your inbox</h3>
           <p className="text-sm text-slate-400">
             We've sent a verification link to <strong className="text-slate-200">{sentTo}</strong>. You have full
-            access for the next 2 hours — click the link anytime in that window to keep it permanently.
+            access for the next 10 minutes — click the link anytime in that window to keep it permanently.
           </p>
           <Button
             className={`w-full text-white border-0 font-semibold ${

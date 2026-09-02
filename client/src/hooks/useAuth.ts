@@ -6,8 +6,10 @@ import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
 
-// Passwordless signup: a brand-new account gets a 2-hour grace period to
-// browse before it must be verified. The server enforces this on every
+// Passwordless signup: a brand-new account gets a short grace period (see
+// GRACE_MS in email-verification-gate.tsx / EMAIL_VERIFICATION_GRACE_MS on
+// the server) to browse before it must be verified. The server enforces this
+// on every
 // request (the session itself stops working past the deadline), but once
 // that happens `/api/auth/user` looks identical to "never signed up" —
 // there is no session left to read `createdAt`/`emailVerified` off of. This

@@ -8,10 +8,23 @@ Registration and login take only a company email — no password anywhere in the
 public auth flow. Submitting the register form creates the account immediately
 and grants a full session right away (not gated behind clicking anything
 first). A verification link is emailed in the background; the account has a
-hard 2-hour window (measured from `createdAt`, not renewed per login) to
-verify before access is cut. Existing/admin-created accounts default
-`emailVerified: true` at the DB column level so this never retroactively
-locks out anyone who predates the feature.
+hard grace window (measured from `createdAt`, not renewed per login) to
+verify before access is cut — currently 10 minutes, set via the single
+constant `EMAIL_VERIFICATION_GRACE_MS` in `server/auth.ts` (mirrored as
+`GRACE_MS` in `client/src/components/email-verification-gate.tsx` for the
+UI countdown — the two must be kept in sync manually, there's no shared
+import between server and client for this value). Existing/admin-created
+accounts default `emailVerified: true` at the DB column level so this never
+retroactively locks out anyone who predates the feature. Partway through the
+window (`REMINDER_AFTER_MS`, currently half of the grace period) a
+one-time dismissible popup (`VerificationReminderDialog`) nudges the user to
+verify; dismissing it is remembered per-email in localStorage so it doesn't
+reappear on refresh, but it never pauses or extends the real deadline —
+that's still enforced server-side only.
+
+**Why 10 minutes, not the original 2 hours:** product decision to tighten
+the window once the flow was working end-to-end — 2 hours was judged too
+long for an account with unverified email to retain full access.
 
 **Why:** explicit product decision after iterating through several simpler
 options (password removal → fully passwordless/no-verification → this

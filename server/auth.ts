@@ -8,7 +8,7 @@ import type { User } from '@shared/schema';
 // New self-registered accounts get this long to click the verification link
 // mailed to them before access is blocked. Kept here (not just in the route
 // that sends the email) so the grace period is enforced in exactly one place.
-export const EMAIL_VERIFICATION_GRACE_MS = 2 * 60 * 60 * 1000; // 2 hours
+export const EMAIL_VERIFICATION_GRACE_MS = 10 * 60 * 1000; // 10 minutes
 
 // Whether a user is allowed to remain signed in: verified accounts always
 // pass; unverified accounts pass only inside their grace window.
@@ -59,7 +59,7 @@ export function setupPassport(app: Express) {
           return done(null, false as any);
         }
         // Passwordless signup: an unverified account only keeps its session
-        // for the 2-hour grace period. Past that, every request is treated
+        // for the EMAIL_VERIFICATION_GRACE_MS grace period. Past that, every request is treated
         // as logged out until they follow the verification link mailed to
         // them (which re-establishes a session on success).
         if (!isWithinVerificationGrace(user)) {
