@@ -6,7 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
-import { UserPlus, Users, Building2, Lock, MailCheck } from "lucide-react";
+import { UserPlus, Users, Building2, Lock, MailCheck, Globe2, GitCompare, Radar, Shield, FileText, CheckCircle2 } from "lucide-react";
+
+// Core platform access every new account gets immediately, regardless of
+// persona — shown on the registration form itself so the value is visible
+// before someone commits their work email. Icons echo the ones used for
+// these same sections elsewhere in the app (nav, security page) for
+// recognizability.
+const REGISTRATION_BENEFITS: { icon: typeof Globe2; label: string }[] = [
+  { icon: Globe2, label: "Access to all Markets" },
+  { icon: GitCompare, label: "Vendor Evaluation & Comparison tools" },
+  { icon: Radar, label: "Vendor Intelligence" },
+  { icon: Shield, label: "CVE Security Intelligence" },
+  { icon: FileText, label: "Datasheets" },
+];
 
 // Consumer email domains not accepted — company/work emails only.
 export const CONSUMER_DOMAINS = new Set([
@@ -116,6 +129,26 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
               ? "Monitor your market position and access vendor intelligence tools"
               : "Get access to independent enterprise IT vendor intelligence"}
           </p>
+        </div>
+
+        <div className={`rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] ${compact ? "p-3" : "p-4"}`}>
+          <p className={`font-semibold text-emerald-300 ${compact ? "text-[11px] mb-2" : "text-xs mb-3"}`}>
+            What you get, free the moment you sign up
+          </p>
+          <ul className={`grid gap-x-3 gap-y-2 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+            {REGISTRATION_BENEFITS.map(({ icon: Icon, label }) => (
+              <li key={label} className="flex items-center gap-2 text-slate-300">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-400">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <span className={compact ? "text-xs" : "text-sm"}>{label}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex items-center gap-1.5 border-t border-emerald-400/10 pt-3 text-xs font-medium text-emerald-300">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>All included, always free — no credit card, no trial limit</span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
