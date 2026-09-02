@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import SpectioLogo from "@/components/spectio-logo";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { Lock } from "lucide-react";
+import { VerificationBanner } from "@/components/email-verification-gate";
 import type { LockableFeatureKey } from "@shared/features";
 
 const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
@@ -19,6 +20,23 @@ export default function Navigation() {
   const { user, isAdmin, logout, isAuthenticated, hasFeature, isVendorScoped } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // The fixed header (verification banner + nav) is measured at runtime and
+  // that measurement drives the spacer below it, so the two can never drift
+  // out of sync — no hardcoded height assumption, regardless of whether the
+  // banner is present or wraps to multiple lines.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const { data: vendorScope } = useQuery<{ vendor: { name?: string } }>({
     queryKey: ["/api/lead-gen/me/scope"],
@@ -92,43 +110,48 @@ export default function Navigation() {
 
   if (isAdminArea) {
     return (
-      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/"><SpectioLogo variant="dark" /></Link>
-              <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Admin Panel</span>
-            </div>
-            <div className="flex items-center gap-3">
-              {isAuthenticated && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.profileImageUrl || ""} />
-                        <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="p-2 border-b">
-                      <p className="font-medium text-sm">{user?.firstName} {user?.lastName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                    </div>
-                    <DropdownMenuItem onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />Log out</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+      <>
+        <VerificationBanner />
+        <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center gap-8">
+                <Link href="/"><SpectioLogo variant="dark" /></Link>
+                <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Admin Panel</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {isAuthenticated && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.profileImageUrl || ""} />
+                          <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <div className="p-2 border-b">
+                        <p className="font-medium text-sm">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                      </div>
+                      <DropdownMenuItem onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />Log out</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </>
     );
   }
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
+      <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50">
+        <VerificationBanner />
+        <nav className="bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center h-16">
             <Link href="/" className="justify-self-start">
@@ -360,7 +383,8 @@ export default function Navigation() {
           </div>
         )}
       </nav>
-      <div className="h-16" />
+      </div>
+      <div style={{ height: headerHeight }} />
     </>
   );
 }

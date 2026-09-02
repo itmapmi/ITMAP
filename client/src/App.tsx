@@ -54,7 +54,7 @@ import SecurityPage from "@/pages/security/index";
 import { trackPageView } from "@/lib/track";
 import { captureRedditClickId, trackRedditPageVisit } from "@/lib/reddit-pixel";
 import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
-import { VerificationBanner, VerificationBlockScreen, VerificationReminderDialog, usePendingVerificationBlock } from "@/components/email-verification-gate";
+import { VerificationBlockScreen, VerificationReminderDialog, usePendingVerificationBlock } from "@/components/email-verification-gate";
 import { PENDING_VERIFICATION_KEY } from "@/hooks/useAuth";
 
 function TrafficPageTracker() {
@@ -135,7 +135,6 @@ function Router() {
 
   return (
     <div className="min-h-screen">
-      <VerificationBanner />
       <VerificationReminderDialog />
       <Navigation />
       <TrafficPageTracker />
