@@ -367,9 +367,9 @@ export function UserAccessAdmin() {
       apiRequest(`/api/admin/users/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Invited user removed" });
+      toast({ title: "User account deleted" });
     },
-    onError: () => toast({ title: "Failed to remove user", variant: "destructive" }),
+    onError: () => toast({ title: "Failed to delete user", variant: "destructive" }),
   });
 
   const accessControlMutation = useMutation({
@@ -645,25 +645,38 @@ export function UserAccessAdmin() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isInvited && (
+                      {!isAdminUser && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-red-400 hover:text-red-600"
-                              data-testid={`button-delete-invited-${user.id}`}
+                              data-testid={`button-delete-user-${user.id}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Remove invited user?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                {isInvited ? "Remove invited user?" : "Delete this user account?"}
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete the placeholder account for{" "}
-                                <strong>{user.email}</strong>. They will no longer appear in any
-                                watched audience lists. This cannot be undone.
+                                {isInvited ? (
+                                  <>
+                                    This will permanently delete the placeholder account for{" "}
+                                    <strong>{user.email}</strong>. They will no longer appear in any
+                                    watched audience lists. This cannot be undone.
+                                  </>
+                                ) : (
+                                  <>
+                                    This will permanently delete the account for{" "}
+                                    <strong>{user.email}</strong> and all of their data — projects,
+                                    reports, saved items, and activity history. They will be signed
+                                    out immediately. This cannot be undone.
+                                  </>
+                                )}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -672,7 +685,7 @@ export function UserAccessAdmin() {
                                 onClick={() => deleteMutation.mutate(user.id)}
                                 className="bg-red-600 hover:bg-red-700 text-white"
                               >
-                                Remove
+                                {isInvited ? "Remove" : "Delete account"}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

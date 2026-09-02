@@ -127,18 +127,20 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  // Delete an invited (placeholder) user account. Refuses if the account has
-  // already been activated (no invitedAt) or is an admin.
+  // Permanently delete a user account — invited placeholder or fully
+  // activated. Admin accounts can never be deleted here. Every FK to
+  // users.id cascades or nulls out (shared/schema.ts), so this also removes
+  // or safely detaches the user's projects, reports, and activity history.
   app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ error: "User not found" });
       if (target.role === "admin") return res.status(403).json({ error: "Cannot delete admin accounts" });
-      const deleted = await storage.deleteInvitedUser(req.params.id);
-      if (!deleted) return res.status(400).json({ error: "User is not an invited placeholder and cannot be deleted here" });
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "User not found" });
       res.json({ ok: true });
     } catch (error) {
-      console.error("Error deleting invited user:", error);
+      console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
     }
   });

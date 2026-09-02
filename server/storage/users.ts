@@ -80,11 +80,14 @@ export async function updateUserFeatureAccess(id: string, featureAccess: string[
   return updated!;
 }
 
-// Delete a placeholder "invited" user. Only permitted when invitedAt is set
-// (i.e. the account has never been activated / has no real password).
-export async function deleteInvitedUser(id: string): Promise<boolean> {
+// Permanently delete a user account (invited placeholder or fully activated).
+// Every table with a userId/ownerUserId FK declares onDelete cascade/set-null
+// in shared/schema.ts, so this also removes — or safely detaches — the
+// user's projects, reports, activity logs, etc. Admin accounts are never
+// deletable here; the caller (route) is responsible for that check.
+export async function deleteUser(id: string): Promise<boolean> {
   const [existing] = await db.select().from(users).where(eq(users.id, id));
-  if (!existing || !existing.invitedAt) return false;
+  if (!existing) return false;
   await db.delete(users).where(eq(users.id, id));
   return true;
 }
