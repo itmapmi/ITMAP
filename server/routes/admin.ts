@@ -2,12 +2,14 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { pool, db } from "../db";
 import { sql, eq } from "drizzle-orm";
-import { requireAdmin } from "../auth";
+import { requireAdmin, isWithinVerificationGrace } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
 import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
 import { calculateDerivedFeatureScore, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
+import { sendVerificationEmail, sendCustomEmail } from "../emailService";
+import { issueAndSendVerification } from "./auth";
 
 interface CollectionLogEntry {
   id: string;
@@ -88,12 +90,36 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // A vendor seat is "fact review enabled" the same way it's authorized for
+  // Fact Review data itself (server/routes/leadGen.ts factReviewVendorIds):
+  // an explicit vendorScopeId/vendorScopeIds assignment, never inferred from
+  // vendor name or persona alone.
+  function hasFactReviewAccess(user: { persona: string | null; vendorScopeId: string | null; vendorScopeIds: string[] | null }): boolean {
+    if (user.persona !== "vendor") return false;
+    return !!(user.vendorScopeId || (user.vendorScopeIds && user.vendorScopeIds.length > 0));
+  }
+
+  // Mirrors the passwordless grace-period rule enforced on every request
+  // (server/auth.ts isWithinVerificationGrace): an account is "locked out"
+  // once it's unverified AND past its grace deadline. Admin accounts are
+  // never subject to this.
+  function isVerificationLocked(user: { role: string; emailVerified: boolean }): boolean {
+    if (user.role === "admin") return false;
+    if (user.emailVerified) return false;
+    return !isWithinVerificationGrace(user as any);
+  }
+
   // ── User Feature Access (RBAC) ───────────────────────────────────────────
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
       const users = await storage.getAllUsers();
-      // Never leak password hashes to the admin UI.
-      const safe = users.map(({ password, ...rest }) => rest);
+      // Never leak password hashes to the admin UI. Add derived status flags
+      // used by the Operations verification panel and Mail Management tab.
+      const safe = users.map(({ password, ...rest }) => ({
+        ...rest,
+        verificationLocked: isVerificationLocked(rest),
+        factReviewEnabled: hasFactReviewAccess(rest),
+      }));
       res.json(safe);
     } catch (error) {
       console.error("Error listing users:", error);
@@ -178,6 +204,104 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error updating user vendor scope:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update vendor scope" });
+    }
+  });
+
+  // ── Mail Management (admin-triggered bulk email) ─────────────────────────
+
+  // Sends batches with limited concurrency so a large recipient list can't
+  // fire hundreds of simultaneous requests at the Resend connector.
+  async function sendInBatches<T>(
+    items: T[],
+    batchSize: number,
+    fn: (item: T) => Promise<boolean>,
+  ): Promise<{ sentCount: number; failed: T[] }> {
+    let sentCount = 0;
+    const failed: T[] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      const results = await Promise.all(
+        batch.map(async (item) => {
+          try {
+            return await fn(item);
+          } catch {
+            return false;
+          }
+        }),
+      );
+      results.forEach((ok, idx) => {
+        if (ok) sentCount++;
+        else failed.push(batch[idx]);
+      });
+    }
+    return { sentCount, failed };
+  }
+
+  // Bulk-resends the actual verification email (fresh token) to selected
+  // unverified accounts — the "reminder" action on the Operations page.
+  // Admin-triggered, so the per-account 60s self-service cooldown doesn't
+  // apply here.
+  app.post("/api/admin/mail/reminder", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({ userIds: z.array(z.string().min(1)).min(1).max(1000) }).parse(req.body);
+      const targets = await storage.getUsersByIds(Array.from(new Set(body.userIds)));
+
+      const eligible = targets.filter((u) => u.role !== "admin" && !u.emailVerified && u.email);
+      const skipped = targets.length - eligible.length;
+
+      const { sentCount, failed } = await sendInBatches(eligible, 5, async (user) => {
+        return issueAndSendVerification(user.id, user.email!);
+      });
+
+      res.json({
+        requested: body.userIds.length,
+        sent: sentCount,
+        failed: failed.map((u) => ({ id: u.id, email: u.email })),
+        skipped,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "userIds is required (1-1000 entries)" });
+      }
+      console.error("Error sending verification reminders:", error);
+      res.status(500).json({ error: "Failed to send verification reminders" });
+    }
+  });
+
+  // General-purpose mass email: admin picks recipients (any mix of active,
+  // inactive, or vendor-with-fact-review users) and writes free-text
+  // subject/body. Used by the Mail Management admin tab.
+  app.post("/api/admin/mail/broadcast", requireAdmin, async (req, res) => {
+    try {
+      const body = z
+        .object({
+          userIds: z.array(z.string().min(1)).min(1).max(1000),
+          subject: z.string().trim().min(1).max(200),
+          message: z.string().trim().min(1).max(10000),
+        })
+        .parse(req.body);
+
+      const targets = await storage.getUsersByIds(Array.from(new Set(body.userIds)));
+      const eligible = targets.filter((u) => !!u.email);
+      const skipped = targets.length - eligible.length;
+
+      const { sentCount, failed } = await sendInBatches(eligible, 5, async (user) => {
+        const result = await sendCustomEmail(user.email!, body.subject, body.message);
+        return result.sent;
+      });
+
+      res.json({
+        requested: body.userIds.length,
+        sent: sentCount,
+        failed: failed.map((u) => ({ id: u.id, email: u.email })),
+        skipped,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors[0]?.message ?? "Invalid request" });
+      }
+      console.error("Error sending broadcast email:", error);
+      res.status(500).json({ error: "Failed to send broadcast email" });
     }
   });
 

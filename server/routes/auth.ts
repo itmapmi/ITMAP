@@ -11,7 +11,7 @@ import { sendVerificationEmail } from "../emailService";
 // Hardened base-URL resolution for the emailed verification link — same
 // pattern used for datasheet digest links. Never lets a misconfigured env
 // var produce a malformed link.
-function resolveAppBaseUrl(): string {
+export function resolveAppBaseUrl(): string {
   const FALLBACK = "https://itmap.ai";
   const explicit = (process.env.PUBLIC_BASE_URL ?? "").trim();
   if (explicit) {
@@ -24,7 +24,7 @@ function resolveAppBaseUrl(): string {
   return FALLBACK;
 }
 
-function newVerificationToken(): string {
+export function newVerificationToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
@@ -32,6 +32,20 @@ function newVerificationToken(): string {
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
 const loggedSessions = new Set<string>();
+
+// (Re)issues a verification token and emails the link. Module-scoped (not
+// nested in registerAuthRoutes) so admin bulk-reminder actions can reuse it
+// without duplicating the token/URL-building logic.
+export async function issueAndSendVerification(userId: string, email: string): Promise<boolean> {
+  const token = newVerificationToken();
+  await storage.setEmailVerificationToken(userId, token);
+  const verifyUrl = `${resolveAppBaseUrl()}/auth/verify-email?token=${token}`;
+  const result = await sendVerificationEmail(email, verifyUrl);
+  if (!result.sent) {
+    console.error(`[Auth] Could not send verification email to ${email}: ${result.reason}`);
+  }
+  return result.sent;
+}
 
 // Decide where a user lands after a successful login. Admins go to the admin
 // portal; everyone else (buyers and vendor seats) goes to the home page where
@@ -143,17 +157,6 @@ export function registerAuthRoutes(app: Express): void {
   function stripPrivateFields(user: any) {
     const { password, emailVerificationToken, ...safe } = user;
     return safe;
-  }
-
-  async function issueAndSendVerification(userId: string, email: string): Promise<boolean> {
-    const token = newVerificationToken();
-    await storage.setEmailVerificationToken(userId, token);
-    const verifyUrl = `${resolveAppBaseUrl()}/auth/verify-email?token=${token}`;
-    const result = await sendVerificationEmail(email, verifyUrl);
-    if (!result.sent) {
-      console.error(`[Auth] Could not send verification email to ${email}: ${result.reason}`);
-    }
-    return result.sent;
   }
 
   app.post("/auth/register", async (req, res) => {

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AccountVerificationPanel from "@/components/admin/account-verification-panel";
 
 type Granularity = "day" | "week" | "month";
 type VisitorType = "all" | "registered" | "anonymous";
@@ -109,6 +110,7 @@ export default function OperationsManagement() {
       </div>
     </header>
     <main className="relative space-y-5 p-5 sm:p-7">
+      <AccountVerificationPanel />
       {trafficQuery.isLoading ? <div className="space-y-5"><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[1,2,3,4].map((item) => <div key={item} className="h-28 animate-pulse rounded-lg bg-slate-200" />)}</div><div className="h-72 animate-pulse rounded-lg bg-slate-200" /></div> : traffic && <>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric icon={Users} label="Unique visitors" value={traffic.summary.uniqueVisitors} detail={`${number(traffic.summary.returningVisitors)} returning`} accent="bg-cyan-500" /><Metric icon={Activity} label="Sessions" value={traffic.summary.sessions} detail={`${compact(traffic.summary.pageViews)} page views`} accent="bg-blue-500" /><Metric icon={UserCheck} label="Registered" value={traffic.summary.registeredVisitors} detail={`${number(traffic.summary.logins)} logins`} accent="bg-violet-500" /><Metric icon={Globe2} label="Anonymous" value={traffic.summary.anonymousVisitors} detail="Unidentified reach" accent="bg-amber-400" /></div>
         <div className="grid gap-5 xl:grid-cols-[1.65fr_1fr]">

@@ -155,6 +155,58 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
   }
 }
 
+// Wraps an admin-authored free-text message in the same visual shell as the
+// verification email. Line breaks in the free text are preserved; everything
+// else is escaped since this is admin-authored but still user-facing content.
+function buildCustomEmailHtml(bodyText: string): string {
+  const paragraphs = bodyText
+    .split(/\n{2,}/)
+    .map((block) => `<p style="color:#374151;white-space:pre-line;">${escapeHtml(block)}</p>`)
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:system-ui,sans-serif;color:#111827;max-width:560px;margin:0 auto;padding:24px;">
+  ${paragraphs}
+  <p style="margin-top:24px;color:#9ca3af;font-size:12px;">
+    This message was sent by the itmap.ai team.
+  </p>
+</body>
+</html>`;
+}
+
+// Admin-triggered one-off / mass email with free-text subject and body (e.g.
+// the Mail Management admin tool). Reuses the same Resend connection as
+// verification email — there is no separate "from" identity for this.
+export async function sendCustomEmail(to: string, subject: string, bodyText: string): Promise<SendVerificationResult> {
+  try {
+    const connectors = new ReplitConnectors();
+    const response = await connectors.proxy('resend', '/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: VERIFICATION_FROM,
+        to: [to],
+        subject,
+        html: buildCustomEmailHtml(bodyText),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[EmailService] Resend custom email failed (${response.status}): ${body}`);
+      return { sent: false, reason: `Resend error ${response.status}: ${body.slice(0, 300)}` };
+    }
+
+    return { sent: true };
+  } catch (err) {
+    console.error('[EmailService] Failed to send custom email:', err);
+    return { sent: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function sendNewsroomAlertEmail(
   broken: UrlHealthResult[],
   recipients: string[],

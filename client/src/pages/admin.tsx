@@ -12,6 +12,7 @@ import ImportExportAdmin from "@/components/admin/import-export-admin";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
 import OperationsManagement from "@/components/admin/operations-management";
+import MailManagementAdmin from "@/components/admin/mail-management-admin";
 import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
 import { NewsAdmin } from "@/components/admin/news-admin";
@@ -200,6 +201,7 @@ export default function Admin() {
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="mail-management">Mail Management</TabsTrigger>
             <TabsTrigger value="datasheets">Datasheets</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
             <TabsTrigger value="fact-check-flags" className="gap-1.5">
@@ -298,6 +300,10 @@ export default function Admin() {
 
           <TabsContent value="operations" className="mt-6">
             <OperationsManagement />
+          </TabsContent>
+
+          <TabsContent value="mail-management" className="mt-6">
+            <MailManagementAdmin />
           </TabsContent>
 
           <TabsContent value="datasheets" className="mt-6">

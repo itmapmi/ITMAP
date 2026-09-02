@@ -181,6 +181,7 @@ export interface IStorage {
 
   getAdminUsers(): Promise<User[]>;
   getAllUsers(): Promise<User[]>;
+  getUsersByIds(ids: string[]): Promise<User[]>;
   updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
   updateUserVendorScope(id: string, vendorScopeIds: string[]): Promise<User>;
   updateUserAccessControl(id: string, updates: { isBlocked?: boolean; accessExpiresAt?: Date | null }): Promise<User>;
