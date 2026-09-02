@@ -657,6 +657,19 @@ export async function runStartupMigrations(): Promise<void> {
       );
     }
 
+    // 27. Passwordless signup + email verification. New self-registered
+    //     accounts start unverified (email_verified defaults to true so
+    //     existing/admin-created accounts are unaffected) and carry a
+    //     one-time verification token plus a timestamp used to rate-limit
+    //     "resend verification email".
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT true;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at timestamp;
+      CREATE UNIQUE INDEX IF NOT EXISTS users_email_verification_token_unique
+        ON users (email_verification_token) WHERE email_verification_token IS NOT NULL;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

@@ -56,6 +56,17 @@ export const users = pgTable("users", {
   // 10-minute resend rate-limit and to display "Resent X ago" in the UI.
   lastInviteSentAt: timestamp("last_invite_sent_at"),
 
+  // Passwordless signup: a new self-registered account starts unverified and
+  // gets a 2-hour grace period (measured from createdAt) to browse freely
+  // while a verification email is out for delivery. Defaults to true so
+  // pre-existing accounts and any account created outside the public
+  // /auth/register flow (admin-created, etc.) are never retroactively locked.
+  emailVerified: boolean("email_verified").notNull().default(true),
+  emailVerificationToken: text("email_verification_token"),
+  // Stamped whenever a verification email is (re)sent; used to rate-limit
+  // the "resend" action.
+  emailVerificationSentAt: timestamp("email_verification_sent_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -451,17 +462,16 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
-// Authentication schemas
+// Authentication schemas — passwordless. Entering a company email either
+// creates a new account or logs into the existing one matching that email;
+// new accounts must verify the email (link sent on registration) within a
+// 2-hour grace period or access is blocked until they do.
 export const loginUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
 });
 
 export const registerUserSchema = z.object({
   email: z.string().email(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  password: z.string().min(6),
   persona: z.enum(["buyer", "vendor"]).optional().default("buyer"),
 });
 
@@ -597,7 +607,10 @@ export type User = typeof users.$inferSelect;
 export type InsertUserActivityLog = z.infer<typeof insertUserActivityLogSchema>;
 export type UserActivityLog = typeof userActivityLogs.$inferSelect;
 export type LoginUser = z.infer<typeof loginUserSchema>;
-export type RegisterUser = z.infer<typeof registerUserSchema>;
+// z.input (not z.infer) so `persona` stays optional at the type level for
+// callers — the schema's .default("buyer") only applies during server-side
+// parsing, not to what a caller is required to supply.
+export type RegisterUser = z.input<typeof registerUserSchema>;
 
 export type InsertCanonicalVendor = z.infer<typeof insertCanonicalVendorSchema>;
 export type CanonicalVendor = typeof canonicalVendors.$inferSelect;

@@ -20,10 +20,38 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   return user || undefined;
 }
 
+export async function getUserByVerificationToken(token: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
+  return user || undefined;
+}
+
 
 export async function createUser(insertUser: InsertUser): Promise<User> {
   const [user] = await db.insert(users).values(insertUser).returning();
   return user;
+}
+
+// Mark a user's email verified and clear the one-time token — called when
+// they follow the verification link. Logging them in afterwards is the
+// caller's responsibility.
+export async function verifyUserEmail(id: string): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ emailVerified: true, emailVerificationToken: null, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
+// (Re)issue a verification token and stamp the send time, used both at
+// registration and for the "resend verification email" action.
+export async function setEmailVerificationToken(id: string, token: string): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ emailVerificationToken: token, emailVerificationSentAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
 }
 
 export async function updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User> {
@@ -47,19 +75,6 @@ export async function updateUserFeatureAccess(id: string, featureAccess: string[
   const [updated] = await db
     .update(users)
     .set({ featureAccess, updatedAt: new Date() })
-    .where(eq(users.id, id))
-    .returning();
-  return updated!;
-}
-
-// Activate a placeholder "invited" account: set password + name + persona, clear invitedAt.
-export async function activateInvitedUser(
-  id: string,
-  data: { firstName?: string | null; lastName?: string | null; password: string; persona?: string },
-): Promise<User> {
-  const [updated] = await db
-    .update(users)
-    .set({ ...data, invitedAt: null, updatedAt: new Date() })
     .where(eq(users.id, id))
     .returning();
   return updated!;

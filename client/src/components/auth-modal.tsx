@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, VerificationRequiredError } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { LogIn, UserPlus } from "lucide-react";
+import { LogIn, UserPlus, MailCheck } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
 
 interface AuthModalProps {
@@ -19,95 +19,72 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthModalProps) {
   const [, setLocation] = useLocation();
-  const { login, register, loginError, registerError, isLoggingIn, isRegistering } = useAuth();
+  const {
+    login, register, loginError, registerError, isLoggingIn, isRegistering,
+    resendVerification, isResendingVerification,
+  } = useAuth();
   const { toast } = useToast();
-  
-  const [loginData, setLoginData] = useState({
-    email: "",
-    password: "",
-  });
 
-  const [registerData, setRegisterData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
+  const [loginEmail, setLoginEmail] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
+  const [needsVerification, setNeedsVerification] = useState<string | null>(null);
+  const [resendSent, setResendSent] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const validateRegisterForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (registerData.firstName.length < 1) {
-      newErrors.firstName = "First name is required";
-    }
-    if (registerData.lastName.length < 1) {
-      newErrors.lastName = "Last name is required";
-    }
-    if (!registerData.email.includes("@")) {
+    if (!registerEmail.includes("@")) {
       newErrors.email = "Valid email is required";
     }
-    if (registerData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    if (registerData.password !== registerData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
     setRegisterErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const goToDestination = (user: any) => {
+    if (selectedMarketId) {
+      setLocation(`/markets/${selectedMarketId}`);
+    } else if (user?.role === 'admin') {
+      setLocation("/admin");
+    } else {
+      setLocation("/");
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setNeedsVerification(null);
+    setResendSent(false);
     try {
-      const user = await login(loginData);
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      });
+      const user = await login({ email: loginEmail });
+      toast({ title: "Success", description: "Logged in successfully" });
       onClose();
-      
-      // Navigate to the selected market if specified
-      if (selectedMarketId) {
-        setLocation(`/markets/${selectedMarketId}`);
-      } else if (user?.role === 'admin') {
-        setLocation("/admin");
-      } else {
-        setLocation("/");
-      }
+      goToDestination(user);
     } catch (error) {
-      // Error is handled by useAuth hook
+      if (error instanceof VerificationRequiredError) {
+        setNeedsVerification(error.email);
+      }
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateRegisterForm()) {
-      return;
-    }
+    if (!validateRegisterForm()) return;
 
     try {
-      const { confirmPassword, ...registerFormData } = registerData;
-      await register(registerFormData);
-      toast({
-        title: "Success",
-        description: "Account created successfully",
-      });
-      onClose();
-      
-      // Navigate to the selected market if specified
-      if (selectedMarketId) {
-        setLocation(`/markets/${selectedMarketId}`);
-      } else {
-        setLocation("/");
-      }
+      await register({ email: registerEmail });
+      setSentTo(registerEmail);
     } catch (error) {
       // Error is handled by useAuth hook
+    }
+  };
+
+  const handleResend = async (email: string) => {
+    try {
+      await resendVerification(email);
+      setResendSent(true);
+    } catch {
+      // surfaced via loginError-equivalent below
     }
   };
 
@@ -134,46 +111,58 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
               <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
               Sign in to access your technology intelligence platform
             </div>
-            
-            {/* Login Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              {loginError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{loginError}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                  required
-                  data-testid="input-email-login"
-                />
+
+            {needsVerification ? (
+              <div className="space-y-4 text-center py-2">
+                <div className="mx-auto h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <MailCheck className="h-6 w-6 text-amber-600" />
+                </div>
+                <p className="text-sm text-gray-600">
+                  Your access window for <strong>{needsVerification}</strong> has ended. Click the link we emailed
+                  you, or send a new one below.
+                </p>
+                <Button
+                  className="w-full"
+                  disabled={isResendingVerification || resendSent}
+                  onClick={() => handleResend(needsVerification)}
+                >
+                  {resendSent ? "Email sent — check your inbox" : isResendingVerification ? "Sending…" : "Resend verification email"}
+                </Button>
+                <button
+                  onClick={() => { setNeedsVerification(null); setResendSent(false); }}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Try a different email
+                </button>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  required
-                  data-testid="input-password-login"
-                />
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-submit-login">
-                <LogIn className="mr-2 h-4 w-4" />
-                {isLoggingIn ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4">
+                {loginError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{loginError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                    data-testid="input-email-login"
+                  />
+                  <p className="text-xs text-gray-500">No password needed — just your work email.</p>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-submit-login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  {isLoggingIn ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+            )}
           </TabsContent>
           
           <TabsContent value="register" className="space-y-4">
@@ -181,101 +170,54 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
               <span className="text-blue-600 font-medium">Unbiased. Comprehensive.</span><br />
               Create your account to start your free trial
             </div>
-            
-            {/* Register Form */}
-            <form onSubmit={handleRegister} className="space-y-4">
-              {registerError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{registerError}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-firstName">First Name</Label>
-                  <Input
-                    id="register-firstName"
-                    type="text"
-                    placeholder="First name"
-                    value={registerData.firstName}
-                    onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                    required
-                    data-testid="input-firstName-register"
-                  />
-                  {registerErrors.firstName && (
-                    <p className="text-sm text-red-600">{registerErrors.firstName}</p>
-                  )}
+
+            {sentTo ? (
+              <div className="space-y-4 text-center py-2">
+                <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <MailCheck className="h-6 w-6 text-emerald-600" />
                 </div>
+                <p className="text-sm text-gray-600">
+                  We've sent a verification link to <strong>{sentTo}</strong>. You have full access for the next
+                  2 hours — click the link anytime in that window to keep it permanently.
+                </p>
+                <Button
+                  className="w-full"
+                  onClick={() => { onClose(); goToDestination(null); }}
+                >
+                  Continue to itmap.ai
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-4">
+                {registerError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{registerError}</AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="register-lastName">Last Name</Label>
+                  <Label htmlFor="register-email">Email</Label>
                   <Input
-                    id="register-lastName"
-                    type="text"
-                    placeholder="Last name"
-                    value={registerData.lastName}
-                    onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
+                    id="register-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
                     required
-                    data-testid="input-lastName-register"
+                    data-testid="input-email-register"
                   />
-                  {registerErrors.lastName && (
-                    <p className="text-sm text-red-600">{registerErrors.lastName}</p>
+                  {registerErrors.email && (
+                    <p className="text-sm text-red-600">{registerErrors.email}</p>
                   )}
+                  <p className="text-xs text-gray-500">No password needed — we'll email you a verification link.</p>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
-                <Input
-                  id="register-email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={registerData.email}
-                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                  required
-                  data-testid="input-email-register"
-                />
-                {registerErrors.email && (
-                  <p className="text-sm text-red-600">{registerErrors.email}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-password">Password</Label>
-                <Input
-                  id="register-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={registerData.password}
-                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                  required
-                  data-testid="input-password-register"
-                />
-                {registerErrors.password && (
-                  <p className="text-sm text-red-600">{registerErrors.password}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-confirmPassword">Confirm Password</Label>
-                <Input
-                  id="register-confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={registerData.confirmPassword}
-                  onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                  required
-                  data-testid="input-confirmPassword-register"
-                />
-                {registerErrors.confirmPassword && (
-                  <p className="text-sm text-red-600">{registerErrors.confirmPassword}</p>
-                )}
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={isRegistering} data-testid="button-submit-register">
-                <UserPlus className="mr-2 h-4 w-4" />
-                {isRegistering ? "Creating Account..." : "Create Account"}
-              </Button>
-            </form>
+
+                <Button type="submit" className="w-full" disabled={isRegistering} data-testid="button-submit-register">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  {isRegistering ? "Sending link…" : "Continue with email"}
+                </Button>
+              </form>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>

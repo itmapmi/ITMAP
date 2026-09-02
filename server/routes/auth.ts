@@ -1,12 +1,35 @@
 import type { Express } from "express";
-import passport from "passport";
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { storage } from "../storage";
-import { setupSession, setupPassport, requireAuth } from "../auth";
-import { registerUserSchema } from "@shared/schema";
+import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace } from "../auth";
+import { registerUserSchema, loginUserSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
+import { sendVerificationEmail } from "../emailService";
+
+// Hardened base-URL resolution for the emailed verification link — same
+// pattern used for datasheet digest links. Never lets a misconfigured env
+// var produce a malformed link.
+function resolveAppBaseUrl(): string {
+  const FALLBACK = "https://itmap.ai";
+  const explicit = (process.env.PUBLIC_BASE_URL ?? "").trim();
+  if (explicit) {
+    try { return new URL(explicit).origin; } catch { /* fall through */ }
+  }
+  const replit = (process.env.REPLIT_DEV_DOMAIN ?? "").trim();
+  if (replit) {
+    try { return new URL(`https://${replit}`).origin; } catch { /* fall through */ }
+  }
+  return FALLBACK;
+}
+
+function newVerificationToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+// Minimum time between "resend verification email" calls for the same account.
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 const loggedSessions = new Set<string>();
 
@@ -117,6 +140,22 @@ export function registerAuthRoutes(app: Express): void {
     "ymail.com", "googlemail.com", "yahoo.co.uk", "yahoo.co.in",
   ]);
 
+  function stripPrivateFields(user: any) {
+    const { password, emailVerificationToken, ...safe } = user;
+    return safe;
+  }
+
+  async function issueAndSendVerification(userId: string, email: string): Promise<boolean> {
+    const token = newVerificationToken();
+    await storage.setEmailVerificationToken(userId, token);
+    const verifyUrl = `${resolveAppBaseUrl()}/auth/verify-email?token=${token}`;
+    const result = await sendVerificationEmail(email, verifyUrl);
+    if (!result.sent) {
+      console.error(`[Auth] Could not send verification email to ${email}: ${result.reason}`);
+    }
+    return result.sent;
+  }
+
   app.post("/auth/register", async (req, res) => {
     try {
       const userData = registerUserSchema.parse(req.body);
@@ -130,49 +169,20 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       const existingUser = await storage.getUserByEmail(userData.email);
-
-      // If an invited placeholder exists for this email, activate it rather
-      // than creating a new account — this preserves their user ID, audience
-      // assignments, and any event history already attached to the placeholder.
       if (existingUser) {
-        if (existingUser.invitedAt && !existingUser.password) {
-          const hashedPassword = await bcrypt.hash(userData.password, 10);
-          const activated = await storage.activateInvitedUser(existingUser.id, {
-            firstName: userData.firstName ?? null,
-            lastName: userData.lastName ?? null,
-            password: hashedPassword,
-            persona: userData.persona ?? "buyer",
-          });
-          req.logIn(activated, async (err) => {
-            if (err) return res.status(500).json({ error: "Login failed after activation" });
-            try {
-              await storage.recordUserLogin({
-                userId: activated.id,
-                sessionId: req.sessionID,
-                ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-                userAgent: req.get('user-agent') || 'unknown',
-                loginAt: new Date(),
-              });
-              // Link visitor cookie + increment login counter (explicit activation).
-              await linkVisitorOnLogin(req, res, activated.id);
-            } catch (error) {
-              console.error("Error recording activation login:", error);
-            }
-            const { password, ...userWithoutPassword } = activated;
-            res.status(201).json(userWithoutPassword);
-          });
-          return;
-        }
-        return res.status(400).json({ error: "User already exists with this email" });
+        // No password to check — re-registering with an email that already
+        // has an account is just how a returning user signs back in.
+        return logInAndRespond(req, res, existingUser, 200);
       }
 
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
       const user = await storage.createUser({
-        ...userData,
-        password: hashedPassword,
+        email: userData.email,
         role: 'user',
         persona: userData.persona ?? "buyer",
+        emailVerified: false,
       });
+
+      const emailSent = await issueAndSendVerification(user.id, user.email!);
 
       // Reddit Ads match keys forwarded from the client (best-effort, both optional).
       // Not part of registerUserSchema — tracking-only, never required for signup.
@@ -189,8 +199,43 @@ export function registerAuthRoutes(app: Express): void {
         conversionId: user.id,
       });
 
-      req.logIn(user, async (err) => {
-        if (err) return res.status(500).json({ error: "Login failed after registration" });
+      await logInAndRespond(req, res, user, 201, { emailSent });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ error: "Registration failed" });
+    }
+  });
+
+  // Shared by /auth/register (new + returning) and /auth/login: establishes
+  // the session and writes the JSON response. Enforces the same block/expiry/
+  // verification-grace rules as the passport deserializer so a freshly issued
+  // session can't bypass them on its very first response.
+  function logInAndRespond(req: any, res: any, user: any, status: number, extra: Record<string, unknown> = {}) {
+    return new Promise<void>((resolve) => {
+      if (user.role !== 'admin') {
+        if (user.isBlocked) {
+          res.status(403).json({ error: "This account has been blocked." });
+          return resolve();
+        }
+        if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
+          res.status(403).json({ error: "Access to this account has expired." });
+          return resolve();
+        }
+        if (!isWithinVerificationGrace(user)) {
+          res.status(403).json({
+            error: "verification_required",
+            message: "Please verify your email to continue — check your inbox for the verification link.",
+            email: user.email,
+          });
+          return resolve();
+        }
+      }
+
+      req.logIn(user, async (err: unknown) => {
+        if (err) {
+          res.status(500).json({ error: "Login failed" });
+          return resolve();
+        }
         try {
           await storage.recordUserLogin({
             userId: user.id,
@@ -199,39 +244,83 @@ export function registerAuthRoutes(app: Express): void {
             userAgent: req.get('user-agent') || 'unknown',
             loginAt: new Date(),
           });
-          // Link visitor cookie + increment login counter (explicit registration).
           await linkVisitorOnLogin(req, res, user.id);
         } catch (error) {
-          console.error("Error recording registration login:", error);
+          console.error("Error recording login:", error);
         }
-        const { password, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+        res.status(status).json({ ...stripPrivateFields(user), ...extra });
+        resolve();
       });
+    });
+  }
+
+  app.post("/auth/login", async (req, res) => {
+    try {
+      const { email } = loginUserSchema.parse(req.body);
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "No account found with that email. Create one instead?" });
+      }
+      await logInAndRespond(req, res, user, 200);
     } catch (error) {
-      console.error("Registration error:", error);
-      res.status(400).json({ error: "Registration failed" });
+      console.error("Login error:", error);
+      res.status(400).json({ error: "Login failed" });
     }
   });
 
-  app.post("/auth/login", passport.authenticate('local'), async (req, res) => {
-    try {
-      const user = req.user as any;
-      await storage.recordUserLogin({
-        userId: user.id,
-        sessionId: req.sessionID,
-        ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-        userAgent: req.get('user-agent') || 'unknown',
-        loginAt: new Date(),
-      });
-      // Link visitor cookie + increment login counter (explicit login).
-      await linkVisitorOnLogin(req, res, user.id);
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error recording login:", error);
-      const { password, ...userWithoutPassword } = req.user as any;
-      res.json(userWithoutPassword);
+  // Verification link target — GET because it's clicked from an email client,
+  // not called by the app's own fetch client.
+  app.get("/auth/verify-email", async (req, res) => {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) return res.redirect("/?verify=missing");
+
+    const user = await storage.getUserByVerificationToken(token);
+    if (!user) return res.redirect("/?verify=invalid");
+
+    const verified = await storage.verifyUserEmail(user.id);
+    req.logIn(verified, async (err) => {
+      if (err) {
+        console.error("Error logging in after verification:", err);
+        return res.redirect("/?verify=success");
+      }
+      try {
+        await storage.recordUserLogin({
+          userId: verified.id,
+          sessionId: req.sessionID,
+          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          loginAt: new Date(),
+        });
+        await linkVisitorOnLogin(req, res, verified.id);
+      } catch (error) {
+        console.error("Error recording post-verification login:", error);
+      }
+      res.redirect(`${loginLandingPath(verified)}?verify=success`);
+    });
+  });
+
+  // Resend the verification email — rate-limited so the mailbox can't be
+  // hammered by repeated clicks.
+  app.post("/auth/resend-verification", async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email : "";
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const user = await storage.getUserByEmail(email);
+    if (!user) return res.status(404).json({ error: "No account found with that email." });
+    if (user.emailVerified) return res.status(400).json({ error: "This email is already verified." });
+
+    if (user.emailVerificationSentAt) {
+      const elapsed = Date.now() - new Date(user.emailVerificationSentAt).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        return res.status(429).json({
+          error: `Please wait ${Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000)}s before requesting another email.`,
+        });
+      }
     }
+
+    const emailSent = await issueAndSendVerification(user.id, user.email!);
+    if (!emailSent) return res.status(502).json({ error: "Could not send the verification email. Please try again shortly." });
+    res.json({ sent: true });
   });
 
   app.post("/auth/logout", async (req, res) => {
@@ -249,8 +338,7 @@ export function registerAuthRoutes(app: Express): void {
 
   app.get("/api/auth/user", (req, res) => {
     if (req.isAuthenticated()) {
-      const { password, ...userWithoutPassword } = req.user as any;
-      res.json(userWithoutPassword);
+      res.json(stripPrivateFields(req.user as any));
     } else {
       res.status(401).json({ error: "Not authenticated" });
     }

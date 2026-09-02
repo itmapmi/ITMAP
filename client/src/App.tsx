@@ -54,6 +54,8 @@ import SecurityPage from "@/pages/security/index";
 import { trackPageView } from "@/lib/track";
 import { captureRedditClickId, trackRedditPageVisit } from "@/lib/reddit-pixel";
 import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
+import { VerificationBanner, VerificationBlockScreen, usePendingVerificationBlock } from "@/components/email-verification-gate";
+import { PENDING_VERIFICATION_KEY } from "@/hooks/useAuth";
 
 function TrafficPageTracker() {
   const [location] = useLocation();
@@ -113,13 +115,27 @@ function ProtectedRoute({ component: Component, requireAdmin = false, buyerOnly 
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const pendingBlock = usePendingVerificationBlock();
 
   if (isLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
 
+  if (pendingBlock) {
+    return (
+      <VerificationBlockScreen
+        pending={pendingBlock}
+        onUseDifferentEmail={() => {
+          try { localStorage.removeItem(PENDING_VERIFICATION_KEY); } catch { /* noop */ }
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen">
+      <VerificationBanner />
       <Navigation />
       <TrafficPageTracker />
       <TeaserGateProvider>

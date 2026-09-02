@@ -1,11 +1,22 @@
 import passport from 'passport';
-import { Strategy as LocalStrategy } from 'passport-local';
-import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import type { Express } from 'express';
 import { storage } from './storage';
 import type { User } from '@shared/schema';
+
+// New self-registered accounts get this long to click the verification link
+// mailed to them before access is blocked. Kept here (not just in the route
+// that sends the email) so the grace period is enforced in exactly one place.
+export const EMAIL_VERIFICATION_GRACE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// Whether a user is allowed to remain signed in: verified accounts always
+// pass; unverified accounts pass only inside their grace window.
+export function isWithinVerificationGrace(user: Pick<User, 'emailVerified' | 'createdAt'>): boolean {
+  if (user.emailVerified) return true;
+  if (!user.createdAt) return false;
+  return Date.now() - new Date(user.createdAt).getTime() < EMAIL_VERIFICATION_GRACE_MS;
+}
 
 // Session configuration
 export function setupSession(app: Express) {
@@ -47,37 +58,19 @@ export function setupPassport(app: Express) {
         if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
           return done(null, false as any);
         }
+        // Passwordless signup: an unverified account only keeps its session
+        // for the 2-hour grace period. Past that, every request is treated
+        // as logged out until they follow the verification link mailed to
+        // them (which re-establishes a session on success).
+        if (!isWithinVerificationGrace(user)) {
+          return done(null, false as any);
+        }
       }
       done(null, user);
     } catch (error) {
       done(error, null);
     }
   });
-
-  // Local strategy (email/password)
-  passport.use(new LocalStrategy(
-    {
-      usernameField: 'email',
-      passwordField: 'password',
-    },
-    async (email, password, done) => {
-      try {
-        const user = await storage.getUserByEmail(email);
-        if (!user || !user.password) {
-          return done(null, false, { message: 'Invalid email or password' });
-        }
-
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
-          return done(null, false, { message: 'Invalid email or password' });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        return done(error);
-      }
-    }
-  ));
 }
 
 // Middleware to check if user is authenticated

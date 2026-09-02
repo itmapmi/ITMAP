@@ -86,7 +86,10 @@ import * as trafficAnalyticsStorage from "./trafficAnalytics";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  verifyUserEmail(id: string): Promise<User>;
+  setEmailVerificationToken(id: string, token: string): Promise<User>;
   updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User>;
 
   getAllMarkets(): Promise<Market[]>;

@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { UserPlus, Users, Building2, Lock } from "lucide-react";
+import { UserPlus, Users, Building2, Lock, MailCheck } from "lucide-react";
 
 // Consumer email domains not accepted — company/work emails only.
 export const CONSUMER_DOMAINS = new Set([
@@ -27,37 +26,25 @@ interface PersonaRegistrationFormProps {
 export function PersonaRegistrationForm({ persona, showToggle = true, compact = false }: PersonaRegistrationFormProps) {
   const [, setLocation] = useLocation();
   const { register, registerError, isRegistering } = useAuth();
-  const { toast } = useToast();
   const isVendorPersona = persona === "vendor";
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [email, setEmail] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.firstName.length < 1) newErrors.firstName = "First name is required";
-    if (formData.lastName.length < 1) newErrors.lastName = "Last name is required";
-
-    if (!formData.email.includes("@")) {
+    if (!email.includes("@")) {
       newErrors.email = "Valid email is required";
     } else {
-      const domain = formData.email.split("@")[1]?.toLowerCase() ?? "";
+      const domain = email.split("@")[1]?.toLowerCase() ?? "";
       if (CONSUMER_DOMAINS.has(domain)) {
         newErrors.email = "Please use your company email address. Consumer email providers are not accepted.";
       }
     }
 
-    if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
     if (!isVendorPersona && !termsAccepted) {
       newErrors.terms = "You must accept the Terms of Service to create a buyer account";
     }
@@ -71,14 +58,39 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
     if (!validateForm()) return;
 
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await register({ ...registerData, persona });
-      toast({ title: "Account created", description: "Welcome to itmap.ai" });
-      setLocation("/");
+      await register({ email, persona });
+      setSentTo(email);
     } catch {
       // Error is handled by useAuth hook
     }
   };
+
+  if (sentTo) {
+    return (
+      <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
+        <div className="p-6 sm:p-8 space-y-4 text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/15 flex items-center justify-center">
+            <MailCheck className="h-6 w-6 text-emerald-400" />
+          </div>
+          <h3 className="text-xl font-bold text-white">You're in — check your inbox</h3>
+          <p className="text-sm text-slate-400">
+            We've sent a verification link to <strong className="text-slate-200">{sentTo}</strong>. You have full
+            access for the next 2 hours — click the link anytime in that window to keep it permanently.
+          </p>
+          <Button
+            className={`w-full text-white border-0 font-semibold ${
+              isVendorPersona
+                ? "bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400"
+                : "bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
+            }`}
+            onClick={() => setLocation("/")}
+          >
+            Continue to itmap.ai
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
@@ -113,78 +125,20 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             </Alert>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor={`firstName-${persona}`} className="text-slate-300">First Name</Label>
-              <Input
-                id={`firstName-${persona}`}
-                placeholder="Jane"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                autoComplete="given-name"
-                required
-              />
-              {errors.firstName && <p className="text-xs text-red-400">{errors.firstName}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`lastName-${persona}`} className="text-slate-300">Last Name</Label>
-              <Input
-                id={`lastName-${persona}`}
-                placeholder="Smith"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                autoComplete="family-name"
-                required
-              />
-              {errors.lastName && <p className="text-xs text-red-400">{errors.lastName}</p>}
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor={`email-${persona}`} className="text-slate-300">Work email</Label>
             <Input
               id={`email-${persona}`}
               type="email"
               placeholder="you@company.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
               autoComplete="email"
               required
             />
             {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor={`password-${persona}`} className="text-slate-300">Password</Label>
-            <Input
-              id={`password-${persona}`}
-              type="password"
-              placeholder="At least 6 characters"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-              autoComplete="new-password"
-              required
-            />
-            {errors.password && <p className="text-xs text-red-400">{errors.password}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor={`confirmPassword-${persona}`} className="text-slate-300">Confirm Password</Label>
-            <Input
-              id={`confirmPassword-${persona}`}
-              type="password"
-              placeholder="Repeat your password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-              autoComplete="new-password"
-              required
-            />
-            {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword}</p>}
+            <p className="text-xs text-slate-500">No password needed — we'll email you a verification link.</p>
           </div>
 
           {!isVendorPersona && (
@@ -218,7 +172,7 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
             disabled={isRegistering}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-             {isRegistering ? "Creating account…" : "Create Free Account"}
+             {isRegistering ? "Sending link…" : "Continue with email"}
           </Button>
         </form>
 

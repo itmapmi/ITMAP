@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { ReplitConnectors } from '@replit/connectors-sdk';
 import type { UrlHealthResult } from './news/ingestion/urlHealthCheck';
 
 function escapeHtml(str: string): string {
@@ -82,6 +83,76 @@ export interface SendAlertResult {
   sent: boolean;
   reason?: string;
   recipientCount?: number;
+}
+
+// Verification address the platform's transactional email (via Resend) sends
+// from. Replies land in the team's real support@itmap.ai mailbox — that
+// mailbox is managed independently of this app and unaffected by Resend's
+// outbound-only sending setup.
+const VERIFICATION_FROM = 'itmap.ai <support@itmap.ai>';
+
+function buildVerificationEmailHtml(verifyUrl: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:system-ui,sans-serif;color:#111827;max-width:560px;margin:0 auto;padding:24px;">
+  <h2 style="margin-bottom:4px;">Verify your email</h2>
+  <p style="color:#374151;">
+    Thanks for signing up for itmap.ai. Confirm this is your email address to keep your account
+    active beyond the first two hours.
+  </p>
+  <p style="margin:28px 0;">
+    <a href="${escapeHtml(verifyUrl)}"
+       style="background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;display:inline-block;">
+      Verify email address
+    </a>
+  </p>
+  <p style="color:#6b7280;font-size:13px;">
+    Or paste this link into your browser:<br />
+    <a href="${escapeHtml(verifyUrl)}" style="color:#2563eb;word-break:break-all;">${escapeHtml(verifyUrl)}</a>
+  </p>
+  <p style="margin-top:24px;color:#9ca3af;font-size:12px;">
+    If you didn't request this, you can safely ignore this email.
+  </p>
+</body>
+</html>`;
+}
+
+export interface SendVerificationResult {
+  sent: boolean;
+  reason?: string;
+}
+
+// Sends the account-verification link via the Resend connection. Resend is
+// outbound-only (no inbox); this is the only place email verification is
+// dispatched from.
+export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<SendVerificationResult> {
+  try {
+    const connectors = new ReplitConnectors();
+    const response = await connectors.proxy('resend', '/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: VERIFICATION_FROM,
+        to: [to],
+        subject: 'Verify your email — itmap.ai',
+        html: buildVerificationEmailHtml(verifyUrl),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[EmailService] Resend verification email failed (${response.status}): ${body}`);
+      return { sent: false, reason: `Resend error ${response.status}: ${body.slice(0, 300)}` };
+    }
+
+    console.log(`[EmailService] Verification email sent to ${to}`);
+    return { sent: true };
+  } catch (err) {
+    console.error('[EmailService] Failed to send verification email:', err);
+    return { sent: false, reason: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function sendNewsroomAlertEmail(
