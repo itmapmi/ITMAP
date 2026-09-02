@@ -5,9 +5,8 @@ import { sql, eq } from "drizzle-orm";
 import { requireAdmin } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
-import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, vendorSeatAudience, markets, vendors, users as usersTable } from "@shared/schema";
+import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
-import { sendWatchlistInviteEmail, buildInviteHtml } from "../emailService";
 import { calculateDerivedFeatureScore, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 
 interface CollectionLogEntry {
@@ -134,106 +133,6 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error updating user feature access:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update feature access" });
-    }
-  });
-
-  // Assign (or clear) a user's vendor seat. A vendor-scoped user can only see
-  // buyer-intent leads for this one vendor via the vendor-facing Lead-Gen panel.
-  // Resend a watchlist invite email to a pending (not-yet-registered) user.
-  app.post("/api/admin/users/:id/resend-invite", requireAdmin, async (req, res) => {
-    try {
-      const target = await storage.getUser(req.params.id);
-      if (!target) return res.status(404).json({ error: "User not found" });
-      if (!target.invitedAt) {
-        return res.status(400).json({ error: "User is not an invited/pending user" });
-      }
-      if (!target.email) {
-        return res.status(400).json({ error: "User has no email address" });
-      }
-
-      // Rate-limit: block if an invite was sent within the last 10 minutes.
-      if (target.lastInviteSentAt) {
-        const msSinceLast = Date.now() - new Date(target.lastInviteSentAt).getTime();
-        const tenMinutes = 10 * 60 * 1000;
-        if (msSinceLast < tenMinutes) {
-          const waitSecs = Math.ceil((tenMinutes - msSinceLast) / 1000);
-          return res.status(429).json({
-            error: `An invite was just sent. Please wait ${waitSecs} seconds before resending.`,
-          });
-        }
-      }
-
-      // Find context (vendor + market) from their first audience entry.
-      const [audienceRow] = await db
-        .select({
-          marketName: markets.name,
-          vendorName: vendors.name,
-        })
-        .from(vendorSeatAudience)
-        .leftJoin(markets, eq(vendorSeatAudience.marketId, markets.id))
-        .leftJoin(usersTable, eq(vendorSeatAudience.seatUserId, usersTable.id))
-        .leftJoin(vendors, eq(usersTable.vendorScopeId, vendors.id))
-        .where(eq(vendorSeatAudience.endUserId, target.id))
-        .limit(1);
-
-      const vendorName = audienceRow?.vendorName ?? "A vendor";
-      const rawMarket = audienceRow?.marketName ?? "IT";
-      const marketName = rawMarket.replace(/^ITMAP for /i, "");
-
-      const result = await sendWatchlistInviteEmail({
-        recipientEmail: target.email,
-        vendorName,
-        marketName,
-      });
-
-      if (result.sent) {
-        await storage.updateUserLastInviteSentAt(req.params.id);
-        res.json({ sent: true });
-      } else {
-        res.status(500).json({ error: result.reason ?? "Failed to send email" });
-      }
-    } catch (error) {
-      console.error("Error resending invite:", error);
-      res.status(500).json({ error: "Failed to resend invite" });
-    }
-  });
-
-  // Preview the watchlist invite email HTML for a given user (looks up their vendor/market context).
-  // Falls back to placeholder names if the user has no audience entry.
-  app.get("/api/admin/watchlist-invite/preview/:userId", requireAdmin, async (req, res) => {
-    try {
-      const target = await storage.getUser(req.params.userId);
-      if (!target) return res.status(404).json({ error: "User not found" });
-
-      const [audienceRow] = await db
-        .select({
-          marketName: markets.name,
-          vendorName: vendors.name,
-        })
-        .from(vendorSeatAudience)
-        .leftJoin(markets, eq(vendorSeatAudience.marketId, markets.id))
-        .leftJoin(usersTable, eq(vendorSeatAudience.seatUserId, usersTable.id))
-        .leftJoin(vendors, eq(usersTable.vendorScopeId, vendors.id))
-        .where(eq(vendorSeatAudience.endUserId, target.id))
-        .limit(1);
-
-      const vendorName = audienceRow?.vendorName ?? "Example Vendor";
-      const rawMarket = audienceRow?.marketName ?? "Enterprise IT";
-      const marketName = rawMarket.replace(/^ITMAP for /i, "");
-
-      const base = process.env.APP_BASE_URL?.replace(/\/$/, "")
-        ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://itmap.ai");
-      const html = buildInviteHtml(
-        { recipientEmail: target.email ?? "recipient@example.com", vendorName, marketName },
-        `${base}/register`,
-        `${base}/login`,
-      );
-
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.send(html);
-    } catch (error) {
-      console.error("Error generating invite preview:", error);
-      res.status(500).json({ error: "Failed to generate preview" });
     }
   });
 

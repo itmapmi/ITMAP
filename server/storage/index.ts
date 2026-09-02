@@ -57,7 +57,6 @@ export * from "./forecasts";
 export * from "./rfps";
 export * from "./datasheets";
 export * from "./leadGen";
-export * from "./vendorAudience";
 export * from "./factCheck";
 export * from "./rfpKb";
 export * from "./rfpResponder";
@@ -78,7 +77,6 @@ import * as forecastsStorage from "./forecasts";
 import * as rfpsStorage from "./rfps";
 import * as datasheetsStorage from "./datasheets";
 import * as leadGenStorage from "./leadGen";
-import * as vendorAudienceStorage from "./vendorAudience";
 import * as factCheckStorage from "./factCheck";
 import * as rfpKbStorage from "./rfpKb";
 import * as rfpResponderStorage from "./rfpResponder";
@@ -182,7 +180,6 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   updateUserFeatureAccess(id: string, featureAccess: string[]): Promise<User>;
   updateUserVendorScope(id: string, vendorScopeIds: string[]): Promise<User>;
-  updateUserLastInviteSentAt(id: string): Promise<User>;
   updateUserAccessControl(id: string, updates: { isBlocked?: boolean; accessExpiresAt?: Date | null }): Promise<User>;
   deleteInvitedUser(id: string): Promise<boolean>;
 
@@ -339,7 +336,7 @@ export interface IStorage {
 // of the IStorage interface (the datasheet surface area is large and would
 // double the interface size for little type-safety gain — callers that
 // need typed access import from `./datasheets` directly).
-export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorage & typeof vendorAudienceStorage & typeof factCheckStorage & typeof rfpKbStorage & typeof trafficAnalyticsStorage = {
+export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorage & typeof factCheckStorage & typeof rfpKbStorage & typeof trafficAnalyticsStorage = {
   ...userStorage,
   ...marketStorage,
   ...criteriaStorage,
@@ -353,7 +350,6 @@ export const storage: IStorage & typeof datasheetsStorage & typeof leadGenStorag
   ...rfpsStorage,
   ...datasheetsStorage,
   ...leadGenStorage,
-  ...vendorAudienceStorage,
   ...factCheckStorage,
   ...rfpKbStorage,
   ...rfpResponderStorage,

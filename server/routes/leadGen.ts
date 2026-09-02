@@ -1,6 +1,4 @@
 import type { Express, Request, Response } from "express";
-import multer from "multer";
-import XLSX from "xlsx";
 import { z } from "zod";
 import crypto from "crypto";
 import { requireAuth, requireAdmin } from "../auth";
@@ -8,11 +6,8 @@ import { storage } from "../storage";
 import {
   buildRankedLeads,
   buildLeadDetail,
-  buildAudienceSummaries,
-  buildAudienceUserDetail,
   type LeadSort,
   type LeadRow,
-  type AudienceSummaryRow,
 } from "../leadGen/service";
 import { pdfService } from "../pdf-generator/pdf-service";
 import {
@@ -20,7 +15,6 @@ import {
   LEAD_GEN_EVENT_DEFS,
   type LeadGenEventType,
 } from "@shared/schema";
-import { sendWatchlistInviteEmail } from "../emailService";
 import { resolveGeo } from "../geoResolver";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -196,11 +190,6 @@ function getOrCreateTrafficSessionId(req: Request, res: Response): string {
   return sessionId;
 }
 
-const addAudienceSchema = z.object({
-  marketId: z.string().min(1),
-  endUserIds: z.array(z.string().min(1)).min(1).max(200),
-});
-
 /**
  * Access scope for lead-gen analytics. Admins see everything (optional
  * vendor/market filter from the query). This indirection is the seam for a
@@ -227,6 +216,23 @@ function vendorScopeIds(req: Request): string[] {
 // Returns the primary vendor ID (first in the list, or null if no seat).
 function vendorScopeId(req: Request): string | null {
   return vendorScopeIds(req)[0] ?? null;
+}
+
+// Resolves the distinct markets this seat's assigned vendors belong to. A
+// seat can be assigned vendors across multiple markets; vendors that share a
+// market collapse into a single entry. Used by the vendor-facing self-service
+// surface, which shows the ENTIRE visitor pool for those markets — not just
+// events attributed to the assigned vendor(s).
+async function vendorScopeMarkets(req: Request): Promise<{ id: string; name: string }[]> {
+  const ids = vendorScopeIds(req);
+  const vendorBriefs = await Promise.all(ids.map((id) => storage.getVendorBrief(id)));
+  const marketIds = Array.from(
+    new Set(vendorBriefs.filter((v): v is NonNullable<typeof v> => !!v?.marketId).map((v) => v.marketId as string)),
+  );
+  const markets = await Promise.all(marketIds.map((id) => storage.getMarketById(id)));
+  return markets
+    .filter((m): m is NonNullable<typeof m> => !!m)
+    .map((m) => ({ id: m.id, name: m.name }));
 }
 
 // Fact Review uses only explicit server-side seat assignments. Matching vendor
@@ -462,60 +468,6 @@ async function sendLeadsExcel(res: Response, filename: string, rows: LeadRow[]):
   res.send(buf);
 }
 
-function audienceTableHtml(title: string, rows: AudienceSummaryRow[]): string {
-  const body = rows
-    .map(
-      (r) => `
-      <tr>
-        <td>${escapeHtml(fullName(r))}</td>
-        <td>${escapeHtml(r.email ?? "")}</td>
-        <td>${escapeHtml(r.marketName?.replace(/^ITMAP for /i, "") ?? "—")}</td>
-        <td style="text-align:center"><span style="color:${intentColor(r.intent.band)};font-weight:700">${r.intent.score}</span> <span style="text-transform:uppercase;font-size:10px;color:#64748b">${r.intent.band}</span></td>
-        <td>${escapeHtml(r.topVendor?.vendorName ?? "—")}</td>
-        <td style="text-align:right">${r.totalEvents}</td>
-        <td>${r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : "—"}</td>
-      </tr>`,
-    )
-    .join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
-    body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;padding:32px}
-    h1{font-size:22px;margin:0 0 4px}
-    .sub{color:#64748b;font-size:12px;margin-bottom:20px}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#0f172a;color:#fff;text-align:left;padding:8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-    td{padding:8px;border-bottom:1px solid #e2e8f0}
-    tr:nth-child(even) td{background:#f8fafc}
-  </style></head><body>
-    <h1>${escapeHtml(title)}</h1>
-    <div class="sub">itmap.ai — Watched Audience Activity · Generated ${new Date().toLocaleString()}</div>
-    <table><thead><tr>
-      <th>User</th><th>Email</th><th>Market</th><th>Intent</th><th>Top vendor</th><th>Events</th><th>Last active</th>
-    </tr></thead><tbody>${body || `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px">No watched users</td></tr>`}</tbody></table>
-  </body></html>`;
-}
-
-async function sendAudienceExcel(res: Response, filename: string, rows: AudienceSummaryRow[]): Promise<void> {
-  const xlsx = await import("xlsx");
-  const header = ["User", "Email", "Market", "Intent score", "Band", "Top vendor", "Total events", "Last active"];
-  const data = rows.map((r) => [
-    fullName(r),
-    r.email ?? "",
-    r.marketName?.replace(/^ITMAP for /i, "") ?? "",
-    r.intent.score,
-    r.intent.band,
-    r.topVendor?.vendorName ?? "",
-    r.totalEvents,
-    r.lastActivityAt ? new Date(r.lastActivityAt).toISOString() : "",
-  ]);
-  const ws = xlsx.utils.aoa_to_sheet([header, ...data]);
-  const wb = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(wb, ws, "Watched audience");
-  const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}.xlsx"`);
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.send(buf);
-}
-
 // ── Route registration ───────────────────────────────────────────────────────
 
 export function registerLeadGenRoutes(app: Express): void {
@@ -738,49 +690,50 @@ export function registerLeadGenRoutes(app: Express): void {
   // Scope info for the signed-in vendor seat (used to render the panel header).
   app.get("/api/lead-gen/me/scope", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const vendorId = vendorScopeId(req)!;
-      const vendor = await storage.getVendorBrief(vendorId);
-      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
-      res.json({ vendor });
+      const markets = await vendorScopeMarkets(req);
+      if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
+      res.json({ markets });
     } catch (err) {
       console.error("[lead-gen] me scope error:", err);
       res.status(500).json({ error: "Failed to load vendor scope" });
     }
   });
 
-  // Ranked leads for the signed-in vendor seat.
+  // Ranked leads across the entire visitor pool of the signed-in seat's
+  // assigned market(s) — not just events attributed to the seat's own vendor.
   app.get("/api/lead-gen/me/leads", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const vendorId = vendorScopeId(req)!;
-      const vendor = await storage.getVendorBrief(vendorId);
-      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      const markets = await vendorScopeMarkets(req);
+      if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
       const since = parseSince(req);
       const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
       const limit = req.query.limit ? Math.min(Number(req.query.limit), 200) : 50;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
       const minIntent = parseMinIntent(req);
-      const result = await buildRankedLeads({ vendorId, since, sort, limit, offset, minIntent });
-      res.json({ vendor, ...result });
+      const marketIds = markets.map((m) => m.id);
+      const result = await buildRankedLeads({ marketIds, since, sort, limit, offset, minIntent });
+      res.json({ markets, ...result });
     } catch (err) {
       console.error("[lead-gen] me leads error:", err);
       res.status(500).json({ error: "Failed to load leads" });
     }
   });
 
-  // Export the signed-in vendor seat's leads.
+  // Export the signed-in vendor seat's market-wide visitor pool.
   app.get("/api/lead-gen/me/leads/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const vendorId = vendorScopeId(req)!;
-      const vendor = await storage.getVendorBrief(vendorId);
-      if (!vendor) return res.status(404).json({ error: "Assigned vendor not found" });
+      const markets = await vendorScopeMarkets(req);
+      if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
       const since = parseSince(req);
       const minIntent = parseMinIntent(req);
-      const { rows } = await buildRankedLeads({ vendorId, since, limit: 1000, offset: 0, minIntent });
-      const safe = vendor.name.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+      const marketIds = markets.map((m) => m.id);
+      const { rows } = await buildRankedLeads({ marketIds, since, limit: 1000, offset: 0, minIntent });
+      const label = markets.length === 1 ? markets[0].name.replace(/^ITMAP for /i, "") : `${markets.length} markets`;
+      const safe = label.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
       if (req.params.fmt === "excel") {
         return await sendLeadsExcel(res, `spectio_${safe}_leads`, rows);
       }
-      const html = leadsTableHtml(`Buyers interested in ${vendor.name}`, rows);
+      const html = leadsTableHtml(`Visitors in ${label}`, rows);
       const pdf = await pdfService.htmlToPdf(html, { format: "A4" });
       res.setHeader("Content-Disposition", `attachment; filename="spectio_${safe}_leads.pdf"`);
       res.setHeader("Content-Type", "application/pdf");
@@ -790,255 +743,6 @@ export function registerLeadGenRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to export leads" });
     }
   });
-
-  // ── Watched audience (vendor seat) ──
-  // An admin pins a set of end users + a market to a vendor seat. The seat sees
-  // those users' activity on the assigned market only — independent of which
-  // vendor the user actually engaged with.
-
-  // List the signed-in seat's watched audience (ranked by market-scoped intent).
-  app.get("/api/lead-gen/me/audience", requireVendorScope, async (req: Request, res: Response) => {
-    try {
-      const seatUserId = (req.user as any).id as string;
-      const since = parseSince(req);
-      const result = await buildAudienceSummaries(seatUserId, since);
-      res.json(result);
-    } catch (err) {
-      console.error("[lead-gen] me audience error:", err);
-      res.status(500).json({ error: "Failed to load watched audience" });
-    }
-  });
-
-  // Market-scoped detail for one watched user (authorized via audience membership).
-  app.get(
-    "/api/lead-gen/me/audience/:marketId/:endUserId",
-    requireVendorScope,
-    async (req: Request, res: Response) => {
-      try {
-        const seatUserId = (req.user as any).id as string;
-        const { marketId, endUserId } = req.params;
-        const allowed = await storage.isAudienceMember(seatUserId, marketId, endUserId);
-        if (!allowed) return res.status(404).json({ error: "Not in your watched audience" });
-        const since = parseSince(req);
-        const market = await storage.getMarketById(marketId);
-        const detail = await buildAudienceUserDetail(endUserId, marketId, market?.name ?? null, since);
-        if (!detail) return res.status(404).json({ error: "User not found" });
-        res.json(detail);
-      } catch (err) {
-        console.error("[lead-gen] me audience detail error:", err);
-        res.status(500).json({ error: "Failed to load watched user" });
-      }
-    },
-  );
-
-  // Export the signed-in seat's watched audience (excel | pdf).
-  app.get(
-    "/api/lead-gen/me/audience/export/:fmt",
-    requireVendorScope,
-    async (req: Request, res: Response) => {
-      try {
-        const seatUserId = (req.user as any).id as string;
-        const since = parseSince(req);
-        const { rows } = await buildAudienceSummaries(seatUserId, since);
-        if (req.params.fmt === "excel") {
-          return await sendAudienceExcel(res, "spectio_watched_audience", rows);
-        }
-        const html = audienceTableHtml("Watched audience activity", rows);
-        const pdf = await pdfService.htmlToPdf(html, { format: "A4" });
-        res.setHeader("Content-Disposition", `attachment; filename="spectio_watched_audience.pdf"`);
-        res.setHeader("Content-Type", "application/pdf");
-        res.send(pdf);
-      } catch (err) {
-        console.error("[lead-gen] me audience export error:", err);
-        res.status(500).json({ error: "Failed to export watched audience" });
-      }
-    },
-  );
-
-  // ── Admin: manage a vendor seat's watched audience ──
-  app.get(
-    "/api/lead-gen/seats/:seatUserId/audience",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const rows = await storage.getSeatAudience(req.params.seatUserId);
-        res.json({ rows });
-      } catch (err) {
-        console.error("[lead-gen] admin get audience error:", err);
-        res.status(500).json({ error: "Failed to load audience" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/lead-gen/seats/:seatUserId/audience",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const body = addAudienceSchema.safeParse(req.body);
-        if (!body.success) return res.status(400).json({ error: "Invalid request body" });
-        const seatUserId = req.params.seatUserId;
-        const seat = await storage.getUser(seatUserId);
-        if (!seat || !seat.vendorScopeId) {
-          return res.status(400).json({ error: "User is not a vendor seat" });
-        }
-        const market = await storage.getMarketById(body.data.marketId);
-        if (!market) return res.status(400).json({ error: "Market not found" });
-
-        // Only genuine end users may be watched. Reject admins, other vendor
-        // seats, the seat itself, and unknown ids — the client filters these
-        // out, but the server must not trust that.
-        const requested = Array.from(new Set(body.data.endUserIds));
-        const found = await storage.getUsersByIds(requested);
-        const eligible = found.filter(
-          (u) => u.id !== seatUserId && u.role !== "admin" && !u.vendorScopeId,
-        );
-        const eligibleIds = eligible.map((u) => u.id);
-        const rejected = requested.length - eligibleIds.length;
-        if (eligibleIds.length === 0) {
-          return res.status(400).json({ error: "No eligible end users to add", rejected });
-        }
-        const added = await storage.addSeatAudience(seatUserId, body.data.marketId, eligibleIds);
-        res.json({ added, rejected });
-      } catch (err) {
-        console.error("[lead-gen] admin add audience error:", err);
-        res.status(500).json({ error: "Failed to add to audience" });
-      }
-    },
-  );
-
-  app.delete(
-    "/api/lead-gen/seats/:seatUserId/audience/:rowId",
-    requireAdmin,
-    async (req: Request, res: Response) => {
-      try {
-        const ok = await storage.removeSeatAudienceRow(req.params.seatUserId, req.params.rowId);
-        if (!ok) return res.status(404).json({ error: "Audience row not found" });
-        res.json({ ok: true });
-      } catch (err) {
-        console.error("[lead-gen] admin remove audience error:", err);
-        res.status(500).json({ error: "Failed to remove from audience" });
-      }
-    },
-  );
-
-  // CSV import: accept multipart/form-data with `file` + `marketId`, parse
-  // server-side using xlsx, apply eligibility rules, and return summary counts.
-  const csvUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-      const ok = /csv|text\/plain|spreadsheetml|officedocument/i.test(file.mimetype);
-      cb(null, ok || file.originalname.endsWith(".csv"));
-    },
-  }).single("file");
-
-  app.post(
-    "/api/lead-gen/seats/:seatUserId/audience/import",
-    requireAdmin,
-    (req: Request, res: Response, next) => csvUpload(req, res, next),
-    async (req: Request, res: Response) => {
-      try {
-        const marketId = typeof req.body.marketId === "string" ? req.body.marketId : "";
-        if (!marketId) {
-          return res.status(400).json({ error: "marketId is required" });
-        }
-        if (!req.file) {
-          return res.status(400).json({ error: "CSV file is required" });
-        }
-
-        const seatUserId = req.params.seatUserId;
-        const seat = await storage.getUser(seatUserId);
-        if (!seat?.vendorScopeId) {
-          return res.status(400).json({ error: "User is not a vendor seat" });
-        }
-        const market = await storage.getMarketById(marketId);
-        if (!market) return res.status(400).json({ error: "Market not found" });
-
-        // Parse CSV server-side with xlsx — supports both header-row and
-        // simple one-email-per-line formats.
-        const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false });
-
-        const firstRow = rows[0] ?? [];
-        const emailColIdx = firstRow.findIndex(
-          (h) => String(h ?? "").trim().toLowerCase() === "email",
-        );
-        const dataRows = emailColIdx >= 0 ? rows.slice(1) : rows;
-
-        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const allEmails: string[] = [];
-        let invalid = 0;
-
-        for (const row of dataRows) {
-          const cell = emailColIdx >= 0 ? row[emailColIdx] : row[0];
-          const candidate = String(cell ?? "").trim().replace(/^["']|["']$/g, "").toLowerCase();
-          if (EMAIL_RE.test(candidate)) {
-            allEmails.push(candidate);
-          } else if (candidate.length > 0) {
-            invalid++;
-          }
-        }
-        const validEmails = [...new Set(allEmails)];
-
-        if (validEmails.length === 0) {
-          return res.json({ added: 0, invited: 0, skipped: 0, invalid });
-        }
-
-        const resolved = await storage.findOrCreateUsersByEmails(validEmails);
-
-        // Apply same eligibility rules as the manual add route.
-        const eligible = resolved.filter(
-          (r) => r.user.id !== seatUserId && r.user.role !== "admin" && !r.user.vendorScopeId,
-        );
-        const ineligible = resolved.length - eligible.length;
-
-        // Split eligible into brand-new placeholders vs already-existing users.
-        // New placeholders were just inserted into the users table so they
-        // CANNOT already be in the audience — their addSeatAudience row always
-        // succeeds. Existing users may already be in the audience (conflict).
-        const newEligible = eligible.filter((r) => r.isNew);
-        const existingEligible = eligible.filter((r) => !r.isNew);
-        const eligibleIds = eligible.map((r) => r.user.id);
-
-        const totalInserted = eligibleIds.length > 0
-          ? await storage.addSeatAudience(seatUserId, marketId, eligibleIds)
-          : 0;
-
-        // Derive disjoint summary counts:
-        //   invited  = new placeholders created & added (always succeed)
-        //   added    = existing registered users newly added to the audience
-        //   skipped  = existing users already in audience + ineligible users
-        const invited = newEligible.length;
-        const added = totalInserted - invited;
-        const skipped = existingEligible.length - added + ineligible;
-
-        res.json({ added, invited, skipped, invalid });
-
-        // Fire-and-forget invite emails to newly-created placeholder accounts.
-        // We do this after responding so it never blocks the HTTP request.
-        if (newEligible.length > 0) {
-          const vendorName = seat.vendorScopeId
-            ? (await storage.getVendorById(seat.vendorScopeId))?.name ?? "A vendor"
-            : "A vendor";
-          const marketDisplayName = market.name.replace(/^ITMAP for /i, "");
-          for (const { email } of newEligible) {
-            sendWatchlistInviteEmail({
-              recipientEmail: email,
-              vendorName,
-              marketName: marketDisplayName,
-            }).catch((err) =>
-              console.error(`[lead-gen] watchlist invite email failed for ${email}:`, err),
-            );
-          }
-        }
-      } catch (err) {
-        console.error("[lead-gen] audience import error:", err);
-        res.status(500).json({ error: "Failed to import audience" });
-      }
-    },
-  );
 
   // ── Exports ──
   // Leads list export

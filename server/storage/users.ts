@@ -8,7 +8,7 @@ import {
   users, userActivityLogs, newPlayers, vendors, chatConversations, chatMessages,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -65,39 +65,6 @@ export async function activateInvitedUser(
   return updated!;
 }
 
-// Find existing users by email, or create lightweight invited placeholders for
-// any emails that don't match. Returns an array preserving input order.
-export async function findOrCreateUsersByEmails(
-  emails: string[],
-): Promise<{ email: string; user: User; isNew: boolean }[]> {
-  if (emails.length === 0) return [];
-  const existing = await db.select().from(users).where(inArray(users.email, emails));
-  const byEmail = new Map(existing.map((u) => [u.email!, u]));
-
-  const results: { email: string; user: User; isNew: boolean }[] = [];
-  const toInsert: string[] = [];
-  for (const email of emails) {
-    const found = byEmail.get(email);
-    if (found) {
-      results.push({ email, user: found, isNew: false });
-    } else {
-      toInsert.push(email);
-    }
-  }
-
-  if (toInsert.length > 0) {
-    const inserted = await db
-      .insert(users)
-      .values(toInsert.map((email) => ({ email, role: "user", invitedAt: new Date(), featureAccess: [] })))
-      .returning();
-    for (const u of inserted) {
-      results.push({ email: u.email!, user: u, isNew: true });
-    }
-  }
-
-  return results;
-}
-
 // Delete a placeholder "invited" user. Only permitted when invitedAt is set
 // (i.e. the account has never been activated / has no real password).
 export async function deleteInvitedUser(id: string): Promise<boolean> {
@@ -117,16 +84,6 @@ export async function updateUserAccessControl(
   const [updated] = await db
     .update(users)
     .set({ ...updates, updatedAt: new Date() })
-    .where(eq(users.id, id))
-    .returning();
-  return updated!;
-}
-
-// Stamp the last-invite-sent time (used by resend-invite rate-limit + UI).
-export async function updateUserLastInviteSentAt(id: string): Promise<User> {
-  const [updated] = await db
-    .update(users)
-    .set({ lastInviteSentAt: new Date(), updatedAt: new Date() })
     .where(eq(users.id, id))
     .returning();
   return updated!;

@@ -21,3 +21,4 @@
 - [Teaser-active UI unlock vs backend auth](teaser-vs-backend-auth.md) — client teaserActive gates are cosmetic; some routes hard-401 anon regardless, so verify server auth before assuming a "sign in" gate is safe to loosen.
 - [Making a requireFeature route anon-readable](intelligence-feed-teaser-access.md) — requireFeature() 401s anon before the handler runs; deleting a redundant inline auth check does nothing, must bypass the middleware itself.
 - [Reddit Pixel + CAPI integration](reddit-capi-integration.md) — CAPI v3 endpoint/schema, session-uuid dedup (not conversion_id), and why only SIGN_UP (not PAGE_VISIT) gets server-side CAPI.
+- [Vendor portal scoping model](vendor-portal-scoping.md) — /me/leads shows the whole market visitor pool (marketIds filter), not vendor-attributed events; watchlist feature was fully removed.

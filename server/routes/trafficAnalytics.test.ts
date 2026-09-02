@@ -24,10 +24,6 @@ const h = vi.hoisted(() => {
 vi.mock("../storage", () => ({ storage: h.storage }));
 vi.mock("../geoResolver", () => ({ resolveGeo: h.resolveGeo }));
 vi.mock("../db", () => ({ pool: {}, db: {} }));
-vi.mock("../emailService", () => ({
-  sendWatchlistInviteEmail: vi.fn(),
-  buildInviteHtml: vi.fn(),
-}));
 vi.mock("../pdf-generator/pdf-service", () => ({
   pdfService: new Proxy({}, { get: () => vi.fn() }),
 }));

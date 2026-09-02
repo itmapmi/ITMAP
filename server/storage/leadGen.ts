@@ -23,6 +23,10 @@ export async function trackEvent(event: InsertUserEvent): Promise<UserEvent> {
 export interface LeadGenFilter {
   since?: Date;
   marketId?: string;
+  // Scope to any of several markets at once — used by the vendor-facing
+  // "entire visitor pool" view when a seat is assigned vendors across
+  // multiple markets. Ignored when `marketId` is also set.
+  marketIds?: string[];
   vendorId?: string;
 }
 
@@ -30,6 +34,7 @@ function buildConditions(f: LeadGenFilter) {
   const conds = [];
   if (f.since) conds.push(gte(userEvents.createdAt, f.since));
   if (f.marketId) conds.push(eq(userEvents.marketId, f.marketId));
+  else if (f.marketIds?.length) conds.push(inArray(userEvents.marketId, f.marketIds));
   if (f.vendorId) conds.push(eq(userEvents.vendorId, f.vendorId));
   return conds;
 }

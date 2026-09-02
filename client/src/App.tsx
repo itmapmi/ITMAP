@@ -44,7 +44,6 @@ import LeadGenOverviewPage from "@/pages/lead-gen/index";
 import LeadGenDetailPage from "@/pages/lead-gen/detail";
 import LeadGenVendorPage from "@/pages/lead-gen/vendor";
 import LeadGenMyVendorPage from "@/pages/lead-gen/me";
-import LeadGenAudienceDetailPage from "@/pages/lead-gen/me-audience-detail";
 import FactReviewPage from "@/pages/lead-gen/fact-review";
 import RfpResponderPage from "@/pages/rfp-responder/index";
 import RfpSessionDetailPage from "@/pages/rfp-responder/session-detail";
@@ -153,7 +152,6 @@ function Router() {
         <Route path="/battle-cards" component={() => <ProtectedRoute component={BattleCardsIndexPage} />} />
         <Route path="/battle-cards/:marketId" component={() => <ProtectedRoute component={BattleCardDetailPage} />} />
         <Route path="/security" component={() => <ProtectedRoute component={SecurityPage} />} />
-        <Route path="/lead-gen/me/audience/:marketId/:endUserId" component={() => <ProtectedRoute component={LeadGenAudienceDetailPage} />} />
         <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
         <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
         <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />
