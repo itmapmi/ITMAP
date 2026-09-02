@@ -470,6 +470,15 @@ export const insertUserSchema = createInsertSchema(users).omit({
 // access is blocked until they do.
 export const loginUserSchema = z.object({
   email: z.string().email(),
+  // Only required for accounts that have set a password (currently just
+  // admin accounts — see server/routes/auth.ts). Omitted entirely for the
+  // passwordless buyer/vendor flow.
+  password: z.string().optional(),
+});
+
+export const setPasswordSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const registerUserSchema = z.object({

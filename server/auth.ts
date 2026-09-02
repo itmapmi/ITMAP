@@ -1,9 +1,25 @@
 import passport from 'passport';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
+import bcrypt from 'bcryptjs';
 import type { Express } from 'express';
 import { storage } from './storage';
 import type { User } from '@shared/schema';
+
+// Password support is opt-in, per account: the platform is passwordless by
+// default (see loginUserSchema), but admin accounts can set a password
+// (via /api/account/set-password) to close the "anyone who knows the email
+// gets in" gap that passwordless login leaves open for privileged accounts.
+// Regular buyer/vendor accounts never set one and are unaffected.
+const BCRYPT_ROUNDS = 12;
+
+export async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, BCRYPT_ROUNDS);
+}
+
+export async function comparePassword(plain: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(plain, hash);
+}
 
 // New self-registered accounts get this long to click the verification link
 // mailed to them before access is blocked. Kept here (not just in the route

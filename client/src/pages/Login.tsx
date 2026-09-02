@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth, VerificationRequiredError } from "@/hooks/useAuth";
+import { useAuth, VerificationRequiredError, PasswordRequiredError } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ export default function Login() {
   const isBuyerPersona = persona === "buyer";
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState<string | null>(null);
   const [resendSent, setResendSent] = useState(false);
 
@@ -35,8 +38,9 @@ export default function Login() {
     e.preventDefault();
     setNeedsVerification(null);
     setResendSent(false);
+    setFormError(null);
     try {
-      const user = await login({ email });
+      const user = await login(needsPassword ? { email, password } : { email });
       toast({ title: "Welcome back", description: "Signed in successfully" });
       if (user?.role === "admin") {
         setLocation("/admin");
@@ -46,6 +50,11 @@ export default function Login() {
     } catch (err) {
       if (err instanceof VerificationRequiredError) {
         setNeedsVerification(err.email);
+      } else if (err instanceof PasswordRequiredError) {
+        // Not a real error — this account just needs its password too.
+        setNeedsPassword(true);
+      } else {
+        setFormError(err instanceof Error ? err.message : "Sign in failed.");
       }
     }
   };
@@ -138,9 +147,9 @@ export default function Login() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {loginError && (
+              {formError && (
                 <Alert variant="destructive">
-                  <AlertDescription>{loginError}</AlertDescription>
+                  <AlertDescription>{formError}</AlertDescription>
                 </Alert>
               )}
 
@@ -155,9 +164,36 @@ export default function Login() {
                   className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-cyan-500/50"
                   autoComplete="email"
                   required
+                  disabled={needsPassword}
                 />
-                <p className="text-xs text-slate-500">No password needed — just your work email.</p>
+                {!needsPassword && (
+                  <p className="text-xs text-slate-500">No password needed — just your work email.</p>
+                )}
               </div>
+
+              {needsPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-slate-300">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-cyan-500/50"
+                    autoComplete="current-password"
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setNeedsPassword(false); setPassword(""); setFormError(null); }}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    Use a different email
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"

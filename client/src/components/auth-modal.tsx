@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth, VerificationRequiredError } from "@/hooks/useAuth";
+import { useAuth, VerificationRequiredError, PasswordRequiredError } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,9 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
   const { toast } = useToast();
 
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [loginFormError, setLoginFormError] = useState<string | null>(null);
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
   const [needsVerification, setNeedsVerification] = useState<string | null>(null);
@@ -55,14 +58,20 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
     e.preventDefault();
     setNeedsVerification(null);
     setResendSent(false);
+    setLoginFormError(null);
     try {
-      const user = await login({ email: loginEmail });
+      const user = await login(needsPassword ? { email: loginEmail, password: loginPassword } : { email: loginEmail });
       toast({ title: "Success", description: "Logged in successfully" });
       onClose();
       goToDestination(user);
     } catch (error) {
       if (error instanceof VerificationRequiredError) {
         setNeedsVerification(error.email);
+      } else if (error instanceof PasswordRequiredError) {
+        // Not a real error — this account just needs its password too.
+        setNeedsPassword(true);
+      } else {
+        setLoginFormError(error instanceof Error ? error.message : "Sign in failed.");
       }
     }
   };
@@ -137,9 +146,9 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
               </div>
             ) : (
               <form onSubmit={handleLogin} className="space-y-4">
-                {loginError && (
+                {loginFormError && (
                   <Alert variant="destructive">
-                    <AlertDescription>{loginError}</AlertDescription>
+                    <AlertDescription>{loginFormError}</AlertDescription>
                   </Alert>
                 )}
 
@@ -152,10 +161,37 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
+                    disabled={needsPassword}
                     data-testid="input-email-login"
                   />
-                  <p className="text-xs text-gray-500">No password needed — just your work email.</p>
+                  {!needsPassword && (
+                    <p className="text-xs text-gray-500">No password needed — just your work email.</p>
+                  )}
                 </div>
+
+                {needsPassword && (
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      autoFocus
+                      autoComplete="current-password"
+                      data-testid="input-password-login"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setNeedsPassword(false); setLoginPassword(""); setLoginFormError(null); }}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Use a different email
+                    </button>
+                  </div>
+                )}
 
                 <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-submit-login">
                   <LogIn className="mr-2 h-4 w-4" />

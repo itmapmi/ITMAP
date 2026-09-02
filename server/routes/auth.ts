@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import crypto from "crypto";
 import { storage } from "../storage";
-import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace } from "../auth";
-import { registerUserSchema, loginUserSchema } from "@shared/schema";
+import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace, hashPassword, comparePassword } from "../auth";
+import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
@@ -156,7 +156,9 @@ export function registerAuthRoutes(app: Express): void {
 
   function stripPrivateFields(user: any) {
     const { password, emailVerificationToken, ...safe } = user;
-    return safe;
+    // Never send the hash itself, but admins' Security settings need to know
+    // whether one is already set (to ask for "current password" vs not).
+    return { ...safe, hasPassword: !!password };
   }
 
   app.post("/auth/register", async (req, res) => {
@@ -259,15 +261,67 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/auth/login", async (req, res) => {
     try {
-      const { email } = loginUserSchema.parse(req.body);
+      const { email, password } = loginUserSchema.parse(req.body);
       const user = await storage.getUserByEmail(email);
       if (!user) {
         return res.status(404).json({ error: "No account found with that email. Create one instead?" });
       }
+
+      // Admin accounts that have set a password must authenticate with it —
+      // closes the gap where knowing an admin's email alone was enough to
+      // sign in. Accounts without a password yet (or non-admin accounts)
+      // keep the passwordless flow.
+      if (user.role === 'admin' && user.password) {
+        if (!password) {
+          return res.status(400).json({ error: "password_required", message: "Enter your password to continue." });
+        }
+        const valid = await comparePassword(password, user.password);
+        if (!valid) {
+          return res.status(401).json({ error: "Incorrect password." });
+        }
+      }
+
       await logInAndRespond(req, res, user, 200);
     } catch (error) {
       console.error("Login error:", error);
       res.status(400).json({ error: "Login failed" });
+    }
+  });
+
+  // Lets a signed-in admin set or change their own login password. Requires
+  // the current password to change an existing one; setting the first
+  // password (current value is null) needs no proof beyond the existing
+  // session, since only someone already signed in can reach this route.
+  app.post("/api/account/set-password", requireAuth, async (req, res) => {
+    try {
+      const sessionUser = req.user as any;
+      if (sessionUser.role !== 'admin') {
+        return res.status(403).json({ error: "Only admin accounts can set a login password." });
+      }
+
+      const { currentPassword, newPassword } = setPasswordSchema.parse(req.body);
+      const fresh = await storage.getUser(sessionUser.id);
+      if (!fresh) return res.status(404).json({ error: "Account not found" });
+
+      if (fresh.password) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: "Current password is required to change it." });
+        }
+        const valid = await comparePassword(currentPassword, fresh.password);
+        if (!valid) {
+          return res.status(401).json({ error: "Current password is incorrect." });
+        }
+      }
+
+      const hashed = await hashPassword(newPassword);
+      await storage.updateUser(fresh.id, { password: hashed });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Set password error:", error);
+      const message = error instanceof Error && error.name === "ZodError"
+        ? "Password must be at least 8 characters."
+        : "Could not update password.";
+      res.status(400).json({ error: message });
     }
   });
 

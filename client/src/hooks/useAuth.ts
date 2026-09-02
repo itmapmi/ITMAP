@@ -65,9 +65,19 @@ export class VerificationRequiredError extends Error {
   }
 }
 
+// Thrown by login when the account (currently: admin accounts that have set
+// a password) needs a password that wasn't included in the request yet, so
+// the UI can reveal the password field instead of showing a generic error.
+export class PasswordRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PasswordRequiredError";
+  }
+}
+
 // Posts to an auth endpoint (login/register) and surfaces a structured
-// VerificationRequiredError instead of a generic "403: {...}" message when
-// the server reports the account needs verification.
+// VerificationRequiredError/PasswordRequiredError instead of a generic
+// "403: {...}" message when the server reports one of those conditions.
 async function postAuth(url: string, data: unknown): Promise<any> {
   const res = await fetch(url, {
     method: "POST",
@@ -80,6 +90,9 @@ async function postAuth(url: string, data: unknown): Promise<any> {
     if (body?.error === "verification_required") {
       setPendingVerification({ email: body.email, createdAt: new Date().toISOString() });
       throw new VerificationRequiredError(body.message || "Please verify your email to continue.", body.email);
+    }
+    if (body?.error === "password_required") {
+      throw new PasswordRequiredError(body.message || "Enter your password to continue.");
     }
     throw new Error(body?.error || body?.message || `${res.status}: request failed`);
   }
@@ -147,6 +160,11 @@ export function useAuth() {
     },
   });
 
+  const setPasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword?: string; newPassword: string }) =>
+      apiRequestJson('/api/account/set-password', 'POST', data),
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequestJson('/auth/logout', 'POST');
@@ -183,5 +201,8 @@ export function useAuth() {
     registerError: registerMutation.error?.message,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
+    setPassword: setPasswordMutation.mutateAsync,
+    isSettingPassword: setPasswordMutation.isPending,
+    setPasswordError: setPasswordMutation.error?.message,
   };
 }
