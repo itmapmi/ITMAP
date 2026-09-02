@@ -47,7 +47,27 @@ export function setupSession(app: Express) {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      // Every environment (the *.replit.dev workspace preview and the
+      // production custom domain) is served over HTTPS via Replit's proxy,
+      // so the cookie can always be marked Secure — required for
+      // sameSite: 'none' below, and safe since there is no plain-HTTP path.
+      secure: true,
+      // The workspace's preview pane loads the app inside a cross-site
+      // iframe (Replit's own UI at a different origin embeds *.replit.dev).
+      // A default/"lax" cookie is never stored in that third-party-iframe
+      // context, so a login there appears to succeed (the client optimistically
+      // caches the user) but every subsequent real auth check 401s — which
+      // surfaces as the admin console flashing logged-in/logged-out
+      // ("continuously reloading") as soon as you navigate between tabs.
+      // Production is only ever opened top-level (never iframed), so it
+      // keeps the stricter "lax" default there; only the dev preview needs
+      // "none" to let the cookie persist inside the embed.
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
+      // CHIPS: modern browsers are phasing out unpartitioned third-party
+      // cookies even when sameSite:'none' is set. Partitioning keys the
+      // cookie to (embedding site, this site) so it still works inside the
+      // preview iframe without needing a full third-party-cookie exemption.
+      ...(process.env.NODE_ENV === 'production' ? {} : { partitioned: true }),
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   }));
