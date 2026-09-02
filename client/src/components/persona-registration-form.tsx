@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
 import { UserPlus, Users, Building2, Lock, MailCheck, Globe2, GitCompare, Radar, Shield, FileText, CheckCircle2 } from "lucide-react";
+import { RegistrationScreensCarousel } from "@/components/registration-screens-carousel";
 
 // Core platform access every new account gets immediately, regardless of
 // persona — shown on the registration form itself so the value is visible
@@ -108,6 +109,13 @@ export function PersonaRegistrationForm({ persona, showToggle = true, compact = 
   return (
     <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "max-w-md mx-auto"}`}>
       <div className="p-6 sm:p-8 space-y-5">
+        <div className="flex flex-col items-center gap-3">
+          <RegistrationScreensCarousel size={compact ? 128 : 176} />
+          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            A live look inside the platform
+          </p>
+        </div>
+
         <div className="text-center space-y-2">
           <div className={`flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold mx-auto w-fit ${
             isVendorPersona
