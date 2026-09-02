@@ -197,11 +197,21 @@ export function VerificationReminderDialog() {
 // passed its grace deadline.
 export function usePendingVerificationBlock(): PendingVerification | null {
   const { isAuthenticated, isLoading } = useAuth();
-  const now = useNow();
+  // Only tick the 1/sec clock while it can actually matter (logged-out with
+  // a pending marker to expire). Ticking unconditionally forced this hook's
+  // caller (the top-level Router) to re-render every few seconds for every
+  // visitor, including signed-in admins — which, combined with routes
+  // declared as `component={() => <.../>}` (a fresh function identity each
+  // render), made React treat the current route as a new component type and
+  // remount it wholesale, replaying its mount animations. That looked like
+  // the whole page "reloading" itself every couple of seconds. See
+  // App.tsx's Route definitions, which now avoid the `component` prop
+  // pattern entirely so this class of bug can't recur even if this hook's
+  // timing changes again.
+  const pending = !isLoading && !isAuthenticated ? getPendingVerification() : null;
+  const now = useNow(pending ? 5_000 : 60_000);
 
-  if (isLoading || isAuthenticated) return null;
-  const pending = getPendingVerification();
-  if (!pending) return null;
+  if (isLoading || isAuthenticated || !pending) return null;
   const deadline = new Date(pending.createdAt).getTime() + GRACE_MS;
   if (now < deadline) return null;
   return pending;

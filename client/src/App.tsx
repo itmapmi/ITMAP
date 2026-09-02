@@ -155,36 +155,47 @@ function Router() {
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />
-        <Route path="/admin" component={() => <ProtectedRoute component={Admin} requireAdmin={true} />} />
+        {/* NOTE: routes that need to wrap their target in <ProtectedRoute> (or
+            another wrapper) use the `<Route path="..">{() => <.../>}</Route>`
+            children-function form, never `component={() => <.../>}`. wouter
+            renders `component` via createElement(component, ...), so a fresh
+            inline arrow function there is a *new component type* on every
+            render of this Router — React then unmounts/remounts the whole
+            subtree (replaying mount animations, looking like a "reload")
+            any time anything causes Router() itself to re-render, however
+            unrelated. The children-function form is just called to produce
+            JSX, so the rendered element's own (stable) type is what React
+            reconciles against — immune to how often the parent re-renders. */}
+        <Route path="/admin">{() => <ProtectedRoute component={Admin} requireAdmin={true} />}</Route>
         {/* /market-builder is shared: admins see the admin wizard, end users
             are redirected to /me/market-builder via the page itself. */}
-        <Route path="/market-builder" component={() => <ProtectedRoute component={MarketBuilderPage} />} />
-        <Route path="/lead-gen" component={() => <ProtectedRoute component={LeadGenOverviewPage} requireAdmin={true} />} />
-        <Route path="/lead-gen/vendors/:vendorId" component={() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />} />
-        <Route path="/lead-gen/me" component={() => <ProtectedRoute component={LeadGenMyVendorPage} />} />
-        <Route path="/lead-gen/me/fact-review" component={() => <ProtectedRoute component={FactReviewPage} />} />
-        <Route path="/rfp-responder" component={() => <ProtectedRoute component={RfpResponderPage} />} />
-        <Route path="/rfp-responder/sessions/:id" component={() => <ProtectedRoute component={RfpSessionDetailPage} />} />
-        <Route path="/battle-cards" component={() => <ProtectedRoute component={BattleCardsIndexPage} />} />
-        <Route path="/battle-cards/:marketId" component={() => <ProtectedRoute component={BattleCardDetailPage} />} />
-        <Route path="/security" component={() => <ProtectedRoute component={SecurityPage} />} />
-        <Route path="/lead-gen/:userId" component={() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />} />
-        <Route path="/me/market-builder" component={() => <ProtectedRoute component={MyMarketBuilderPage} />} />
-        <Route path="/forecast-builder" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>} />
-        <Route path="/forecast-builder/:id/report" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastReportPage} /></ForecastThemeProvider>} />
-        <Route path="/forecast-builder/:id" component={() => <ForecastThemeProvider><ProtectedRoute component={ForecastDetailPage} /></ForecastThemeProvider>} />
-        <Route path="/me/reports" component={() => <ProtectedRoute component={MyReportsPage} buyerOnly={true} />} />
-        <Route path="/me/rfps" component={() => <ProtectedRoute component={MyRfpsPage} buyerOnly={true} />} />
-        <Route path="/me/rfps/:id" component={() => <ProtectedRoute component={MyRfpDetailPage} buyerOnly={true} />} />
-        <Route path="/me/markets/:marketId/vendors" component={() => <ProtectedRoute component={MyMarketVendorsPage} />} />
-        <Route path="/me/settings/llm-keys" component={() => <ProtectedRoute component={MyLlmKeysPage} />} />
-        <Route path="/me/profile"  component={() => <ProtectedRoute component={MyProfile} />} />
-        <Route path="/me/settings" component={() => <ProtectedRoute component={MySettings} />} />
-        <Route path="/me/tools"    component={() => <ProtectedRoute component={MyToolsPage} />} />
+        <Route path="/market-builder">{() => <ProtectedRoute component={MarketBuilderPage} />}</Route>
+        <Route path="/lead-gen">{() => <ProtectedRoute component={LeadGenOverviewPage} requireAdmin={true} />}</Route>
+        <Route path="/lead-gen/vendors/:vendorId">{() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />}</Route>
+        <Route path="/lead-gen/me">{() => <ProtectedRoute component={LeadGenMyVendorPage} />}</Route>
+        <Route path="/lead-gen/me/fact-review">{() => <ProtectedRoute component={FactReviewPage} />}</Route>
+        <Route path="/rfp-responder">{() => <ProtectedRoute component={RfpResponderPage} />}</Route>
+        <Route path="/rfp-responder/sessions/:id">{() => <ProtectedRoute component={RfpSessionDetailPage} />}</Route>
+        <Route path="/battle-cards">{() => <ProtectedRoute component={BattleCardsIndexPage} />}</Route>
+        <Route path="/battle-cards/:marketId">{() => <ProtectedRoute component={BattleCardDetailPage} />}</Route>
+        <Route path="/security">{() => <ProtectedRoute component={SecurityPage} />}</Route>
+        <Route path="/lead-gen/:userId">{() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />}</Route>
+        <Route path="/me/market-builder">{() => <ProtectedRoute component={MyMarketBuilderPage} />}</Route>
+        <Route path="/forecast-builder">{() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>}</Route>
+        <Route path="/forecast-builder/:id/report">{() => <ForecastThemeProvider><ProtectedRoute component={ForecastReportPage} /></ForecastThemeProvider>}</Route>
+        <Route path="/forecast-builder/:id">{() => <ForecastThemeProvider><ProtectedRoute component={ForecastDetailPage} /></ForecastThemeProvider>}</Route>
+        <Route path="/me/reports">{() => <ProtectedRoute component={MyReportsPage} buyerOnly={true} />}</Route>
+        <Route path="/me/rfps">{() => <ProtectedRoute component={MyRfpsPage} buyerOnly={true} />}</Route>
+        <Route path="/me/rfps/:id">{() => <ProtectedRoute component={MyRfpDetailPage} buyerOnly={true} />}</Route>
+        <Route path="/me/markets/:marketId/vendors">{() => <ProtectedRoute component={MyMarketVendorsPage} />}</Route>
+        <Route path="/me/settings/llm-keys">{() => <ProtectedRoute component={MyLlmKeysPage} />}</Route>
+        <Route path="/me/profile">{() => <ProtectedRoute component={MyProfile} />}</Route>
+        <Route path="/me/settings">{() => <ProtectedRoute component={MySettings} />}</Route>
+        <Route path="/me/tools">{() => <ProtectedRoute component={MyToolsPage} />}</Route>
         <Route path="/report/:reportId" component={ReportViewer} />
         <Route path="/datasheets" component={DatasheetsIndexPage} />
-        <Route path="/me/comparisons" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
-        <Route path="/datasheets/saved" component={() => <ProtectedRoute component={DatasheetSavedPage} />} />
+        <Route path="/me/comparisons">{() => <ProtectedRoute component={DatasheetSavedPage} />}</Route>
+        <Route path="/datasheets/saved">{() => <ProtectedRoute component={DatasheetSavedPage} />}</Route>
         <Route path="/share/comparison/:token" component={DatasheetSharePage} />
         <Route path="/datasheets/:slug" component={DatasheetComparePage} />
         <Route component={NotFound} />

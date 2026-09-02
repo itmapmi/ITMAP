@@ -1,12 +1,26 @@
 ---
-name: Production admin session randomly dying (in progress)
-description: Diagnostic findings so far for admin console "reloads"/re-logins in production (distinct from the preview-iframe cookie issue). Read this before re-investigating from scratch.
+name: Admin session death — ruled out
+description: Why a scary-looking "session swap" in prod logs was a real account logout/login, not a bug; the real periodic-reload cause is in wouter-route-remount-flicker.md
 ---
 
-Symptom: admin console occasionally forces a fresh login again minutes into a
-session, perceived by the user as "continuously reloading" in production
-(not the dev preview pane — see preview-iframe-session-cookies.md for that
-separate, already-fixed issue).
+## Resolved: this specific occurrence was not a bug
+What looked like a spontaneous session ID swap was a legitimate account logout
+(a test "user"-role account) followed by an admin login — confirmed via
+production DB (`user_activity_logs`: real `logout_at` timestamp, two different
+real users, same IP/browser). `sessionCookieOccurrences` diagnostics also
+confirmed no duplicate-cookie issue (always 1).
+
+The "admin page reloads itself every couple seconds, no clicks" symptom the
+user actually meant had a completely different, purely client-side cause with
+nothing to do with sessions/cookies — see `wouter-route-remount-flicker.md`.
+Don't re-chase "session death" for a periodic-reload report; ask what visually
+changes on screen first. Kept below for reference in case a genuine
+session-related symptom resurfaces.
+
+Symptom (as originally investigated): admin console occasionally forces a
+fresh login again minutes into a session, perceived by the user as
+"continuously reloading" in production (not the dev preview pane — see
+preview-iframe-session-cookies.md for that separate, already-fixed issue).
 
 ## Confirmed via `[AuthDiag]` logging (server/auth.ts: `adminAuthDiagnostics`,
 toggle with `ADMIN_AUTH_DEBUG=false`)
