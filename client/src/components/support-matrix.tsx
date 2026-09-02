@@ -219,16 +219,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
     }
   };
 
-  // Auto-select all vendors on initial load so the grid is immediately visible.
-  // Users can still open the vendor filter to narrow down the selection.
-  const hasAutoSelected = useRef(false);
-  useEffect(() => {
-    if (!hasAutoSelected.current && allVendors && allVendors.length > 0) {
-      setSelectedVendors(new Set(allVendors.map(v => v.id)));
-      setShowVendorSelection(false);
-      hasAutoSelected.current = true;
-    }
-  }, [allVendors]);
+  // Do not auto-select vendors - require user selection (matches Ecosystem Support tab)
 
   // Scroll synchronization effect
   useEffect(() => {
