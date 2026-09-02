@@ -182,7 +182,11 @@ export function useAuth() {
   return {
     user,
     isLoading,
-    isAuthenticated: !!user && !error,
+    // Only `user` decides this: with refetchOnMount/refetchOnWindowFocus/
+    // refetchInterval all off, `error` only reflects a *stale* failure from
+    // a previous fetch (e.g. login), not a live one — it must never flip an
+    // otherwise-valid cached session to "logged out" mid-render.
+    isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isBuyer: !!user && !isVendorScoped && !isVendorPersona && user.role !== 'admin',
     vendorScopeId: user?.vendorScopeId ?? null,

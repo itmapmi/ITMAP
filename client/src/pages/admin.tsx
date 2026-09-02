@@ -33,6 +33,16 @@ import { Link } from "wouter";
 import { Wand2, ArrowRight, Radar } from "lucide-react";
 import { FadeInSection } from "@/components/ui/animated-card";
 
+// Every valid TabsTrigger value below — used to validate the `?tab=` URL
+// param so an unrecognized value can't leave the Tabs component uncontrolled.
+const ADMIN_TAB_VALUES = new Set([
+  "market-management", "user-access", "user-markets", "user-rfps", "contact-messages",
+  "vendor-management", "canonical-vendors", "new-players", "news", "ai-suggestions",
+  "signal-feed", "criteria-management", "feature-management", "support-matrix", "graphic",
+  "import-export", "research-reports", "research-methodology", "operations", "mail-management",
+  "datasheets", "api-keys", "fact-check-flags", "cve-crosswalk", "security",
+]);
+
 function PendingBadge() {
   const { data } = useQuery<{ count: number }>({
     queryKey: ["/api/admin/ai-suggestions/count"],
@@ -76,12 +86,27 @@ function MessagesBadge() {
 }
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<string>(() => {
+  // The active tab is mirrored into the URL (?tab=...) so it survives a full
+  // remount of this component — e.g. a brief auth-state flicker that swaps
+  // the whole router tree out and back in — instead of silently resetting to
+  // the default "Markets" tab. See ADMIN_TAB_VALUES below for the allow-list.
+  const [activeTab, setActiveTabState] = useState<string>(() => {
     if (typeof window === "undefined") return "market-management";
-    return new URLSearchParams(window.location.search).get("tab") === "operations"
-      ? "operations"
-      : "market-management";
+    const fromUrl = new URLSearchParams(window.location.search).get("tab");
+    return fromUrl && ADMIN_TAB_VALUES.has(fromUrl) ? fromUrl : "market-management";
   });
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (tab === "market-management") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", tab);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
   const [pendingEditVendor, setPendingEditVendor] = useState<{ id: string; marketId: string } | null>(null);
   const [pendingSignalFeedVendor, setPendingSignalFeedVendor] = useState<string | null>(null);
 
