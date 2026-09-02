@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import crypto from "crypto";
 import { storage } from "../storage";
-import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace, hashPassword, comparePassword } from "../auth";
+import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace, hashPassword, comparePassword, adminAuthDiagnostics } from "../auth";
 import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
@@ -58,6 +58,7 @@ function loginLandingPath(user: any): string {
 export function registerAuthRoutes(app: Express): void {
   setupSession(app);
   setupPassport(app);
+  app.use(adminAuthDiagnostics);
 
   // Serve sitemap dynamically so market pages are included
   app.get('/sitemap.xml', async (_req, res) => {

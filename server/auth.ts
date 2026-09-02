@@ -34,6 +34,44 @@ export function isWithinVerificationGrace(user: Pick<User, 'emailVerified' | 'cr
   return Date.now() - new Date(user.createdAt).getTime() < EMAIL_VERIFICATION_GRACE_MS;
 }
 
+// Temporary diagnostic logging for the admin-console "reload" investigation.
+// Toggle off by setting ADMIN_AUTH_DEBUG=false once the issue is understood —
+// nothing here logs cookie values, only presence/shape, so it's safe to
+// leave on in production for a while, but it's not meant to be permanent.
+export function authDiagnosticsEnabled(): boolean {
+  return process.env.ADMIN_AUTH_DEBUG !== 'false';
+}
+
+// Logs, for admin-relevant requests only, whether a session cookie arrived,
+// whether it resolved to a live session, and whether passport considered the
+// request authenticated — so a "why did this 401" question can be answered
+// from logs alone instead of guessing between "browser never sent the
+// cookie" vs "the session/user was rejected server-side".
+export function adminAuthDiagnostics(req: any, _res: any, next: any) {
+  if (!authDiagnosticsEnabled()) return next();
+  const isRelevant =
+    req.path === '/api/auth/user' ||
+    req.path === '/auth/login' ||
+    req.path.startsWith('/api/admin');
+  if (!isRelevant) return next();
+
+  const cookieHeader: string = req.headers.cookie || '';
+  console.log('[AuthDiag]', {
+    ts: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    hasCookieHeader: cookieHeader.length > 0,
+    hasSessionCookie: /connect\.sid=/.test(cookieHeader),
+    sessionId: req.sessionID ? String(req.sessionID).slice(0, 8) : null,
+    sessionExistsServerSide: !!req.session,
+    passportUserInSession: !!(req.session && (req.session as any).passport?.user),
+    isAuthenticated: typeof req.isAuthenticated === 'function' ? req.isAuthenticated() : null,
+    userId: req.user?.id ?? null,
+    userRole: req.user?.role ?? null,
+  });
+  next();
+}
+
 // Session configuration
 export function setupSession(app: Express) {
   const pgStore = connectPg(session);
@@ -87,11 +125,18 @@ export function setupPassport(app: Express) {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
-      if (!user) return done(null, false as any);
+      if (!user) {
+        if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: no user row for id', id);
+        return done(null, false as any);
+      }
       // Enforce access control for non-admin accounts.
       if (user.role !== 'admin') {
-        if (user.isBlocked) return done(null, false as any);
+        if (user.isBlocked) {
+          if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: user is blocked', { id, email: user.email });
+          return done(null, false as any);
+        }
         if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
+          if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: access expired', { id, email: user.email, accessExpiresAt: user.accessExpiresAt });
           return done(null, false as any);
         }
         // Passwordless signup: an unverified account only keeps its session
@@ -99,11 +144,13 @@ export function setupPassport(app: Express) {
         // as logged out until they follow the verification link mailed to
         // them (which re-establishes a session on success).
         if (!isWithinVerificationGrace(user)) {
+          if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: verification grace expired', { id, email: user.email });
           return done(null, false as any);
         }
       }
       done(null, user);
     } catch (error) {
+      console.error('[AuthDiag] deserializeUser: error looking up user', id, error);
       done(error, null);
     }
   });
