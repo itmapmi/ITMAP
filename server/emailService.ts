@@ -147,7 +147,12 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
       return { sent: false, reason: `Resend error ${response.status}: ${body.slice(0, 300)}` };
     }
 
-    console.log(`[EmailService] Verification email sent to ${to}`);
+    // Capture Resend's message id so a future non-delivery report can be looked
+    // up in the Resend dashboard (our logs only prove Resend *accepted* the
+    // send request, not that it reached the recipient's inbox).
+    const responseBody = await response.json().catch(() => null);
+    const resendId = responseBody?.id ? ` (resend id: ${responseBody.id})` : '';
+    console.log(`[EmailService] Verification email sent to ${to}${resendId}`);
     return { sent: true };
   } catch (err) {
     console.error('[EmailService] Failed to send verification email:', err);
