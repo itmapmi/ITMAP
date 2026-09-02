@@ -37,9 +37,20 @@ wanted a way to confirm the email is real.
 and by the `/auth/register` and `/auth/login` route handlers (so a
 freshly-issued session can't bypass the check on its very first response).
 Do not reintroduce password fields or `passport-local` without revisiting
-this decision with the user — self-service password change at
-`/api/me/password` (`server/routes/me.ts`) was deliberately left alone as
-unrelated legacy code, not reactivated infrastructure.
+this decision with the user for non-admin accounts.
+
+**Update (admin-only exception, now live):** `role === 'admin'` accounts are
+the one exception — login now requires a password when `users.password` is
+set for that account (checked in `/auth/login`, `server/routes/auth.ts`),
+closing the gap where anyone who knew an admin's email could sign in as
+them. Accounts with no password yet keep passwordless login until one is
+set, so nothing is retroactively locked out. Admins self-serve their own
+password via `POST /api/account/set-password` (Admin → Security tab in the
+UI) — bcrypt-hash it themselves, no DB access needed. Note this coexists
+with the older, still-present `/api/me/password` (`server/routes/me.ts`)
+which only supports *changing* an existing password (400s if none is set);
+the new endpoint is the superset (handles first-time set too) — check both
+before touching password-related routes.
 
 The client has no way to distinguish "session expired past grace" from
 "never signed up" once the server denies the session — both look like a
