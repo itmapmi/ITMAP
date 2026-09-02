@@ -56,12 +56,18 @@ export function adminAuthDiagnostics(req: any, _res: any, next: any) {
   if (!isRelevant) return next();
 
   const cookieHeader: string = req.headers.cookie || '';
+  // Count occurrences of the session cookie name in the raw header (not the
+  // parsed object) to catch the browser sending two "connect.sid" values at
+  // once (e.g. leftover cookie from an old Path/Domain scope) — a case the
+  // parsed req.cookies object would silently collapse to whichever one wins.
+  const sessionCookieOccurrences = (cookieHeader.match(/connect\.sid=/g) || []).length;
   console.log('[AuthDiag]', {
     ts: new Date().toISOString(),
     method: req.method,
     path: req.path,
     hasCookieHeader: cookieHeader.length > 0,
-    hasSessionCookie: /connect\.sid=/.test(cookieHeader),
+    hasSessionCookie: sessionCookieOccurrences > 0,
+    sessionCookieOccurrences,
     sessionId: req.sessionID ? String(req.sessionID).slice(0, 8) : null,
     sessionExistsServerSide: !!req.session,
     passportUserInSession: !!(req.session && (req.session as any).passport?.user),

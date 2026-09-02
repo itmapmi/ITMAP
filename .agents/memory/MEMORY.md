@@ -25,3 +25,4 @@
 - [Passwordless auth + verification grace](passwordless-auth-verification.md) — no password anywhere; 2h grace from createdAt enforced in isWithinVerificationGrace(); Resend needs itmap.ai DNS verified to actually send.
 - [Emailed links must use PUBLIC_BASE_URL](emailed-links-public-base-url.md) — REPLIT_DEV_DOMAIN fallback leaks into emailed links sent from the dev workspace, showing recipients a broken Replit placeholder page.
 - [Preview iframe session cookies](preview-iframe-session-cookies.md) — Replit preview pane is a cross-site iframe; Lax/unpartitioned cookies never persist there, causing a fake "reload loop" that isn't a real app bug.
+- [Admin session death in production (in progress)](admin-session-death-investigation.md) — sessionId spontaneously changes to a different empty session seconds after login; DB/deserialize/client causes ruled out, duplicate-cookie theory being tested.
