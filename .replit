@@ -70,6 +70,7 @@ timeoutMs = 120000
 
 [userenv.shared]
 REDDIT_PIXEL_ID = "a2_jm1855x77sag"
+PUBLIC_BASE_URL = "https://itmap.ai"
 
 [userenv.production]
 PRIMARY_DOMAIN = "itmap.ai"

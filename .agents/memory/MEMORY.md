@@ -23,3 +23,4 @@
 - [Reddit Pixel + CAPI integration](reddit-capi-integration.md) — CAPI v3 endpoint/schema, session-uuid dedup (not conversion_id), and why only SIGN_UP (not PAGE_VISIT) gets server-side CAPI.
 - [Vendor portal scoping model](vendor-portal-scoping.md) — /me/leads shows the whole market visitor pool (marketIds filter), not vendor-attributed events; watchlist feature was fully removed.
 - [Passwordless auth + verification grace](passwordless-auth-verification.md) — no password anywhere; 2h grace from createdAt enforced in isWithinVerificationGrace(); Resend needs itmap.ai DNS verified to actually send.
+- [Emailed links must use PUBLIC_BASE_URL](emailed-links-public-base-url.md) — REPLIT_DEV_DOMAIN fallback leaks into emailed links sent from the dev workspace, showing recipients a broken Replit placeholder page.
