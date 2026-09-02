@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { vendorSignals, aiSuggestions, vendors, markets } from '@shared/schema';
 import type { VendorSignal, InsertVendorSignal } from '@shared/schema';
-import { eq, and, desc, count, gte, lte, ilike, sql } from 'drizzle-orm';
+import { eq, and, desc, count, gte, lte, ilike, sql, inArray } from 'drizzle-orm';
 
 export type SignalSourceType = 'hackernews' | 'reddit' | 'github' | 'layoffs' | 'cve';
 
@@ -81,6 +81,51 @@ export async function getVendorSignals(opts: GetVendorSignalsOptions = {}): Prom
     .offset(offset);
 
   return { data: rows as VendorSignalWithContext[], total, limit, offset };
+}
+
+/**
+ * Pick which of `vendorIds` should get a GitHub collection attempt this run.
+ *
+ * The GitHub collector hits the unauthenticated GitHub REST API (60 req/hr).
+ * Attempting it for every vendor in one run exhausts that quota after
+ * ~20-30 vendors — and because vendor iteration order is stable, the same
+ * early subset would win every day while the rest never get collected.
+ * Instead: skip vendors already collected within `staleDays`, and among the
+ * rest prioritize never-collected vendors, then longest-stale, capped at
+ * `limit` so total GitHub calls for the run stay under the hourly quota.
+ */
+export async function getVendorIdsNeedingGithubRefresh(
+  vendorIds: string[],
+  staleDays: number,
+  limit: number,
+): Promise<Set<string>> {
+  if (vendorIds.length === 0) return new Set();
+
+  const rows = await db
+    .select({
+      vendorId: vendorSignals.vendorId,
+      lastCollected: sql<string>`max(${vendorSignals.collectedAt})`,
+    })
+    .from(vendorSignals)
+    .where(and(eq(vendorSignals.sourceType, 'github'), inArray(vendorSignals.vendorId, vendorIds)))
+    .groupBy(vendorSignals.vendorId);
+
+  const lastCollectedMap = new Map(rows.map(r => [r.vendorId, r.lastCollected ? new Date(r.lastCollected) : null]));
+  const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
+
+  const candidates = vendorIds
+    .map(id => ({ id, last: lastCollectedMap.get(id) ?? null }))
+    .filter(v => !v.last || v.last < cutoff)
+    .sort((a, b) => {
+      if (!a.last && !b.last) return 0;
+      if (!a.last) return -1;
+      if (!b.last) return 1;
+      return a.last.getTime() - b.last.getTime();
+    })
+    .slice(0, limit)
+    .map(v => v.id);
+
+  return new Set(candidates);
 }
 
 export async function getVendorSignalById(id: string): Promise<VendorSignalWithContext | undefined> {

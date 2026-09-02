@@ -24,6 +24,7 @@ import {
   findExistingVendorSignal,
   markVendorSignalFeedAttempted,
   updateVendorSignalSuggestionLink,
+  getVendorIdsNeedingGithubRefresh,
 } from '../storage/signals';
 import { generateSuggestionsFromSignal } from '../news/suggestions/generator';
 
@@ -39,12 +40,21 @@ export interface SignalCollectionResult {
 // Sources that feed into AI suggestions
 const SUGGESTION_SOURCES = new Set(['hackernews', 'layoffs']);
 
+// GitHub's unauthenticated REST API caps out at 60 req/hr, and each vendor
+// needs 2-3 calls. Attempting every vendor in one run silently starves
+// everyone past the first ~20-30. Instead only refresh vendors whose GitHub
+// data is stale (or missing), capped per run so total calls stay under quota
+// — see getVendorIdsNeedingGithubRefresh for the rotation logic.
+const GITHUB_STALE_DAYS = 5;
+const GITHUB_MAX_ATTEMPTS_PER_RUN = 20;
+
 export async function collectSignalsForVendor(
   vendorId: string,
   vendorName: string,
   marketId: string,
   vendorWebsite?: string | null,
   marketName?: string | null,
+  attemptGithub: boolean = true,
 ): Promise<SignalCollectionResult> {
   let collected = 0;
   let newCount = 0;
@@ -61,7 +71,9 @@ export async function collectSignalsForVendor(
       collectHnSignals(vendorName, marketKeyword),
       collectRedditSignals(vendorName),
       collectLayoffsSignals(vendorName),
-      collectGithubSignals(vendorName, vendorWebsite ?? undefined),
+      attemptGithub
+        ? collectGithubSignals(vendorName, vendorWebsite ?? undefined)
+        : Promise.resolve([]),
     ]);
 
     const allRaw: Array<{
@@ -205,6 +217,12 @@ export async function collectSignalsForMarket(marketId: string): Promise<SignalC
   const marketName = marketRows[0]?.name ?? null;
   const results: SignalCollectionResult[] = [];
 
+  const githubEligible = await getVendorIdsNeedingGithubRefresh(
+    marketVendors.map(v => v.id),
+    GITHUB_STALE_DAYS,
+    GITHUB_MAX_ATTEMPTS_PER_RUN,
+  );
+
   for (const vendor of marketVendors) {
     const result = await collectSignalsForVendor(
       vendor.id,
@@ -212,6 +230,7 @@ export async function collectSignalsForMarket(marketId: string): Promise<SignalC
       vendor.marketId,
       vendor.website,
       marketName,
+      githubEligible.has(vendor.id),
     );
     results.push(result);
     await new Promise(r => setTimeout(r, 2000));
@@ -235,6 +254,12 @@ export async function collectSignalsForAllVendors(): Promise<SignalCollectionRes
 
   const results: SignalCollectionResult[] = [];
 
+  const githubEligible = await getVendorIdsNeedingGithubRefresh(
+    rows.map(v => v.id),
+    GITHUB_STALE_DAYS,
+    GITHUB_MAX_ATTEMPTS_PER_RUN,
+  );
+
   for (const vendor of rows) {
     const result = await collectSignalsForVendor(
       vendor.id,
@@ -242,6 +267,7 @@ export async function collectSignalsForAllVendors(): Promise<SignalCollectionRes
       vendor.marketId,
       vendor.website,
       vendor.marketName ?? null,
+      githubEligible.has(vendor.id),
     );
     results.push(result);
     await new Promise(r => setTimeout(r, 2000));
@@ -250,7 +276,8 @@ export async function collectSignalsForAllVendors(): Promise<SignalCollectionRes
   console.log(
     `[Orchestrator] All-vendor collection complete: ${results.length} vendors, ` +
     `${results.reduce((s, r) => s + r.new, 0)} new signals, ` +
-    `${results.reduce((s, r) => s + r.suggestionsTriggered, 0)} suggestions triggered`
+    `${results.reduce((s, r) => s + r.suggestionsTriggered, 0)} suggestions triggered ` +
+    `(GitHub attempted for ${githubEligible.size}/${rows.length} vendors this run)`
   );
 
   return results;
