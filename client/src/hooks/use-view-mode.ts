@@ -23,12 +23,12 @@ export function useViewMode() {
 
   const switchToMobile = useCallback(() => {
     setViewModeCookie("mobile");
-    window.location.href = toMobilePath(location);
+    window.location.href = toMobilePath(location) + window.location.search;
   }, [location]);
 
   const switchToDesktop = useCallback(() => {
     setViewModeCookie("desktop");
-    window.location.href = toDesktopPath(location);
+    window.location.href = toDesktopPath(location) + window.location.search;
   }, [location]);
 
   return { isMobileRoute, canToggle, switchToMobile, switchToDesktop };
