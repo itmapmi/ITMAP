@@ -30,3 +30,4 @@
 - [Mobile route-flag architecture](mobile-route-flag-architecture.md) — structural mobile UI gates on explicit `mobileMode` (from `/mobile/...` URL), not the viewport `useIsMobile()` hook; tsc catches scope bugs HMR misses.
 - [Markets fixed-data UI boundary](markets-fixed-data-ui-boundary.md) — Markets UX may reorganize stored evidence, but must not invent journeys, summaries, rankings, or on-the-fly data.
 - [Markets AI chat grounding](markets-ai-chat-grounding.md) — AI chat is the exception to static presentation: generated answers must remain strictly grounded in stored market evidence.
+- [Security Intelligence mobile boundary](security-intelligence-mobile-boundary.md) — redesign uses a black evidence workspace and must preserve the existing CVE feature set exactly.
