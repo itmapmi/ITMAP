@@ -7,6 +7,9 @@ import type { ResearchReport } from "@shared/schema";
 
 interface ResearchReportsProps {
   marketId: string;
+  /** True only on the /mobile/* route — opens report links at their
+   * /mobile/report/:id mirror instead of the desktop path. */
+  mobileMode?: boolean;
 }
 
 function getFileMeta(mimeType: string | null, fileUrl: string | null) {
@@ -41,7 +44,7 @@ function formatFileSize(bytes: number | null | undefined): string {
   return `${Math.round((bytes / Math.pow(1024, i)) * 100) / 100} ${sizes[i]}`;
 }
 
-export function ResearchReports({ marketId }: ResearchReportsProps) {
+export function ResearchReports({ marketId, mobileMode = false }: ResearchReportsProps) {
   const { data: reports, isLoading } = useQuery<ResearchReport[]>({
     queryKey: ["/api/markets", marketId, "research-reports"],
   });
@@ -128,7 +131,7 @@ export function ResearchReports({ marketId }: ResearchReportsProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(`/report/${report.id}`, "_blank")}
+                    onClick={() => window.open(`${mobileMode ? "/mobile" : ""}/report/${report.id}`, "_blank")}
                     className="flex items-center gap-2"
                     data-testid={`report-view-${report.id}`}
                   >

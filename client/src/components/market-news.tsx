@@ -28,6 +28,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const EXPORT_RANGES = [
   { value: "30", label: "Past 30 days" },
@@ -88,6 +89,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
   const [exportCategory, setExportCategory] = useState<string>("all");
   const [exportDays, setExportDays] = useState<string>("90");
   const [exporting, setExporting] = useState(false);
+  const isMobile = useIsMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ['/api/markets', marketId, 'vendors']
@@ -234,7 +236,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className={isMobile ? "space-y-3" : "flex justify-between items-start"}>
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Newspaper className="h-5 w-5" />
@@ -244,9 +246,9 @@ export function MarketNews({ marketId }: MarketNewsProps) {
                 Latest news and announcements from market vendors, with AI-powered analysis
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className={isMobile ? "grid grid-cols-2 gap-2" : "flex gap-2 flex-wrap"}>
               <Select value={selectedRange} onValueChange={setSelectedRange}>
-                <SelectTrigger className="w-40" data-testid="select-timeline-filter">
+                <SelectTrigger className={isMobile ? "w-full" : "w-40"} data-testid="select-timeline-filter">
                   <SelectValue placeholder="All time" />
                 </SelectTrigger>
                 <SelectContent>
@@ -259,7 +261,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
               </Select>
 
               <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                <SelectTrigger className="w-48" data-testid="select-vendor-filter">
+                <SelectTrigger className={isMobile ? "w-full" : "w-48"} data-testid="select-vendor-filter">
                   <SelectValue placeholder="All Vendors" />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,7 +275,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
               </Select>
 
               <Select value={selectedImpact} onValueChange={setSelectedImpact}>
-                <SelectTrigger className="w-40" data-testid="select-impact-filter">
+                <SelectTrigger className={isMobile ? "w-full" : "w-40"} data-testid="select-impact-filter">
                   <SelectValue placeholder="All Impact" />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,7 +287,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
               </Select>
 
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48" data-testid="select-category-filter">
+                <SelectTrigger className={isMobile ? "w-full" : "w-48"} data-testid="select-category-filter">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -300,7 +302,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
 
               <Dialog open={exportOpen} onOpenChange={setExportOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="gap-2" data-testid="button-export-news">
+                  <Button variant="outline" className={isMobile ? "gap-2 col-span-2" : "gap-2"} data-testid="button-export-news">
                     <Download className="h-4 w-4" />
                     Export PDF
                   </Button>

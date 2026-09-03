@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface NewPlayersProps {
   marketId: string;
@@ -18,6 +19,7 @@ export function NewPlayers({ marketId }: NewPlayersProps) {
   const { data: players, isLoading } = useQuery<NewPlayer[]>({
     queryKey: ["/api/markets", marketId, "new-players"],
   });
+  const isMobile = useIsMobile();
 
   if (isLoading) {
     return (
@@ -49,54 +51,90 @@ export function NewPlayers({ marketId }: NewPlayersProps) {
         </p>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Vendor Name</TableHead>
-              <TableHead className="w-[200px]">Website</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="w-[150px]">Est. Revenue</TableHead>
-              <TableHead className="w-[150px]">Location</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {players.map((player) => (
-              <TableRow key={player.id} data-testid={`row-player-${player.id}`}>
-                <TableCell className="font-semibold" data-testid={`text-name-${player.id}`}>
-                  {player.name}
-                </TableCell>
-                <TableCell data-testid={`link-website-${player.id}`}>
-                  {player.websiteUrl ? (
-                    <a
-                      href={player.websiteUrl.startsWith('http://') || player.websiteUrl.startsWith('https://') 
-                        ? player.websiteUrl 
-                        : `https://${player.websiteUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-primary hover:underline"
-                    >
-                      Visit Site
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell data-testid={`text-description-${player.id}`}>
-                  {player.description || <span className="text-muted-foreground">-</span>}
-                </TableCell>
-                <TableCell data-testid={`text-revenue-${player.id}`}>
-                  {player.estimatedRevenue || <span className="text-muted-foreground">-</span>}
-                </TableCell>
-                <TableCell data-testid={`text-location-${player.id}`}>
-                  {player.location || <span className="text-muted-foreground">-</span>}
-                </TableCell>
+      {isMobile ? (
+        <div className="space-y-3">
+          {players.map((player) => (
+            <div key={player.id} className="border rounded-lg p-4 space-y-2" data-testid={`row-player-${player.id}`}>
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-semibold" data-testid={`text-name-${player.id}`}>{player.name}</span>
+                {player.websiteUrl ? (
+                  <a
+                    href={player.websiteUrl.startsWith('http://') || player.websiteUrl.startsWith('https://')
+                      ? player.websiteUrl
+                      : `https://${player.websiteUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-primary text-sm hover:underline shrink-0"
+                    data-testid={`link-website-${player.id}`}
+                  >
+                    Visit <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null}
+              </div>
+              {player.description && (
+                <p className="text-sm text-muted-foreground" data-testid={`text-description-${player.id}`}>{player.description}</p>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+                {player.estimatedRevenue && (
+                  <span data-testid={`text-revenue-${player.id}`}>Est. Revenue: {player.estimatedRevenue}</span>
+                )}
+                {player.location && (
+                  <span data-testid={`text-location-${player.id}`}>{player.location}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px]">Vendor Name</TableHead>
+                <TableHead className="w-[200px]">Website</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-[150px]">Est. Revenue</TableHead>
+                <TableHead className="w-[150px]">Location</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {players.map((player) => (
+                <TableRow key={player.id} data-testid={`row-player-${player.id}`}>
+                  <TableCell className="font-semibold" data-testid={`text-name-${player.id}`}>
+                    {player.name}
+                  </TableCell>
+                  <TableCell data-testid={`link-website-${player.id}`}>
+                    {player.websiteUrl ? (
+                      <a
+                        href={player.websiteUrl.startsWith('http://') || player.websiteUrl.startsWith('https://') 
+                          ? player.websiteUrl 
+                          : `https://${player.websiteUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-primary hover:underline"
+                      >
+                        Visit Site
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell data-testid={`text-description-${player.id}`}>
+                    {player.description || <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                  <TableCell data-testid={`text-revenue-${player.id}`}>
+                    {player.estimatedRevenue || <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                  <TableCell data-testid={`text-location-${player.id}`}>
+                    {player.location || <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

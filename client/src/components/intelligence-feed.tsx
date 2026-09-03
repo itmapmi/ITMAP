@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Vendor } from "@shared/schema";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface VendorSignalsPage {
   data: SignalData[];
@@ -35,6 +36,7 @@ interface IntelligenceFeedProps {
 export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const isMobile = useIsMobile();
 
   const signalsUrl = (() => {
     const base = `/api/markets/${marketId}/vendor-signals?limit=20`;
@@ -57,9 +59,9 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className={isMobile ? "flex flex-col gap-2" : "flex flex-wrap gap-2 items-center"}>
         <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-          <SelectTrigger className="w-48 h-9 text-sm">
+          <SelectTrigger className={isMobile ? "w-full h-9 text-sm" : "w-48 h-9 text-sm"}>
             <SelectValue placeholder="All vendors" />
           </SelectTrigger>
           <SelectContent>

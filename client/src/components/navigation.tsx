@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield } from "lucide-react";
+import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield, Smartphone } from "lucide-react";
+import { useViewMode } from "@/hooks/use-view-mode";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +21,7 @@ export default function Navigation() {
   const { user, isAdmin, logout, isAuthenticated, hasFeature, isVendorScoped } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { canToggle: canToggleMobileView, switchToMobile } = useViewMode();
 
   // The fixed header (verification banner + nav) is measured at runtime and
   // that measurement drives the spacer below it, so the two can never drift
@@ -247,6 +249,17 @@ export default function Navigation() {
 
             {/* Desktop auth */}
             <div className="hidden md:flex items-center justify-end gap-3">
+              {canToggleMobileView && (
+                <button
+                  onClick={switchToMobile}
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-white/5 transition-colors border border-white/10"
+                  data-testid="button-switch-mobile"
+                  title="Switch to the mobile-optimized view"
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Mobile view
+                </button>
+              )}
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -366,6 +379,16 @@ export default function Navigation() {
 
             {isAdmin && (
               <Link href="/admin"><div className="px-4 py-3 text-sm font-medium rounded-lg cursor-pointer text-amber-400" onClick={() => setMobileOpen(false)}>Admin</div></Link>
+            )}
+
+            {canToggleMobileView && (
+              <button
+                onClick={switchToMobile}
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+                data-testid="button-switch-mobile-menu"
+              >
+                <Smartphone className="h-4 w-4" /> Switch to mobile view
+              </button>
             )}
 
             <div className="pt-3 border-t border-white/5 flex flex-col gap-2">

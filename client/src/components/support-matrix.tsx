@@ -20,7 +20,13 @@ interface SupportMatrixProps {
   pdfLocked?: boolean;
   /** Called instead of opening the vendor-selection modal when pdfLocked is true. */
   onPdfLockedClick?: () => void;
+  /** True only on the /mobile/* route — caps vendor selection at 3 (dense
+   * comparison grids don't fit a phone) and swaps the notes Dialog for an
+   * inline expandable row. Independent of the isMobile viewport hook. */
+  mobileMode?: boolean;
 }
+
+const MOBILE_VENDOR_CAP = 3;
 
 // Component for updating vendor evaluation scores from product evaluation
 const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
@@ -136,7 +142,7 @@ const HarveyBall = ({
   );
 };
 
-export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }: SupportMatrixProps) {
+export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, mobileMode = false }: SupportMatrixProps) {
   // Refs for scroll synchronization
   const containerRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -151,6 +157,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
     notes: string;
     supportLevel: number;
   } | null>(null);
+  // Mobile experience swaps the notes Dialog for an inline expandable row
+  // (dialogs are awkward on phones); this tracks which vendor+feature row
+  // is currently expanded.
+  const [expandedNoteKey, setExpandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -283,6 +293,13 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
       if (newSet.has(vendorId)) {
         newSet.delete(vendorId);
       } else {
+        if (mobileMode && newSet.size >= MOBILE_VENDOR_CAP) {
+          toast({
+            title: `Up to ${MOBILE_VENDOR_CAP} vendors on mobile`,
+            description: "Deselect one first, or switch to the desktop site to compare more at once.",
+          });
+          return prev;
+        }
         newSet.add(vendorId);
       }
       return newSet;
@@ -291,7 +308,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
 
   const selectAllVendors = () => {
     if (allVendors) {
-      setSelectedVendors(new Set(allVendors.map(v => v.id)));
+      const ids = mobileMode ? allVendors.slice(0, MOBILE_VENDOR_CAP).map(v => v.id) : allVendors.map(v => v.id);
+      setSelectedVendors(new Set(ids));
     }
   };
 
@@ -474,7 +492,11 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
     });
   });
 
-  const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string) => {
+  const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string, key?: string) => {
+    if (mobileMode && key) {
+      setExpandedNoteKey(prev => (prev === key ? null : key));
+      return;
+    }
     if (notes) {
       setSelectedNotes({
         vendorName,
@@ -837,21 +859,35 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick }:
                                     const supportData = supportLookup.get(supportKey);
                                     const supportLevel = supportData?.level || 0;
                                     const notes = supportData?.notes;
-                                    
+                                    const isExpanded = mobileMode && expandedNoteKey === supportKey;
+
                                     return (
-                                      <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                        <div>
-                                          <div className="font-medium text-sm text-gray-900">{vendor.name}</div>
-                                          <div className="text-xs text-gray-500">{getSupportText(supportLevel)}</div>
+                                      <div key={vendor.id} className="bg-gray-50 rounded-lg overflow-hidden">
+                                        <div className="flex items-center justify-between p-3">
+                                          <div>
+                                            <div className="font-medium text-sm text-gray-900">{vendor.name}</div>
+                                            <div className="text-xs text-gray-500">{getSupportText(supportLevel)}</div>
+                                          </div>
+                                          <HarveyBall
+                                            level={supportLevel}
+                                            notes={notes}
+                                            vendorName={vendor.name}
+                                            featureName={feature.name}
+                                            onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}
+                                            isMobile={true}
+                                          />
                                         </div>
-                                        <HarveyBall
-                                          level={supportLevel}
-                                          notes={notes}
-                                          vendorName={vendor.name}
-                                          featureName={feature.name}
-                                          onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes)}
-                                          isMobile={true}
-                                        />
+                                        {/* Inline expandable notes — replaces the desktop Dialog on mobile */}
+                                        {isExpanded && (
+                                          <div className="px-3 pb-3 pt-0 animate-in slide-in-from-top-1 duration-150">
+                                            <div className="rounded-md bg-white border border-gray-200 p-3">
+                                              <p className="text-xs font-medium text-gray-500 mb-1">Notes</p>
+                                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                {notes || "No additional notes for this rating."}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}

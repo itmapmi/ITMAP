@@ -11,8 +11,13 @@ import { format } from "date-fns";
 import type { ResearchReport } from "@shared/schema";
 
 export default function ReportViewer() {
-  const [match, params] = useRoute("/report/:reportId");
-  const reportId = params?.reportId;
+  // Registered at both /report/:reportId and its /mobile/report/:reportId
+  // mirror (see shared/mobile-paths.ts and App.tsx) — always opened in a new
+  // tab/window from research-reports.tsx, so mobileMode drives layout only.
+  const [matchDesktop, paramsDesktop] = useRoute("/report/:reportId");
+  const [matchMobile, paramsMobile] = useRoute("/mobile/report/:reportId");
+  const reportId = paramsDesktop?.reportId ?? paramsMobile?.reportId;
+  const mobileMode = !!matchMobile;
 
   const { data: report, isLoading, error } = useQuery<ResearchReport>({
     queryKey: ["/api/research-reports", reportId],
@@ -102,6 +107,81 @@ export default function ReportViewer() {
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (mobileMode) {
+    // Genuinely different layout, not a squeezed desktop one: a compact
+    // sticky header (title + type + date only, description dropped) and a
+    // full-width bottom action bar so Close/Download stay reachable by
+    // thumb without competing with the header for space.
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+            {report.reportType && (
+              <Badge variant="secondary" className={`${getReportTypeColor(report.reportType)} border-0 text-[10px] px-1.5 py-0`}>
+                {report.reportType}
+              </Badge>
+            )}
+            {report.publishedAt && (
+              <span className="text-[11px] text-gray-500 ml-auto flex items-center gap-1 flex-shrink-0">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(report.publishedAt), 'MMM d, yyyy')}
+              </span>
+            )}
+          </div>
+          <h1 className="text-base font-semibold text-gray-900 mt-1.5 leading-snug">
+            {report.title}
+          </h1>
+        </div>
+
+        <div className="px-4 py-5">
+          {report.htmlContent ? (
+            <div
+              className="prose prose-sm max-w-none
+                prose-headings:text-gray-900 prose-headings:font-bold
+                prose-p:text-gray-700 prose-p:leading-relaxed
+                prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                prose-strong:text-gray-900 prose-strong:font-semibold
+                prose-ul:text-gray-700 prose-ol:text-gray-700
+                prose-li:text-gray-700 prose-li:my-1
+                prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-3
+                prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:text-xs
+                prose-img:rounded-lg prose-img:shadow-md
+                prose-table:border-collapse prose-table:border prose-table:border-gray-300 prose-table:text-xs
+                prose-th:border prose-th:border-gray-300 prose-th:bg-gray-50 prose-th:p-1.5
+                prose-td:border prose-td:border-gray-300 prose-td:p-1.5"
+              dangerouslySetInnerHTML={{ __html: report.htmlContent }}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+              <h3 className="text-base font-medium text-gray-900 mb-1">No Content Available</h3>
+              <p className="text-sm text-gray-500">
+                This report doesn't have online content available.
+                {report.fileUrl && " You can download the file instead."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky bottom action bar — thumb-reachable Close/Download */}
+        <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-2 z-10">
+          <Button variant="outline" onClick={handleGoBack} className="flex-1 flex items-center justify-center gap-2" data-testid="button-close-report">
+            <ArrowLeft className="h-4 w-4" />
+            Close
+          </Button>
+          {report.fileUrl && (
+            <Button onClick={handleDownload} className="flex-1 flex items-center justify-center gap-2" data-testid="button-download-report">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          )}
         </div>
       </div>
     );

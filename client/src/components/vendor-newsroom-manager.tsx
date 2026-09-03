@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, Globe, AlertCircle, CheckCircle2, BellOff, Bell, ExternalLink, Search } from "lucide-react";
 import type { Vendor } from "@shared/schema";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type DraftRow = {
   newsroomUrl: string;
@@ -26,6 +27,7 @@ export function VendorNewsroomManager({ marketId, variant = "full" }: Props) {
   const [filter, setFilter] = useState("");
   const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/markets", marketId, "vendors"],
@@ -155,23 +157,15 @@ export function VendorNewsroomManager({ marketId, variant = "full" }: Props) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-              <th className="px-4 py-2.5 font-semibold">Vendor</th>
-              <th className="px-4 py-2.5 font-semibold">Newsroom URL</th>
-              <th className="px-4 py-2.5 font-semibold w-32 text-center">Alerts</th>
-              <th className="px-4 py-2.5 font-semibold w-24 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map(v => {
-              const d = drafts[v.id] ?? { newsroomUrl: "", newsroomAlertDisabled: false, dirty: false };
-              const isSaving = savingId === v.id;
-              return (
-                <tr key={v.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 align-top">
+      {isMobile ? (
+        <div className="space-y-3">
+          {filtered.map(v => {
+            const d = drafts[v.id] ?? { newsroomUrl: "", newsroomAlertDisabled: false, dirty: false };
+            const isSaving = savingId === v.id;
+            return (
+              <div key={v.id} className="rounded-lg border border-gray-200 p-3 space-y-2.5" data-testid={`card-newsroom-${v.id}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
                     <div className="font-medium text-gray-900">{v.name}</div>
                     {v.website && (
                       <a
@@ -184,62 +178,142 @@ export function VendorNewsroomManager({ marketId, variant = "full" }: Props) {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="url"
-                        placeholder="https://vendor.com/newsroom"
-                        value={d.newsroomUrl}
-                        onChange={e => updateDraft(v.id, { newsroomUrl: e.target.value })}
-                        className="h-9 text-sm"
-                        data-testid={`input-newsroom-${v.id}`}
-                      />
-                      {d.newsroomUrl && (
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {d.newsroomAlertDisabled ? (
+                      <BellOff className="h-3.5 w-3.5 text-gray-400" />
+                    ) : (
+                      <Bell className="h-3.5 w-3.5 text-blue-500" />
+                    )}
+                    <Switch
+                      checked={!d.newsroomAlertDisabled}
+                      onCheckedChange={v2 => updateDraft(v.id, { newsroomAlertDisabled: !v2 })}
+                      data-testid={`switch-alerts-${v.id}`}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="url"
+                    placeholder="https://vendor.com/newsroom"
+                    value={d.newsroomUrl}
+                    onChange={e => updateDraft(v.id, { newsroomUrl: e.target.value })}
+                    className="h-9 text-sm flex-1"
+                    data-testid={`input-newsroom-${v.id}`}
+                  />
+                  {d.newsroomUrl && (
+                    <a
+                      href={d.newsroomUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-gray-400 hover:text-gray-700 flex-shrink-0"
+                      title="Open URL"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleSave(v.id)}
+                  disabled={!d.dirty || isSaving}
+                  className="h-8 w-full"
+                  data-testid={`button-save-${v.id}`}
+                >
+                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span className="ml-1">Save</span>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-2.5 font-semibold">Vendor</th>
+                <th className="px-4 py-2.5 font-semibold">Newsroom URL</th>
+                <th className="px-4 py-2.5 font-semibold w-32 text-center">Alerts</th>
+                <th className="px-4 py-2.5 font-semibold w-24 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(v => {
+                const d = drafts[v.id] ?? { newsroomUrl: "", newsroomAlertDisabled: false, dirty: false };
+                const isSaving = savingId === v.id;
+                return (
+                  <tr key={v.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 align-top">
+                      <div className="font-medium text-gray-900">{v.name}</div>
+                      {v.website && (
                         <a
-                          href={d.newsroomUrl}
+                          href={v.website}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-gray-400 hover:text-gray-700 flex-shrink-0"
-                          title="Open URL"
+                          className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-0.5"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          {v.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                          <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top text-center">
-                    <div className="inline-flex items-center gap-2">
-                      {d.newsroomAlertDisabled ? (
-                        <BellOff className="h-3.5 w-3.5 text-gray-400" />
-                      ) : (
-                        <Bell className="h-3.5 w-3.5 text-blue-500" />
-                      )}
-                      <Switch
-                        checked={!d.newsroomAlertDisabled}
-                        onCheckedChange={v2 => updateDraft(v.id, { newsroomAlertDisabled: !v2 })}
-                        data-testid={`switch-alerts-${v.id}`}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => handleSave(v.id)}
-                      disabled={!d.dirty || isSaving}
-                      className="h-8"
-                      data-testid={`button-save-${v.id}`}
-                    >
-                      {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      <span className="ml-1">Save</span>
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="url"
+                          placeholder="https://vendor.com/newsroom"
+                          value={d.newsroomUrl}
+                          onChange={e => updateDraft(v.id, { newsroomUrl: e.target.value })}
+                          className="h-9 text-sm"
+                          data-testid={`input-newsroom-${v.id}`}
+                        />
+                        {d.newsroomUrl && (
+                          <a
+                            href={d.newsroomUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-gray-400 hover:text-gray-700 flex-shrink-0"
+                            title="Open URL"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-center">
+                      <div className="inline-flex items-center gap-2">
+                        {d.newsroomAlertDisabled ? (
+                          <BellOff className="h-3.5 w-3.5 text-gray-400" />
+                        ) : (
+                          <Bell className="h-3.5 w-3.5 text-blue-500" />
+                        )}
+                        <Switch
+                          checked={!d.newsroomAlertDisabled}
+                          onCheckedChange={v2 => updateDraft(v.id, { newsroomAlertDisabled: !v2 })}
+                          data-testid={`switch-alerts-${v.id}`}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-right">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSave(v.id)}
+                        disabled={!d.dirty || isSaving}
+                        className="h-8"
+                        data-testid={`button-save-${v.id}`}
+                      >
+                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        <span className="ml-1">Save</span>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {filtered.length === 0 && (
         <p className="text-center text-sm text-gray-500 py-4">No vendors match "{filter}".</p>

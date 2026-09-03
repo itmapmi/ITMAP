@@ -34,7 +34,13 @@ function statusColor(s: string) {
 
 export default function MyRfpsPage() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  // Registered at both /me/rfps and /mobile/me/rfps (see shared/mobile-paths.ts
+  // and App.tsx) — mobileMode defers to the global <MobileNavigation /> that
+  // App.tsx already renders for /mobile/* routes instead of this page's own
+  // desktop <Navigation />, and switches the "New RFP" flow into the mobile
+  // step-by-step wizard on /mobile/me/rfps/:id.
+  const mobileMode = location.startsWith("/mobile/");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [marketId, setMarketId] = useState<string>("");
@@ -74,7 +80,7 @@ export default function MyRfpsPage() {
     onSuccess: (rfp: RfpProject) => {
       queryClient.invalidateQueries({ queryKey: ["/api/me/rfps"] });
       setOpen(false); setTitle(""); setMarketId("");
-      setLocation(`/me/rfps/${rfp.id}`);
+      setLocation(`${mobileMode ? "/mobile" : ""}/me/rfps/${rfp.id}`);
     },
     onError: (e: unknown) => {
       // The server returns 412 with code:MISSING_LLM_KEY when the user has no
@@ -104,16 +110,16 @@ export default function MyRfpsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Navigation />
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
+      {!mobileMode && <Navigation />}
+      <div className={mobileMode ? "px-4 py-6" : "max-w-6xl mx-auto px-6 py-12"}>
+        <div className={mobileMode ? "mb-6" : "flex items-center justify-between mb-8"}>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">RFP Builder</h1>
-            <p className="text-slate-400 mt-2">Run a conversational interview and produce a customer-specific RFP, grounded in real market data.</p>
+            <h1 className={mobileMode ? "text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent" : "text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent"}>RFP Builder</h1>
+            <p className={mobileMode ? "text-slate-400 mt-1.5 text-sm" : "text-slate-400 mt-2"}>Run a conversational interview and produce a customer-specific RFP, grounded in real market data.</p>
           </div>
           <Button
             onClick={() => setOpen(true)}
-            className="bg-gradient-to-r from-cyan-500 to-violet-600"
+            className={`bg-gradient-to-r from-cyan-500 to-violet-600 ${mobileMode ? "mt-4 w-full" : ""}`}
             data-testid="button-new-rfp"
           >
             <Plus className="w-4 h-4 mr-2" /> New RFP
@@ -142,7 +148,7 @@ export default function MyRfpsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={mobileMode ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
             {rfps.map((rfp) => (
               <Card key={rfp.id} className="bg-slate-900 border-white/5 hover:border-cyan-500/40 transition" data-testid={`card-rfp-${rfp.id}`}>
                 <CardHeader>
@@ -162,7 +168,7 @@ export default function MyRfpsPage() {
                 <CardContent>
                   <p className="text-xs text-slate-500 mb-4">Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}</p>
                   <div className="flex items-center gap-2">
-                    <Link href={`/me/rfps/${rfp.id}`} className="flex-1">
+                    <Link href={`${mobileMode ? "/mobile" : ""}/me/rfps/${rfp.id}`} className="flex-1">
                       <Button variant="outline" className="w-full bg-slate-800 border-white/10 hover:bg-slate-700" data-testid={`button-open-rfp-${rfp.id}`}>
                         Open <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
@@ -200,7 +206,7 @@ export default function MyRfpsPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending || !!needsKey || !!atActiveLimit || !!atDailyLimit} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
+            <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending || (status ? !status.hasOpenAiKey : false) || !!atActiveLimit || !!atDailyLimit} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
               {createMutation.isPending ? "Starting…" : "Start interview"}
             </Button>
           </DialogFooter>

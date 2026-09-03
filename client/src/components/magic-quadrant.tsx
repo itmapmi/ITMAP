@@ -32,6 +32,10 @@ interface MagicQuadrantProps {
   marketType?: "mature" | "emerging";
   enableDrag?: boolean;
   onLabelPositionChange?: (vendorId: string, x: number, y: number) => void;
+  /** True only on the /mobile/* route — hides the Timeline and Criteria
+   * Weights controls, which are too fiddly for a phone. Independent of the
+   * isMobile viewport hook so narrowing a desktop browser doesn't hide them. */
+  mobileMode?: boolean;
 }
 
 interface VendorWithScores extends Vendor {
@@ -74,7 +78,7 @@ const historicalTimelineTicks = Array.from(
   (_, index) => index * HISTORICAL_TICK_INTERVAL,
 );
 
-export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange }: MagicQuadrantProps) {
+export default function MagicQuadrant({ marketId, marketName, marketType = "mature", enableDrag = false, onLabelPositionChange, mobileMode = false }: MagicQuadrantProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [timelineValue, setTimelineValue] = useState([HISTORICAL_WEEKS]); // Start at the current week
@@ -1327,97 +1331,105 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   </PopoverContent>
                 </Popover>
 
-                <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
-                  <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
-                  </label>
-                  <div className="relative py-1">
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-2 top-1/2 z-10 flex h-3 -translate-y-1/2 justify-between"
-                      data-testid="timeline-ticks"
-                    >
-                      {historicalTimelineTicks.map((tick) => (
-                        <span
-                          key={tick}
-                          className="h-3 w-px bg-slate-400/80"
-                          style={{ visibility: tick === 0 || tick === HISTORICAL_WEEKS ? "hidden" : "visible" }}
-                        />
-                      ))}
+                {/* Timeline slider: too fiddly for touch and not a mobile
+                    priority — hidden on the /mobile/* experience. */}
+                {!mobileMode && (
+                  <div className={`mt-4 ${isMobile ? 'px-2' : 'px-4'}`}>
+                    <label className={`block font-medium text-gray-700 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                      {isMobile ? `${formatDate(selectedDate)}${weeksAgo > 0 ? ` (${weeksAgo}w ago)` : ' (Now)'}` : `Historical View - ${formatDate(selectedDate)} ${weeksAgo > 0 ? ` (${weeksAgo} ${weeksAgo === 1 ? 'week' : 'weeks'} ago)` : ' (Current)'}`}
+                    </label>
+                    <div className="relative py-1">
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-2 top-1/2 z-10 flex h-3 -translate-y-1/2 justify-between"
+                        data-testid="timeline-ticks"
+                      >
+                        {historicalTimelineTicks.map((tick) => (
+                          <span
+                            key={tick}
+                            className="h-3 w-px bg-slate-400/80"
+                            style={{ visibility: tick === 0 || tick === HISTORICAL_WEEKS ? "hidden" : "visible" }}
+                          />
+                        ))}
+                      </div>
+                      <Slider
+                        value={timelineValue}
+                        onValueChange={setTimelineValue}
+                        max={HISTORICAL_WEEKS}
+                        step={1}
+                        className="relative z-0 w-full"
+                        aria-label="Historical view timeline for the last six months"
+                        data-testid="timeline-slider"
+                      />
                     </div>
-                    <Slider
-                      value={timelineValue}
-                      onValueChange={setTimelineValue}
-                      max={HISTORICAL_WEEKS}
-                      step={1}
-                      className="relative z-0 w-full"
-                      aria-label="Historical view timeline for the last six months"
-                      data-testid="timeline-slider"
-                    />
+                    <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+                      <span>{isMobile ? formatDate(startDate).replace(', 2022', '') : formatDate(startDate)}</span>
+                      <span>{isMobile ? formatDate(today).replace(', 2025', '') : formatDate(today)}</span>
+                    </div>
                   </div>
-                  <div className={`flex justify-between text-gray-500 mt-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
-                    <span>{isMobile ? formatDate(startDate).replace(', 2022', '') : formatDate(startDate)}</span>
-                    <span>{isMobile ? formatDate(today).replace(', 2025', '') : formatDate(today)}</span>
-                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Criteria Weights: slider-heavy tuning panel, hidden entirely on
+            the /mobile/* experience (the grid collapses to one column). */}
+        {!mobileMode && (
+          <div className="lg:col-span-1">
+            <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
+              <CardHeader className={isMobile ? "pb-3" : ""}>
+                <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h4 className="font-bold text-gray-900 mb-3">Product Strategy and Execution</h4>
+                  {executionCriteria.map(criterion => (
+                    <div key={criterion.id} className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {criterion.name}
+                      </label>
+                      <Slider
+                        value={[criteriaWeights[criterion.id] ?? 100]}
+                        onValueChange={([value]) => handleWeightChange(criterion.id, value)}
+                        max={100}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="text-xs text-gray-500 text-right">
+                        {criteriaWeights[criterion.id] ?? 100}%
+                      </div>
+                    </div>
+                  ))}
+                  
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <div className="lg:col-span-1">
-          <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
-            <CardHeader className={isMobile ? "pb-3" : ""}>
-              <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
-              <div className="space-y-4">
-                <h4 className="font-bold text-gray-900 mb-3">Product Strategy and Execution</h4>
-                {executionCriteria.map(criterion => (
-                  <div key={criterion.id} className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {criterion.name}
-                    </label>
-                    <Slider
-                      value={[criteriaWeights[criterion.id] ?? 100]}
-                      onValueChange={([value]) => handleWeightChange(criterion.id, value)}
-                      max={100}
-                      step={1}
-                      className="w-full"
-                    />
-                    <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] ?? 100}%
+                <hr className="my-6 border-gray-300" />
+
+                <div className="space-y-4">
+                  <h4 className="font-bold text-gray-900 mb-3">Vendor Viability</h4>
+                  {viabilityCriteria.map(criterion => (
+                    <div key={criterion.id} className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {criterion.name}
+                      </label>
+                      <Slider
+                        value={[criteriaWeights[criterion.id] ?? 100]}
+                        onValueChange={([value]) => handleWeightChange(criterion.id, value)}
+                        max={100}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="text-xs text-gray-500 text-right">
+                        {criteriaWeights[criterion.id] ?? 100}%
+                      </div>
                     </div>
-                  </div>
-                ))}
-                
-              </div>
-
-              <hr className="my-6 border-gray-300" />
-
-              <div className="space-y-4">
-                <h4 className="font-bold text-gray-900 mb-3">Vendor Viability</h4>
-                {viabilityCriteria.map(criterion => (
-                  <div key={criterion.id} className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {criterion.name}
-                    </label>
-                    <Slider
-                      value={[criteriaWeights[criterion.id] ?? 100]}
-                      onValueChange={([value]) => handleWeightChange(criterion.id, value)}
-                      max={100}
-                      step={1}
-                      className="w-full"
-                    />
-                    <div className="text-xs text-gray-500 text-right">
-                      {criteriaWeights[criterion.id] ?? 100}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       <div className="mt-8">

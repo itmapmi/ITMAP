@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
+import MobileNavigation from "@/components/mobile-navigation";
 import Home from "@/pages/home";
 import About from "@/pages/About";
 import Platform from "@/pages/Platform";
@@ -116,6 +117,7 @@ function ProtectedRoute({ component: Component, requireAdmin = false, buyerOnly 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const pendingBlock = usePendingVerificationBlock();
+  const [location] = useLocation();
 
   if (isLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
@@ -133,10 +135,12 @@ function Router() {
     );
   }
 
+  const isMobileRoute = location.startsWith("/mobile/") || location === "/mobile";
+
   return (
     <div className="min-h-screen">
       <VerificationReminderDialog />
-      <Navigation />
+      {isMobileRoute ? <MobileNavigation /> : <Navigation />}
       <TrafficPageTracker />
       <TeaserGateProvider>
         <Switch>
@@ -155,6 +159,15 @@ function Router() {
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />
+        {/* Mobile experience: path-based, not a same-URL responsive tweak — see
+            shared/mobile-paths.ts. Phones get redirected here server-side
+            (server/mobileRedirect.ts); desktop users can opt in via the
+            manual toggle in Navigation. The pages below detect the /mobile
+            prefix themselves (via useViewMode()/location) and render a
+            condensed layout while reusing the same data-fetching logic. */}
+        <Route path="/mobile/markets/:marketId" component={MarketDetails} />
+        <Route path="/mobile/market/:marketId" component={MarketDetails} />
+        <Route path="/mobile/report/:reportId" component={ReportViewer} />
         {/* NOTE: routes that need to wrap their target in <ProtectedRoute> (or
             another wrapper) use the `<Route path="..">{() => <.../>}</Route>`
             children-function form, never `component={() => <.../>}`. wouter
@@ -187,6 +200,8 @@ function Router() {
         <Route path="/me/reports">{() => <ProtectedRoute component={MyReportsPage} buyerOnly={true} />}</Route>
         <Route path="/me/rfps">{() => <ProtectedRoute component={MyRfpsPage} buyerOnly={true} />}</Route>
         <Route path="/me/rfps/:id">{() => <ProtectedRoute component={MyRfpDetailPage} buyerOnly={true} />}</Route>
+        <Route path="/mobile/me/rfps">{() => <ProtectedRoute component={MyRfpsPage} buyerOnly={true} />}</Route>
+        <Route path="/mobile/me/rfps/:id">{() => <ProtectedRoute component={MyRfpDetailPage} buyerOnly={true} />}</Route>
         <Route path="/me/markets/:marketId/vendors">{() => <ProtectedRoute component={MyMarketVendorsPage} />}</Route>
         <Route path="/me/settings/llm-keys">{() => <ProtectedRoute component={MyLlmKeysPage} />}</Route>
         <Route path="/me/profile">{() => <ProtectedRoute component={MyProfile} />}</Route>

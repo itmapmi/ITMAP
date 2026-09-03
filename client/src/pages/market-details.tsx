@@ -38,7 +38,7 @@ import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
 import { ChartLoading, LoadingSpinner, SkeletonCard } from "@/components/ui/loading-animations";
 
-function useCreateRfpForMarket() {
+function useCreateRfpForMarket(pathPrefix: string) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   return useMutation({
@@ -46,7 +46,7 @@ function useCreateRfpForMarket() {
       const title = `${vars.marketName.replace(/^ITMAP for /i, "")} RFP — ${new Date().toLocaleDateString()}`;
       return await apiRequestJson("/api/me/rfps", "POST", { marketId: vars.marketId, title }) as { id: string };
     },
-    onSuccess: (created) => navigate(`/me/rfps/${created.id}`),
+    onSuccess: (created) => navigate(`${pathPrefix}/me/rfps/${created.id}`),
     onError: (e: unknown) => {
       if (isMissingLlmKeyError(e)) {
         toast({ title: "OpenAI key required", description: "Add your OpenAI API key in Settings → LLM Keys.", variant: "destructive" });
@@ -61,13 +61,23 @@ function useCreateRfpForMarket() {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function MarketDetails() {
-  const [match, params] = useRoute("/markets/:marketId");
-  const marketId = params?.marketId;
+  // Registered at both /markets/:marketId (and its legacy /market/:marketId
+  // alias) and their /mobile/... mirrors — see shared/mobile-paths.ts and
+  // App.tsx. mobileMode reflects which URL is actually active, so behavior
+  // that must differ from desktop (hiding Methodology, capping vendor
+  // selection, etc.) is driven by the route, not by viewport width.
+  const [matchSlug, paramsSlug] = useRoute("/markets/:marketId");
+  const [matchLegacy, paramsLegacy] = useRoute("/market/:marketId");
+  const [matchMobileSlug, paramsMobileSlug] = useRoute("/mobile/markets/:marketId");
+  const [matchMobileLegacy, paramsMobileLegacy] = useRoute("/mobile/market/:marketId");
+  const marketId = paramsSlug?.marketId ?? paramsLegacy?.marketId ?? paramsMobileSlug?.marketId ?? paramsMobileLegacy?.marketId;
+  const mobileMode = !!(matchMobileSlug || matchMobileLegacy);
+  const pathPrefix = mobileMode ? "/mobile" : "";
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
   const { teaserActive, openRegistrationModal } = useTeaserGate();
-  const createRfpMutation = useCreateRfpForMarket();
+  const createRfpMutation = useCreateRfpForMarket(pathPrefix);
   const { toast } = useToast();
 
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -106,8 +116,8 @@ export default function MarketDetails() {
     if (!market || !marketId) return;
     if (!UUID_RE.test(marketId)) return;
     const slug = marketSlug(market.name);
-    if (slug) navigate(`/markets/${slug}`, { replace: true });
-  }, [market, marketId]);
+    if (slug) navigate(`${pathPrefix}/markets/${slug}`, { replace: true });
+  }, [market, marketId, pathPrefix]);
 
   // Per-page SEO: update canonical / title / og tags once the market name is known.
   const cleanMarketTitle = market?.name.replace(/^ITMAP for /i, "") ?? "";
@@ -627,9 +637,15 @@ export default function MarketDetails() {
                     Reports
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
-                  {isMobile ? 'Method' : 'Methodology'}
-                </TabsTrigger>
+                {/* Methodology is fully hidden on the mobile experience — it's
+                    dense reference material, not something phone visitors
+                    need in the flow. Desktop (including a narrowed desktop
+                    browser) keeps it, hence gating on mobileMode not isMobile. */}
+                {!mobileMode && (
+                  <TabsTrigger value="research-methodology" className={isMobile ? 'flex-shrink-0 px-2 text-[10px]' : 'whitespace-nowrap'} data-testid="tab-methodology">
+                    {isMobile ? 'Method' : 'Methodology'}
+                  </TabsTrigger>
+                )}
                 {isAuthenticated && (market?.visibility !== "private" || market?.ownerUserId === user?.id || isAdmin) && (
                   hasFeature("rfp") ? (
                     <button
@@ -724,31 +740,34 @@ export default function MarketDetails() {
               marketType={(market as any).marketType ?? "mature"}
               enableDrag={editingLabels}
               onLabelPositionChange={editingLabels ? handleLabelPositionChange : undefined}
+              mobileMode={mobileMode}
             />
           </TabsContent>
 
           <TabsContent value="support-matrix" className="mt-6">
             {showOwnerControls && !hasProductPhase
               ? <PhasePlaceholder phase="Product" />
-              : <SupportMatrix marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} />}
+              : <SupportMatrix marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} mobileMode={mobileMode} />}
           </TabsContent>
 
           <TabsContent value="ecosystem-support" className="mt-6">
             {showOwnerControls && !hasEcosystemPhase
               ? <PhasePlaceholder phase="Ecosystem" />
-              : <EcosystemSupport marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} />}
+              : <EcosystemSupport marketId={resolvedId!} pdfLocked={anonymousReportsLock} onPdfLockedClick={openRegistrationModal} mobileMode={mobileMode} />}
           </TabsContent>
 
-          <TabsContent value="research-methodology" className="mt-6">
-            <ResearchMethodology marketId={resolvedId!} />
-          </TabsContent>
+          {!mobileMode && (
+            <TabsContent value="research-methodology" className="mt-6">
+              <ResearchMethodology marketId={resolvedId!} />
+            </TabsContent>
+          )}
 
           <TabsContent value="new-players" className="mt-6">
             <NewPlayers marketId={resolvedId!} />
           </TabsContent>
 
           <TabsContent value="research-reports" className="mt-6">
-            <ResearchReports marketId={resolvedId!} />
+            <ResearchReports marketId={resolvedId!} mobileMode={mobileMode} />
           </TabsContent>
 
           <TabsContent value="news" className="mt-6">

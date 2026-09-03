@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runStartupMigrations } from "./db";
 import { configureProxyTrust } from "./proxyTrust";
+import { mobileRedirectMiddleware } from "./mobileRedirect";
 
 const app = express();
 
@@ -30,6 +31,11 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Path-based mobile experience: redirect phone visitors (or anyone who has
+// manually opted in via the view_mode cookie) from an in-scope desktop page
+// to its /mobile/* counterpart. See shared/mobile-paths.ts for scope rules.
+app.use(mobileRedirectMiddleware);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));

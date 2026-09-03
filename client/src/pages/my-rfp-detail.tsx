@@ -22,11 +22,28 @@ interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; 
 interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; invitedAt: string | null; respondedAt: string | null; vendor: { id: string; name: string } | null }
 const fmtDate = (s: string | null | undefined) => s ? new Date(s).toLocaleDateString() : null;
 
+// Guided step order used for the mobile wizard — same tab keys as the
+// desktop Tabs, just navigated one at a time instead of via a tab strip.
+const STEPS = [
+  { key: "interview", label: "Interview" },
+  { key: "requirements", label: "Requirements" },
+  { key: "preview", label: "Preview" },
+  { key: "shortlist", label: "Shortlist" },
+  { key: "outreach", label: "Outreach" },
+  { key: "export", label: "Export" },
+] as const;
+
 export default function MyRfpDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [tab, setTab] = useState("interview");
+  const [location, setLocation] = useLocation();
+  // Registered at both /me/rfps/:id and /mobile/me/rfps/:id (see
+  // shared/mobile-paths.ts and App.tsx) — mobileMode swaps the tab strip for
+  // a guided step-by-step wizard with Back/Next, better suited to a phone.
+  const mobileMode = location.startsWith("/mobile/");
+  const [tab, setTab] = useState<string>("interview");
+  const stepIndex = Math.max(0, STEPS.findIndex(s => s.key === tab));
+  const goToStep = (i: number) => setTab(STEPS[Math.max(0, Math.min(STEPS.length - 1, i))].key);
   const [draft, setDraft] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -131,37 +148,69 @@ export default function MyRfpDetailPage() {
   const interviewComplete = interviewReady;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Navigation />
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">{rfp?.title || "RFP"}</h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {filledSlots}/{totalSlots} interview slots captured · Status: <span className="font-medium text-slate-200">{rfp?.status}</span>
-            </p>
+    <div className={`min-h-screen bg-slate-950 text-slate-100 ${mobileMode ? "pb-24" : ""}`}>
+      {!mobileMode && <Navigation />}
+      <div className={mobileMode ? "px-4 py-5" : "max-w-6xl mx-auto px-6 py-8"}>
+        {mobileMode ? (
+          <div className="mb-5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold truncate">{rfp?.title || "RFP"}</h1>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {filledSlots}/{totalSlots} slots · <span className="font-medium text-slate-200">{rfp?.status}</span>
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending || !interviewReady}
+                title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
+                className="bg-gradient-to-r from-cyan-500 to-violet-600 flex-shrink-0"
+                data-testid="button-generate-rfp"
+              >
+                <Sparkles className="w-4 h-4" />
+              </Button>
+            </div>
+            {/* Step progress — the wizard's only "tab strip" on mobile */}
+            <div className="mt-4 flex items-center gap-1.5">
+              {STEPS.map((s, i) => (
+                <div key={s.key} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= stepIndex ? "bg-gradient-to-r from-cyan-500 to-violet-600" : "bg-slate-800"}`} />
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].label}</p>
           </div>
-          <Button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending || !interviewReady}
-            title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
-            className="bg-gradient-to-r from-cyan-500 to-violet-600"
-            data-testid="button-generate-rfp"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {generateMutation.isPending ? "Generating…" : rfp?.status === "ready" ? "Regenerate RFP" : "Generate RFP"}
-          </Button>
-        </div>
+        ) : (
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold">{rfp?.title || "RFP"}</h1>
+              <p className="text-slate-400 text-sm mt-1">
+                {filledSlots}/{totalSlots} interview slots captured · Status: <span className="font-medium text-slate-200">{rfp?.status}</span>
+              </p>
+            </div>
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending || !interviewReady}
+              title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "10 of 14 total"}`}
+              className="bg-gradient-to-r from-cyan-500 to-violet-600"
+              data-testid="button-generate-rfp"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {generateMutation.isPending ? "Generating…" : rfp?.status === "ready" ? "Regenerate RFP" : "Generate RFP"}
+            </Button>
+          </div>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-slate-900 border border-white/5">
-            <TabsTrigger value="interview" data-testid="tab-interview">Interview</TabsTrigger>
-            <TabsTrigger value="requirements" data-testid="tab-requirements">Requirements ({requirements.length})</TabsTrigger>
-            <TabsTrigger value="preview" data-testid="tab-preview">Preview</TabsTrigger>
-            <TabsTrigger value="shortlist" data-testid="tab-shortlist">Shortlist ({shortlist.length})</TabsTrigger>
-            <TabsTrigger value="outreach" data-testid="tab-outreach">Outreach</TabsTrigger>
-            <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
-          </TabsList>
+          {!mobileMode && (
+            <TabsList className="bg-slate-900 border border-white/5">
+              <TabsTrigger value="interview" data-testid="tab-interview">Interview</TabsTrigger>
+              <TabsTrigger value="requirements" data-testid="tab-requirements">Requirements ({requirements.length})</TabsTrigger>
+              <TabsTrigger value="preview" data-testid="tab-preview">Preview</TabsTrigger>
+              <TabsTrigger value="shortlist" data-testid="tab-shortlist">Shortlist ({shortlist.length})</TabsTrigger>
+              <TabsTrigger value="outreach" data-testid="tab-outreach">Outreach</TabsTrigger>
+              <TabsTrigger value="export" data-testid="tab-export">Export</TabsTrigger>
+            </TabsList>
+          )}
 
           {/* ── Interview ─────────────────────────────────────────── */}
           <TabsContent value="interview">
@@ -215,36 +264,55 @@ export default function MyRfpDetailPage() {
                   <p className="text-sm text-slate-400">Requirements will be seeded automatically the first time you Generate the RFP, based on this market's feature catalogue and your must-haves.</p>
                 ) : (
                   <div className="space-y-2">
-                    {requirements.map(r => (
-                      <div key={r.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-slate-800/50 rounded border border-white/5">
-                        <div className="col-span-5">
-                          <div className="text-sm font-medium">{r.label}</div>
-                          {r.description && <div className="text-xs text-slate-400 mt-0.5">{r.description}</div>}
+                    {requirements.map(r => {
+                      const prioritySelect = (
+                        <Select value={r.priority} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { priority: v } })}>
+                          <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
+                            <SelectItem value="must">Must</SelectItem>
+                            <SelectItem value="should">Should</SelectItem>
+                            <SelectItem value="nice">Nice</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      );
+                      const weightSelect = (
+                        <Select value={String(r.weight)} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { weight: Number(v) } })}>
+                          <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
+                            {[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>Weight {n}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      );
+                      return mobileMode ? (
+                        <div key={r.id} className="p-3 bg-slate-800/50 rounded border border-white/5 space-y-2" data-testid={`row-requirement-${r.id}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium">{r.label}</div>
+                              {r.description && <div className="text-xs text-slate-400 mt-0.5">{r.description}</div>}
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs flex-shrink-0">×</Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">{prioritySelect}</div>
+                            <div className="flex-1">{weightSelect}</div>
+                            <span className="text-xs text-slate-400 flex-shrink-0">{r.kind}</span>
+                          </div>
                         </div>
-                        <div className="col-span-2">
-                          <Select value={r.priority} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { priority: v } })}>
-                            <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                              <SelectItem value="must">Must</SelectItem>
-                              <SelectItem value="should">Should</SelectItem>
-                              <SelectItem value="nice">Nice</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      ) : (
+                        <div key={r.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-slate-800/50 rounded border border-white/5">
+                          <div className="col-span-5">
+                            <div className="text-sm font-medium">{r.label}</div>
+                            {r.description && <div className="text-xs text-slate-400 mt-0.5">{r.description}</div>}
+                          </div>
+                          <div className="col-span-2">{prioritySelect}</div>
+                          <div className="col-span-2">{weightSelect}</div>
+                          <div className="col-span-2 text-xs text-slate-400">{r.kind}</div>
+                          <div className="col-span-1 text-right">
+                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs">×</Button>
+                          </div>
                         </div>
-                        <div className="col-span-2">
-                          <Select value={String(r.weight)} onValueChange={(v) => updateReqMutation.mutate({ reqId: r.id, body: { weight: Number(v) } })}>
-                            <SelectTrigger className="bg-slate-900 border-white/10 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-white/10 text-slate-100">
-                              {[1,2,3,4,5].map(n => <SelectItem key={n} value={String(n)}>Weight {n}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-2 text-xs text-slate-400">{r.kind}</div>
-                        <div className="col-span-1 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs">×</Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -298,9 +366,9 @@ export default function MyRfpDetailPage() {
                 ) : (
                   <div className="space-y-2">
                     {shortlist.map((s, i) => (
-                      <div key={s.id} className="flex items-center gap-3 p-3 rounded border border-white/5 bg-slate-800/50">
+                      <div key={s.id} className={mobileMode ? "flex flex-wrap items-center gap-2 p-3 rounded border border-white/5 bg-slate-800/50" : "flex items-center gap-3 p-3 rounded border border-white/5 bg-slate-800/50"}>
                         <div className="text-xs text-slate-500 w-6">#{i + 1}</div>
-                        <div className="flex-1">
+                        <div className={mobileMode ? "w-full order-1" : "flex-1"}>
                           <div className="font-medium text-sm">{s.vendor?.name}</div>
                           <div className="text-xs text-slate-400">{s.rationale}</div>
                         </div>
@@ -342,7 +410,10 @@ export default function MyRfpDetailPage() {
                     });
                     return (
                       <div key={s.id} className="p-3 rounded border border-white/5 bg-slate-800/50 space-y-2" data-testid={`outreach-row-${s.vendorId}`}>
-                        <div className="grid grid-cols-12 gap-3 items-center">
+                        {/* mobileMode swaps to a single-column grid so the
+                            col-span-N utilities below simply stack full-width
+                            instead of trying to fit a 12-col layout on a phone. */}
+                        <div className={mobileMode ? "grid grid-cols-1 gap-2" : "grid grid-cols-12 gap-3 items-center"}>
                           <div className="col-span-3 text-sm font-medium">
                             {s.vendor?.name}
                             <div className="text-[10px] text-slate-400 mt-0.5 space-x-2">
@@ -371,7 +442,7 @@ export default function MyRfpDetailPage() {
                             className="col-span-4 bg-slate-900 border-white/10 h-8 text-xs"
                             data-testid={`input-contact-email-${s.vendorId}`} />
                         </div>
-                        <div className="grid grid-cols-12 gap-3 items-start">
+                        <div className={mobileMode ? "grid grid-cols-1 gap-2" : "grid grid-cols-12 gap-3 items-start"}>
                           <Textarea key={`rt-${row?.id || "new"}`} placeholder="Paste vendor's response text here…"
                             defaultValue={row?.responseText || ""}
                             onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))}
@@ -461,6 +532,29 @@ export default function MyRfpDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Guided wizard footer — replaces the tab strip with Back/Next */}
+      {mobileMode && (
+        <div className="fixed bottom-0 inset-x-0 bg-slate-900 border-t border-white/10 px-4 py-3 flex items-center gap-2 z-10">
+          <Button
+            variant="outline"
+            onClick={() => goToStep(stepIndex - 1)}
+            disabled={stepIndex === 0}
+            className="flex-1 bg-slate-800 border-white/10 hover:bg-slate-700"
+            data-testid="button-wizard-back"
+          >
+            Back
+          </Button>
+          <Button
+            onClick={() => goToStep(stepIndex + 1)}
+            disabled={stepIndex === STEPS.length - 1}
+            className="flex-1 bg-gradient-to-r from-cyan-500 to-violet-600"
+            data-testid="button-wizard-next"
+          >
+            Next: {STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].label}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
