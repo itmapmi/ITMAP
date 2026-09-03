@@ -567,6 +567,15 @@ function PublicStats() {
   );
 }
 
+const HERO_FEATURES = [
+  { label: "Access to all markets", icon: <Globe2 className="h-5 w-5" /> },
+  { label: "Real-time vendor maps", icon: <BarChart3 className="h-5 w-5" /> },
+  { label: "In-depth product comparisons", icon: <Layers className="h-5 w-5" /> },
+  { label: "Vendor Intelligence", icon: <TrendingUp className="h-5 w-5" /> },
+  { label: "Security Intelligence", icon: <Shield className="h-5 w-5" /> },
+  { label: "RFP builder", icon: <ClipboardList className="h-5 w-5" /> },
+];
+
 function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
   const { teaserActive } = useTeaserGate();
   const handlePersonaSelect = (persona: "buyer" | "vendor") => {
@@ -598,45 +607,33 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <span className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">Know Every Move.</span>
           </motion.h1>
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }} className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-12 text-center">
-            Independent, AI-powered enterprise IT intelligence for technology buyers and vendors. No bias. No guesswork.
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25 }} className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-8 text-center">
+            Independent, AI-powered enterprise IT intelligence for technology buyers. No bias. No guesswork.
           </motion.p>
 
-          {/* Persona cards */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35 }} className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl mx-auto mb-16">
-            {/* Buyer */}
-            <button onClick={() => handlePersonaSelect("buyer")} className="group relative text-left bg-slate-900 border border-white/8 hover:border-cyan-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_50px_rgba(14,165,233,0.12)]">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/8 group-hover:to-violet-500/5 transition-all duration-500" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-11 w-11 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-cyan-400" />
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-3 py-1">
-                    <Sparkles className="h-3 w-3" /> Free Forever
-                  </span>
-                </div>
-                <h3 className="font-bold text-white text-lg mb-1.5 group-hover:text-cyan-300 transition-colors">Technology Buyer</h3>
-                <p className="text-sm text-slate-400 leading-relaxed mb-4">Evaluate vendors, compare products, build RFPs and access independent market research — completely free, no paid plan.</p>
-                <div className="flex items-center gap-1.5 text-cyan-400 text-sm font-medium">
-                  Get free buyer access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </button>
+          {/* Free emphasis */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex justify-center mb-10">
+            <span className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-4 py-1.5 text-sm font-semibold">
+              <Sparkles className="h-3.5 w-3.5" /> 100% free, forever — no paid plan, no credit card
+            </span>
+          </motion.div>
 
-            {/* Vendor */}
-            <button onClick={() => handlePersonaSelect("vendor")} className="group relative text-left bg-slate-900 border border-white/8 hover:border-violet-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-[0_0_50px_rgba(139,92,246,0.12)]">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500/0 to-violet-500/0 group-hover:from-violet-500/8 group-hover:to-cyan-500/5 transition-all duration-500" />
-              <div className="relative">
-                <div className="h-11 w-11 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center mb-4">
-                  <Building2 className="h-5 w-5 text-violet-400" />
+          {/* What buyers get */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35 }} className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
+            {HERO_FEATURES.map((f) => (
+              <div key={f.label} className="group relative bg-slate-900 border border-white/8 hover:border-cyan-500/40 rounded-2xl p-5 transition-all duration-300 hover:shadow-[0_0_40px_rgba(14,165,233,0.1)]">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/10 flex items-center justify-center mb-3 text-cyan-400 group-hover:text-violet-300 transition-colors">
+                  {f.icon}
                 </div>
-                <h3 className="font-bold text-white text-lg mb-1.5 group-hover:text-violet-300 transition-colors">IT Vendor</h3>
-                <p className="text-sm text-slate-400 leading-relaxed mb-4">Monitor your market position, respond to RFPs, track competitive signals and showcase your products to buyers.</p>
-                <div className="flex items-center gap-1.5 text-violet-400 text-sm font-medium">
-                  Get vendor access <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <p className="text-sm font-semibold text-white leading-snug">{f.label}</p>
               </div>
+            ))}
+          </motion.div>
+
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="flex justify-center mb-16">
+            <button onClick={() => handlePersonaSelect("buyer")} className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-[0_0_40px_rgba(14,165,233,0.25)]">
+              Get free access <ArrowRight className="h-4 w-4" />
             </button>
           </motion.div>
 

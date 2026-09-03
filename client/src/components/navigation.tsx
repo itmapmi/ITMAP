@@ -80,6 +80,7 @@ export default function Navigation() {
     { href: "/licensing", label: "Licensing" },
     { href: "/pricing", label: "Pricing" },
     { href: "/about", label: "About Us" },
+    { href: "/vendor", label: "For Vendors" },
   ];
 
   // Buyer nav (all features unlocked — no locks needed)
