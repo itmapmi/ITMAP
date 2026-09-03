@@ -1,0 +1,30 @@
+.fdm-shell {
+  scrollbar-width: none;
+}
+
+.fdm-shell::-webkit-scrollbar,
+.fdm-shell *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.fdm-shell .fdm-content,
+.fdm-shell .fdm-card,
+.fdm-shell .fdm-chart,
+.fdm-shell .fdm-key {
+  width: 100%;
+  max-width: 100%;
+}
+
+.fdm-shell .fdm-chart {
+  overflow: hidden;
+}
+
+.fdm-shell .fdm-chart-caption {
+  width: 100%;
+}
+
+.fdm-shell .fdm-key {
+  margin-inline: 0;
+}
