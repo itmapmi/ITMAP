@@ -28,3 +28,4 @@
 - [Admin session death — ruled out, real cause elsewhere](admin-session-death-investigation.md) — "spontaneous session swap" was a real logout/login account switch; not a bug. See wouter-route-remount-flicker.md for the actual periodic-reload cause.
 - [Wouter inline component prop remount flicker](wouter-route-remount-flicker.md) — `component={() => <.../>}` in a Route gets a new identity every parent re-render, forcing a full remount; use the children-function form instead.
 - [Mobile route-flag architecture](mobile-route-flag-architecture.md) — structural mobile UI gates on explicit `mobileMode` (from `/mobile/...` URL), not the viewport `useIsMobile()` hook; tsc catches scope bugs HMR misses.
+- [Markets fixed-data UI boundary](markets-fixed-data-ui-boundary.md) — Markets UX may reorganize stored evidence, but must not invent journeys, summaries, rankings, or on-the-fly data.
