@@ -80,4 +80,4 @@ PUBLIC_BASE_URL = "https://itmap.ai"
 PRIMARY_DOMAIN = "itmap.ai"
 
 [objectStorage]
-defaultBucketID = "replit-objstore-12a0ddb0-15d5-406e-a497-e23c593c958f"
+defaultBucketID = "replit-objstore-eecbc4ab-69aa-485e-9419-470dc87d40d9"
