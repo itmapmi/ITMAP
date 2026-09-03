@@ -29,3 +29,4 @@
 - [Wouter inline component prop remount flicker](wouter-route-remount-flicker.md) — `component={() => <.../>}` in a Route gets a new identity every parent re-render, forcing a full remount; use the children-function form instead.
 - [Mobile route-flag architecture](mobile-route-flag-architecture.md) — structural mobile UI gates on explicit `mobileMode` (from `/mobile/...` URL), not the viewport `useIsMobile()` hook; tsc catches scope bugs HMR misses.
 - [Markets fixed-data UI boundary](markets-fixed-data-ui-boundary.md) — Markets UX may reorganize stored evidence, but must not invent journeys, summaries, rankings, or on-the-fly data.
+- [Markets AI chat grounding](markets-ai-chat-grounding.md) — AI chat is the exception to static presentation: generated answers must remain strictly grounded in stored market evidence.
