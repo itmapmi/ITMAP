@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import { Shell, Section, productCategories, vendors, supportByVendor, Harvey, Legend } from "./_shared";
+import { NotesPopup, Shell, Section, productCategories, vendors, supportByVendor, Harvey, Legend, type NotePayload } from "./_shared";
 import "./FixedProductComparison.css";
 
 export function FixedProductComparison() {
   const [selected, setSelected] = useState<string[]>(["v1", "v2"]);
   const [open, setOpen] = useState<string | null>("Core platform");
+  const [note, setNote] = useState<NotePayload | null>(null);
   const toggle = (id: string) =>
     setSelected((current) =>
       current.includes(id)
@@ -48,10 +49,10 @@ export function FixedProductComparison() {
                   <div className="fdm-product-values">
                     {chosen.map((vendor) => {
                       const record = supportByVendor[vendor.id][feature[0] as string];
-                      return <details key={vendor.id} open>
-                        <summary><Harvey level={record.level} /><span><b>{record.level} / 4</b><small>Commentary</small></span></summary>
-                        <p>{record.commentary}</p>
-                      </details>;
+                       return <div className="fdm-support-cell" key={vendor.id}>
+                         <div><Harvey level={record.level} /><b>{record.level} / 4</b></div>
+                         <button onClick={() => setNote({vendor:vendor.name,product:vendor.product,subject:feature[0] as string,score:`${record.level} / 4 support`,commentary:record.commentary})}>View notes</button>
+                       </div>;
                     })}
                   </div>
                 </div>
@@ -60,6 +61,7 @@ export function FixedProductComparison() {
           ))}
         </div>
       </Section>
+      <NotesPopup note={note} onClose={() => setNote(null)} />
     </Shell>
   );
 }

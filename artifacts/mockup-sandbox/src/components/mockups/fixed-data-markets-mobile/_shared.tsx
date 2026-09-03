@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type CSSProperties } from "react";
-import { ChevronDown, CircleDot, FileText, Newspaper, Network, Radar, BarChart3 } from "lucide-react";
+import { ChevronDown, CircleDot, FileText, Newspaper, Network, Radar, BarChart3, X } from "lucide-react";
 import "./_group.css";
 
 export const vendors = [
@@ -51,6 +51,18 @@ export function Shell({active, title, subtitle, children}:{active:string;title:s
  return <div className="fdm-shell"><header className="fdm-top"><span className="fdm-wordmark">ITMAP</span><small>FIXED EVIDENCE / MOBILE</small></header><main className="fdm-main"><section className="fdm-hero"><div className="fdm-kicker">Markets / evidence workspace</div><h1>{title}</h1><p>{subtitle}</p><div className="fdm-meta"><span>Published evaluation</span><i/><span>Data snapshot · 18 Jun 2024</span></div></section><details className="fdm-switcher"><summary><span><b>SECTION</b>{current[1]}</span><span className="fdm-switcher-open">View all sections</span></summary><div>{nav.map(([key,label,path],i)=><a key={key} className={active===key?"active":""} href={`/__mockup/preview/fixed-data-markets-mobile/${path}`}><b>0{i+1}</b><span>{label}</span></a>)}</div></details><div className="fdm-content">{children}</div></main></div>
 }
 export function Section({n,title,action,children}:{n:string;title:string;action?:ReactNode;children:ReactNode}){return <section><div className="fdm-section-title"><span>{n}</span><h2>{title}</h2>{action}</div>{children}</section>}
+export type NotePayload={vendor:string;product:string;subject:string;score:string;commentary:string};
+export function NotesPopup({note,onClose}:{note:NotePayload|null;onClose:()=>void}){
+ if(!note)return null;
+ return <div className="fdm-notes-backdrop" onClick={onClose}>
+  <div className="fdm-notes-popup" role="dialog" aria-modal="true" aria-labelledby="fdm-notes-title" onClick={event=>event.stopPropagation()}>
+   <header><div><span className="fdm-label">Evaluation notes</span><h2 id="fdm-notes-title">{note.subject}</h2></div><button onClick={onClose} aria-label="Close notes"><X size={20}/></button></header>
+   <div className="fdm-notes-meta"><div><span>Vendor</span><strong>{note.vendor}</strong></div><div><span>Product</span><strong>{note.product}</strong></div><div><span>Score</span><strong>{note.score}</strong></div></div>
+   <div className="fdm-notes-body"><span className="fdm-label">Stored commentary</span><p>{note.commentary}</p></div>
+   <footer><button onClick={onClose}>Close notes</button></footer>
+  </div>
+ </div>
+}
 export function Harvey({level}:{level:number}){return <span className="fdm-ball" style={{"--level":level} as CSSProperties} aria-label={`${level} of 4 support`}/> }
 export function Legend(){return <div className="fdm-legend"><span><i style={{background:"#e5ebe4"}}/>0 none</span><span><i style={{background:"#c9a95f"}}/>1 limited</span><span><i style={{background:"#8b9d65"}}/>2 partial</span><span><i style={{background:"#4f8c86"}}/>3 good</span><span><i style={{background:"#087f83"}}/>4 full</span></div>}
 export function IconFor({type}:{type:string}){return type==="News"?<Newspaper size={15}/>:type==="Signals"?<Radar size={15}/>:type==="Reports"?<FileText size={15}/>:type==="Ecosystem"?<Network size={15}/>:<BarChart3 size={15}/>}

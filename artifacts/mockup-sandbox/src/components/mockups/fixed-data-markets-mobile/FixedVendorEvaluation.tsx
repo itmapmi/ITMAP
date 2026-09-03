@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import { Shell, Section, vendors, criteria, vendorScores } from "./_shared";
+import { NotesPopup, Shell, Section, vendors, criteria, vendorScores, type NotePayload } from "./_shared";
 import "./FixedVendorEvaluation.css";
 
 export function FixedVendorEvaluation() {
   const [definition, setDefinition] = useState(false);
   const [weights, setWeights] = useState(false);
   const [selected, setSelected] = useState<string[]>(["v1", "v2"]);
+  const [note, setNote] = useState<NotePayload | null>(null);
 
   const selectedVendors = vendors.filter((vendor) => selected.includes(vendor.id));
 
@@ -182,14 +183,11 @@ export function FixedVendorEvaluation() {
                 {selectedVendors.map((vendor) => {
                   const row = vendorScores[vendor.id].find((score) => score.criterion === criterion)!;
                   return (
-                    <details key={vendor.id}>
-                      <summary>
-                        <span>{vendor.name}</span>
-                        <strong>{row.score}</strong>
-                        <small>View commentary</small>
-                      </summary>
-                      <p>{row.commentary}</p>
-                    </details>
+                    <div className="fdm-score-cell" key={vendor.id}>
+                      <span>{vendor.name}</span>
+                      <strong>{row.score}</strong>
+                      <button onClick={() => setNote({vendor:vendor.name,product:vendor.product,subject:row.criterion,score:`${row.score} / 100`,commentary:row.commentary})}>View notes</button>
+                    </div>
                   );
                 })}
               </div>
@@ -222,6 +220,7 @@ export function FixedVendorEvaluation() {
           </div>
         )}
       </Section>
+      <NotesPopup note={note} onClose={() => setNote(null)} />
     </Shell>
   );
 }

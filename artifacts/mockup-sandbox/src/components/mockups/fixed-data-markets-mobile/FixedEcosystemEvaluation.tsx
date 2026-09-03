@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import { Shell, Section, ecosystemCategories, vendors, Harvey, Legend, supportByVendor } from "./_shared";
+import { NotesPopup, Shell, Section, ecosystemCategories, vendors, Harvey, Legend, supportByVendor, type NotePayload } from "./_shared";
 import "./FixedEcosystemEvaluation.css";
 
 export function FixedEcosystemEvaluation() {
   const [selected, setSelected] = useState<string[]>(["v1", "v2"]);
   const [open, setOpen] = useState<string | null>("Cloud providers");
+  const [note, setNote] = useState<NotePayload | null>(null);
   const toggle = (id: string) =>
     setSelected((current) =>
       current.includes(id)
@@ -35,11 +36,12 @@ export function FixedEcosystemEvaluation() {
             <button onClick={() => setOpen(open === category.name ? null : category.name)}><span><strong>{category.name}</strong><small>{category.features.length} stored rows</small></span><ChevronDown size={17} className={`fdm-chevron ${open === category.name ? "open" : ""}`} /></button>
             {open === category.name && category.features.map((feature) => <div className="fdm-eco-feature" key={feature[0] as string}>
               <h3>{feature[0] as string}</h3><p>{feature[1] as string}</p>
-              <div className="fdm-eco-values">{chosen.map((vendor) => { const record = supportByVendor[vendor.id][feature[0] as string]; return <details key={vendor.id} open><summary><Harvey level={record.level} /><span><b>{record.level} / 4</b><small>Commentary</small></span></summary><p>{record.commentary}</p></details>; })}</div>
+               <div className="fdm-eco-values">{chosen.map((vendor) => { const record = supportByVendor[vendor.id][feature[0] as string]; return <div className="fdm-support-cell" key={vendor.id}><div><Harvey level={record.level}/><b>{record.level} / 4</b></div><button onClick={() => setNote({vendor:vendor.name,product:vendor.product,subject:feature[0] as string,score:`${record.level} / 4 support`,commentary:record.commentary})}>View notes</button></div>; })}</div>
             </div>)}
           </div>)}
         </div>
       </Section>
+      <NotesPopup note={note} onClose={() => setNote(null)} />
     </Shell>
   );
 }
