@@ -243,16 +243,12 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         </Dialog>
       )}
 
-      {/*
-        Positioned at bottom-24 (not bottom-5) so this never overlaps the
-        floating AI chat button that some pages (e.g. market-details.tsx)
-        render fixed at bottom-6/h-14 in the same bottom-right corner — this
-        provider is mounted globally and has no visibility into whether the
-        current page has that button, so it always leaves clearance for it.
-      */}
       {showCountdown && (
         <div
           data-testid="badge-teaser-countdown"
+          // Sits above the fixed bottom-right AI chat button (h-14, bottom-6 →
+          // occupies up to 80px off the bottom) so the two never overlap,
+          // regardless of viewport size — see market-details.tsx.
           className="fixed bottom-24 right-5 z-40 inline-flex items-center gap-1.5 rounded-full bg-slate-900/90 backdrop-blur text-white text-xs font-medium px-3 py-2 shadow-lg shadow-black/20 border border-white/10"
         >
           <Timer className="h-3.5 w-3.5 text-cyan-400" />
@@ -264,6 +260,8 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         <button
           onClick={openRegistrationModal}
           data-testid="button-teaser-register-pill"
+          // Same bottom offset as the countdown badge above, for the same
+          // reason: stay clear of the fixed AI chat button in the corner.
           className="fixed bottom-24 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white text-sm font-semibold px-4 py-2.5 shadow-lg shadow-black/20 transition-all"
         >
           <UserPlus className="h-4 w-4" />
