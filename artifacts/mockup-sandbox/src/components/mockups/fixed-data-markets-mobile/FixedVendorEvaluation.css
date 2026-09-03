@@ -28,3 +28,34 @@
 .fdm-shell .fdm-key {
   margin-inline: 0;
 }
+
+.fdm-shell .fdm-comparison {
+  overflow: hidden;
+}
+
+.fdm-shell .fdm-comparison-head {
+  min-width: 0;
+}
+
+.fdm-shell .fdm-comparison-head > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fdm-shell .fdm-comparison-head strong {
+  font-size: 12px;
+}
+
+.fdm-shell .fdm-comparison-head small {
+  font-size: 10px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.fdm-shell .fdm-comparison-values {
+  min-width: 0;
+}
+
+.fdm-shell .fdm-comparison-values details {
+  min-width: 0;
+}

@@ -1,7 +1,7 @@
-import "./FixedVendorEvaluation.css";
 import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Shell, Section, vendors, criteria, vendorScores } from "./_shared";
+import "./FixedVendorEvaluation.css";
 
 export function FixedVendorEvaluation() {
   const [definition, setDefinition] = useState(false);
@@ -163,9 +163,8 @@ export function FixedVendorEvaluation() {
         <div className="fdm-comparison">
           <div
             className="fdm-comparison-head"
-            style={{ gridTemplateColumns: `112px repeat(${selectedVendors.length}, minmax(116px, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${selectedVendors.length}, minmax(0, 1fr))` }}
           >
-            <span>Criterion</span>
             {selectedVendors.map((vendor) => (
               <span key={vendor.id}>
                 <strong>{vendor.name}</strong>
@@ -178,7 +177,7 @@ export function FixedVendorEvaluation() {
               <h3>{criterion as string}</h3>
               <div
                 className="fdm-comparison-values"
-                style={{ gridTemplateColumns: `repeat(${selectedVendors.length}, minmax(116px, 1fr))` }}
+                style={{ gridTemplateColumns: `repeat(${selectedVendors.length}, minmax(0, 1fr))` }}
               >
                 {selectedVendors.map((vendor) => {
                   const row = vendorScores[vendor.id].find((score) => score.criterion === criterion)!;
