@@ -3,6 +3,10 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/itmap-logo/LogoVariants.tsx": () => import("../components/mockups/itmap-logo/LogoVariants.tsx"),
   "./components/mockups/itmap-logo/WideBoldWhite.tsx": () => import("../components/mockups/itmap-logo/WideBoldWhite.tsx"),
+  "./components/mockups/mobile-market-redesign/CompactWorkspace.tsx": () => import("../components/mockups/mobile-market-redesign/CompactWorkspace.tsx"),
+  "./components/mockups/mobile-market-redesign/Current.tsx": () => import("../components/mockups/mobile-market-redesign/Current.tsx"),
+  "./components/mockups/mobile-market-redesign/GuidedStory.tsx": () => import("../components/mockups/mobile-market-redesign/GuidedStory.tsx"),
+  "./components/mockups/mobile-market-redesign/ProgressiveDisclosure.tsx": () => import("../components/mockups/mobile-market-redesign/ProgressiveDisclosure.tsx"),
   "./components/mockups/quadrant-6box/Rectangle.tsx": () => import("../components/mockups/quadrant-6box/Rectangle.tsx"),
   "./components/mockups/quadrant-6box/SixBox.tsx": () => import("../components/mockups/quadrant-6box/SixBox.tsx"),
   "./components/mockups/quadrant-6box/Square.tsx": () => import("../components/mockups/quadrant-6box/Square.tsx"),
