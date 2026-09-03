@@ -1,4 +1,47 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { Shell, Section, ecosystemCategories, vendors, Harvey, Legend, supportByVendor } from "./_shared";
-export function FixedEcosystemEvaluation(){const [open,setOpen]=useState<string|null>("Cloud providers");const [vendor,setVendor]=useState("v1");return <Shell active="ecosystem" title="Ecosystem evaluation" subtitle="Stored evidence for integrations, cloud providers, and technology partner support."><Section n="01" title="Vendor focus"><div className="fdm-tabs">{vendors.slice(0,5).map(v=><button className={vendor===v.id?"active":""} onClick={()=>setVendor(v.id)} key={v.id}>{v.name}</button>)}</div><div className="fdm-card pad"><div className="fdm-label">Harvey Ball semantics</div><p className="fdm-note" style={{margin:"7px 0 0"}}>Support levels are stored per vendor and feature. Tap a marker to progressively disclose its commentary.</p><Legend/></div></Section><Section n="02" title="Ecosystem support">{ecosystemCategories.map(cat=><div className="fdm-category" key={cat.name}><div className="fdm-category-head"><button onClick={()=>setOpen(open===cat.name?null:cat.name)}><ChevronDown size={15} className={`fdm-chevron ${open===cat.name?"open":""}`}/><span><strong>{cat.name}</strong><small>{cat.features.length} stored feature rows</small></span></button></div>{open===cat.name&&cat.features.map(f=><div className="fdm-feature" key={f[0] as string}><div className="fdm-feature-top"><div style={{flex:1}}><strong>{f[0] as string}</strong><p>{f[1] as string}</p></div><button onClick={()=>setOpen(`${cat.name}-${f[0]}`)}><Harvey level={supportByVendor[vendor]?.[f[0] as string]?.level ?? 0}/></button></div>{open===`${cat.name}-${f[0]}`&&<div className="fdm-commentary"><b>Stored commentary · {vendors.find(v=>v.id===vendor)?.name}</b>{supportByVendor[vendor]?.[f[0] as string]?.commentary ?? "Commentary not stored for this vendor and feature row."}</div>}</div>)}</div>)}</Section></Shell>}export default FixedEcosystemEvaluation;
+import "./FixedEcosystemEvaluation.css";
+
+export function FixedEcosystemEvaluation() {
+  const [selected, setSelected] = useState<string[]>(["v1", "v2"]);
+  const [open, setOpen] = useState<string | null>("Cloud providers");
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id)
+        ? current.length > 2 ? current.filter((value) => value !== id) : current
+        : current.length < 2 ? [...current, id] : current,
+    );
+  const chosen = vendors.filter((vendor) => selected.includes(vendor.id));
+  return (
+    <Shell active="ecosystem" title="Ecosystem evaluation" subtitle="Compare two stored ecosystem-support records across integrations and partners.">
+      <Section n="01" title="Products to compare" action={<span className="fdm-label">Choose exactly 2</span>}>
+        <div className="fdm-eco-picker">
+          {vendors.map((vendor) => {
+            const active = selected.includes(vendor.id);
+            return <button key={vendor.id} className={active ? "active" : ""} onClick={() => toggle(vendor.id)} aria-pressed={active}>
+              <span className="fdm-eco-check">{active && <Check size={13} />}</span>
+              <span><strong>{vendor.name}</strong><small>{vendor.product}</small></span>
+            </button>;
+          })}
+        </div>
+        <p className="fdm-selection-help">Select two products. Each ecosystem row keeps both support records together.</p>
+        <div className="fdm-card pad"><Legend /></div>
+      </Section>
+      <Section n="02" title="Ecosystem support & commentary">
+        <div className="fdm-eco-comparison">
+          <div className="fdm-eco-head"><span>Feature</span>{chosen.map((vendor) => <span key={vendor.id}><strong>{vendor.name}</strong><small>{vendor.product}</small></span>)}</div>
+          {ecosystemCategories.map((category) => <div className="fdm-eco-category" key={category.name}>
+            <button onClick={() => setOpen(open === category.name ? null : category.name)}><span><strong>{category.name}</strong><small>{category.features.length} stored rows</small></span><ChevronDown size={17} className={`fdm-chevron ${open === category.name ? "open" : ""}`} /></button>
+            {open === category.name && category.features.map((feature) => <div className="fdm-eco-feature" key={feature[0] as string}>
+              <h3>{feature[0] as string}</h3><p>{feature[1] as string}</p>
+              <div className="fdm-eco-values">{chosen.map((vendor) => { const record = supportByVendor[vendor.id][feature[0] as string]; return <details key={vendor.id} open><summary><Harvey level={record.level} /><span><b>{record.level} / 4</b><small>Commentary</small></span></summary><p>{record.commentary}</p></details>; })}</div>
+            </div>)}
+          </div>)}
+        </div>
+      </Section>
+    </Shell>
+  );
+}
+
+export default FixedEcosystemEvaluation;
