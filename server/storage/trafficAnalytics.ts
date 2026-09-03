@@ -30,6 +30,7 @@ import { db } from "../db";
 import {
   and, desc, eq, gt, gte, lte, sql, isNull, isNotNull, inArray,
 } from "drizzle-orm";
+import { getDeviceType, type DeviceType } from "@shared/deviceDetection";
 
 // ── Visitor upsert ────────────────────────────────────────────────────────────
 
@@ -199,6 +200,34 @@ export async function getLoginCounts(
     .from(trafficLoginCounts)
     .where(inArray(trafficLoginCounts.userId, userIds));
   return new Map(rows.map((r) => [r.userId, r.loginCount]));
+}
+
+/**
+ * Total time spent on the platform per visitor: sum of `page_dwell`
+ * durationMs across every page they've visited (registered or anonymous),
+ * optionally scoped to a `since` window to match the visitor list filter.
+ */
+export async function getDwellTimes(
+  visitorIds: string[],
+  since?: Date,
+): Promise<Map<string, number>> {
+  if (visitorIds.length === 0) return new Map();
+  const conds = [
+    inArray(trafficEvents.visitorId, visitorIds),
+    eq(trafficEvents.eventType, "page_dwell"),
+  ];
+  if (since) conds.push(gte(trafficEvents.createdAt, since));
+
+  const rows = await db
+    .select({
+      visitorId: trafficEvents.visitorId,
+      dwellMs: sql<number>`coalesce(sum(${trafficEvents.durationMs}), 0)::int`,
+    })
+    .from(trafficEvents)
+    .where(and(...conds))
+    .groupBy(trafficEvents.visitorId);
+
+  return new Map(rows.filter((r) => r.visitorId).map((r) => [r.visitorId as string, r.dwellMs]));
 }
 
 // ── Admin analytics queries ───────────────────────────────────────────────────
@@ -439,6 +468,10 @@ export interface VisitorListRow {
   visitCount: number;
   loginCount: number;
   userAgent: string | null;
+  /** "phone" or "desktop", derived from userAgent. */
+  deviceType: DeviceType;
+  /** Total dwell time on the platform, in milliseconds (sum of page_dwell events). */
+  dwellMs: number;
 }
 
 export interface VisitorListFilter {
@@ -508,6 +541,10 @@ export async function listVisitors(
     ? await getLoginCounts(userIds)
     : new Map<string, number>();
 
+  // Fetch total dwell time (time spent on the platform) for this page of visitors.
+  const visitorIds = rows.map((r) => r.id);
+  const dwellMap = await getDwellTimes(visitorIds, filter.since);
+
   const visitors: VisitorListRow[] = rows.map((r) => ({
     id:            r.id,
     identityType:  r.userId ? "registered" : "anonymous",
@@ -525,6 +562,8 @@ export async function listVisitors(
     visitCount:    r.visitCount,
     loginCount:    r.userId ? (loginCountMap.get(r.userId) ?? 0) : 0,
     userAgent:     r.userAgent,
+    deviceType:    getDeviceType(r.userAgent),
+    dwellMs:       dwellMap.get(r.id) ?? 0,
   }));
 
   return { visitors, total: countRow?.total ?? 0 };

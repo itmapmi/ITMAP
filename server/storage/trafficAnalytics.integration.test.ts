@@ -258,6 +258,7 @@ describe.sequential("traffic analytics PostgreSQL integration", () => {
         lastSeenAt: new Date("2099-01-03T12:00:00.000Z"),
         visitCount: 2,
         lastSessionId: "registered-session-2",
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
       },
       {
         id: anonymousVisitorId,
@@ -269,6 +270,7 @@ describe.sequential("traffic analytics PostgreSQL integration", () => {
         lastSeenAt: new Date("2099-01-02T12:00:00.000Z"),
         visitCount: 1,
         lastSessionId: "anonymous-session-2",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
       {
         id: unknownGeoVisitorId,
@@ -540,11 +542,15 @@ describe.sequential("traffic analytics PostgreSQL integration", () => {
       email: `${runPrefix}registered@example.test`,
       visitCount: 2,
       loginCount: 4,
+      deviceType: "phone",
+      dwellMs: 1900,
     });
     expect(firstPage.visitors[1]).toMatchObject({
       id: anonymousVisitorId,
       identityType: "anonymous",
       loginCount: 0,
+      deviceType: "desktop",
+      dwellMs: 0,
     });
 
     const secondPage = await listVisitors(

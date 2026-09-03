@@ -1,10 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { isMobileEligiblePath, isMobileRoutePath, toMobilePath } from "../shared/mobile-paths";
-
-// Matches common phone user agents. Deliberately excludes tablets (iPad,
-// Android "Tablet" builds) — the mobile experience targets phone-sized
-// screens, and tablets get plenty of room for the desktop layout.
-const MOBILE_UA_REGEX = /iPhone|iPod|Android(?!.*Tablet)|Windows Phone|BlackBerry|IEMobile|Opera Mini/i;
+import { MOBILE_UA_REGEX } from "../shared/deviceDetection";
 
 const VIEW_MODE_COOKIE = "view_mode";
 
