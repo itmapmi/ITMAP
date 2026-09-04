@@ -1,3 +1,6 @@
+/* Typography correction: scoped chat overrides. */
+.ai-context small,.ai-scope code,.ai-avatar,.ai-cite,.ai-table td:last-child{font-family:Menlo,monospace!important}
+.ai-composer textarea{font-family:Montserrat,sans-serif!important}
 .ai-page{--ai-cyan:#087f83;--ai-navy:#193449;--ai-coral:#c9674d}
 /* Chat owns the available viewport below the shared hero/switcher. This keeps
    the composer present while only the evidence thread moves. */
