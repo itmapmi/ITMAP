@@ -146,7 +146,7 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
                       {meta.label.slice(0, 4)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <strong className="block text-[13px] leading-snug text-slate-950" data-testid={`report-title-${report.id}`}>
+                      <strong className="block break-words [overflow-wrap:anywhere] text-[13px] leading-snug text-slate-950" data-testid={`report-title-${report.id}`}>
                         {report.title}
                       </strong>
                       <small className="mt-1 block text-[10px] text-slate-500">
@@ -264,7 +264,7 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
                   <Icon className="h-6 w-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-gray-900 leading-snug" data-testid={`report-title-${report.id}`}>
+                  <h4 className="font-semibold text-gray-900 leading-snug break-words [overflow-wrap:anywhere]" data-testid={`report-title-${report.id}`}>
                     {report.title}
                   </h4>
                   {report.description && (

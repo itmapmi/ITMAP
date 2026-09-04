@@ -134,7 +134,7 @@ export default function ReportViewer() {
               </span>
             )}
           </div>
-          <h1 className="text-base font-semibold text-gray-900 mt-1.5 leading-snug">
+          <h1 className="text-base font-semibold text-gray-900 mt-1.5 leading-snug break-words [overflow-wrap:anywhere]">
             {report.title}
           </h1>
         </div>
@@ -142,7 +142,8 @@ export default function ReportViewer() {
         <div className="px-4 py-5">
           {report.htmlContent ? (
             <div
-              className="prose prose-sm max-w-none
+              className="prose prose-sm max-w-none break-words [overflow-wrap:anywhere] overflow-x-hidden
+                [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_pre]:overflow-x-auto
                 prose-headings:text-gray-900 prose-headings:font-bold
                 prose-p:text-gray-700 prose-p:leading-relaxed
                 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
