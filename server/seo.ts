@@ -10,6 +10,14 @@ import { storage } from "./storage";
 
 const SITE = "https://itmap.ai";
 
+function marketSlug(name: string): string {
+  return name
+    .replace(/^ITMAP for /i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 interface SeoMeta {
   title: string;
   description: string;
@@ -75,8 +83,10 @@ export async function buildSeoMeta(pathname: string): Promise<SeoMeta> {
     };
   }
 
-  // Market detail page: /markets/:slug
-  const marketMatch = path.match(/^\/markets\/([^/]+)$/);
+  // Market detail pages all consolidate onto the canonical desktop slug URL.
+  // This includes phone routes so smartphone crawlers receive the canonical
+  // signal in the initial HTML rather than only after the React app loads.
+  const marketMatch = path.match(/^(?:\/mobile)?\/markets?\/([^/]+)$/);
   if (marketMatch) {
     const slug = marketMatch[1];
     try {
@@ -86,6 +96,7 @@ export async function buildSeoMeta(pathname: string): Promise<SeoMeta> {
 
       if (market && market.visibility !== "private") {
         const cleanName = market.name.replace(/^ITMAP for /i, "");
+        const canonicalSlug = marketSlug(market.name) || slug;
         const rawDesc =
           (market as any).shortDescription ||
           market.description ||
@@ -95,7 +106,7 @@ export async function buildSeoMeta(pathname: string): Promise<SeoMeta> {
         return {
           title: ogTitle,
           description,
-          canonical: `${SITE}/markets/${slug}`,
+          canonical: `${SITE}/markets/${canonicalSlug}`,
           ogTitle,
           ogDescription: description,
         };
