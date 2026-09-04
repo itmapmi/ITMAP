@@ -61,6 +61,11 @@ function useCreateRfpForMarket(pathPrefix: string) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Sections reachable from the mobile "Section" switcher (?section=...).
+// AI Chat is deliberately NOT a section: it is a floating button on every
+// section (mobile and desktop alike) that opens the chat as an overlay.
+const MOBILE_MARKET_SECTIONS = ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "research-reports"];
+
 export default function MarketDetails() {
   // Registered at both /markets/:marketId (and its legacy /market/:marketId
   // alias) and their /mobile/... mirrors — see shared/mobile-paths.ts and
@@ -88,11 +93,15 @@ export default function MarketDetails() {
   const [activeTab, setActiveTab] = useState(() => {
     if (!mobileMode || typeof window === "undefined") return "vendor-evaluation";
     const requested = new URLSearchParams(window.location.search).get("section");
-    return requested && ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "ai-chat", "research-reports"].includes(requested)
+    return requested && MOBILE_MARKET_SECTIONS.includes(requested)
       ? requested
       : "vendor-evaluation";
   });
-  const [chatOpen, setChatOpen] = useState(false);
+  // Old ?section=ai-chat links (from before chat became a floating button)
+  // still open the chat, just as an overlay on the default section.
+  const [chatOpen, setChatOpen] = useState(() =>
+    mobileMode && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("section") === "ai-chat"
+  );
   const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
 
@@ -112,7 +121,7 @@ export default function MarketDetails() {
     }
     if (typeof window === "undefined") return;
     const requested = new URLSearchParams(window.location.search).get("section");
-    if (requested && ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "ai-chat", "research-reports"].includes(requested)) {
+    if (requested && MOBILE_MARKET_SECTIONS.includes(requested)) {
       setActiveTab(requested);
     }
   }, [mobileMode, location]);
@@ -626,7 +635,6 @@ export default function MarketDetails() {
                           ["support-matrix", "Product Evaluation"],
                           ["ecosystem-support", "Ecosystem Evaluation"],
                           ["vendor-intelligence", "Vendor Intelligence"],
-                          ["ai-chat", "AI Chat"],
                           ["research-reports", "Reports"],
                         ].find(([value]) => value === activeTab)?.[1]) || "Vendor Evaluation"}
                       </strong>
@@ -643,8 +651,7 @@ export default function MarketDetails() {
                         ["support-matrix", "02", "Product Evaluation"],
                         ["ecosystem-support", "03", "Ecosystem Evaluation"],
                         ["vendor-intelligence", "04", "Vendor Intelligence"],
-                        ["ai-chat", "05", "AI Chat"],
-                        ["research-reports", "06", "Reports"],
+                        ["research-reports", "05", "Reports"],
                       ].map(([value, number, label]) => {
                         const reportsLocked = value === "research-reports" && researchReportsLocked;
                         return (
@@ -922,44 +929,56 @@ export default function MarketDetails() {
             </TabsContent>
           )}
 
-          {mobileMode && (
-            <TabsContent value="ai-chat" className="mt-0 min-h-[calc(100dvh-12rem)] overflow-hidden border border-slate-200 bg-white">
-              <Chat marketId={resolvedId!} mobileMode marketName={market.name.replace(/^ITMAP for /i, "")} />
-            </TabsContent>
-          )}
-
             </Tabs>
           );
         })()}
       </motion.div>
 
-      {!mobileMode && (
-        <>
-          {/* Floating AI Chat button — available from every desktop tab. */}
-          <button
-            onClick={() => setChatOpen(true)}
-            className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2"
-            aria-label="Open AI Chat"
-            data-testid="button-open-ai-chat"
-          >
-            <MessageSquare className="h-6 w-6" />
-          </button>
+      {/* Floating AI Chat button — available from every section, mobile and
+          desktop. On mobile it opens a full-screen overlay so the grounded
+          chat is one tap away without being buried in the section list. */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className={cn(
+          "fixed z-40 flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-lg shadow-violet-500/30 transition-transform hover:from-cyan-400 hover:to-violet-500 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2",
+          mobileMode
+            ? "bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 h-14 gap-2 pl-4 pr-5 font-[Montserrat] text-sm font-bold"
+            : "bottom-6 right-6 h-14 w-14"
+        )}
+        aria-label="Open AI Chat"
+        data-testid="button-open-ai-chat"
+      >
+        <MessageSquare className="h-6 w-6" />
+        {mobileMode && <span>AI Chat</span>}
+      </button>
 
-          <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-            <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
-              <SheetHeader className="px-4 py-3 border-b">
-                <SheetTitle className="flex items-center gap-2 text-base">
-                  <MessageSquare className="h-4 w-4 text-cyan-600" />
-                  AI Chat — {market.name}
-                </SheetTitle>
-              </SheetHeader>
-              <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
-                <Chat marketId={resolvedId!} marketName={market.name.replace(/^ITMAP for /i, "")} />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
+      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        {mobileMode ? (
+          <SheetContent side="bottom" className="flex h-[100dvh] flex-col rounded-none border-0 p-0 font-[Montserrat] [&>button]:right-4 [&>button]:top-4 [&>button]:h-6 [&>button]:w-6 [&>button]:text-white [&>button]:opacity-100 [&>button>svg]:h-5 [&>button>svg]:w-5" data-testid="mobile-ai-chat-overlay">
+            <SheetHeader className="flex h-14 shrink-0 flex-row items-center space-y-0 border-b border-slate-200 bg-slate-950 px-4 text-left">
+              <SheetTitle className="flex items-center gap-2 text-sm font-bold text-white">
+                <MessageSquare className="h-4 w-4 text-cyan-400" />
+                AI Chat
+              </SheetTitle>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 bg-white">
+              <Chat marketId={resolvedId!} mobileMode marketName={market.name.replace(/^ITMAP for /i, "")} />
+            </div>
+          </SheetContent>
+        ) : (
+          <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+            <SheetHeader className="px-4 py-3 border-b">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <MessageSquare className="h-4 w-4 text-cyan-600" />
+                AI Chat — {market.name}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
+              <Chat marketId={resolvedId!} marketName={market.name.replace(/^ITMAP for /i, "")} />
+            </div>
+          </SheetContent>
+        )}
+      </Sheet>
 
       <VendorSelectionModal
         open={showVendorModal}

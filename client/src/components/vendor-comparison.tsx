@@ -43,9 +43,11 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
 
   const handleVendorToggle = (vendorId: string, checked: boolean) => {
     if (checked) {
+      // Mobile caps the comparison at three so the side-by-side grid stays legible.
       setSelectedVendors(prev => mobileMode && prev.length >= 3 ? prev : [...prev, vendorId]);
     } else {
-      setSelectedVendors(prev => mobileMode && prev.length <= 2 ? prev : prev.filter(id => id !== vendorId));
+      // No minimum: the user may uncheck anything, including the last one.
+      setSelectedVendors(prev => prev.filter(id => id !== vendorId));
     }
   };
 
@@ -77,13 +79,9 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
 
-  useEffect(() => {
-    if (mobileMode && vendors && vendors.length >= 2 && selectedVendors.length === 0) {
-      const initial = vendors.slice(0, 2).map(vendor => vendor.id);
-      if (onMobileSelectedVendorsChange) onMobileSelectedVendorsChange(initial);
-      else setLocalSelectedVendors(initial);
-    }
-  }, [mobileMode, vendors, selectedVendors.length, onMobileSelectedVendorsChange]);
+  // NOTE: the mobile default selection is seeded once by the owner of the
+  // shared selection state (magic-quadrant.tsx). It must not be re-seeded
+  // here whenever the list becomes empty, or the user can never clear it.
 
   // Record a comparison once the user settles on 2+ vendors. Debounced so a
   // run of checkbox toggles produces one event, and de-duplicated so the same
@@ -109,6 +107,7 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
   }, [selectedVendors, marketId]);
 
   if (mobileMode) {
+    const atMax = selectedVendors.length >= 3;
     return (
       <section className="space-y-5 font-[Montserrat]">
         <div>
@@ -120,16 +119,22 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
             {vendors?.map(vendor => {
               const active = selectedVendors.includes(vendor.id);
               return (
-                <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} className={`flex min-h-14 items-center gap-3 border p-2.5 text-left ${active ? "border-sky-500 bg-blue-50 shadow-[inset_3px_0_#13a8f0]" : "border-slate-200 bg-white"}`} aria-pressed={active}>
+                <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} disabled={!active && atMax} className={`flex min-h-14 items-center gap-3 border p-2.5 text-left ${active ? "border-sky-500 bg-blue-50 shadow-[inset_3px_0_#13a8f0]" : "border-slate-200 bg-white"} ${!active && atMax ? "opacity-50" : ""}`} aria-pressed={active} data-testid={`mobile-compare-vendor-${vendor.id}`}>
                   <span className={`grid h-5 w-5 place-items-center border ${active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"}`}>{active ? "✓" : ""}</span>
                   <span><strong className="block text-xs">{vendor.name}</strong><small className="mt-0.5 block text-[10px] text-slate-500">{vendor.product || "Product name unavailable"}</small></span>
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">Keep at least two products selected for comparison.</p>
+          <p className="mt-2 text-[11px] text-slate-500">
+            {selectedVendorData.length === 0
+              ? "Select up to three products to see their scores and commentary below."
+              : atMax
+                ? "Maximum of three products selected. Uncheck one to swap it out."
+                : "Select up to three products. Each one you check is listed below."}
+          </p>
         </div>
-        {selectedVendorData.length >= 2 && (
+        {selectedVendorData.length >= 1 && (
           <div>
             <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">Scores &amp; commentary</h3></div>
             <div className="overflow-hidden border border-slate-200 bg-slate-50">
@@ -151,7 +156,7 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
                       return (
                         <div key={vendor.id} className="min-w-0 border-r border-slate-200 p-2.5 last:border-0">
                           <span className="block truncate text-[10px] text-slate-500">{vendor.name}</span>
-                          <strong className="mt-1 block font-[Menlo] text-xl text-sky-600">{score.toFixed(1)}</strong>
+                          <strong className="mt-1 block font-[Menlo] text-xl text-sky-600">{score.toFixed(1)}<span className="text-[10px] font-normal text-slate-400"> / 10</span></strong>
                           <button type="button" className="mt-2 min-h-9 w-full border border-blue-200 bg-blue-100 text-[10px] font-bold text-sky-700" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>View notes</button>
                         </div>
                       );
@@ -166,7 +171,7 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
           <DialogContent className="max-h-[78dvh] max-w-[calc(100%-2rem)] overflow-y-auto font-[Montserrat] sm:max-w-sm">
             <DialogHeader><DialogTitle>{mobileNote?.criterion.name}</DialogTitle></DialogHeader>
             {mobileNote && <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Vendor</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Score</span><strong className="block">{mobileNote.score.toFixed(1)} / 100</strong></div></div>
+              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Vendor</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Score</span><strong className="block">{mobileNote.score.toFixed(1)} / 10</strong></div></div>
               <div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Product</span><strong className="block text-xs">{mobileNote.vendor.product || "Product name unavailable"}</strong></div>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{mobileNote.notes || "No stored commentary is available for this score."}</p>
             </div>}

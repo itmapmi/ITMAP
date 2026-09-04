@@ -59,14 +59,23 @@
   outline-offset: 2px;
 }
 
+/* List backdrop: a tinted tray so each item reads as its own card, matching
+   the desktop treatment (one bordered card per item with space between)
+   instead of a single continuous column separated by hairlines. */
 .mmi-card {
-  background: var(--mmi-card);
+  display: grid;
+  gap: 10px;
+  background: #eef3f6;
   border: 1px solid var(--mmi-rule);
-  box-shadow: 0 5px 16px rgba(15, 20, 24, .06);
-  padding: 0 14px;
+  padding: 10px;
 }
-.mmi-item { border-bottom: 1px solid var(--mmi-rule); padding: 13px 0; }
-.mmi-item:last-child { border-bottom: 0; }
+.mmi-item {
+  background: #fff;
+  border: 1px solid #c5d5de;
+  border-left: 3px solid var(--mmi-blue);
+  box-shadow: 0 2px 8px rgba(15, 20, 24, .05);
+  padding: 12px 13px;
+}
 .mmi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #768487; font-size: 10px; }
 .mmi-impact { background: #fde8ef; color: #b31d55; font-size: 10px; font-weight: 700; padding: 3px 6px; }
 .mmi-article-title, .mmi-player-name { font-size: 13px; line-height: 1.3; margin: 6px 0; }

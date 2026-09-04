@@ -84,15 +84,10 @@ export default {
             height: "0",
           },
         },
-        "rotate-hint": {
-          "0%, 100%": { transform: "rotate(0deg)" },
-          "50%": { transform: "rotate(90deg)" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "rotate-hint": "rotate-hint 1.8s ease-in-out infinite",
       },
     },
   },

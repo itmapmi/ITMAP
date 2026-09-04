@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Minus, Plus, RotateCcw, Smartphone, X } from "lucide-react";
+import { Minus, Plus, RotateCcw } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
 import { calculateAxisWeightShares } from "@shared/axis-weighting";
@@ -69,7 +69,6 @@ interface HistoricalPoint {
   recordedAt: string | Date;
 }
 
-const ROTATE_HINT_DISMISSED_KEY = "itmap_quadrant_rotate_hint_dismissed";
 
 const HISTORICAL_WEEKS = 26; // Six months, shown in two-week intervals
 const HISTORICAL_TICK_INTERVAL = 2;
@@ -100,10 +99,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const mobilePinchOrigin = useRef({ distance: 0, scale: 1, x: 0, y: 0 });
   const mobileDragMoved = useRef(false);
   const [mobileCriteriaOpen, setMobileCriteriaOpen] = useState(false);
-  const [isPortrait, setIsPortrait] = useState(true);
-  const [rotateHintDismissed, setRotateHintDismissed] = useState(
-    () => typeof window !== "undefined" && window.sessionStorage.getItem(ROTATE_HINT_DISMISSED_KEY) === "1"
-  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -464,33 +459,25 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
   }, [vendorsLoading, scoresLoading, weightsLoading, mobileMode]);
 
-  useEffect(() => {
-    if (!mobileMode || !vendors || vendors.length < 2 || mobileSelectedVendors.length > 0) return;
-    setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
-  }, [mobileMode, vendors, mobileSelectedVendors.length]);
-
+  // Seed the mobile comparison with the first two vendors exactly once per
+  // market. Deliberately NOT keyed on the selection length: if it re-ran
+  // whenever the list emptied, the user could never uncheck the last vendor
+  // (it would snap straight back to the default pair).
+  const mobileDefaultSeededFor = useRef<string | null>(null);
+  // Declared BEFORE the seeding effect so that on a market change the reset
+  // runs first and the seed can then repopulate (effects run in order).
   useEffect(() => {
     setMobileSelectedVendors([]);
+    mobileDefaultSeededFor.current = null;
     resetMobileChart();
   }, [marketId]);
 
-  // Track portrait/landscape so the "rotate your phone" hint only shows while
-  // the phone is actually in portrait, and disappears the moment they flip it.
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mql = window.matchMedia("(orientation: portrait)");
-    const onChange = () => setIsPortrait(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  const dismissRotateHint = () => {
-    setRotateHintDismissed(true);
-    window.sessionStorage.setItem(ROTATE_HINT_DISMISSED_KEY, "1");
-  };
-
-  const showRotateHint = isMobile && isPortrait && !rotateHintDismissed;
+    if (!mobileMode || !vendors || vendors.length < 2) return;
+    if (mobileDefaultSeededFor.current === marketId) return;
+    mobileDefaultSeededFor.current = marketId;
+    setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
+  }, [mobileMode, vendors, marketId]);
 
   // Each criterion's share is its configured percentage relative to the other
   // criteria on the same axis. This keeps the chart aligned with the panel:
@@ -948,8 +935,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 .on("click", function(event, d) {
         if (mobileMode) {
           if (mobileDragMoved.current) return;
+          // Free check/uncheck — no minimum. Only the max-3 cap applies.
           setMobileSelectedVendors(previous => previous.includes(d.id)
-            ? (previous.length > 2 ? previous.filter(id => id !== d.id) : previous)
+            ? previous.filter(id => id !== d.id)
             : (previous.length < 3 ? [...previous, d.id] : previous));
           return;
         }
@@ -1167,7 +1155,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
     // Add vendor labels positioned in all four directions around dots
     labelCandidates.forEach(({ vendor, index, labelX, labelY, anchor }) => {
-      if (mobileMode && !mobileSelectedVendors.includes(vendor.id)) return;
       // No room for this label on the crowded mobile canvas — leave the dot
       // as the only visible marker. It's still tappable and its name is
       // still reachable via the evidence popover, so nothing is truly lost.
@@ -1176,19 +1163,22 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const labelPos = { labelX, labelY, anchor };
       const labelGroup = vendorGroups.filter((d, i) => i === index);
 
-      // Add the text label positioned around the dot
+      // Every vendor label is always drawn (mobile included — the plane is a
+      // fixed 760×547 canvas, so there is room). Vendors picked for the mobile
+      // comparison are only *highlighted*, never the sole ones labelled.
+      const isMobileHighlighted = mobileMode && mobileSelectedVendors.includes(vendor.id);
       const fontSize = compactChart ? 9 : 11;
-      const inBottomBand = vendor.adjustedY < 50;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
         .attr("x", labelPos.labelX)
         .attr("y", labelPos.labelY)
         .attr("text-anchor", labelPos.anchor)
-        .attr("fill", "#334155")
-        .attr("font-size", `${fontSize}px`)
-        .attr("font-weight", "600")
+        .attr("fill", isMobileHighlighted ? "#4338CA" : "#334155")
+        .attr("font-size", `${isMobileHighlighted ? fontSize + 1 : fontSize}px`)
+        .attr("font-weight", isMobileHighlighted ? "800" : "600")
         .style("cursor", "move")
         .text(vendor.name);
+      if (isMobileHighlighted) labelGroup.raise();
 
       // Add drag behavior to the label (only if enableDrag is true)
       if (enableDrag) {
@@ -1384,26 +1374,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             </CardHeader>
             <CardContent className={mobileMode ? "px-3.5 pb-3.5" : undefined}>
               <div ref={containerRef} className="relative w-full">
-                {showRotateHint && (
-                  <div
-                    data-testid="banner-rotate-phone-hint"
-                    className="mb-3 flex items-center gap-2.5 rounded-lg border border-indigo-100 bg-indigo-50/80 px-3 py-2"
-                  >
-                    <Smartphone className="h-5 w-5 shrink-0 text-indigo-500 animate-rotate-hint" />
-                    <p className="flex-1 text-xs font-medium text-indigo-700">
-                      Rotate your phone for a clearer, less crowded view
-                    </p>
-                    <button
-                      type="button"
-                      onClick={dismissRotateHint}
-                      aria-label="Dismiss rotate phone hint"
-                      data-testid="button-dismiss-rotate-hint"
-                      className="shrink-0 rounded-full p-1 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
                 {mobileMode && (
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] text-slate-500">Pinch or use controls to zoom · drag to pan</span>
