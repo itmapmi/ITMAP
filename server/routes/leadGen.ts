@@ -223,16 +223,23 @@ function vendorScopeId(req: Request): string | null {
 // market collapse into a single entry. Used by the vendor-facing self-service
 // surface, which shows the ENTIRE visitor pool for those markets — not just
 // events attributed to the assigned vendor(s).
-async function vendorScopeMarkets(req: Request): Promise<{ id: string; name: string }[]> {
+async function vendorScopeDetails(req: Request): Promise<{
+  vendors: { id: string; name: string; marketId: string | null }[];
+  markets: { id: string; name: string }[];
+}> {
   const ids = vendorScopeIds(req);
   const vendorBriefs = await Promise.all(ids.map((id) => storage.getVendorBrief(id)));
+  const vendors = vendorBriefs
+    .filter((v): v is NonNullable<typeof v> => !!v)
+    .map((v) => ({ id: v.id, name: v.name, marketId: v.marketId ?? null }));
   const marketIds = Array.from(
-    new Set(vendorBriefs.filter((v): v is NonNullable<typeof v> => !!v?.marketId).map((v) => v.marketId as string)),
+    new Set(vendors.filter((v) => !!v.marketId).map((v) => v.marketId as string)),
   );
-  const markets = await Promise.all(marketIds.map((id) => storage.getMarketById(id)));
-  return markets
+  const marketRecords = await Promise.all(marketIds.map((id) => storage.getMarketById(id)));
+  const markets = marketRecords
     .filter((m): m is NonNullable<typeof m> => !!m)
     .map((m) => ({ id: m.id, name: m.name }));
+  return { vendors, markets };
 }
 
 // Fact Review uses only explicit server-side seat assignments. Matching vendor
@@ -683,16 +690,16 @@ export function registerLeadGenRoutes(app: Express): void {
   });
 
   // ── Vendor-facing self-service surface (vendor seats only) ──
-  // These mirror the admin per-vendor routes but hard-pin the vendor to the
-  // signed-in seat's `vendorScopeId`, so a vendor can only ever see buyers
-  // showing intent toward their own product.
+  // These routes derive market access only from the signed-in seat's explicit
+  // vendor assignments. Lead rows then cover the full visitor pool in those
+  // assigned markets, not only activity attributed to the assigned vendors.
 
   // Scope info for the signed-in vendor seat (used to render the panel header).
   app.get("/api/lead-gen/me/scope", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const markets = await vendorScopeMarkets(req);
+      const { vendors, markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
-      res.json({ markets });
+      res.json({ vendors, markets });
     } catch (err) {
       console.error("[lead-gen] me scope error:", err);
       res.status(500).json({ error: "Failed to load vendor scope" });
@@ -703,7 +710,7 @@ export function registerLeadGenRoutes(app: Express): void {
   // assigned market(s) — not just events attributed to the seat's own vendor.
   app.get("/api/lead-gen/me/leads", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const markets = await vendorScopeMarkets(req);
+      const { markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
       const since = parseSince(req);
       const sort = (typeof req.query.sort === "string" ? req.query.sort : "intent") as LeadSort;
@@ -722,7 +729,7 @@ export function registerLeadGenRoutes(app: Express): void {
   // Export the signed-in vendor seat's market-wide visitor pool.
   app.get("/api/lead-gen/me/leads/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
     try {
-      const markets = await vendorScopeMarkets(req);
+      const { markets } = await vendorScopeDetails(req);
       if (markets.length === 0) return res.status(404).json({ error: "Assigned vendor not found" });
       const since = parseSince(req);
       const minIntent = parseMinIntent(req);

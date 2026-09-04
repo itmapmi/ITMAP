@@ -27,9 +27,10 @@ export const users = pgTable("users", {
   // shared/features.ts). Empty = only baseline features. Admins ignore this.
   featureAccess: text("feature_access").array().notNull().default(sql`'{}'::text[]`),
 
-  // Vendor-scoped account: when set, this user is a vendor-side seat that may
-  // only see buyer-intent leads for this vendor (the Lead-Gen panel is pinned
-  // to it). Null = a normal buyer/admin account. Admins ignore this.
+  // Vendor-scoped account: when set, this user is a vendor-side seat whose
+  // assigned vendor records determine its market access. The vendor portal
+  // shows the full visitor pool for those markets, not vendor-attributed leads.
+  // Null = a normal buyer/admin account. Admins ignore this.
   // vendorScopeId = primary vendor (kept for backward compat + single-market seats).
   // vendorScopeIds = explicit multi-market list; when set, takes precedence over
   // the name-matching fallback. Always kept in sync by updateUserVendorScope.

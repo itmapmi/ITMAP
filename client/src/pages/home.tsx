@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { useSeo } from "@/hooks/use-seo";
 import { track, trackDwell } from "@/lib/track";
+import { vendorScopePresentation, type VendorScopeResponse } from "@/lib/vendor-scope";
 import { Button } from "@/components/ui/button";
 import { BentoCard } from "@/components/bento-card";
 import type { BentoAccent, BentoSize } from "@/components/bento-card";
@@ -356,21 +357,21 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
 
 // ─── VENDOR DASHBOARD ────────────────────────────────────────────────────────
 
-function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoading, hasFeature, vendorName, vendorScopeLoading, isAdminLinked }: {
+function VendorDashboard({ user, myMarkets, allMarkets, allMarketsLoading, isLoading, hasFeature, vendorScope, vendorScopeLoading, isAdminLinked }: {
   user: any;
   myMarkets?: Market[];
   allMarkets?: Market[];
   allMarketsLoading: boolean;
   isLoading: boolean;
   hasFeature: (key: LockableFeatureKey) => boolean;
-  vendorName?: string;
+  vendorScope?: VendorScopeResponse;
   vendorScopeLoading?: boolean;
   isAdminLinked: boolean;
 }) {
   // isLinked is false until the scope query resolves — treat "still loading"
   // differently from "resolved but no vendor found" so we never blank the page.
-  const isLinked = !!vendorName;
-  const companyLabel = vendorName ?? (user?.firstName ? `${user.firstName}'s Vendor Hub` : "Vendor Hub");
+  const fallbackLabel = user?.firstName ? `${user.firstName}'s Vendor Hub` : "Vendor Hub";
+  const { isLinked, label: companyLabel } = vendorScopePresentation(vendorScope, fallbackLabel);
   // True only when admin has linked this user to a vendor that appears in ≥1 market
   const hasMarkets = isAdminLinked && !!(myMarkets && myMarkets.length > 0);
 
@@ -802,7 +803,7 @@ export default function Home() {
   const { isAuthenticated, isLoading: authLoading, isVendorScoped, isAdmin, user, hasFeature } = useAuth();
   const { data: markets, isLoading: marketsLoading } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
 
-  const { data: vendorScope, isLoading: vendorScopeLoading } = useQuery<{ vendor: { name?: string } }>({
+  const { data: vendorScope, isLoading: vendorScopeLoading } = useQuery<VendorScopeResponse>({
     queryKey: ["/api/lead-gen/me/scope"],
     enabled: isVendorScoped && !isAdmin,
     staleTime: 5 * 60_000,
@@ -842,7 +843,7 @@ export default function Home() {
           allMarketsLoading={marketsLoading}
           isLoading={myMarketsLoading}
           hasFeature={hasFeature}
-          vendorName={vendorScope?.vendor?.name}
+          vendorScope={vendorScope}
           vendorScopeLoading={vendorScopeLoading}
           isAdminLinked={isVendorScoped}
         />
