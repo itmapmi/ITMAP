@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { track, trackDwell } from "@/lib/track";
 import { useRoute, Link } from "wouter";
@@ -64,7 +64,17 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Sections reachable from the mobile "Section" switcher (?section=...).
 // AI Chat is deliberately NOT a section: it is a floating button on every
 // section (mobile and desktop alike) that opens the chat as an overlay.
-const MOBILE_MARKET_SECTIONS = ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "research-reports"];
+// Chip labels are deliberately short so ~3 chips fit a 390px phone with the
+// 4th clearly cut off at the edge (the visual cue that the strip scrolls).
+// Full section names remain as each section's own heading.
+const MOBILE_SECTION_TABS: Array<[value: string, number: string, label: string, fullLabel: string]> = [
+  ["vendor-evaluation", "01", "Vendor Eval", "Vendor Evaluation"],
+  ["support-matrix", "02", "Product Eval", "Product Evaluation"],
+  ["ecosystem-support", "03", "Ecosystem", "Ecosystem Evaluation"],
+  ["vendor-intelligence", "04", "Intelligence", "Vendor Intelligence"],
+  ["research-reports", "05", "Reports", "Research Reports"],
+];
+const MOBILE_MARKET_SECTIONS = MOBILE_SECTION_TABS.map(([value]) => value);
 
 export default function MarketDetails() {
   // Registered at both /markets/:marketId (and its legacy /market/:marketId
@@ -103,7 +113,36 @@ export default function MarketDetails() {
     mobileMode && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("section") === "ai-chat"
   );
   const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
-  const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
+  // Keeps the active chip of the mobile section strip scrolled into view.
+  const activeMobileSectionRef = useRef<HTMLButtonElement | null>(null);
+  const mobileStripRef = useRef<HTMLDivElement | null>(null);
+  const mobileStripObserver = useRef<ResizeObserver | null>(null);
+  // Whether more chips are hidden past the right edge → drives the fade cue.
+  const [mobileStripCanScroll, setMobileStripCanScroll] = useState(false);
+  const measureMobileStrip = () => {
+    const el = mobileStripRef.current;
+    if (!el) return;
+    setMobileStripCanScroll(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+  // Callback ref: the strip only exists once the market has loaded, so a
+  // mount-time effect would miss it. Observe its size from the moment it
+  // appears (also covers font loading and orientation changes).
+  const setMobileStripRef = (el: HTMLDivElement | null) => {
+    mobileStripObserver.current?.disconnect();
+    mobileStripObserver.current = null;
+    mobileStripRef.current = el;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measureMobileStrip);
+    observer.observe(el);
+    Array.from(el.children).forEach(child => observer.observe(child));
+    mobileStripObserver.current = observer;
+    measureMobileStrip();
+  };
+  useEffect(() => () => mobileStripObserver.current?.disconnect(), []);
+  useEffect(() => {
+    if (!mobileMode) return;
+    activeMobileSectionRef.current?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [mobileMode, activeTab]);
 
   const selectMarketSection = (value: string) => {
     setActiveTab(value);
@@ -111,7 +150,6 @@ export default function MarketDetails() {
     const url = new URL(window.location.href);
     url.searchParams.set("section", value);
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    setMobileSectionsOpen(false);
   };
 
   useEffect(() => {
@@ -618,68 +656,63 @@ export default function MarketDetails() {
           return (
             <Tabs value={activeTab} onValueChange={selectMarketSection} className="w-full">
               {mobileMode ? (
-                <div className="relative mb-6 font-[Montserrat]">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between border border-slate-200 bg-slate-50 px-4 py-3 text-left"
-                    onClick={() => setMobileSectionsOpen(value => !value)}
-                    aria-expanded={mobileSectionsOpen}
-                    aria-controls="mobile-market-sections"
-                    data-testid="mobile-market-section-switcher"
+                /* Sticky, horizontally scrolling section strip. Every section is
+                   always visible/reachable (no dropdown to discover); the strip
+                   pins under the 56px mobile header while the page scrolls. */
+                <div
+                  className="sticky top-14 z-30 -mx-4 mb-6 border-b border-slate-200 bg-white/95 backdrop-blur font-[Montserrat]"
+                  data-testid="mobile-market-section-strip"
+                >
+                  <div
+                    ref={setMobileStripRef}
+                    onScroll={measureMobileStrip}
+                    className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="tablist"
+                    aria-label="Market sections"
                   >
-                    <span>
-                      <span className="block font-[Menlo] text-[9px] font-bold uppercase tracking-[0.14em] text-sky-600">Section</span>
-                      <strong className="mt-1 block text-sm text-slate-950">
-                        {([
-                          ["vendor-evaluation", "Vendor Evaluation"],
-                          ["support-matrix", "Product Evaluation"],
-                          ["ecosystem-support", "Ecosystem Evaluation"],
-                          ["vendor-intelligence", "Vendor Intelligence"],
-                          ["research-reports", "Reports"],
-                        ].find(([value]) => value === activeTab)?.[1]) || "Vendor Evaluation"}
-                      </strong>
-                    </span>
-                    <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-sky-600">
-                      View all
-                      <ChevronDown className={`h-4 w-4 transition-transform ${mobileSectionsOpen ? "rotate-180" : ""}`} />
-                    </span>
-                  </button>
-                  {mobileSectionsOpen && (
-                    <div id="mobile-market-sections" className="absolute left-0 right-0 top-full z-30 border-x border-b border-slate-200 bg-white shadow-xl">
-                      {[
-                        ["vendor-evaluation", "01", "Vendor Evaluation"],
-                        ["support-matrix", "02", "Product Evaluation"],
-                        ["ecosystem-support", "03", "Ecosystem Evaluation"],
-                        ["vendor-intelligence", "04", "Vendor Intelligence"],
-                        ["research-reports", "05", "Reports"],
-                      ].map(([value, number, label]) => {
-                        const reportsLocked = value === "research-reports" && researchReportsLocked;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            className={cn(
-                              "flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left",
-                              activeTab === value ? "bg-blue-50 text-sky-700" : "text-slate-700",
-                              reportsLocked && "text-slate-400"
-                            )}
-                            onClick={() => {
-                              if (reportsLocked) {
-                                if (anonymousReportsLock) openRegistrationModal();
-                                return;
-                              }
-                              selectMarketSection(value);
-                            }}
-                            data-testid={`mobile-section-${value}`}
-                          >
-                            <span className="font-[Menlo] text-[10px] font-bold text-sky-600">{number}</span>
-                            <span className="flex-1 text-sm font-semibold">{label}</span>
-                            {reportsLocked && <Lock className="h-3.5 w-3.5" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                    {MOBILE_SECTION_TABS.map(([value, number, label, fullLabel]) => {
+                      const reportsLocked = value === "research-reports" && researchReportsLocked;
+                      const active = activeTab === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          aria-label={fullLabel}
+                          title={fullLabel}
+                          ref={active ? activeMobileSectionRef : undefined}
+                          className={cn(
+                            "flex h-10 shrink-0 items-center gap-2 border px-3 text-xs font-bold whitespace-nowrap transition-colors",
+                            active
+                              ? "border-slate-950 bg-slate-950 text-white"
+                              : "border-slate-200 bg-white text-slate-600",
+                            reportsLocked && !active && "text-slate-400"
+                          )}
+                          onClick={() => {
+                            if (reportsLocked) {
+                              if (anonymousReportsLock) openRegistrationModal();
+                              return;
+                            }
+                            selectMarketSection(value);
+                          }}
+                          data-testid={`mobile-section-${value}`}
+                        >
+                          <span className={cn("font-[Menlo] text-[10px]", active ? "text-cyan-300" : "text-sky-600")}>{number}</span>
+                          {label}
+                          {reportsLocked && <Lock className="h-3 w-3" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Right-edge fade: signals more chips are hidden; gone once scrolled to the end. */}
+                  <div
+                    aria-hidden="true"
+                    className={cn(
+                      "pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white via-white/80 to-transparent transition-opacity",
+                      mobileStripCanScroll ? "opacity-100" : "opacity-0"
+                    )}
+                  />
                 </div>
               ) : (
               <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
