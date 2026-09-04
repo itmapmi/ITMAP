@@ -50,6 +50,7 @@ export function FixedProductComparison() {
                     {chosen.map((vendor) => {
                       const record = supportByVendor[vendor.id][feature[0] as string];
                        return <div className="fdm-support-cell" key={vendor.id}>
+                         <span className="fdm-product-vendor">{vendor.name}</span>
                          <div><Harvey level={record.level} /><b>{record.level} / 4</b></div>
                          <button onClick={() => setNote({vendor:vendor.name,product:vendor.product,subject:feature[0] as string,score:`${record.level} / 4 support`,commentary:record.commentary})}>View notes</button>
                        </div>;
