@@ -250,7 +250,6 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-11 lg:px-8">
         <motion.header initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="relative mb-8 overflow-hidden rounded-3xl border border-cyan-300/10 bg-slate-900 px-6 py-7 sm:px-9 sm:py-9">
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-          <div className="absolute right-24 top-0 h-full w-px bg-gradient-to-b from-transparent via-violet-400/20 to-transparent" />
           <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2.5 text-sm text-slate-400">
