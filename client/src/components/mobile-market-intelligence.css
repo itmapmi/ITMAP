@@ -1,0 +1,92 @@
+.mobile-market-intelligence {
+  --mmi-ink: #0f1418;
+  --mmi-muted: #66737b;
+  --mmi-rule: #dfe8ed;
+  --mmi-card: #f7f9f9;
+  --mmi-blue: #13a8f0;
+  color: var(--mmi-ink);
+  font-family: Montserrat, sans-serif;
+}
+
+.mmi-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--mmi-rule);
+  font-size: 16px;
+  letter-spacing: -.035em;
+}
+
+.mmi-heading span, .mmi-label, .mmi-source {
+  color: var(--mmi-blue);
+  font-family: Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mmi-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 10px;
+  scrollbar-width: none;
+}
+.mmi-tabs::-webkit-scrollbar { display: none; }
+.mmi-tabs button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  border: 1px solid var(--mmi-rule);
+  background: #fff;
+  color: var(--mmi-muted);
+  cursor: pointer;
+  font: 700 11px Montserrat, sans-serif;
+  padding: 0 11px;
+}
+.mmi-tabs button[aria-selected="true"] {
+  background: var(--mmi-ink);
+  border-color: var(--mmi-ink);
+  color: #fff;
+}
+.mmi-tabs button:focus-visible, .mmi-article-link:focus-visible, .mmi-player-link:focus-visible {
+  outline: 2px solid var(--mmi-blue);
+  outline-offset: 2px;
+}
+
+.mmi-card {
+  background: var(--mmi-card);
+  border: 1px solid var(--mmi-rule);
+  box-shadow: 0 5px 16px rgba(15, 20, 24, .06);
+  padding: 0 14px;
+}
+.mmi-item { border-bottom: 1px solid var(--mmi-rule); padding: 13px 0; }
+.mmi-item:last-child { border-bottom: 0; }
+.mmi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #768487; font-size: 10px; }
+.mmi-impact { background: #fde8ef; color: #b31d55; font-size: 10px; font-weight: 700; padding: 3px 6px; }
+.mmi-article-title, .mmi-player-name { font-size: 13px; line-height: 1.3; margin: 6px 0; }
+.mmi-article-link, .mmi-player-link { color: inherit; text-decoration: none; }
+.mmi-article-link:hover, .mmi-player-link:hover { color: var(--mmi-blue); }
+.mmi-summary, .mmi-signal-content, .mmi-player-description { color: #627276; font-size: 12px; line-height: 1.5; margin: 7px 0 0; }
+.mmi-label { color: #788586; display: block; margin-top: 7px; }
+.mmi-signal-head, .mmi-player-head { align-items: flex-start; display: flex; gap: 8px; }
+.mmi-signal-head strong, .mmi-player-head strong { flex: 1; font-size: 12px; line-height: 1.35; }
+.mmi-source { flex: 0 0 auto; }
+.mmi-player-link { color: var(--mmi-blue); flex: 0 0 auto; font-size: 11px; font-weight: 700; }
+.mmi-player-facts { display: flex; flex-wrap: wrap; gap: 7px; color: #768487; font-size: 10px; margin-top: 8px; }
+
+.mmi-state { background: var(--mmi-card); border: 1px dashed #c9d9e2; color: var(--mmi-muted); font-size: 12px; line-height: 1.45; padding: 28px 15px; text-align: center; }
+.mmi-state strong { color: var(--mmi-ink); display: block; font-size: 13px; margin-bottom: 5px; }
+.mmi-state button { background: none; border: 0; color: var(--mmi-blue); cursor: pointer; font: 700 11px Montserrat, sans-serif; margin-top: 8px; padding: 6px; }
+.mmi-loading { display: grid; gap: 9px; padding: 14px 0; }
+.mmi-skeleton { background: linear-gradient(90deg, #edf1f3 25%, #f8fafb 50%, #edf1f3 75%); background-size: 200% 100%; height: 70px; animation: mmi-shimmer 1.4s infinite; }
+@keyframes mmi-shimmer { to { background-position: -200% 0; } }
+
+@media (min-width: 640px) {
+  .mobile-market-intelligence { max-width: 720px; }
+}

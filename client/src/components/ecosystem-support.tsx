@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown, Lock } from "lucide-react";
+import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown, Lock, Check } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
@@ -20,8 +20,8 @@ interface EcosystemSupportProps {
   pdfLocked?: boolean;
   /** Called instead of opening the vendor-selection modal when pdfLocked is true. */
   onPdfLockedClick?: () => void;
-  /** True only on the /mobile/* route — caps vendor selection at 3 and swaps
-   * the notes Dialog for an inline expandable row. Mirrors support-matrix.tsx. */
+  /** True only on the /mobile/* route — uses the approved two-product
+   * comparison and its accessible stored-commentary dialog. */
   mobileMode?: boolean;
 }
 
@@ -102,12 +102,14 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
+    productName?: string | null;
     featureName: string;
     notes: string;
     supportLevel: number;
+    unavailable?: boolean;
   } | null>(null);
-  // Mobile experience swaps the notes Dialog for an inline expandable row.
-  const [expandedNoteKey, setExpandedNoteKey] = useState<string | null>(null);
+  const [mobileOpenCategory, setMobileOpenCategory] = useState<string | null>(null);
+  const [expandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   
@@ -305,6 +307,76 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
+  // The dedicated markets-mobile route uses the approved two-product picker.
+  if (mobileMode && (showVendorSelection || selectedVendors.size !== MOBILE_VENDOR_CAP)) {
+    return (
+      <Card className="overflow-hidden rounded-none border-[#d6dcd6] bg-[#f8f8f3] shadow-none">
+        <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">01 · Products to compare</p>
+              <CardTitle className="mt-1 text-base text-[#18394b]">Choose exactly 2</CardTitle>
+            </div>
+          </div>
+          <CardDescription className="text-xs leading-5 text-[#647579]">
+            Select two products. Each ecosystem row keeps both support records together.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          {allVendors && allVendors.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="Products to compare">
+                {allVendors.map((vendor) => {
+                  const active = selectedVendors.has(vendor.id);
+                  return (
+                    <button
+                      type="button"
+                      key={vendor.id}
+                      onClick={() => toggleVendor(vendor.id)}
+                      aria-pressed={active}
+                      className={`flex min-h-20 items-start gap-2 border p-2.5 text-left ${
+                        active
+                          ? "border-[#16877c] bg-[#edf5f0] text-[#18394b] shadow-[inset_3px_0_#16877c]"
+                          : "border-[#cfd7d1] bg-white text-[#647579]"
+                      }`}
+                      data-testid={`vendor-card-${vendor.id}`}
+                    >
+                      <span className={`grid h-[21px] w-[21px] shrink-0 place-items-center border ${
+                        active ? "border-[#16877c] bg-[#16877c] text-white" : "border-[#bccac3]"
+                      }`}>
+                        {active && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                      </span>
+                      <span className="min-w-0">
+                        <strong className="block break-words text-xs">{vendor.name}</strong>
+                        <span className="mt-1 block break-words text-[10px] leading-[1.3] text-[#748285]">
+                          {vendor.product || "Product name unavailable"}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-4 border border-[#d6dcd6] bg-white p-3">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[#647579]">Support levels</p>
+                <p className="mt-2 text-[11px] leading-5 text-[#647579]">○ None · ◔ Limited · ◑ Partial · ◕ Good · ● Full</p>
+              </div>
+              <Button
+                onClick={handleProceedWithSelection}
+                disabled={selectedVendors.size !== MOBILE_VENDOR_CAP}
+                className="mt-4 min-h-11 w-full rounded-none bg-[#18394b] text-white hover:bg-[#102c3b]"
+                data-testid="proceed-with-selection-button"
+              >
+                Compare {selectedVendors.size}/2
+              </Button>
+            </>
+          ) : (
+            <p className="py-8 text-center text-sm text-[#647579]">No products are available for this market.</p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Show vendor selection interface first
   if (showVendorSelection || selectedVendors.size === 0) {
     return (
@@ -412,6 +484,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   }
 
   if (!ecosystemFeatures || !vendors || !supportMatrix) {
+    if (mobileMode) {
+      return (
+        <section className="border border-slate-200 bg-white p-5 font-[Montserrat]" role="status">
+          <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-wider text-sky-600">Ecosystem evaluation</p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-950">Ecosystem support unavailable</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">No stored ecosystem-support records are available for this market.</p>
+        </section>
+      );
+    }
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -429,6 +510,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   }
 
   if (ecosystemFeatures.length === 0) {
+    if (mobileMode) {
+      return (
+        <section className="border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-[Montserrat]">
+          <Network className="mx-auto h-6 w-6 text-sky-500" />
+          <p className="mt-3 text-sm font-semibold text-slate-950">No ecosystem features stored</p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-500">This market does not currently contain stored ecosystem feature evaluations.</p>
+        </section>
+      );
+    }
     return (
       <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
@@ -460,6 +550,197 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       notes: support.comments || undefined 
     });
   });
+
+  const getSupportText = (level: number) => {
+    switch (level) {
+      case 0: return "No Support";
+      case 1: return "Limited";
+      case 2: return "Partial";
+      case 3: return "Good";
+      case 4: return "Full Support";
+      default: return "Unknown";
+    }
+  };
+
+  if (mobileMode) {
+    const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
+      const id = feature.category.id;
+      if (!acc[id]) acc[id] = { category: feature.category, features: [] };
+      acc[id].features.push(feature);
+      return acc;
+    }, {} as Record<string, { category: FeatureWithCategory["category"]; features: FeatureWithCategory[] }>);
+    const categories = Object.values(featuresByCategory).sort(
+      (a, b) => a.category.displayOrder - b.category.displayOrder,
+    );
+    const openCategory = mobileOpenCategory ?? categories[0]?.category.id ?? null;
+
+    const openNotes = (vendor: Vendor, feature: FeatureWithCategory) => {
+      const record = supportLookup.get(`${vendor.id}-${feature.id}`);
+      setSelectedNotes({
+        vendorName: vendor.name,
+        productName: vendor.product,
+        featureName: feature.name,
+        supportLevel: record?.level ?? 0,
+        unavailable: !record,
+        notes: record?.notes?.trim() || "No stored commentary is available for this support record.",
+      });
+    };
+
+    return (
+      <Card className="overflow-hidden rounded-none border-[#d6dcd6] bg-[#f8f8f3] shadow-none">
+        <CardHeader className="border-b border-[#d6dcd6] bg-white px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">02 · Ecosystem support &amp; commentary</p>
+              <CardTitle className="mt-1 text-base text-[#18394b]">Ecosystem evaluation</CardTitle>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
+              className="h-9 shrink-0 rounded-none border-[#cfd7d1] px-2 text-[11px]"
+              data-testid="button-generate-ecosystem-report"
+            >
+              {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
+              PDF
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => setShowVendorSelection(true)}
+            className="h-auto w-fit p-0 text-[11px] font-bold text-[#16877c] hover:bg-transparent"
+            data-testid="back-to-vendor-selection-button"
+          >
+            Change products
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="border border-[#d6dcd6] bg-white">
+            <div className="grid grid-cols-3 bg-[#18394b] text-[#f8f6ee]">
+              <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9ac4c1]">Feature</span>
+              {vendors.map((vendor) => (
+                <span key={vendor.id} className="border-r border-white/15 p-2">
+                  <strong className="block break-words text-[11px] leading-tight text-white">{vendor.name}</strong>
+                  <small className="mt-1 block break-words text-[9px] leading-tight text-[#bdd3d1]">
+                    {vendor.product || "Product unavailable"}
+                  </small>
+                </span>
+              ))}
+            </div>
+            {categories.map(({ category, features: categoryFeatures }) => {
+              const isOpen = openCategory === category.id;
+              const panelId = `ecosystem-category-${category.id}`;
+              return (
+                <section key={category.id} className="border-t border-[#dfe3dd]">
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpenCategory(isOpen ? "" : category.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    className="flex min-h-[54px] w-full items-center justify-between bg-[#edf3ed] px-3 py-2 text-left"
+                  >
+                    <span>
+                      <strong className="block text-xs text-[#18394b]">{category.name}</strong>
+                      <small className="mt-1 block text-[10px] text-[#718083]">{categoryFeatures.length} stored rows</small>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                  </button>
+                  {isOpen && (
+                    <div id={panelId}>
+                      {categoryFeatures.map((feature) => (
+                        <article key={feature.id} className="border-t border-[#e1e4de] p-3">
+                          <h3 className="m-0 text-xs font-semibold text-[#18394b]">{feature.name}</h3>
+                          <p className="mb-2.5 mt-1 text-[11px] leading-[1.4] text-[#718082]">
+                            {feature.description || "No evaluation criteria stored for this feature."}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {vendors.map((vendor) => {
+                              const record = supportLookup.get(`${vendor.id}-${feature.id}`);
+                              return (
+                                <div key={vendor.id} className="min-w-0 border border-[#d5ddd6] bg-white p-2">
+                                  <span className="mb-1.5 block break-words font-mono text-[10px] font-bold text-[#18394b]">{vendor.name}</span>
+                                  {record ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-2xl leading-none ${
+                                        record.level === 4 ? "text-green-600" :
+                                        record.level === 3 ? "text-blue-500" :
+                                        record.level === 2 ? "text-yellow-500" :
+                                        record.level === 1 ? "text-orange-500" : "text-gray-300"
+                                      }`} aria-label={`${record.level} of 4 support`}>
+                                        {["○", "◔", "◑", "◕", "●"][record.level] ?? "○"}
+                                      </span>
+                                      <b className="font-mono text-[11px] text-[#16877c]">{record.level} / 4</b>
+                                    </div>
+                                  ) : (
+                                    <p className="m-0 min-h-6 text-[10px] font-bold text-[#9a5a42]">Unavailable</p>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => openNotes(vendor, feature)}
+                                    className="mt-2 min-h-8 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
+                                    aria-label={`View notes for ${vendor.name}, ${feature.name}`}
+                                  >
+                                    View notes
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </CardContent>
+
+        <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
+          <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-none border-[#d6dcd6] p-0">
+            <DialogHeader className="border-b border-[#d6dcd6] bg-[#f4f5ef] px-4 py-4 pr-12">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">Evaluation notes</p>
+              <DialogTitle className="text-left text-base text-[#18394b]">{selectedNotes?.featureName}</DialogTitle>
+            </DialogHeader>
+            {selectedNotes && (
+              <div className="min-h-0 overflow-y-auto">
+                <div className="grid grid-cols-2 border-b border-[#d6dcd6] px-4">
+                  <div className="py-3 pr-2">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Vendor</span>
+                    <strong className="mt-1 block break-words text-xs">{selectedNotes.vendorName}</strong>
+                  </div>
+                  <div className="py-3">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Product</span>
+                    <strong className="mt-1 block break-words text-xs">{selectedNotes.productName || "Unavailable"}</strong>
+                  </div>
+                  <div className="col-span-2 border-t border-[#e4e6e0] py-3">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Support</span>
+                    <strong className="mt-1 block text-xs">
+                      {selectedNotes.unavailable ? "Support record unavailable" : `${selectedNotes.supportLevel} / 4 · ${getSupportText(selectedNotes.supportLevel)}`}
+                    </strong>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Stored commentary</span>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#42565d]">{selectedNotes.notes}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <VendorSelectionModal
+          open={showVendorModal}
+          onOpenChange={setShowVendorModal}
+          vendors={allVendors || []}
+          onGenerate={handleGenerateReport}
+          title="Generate ISV Ecosystem Report"
+          description="Select vendors to include in the ISV Ecosystem PDF report"
+          isGenerating={isGenerating}
+        />
+      </Card>
+    );
+  }
 
   // Calculate ecosystem support totals for each vendor
   const getEcosystemTotals = () => {
@@ -514,17 +795,6 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         notes,
         supportLevel
       });
-    }
-  };
-
-  const getSupportText = (level: number) => {
-    switch (level) {
-      case 0: return "No Support";
-      case 1: return "Limited";
-      case 2: return "Partial";
-      case 3: return "Good";
-      case 4: return "Full Support";
-      default: return "Unknown";
     }
   };
 

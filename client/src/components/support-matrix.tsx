@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown, Lock } from "lucide-react";
+import { Users, Eye, ChevronDown, ChevronRight, FileText, RefreshCw, Filter, LayoutGrid, Info, Award, TrendingUp, Sparkles, FileDown, Lock, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -20,9 +20,9 @@ interface SupportMatrixProps {
   pdfLocked?: boolean;
   /** Called instead of opening the vendor-selection modal when pdfLocked is true. */
   onPdfLockedClick?: () => void;
-  /** True only on the /mobile/* route — caps vendor selection at 3 (dense
-   * comparison grids don't fit a phone) and swaps the notes Dialog for an
-   * inline expandable row. Independent of the isMobile viewport hook. */
+  /** True only on the /mobile/* route — caps vendor selection at 2 (dense
+   * comparison grids don't fit a phone) and uses the approved two-product
+   * mobile comparison. Independent of the isMobile viewport hook. */
   mobileMode?: boolean;
 }
 
@@ -84,7 +84,8 @@ const HarveyBall = ({
   vendorName, 
   featureName, 
   onClick,
-  isMobile = false
+  isMobile = false,
+  mobileContext
 }: { 
   level: number; 
   notes?: string; 
@@ -92,6 +93,7 @@ const HarveyBall = ({
   featureName: string; 
   onClick: () => void; 
   isMobile?: boolean;
+  mobileContext?: any;
 }) => {
   const getHarveyBallIcon = (level: number) => {
     switch (level) {
@@ -126,6 +128,307 @@ const HarveyBall = ({
     }
   };
 
+  const {
+    mobileMode = false,
+    marketId,
+    allVendors,
+    selectedVendors,
+    productCapabilityFeatures,
+    pdfLocked,
+    onPdfLockedClick,
+    setShowVendorModal,
+    toggleVendor,
+    collapsedCategories,
+    toggleCategory,
+    supportLookup,
+    selectedNotes,
+    setSelectedNotes,
+    showVendorModal,
+    handleGenerateReport,
+    isGenerating,
+  } = mobileContext || {};
+
+  if (mobileMode) {
+    const selectedProducts: Vendor[] = ((allVendors ?? []) as Vendor[]).filter((vendor: Vendor) => selectedVendors.has(vendor.id));
+    const featuresByCategory = (productCapabilityFeatures as FeatureWithCategory[]).reduce((acc: Record<string, { category: FeatureWithCategory["category"]; features: FeatureWithCategory[] }>, feature: FeatureWithCategory) => {
+      const categoryId = feature.category.id;
+      if (!acc[categoryId]) {
+        acc[categoryId] = { category: feature.category, features: [] };
+      }
+      acc[categoryId].features.push(feature);
+      return acc;
+    }, {} as Record<string, { category: FeatureWithCategory["category"]; features: FeatureWithCategory[] }>);
+    const sortedCategories: { category: FeatureWithCategory["category"]; features: FeatureWithCategory[] }[] = Object.values(featuresByCategory).sort(
+      (a, b) => a.category.displayOrder - b.category.displayOrder,
+    );
+    const harveyFill = ["#e6e6e6", "#f7b51e", "#00b890", "#18bf72", "#13a8f0"];
+
+    return (
+      <Card className="overflow-hidden rounded-none border-[#dfe8ed] bg-white shadow-[0_5px_16px_rgba(15,20,24,0.06)]">
+        <CardHeader className="border-b border-[#dfe8ed] bg-white px-4 py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[#13a8f0]">
+                Product evaluation
+              </p>
+              <CardTitle className="mt-1 text-xl text-[#0f1418]">Compare product support</CardTitle>
+              <CardDescription className="mt-2 text-xs leading-5 text-[#66737b]">
+                Compare two stored product-support records feature by feature.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
+              className="shrink-0 rounded-none border-[#dfe8ed] px-2 text-[11px]"
+              data-testid="button-generate-product-evaluation-report"
+            >
+              {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
+              PDF
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-7 p-4">
+          <section aria-labelledby="mobile-product-picker-title">
+            <div className="flex items-end border-b border-[#dfe8ed] pb-2">
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">01</span>
+              <h2 id="mobile-product-picker-title" className="text-sm font-bold text-[#0f1418]">Products to compare</h2>
+              <span className="ml-auto font-mono text-[9px] font-bold uppercase text-[#66737b]">Choose exactly 2</span>
+            </div>
+
+            {allVendors && allVendors.length > 0 ? (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(allVendors as Vendor[]).map((vendor: Vendor) => {
+                    const active = selectedVendors.has(vendor.id);
+                    return (
+                      <button
+                        type="button"
+                        key={vendor.id}
+                        onClick={() => {
+                          if (!active) {
+                            track("vendor_selected", {
+                              marketId,
+                              vendorId: vendor.id,
+                              metadata: { context: "product_evaluation", vendorName: vendor.name },
+                            });
+                          }
+                          toggleVendor(vendor.id);
+                        }}
+                        aria-pressed={active}
+                        className={`min-h-20 border p-2 text-left transition-colors ${
+                          active
+                            ? "border-[#13a8f0] bg-[#dcebf6] text-[#0f1418] shadow-[inset_3px_0_#13a8f0]"
+                            : "border-[#dfe8ed] bg-white text-[#66737b]"
+                        }`}
+                        data-testid={`vendor-card-${vendor.id}`}
+                      >
+                        <span className="flex items-start gap-2">
+                          <span className={`grid h-[21px] w-[21px] shrink-0 place-items-center border ${
+                            active ? "border-[#13a8f0] bg-[#13a8f0] text-white" : "border-[#b9cbd5]"
+                          }`}>
+                            {active && <Check className="h-3 w-3" aria-hidden="true" />}
+                          </span>
+                          <span className="min-w-0">
+                            <strong className="block break-words text-xs leading-4">{vendor.name}</strong>
+                            <small className="mt-1 block break-words text-[10px] leading-[1.3] text-[#66737b]">
+                              {vendor.product || "Product name unavailable"}
+                            </small>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-[#66737b]">
+                  {selectedProducts.length === 2
+                    ? "Two products selected. Both columns remain visible below."
+                    : `Select ${2 - selectedProducts.length} more product${selectedProducts.length === 1 ? "" : "s"} to view the comparison.`}
+                </p>
+              </>
+            ) : (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-4 text-center text-xs text-[#66737b]">
+                No products are available for this market.
+              </div>
+            )}
+
+            <div className="mt-3 grid grid-cols-5 gap-1 border border-[#dfe8ed] bg-[#f7f9f9] p-2">
+              {["0 none", "1 limited", "2 partial", "3 good", "4 full"].map((label, level) => (
+                <span key={label} className="text-center font-mono text-[8px] uppercase text-[#66737b]">
+                  <i className="mx-auto mb-1 block h-2 w-2 rounded-full" style={{ background: harveyFill[level] }} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="mobile-product-support-title">
+            <div className="flex items-end border-b border-[#dfe8ed] pb-2">
+              <span className="mr-3 font-mono text-[10px] font-bold text-[#13a8f0]">02</span>
+              <h2 id="mobile-product-support-title" className="text-sm font-bold text-[#0f1418]">
+                Feature support &amp; commentary
+              </h2>
+            </div>
+
+            {selectedProducts.length !== MOBILE_VENDOR_CAP ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center">
+                <p className="text-xs font-bold text-[#0f1418]">Comparison unavailable</p>
+                <p className="mt-1 text-[11px] text-[#66737b]">Choose exactly two products above.</p>
+              </div>
+            ) : sortedCategories.length === 0 ? (
+              <div className="mt-3 border border-dashed border-[#c9d9e2] bg-[#f7f9f9] p-5 text-center text-xs text-[#66737b]">
+                No product capability features are available for this market.
+              </div>
+            ) : (
+              <div className="mt-3 border border-[#dfe8ed] bg-white">
+                <div className="grid grid-cols-3 bg-[#0f1418] text-white">
+                  <span className="border-r border-white/15 p-2 font-mono text-[9px] font-bold uppercase text-[#9bbbd0]">Feature</span>
+                  {selectedProducts.map(vendor => (
+                    <span key={vendor.id} className="border-r border-white/15 p-2">
+                      <strong className="block break-words text-[11px] leading-4">{vendor.name}</strong>
+                      <small className="mt-0.5 block break-words text-[9px] leading-3 text-[#bdd3d1]">
+                        {vendor.product || "Product unavailable"}
+                      </small>
+                    </span>
+                  ))}
+                </div>
+
+                {sortedCategories.map(({ category, features: categoryFeatures }) => {
+                  const isOpen = !collapsedCategories.has(category.id);
+                  return (
+                    <div key={category.id} className="border-t border-[#dfe8ed]">
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={`mobile-category-${category.id}`}
+                        className="flex min-h-[54px] w-full items-center justify-between bg-[#e6f0f5] px-3 py-2 text-left"
+                      >
+                        <span>
+                          <strong className="block text-xs text-[#0f1418]">{category.name}</strong>
+                          <small className="mt-0.5 block text-[10px] text-[#66737b]">{categoryFeatures.length} stored rows</small>
+                        </span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div id={`mobile-category-${category.id}`}>
+                          {categoryFeatures.map(feature => (
+                            <article key={feature.id} className="border-t border-[#dfe8ed] p-3">
+                              <h3 className="text-xs font-bold text-[#0f1418]">{feature.name}</h3>
+                              <p className="mb-2 mt-1 text-[11px] leading-[1.4] text-[#66737b]">
+                                {feature.description || "Feature description unavailable."}
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {selectedProducts.map(vendor => {
+                                  const support = supportLookup.get(`${vendor.id}-${feature.id}`);
+                                  const level = support?.level ?? 0;
+                                  const unavailable = !support;
+                                  return (
+                                    <div key={vendor.id} className="border border-[#dfe8ed] bg-white p-2">
+                                      <span className="mb-1.5 block break-words font-mono text-[9px] font-bold text-[#0f1418]">
+                                        {vendor.name}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          role="img"
+                                          aria-label={unavailable ? "Support score unavailable" : `${level} of 4 support`}
+                                          className={`block h-7 w-7 shrink-0 rounded-full border-[2px] ${unavailable ? "border-dashed border-[#b9cbd5]" : "border-[#00b890]"}`}
+                                          style={unavailable ? undefined : {
+                                            background: `conic-gradient(#00b890 ${level * 25}%, #e6e6e6 0)`,
+                                            boxShadow: "inset 0 0 0 3px #fff",
+                                          }}
+                                        />
+                                        <b className="font-mono text-[10px] text-[#087fca]">
+                                          {unavailable ? "Unavailable" : `${level} / 4`}
+                                        </b>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedNotes({
+                                          vendorName: vendor.name,
+                                          productName: vendor.product || "Product name unavailable",
+                                          featureName: feature.name,
+                                          supportLevel: level,
+                                          unavailable,
+                                          notes: unavailable
+                                            ? "No support record is available for this vendor, product, and feature."
+                                            : support.notes || "No stored commentary is available for this support record.",
+                                        })}
+                                        className="mt-2 min-h-9 w-full border border-[#b9d8ec] bg-[#dcebf6] px-1 text-[10px] font-bold text-[#087fca]"
+                                      >
+                                        View notes
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </CardContent>
+
+        <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
+          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm flex-col gap-0 overflow-hidden rounded-none border-[#dfe8ed] p-0">
+            <DialogHeader className="border-b border-[#dfe8ed] p-4 pr-10 text-left">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#66737b]">Evaluation notes</p>
+              <DialogTitle className="mt-1 text-base text-[#0f1418]">{selectedNotes?.featureName}</DialogTitle>
+            </DialogHeader>
+            {selectedNotes && (
+              <>
+                <div className="grid grid-cols-2 border-b border-[#dfe8ed] bg-[#f7f9f9] text-xs">
+                  <div className="border-r border-[#dfe8ed] p-3">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Vendor</span>
+                    <strong className="mt-1 block">{selectedNotes.vendorName}</strong>
+                  </div>
+                  <div className="p-3">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Product</span>
+                    <strong className="mt-1 block break-words">{selectedNotes.productName}</strong>
+                  </div>
+                  <div className="col-span-2 border-t border-[#dfe8ed] p-3">
+                    <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Support</span>
+                    <strong className="mt-1 block">
+                      {selectedNotes.unavailable
+                        ? "Unavailable"
+                        : `${selectedNotes.supportLevel} / 4 · ${getSupportText(selectedNotes.supportLevel)}`}
+                    </strong>
+                  </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  <span className="font-mono text-[9px] font-bold uppercase text-[#66737b]">Stored commentary</span>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#3f4d55]">{selectedNotes.notes}</p>
+                </div>
+                <div className="border-t border-[#dfe8ed] p-3">
+                  <Button className="min-h-11 w-full rounded-none bg-[#0f1418] text-white hover:bg-[#27323a]" onClick={() => setSelectedNotes(null)}>
+                    Close notes
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <VendorSelectionModal
+          open={showVendorModal}
+          onOpenChange={setShowVendorModal}
+          vendors={allVendors || []}
+          onGenerate={handleGenerateReport}
+          title="Generate Product Evaluation Report"
+          description="Select vendors to include in the Product Evaluation PDF report"
+          isGenerating={isGenerating}
+        />
+      </Card>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center">
       <button
@@ -153,14 +456,13 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const [categoriesInitialized, setCategoriesInitialized] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
+    productName: string;
     featureName: string;
     notes: string;
     supportLevel: number;
+    unavailable?: boolean;
   } | null>(null);
-  // Mobile experience swaps the notes Dialog for an inline expandable row
-  // (dialogs are awkward on phones); this tracks which vendor+feature row
-  // is currently expanded.
-  const [expandedNoteKey, setExpandedNoteKey] = useState<string | null>(null);
+  const [expandedNoteKey] = useState<string | null>(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -369,7 +671,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   }
 
   // Show vendor selection interface first
-  if (showVendorSelection || selectedVendors.size === 0) {
+  if (!mobileMode && (showVendorSelection || selectedVendors.size === 0)) {
     return (
       <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
@@ -492,14 +794,15 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     });
   });
 
-  const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string, key?: string) => {
+  const handleHarveyBallClick = (vendorName: string, productName: string, featureName: string, supportLevel: number, notes?: string) => {
     if (mobileMode) {
-      setSelectedNotes({ vendorName, featureName, supportLevel, notes: notes || "No stored commentary is available for this support record." });
+      setSelectedNotes({ vendorName, productName, featureName, supportLevel, notes: notes || "No stored commentary is available for this support record." });
       return;
     }
     if (notes) {
       setSelectedNotes({
         vendorName,
+        productName,
         featureName, 
         notes,
         supportLevel
@@ -558,6 +861,36 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       default: return "Unknown";
     }
   };
+
+  if (mobileMode) {
+    return (
+      <HarveyBall
+        level={0}
+        vendorName=""
+        featureName=""
+        onClick={() => {}}
+        mobileContext={{
+          mobileMode,
+          marketId,
+          allVendors,
+          selectedVendors,
+          productCapabilityFeatures,
+          pdfLocked,
+          onPdfLockedClick,
+          setShowVendorModal,
+          toggleVendor,
+          collapsedCategories,
+          toggleCategory,
+          supportLookup,
+          selectedNotes,
+          setSelectedNotes,
+          showVendorModal,
+          handleGenerateReport,
+          isGenerating,
+        }}
+      />
+    );
+  }
 
   return (
     <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg">
@@ -874,10 +1207,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                               notes={notes}
                                               vendorName={vendor.name}
                                               featureName={feature.name}
-                                              onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}
+                                              onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportLevel, notes)}
                                               isMobile={true}
                                             />
-                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}>View notes</button>}
+                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportLevel, notes)}>View notes</button>}
                                           </div>
                                         </div>
                                         {/* Inline expandable notes — replaces the desktop Dialog on mobile */}
@@ -928,7 +1261,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                       notes={supportData.notes}
                                       vendorName={vendor.name}
                                       featureName={feature.name}
-                                      onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportData.level, supportData.notes)}
+                                      onClick={() => handleHarveyBallClick(vendor.name, vendor.product || "Product name unavailable", feature.name, supportData.level, supportData.notes)}
                                     />
                                   </div>
                                 );

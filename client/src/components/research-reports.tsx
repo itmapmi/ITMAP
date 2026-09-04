@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Download, ExternalLink, Calendar, ChevronDown, FileIcon, FileArchive, FileSpreadsheet, FileVideo, FileType } from "lucide-react";
+import { FileText, Download, ExternalLink, Calendar, ChevronDown, FileIcon, FileArchive, FileSpreadsheet, FileVideo, FileType, AlertCircle, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,11 +45,175 @@ function formatFileSize(bytes: number | null | undefined): string {
   return `${Math.round((bytes / Math.pow(1024, i)) * 100) / 100} ${sizes[i]}`;
 }
 
+function getStoredExcerpt(html: string): string {
+  let text = "";
+
+  if (typeof DOMParser !== "undefined") {
+    text = new DOMParser().parseFromString(html, "text/html").body.textContent || "";
+  } else {
+    text = html.replace(/<[^>]*>/g, " ");
+  }
+
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 420 ? `${normalized.slice(0, 417).trimEnd()}…` : normalized;
+}
+
 export function ResearchReports({ marketId, mobileMode = false }: ResearchReportsProps) {
   const [openReportId, setOpenReportId] = useState<string | null>(null);
-  const { data: reports, isLoading } = useQuery<ResearchReport[]>({
+  const { data: reports, isLoading, error, refetch } = useQuery<ResearchReport[]>({
     queryKey: ["/api/markets", marketId, "research-reports"],
   });
+
+  if (mobileMode) {
+    const errorMessage = error instanceof Error ? error.message : "";
+    const isLocked = /^40[13]:/.test(errorMessage);
+
+    return (
+      <section className="font-[Montserrat]" aria-labelledby="mobile-report-library-title">
+        <div className="mb-3 flex items-end justify-between border-b border-slate-200 pb-2">
+          <div>
+            <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-[0.1em] text-sky-500">01</p>
+            <h3 id="mobile-report-library-title" className="text-base font-bold tracking-[-0.035em] text-slate-950">
+              Report library
+            </h3>
+          </div>
+          {!isLoading && !error && reports ? (
+            <span className="font-[Menlo] text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+              {reports.length} reports
+            </span>
+          ) : null}
+        </div>
+
+        {isLoading ? (
+          <div className="border border-slate-200 bg-slate-50 p-3" aria-label="Loading reports" aria-busy="true">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-2 border-b border-slate-200 py-3 last:border-0">
+                <Skeleton className="h-[38px] w-[34px] shrink-0 rounded-none" />
+                <div className="flex-1 space-y-2 pt-0.5">
+                  <Skeleton className="h-3.5 w-4/5" />
+                  <Skeleton className="h-2.5 w-2/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-9 text-center" role={isLocked ? undefined : "alert"}>
+            {isLocked ? (
+              <Lock className="mx-auto mb-2 h-[22px] w-[22px] text-sky-500" />
+            ) : (
+              <AlertCircle className="mx-auto mb-2 h-[22px] w-[22px] text-red-500" />
+            )}
+            <strong className="block text-[13px] text-slate-950">
+              {isLocked ? "Reports are locked" : "Reports could not be loaded"}
+            </strong>
+            <p className="mx-auto mt-1 max-w-[280px] text-xs leading-relaxed text-slate-500">
+              {isLocked
+                ? "Sign in with research report access to browse this report library."
+                : "There was a problem loading the report library. Please try again."}
+            </p>
+            {!isLocked ? (
+              <Button className="mt-4" variant="outline" size="sm" onClick={() => void refetch()}>
+                Try again
+              </Button>
+            ) : null}
+          </div>
+        ) : !reports || reports.length === 0 ? (
+          <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-9 text-center">
+            <FileText className="mx-auto mb-2 h-[22px] w-[22px] text-sky-500" />
+            <strong className="block text-[13px] text-slate-950">No Research Reports Yet</strong>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Reports published for this market will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="border border-slate-200 bg-slate-50 px-[14px]">
+            {reports.map((report) => {
+              const meta = getFileMeta(report.mimeType, report.fileUrl);
+              const dateValue = report.publishedAt || report.uploadedAt || report.createdAt;
+              const open = openReportId === report.id;
+              const excerpt = report.htmlContent ? getStoredExcerpt(report.htmlContent) : "";
+
+              return (
+                <article key={report.id} className="border-b border-slate-200 py-[13px] last:border-0" data-testid={`report-card-${report.id}`}>
+                  <button
+                    type="button"
+                    className="flex min-h-11 w-full items-start gap-[9px] bg-transparent p-0 text-left"
+                    onClick={() => setOpenReportId(open ? null : report.id)}
+                    aria-expanded={open}
+                    aria-controls={`mobile-report-detail-${report.id}`}
+                  >
+                    <span className="grid h-[38px] w-[34px] shrink-0 place-items-center bg-sky-50 font-[Menlo] text-[9px] font-bold text-sky-600">
+                      {meta.label.slice(0, 4)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block text-[13px] leading-snug text-slate-950" data-testid={`report-title-${report.id}`}>
+                        {report.title}
+                      </strong>
+                      <small className="mt-1 block text-[10px] text-slate-500">
+                        {dateValue ? format(new Date(dateValue), "MMM d, yyyy") : "Date unavailable"}
+                        {report.fileSize ? ` · ${formatFileSize(report.fileSize)}` : ""}
+                      </small>
+                    </span>
+                    <ChevronDown className={`mt-1 h-[15px] w-[15px] shrink-0 text-sky-500 transition-transform ${open ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {open ? (
+                    <div id={`mobile-report-detail-${report.id}`}>
+                      {report.htmlContent ? (
+                        <div className="ml-[39px] mt-[13px] border-l-[3px] border-sky-500 bg-sky-50 p-[11px] text-xs leading-[1.55] text-slate-600">
+                          <div className="font-[Menlo] text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                            Stored report excerpt
+                          </div>
+                          <p className="mt-1.5">
+                            {excerpt || "This stored report contains online media without a text excerpt."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-[14px] border border-dashed border-slate-300 bg-[#faf9f4] px-4 py-8 text-center">
+                          <FileText className="mx-auto mb-[9px] h-[22px] w-[22px] text-red-500" />
+                          <strong className="block text-[13px] text-slate-950">No Content Available</strong>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                            This report does not have stored online content available.
+                          </p>
+                        </div>
+                      )}
+
+                      {report.htmlContent || report.fileUrl ? (
+                        <div className="ml-[39px] mt-3 flex flex-wrap gap-2">
+                          {report.htmlContent ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/mobile/report/${report.id}`, "_blank")}
+                              data-testid={`report-view-${report.id}`}
+                            >
+                              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                              View online
+                            </Button>
+                          ) : null}
+                          {report.fileUrl ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/api/research-reports/${report.id}/download`, "_blank")}
+                              data-testid={`report-download-${report.id}`}
+                            >
+                              <Download className="mr-1 h-3.5 w-3.5" />
+                              Download
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -72,48 +236,6 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
           </p>
         </div>
       </div>
-    );
-  }
-
-  if (mobileMode) {
-    return (
-      <section className="font-[Montserrat]">
-        <div className="mb-3 flex items-end justify-between border-b border-slate-200 pb-2">
-          <div>
-            <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">01</p>
-            <h3 className="text-base font-bold text-slate-950">Report library</h3>
-          </div>
-          <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{reports.length} reports</span>
-        </div>
-        <div className="border border-slate-200 bg-slate-50 px-3">
-          {reports.map(report => {
-            const meta = getFileMeta(report.mimeType, report.fileUrl);
-            const dateValue = report.publishedAt || report.uploadedAt || report.createdAt;
-            const open = openReportId === report.id;
-            return (
-              <article key={report.id} className="border-b border-slate-200 py-3 last:border-0">
-                <button type="button" className="flex min-h-11 w-full items-start gap-2 text-left" onClick={() => setOpenReportId(open ? null : report.id)} aria-expanded={open}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center bg-blue-100 font-[Menlo] text-[9px] font-bold text-sky-700">{meta.label.slice(0, 4)}</span>
-                  <span className="min-w-0 flex-1">
-                    <strong className="block text-[13px] leading-snug text-slate-950">{report.title}</strong>
-                    <small className="mt-1 block text-[10px] text-slate-500">{dateValue ? format(new Date(dateValue), "MMM d, yyyy") : "Date unavailable"}{report.fileSize ? ` · ${formatFileSize(report.fileSize)}` : ""}</small>
-                  </span>
-                  <ChevronDown className={`mt-1 h-4 w-4 text-sky-600 transition-transform ${open ? "rotate-180" : ""}`} />
-                </button>
-                {open && (
-                  <div className="ml-11 mt-2 border-l-2 border-sky-500 bg-blue-50 p-3">
-                    <p className="text-xs leading-relaxed text-slate-600">{report.description || "No stored description is available for this report."}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {report.htmlContent && <Button variant="outline" size="sm" onClick={() => window.open(`/mobile/report/${report.id}`, "_blank")}><ExternalLink className="mr-1 h-3.5 w-3.5" /> View online</Button>}
-                      {report.fileUrl && <Button variant="outline" size="sm" onClick={() => window.open(`/api/research-reports/${report.id}/download`, "_blank")}><Download className="mr-1 h-3.5 w-3.5" /> Download</Button>}
-                    </div>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
     );
   }
 

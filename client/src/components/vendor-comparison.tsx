@@ -13,10 +13,18 @@ interface VendorComparisonProps {
   marketId: string;
   computedScores?: Record<string, Record<string, number>>;
   mobileMode?: boolean;
+  mobileSelectedVendors?: string[];
+  onMobileSelectedVendorsChange?: (vendorIds: string[]) => void;
 }
 
-export default function VendorComparison({ marketId, computedScores, mobileMode = false }: VendorComparisonProps) {
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+export default function VendorComparison({ marketId, computedScores, mobileMode = false, mobileSelectedVendors, onMobileSelectedVendorsChange }: VendorComparisonProps) {
+  const [localSelectedVendors, setLocalSelectedVendors] = useState<string[]>([]);
+  const selectedVendors = mobileMode && mobileSelectedVendors ? mobileSelectedVendors : localSelectedVendors;
+  const setSelectedVendors = (updater: (previous: string[]) => string[]) => {
+    const next = updater(selectedVendors);
+    if (mobileMode && onMobileSelectedVendorsChange) onMobileSelectedVendorsChange(next);
+    else setLocalSelectedVendors(next);
+  };
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   const [mobileNote, setMobileNote] = useState<{ vendor: Vendor; criterion: Criteria; score: number; notes: string } | null>(null);
   const isMobile = useIsMobile();
@@ -71,9 +79,11 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
 
   useEffect(() => {
     if (mobileMode && vendors && vendors.length >= 2 && selectedVendors.length === 0) {
-      setSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
+      const initial = vendors.slice(0, 2).map(vendor => vendor.id);
+      if (onMobileSelectedVendorsChange) onMobileSelectedVendorsChange(initial);
+      else setLocalSelectedVendors(initial);
     }
-  }, [mobileMode, vendors, selectedVendors.length]);
+  }, [mobileMode, vendors, selectedVendors.length, onMobileSelectedVendorsChange]);
 
   // Record a comparison once the user settles on 2+ vendors. Debounced so a
   // run of checkbox toggles produces one event, and de-duplicated so the same
@@ -122,7 +132,15 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
         {selectedVendorData.length >= 2 && (
           <div>
             <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">Scores &amp; commentary</h3></div>
-            <div className="border border-slate-200 bg-slate-50">
+            <div className="overflow-hidden border border-slate-200 bg-slate-50">
+              <div className="grid bg-slate-950 text-white" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
+                {selectedVendorData.map(vendor => (
+                  <span key={vendor.id} className="min-w-0 border-r border-white/15 px-2.5 py-3 last:border-0">
+                    <strong className="block break-words text-xs">{vendor.name}</strong>
+                    <small className="mt-0.5 block break-words text-[10px] leading-snug text-slate-300">{vendor.product || "Product name unavailable"}</small>
+                  </span>
+                ))}
+              </div>
               {criteria?.map(criterion => (
                 <div key={criterion.id} className="border-b border-slate-200 last:border-0">
                   <h4 className="bg-blue-50 px-3 py-2.5 text-xs font-semibold">{criterion.name}</h4>

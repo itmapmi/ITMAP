@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import * as d3 from "d3";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -91,7 +91,14 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [mobileChartScale, setMobileChartScale] = useState(0.46);
+  const [mobileChartScale, setMobileChartScale] = useState(0.36);
+  const [mobileChartPan, setMobileChartPan] = useState({ x: 0, y: 8 });
+  const [mobileSelectedVendors, setMobileSelectedVendors] = useState<string[]>([]);
+  const mobileChartViewportRef = useRef<HTMLDivElement>(null);
+  const mobilePointers = useRef(new Map<number, { x: number; y: number }>());
+  const mobileDragOrigin = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const mobilePinchOrigin = useRef({ distance: 0, scale: 1, x: 0, y: 0 });
+  const mobileDragMoved = useRef(false);
   const [mobileCriteriaOpen, setMobileCriteriaOpen] = useState(false);
   const [isPortrait, setIsPortrait] = useState(true);
   const [rotateHintDismissed, setRotateHintDismissed] = useState(
@@ -100,6 +107,98 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  const clampMobilePan = (x: number, y: number, scale = mobileChartScale) => {
+    const viewport = mobileChartViewportRef.current;
+    if (!viewport) return { x, y };
+    return {
+      x: Math.min(18, Math.max(viewport.clientWidth - 760 * scale - 18, x)),
+      y: Math.min(10, Math.max(viewport.clientHeight - 547 * scale - 10, y)),
+    };
+  };
+
+  const setMobileScaleAround = (next: number, anchorX?: number, anchorY?: number) => {
+    const scale = Math.min(1.35, Math.max(0.25, next));
+    const factor = scale / mobileChartScale;
+    const ax = anchorX ?? (mobileChartViewportRef.current?.clientWidth ?? 390) / 2;
+    const ay = anchorY ?? 145;
+    setMobileChartPan(pan => clampMobilePan(ax - (ax - pan.x) * factor, ay - (ay - pan.y) * factor, scale));
+    setMobileChartScale(scale);
+  };
+
+  const fitMobileChart = () => {
+    const viewport = mobileChartViewportRef.current;
+    if (!viewport) {
+      setMobileChartScale(0.36);
+      setMobileChartPan({ x: 0, y: 8 });
+      return;
+    }
+    const horizontalRoom = Math.max(1, viewport.clientWidth - 2);
+    const verticalRoom = Math.max(1, viewport.clientHeight - 16);
+    const scale = Math.min(1.35, Math.max(0.25, Math.min(horizontalRoom / 760, verticalRoom / 547)));
+    setMobileChartScale(scale);
+    setMobileChartPan({
+      x: Math.max(0, (viewport.clientWidth - 760 * scale) / 2),
+      y: 8,
+    });
+  };
+
+  const resetMobileChart = () => {
+    fitMobileChart();
+  };
+
+  const onMobileChartPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    mobilePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    mobileDragMoved.current = false;
+    if (mobilePointers.current.size === 1) {
+      mobileDragOrigin.current = { x: event.clientX, y: event.clientY, panX: mobileChartPan.x, panY: mobileChartPan.y };
+    } else if (mobilePointers.current.size === 2) {
+      const points = Array.from(mobilePointers.current.values());
+      const first = points[0]!;
+      const second = points[1]!;
+      mobilePinchOrigin.current = {
+        distance: Math.hypot(first.x - second.x, first.y - second.y),
+        scale: mobileChartScale,
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+    }
+  };
+
+  const onMobileChartPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!mobilePointers.current.has(event.pointerId)) return;
+    mobilePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (mobilePointers.current.size === 2) {
+      const points = Array.from(mobilePointers.current.values());
+      const first = points[0]!;
+      const second = points[1]!;
+      const distance = Math.hypot(first.x - second.x, first.y - second.y);
+      if (mobilePinchOrigin.current.distance) {
+        setMobileScaleAround(
+          mobilePinchOrigin.current.scale * distance / mobilePinchOrigin.current.distance,
+          mobilePinchOrigin.current.x,
+          mobilePinchOrigin.current.y,
+        );
+      }
+      mobileDragMoved.current = true;
+      return;
+    }
+    const dx = event.clientX - mobileDragOrigin.current.x;
+    const dy = event.clientY - mobileDragOrigin.current.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) mobileDragMoved.current = true;
+    setMobileChartPan(clampMobilePan(mobileDragOrigin.current.panX + dx, mobileDragOrigin.current.panY + dy));
+  };
+
+  const onMobileChartPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    mobilePointers.current.delete(event.pointerId);
+  };
+
+  const onMobileChartWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMobileScaleAround(mobileChartScale * (event.deltaY > 0 ? 0.9 : 1.1), event.clientX - rect.left, event.clientY - rect.top);
+  };
 
   // Calculate date range for the last six months (26 weeks)
   const today = new Date();
@@ -142,6 +241,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const { data: criteria } = useQuery<Criteria[]>({
     queryKey: ["/api/criteria"],
   });
+
+  useEffect(() => {
+    if (!mobileMode || vendorsLoading || scoresLoading || weightsLoading) return;
+    const viewport = mobileChartViewportRef.current;
+    if (!viewport) return;
+    const frame = window.requestAnimationFrame(fitMobileChart);
+    const observer = new ResizeObserver(fitMobileChart);
+    observer.observe(viewport);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [mobileMode, marketId, vendorsLoading, scoresLoading, weightsLoading]);
 
   // Query support matrix data for product capabilities scoring
   const { data: features } = useQuery<any[]>({
@@ -350,7 +462,17 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       window.removeEventListener('resize', updateContainerWidth);
       window.removeEventListener('orientationchange', updateContainerWidth);
     };
-  }, []);
+  }, [vendorsLoading, scoresLoading, weightsLoading, mobileMode]);
+
+  useEffect(() => {
+    if (!mobileMode || !vendors || vendors.length < 2 || mobileSelectedVendors.length > 0) return;
+    setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
+  }, [mobileMode, vendors, mobileSelectedVendors.length]);
+
+  useEffect(() => {
+    setMobileSelectedVendors([]);
+    resetMobileChart();
+  }, [marketId]);
 
   // Track portrait/landscape so the "rotate your phone" hint only shows while
   // the phone is actually in portrait, and disappears the moment they flip it.
@@ -548,6 +670,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // coordinate system. The viewport below scales/scrolls that fixed canvas,
     // so persisted label positions and vendor coordinates never move merely
     // because the phone width or orientation changed.
+    const compactChart = isMobile && !mobileMode;
     const width = mobileMode ? 760 : (isMobile ? Math.min(containerWidth - 20, 420) : Math.min(containerWidth, 760));
     // Rectangle on desktop: 3-column × 2-row grid suits a wider aspect ratio.
     const height = mobileMode ? 547 : (isMobile ? 360 : Math.round(width * 0.72));
@@ -659,46 +782,46 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // Style axis text
     svg.selectAll(".x-axis text, .y-axis text")
       .attr("fill", "#64748b")
-      .attr("font-size", isMobile ? "10px" : "12px")
+      .attr("font-size", compactChart ? "10px" : "12px")
       .attr("font-weight", "600");
 
     // Add professional axis labels — positioned close to the chart box
-    const axisLabelSize = isMobile ? "11px" : "14px";
+    const axisLabelSize = compactChart ? "11px" : "14px";
     // X-axis label: sits just below the tick numbers (margin.bottom - 8px clearance)
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - margin.bottom + (isMobile ? 38 : 48))
+      .attr("y", height - margin.bottom + (compactChart ? 38 : 48))
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(isMobile ? "Execution →" : "Product Strategy and Execution →");
+      .text(compactChart ? "Execution →" : "Product Strategy and Execution →");
 
     // Y-axis label: positioned left of the tick numbers to avoid overlapping "50"
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", isMobile ? 12 : 18)
+      .attr("y", compactChart ? 12 : 18)
       .attr("text-anchor", "middle")
       .attr("font-size", axisLabelSize)
       .attr("font-weight", "600")
       .attr("fill", "#374151")
-      .text(isMobile ? "Viability →" : "Vendor Viability →");
+      .text(compactChart ? "Viability →" : "Vendor Viability →");
 
     // ITMAP watermark — bottom right, outside the grid
     svg.append("text")
       .attr("x", width - margin.right)
-      .attr("y", height - (isMobile ? 4 : 6))
+      .attr("y", height - (compactChart ? 4 : 6))
       .attr("text-anchor", "end")
-      .attr("font-size", isMobile ? "9px" : "11px")
+      .attr("font-size", compactChart ? "9px" : "11px")
       .attr("font-weight", "500")
       .attr("fill", "#94a3b8")
       .text("Powered by itmap.ai");
 
     // ── Six-box labels — outside the chart boundary ───────────────────────
-    const bandLabelSize = isMobile ? "10px" : "12px";
-    const bandFontPx   = isMobile ? 10 : 12;
-    const badgeCharW   = isMobile ? 6.0 : 6.7;  // estimated px per char at each font size
+    const bandLabelSize = compactChart ? "10px" : "12px";
+    const bandFontPx   = compactChart ? 10 : 12;
+    const badgeCharW   = compactChart ? 6.0 : 6.7;  // estimated px per char at each font size
     const badgePadH    = 8;  // horizontal padding each side
     const badgePadV    = 4;  // vertical padding above & below text
     const col0Mid = (leftX + col1X) / 2;
@@ -734,13 +857,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
 
     // Top labels — sit above the chart, centred on each column
-    const topLabelY = topY - (isMobile ? 8 : 10);
+    const topLabelY = topY - (compactChart ? 8 : 10);
 
     // Tick marks connecting top badges to the chart top edge (drawn first, behind badges)
     [col0Mid, col1Mid, col2Mid].forEach(cx => {
       svg.append("line")
         .attr("x1", cx).attr("x2", cx)
-        .attr("y1", topY - (isMobile ? 5 : 6)).attr("y2", topY)
+        .attr("y1", topY - (compactChart ? 5 : 6)).attr("y2", topY)
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
 
@@ -749,17 +872,17 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     drawBadge(col2Mid, topLabelY, "Leaders",     "#6D5BD0", "700");
 
     // Bottom labels — sit below the chart, centred on each column
-    const botLabelY = bottomY + (isMobile ? 18 : 20);
+    const botLabelY = bottomY + (compactChart ? 18 : 20);
 
     // Tick marks connecting bottom badges to the chart bottom edge (drawn first, behind badges)
     [col0Mid, col1Mid, col2Mid].forEach(cx => {
       svg.append("line")
         .attr("x1", cx).attr("x2", cx)
-        .attr("y1", bottomY).attr("y2", bottomY + (isMobile ? 5 : 6))
+        .attr("y1", bottomY).attr("y2", bottomY + (compactChart ? 5 : 6))
         .attr("stroke", "#CBD5E1").attr("stroke-width", 1);
     });
 
-    drawBadge(col0Mid, botLabelY, isMobile ? "Emerging" : "Emerging Players", "#1E3A5F", "600");
+    drawBadge(col0Mid, botLabelY, compactChart ? "Emerging" : "Emerging Players", "#1E3A5F", "600");
     drawBadge(col1Mid, botLabelY, "Specialists", "#1E3A5F", "600");
     drawBadge(col2Mid, botLabelY, "Catalysts",   "#1E3A5F", "600");
 
@@ -779,15 +902,25 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       .attr("class", "vendor-group")
       .attr("data-vendor-id", d => d.id);
 
+    vendorGroups.filter(d => mobileMode && mobileSelectedVendors.includes(d.id))
+      .append("circle")
+      .attr("cx", d => xScale(d.adjustedX))
+      .attr("cy", d => yScale(d.adjustedY))
+      .attr("r", 13)
+      .attr("fill", "none")
+      .attr("stroke", "#4F46E5")
+      .attr("stroke-width", 2)
+      .attr("opacity", .35);
+
     // Vendor dots — radial gradient fill, white ring, indigo shadow
     vendorGroups.append("circle")
       .attr("class", "vendor-dot")
       .attr("cx", d => xScale(d.adjustedX))
       .attr("cy", d => yScale(d.adjustedY))
-      .attr("r", 6)
+      .attr("r", d => mobileMode && mobileSelectedVendors.includes(d.id) ? 7 : 6)
       .attr("fill", "url(#dotGradient)")
       .attr("stroke", "#FFFFFF")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", d => mobileMode && mobileSelectedVendors.includes(d.id) ? 3 : 2)
       .style("cursor", "pointer")
       .style("filter", "drop-shadow(0 2px 5px rgba(79,70,229,0.35))")
       .on("mouseover", function(event, d) {
@@ -796,23 +929,30 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           .attr("stroke-width", 2.5)
           .style("filter", "drop-shadow(0 3px 8px rgba(79,70,229,0.45))");
         const parentGroup = d3.select(this.parentNode as Element);
-        const hoverFontSize = isMobile ? 10 : 12;
+        const hoverFontSize = compactChart ? 10 : 12;
         parentGroup.select(".vendor-label")
           .attr("font-weight", "700")
           .attr("font-size", `${hoverFontSize}px`);
       })
       .on("mouseout", function(event, d) {
         d3.select(this)
-          .attr("r", 6)
-          .attr("stroke-width", 2)
+          .attr("r", mobileMode && mobileSelectedVendors.includes(d.id) ? 7 : 6)
+          .attr("stroke-width", mobileMode && mobileSelectedVendors.includes(d.id) ? 3 : 2)
           .style("filter", "drop-shadow(0 2px 5px rgba(79,70,229,0.35))");
         const parentGroup = d3.select(this.parentNode as Element);
-        const normalFontSize = isMobile ? 9 : 11;
+        const normalFontSize = compactChart ? 9 : 11;
         parentGroup.select(".vendor-label")
           .attr("font-weight", "600")
           .attr("font-size", `${normalFontSize}px`);
       })
 .on("click", function(event, d) {
+        if (mobileMode) {
+          if (mobileDragMoved.current) return;
+          setMobileSelectedVendors(previous => previous.includes(d.id)
+            ? (previous.length > 2 ? previous.filter(id => id !== d.id) : previous)
+            : (previous.length < 3 ? [...previous, d.id] : previous));
+          return;
+        }
         setEvidenceVendor({
           vendor: d,
           pixelX: xScale(d.adjustedX),
@@ -1005,7 +1145,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
 
     const acceptedIndices = new Set<number>();
-    if (isMobile) {
+    if (compactChart) {
       const acceptedRects: ReturnType<typeof rectOf>[] = [];
       for (const candidate of labelCandidates) {
         const rect = rectOf(candidate);
@@ -1027,6 +1167,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
     // Add vendor labels positioned in all four directions around dots
     labelCandidates.forEach(({ vendor, index, labelX, labelY, anchor }) => {
+      if (mobileMode && !mobileSelectedVendors.includes(vendor.id)) return;
       // No room for this label on the crowded mobile canvas — leave the dot
       // as the only visible marker. It's still tappable and its name is
       // still reachable via the evidence popover, so nothing is truly lost.
@@ -1036,7 +1177,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const labelGroup = vendorGroups.filter((d, i) => i === index);
 
       // Add the text label positioned around the dot
-      const fontSize = isMobile ? 9 : 11;
+      const fontSize = compactChart ? 9 : 11;
       const inBottomBand = vendor.adjustedY < 50;
       const labelText = labelGroup.append("text")
         .attr("class", "vendor-label")
@@ -1083,7 +1224,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, mobileSelectedVendors, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1214,10 +1355,19 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
         <div className="lg:col-span-3">
-          <Card className="bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
-            <CardHeader className={`${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
-              <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>
+          <Card className={mobileMode ? "rounded-none border border-slate-200 bg-slate-50 shadow-[0_5px_16px_rgba(15,20,24,.06)] font-[Montserrat]" : "bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]"}>
+            <CardHeader className={mobileMode ? "p-3.5 pb-2" : `${isMobile ? "pb-3" : ""} flex flex-row items-center justify-between`}>
+              {mobileMode ? (
+                <div className="w-full">
+                  <div className="mb-3 flex items-end gap-2 border-b border-slate-200 pb-2">
+                    <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">02</p>
+                    <h3 className="text-base font-bold">Vendor positioning</h3>
+                  </div>
+                  <p className="font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-slate-500">Fixed score domain · 0–100</p>
+                </div>
+              ) : <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>}
               <div className="flex items-center gap-2">
+              {!mobileMode && (
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
@@ -1229,9 +1379,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 </svg>
                 {isExportingPdf ? "Exporting…" : "Export PDF"}
               </button>
+              )}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className={mobileMode ? "px-3.5 pb-3.5" : undefined}>
               <div ref={containerRef} className="relative w-full">
                 {showRotateHint && (
                   <div
@@ -1257,23 +1408,36 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] text-slate-500">Pinch or use controls to zoom · drag to pan</span>
                     <div className="flex overflow-hidden rounded border border-slate-200 bg-white">
-                      <button type="button" aria-label="Zoom out" className="grid h-8 w-8 place-items-center border-r border-slate-200" onClick={() => setMobileChartScale(value => Math.max(.34, value - .12))}><Minus className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Zoom in" className="grid h-8 w-8 place-items-center border-r border-slate-200" onClick={() => setMobileChartScale(value => Math.min(1.35, value + .12))}><Plus className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Reset chart to fit" className="flex h-8 items-center gap-1 px-2 text-[10px] font-semibold" onClick={() => setMobileChartScale(.46)}><RotateCcw className="h-3 w-3" /> Fit</button>
+                      <button type="button" aria-label="Zoom out" className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale - .12)}><Minus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label="Zoom in" className="grid h-8 w-8 place-items-center border-r border-slate-200 text-sky-600" onClick={() => setMobileScaleAround(mobileChartScale + .12)}><Plus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label="Reset chart to fit" className="flex h-8 items-center gap-1 px-2 text-[10px] font-semibold text-sky-600" onClick={resetMobileChart}><RotateCcw className="h-3 w-3" /> Fit</button>
                     </div>
                   </div>
                 )}
-                <div className={mobileMode ? "h-[300px] w-full overflow-auto overscroll-contain rounded-xl border border-slate-200 bg-white" : ""}>
+                <div
+                  ref={mobileMode ? mobileChartViewportRef : undefined}
+                  className={mobileMode ? "relative h-[292px] w-full touch-none overflow-hidden overscroll-contain border border-slate-200 bg-white cursor-grab active:cursor-grabbing" : ""}
+                  onPointerDown={mobileMode ? onMobileChartPointerDown : undefined}
+                  onPointerMove={mobileMode ? onMobileChartPointerMove : undefined}
+                  onPointerUp={mobileMode ? onMobileChartPointerUp : undefined}
+                  onPointerCancel={mobileMode ? onMobileChartPointerUp : undefined}
+                  onWheel={mobileMode ? onMobileChartWheel : undefined}
+                >
                   <div
-                    style={mobileMode ? { width: 760 * mobileChartScale, height: 547 * mobileChartScale, position: "relative" } : undefined}
+                    style={mobileMode ? { width: 760, height: 547, position: "absolute", left: 0, top: 0, transform: `translate(${mobileChartPan.x}px, ${mobileChartPan.y}px) scale(${mobileChartScale})`, transformOrigin: "top left", willChange: "transform" } : undefined}
                   >
                     <svg
                       ref={svgRef}
-                      className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto"
-                      style={mobileMode ? { position: "absolute", inset: 0, transform: `scale(${mobileChartScale})`, transformOrigin: "top left", maxWidth: "none" } : undefined}
+                      className={mobileMode ? "block max-w-none bg-white" : "border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto"}
+                      style={mobileMode ? { width: 760, height: 547, maxWidth: "none" } : undefined}
                     />
                   </div>
                 </div>
+                {mobileMode && (
+                  <div className="flex justify-between px-px pt-2 text-[10px] text-slate-500">
+                    <span>0</span><span>Execution / product strategy</span><span>100</span>
+                  </div>
+                )}
 
                 {/* Evidence popover for the clicked vendor dot */}
                 <Popover open={!!evidenceVendor} onOpenChange={(open) => { if (!open) setEvidenceVendor(null); }}>
@@ -1399,39 +1563,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           </Card>
         </div>
 
-        {/* Criteria Weights: slider-heavy tuning panel, hidden entirely on
-            the /mobile/* experience (the grid collapses to one column). */}
-        {mobileMode && (
-          <div className="lg:col-span-1">
-            <div className="border border-slate-200 bg-slate-50 font-[Montserrat]">
-              <button
-                type="button"
-                className="flex min-h-12 w-full items-center justify-between px-3 text-left text-sm font-semibold text-slate-950"
-                onClick={() => setMobileCriteriaOpen(value => !value)}
-                aria-expanded={mobileCriteriaOpen}
-              >
-                <span>Criteria weights</span>
-                <span className="flex items-center gap-2 font-[Menlo] text-[10px] uppercase tracking-wider text-sky-600">
-                  {mobileCriteriaOpen ? "Hide" : "Show"}
-                  <svg className={`h-4 w-4 transition-transform ${mobileCriteriaOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6" strokeWidth="2" strokeLinecap="round" /></svg>
-                </span>
-              </button>
-              {mobileCriteriaOpen && (
-                <div className="border-t border-slate-200 px-3">
-                  {[...executionCriteria, ...viabilityCriteria].map(criterion => (
-                    <div key={criterion.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-200 py-3 last:border-0">
-                      <div>
-                        <strong className="block text-xs text-slate-900">{criterion.name}</strong>
-                        <small className="mt-0.5 block text-[10px] capitalize text-slate-500">{criterion.category} axis · persisted weight</small>
-                      </div>
-                      <b className="font-[Menlo] text-xs text-sky-600">{criteriaWeights[criterion.id] ?? 100}%</b>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
         {!mobileMode && (
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
@@ -1490,8 +1621,47 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       </div>
 
       <div className="mt-8">
-        <VendorComparison marketId={marketId} computedScores={computedScoresForComparison} mobileMode={mobileMode} />
+        <VendorComparison
+          marketId={marketId}
+          computedScores={computedScoresForComparison}
+          mobileMode={mobileMode}
+          mobileSelectedVendors={mobileSelectedVendors}
+          onMobileSelectedVendorsChange={setMobileSelectedVendors}
+        />
       </div>
+
+      {mobileMode && (
+        <section className="mt-5 font-[Montserrat]">
+          <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
+            <div>
+              <p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">05</p>
+              <h3 className="text-base font-bold">Criteria weights</h3>
+            </div>
+            <button
+              type="button"
+              className="flex min-h-11 items-center gap-1 px-2 font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-sky-600"
+              onClick={() => setMobileCriteriaOpen(value => !value)}
+              aria-expanded={mobileCriteriaOpen}
+            >
+              {mobileCriteriaOpen ? "Hide" : "Show"}
+              <svg className={`h-4 w-4 transition-transform ${mobileCriteriaOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6" strokeWidth="2" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+          {mobileCriteriaOpen && (
+            <div className="border border-slate-200 bg-slate-50 px-3 shadow-[0_5px_16px_rgba(15,20,24,.06)]">
+              {[...executionCriteria, ...viabilityCriteria].map(criterion => (
+                <div key={criterion.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-200 py-3 last:border-0">
+                  <div>
+                    <strong className="block text-xs text-slate-900">{criterion.name}</strong>
+                    <small className="mt-0.5 block text-[10px] capitalize text-slate-500">{criterion.category} axis · persisted weight</small>
+                  </div>
+                  <b className="font-[Menlo] text-xs text-sky-600">{criteriaWeights[criterion.id] ?? 100}%</b>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <Dialog open={!!selectedVendor} onOpenChange={() => setSelectedVendor(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

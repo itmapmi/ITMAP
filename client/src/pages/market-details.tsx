@@ -22,6 +22,7 @@ import { MarketNews } from "@/components/market-news";
 import { VendorSelectionModal } from "@/components/vendor-selection-modal";
 import { Chat } from "@/components/Chat";
 import { IntelligenceFeed } from "@/components/intelligence-feed";
+import { MobileMarketIntelligence } from "@/components/mobile-market-intelligence";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { useTeaserGate } from "@/hooks/use-registration-teaser";
@@ -73,7 +74,7 @@ export default function MarketDetails() {
   const marketId = paramsSlug?.marketId ?? paramsLegacy?.marketId ?? paramsMobileSlug?.marketId ?? paramsMobileLegacy?.marketId;
   const mobileMode = !!(matchMobileSlug || matchMobileLegacy);
   const pathPrefix = mobileMode ? "/mobile" : "";
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const isMobile = useIsMobile();
   const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
   const { teaserActive, openRegistrationModal } = useTeaserGate();
@@ -84,9 +85,37 @@ export default function MarketDetails() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [activeTab, setActiveTab] = useState("vendor-evaluation");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (!mobileMode || typeof window === "undefined") return "vendor-evaluation";
+    const requested = new URLSearchParams(window.location.search).get("section");
+    return requested && ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "ai-chat", "research-reports"].includes(requested)
+      ? requested
+      : "vendor-evaluation";
+  });
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
+  const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
+
+  const selectMarketSection = (value: string) => {
+    setActiveTab(value);
+    if (!mobileMode || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", value);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    setMobileSectionsOpen(false);
+  };
+
+  useEffect(() => {
+    if (!mobileMode) {
+      setActiveTab("vendor-evaluation");
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const requested = new URLSearchParams(window.location.search).get("section");
+    if (requested && ["vendor-evaluation", "support-matrix", "ecosystem-support", "vendor-intelligence", "ai-chat", "research-reports"].includes(requested)) {
+      setActiveTab(requested);
+    }
+  }, [mobileMode, location]);
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
@@ -117,7 +146,7 @@ export default function MarketDetails() {
     if (!market || !marketId) return;
     if (!UUID_RE.test(marketId)) return;
     const slug = marketSlug(market.name);
-    if (slug) navigate(`${pathPrefix}/markets/${slug}`, { replace: true });
+    if (slug) navigate(`${pathPrefix}/markets/${slug}${window.location.search}`, { replace: true });
   }, [market, marketId, pathPrefix]);
 
   // Per-page SEO: update canonical / title / og tags once the market name is known.
@@ -211,10 +240,13 @@ export default function MarketDetails() {
   const wizardLink = originatingJob ? `/me/market-builder?job=${originatingJob.id}` : "/me/market-builder";
 
   const PhasePlaceholder = ({ phase }: { phase: "Product" | "Ecosystem" }) => (
-    <div className="rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 p-8 text-center">
-      <Sparkles className="h-8 w-8 text-blue-500 mx-auto mb-3" />
-      <p className="font-semibold text-gray-900 mb-1">{phase} phase not added yet</p>
-      <p className="text-sm text-gray-600 mb-4">
+    <div className={cn(
+      "border-2 border-dashed border-blue-200 bg-blue-50/50 text-center",
+      mobileMode ? "rounded-none p-6 font-[Montserrat]" : "rounded-lg p-8"
+    )}>
+      <Sparkles className={cn("text-blue-500 mx-auto mb-3", mobileMode ? "h-6 w-6" : "h-8 w-8")} />
+      <p className={cn("font-semibold text-gray-900 mb-1", mobileMode && "text-sm")}>{phase} phase not added yet</p>
+      <p className={cn("text-gray-600 mb-4", mobileMode ? "text-xs leading-relaxed" : "text-sm")}>
         This market was published without the {phase.toLowerCase()} phase. Add it in the Market Builder to populate this section.
       </p>
       <Link href={wizardLink}>
@@ -575,7 +607,74 @@ export default function MarketDetails() {
             );
 
           return (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={selectMarketSection} className="w-full">
+              {mobileMode ? (
+                <div className="relative mb-6 font-[Montserrat]">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between border border-slate-200 bg-slate-50 px-4 py-3 text-left"
+                    onClick={() => setMobileSectionsOpen(value => !value)}
+                    aria-expanded={mobileSectionsOpen}
+                    aria-controls="mobile-market-sections"
+                    data-testid="mobile-market-section-switcher"
+                  >
+                    <span>
+                      <span className="block font-[Menlo] text-[9px] font-bold uppercase tracking-[0.14em] text-sky-600">Section</span>
+                      <strong className="mt-1 block text-sm text-slate-950">
+                        {([
+                          ["vendor-evaluation", "Vendor Evaluation"],
+                          ["support-matrix", "Product Evaluation"],
+                          ["ecosystem-support", "Ecosystem Evaluation"],
+                          ["vendor-intelligence", "Vendor Intelligence"],
+                          ["ai-chat", "AI Chat"],
+                          ["research-reports", "Reports"],
+                        ].find(([value]) => value === activeTab)?.[1]) || "Vendor Evaluation"}
+                      </strong>
+                    </span>
+                    <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-sky-600">
+                      View all
+                      <ChevronDown className={`h-4 w-4 transition-transform ${mobileSectionsOpen ? "rotate-180" : ""}`} />
+                    </span>
+                  </button>
+                  {mobileSectionsOpen && (
+                    <div id="mobile-market-sections" className="absolute left-0 right-0 top-full z-30 border-x border-b border-slate-200 bg-white shadow-xl">
+                      {[
+                        ["vendor-evaluation", "01", "Vendor Evaluation"],
+                        ["support-matrix", "02", "Product Evaluation"],
+                        ["ecosystem-support", "03", "Ecosystem Evaluation"],
+                        ["vendor-intelligence", "04", "Vendor Intelligence"],
+                        ["ai-chat", "05", "AI Chat"],
+                        ["research-reports", "06", "Reports"],
+                      ].map(([value, number, label]) => {
+                        const reportsLocked = value === "research-reports" && researchReportsLocked;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            className={cn(
+                              "flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left",
+                              activeTab === value ? "bg-blue-50 text-sky-700" : "text-slate-700",
+                              reportsLocked && "text-slate-400"
+                            )}
+                            onClick={() => {
+                              if (reportsLocked) {
+                                if (anonymousReportsLock) openRegistrationModal();
+                                return;
+                              }
+                              selectMarketSection(value);
+                            }}
+                            data-testid={`mobile-section-${value}`}
+                          >
+                            <span className="font-[Menlo] text-[10px] font-bold text-sky-600">{number}</span>
+                            <span className="flex-1 text-sm font-semibold">{label}</span>
+                            {reportsLocked && <Lock className="h-3.5 w-3.5" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
               <TabsList className="inline-flex overflow-x-auto scrollbar-hide w-full justify-start">
                 <TabsTrigger value="vendor-evaluation" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-vendor-evaluation">
                   {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
@@ -696,6 +795,7 @@ export default function MarketDetails() {
                   )
                 )}
               </TabsList>
+              )}
 
           <TabsContent value="vendor-evaluation" className="mt-6">
             {canManageVendors && (
@@ -816,34 +916,50 @@ export default function MarketDetails() {
             </TabsContent>
           )}
 
+          {mobileMode && (
+            <TabsContent value="vendor-intelligence" className="mt-0">
+              <MobileMarketIntelligence marketId={resolvedId!} vendors={vendors} />
+            </TabsContent>
+          )}
+
+          {mobileMode && (
+            <TabsContent value="ai-chat" className="mt-0 min-h-[calc(100dvh-12rem)] overflow-hidden border border-slate-200 bg-white">
+              <Chat marketId={resolvedId!} mobileMode marketName={market.name.replace(/^ITMAP for /i, "")} />
+            </TabsContent>
+          )}
+
             </Tabs>
           );
         })()}
       </motion.div>
 
-      {/* Floating AI Chat button — available from every tab */}
-      <button
-        onClick={() => setChatOpen(true)}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2"
-        aria-label="Open AI Chat"
-        data-testid="button-open-ai-chat"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </button>
+      {!mobileMode && (
+        <>
+          {/* Floating AI Chat button — available from every desktop tab. */}
+          <button
+            onClick={() => setChatOpen(true)}
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white shadow-lg shadow-violet-500/30 flex items-center justify-center transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2"
+            aria-label="Open AI Chat"
+            data-testid="button-open-ai-chat"
+          >
+            <MessageSquare className="h-6 w-6" />
+          </button>
 
-      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
-          <SheetHeader className="px-4 py-3 border-b">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <MessageSquare className="h-4 w-4 text-cyan-600" />
-              AI Chat — {market.name}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
-            <Chat marketId={resolvedId!} mobileMode={mobileMode} marketName={market.name.replace(/^ITMAP for /i, "")} />
-          </div>
-        </SheetContent>
-      </Sheet>
+          <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+            <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+              <SheetHeader className="px-4 py-3 border-b">
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <MessageSquare className="h-4 w-4 text-cyan-600" />
+                  AI Chat — {market.name}
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
+                <Chat marketId={resolvedId!} marketName={market.name.replace(/^ITMAP for /i, "")} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
 
       <VendorSelectionModal
         open={showVendorModal}
