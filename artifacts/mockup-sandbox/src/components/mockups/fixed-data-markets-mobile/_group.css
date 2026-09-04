@@ -1,5 +1,5 @@
 /* Montserrat and Menlo are preloaded by the sandbox entry; keep this group scoped. */
-.fdm-shell{--fdm-ink:#0f1418;--fdm-navy:#0f1418;--fdm-paper:#fff;--fdm-card:#f7f9f9;--fdm-rule:#dfe8ed;--fdm-teal:#13a8f0;--fdm-coral:#f52d3a;--fdm-lime:#00b890;--fdm-muted:#e6e6e6;--fdm-input:#f5f9fb;--fdm-accent:#dcebf6;min-height:100dvh;background:var(--fdm-paper);color:var(--fdm-ink);font-family:Montserrat,sans-serif;overflow-x:hidden}
+.fdm-shell{--fdm-ink:#0f1418;--fdm-navy:#0f1418;--fdm-paper:#fff;--fdm-card:#f7f9f9;--fdm-rule:#dfe8ed;--fdm-teal:#13a8f0;--fdm-coral:#13a8f0;--fdm-lime:#00b890;--fdm-muted:#e6e6e6;--fdm-input:#f5f9fb;--fdm-accent:#dcebf6;min-height:100dvh;background:var(--fdm-paper);color:var(--fdm-ink);font-family:Montserrat,sans-serif;overflow-x:hidden}
 .fdm-shell .fdm-kicker,.fdm-shell .fdm-label,.fdm-shell .fdm-section-title span,.fdm-shell .fdm-switcher summary b,.fdm-shell .fdm-switcher a b,.fdm-shell .fdm-weight b,.fdm-shell .fdm-comparison-head>span:first-child,.fdm-shell .fdm-vendor .mark,.fdm-shell .fdm-commentary b,.fdm-shell .fdm-source,.fdm-shell .fdm-file,.fdm-shell .fdm-support-cell b,.fdm-shell .fdm-score-cell>strong,.fdm-shell .fdm-notes-meta span{font-family:Menlo,monospace}
 .fdm-shell *{box-sizing:border-box}.fdm-shell button,.fdm-shell a{font:inherit;-webkit-tap-highlight-color:transparent}.fdm-shell button{cursor:pointer}
 .fdm-top{height:60px;background:var(--fdm-navy);color:#f8f6ee;display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:10}.fdm-wordmark{font-family:Montserrat,sans-serif;font-size:22px;letter-spacing:.18em;font-weight:600;line-height:1;color:#fff}.fdm-top small{font-family:Menlo,monospace;color:#9ac4c1;font-size:9px;letter-spacing:.08em}
@@ -40,8 +40,8 @@
 .fdm-shell .fdm-product-picker>button.active,.fdm-shell .fdm-eco-picker>button.active,.fdm-shell .fdm-compare-picker>button.active{border-color:#13a8f0;background:#dcebf6;box-shadow:inset 3px 0 #13a8f0}
 .fdm-shell .fdm-product-check,.fdm-shell .fdm-eco-check,.fdm-shell .fdm-compare-check{border-color:#b9cbd5}
 .fdm-shell .fdm-product-picker .active .fdm-product-check,.fdm-shell .fdm-eco-picker .active .fdm-eco-check,.fdm-shell .fdm-compare-picker .active .fdm-compare-check{background:#13a8f0;border-color:#13a8f0}
-.fdm-shell .fdm-commentary,.fdm-shell .fdm-product-values details>p,.fdm-shell .fdm-eco-values details>p{background:#fff3f4;border-color:#ffd2d6;color:#5f4245}
-.fdm-shell .fdm-commentary{border-left-color:#f52d3a}
+.fdm-shell .fdm-commentary,.fdm-shell .fdm-product-values details>p,.fdm-shell .fdm-eco-values details>p{background:#f5f9fb;border-color:#dfe8ed;color:#3f4d55}
+.fdm-shell .fdm-commentary{border-left-color:#13a8f0}
 .fdm-shell .fdm-impact{background:#fde8ef;color:#b31d55}
 .fdm-shell .fdm-file{background:#dcebf6;color:#087fca}
 .fdm-shell .fdm-report-detail{background:#eaf6fb;border-left-color:#13a8f0}
