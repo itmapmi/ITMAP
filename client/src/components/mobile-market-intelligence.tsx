@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Newspaper, Radio, Users } from "lucide-react";
 import { format } from "date-fns";
@@ -41,6 +41,26 @@ function websiteHref(url: string) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
+// Distinguishable accent colours for the left stripe on each item. Assigned
+// per market in a stable order (vendor list order for news, first-seen order
+// for signal sources) so the same vendor/source always gets the same stripe
+// while viewing that market. Cycles if there are more keys than colours.
+const ACCENT_PALETTE = [
+  "#13a8f0", "#7c3aed", "#e11d48", "#f59e0b", "#059669",
+  "#ea580c", "#4f46e5", "#db2777", "#65a30d", "#0d9488",
+  "#c026d3", "#a16207", "#b91c1c", "#155e75", "#166534",
+];
+const NEUTRAL_ACCENT = "#94a3b8";
+
+function buildAccentMap(keys: Array<string | null | undefined>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const key of keys) {
+    if (!key || map.has(key)) continue;
+    map.set(key, ACCENT_PALETTE[map.size % ACCENT_PALETTE.length]);
+  }
+  return map;
+}
+
 function LoadingState() {
   return <div className="mmi-loading" aria-label="Loading"><div className="mmi-skeleton" /><div className="mmi-skeleton" /><div className="mmi-skeleton" /></div>;
 }
@@ -67,6 +87,10 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
     enabled: tab === "players",
   });
 
+  // One colour per vendor in this market (list order), one per signal source.
+  const vendorAccents = buildAccentMap(vendors.map(vendor => vendor.id));
+  const sourceAccents = buildAccentMap((signals.data?.data ?? []).map(signal => signal.sourceType));
+
   const tabs = [
     { id: "news" as const, label: "News", icon: Newspaper },
     { id: "signals" as const, label: "Signals", icon: Radio },
@@ -92,8 +116,9 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
           <EmptyState title="No news articles found"><span>News appears here when stored articles are available for this market.</span></EmptyState>
         ) : <div className="mmi-card">{news.data.map(article => {
           const vendor = vendors.find(item => item.id === article.vendorId);
-          return <article className="mmi-item" key={article.id}>
-            <div className="mmi-meta">{vendor && <span>{vendor.name}</span>}{dateLabel(article.publishedAt) && <span>{dateLabel(article.publishedAt)}</span>}{article.impactLabel && <span className="mmi-impact">{article.impactLabel}</span>}</div>
+          const accent = (vendor && vendorAccents.get(vendor.id)) || NEUTRAL_ACCENT;
+          return <article className="mmi-item" key={article.id} style={{ "--mmi-accent": accent } as CSSProperties} data-testid={`mmi-news-${article.id}`}>
+            <div className="mmi-meta">{vendor && <span className="mmi-keyed"><i className="mmi-swatch" aria-hidden="true" />{vendor.name}</span>}{dateLabel(article.publishedAt) && <span>{dateLabel(article.publishedAt)}</span>}{article.impactLabel && <span className="mmi-impact">{article.impactLabel}</span>}</div>
             <h3 className="mmi-article-title"><a className="mmi-article-link" href={article.url} target="_blank" rel="noopener noreferrer">{article.title} <ExternalLink size={12} aria-hidden="true" /></a></h3>
             {article.category && <span className="mmi-label">{article.category}</span>}
             {article.summary && <p className="mmi-summary">{article.summary}</p>}
@@ -106,8 +131,8 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
           <EmptyState title="Signals are unavailable"><span>{signals.error.message}</span><button type="button" onClick={() => signals.refetch()}>Try again</button></EmptyState>
         ) : !signals.data?.data.length ? (
           <EmptyState title="No signals collected yet"><span>Stored signals for this market appear here.</span></EmptyState>
-        ) : <div className="mmi-card">{signals.data.data.map(signal => <article className="mmi-item" key={signal.id}>
-          <div className="mmi-signal-head"><span className="mmi-source">{signal.sourceType}</span><strong>{signal.title}</strong></div>
+        ) : <div className="mmi-card">{signals.data.data.map(signal => <article className="mmi-item" key={signal.id} style={{ "--mmi-accent": sourceAccents.get(signal.sourceType) || NEUTRAL_ACCENT } as CSSProperties} data-testid={`mmi-signal-${signal.id}`}>
+          <div className="mmi-signal-head"><span className="mmi-source mmi-keyed"><i className="mmi-swatch" aria-hidden="true" />{signal.sourceType}</span><strong>{signal.title}</strong></div>
           {signal.vendorName && <span className="mmi-label">{signal.vendorName}</span>}
           {signal.content && <p className="mmi-signal-content">{signal.content}</p>}
           {signal.url && <a className="mmi-player-link" href={signal.url} target="_blank" rel="noopener noreferrer">View source <ExternalLink size={12} aria-hidden="true" /></a>}

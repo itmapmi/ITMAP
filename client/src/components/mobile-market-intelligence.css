@@ -72,10 +72,14 @@
 .mmi-item {
   background: #fff;
   border: 1px solid #c5d5de;
-  border-left: 3px solid var(--mmi-blue);
+  border-left: 4px solid var(--mmi-accent, var(--mmi-blue));
   box-shadow: 0 2px 8px rgba(15, 20, 24, .05);
   padding: 12px 13px;
 }
+/* Small swatch beside the vendor / source name, keyed to the stripe colour. */
+.mmi-keyed { display: inline-flex; align-items: center; gap: 5px; }
+.mmi-swatch { background: var(--mmi-accent, var(--mmi-blue)); border-radius: 999px; display: inline-block; height: 8px; width: 8px; }
+.mmi-source.mmi-keyed { color: var(--mmi-accent, var(--mmi-blue)); }
 .mmi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #768487; font-size: 10px; }
 .mmi-impact { background: #fde8ef; color: #b31d55; font-size: 10px; font-weight: 700; padding: 3px 6px; }
 .mmi-article-title, .mmi-player-name { font-size: 13px; line-height: 1.3; margin: 6px 0; }
