@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Smartphone, X } from "lucide-react";
+import { Minus, Plus, RotateCcw, Smartphone, X } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
 import { calculateAxisWeightShares } from "@shared/axis-weighting";
@@ -91,6 +91,8 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [mobileChartScale, setMobileChartScale] = useState(0.46);
+  const [mobileCriteriaOpen, setMobileCriteriaOpen] = useState(false);
   const [isPortrait, setIsPortrait] = useState(true);
   const [rotateHintDismissed, setRotateHintDismissed] = useState(
     () => typeof window !== "undefined" && window.sessionStorage.getItem(ROTATE_HINT_DISMISSED_KEY) === "1"
@@ -542,11 +544,15 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
     // Responsive dimensions based on container and device
     const containerWidth = containerRef.current.offsetWidth;
-    const width = isMobile ? Math.min(containerWidth - 20, 420) : Math.min(containerWidth, 760);
+    // The dedicated mobile route deliberately keeps the desktop 760px drawing
+    // coordinate system. The viewport below scales/scrolls that fixed canvas,
+    // so persisted label positions and vendor coordinates never move merely
+    // because the phone width or orientation changed.
+    const width = mobileMode ? 760 : (isMobile ? Math.min(containerWidth - 20, 420) : Math.min(containerWidth, 760));
     // Rectangle on desktop: 3-column × 2-row grid suits a wider aspect ratio.
-    const height = isMobile ? 360 : Math.round(width * 0.72);
+    const height = mobileMode ? 547 : (isMobile ? 360 : Math.round(width * 0.72));
     // Extra top/bottom margin accommodates outside box labels above/below the chart.
-    const margin = isMobile
+    const margin = isMobile && !mobileMode
       ? { top: 36, right: 15, bottom: 68, left: 50 }
       : { top: 44, right: 20, bottom: 82, left: 60 };
 
@@ -1077,7 +1083,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       }
     });
 
-  }, [vendorsWithScores, criteriaWeights, isMobile, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
+  }, [vendorsWithScores, criteriaWeights, isMobile, mobileMode, labelPositions, enableDrag, onLabelPositionChange, marketId, containerWidth, allHistoricalPositions]);
 
   const handleWeightChange = (criteriaId: string, newWeight: number) => {
     setCriteriaWeights(prev => ({
@@ -1226,7 +1232,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
               </div>
             </CardHeader>
             <CardContent>
-              <div ref={containerRef} className="relative w-full overflow-x-auto">
+              <div ref={containerRef} className="relative w-full">
                 {showRotateHint && (
                   <div
                     data-testid="banner-rotate-phone-hint"
@@ -1247,7 +1253,27 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     </button>
                   </div>
                 )}
-                <svg ref={svgRef} className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto" />
+                {mobileMode && (
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-500">Pinch or use controls to zoom · drag to pan</span>
+                    <div className="flex overflow-hidden rounded border border-slate-200 bg-white">
+                      <button type="button" aria-label="Zoom out" className="grid h-8 w-8 place-items-center border-r border-slate-200" onClick={() => setMobileChartScale(value => Math.max(.34, value - .12))}><Minus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label="Zoom in" className="grid h-8 w-8 place-items-center border-r border-slate-200" onClick={() => setMobileChartScale(value => Math.min(1.35, value + .12))}><Plus className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label="Reset chart to fit" className="flex h-8 items-center gap-1 px-2 text-[10px] font-semibold" onClick={() => setMobileChartScale(.46)}><RotateCcw className="h-3 w-3" /> Fit</button>
+                    </div>
+                  </div>
+                )}
+                <div className={mobileMode ? "h-[300px] w-full overflow-auto overscroll-contain rounded-xl border border-slate-200 bg-white" : ""}>
+                  <div
+                    style={mobileMode ? { width: 760 * mobileChartScale, height: 547 * mobileChartScale, position: "relative" } : undefined}
+                  >
+                    <svg
+                      ref={svgRef}
+                      className="border-2 border-gray-200 rounded-xl bg-white shadow-sm mx-auto"
+                      style={mobileMode ? { position: "absolute", inset: 0, transform: `scale(${mobileChartScale})`, transformOrigin: "top left", maxWidth: "none" } : undefined}
+                    />
+                  </div>
+                </div>
 
                 {/* Evidence popover for the clicked vendor dot */}
                 <Popover open={!!evidenceVendor} onOpenChange={(open) => { if (!open) setEvidenceVendor(null); }}>
@@ -1375,6 +1401,37 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
 
         {/* Criteria Weights: slider-heavy tuning panel, hidden entirely on
             the /mobile/* experience (the grid collapses to one column). */}
+        {mobileMode && (
+          <div className="lg:col-span-1">
+            <div className="border border-slate-200 bg-slate-50 font-[Montserrat]">
+              <button
+                type="button"
+                className="flex min-h-12 w-full items-center justify-between px-3 text-left text-sm font-semibold text-slate-950"
+                onClick={() => setMobileCriteriaOpen(value => !value)}
+                aria-expanded={mobileCriteriaOpen}
+              >
+                <span>Criteria weights</span>
+                <span className="flex items-center gap-2 font-[Menlo] text-[10px] uppercase tracking-wider text-sky-600">
+                  {mobileCriteriaOpen ? "Hide" : "Show"}
+                  <svg className={`h-4 w-4 transition-transform ${mobileCriteriaOpen ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6" strokeWidth="2" strokeLinecap="round" /></svg>
+                </span>
+              </button>
+              {mobileCriteriaOpen && (
+                <div className="border-t border-slate-200 px-3">
+                  {[...executionCriteria, ...viabilityCriteria].map(criterion => (
+                    <div key={criterion.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-200 py-3 last:border-0">
+                      <div>
+                        <strong className="block text-xs text-slate-900">{criterion.name}</strong>
+                        <small className="mt-0.5 block text-[10px] capitalize text-slate-500">{criterion.category} axis · persisted weight</small>
+                      </div>
+                      <b className="font-[Menlo] text-xs text-sky-600">{criteriaWeights[criterion.id] ?? 100}%</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {!mobileMode && (
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
@@ -1433,7 +1490,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       </div>
 
       <div className="mt-8">
-        <VendorComparison marketId={marketId} computedScores={computedScoresForComparison} />
+        <VendorComparison marketId={marketId} computedScores={computedScoresForComparison} mobileMode={mobileMode} />
       </div>
 
       <Dialog open={!!selectedVendor} onOpenChange={() => setSelectedVendor(null)}>

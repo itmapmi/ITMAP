@@ -26,7 +26,7 @@ interface SupportMatrixProps {
   mobileMode?: boolean;
 }
 
-const MOBILE_VENDOR_CAP = 3;
+const MOBILE_VENDOR_CAP = 2;
 
 // Component for updating vendor evaluation scores from product evaluation
 const UpdateVendorScoresButton = ({ marketId }: { marketId: string }) => {
@@ -263,7 +263,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
 
   const handleProceedWithSelection = () => {
-    if (selectedVendors.size > 0) {
+    if (selectedVendors.size > 0 && (!mobileMode || selectedVendors.size === MOBILE_VENDOR_CAP)) {
       (allVendors ?? [])
         .filter((v) => selectedVendors.has(v.id))
         .forEach((v) =>
@@ -295,8 +295,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
       } else {
         if (mobileMode && newSet.size >= MOBILE_VENDOR_CAP) {
           toast({
-            title: `Up to ${MOBILE_VENDOR_CAP} vendors on mobile`,
-            description: "Deselect one first, or switch to the desktop site to compare more at once.",
+            title: "Choose exactly 2 products",
+            description: "Deselect one product before selecting another.",
           });
           return prev;
         }
@@ -439,18 +439,18 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setSelectedVendors(new Set(allVendors.map(v => v.id)))}
+                    onClick={selectAllVendors}
                     data-testid="select-all-vendors-button"
                   >
                     Select All
                   </Button>
                   <Button
                     onClick={handleProceedWithSelection}
-                    disabled={selectedVendors.size === 0}
+                    disabled={selectedVendors.size === 0 || (mobileMode && selectedVendors.size !== MOBILE_VENDOR_CAP)}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="proceed-with-selection-button"
                   >
-                    View Product Evaluation ({selectedVendors.size})
+                    {mobileMode ? `Compare ${selectedVendors.size}/2` : `View Product Evaluation (${selectedVendors.size})`}
                   </Button>
                 </div>
               </div>
@@ -493,8 +493,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   });
 
   const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string, key?: string) => {
-    if (mobileMode && key) {
-      setExpandedNoteKey(prev => (prev === key ? null : key));
+    if (mobileMode) {
+      setSelectedNotes({ vendorName, featureName, supportLevel, notes: notes || "No stored commentary is available for this support record." });
       return;
     }
     if (notes) {
@@ -868,14 +868,17 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                                             <div className="font-medium text-sm text-gray-900">{vendor.name}</div>
                                             <div className="text-xs text-gray-500">{getSupportText(supportLevel)}</div>
                                           </div>
-                                          <HarveyBall
-                                            level={supportLevel}
-                                            notes={notes}
-                                            vendorName={vendor.name}
-                                            featureName={feature.name}
-                                            onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}
-                                            isMobile={true}
-                                          />
+                                          <div className="flex items-center gap-1">
+                                            <HarveyBall
+                                              level={supportLevel}
+                                              notes={notes}
+                                              vendorName={vendor.name}
+                                              featureName={feature.name}
+                                              onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}
+                                              isMobile={true}
+                                            />
+                                            {mobileMode && <button type="button" className="min-h-11 px-2 text-[10px] font-bold text-sky-700" onClick={() => handleHarveyBallClick(vendor.name, feature.name, supportLevel, notes, supportKey)}>View notes</button>}
+                                          </div>
                                         </div>
                                         {/* Inline expandable notes — replaces the desktop Dialog on mobile */}
                                         {isExpanded && (

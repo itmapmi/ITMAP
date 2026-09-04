@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Bot, Loader2, Send, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -20,9 +20,11 @@ interface ChatMessage {
 interface ChatProps {
   marketId: string;
   conversationId?: string;
+  mobileMode?: boolean;
+  marketName?: string;
 }
 
-export function Chat({ marketId, conversationId: initialConversationId }: ChatProps) {
+export function Chat({ marketId, conversationId: initialConversationId, mobileMode = false, marketName }: ChatProps) {
   const [question, setQuestion] = useState("");
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -126,6 +128,43 @@ export function Chat({ marketId, conversationId: initialConversationId }: ChatPr
       handleSubmit(e);
     }
   };
+
+  if (mobileMode) {
+    const visibleMessages = streamingContent
+      ? [...messages, { id: "streaming", role: "assistant" as const, content: streamingContent, createdAt: "" }]
+      : messages;
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-white font-[Montserrat] text-slate-950">
+        <div className="flex min-h-[58px] items-center justify-between border-b border-slate-200 bg-blue-100 px-4">
+          <span className="font-[Menlo] text-[10px] uppercase tracking-widest text-sky-800">Market</span>
+          <strong className="text-right text-sm">{marketName || "Market evidence"}</strong>
+        </div>
+        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 text-sm font-semibold"><Bot className="h-4 w-4 text-sky-500" /> Market assistant</div>
+        <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4" data-testid="chat-messages-area">
+          {!loadingMessages && visibleMessages.length === 0 && (
+            <div className="flex max-w-[88%] items-start gap-2">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-100 text-sky-500"><Bot className="h-3 w-3" /></span>
+              <p className="rounded border border-slate-200 bg-slate-50 p-3 text-[13px] leading-relaxed text-slate-600">Ask me about the stored vendor scores, features, ecosystem support, news, and market positioning.</p>
+            </div>
+          )}
+          {visibleMessages.map(msg => (
+            <div key={msg.id} className={`flex max-w-[88%] items-start gap-2 ${msg.role === "user" ? "ml-auto" : ""}`}>
+              {msg.role === "assistant" && <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-100 text-sky-500"><Bot className="h-3 w-3" /></span>}
+              <div className={`rounded border p-3 text-[13px] leading-relaxed ${msg.role === "user" ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                {msg.role === "assistant" ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown> : <p className="whitespace-pre-wrap">{msg.content}</p>}
+              </div>
+            </div>
+          ))}
+          {isStreaming && !streamingContent && <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin text-sky-500" /> Analyzing stored evidence…</div>}
+        </div>
+        <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-200 p-3">
+          <Textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask about this market…" className="min-h-[46px] flex-1 resize-none bg-slate-50 text-[13px]" disabled={isStreaming} data-testid="input-chat-question" />
+          <Button type="submit" size="icon" className="h-[46px] w-[46px] bg-sky-500 hover:bg-sky-600" disabled={!question.trim() || isStreaming} data-testid="button-send-message"><Send className="h-4 w-4" /></Button>
+        </form>
+        {streamError && <p className="px-3 pb-3 text-xs text-destructive">{streamError}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

@@ -5,8 +5,8 @@
 // this so the two can never drift apart on what's "in scope".
 //
 // In scope (per product decision): market detail pages, the RFP generator,
-// and the standalone research report viewer. Everything else (markets list,
-// datasheets, CVE intelligence, Market/Forecast Builder, admin, marketing
+// the standalone research report viewer, and Security Intelligence. Everything else (markets list,
+// datasheets, Market/Forecast Builder, admin, marketing
 // pages, vendor tools) intentionally falls back to the existing desktop
 // experience — do not add patterns for those here.
 const IN_SCOPE_PATTERNS: RegExp[] = [
@@ -15,6 +15,7 @@ const IN_SCOPE_PATTERNS: RegExp[] = [
   /^\/me\/rfps$/, // RFP project list
   /^\/me\/rfps\/[^/]+$/, // RFP builder detail
   /^\/report\/[^/]+$/, // standalone research report viewer
+  /^\/security$/, // Security Intelligence
 ];
 
 export function isMobileEligiblePath(path: string): boolean {

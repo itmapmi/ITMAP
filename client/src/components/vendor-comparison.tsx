@@ -6,16 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 
 interface VendorComparisonProps {
   marketId: string;
   computedScores?: Record<string, Record<string, number>>;
+  mobileMode?: boolean;
 }
 
-export default function VendorComparison({ marketId, computedScores }: VendorComparisonProps) {
+export default function VendorComparison({ marketId, computedScores, mobileMode = false }: VendorComparisonProps) {
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [mobileNote, setMobileNote] = useState<{ vendor: Vendor; criterion: Criteria; score: number; notes: string } | null>(null);
   const isMobile = useIsMobile();
 
   const { data: vendors } = useQuery<Vendor[]>({
@@ -32,9 +35,9 @@ export default function VendorComparison({ marketId, computedScores }: VendorCom
 
   const handleVendorToggle = (vendorId: string, checked: boolean) => {
     if (checked) {
-      setSelectedVendors(prev => [...prev, vendorId]);
+      setSelectedVendors(prev => mobileMode && prev.length >= 3 ? prev : [...prev, vendorId]);
     } else {
-      setSelectedVendors(prev => prev.filter(id => id !== vendorId));
+      setSelectedVendors(prev => mobileMode && prev.length <= 2 ? prev : prev.filter(id => id !== vendorId));
     }
   };
 
@@ -66,6 +69,12 @@ export default function VendorComparison({ marketId, computedScores }: VendorCom
 
   const selectedVendorData = vendors?.filter(vendor => selectedVendors.includes(vendor.id)) || [];
 
+  useEffect(() => {
+    if (mobileMode && vendors && vendors.length >= 2 && selectedVendors.length === 0) {
+      setSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
+    }
+  }, [mobileMode, vendors, selectedVendors.length]);
+
   // Record a comparison once the user settles on 2+ vendors. Debounced so a
   // run of checkbox toggles produces one event, and de-duplicated so the same
   // selection set isn't recorded twice in a session.
@@ -88,6 +97,66 @@ export default function VendorComparison({ marketId, computedScores }: VendorCom
     }, 1500);
     return () => clearTimeout(timer);
   }, [selectedVendors, marketId]);
+
+  if (mobileMode) {
+    return (
+      <section className="space-y-5 font-[Montserrat]">
+        <div>
+          <div className="mb-2 flex items-end justify-between border-b border-slate-200 pb-2">
+            <div><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">03</p><h3 className="text-base font-bold">Compare products</h3></div>
+            <span className="font-[Menlo] text-[10px] uppercase tracking-wider text-slate-500">{selectedVendors.length} selected · max 3</span>
+          </div>
+          <div className="grid gap-2">
+            {vendors?.map(vendor => {
+              const active = selectedVendors.includes(vendor.id);
+              return (
+                <button key={vendor.id} type="button" onClick={() => handleVendorToggle(vendor.id, !active)} className={`flex min-h-14 items-center gap-3 border p-2.5 text-left ${active ? "border-sky-500 bg-blue-50 shadow-[inset_3px_0_#13a8f0]" : "border-slate-200 bg-white"}`} aria-pressed={active}>
+                  <span className={`grid h-5 w-5 place-items-center border ${active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"}`}>{active ? "✓" : ""}</span>
+                  <span><strong className="block text-xs">{vendor.name}</strong><small className="mt-0.5 block text-[10px] text-slate-500">{vendor.product || "Product name unavailable"}</small></span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">Keep at least two products selected for comparison.</p>
+        </div>
+        {selectedVendorData.length >= 2 && (
+          <div>
+            <div className="mb-2 border-b border-slate-200 pb-2"><p className="font-[Menlo] text-[9px] font-bold uppercase tracking-widest text-sky-500">04</p><h3 className="text-base font-bold">Scores &amp; commentary</h3></div>
+            <div className="border border-slate-200 bg-slate-50">
+              {criteria?.map(criterion => (
+                <div key={criterion.id} className="border-b border-slate-200 last:border-0">
+                  <h4 className="bg-blue-50 px-3 py-2.5 text-xs font-semibold">{criterion.name}</h4>
+                  <div className="grid" style={{ gridTemplateColumns: `repeat(${selectedVendorData.length}, minmax(0, 1fr))` }}>
+                    {selectedVendorData.map(vendor => {
+                      const score = getVendorScore(vendor.id, criterion.id);
+                      const notes = getVendorNotes(vendor.id, criterion.id);
+                      return (
+                        <div key={vendor.id} className="min-w-0 border-r border-slate-200 p-2.5 last:border-0">
+                          <span className="block truncate text-[10px] text-slate-500">{vendor.name}</span>
+                          <strong className="mt-1 block font-[Menlo] text-xl text-sky-600">{score.toFixed(1)}</strong>
+                          <button type="button" className="mt-2 min-h-9 w-full border border-blue-200 bg-blue-100 text-[10px] font-bold text-sky-700" onClick={() => setMobileNote({ vendor, criterion, score, notes })}>View notes</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <Dialog open={!!mobileNote} onOpenChange={open => { if (!open) setMobileNote(null); }}>
+          <DialogContent className="max-h-[78dvh] max-w-[calc(100%-2rem)] overflow-y-auto font-[Montserrat] sm:max-w-sm">
+            <DialogHeader><DialogTitle>{mobileNote?.criterion.name}</DialogTitle></DialogHeader>
+            {mobileNote && <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-xs"><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Vendor</span><strong className="block">{mobileNote.vendor.name}</strong></div><div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Score</span><strong className="block">{mobileNote.score.toFixed(1)} / 100</strong></div></div>
+              <div><span className="font-[Menlo] text-[9px] uppercase text-slate-500">Product</span><strong className="block text-xs">{mobileNote.vendor.product || "Product name unavailable"}</strong></div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{mobileNote.notes || "No stored commentary is available for this score."}</p>
+            </div>}
+          </DialogContent>
+        </Dialog>
+      </section>
+    );
+  }
 
   return (
     <Card>

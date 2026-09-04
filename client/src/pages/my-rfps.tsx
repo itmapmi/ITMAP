@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Trash2, ArrowRight, AlertCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
 import type { RfpProject, Market } from "@shared/schema";
+import "@/styles/rfp-builder-mobile.css";
 
 interface RfpStatus {
   hasOpenAiKey: boolean;
@@ -107,6 +108,105 @@ export default function MyRfpsPage() {
       toast({ title: "RFP deleted" });
     },
   });
+
+  if (mobileMode) {
+    return (
+      <div className="rfp-mobile">
+        <main className="rfpm-main">
+          <div className="rfpm-kicker">BUYER / RFP BUILDER</div>
+          <h1 className="rfpm-h1">Projects</h1>
+          <p className="rfpm-sub">Turn evidence into a customer-specific procurement brief.</p>
+          <button className="rfpm-btn primary" style={{ width: "100%", margin: "18px 0" }} onClick={() => setOpen(true)} data-testid="button-new-rfp">
+            <Plus size={15} /> New RFP
+          </button>
+          {(atActiveLimit || atDailyLimit) && status && (
+            <div className="rfpm-alert">
+              <AlertCircle size={14} />
+              {atDailyLimit
+                ? `Daily limit reached (${status.last24hCount}/${status.dailyLimit} RFPs in 24 h). Try again tomorrow.`
+                : `${status.activeCount} / ${status.activeLimit} active RFPs · complete or delete one before starting another.`}
+            </div>
+          )}
+          {isLoading ? <div className="rfpm-empty">Loading projects…</div> : rfps.length === 0 ? (
+            <div className="rfpm-empty">No RFPs yet. Start your first project above.</div>
+          ) : rfps.map((rfp) => {
+            const market = markets.find((m) => m.id === rfp.marketId);
+            return (
+              <article className="rfpm-card" key={rfp.id} data-testid={`card-rfp-${rfp.id}`}>
+                <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
+                  <h2 className="rfpm-title">{rfp.title}</h2>
+                  <span className={`rfpm-tag ${rfp.status === "ready" ? "ready" : rfp.status === "generating" ? "warn" : ""}`}>{rfp.status}</span>
+                </div>
+                <p className="rfpm-meta">
+                  {market?.name.replace(/^ITMAP for /i, "") || "Market"} · Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}
+                </p>
+                <div className="rfpm-row">
+                  <button className="rfpm-btn" style={{ flex: 1 }} onClick={() => setLocation(`/mobile/me/rfps/${rfp.id}`)} data-testid={`button-open-rfp-${rfp.id}`}>
+                    Open <ArrowRight size={14} />
+                  </button>
+                  <button className="rfpm-btn ghost" aria-label={`Delete ${rfp.title}`} onClick={() => deleteMutation.mutate(rfp.id)} data-testid={`button-delete-rfp-${rfp.id}`}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </main>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="w-[calc(100%-2rem)] max-w-md border-[#40515a] bg-[#12191e] font-[Montserrat] text-[#edf3f4] shadow-[0_20px_60px_#000]">
+            <DialogHeader>
+              <DialogTitle>Start a new RFP</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mobile-rfp-title" className="text-xs text-[#82909a]">Working title</Label>
+                <Input
+                  id="mobile-rfp-title"
+                  autoFocus
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Acme Corp — Endpoint Security RFP"
+                  className="border-[#35434a] bg-[#0b1013] text-[#edf3f4]"
+                  data-testid="input-rfp-title"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-[#82909a]">Market</Label>
+                <Select value={marketId} onValueChange={setMarketId}>
+                  <SelectTrigger className="border-[#35434a] bg-[#0b1013] text-[#edf3f4]" data-testid="select-rfp-market">
+                    <SelectValue placeholder="Pick a market" />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#35434a] bg-[#12191e] text-[#edf3f4]">
+                    {markets.map((market) => (
+                      <SelectItem key={market.id} value={market.id}>
+                        {market.name.replace(/^ITMAP for /i, "")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {!status?.hasOpenAiKey && (
+                <div className="rounded-md border border-[#604a29] bg-[#211c14] p-3 text-xs leading-relaxed text-[#eacb91]">
+                  Add your OpenAI API key in Settings → LLM Keys to use the RFP Builder.
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-md bg-[#6ee7e4] px-4 text-sm font-semibold text-[#071113] disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!title || !marketId || createMutation.isPending || !status?.hasOpenAiKey || !!atActiveLimit || !!atDailyLimit}
+                onClick={() => createMutation.mutate()}
+                data-testid="button-create-rfp"
+              >
+                {createMutation.isPending ? "Starting…" : "Start interview"}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { track, trackDwell } from "@/lib/track";
@@ -11,12 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Sparkles, FileDown, CheckCircle2, Clock, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Send, Sparkles, FileDown, CheckCircle2, Clock, Upload, Trash2, SlidersHorizontal, FileText, RefreshCw, Trophy, Check, X, Mail, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Navigation from "@/components/navigation";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpOutreachEntry } from "@shared/schema";
+import "@/styles/rfp-builder-mobile.css";
 
 interface ShortlistRow { id: string; vendorId: string; fitScore: string | null; rationale: string | null; isIncluded: boolean; rank: number; vendor: { id: string; name: string; website: string | null } | null }
 interface OutreachRow { id: string; vendorId: string; status: string; contactName: string | null; contactEmail: string | null; notes: string | null; responseText: string | null; responseFileUrl: string | null; invitedAt: string | null; respondedAt: string | null; vendor: { id: string; name: string } | null }
@@ -146,6 +147,227 @@ export default function MyRfpDetailPage() {
   const missingCritical = rfp?.readiness?.missing ?? [];
   const interviewReady = !!rfp?.readiness?.ready;
   const interviewComplete = interviewReady;
+
+  if (mobileMode) {
+    const step = STEPS[stepIndex];
+    const sortedSections = [...sections].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    const generateLabel = generateMutation.isPending ? "Generating…" : rfp?.status === "ready" ? "Regenerate" : "Generate";
+    const sectionHeading = (
+      title: string,
+      subtitle: string,
+      icon: ReactNode,
+    ) => (
+      <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
+        <div><h1 className="rfpm-h1">{title}</h1><p className="rfpm-sub">{subtitle}</p></div>
+        {icon}
+      </div>
+    );
+
+    return (
+      <div className="rfp-mobile">
+        <main className="rfpm-main">
+          <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="rfpm-kicker">ACTIVE RFP</div>
+              <div className="rfpm-title" style={{ fontSize: 16, marginTop: 4 }}>{rfp?.title || "RFP"}</div>
+              <div className="rfpm-meta">{filledSlots}/{totalSlots} slots · <span style={{ color: "var(--rfp-text)" }}>{rfp?.status || "loading"}</span></div>
+            </div>
+            <button
+              className="rfpm-btn primary"
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending || !interviewReady}
+              title={interviewReady ? undefined : `Need critical slots: ${missingCritical.join(", ") || "8 of 14 total"}`}
+              data-testid="button-generate-rfp"
+            >
+              <Sparkles size={14} /> {generateLabel}
+            </button>
+          </div>
+          <div className="rfpm-step">
+            <div className="rfpm-stepbar">{STEPS.map((s, i) => <i key={s.key} className={i <= stepIndex ? "on" : ""} />)}</div>
+            <div className="rfpm-steptext">Step {stepIndex + 1} of 6 · {step.label}</div>
+          </div>
+        </main>
+
+        <main className="rfpm-main flush">
+          {tab === "interview" && (
+            <>
+              <div className="rfpm-row">
+                <h1 className="rfpm-h1">Discovery interview</h1>
+                <span className="rfpm-mini">{filledSlots} / {totalSlots} SLOTS</span>
+              </div>
+              <div className="rfpm-chat">
+                {messages.map((m) => (
+                  <div className={`rfpm-msg ${m.role === "user" ? "user" : ""}`} key={m.id}>
+                    <small>{m.role === "user" ? "YOU" : "ITMAP ANALYST"}</small>{m.content}
+                  </div>
+                ))}
+                {sendMutation.isPending && <div className="rfpm-msg"><small>ITMAP ANALYST</small><Clock size={13} className="animate-pulse" /> Thinking…</div>}
+                <div className="rfpm-card" style={{ color: interviewComplete ? "var(--rfp-lime)" : "var(--rfp-amber)", fontSize: 11 }}>
+                  <CheckCircle2 size={14} style={{ display: "inline", marginRight: 6 }} />
+                  {interviewComplete ? "Interview complete · ready to generate" : `Interview in progress · ${missingCritical.length} critical slots remain`}
+                </div>
+                <div ref={messagesEndRef} />
+              </div>
+              <div className="rfpm-compose">
+                <input
+                  className="rfpm-input"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && draft.trim() && !sendMutation.isPending) sendMutation.mutate(draft.trim()); }}
+                  placeholder="Type your answer…"
+                  data-testid="input-interview-message"
+                />
+                <button className="rfpm-btn primary" onClick={() => draft.trim() && sendMutation.mutate(draft.trim())} disabled={!draft.trim() || sendMutation.isPending} data-testid="button-send-message">
+                  {sendMutation.isPending ? <Clock size={14} className="animate-pulse" /> : <Send size={14} />}
+                </button>
+              </div>
+              {!interviewReady && <div className="rfpm-alert"><Clock size={13} /> Generate RFP is unavailable until all critical slots are captured.</div>}
+            </>
+          )}
+
+          {tab === "requirements" && (
+            <>
+              {sectionHeading("Requirements", "Generated from your interview and market catalogue.", <SlidersHorizontal size={16} color="var(--rfp-cyan)" />)}
+              <div style={{ marginTop: 18 }}>
+                {requirements.length === 0 ? <div className="rfpm-empty">Generate the RFP to seed weighted requirements.</div> : requirements.map((r) => (
+                  <article className="rfpm-card" key={r.id} data-testid={`row-requirement-${r.id}`}>
+                    <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
+                      <h2 className="rfpm-title">{r.label}</h2>
+                      <button className="rfpm-btn ghost" onClick={() => deleteReqMutation.mutate(r.id)} aria-label={`Delete ${r.label}`}><Trash2 size={14} /></button>
+                    </div>
+                    {r.description && <p className="rfpm-meta">{r.description}</p>}
+                    <p className="rfpm-meta">{r.kind} requirement</p>
+                    <div className="rfpm-row">
+                      <select className="rfpm-select" value={r.priority} onChange={(e) => updateReqMutation.mutate({ reqId: r.id, body: { priority: e.target.value } })}>
+                        <option value="must">must</option><option value="should">should</option><option value="nice">nice</option>
+                      </select>
+                      <select className="rfpm-select" value={String(r.weight)} onChange={(e) => updateReqMutation.mutate({ reqId: r.id, body: { weight: Number(e.target.value) } })}>
+                        {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Weight {n}</option>)}
+                      </select>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "preview" && (
+            <>
+              {sectionHeading("Document preview", "Generated markdown · current document", <FileText size={19} color="var(--rfp-cyan)" />)}
+              <div style={{ marginTop: 18 }}>
+                {sortedSections.length === 0 ? <div className="rfpm-empty">Generate the RFP to produce the document.</div> : sortedSections.map((s, index) => (
+                  <article className="rfpm-card" key={s.id} data-testid={`section-${s.sectionKey}`}>
+                    <div className="rfpm-row" style={{ alignItems: "flex-start" }}>
+                      <div><span className="rfpm-kicker">{String(index + 1).padStart(2, "0")}</span><h2 className="rfpm-title" style={{ marginTop: 5 }}>{s.title}</h2></div>
+                      <button className="rfpm-btn" onClick={() => regenSectionMutation.mutate(s.sectionKey)} disabled={regenSectionMutation.isPending} data-testid={`button-regenerate-${s.sectionKey}`}>
+                        <RefreshCw size={13} /> {regenSectionMutation.isPending && regenSectionMutation.variables === s.sectionKey ? "Regenerating…" : "Regenerate"}
+                      </button>
+                    </div>
+                    <div className="rfpm-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{s.body || "_(empty)_"}</ReactMarkdown></div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "shortlist" && (
+            <>
+              {sectionHeading("Vendor shortlist", "Deterministic fit against your weighted requirements.", <Trophy size={18} color="var(--rfp-amber)" />)}
+              <div style={{ marginTop: 18 }}>
+                {shortlist.length === 0 ? <div className="rfpm-empty">Generate the RFP to score vendors.</div> : shortlist.map((s, index) => (
+                  <article className="rfpm-card" key={s.id}>
+                    <div className="rfpm-row"><span className="rfpm-kicker">RANK #{s.rank || index + 1}</span><span className="rfpm-score">{Number(s.fitScore || 0).toFixed(1)}</span></div>
+                    <h2 className="rfpm-title" style={{ marginTop: 8 }}>{s.vendor?.name || "Vendor"}</h2>
+                    <p className="rfpm-meta">{s.rationale}</p>
+                    <button className={`rfpm-btn ${s.isIncluded ? "primary" : "ghost"}`} style={{ width: "100%", marginTop: 7 }} onClick={() => toggleShortlistMutation.mutate({ entryId: s.id, isIncluded: !s.isIncluded })} data-testid={`button-toggle-shortlist-${s.id}`}>
+                      {s.isIncluded ? <><Check size={14} /> Included</> : <><X size={14} /> Excluded</>}
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "outreach" && (
+            <>
+              {sectionHeading("Outreach tracker", "Capture vendor contact details and responses.", <Mail size={18} color="var(--rfp-cyan)" />)}
+              <div style={{ marginTop: 18 }}>
+                {shortlist.filter((s) => s.isIncluded).map((s) => {
+                  const row = outreach.find((o) => o.vendorId === s.vendorId);
+                  const base = (over: Partial<OutreachPayload>): OutreachPayload => ({
+                    vendorId: s.vendorId, status: row?.status || "not_started", contactName: row?.contactName,
+                    contactEmail: row?.contactEmail, notes: row?.notes, responseText: row?.responseText,
+                    responseFileUrl: row?.responseFileUrl, ...over,
+                  });
+                  return (
+                    <article className="rfpm-card" key={s.id} data-testid={`outreach-row-${s.vendorId}`}>
+                      <div className="rfpm-row">
+                        <h2 className="rfpm-title">{s.vendor?.name || "Vendor"}</h2>
+                        <span className={`rfpm-tag ${row?.status === "responded" || row?.status === "awarded" ? "ready" : ""}`}>{row?.status === "invited" ? "sent" : (row?.status || "draft").replace("_", " ")}</span>
+                      </div>
+                      {(row?.invitedAt || row?.respondedAt) && <p className="rfpm-meta">{fmtDate(row.invitedAt) && `Sent ${fmtDate(row.invitedAt)}`} {fmtDate(row.respondedAt) && `· Replied ${fmtDate(row.respondedAt)}`}</p>}
+                      <select className="rfpm-select" style={{ marginTop: 11 }} value={row?.status || "not_started"} onChange={(e) => upsertOutreachMutation.mutate(base({ status: e.target.value }))}>
+                        <option value="not_started">Draft</option><option value="invited">Sent</option><option value="declined">Declined</option><option value="responded">Responded</option><option value="awarded">Awarded</option>
+                      </select>
+                      <input key={`cn-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactName || ""} placeholder="Contact name" onBlur={(e) => upsertOutreachMutation.mutate(base({ contactName: e.target.value }))} />
+                      <input key={`ce-${row?.id || "new"}`} className="rfpm-input" style={{ marginTop: 8 }} defaultValue={row?.contactEmail || ""} placeholder="Contact email" type="email" onBlur={(e) => upsertOutreachMutation.mutate(base({ contactEmail: e.target.value }))} />
+                      <textarea key={`notes-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.notes || ""} placeholder="Outreach notes…" rows={2} onBlur={(e) => upsertOutreachMutation.mutate(base({ notes: e.target.value }))} />
+                      <textarea key={`rt-${row?.id || "new"}`} className="rfpm-textarea" style={{ marginTop: 8 }} defaultValue={row?.responseText || ""} placeholder="Paste vendor response text here…" rows={3} onBlur={(e) => upsertOutreachMutation.mutate(base({ responseText: e.target.value }))} />
+                      <ObjectUploader
+                        maxNumberOfFiles={1}
+                        maxFileSize={26214400}
+                        onGetUploadParameters={async () => {
+                          const result = await apiRequestJson("/api/objects/upload", "POST") as { uploadURL: string };
+                          return { method: "PUT" as const, url: result.uploadURL };
+                        }}
+                        onComplete={(result) => {
+                          const url = result?.successful?.[0]?.uploadURL;
+                          if (url) upsertOutreachMutation.mutate(base({ responseFileUrl: url }));
+                        }}
+                        buttonClassName="rfpm-upload"
+                      >
+                        <span><Upload size={13} style={{ display: "inline", marginRight: 6 }} />Upload response file · one file, up to 25MB</span>
+                      </ObjectUploader>
+                      {row?.responseFileUrl && <a href={row.responseFileUrl} target="_blank" rel="noreferrer" className="rfpm-meta" style={{ display: "block", color: "var(--rfp-cyan)" }}>View uploaded file</a>}
+                    </article>
+                  );
+                })}
+                {!shortlist.some((s) => s.isIncluded) && <div className="rfpm-empty">Include vendors in the Shortlist step to track outreach.</div>}
+              </div>
+            </>
+          )}
+
+          {tab === "export" && (
+            <>
+              {sectionHeading("Export RFP", "Download the generated document in your preferred format.", <CheckCircle2 size={18} color="var(--rfp-lime)" />)}
+              {rfp?.generatedMarkdown ? (
+                <>
+                  <div className="rfpm-card" style={{ marginTop: 20 }}>
+                    <div className="rfpm-kicker">DOCUMENT READY</div>
+                    <h2 className="rfpm-title" style={{ fontSize: 17, marginTop: 8 }}>{rfp.title}</h2>
+                    <p className="rfpm-meta">Generated markdown available · {sections.length} sections · {requirements.length} requirements</p>
+                  </div>
+                  {(["pdf", "docx", "xlsx"] as const).map((format) => (
+                    <a className="rfpm-card" href={`/api/me/rfps/${id}/export/${format}`} target="_blank" rel="noreferrer" key={format} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "var(--rfp-text)", textDecoration: "none" }} data-testid={`link-export-${format}`}>
+                      <span style={{ display: "flex", gap: 10, alignItems: "center" }}><FileText size={17} color="var(--rfp-cyan)" /><span><b style={{ fontSize: 13 }}>Download {format.toUpperCase()}</b><small className="rfpm-meta" style={{ display: "block" }}>Generated from current RFP</small></span></span>
+                      <Download size={15} color="var(--rfp-cyan)" />
+                    </a>
+                  ))}
+                </>
+              ) : <div className="rfpm-empty" style={{ marginTop: 20 }}>Generate the RFP first to enable exports.</div>}
+            </>
+          )}
+        </main>
+
+        <div className="rfpm-footer">
+          <button className="rfpm-btn ghost" onClick={() => goToStep(stepIndex - 1)} disabled={stepIndex === 0} data-testid="button-wizard-back"><ArrowLeft size={14} /> Back</button>
+          <button className="rfpm-btn primary" onClick={() => goToStep(stepIndex + 1)} disabled={stepIndex === STEPS.length - 1} data-testid="button-wizard-next">
+            Next: {STEPS[Math.min(stepIndex + 1, STEPS.length - 1)].label} <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 ${mobileMode ? "pb-24" : ""}`}>

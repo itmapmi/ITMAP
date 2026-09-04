@@ -1,0 +1,63 @@
+.rfp-mobile {
+  --rfp-ink: #090b0e;
+  --rfp-panel: #10151a;
+  --rfp-panel-2: #151c22;
+  --rfp-line: #26323a;
+  --rfp-muted: #82909a;
+  --rfp-text: #edf3f4;
+  --rfp-cyan: #6ee7e4;
+  --rfp-lime: #c8ef70;
+  --rfp-amber: #e7b86b;
+  min-height: calc(100dvh - 56px);
+  padding-bottom: 82px;
+  overflow-x: hidden;
+  color: var(--rfp-text);
+  background: radial-gradient(circle at 100% 0, #123038 0, transparent 34%), var(--rfp-ink);
+  font-family: Montserrat, sans-serif;
+}
+.rfp-mobile * { box-sizing: border-box; }
+.rfp-mobile button, .rfp-mobile input, .rfp-mobile select, .rfp-mobile textarea { font-family: inherit; }
+.rfp-mobile .rfpm-main { padding: 22px 16px; }
+.rfp-mobile .rfpm-main.flush { padding-top: 0; }
+.rfp-mobile .rfpm-kicker { color: var(--rfp-cyan); font: 11px Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.rfp-mobile .rfpm-h1 { margin: 7px 0 8px; font-size: 25px; font-weight: 700; line-height: 1.12; letter-spacing: -.04em; }
+.rfp-mobile .rfpm-sub { margin: 0; color: var(--rfp-muted); font-size: 13px; line-height: 1.5; }
+.rfp-mobile .rfpm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rfp-mobile .rfpm-card {
+  margin-bottom: 10px; padding: 14px; border: 1px solid var(--rfp-line); border-radius: 10px;
+  background: linear-gradient(145deg, #141b20, #0e1317); animation: rfpm-rise .35s ease both;
+}
+.rfp-mobile .rfpm-title { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.25; }
+.rfp-mobile .rfpm-meta { margin: 6px 0; color: var(--rfp-muted); font-size: 11px; }
+.rfp-mobile .rfpm-mini { color: var(--rfp-muted); font: 10px Menlo, monospace; }
+.rfp-mobile .rfpm-tag { flex: none; padding: 4px 6px; border: 1px solid #315158; border-radius: 3px; color: var(--rfp-cyan); font: 10px Menlo, monospace; text-transform: uppercase; }
+.rfp-mobile .rfpm-tag.ready { color: var(--rfp-lime); border-color: #50652d; }
+.rfp-mobile .rfpm-tag.warn { color: var(--rfp-amber); border-color: #644c29; }
+.rfp-mobile .rfpm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 11px; border: 1px solid #35454d; border-radius: 5px; background: #1a2329; color: var(--rfp-text); font-size: 12px; font-weight: 600; }
+.rfp-mobile .rfpm-btn.primary { border-color: transparent; background: var(--rfp-cyan); color: #071113; }
+.rfp-mobile .rfpm-btn.ghost { background: transparent; color: var(--rfp-muted); }
+.rfp-mobile .rfpm-btn:disabled { cursor: not-allowed; opacity: .42; }
+.rfp-mobile .rfpm-alert { display: flex; align-items: flex-start; gap: 7px; margin: 15px 0; padding: 11px; border: 1px solid #604a29; border-radius: 7px; background: #211c14; color: #eacb91; font-size: 11px; line-height: 1.45; }
+.rfp-mobile .rfpm-input, .rfp-mobile .rfpm-select, .rfp-mobile .rfpm-textarea { width: 100%; padding: 10px; outline: none; border: 1px solid #35434a; border-radius: 5px; background: #0b1013; color: var(--rfp-text); font-size: 12px; }
+.rfp-mobile .rfpm-input:focus, .rfp-mobile .rfpm-select:focus, .rfp-mobile .rfpm-textarea:focus { border-color: var(--rfp-cyan); }
+.rfp-mobile .rfpm-field { display: grid; gap: 6px; margin: 12px 0; color: var(--rfp-muted); font-size: 11px; }
+.rfp-mobile .rfpm-step { margin: 19px 0 22px; }
+.rfp-mobile .rfpm-stepbar { display: flex; gap: 4px; }
+.rfp-mobile .rfpm-stepbar i { height: 3px; flex: 1; border-radius: 2px; background: #263239; }
+.rfp-mobile .rfpm-stepbar i.on { background: var(--rfp-cyan); }
+.rfp-mobile .rfpm-steptext { margin-top: 7px; color: var(--rfp-muted); font: 10px Menlo, monospace; text-transform: uppercase; }
+.rfp-mobile .rfpm-footer { position: fixed; z-index: 55; right: 0; bottom: 0; left: 0; display: flex; gap: 9px; padding: 11px 16px; border-top: 1px solid var(--rfp-line); background: #0b1013f2; }
+.rfp-mobile .rfpm-footer .rfpm-btn { flex: 1; }
+.rfp-mobile .rfpm-chat { height: 475px; overflow: auto; padding: 8px 1px; }
+.rfp-mobile .rfpm-msg { max-width: 84%; margin: 9px 0; padding: 11px 12px; border: 1px solid var(--rfp-line); border-radius: 8px; background: var(--rfp-panel); font-size: 12px; line-height: 1.5; }
+.rfp-mobile .rfpm-msg.user { margin-left: auto; border-color: #2c6669; background: #17353a; }
+.rfp-mobile .rfpm-msg small { display: block; margin-bottom: 4px; color: var(--rfp-muted); font: 9px Menlo, monospace; }
+.rfp-mobile .rfpm-compose { display: flex; gap: 7px; padding-top: 12px; border-top: 1px solid var(--rfp-line); }
+.rfp-mobile .rfpm-compose .rfpm-input { flex: 1; }
+.rfp-mobile .rfpm-score { color: var(--rfp-cyan); font: 18px Menlo, monospace; }
+.rfp-mobile .rfpm-markdown { margin-top: 10px; color: #bbc8cc; font-size: 12px; line-height: 1.55; }
+.rfp-mobile .rfpm-markdown h1, .rfp-mobile .rfpm-markdown h2, .rfp-mobile .rfpm-markdown h3 { margin: .8em 0 .35em; color: var(--rfp-text); font-size: 1.1em; }
+.rfp-mobile .rfpm-markdown ul, .rfp-mobile .rfpm-markdown ol { margin: .5em 0; padding-left: 1.4em; }
+.rfp-mobile .rfpm-upload { padding: 12px; border: 1px dashed #3d5960; border-radius: 6px; color: var(--rfp-cyan); font-size: 11px; }
+.rfp-mobile .rfpm-empty { padding: 26px 18px; border: 1px dashed #35434a; border-radius: 9px; color: var(--rfp-muted); text-align: center; font-size: 12px; }
+@keyframes rfpm-rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }

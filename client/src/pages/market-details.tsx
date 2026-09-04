@@ -86,6 +86,7 @@ export default function MarketDetails() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [activeTab, setActiveTab] = useState("vendor-evaluation");
   const [chatOpen, setChatOpen] = useState(false);
+  const [mobileDefinitionOpen, setMobileDefinitionOpen] = useState(false);
 
   const { data: market, isLoading, error } = useQuery<Market>({
     queryKey: ["/api/markets", marketId],
@@ -515,7 +516,23 @@ export default function MarketDetails() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-xl' : 'text-2xl'}`}>{market.name}</h2>
-            <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
+            {mobileMode ? (
+              <div className="mt-3 border border-slate-200 bg-slate-50 p-3 font-[Montserrat]">
+                <div className="flex items-start justify-between gap-3">
+                  <p className={`text-sm leading-relaxed text-slate-600 ${mobileDefinitionOpen ? "" : "line-clamp-2"}`}>
+                    {market.description || "No stored market definition is available."}
+                  </p>
+                  <button type="button" className="grid h-11 w-11 shrink-0 place-items-center text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)} aria-expanded={mobileDefinitionOpen} aria-label="Toggle full market definition">
+                    <ChevronDown className={`h-4 w-4 transition-transform ${mobileDefinitionOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
+                <button type="button" className="mt-1 font-[Menlo] text-[10px] font-bold uppercase tracking-wider text-sky-600" onClick={() => setMobileDefinitionOpen(value => !value)}>
+                  {mobileDefinitionOpen ? "Hide definition" : "Read full definition"}
+                </button>
+              </div>
+            ) : (
+              <p className={`text-gray-600 mt-1 ${isMobile ? 'text-sm' : ''}`}>{market.description}</p>
+            )}
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -823,7 +840,7 @@ export default function MarketDetails() {
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 min-h-0 bg-white dark:bg-gray-900">
-            <Chat marketId={resolvedId!} />
+            <Chat marketId={resolvedId!} mobileMode={mobileMode} marketName={market.name.replace(/^ITMAP for /i, "")} />
           </div>
         </SheetContent>
       </Sheet>

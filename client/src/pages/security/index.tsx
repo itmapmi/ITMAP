@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { LockedFeaturePanel } from "@/components/locked-feature-tooltip";
+import SpectioLogo from "@/components/spectio-logo";
 import {
   Shield,
   AlertTriangle,
@@ -25,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import "./security-mobile.css";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -266,7 +269,7 @@ function SeverityMultiSelect({
 
 // ─── overview tab ────────────────────────────────────────────────────────────
 
-function OverviewTab({ vendorId }: { vendorId: string }) {
+function OverviewTab({ vendorId, mobileMode = false }: { vendorId: string; mobileMode?: boolean }) {
   const { data: summary, isLoading } = useQuery<CveSummary>({
     queryKey: ["/api/cve/vendor", vendorId, "summary"],
     queryFn: async () => {
@@ -302,6 +305,64 @@ function OverviewTab({ vendorId }: { vendorId: string }) {
   }
 
   const critHigh = (summary.bySeverity["CRITICAL"] ?? 0) + (summary.bySeverity["HIGH"] ?? 0);
+
+  if (mobileMode) {
+    const stats = [
+      { label: "Total CVEs", value: summary.total, icon: Shield },
+      { label: "Critical + High", value: critHigh, icon: AlertTriangle },
+      { label: "Known Exploited (KEV)", value: summary.kevCount, icon: Zap },
+      { label: "EPSS ≥ 90%", value: summary.epssHighCount, icon: TrendingUp },
+    ];
+    return (
+      <div className="sim-content">
+        <div className="sim-stats">
+          {stats.map(({ label, value, icon: Icon }) => (
+            <div className="sim-card sim-stat" key={label}>
+              <span className="sim-stat-icon"><Icon size={15} /></span>
+              <strong>{value.toLocaleString()}</strong><small>{label}</small>
+            </div>
+          ))}
+        </div>
+        {summary.total > 0 && (
+          <>
+            <section className="sim-card">
+              <h3>Severity breakdown</h3>
+              <SeverityMixBar bySeverity={summary.bySeverity} total={summary.total} />
+              <div className="sim-breakdown">
+                {SEVERITY_ORDER.filter((s) => (summary.bySeverity[s] ?? 0) > 0).map((s) => (
+                  <div key={s}>
+                    <b className={SEVERITY_COLORS[s]?.text}>{summary.bySeverity[s]}</b>
+                    <span>{s}</span>
+                    <em>{Math.round((summary.bySeverity[s] / summary.total) * 100)}%</em>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="sim-card">
+              <h3>12-month CVE trend</h3>
+              <TrendSparkline data={summary.monthlyTrend} />
+            </section>
+          </>
+        )}
+        <section className="sim-card">
+          <h3>Confirmed CPE vendor tokens</h3>
+          {summary.cpeTokens.map((token) => <span className="sim-token" key={token}>{token}</span>)}
+        </section>
+        {summary.byProduct.length > 0 && (
+          <section className="sim-card">
+            <h3>Top affected products</h3>
+            {summary.byProduct.slice(0, 20).map(({ product, count }) => (
+              <div className="sim-product" key={product}>
+                <div><span>{product}</span><span>{count}</span></div>
+                <i><b style={{ width: `${(count / (summary.byProduct[0]?.count || 1)) * 100}%` }} /></i>
+              </div>
+            ))}
+          </section>
+        )}
+        <DataAsOf ts={summary.dataAsOf} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -415,6 +476,7 @@ function ExplainButton({ cve }: { cve: CveItem }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (!res.ok) throw new Error("Failed to generate explanation");
       const data = await res.json();
       setExplanation(data.explanation ?? "No explanation returned.");
     } catch {
@@ -448,6 +510,116 @@ function ExplainButton({ cve }: { cve: CveItem }) {
         </div>
       )}
     </div>
+  );
+}
+
+function MobileCveRow({ cve }: { cve: CveItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explainState, setExplainState] = useState<"idle" | "loading" | "error">("idle");
+
+  const explain = async () => {
+    if (explanation) {
+      setExplanation(null);
+      return;
+    }
+    setExplainState("loading");
+    try {
+      const res = await fetch(`/api/cve/${cve.cveId}/explain`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Failed to generate explanation");
+      const result = await res.json();
+      setExplanation(result.explanation ?? "No explanation returned.");
+      setExplainState("idle");
+    } catch {
+      setExplainState("error");
+    }
+  };
+
+  const severity = cve.cvssSeverity ?? "UNSCORED";
+  const scoreColor = SEVERITY_COLORS[severity]?.text ?? "text-slate-400";
+  return (
+    <article className="sim-row">
+      <div className="sim-row-head">
+        <div className="sim-row-main">
+          <div className="sim-row-copy">
+            <div>
+              <a
+                className="sim-id"
+                href={`https://nvd.nist.gov/vuln/detail/${cve.cveId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {cve.cveId} ↗
+              </a>
+              <span className={`sim-badge ${SEVERITY_COLORS[severity]?.text ?? "text-slate-400"}`}>{severity}</span>
+              {cve.isKev && <span className="sim-badge text-amber-400">KEV</span>}
+              {cve.epssScore && parseFloat(cve.epssScore) >= 0.9 && <span className="sim-badge text-violet-400">High EPSS</span>}
+              {cve.awaitingAnalysis && <span className="sim-badge text-sky-400">Awaiting NVD analysis</span>}
+            </div>
+            <p className="sim-desc">{cve.description ?? "No description available."}</p>
+          </div>
+          <div className={`sim-score ${scoreColor}`}>
+            {cve.cvssBaseScore ? parseFloat(cve.cvssBaseScore).toFixed(1) : "—"}
+            <small>CVSS</small>
+            {cve.epssScore && <><strong>{(parseFloat(cve.epssScore) * 100).toFixed(1)}%</strong><small>EPSS</small></>}
+          </div>
+          <button
+            type="button"
+            className="self-center rounded p-2 text-slate-500 hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            aria-controls={`mobile-cve-details-${cve.cveId}`}
+            aria-label={`${expanded ? "Collapse" : "Expand"} details for ${cve.cveId}`}
+          >
+            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="sim-expanded" id={`mobile-cve-details-${cve.cveId}`}>
+          <div className="sim-details">
+            {cve.cvssVersion && <div><label>CVSS version</label><span>{cve.cvssVersion}</span></div>}
+            {cve.vulnStatus && <div><label>Status</label><span>{cve.vulnStatus}</span></div>}
+            {cve.cvssVector && <div className="col-span-2"><label>Vector</label><span>{cve.cvssVector}</span></div>}
+            {cve.cweIds && cve.cweIds.length > 0 && <div><label>Weakness types</label><span>{cve.cweIds.join(", ")}</span></div>}
+            {cve.products.length > 0 && <div><label>Affected products</label><span>{cve.products.join(", ")}</span></div>}
+          </div>
+          {cve.isKev && cve.kevInfo && (
+            <div className="sim-note">
+              <b>CISA Known Exploited Vulnerability</b><br />
+              {cve.kevInfo.dateAdded && <>Added to KEV: {cve.kevInfo.dateAdded}<br /></>}
+              {cve.kevInfo.dueDate && <>Remediation due: {cve.kevInfo.dueDate}<br /></>}
+              {cve.kevInfo.requiredAction}
+              {cve.kevInfo.ransomwareUse && cve.kevInfo.ransomwareUse !== "Unknown" && <><br />Ransomware use: {cve.kevInfo.ransomwareUse}</>}
+            </div>
+          )}
+          <button className="sim-action" disabled={explainState === "loading"} onClick={explain}>
+            {explainState === "loading" ? "Generating explanation…" : explanation ? "Hide AI Explanation" : explainState === "error" ? "Retry explanation" : "Explain with AI"}
+          </button>
+          {explanation && (
+            <div className="sim-ai">
+              <b><Info size={12} className="inline mr-1" />AI explanation</b>
+              {explanation}
+              <small>AI-generated commentary · Always verify with NVD and CISA KEV</small>
+            </div>
+          )}
+          {explainState === "error" && (
+            <div className="sim-ai">
+              <b><Info size={12} className="inline mr-1" />Explanation unavailable</b>
+              Failed to generate an explanation. Please try again.
+              <small>AI-generated commentary · Always verify with NVD and CISA KEV</small>
+            </div>
+          )}
+          {cve.lastModified && <div className="mt-3 text-[9px] text-slate-500">Last modified: {format(new Date(cve.lastModified), "MMM d, yyyy")}</div>}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -600,7 +772,7 @@ function CveRow({ cve }: { cve: CveItem }) {
   );
 }
 
-function CveTableTab({ vendorId }: { vendorId: string; vendorName: string }) {
+function CveTableTab({ vendorId, mobileMode = false }: { vendorId: string; vendorName: string; mobileMode?: boolean }) {
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
   const [kevOnly, setKevOnly] = useState(false);
   const [product, setProduct] = useState("all");
@@ -647,6 +819,75 @@ function CveTableTab({ vendorId }: { vendorId: string; vendorName: string }) {
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   const resetPage = () => setPage(1);
+
+  if (mobileMode) {
+    return (
+      <div className="sim-content">
+        <section className="sim-filter">
+          <div>
+            <label>Severity</label>
+            <div className="sim-severities">
+              {SELECTABLE_SEVERITIES.map((severity) => (
+                <button
+                  className={selectedSeverities.includes(severity) ? "active" : ""}
+                  onClick={() => {
+                    setSelectedSeverities((current) => current.includes(severity) ? current.filter((value) => value !== severity) : [...current, severity]);
+                    resetPage();
+                  }}
+                  key={severity}
+                >
+                  {severity}
+                </button>
+              ))}
+              {selectedSeverities.length > 0 && <button onClick={() => { setSelectedSeverities([]); resetPage(); }}>Clear</button>}
+            </div>
+          </div>
+          <div className="sim-filter-row">
+            <button className={`sim-kev ${kevOnly ? "active" : ""}`} onClick={() => { setKevOnly((value) => !value); resetPage(); }}>KEV only</button>
+            {summary?.byProduct && summary.byProduct.length > 0 && (
+              <select className="sim-select" value={product} onChange={(event) => { setProduct(event.target.value); resetPage(); }} aria-label="Affected product">
+                <option value="all">All Products</option>
+                {summary.byProduct.map(({ product: value }) => <option value={value} key={value}>{value}</option>)}
+              </select>
+            )}
+            {data && <span className="sim-count">{data.total.toLocaleString()} CVEs</span>}
+          </div>
+          <div className="sim-filter-row">
+            <Calendar size={13} className="text-slate-500" />
+            <input className="sim-date" type="date" value={since} onChange={(event) => { setSince(event.target.value); resetPage(); }} aria-label="Published since" />
+            {since && <button className="sim-clear" onClick={() => { setSince(""); resetPage(); }} aria-label="Clear date">×</button>}
+            <select
+              className="sim-select"
+              value={`${sort}:${order}`}
+              onChange={(event) => {
+                const [nextSort, nextOrder] = event.target.value.split(":") as [typeof sort, typeof order];
+                setSort(nextSort); setOrder(nextOrder); resetPage();
+              }}
+              aria-label="Sort CVEs"
+            >
+              <option value="published:desc">Newest first</option>
+              <option value="published:asc">Oldest first</option>
+              <option value="severity:asc">Most severe first</option>
+              <option value="severity:desc">Least severe first</option>
+            </select>
+          </div>
+        </section>
+        {isLoading ? (
+          <div className="sim-empty"><Loader2 className="mx-auto animate-spin" size={26} /></div>
+        ) : !data || data.data.length === 0 ? (
+          <div className="sim-empty"><Shield className="mx-auto mb-2" size={32} />No CVEs match the selected filters.</div>
+        ) : data.data.map((cve) => <MobileCveRow cve={cve} key={cve.cveId} />)}
+        {totalPages > 1 && (
+          <div className="sim-pagination">
+            <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
+            <span>{page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button>
+          </div>
+        )}
+        {data && <DataAsOf ts={data.dataAsOf} />}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -781,7 +1022,7 @@ function CveTableTab({ vendorId }: { vendorId: string; vendorName: string }) {
 
 // ─── compare tab ─────────────────────────────────────────────────────────────
 
-function CompareTab({ vendors }: { vendors: CveVendor[] }) {
+function CompareTab({ vendors, mobileMode = false }: { vendors: CveVendor[]; mobileMode?: boolean }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const toggleVendor = (id: string) => {
@@ -802,6 +1043,60 @@ function CompareTab({ vendors }: { vendors: CveVendor[] }) {
     },
     enabled: selectedIds.length >= 2,
   });
+
+  if (mobileMode) {
+    return (
+      <div className="sim-content">
+        <section className="sim-card">
+          <div className="sim-compare-top">
+            <h3>Select vendors to compare</h3>
+            {selectedIds.length > 0 && <button className="sim-clear" onClick={() => setSelectedIds([])}>Clear selection</button>}
+          </div>
+          {vendors.length === 0 ? (
+            <p className="text-xs text-slate-500">No vendors with confirmed CVE mappings found.</p>
+          ) : (
+            <div className="sim-compare-list">
+              {vendors.map((vendor) => {
+                const selected = selectedIds.includes(vendor.id);
+                const capped = !selected && selectedIds.length >= 8;
+                return (
+                  <button className={selected ? "on" : ""} onClick={() => toggleVendor(vendor.id)} disabled={capped} key={vendor.id}>
+                    <span className="sim-check">{selected ? "✓" : ""}</span>
+                    <span><strong>{vendor.name}</strong><small>Confirmed CPE mapping available</small></span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-4 text-[9px] text-slate-500">Select 2–8 vendors · comparison uses current CVE evidence</div>
+        </section>
+        {selectedIds.length < 2 && <div className="sim-empty">Select at least 2 vendors to compare.</div>}
+        {selectedIds.length >= 2 && isLoading && <div className="sim-empty"><Loader2 className="mx-auto animate-spin" size={26} /></div>}
+        {isError && <div className="sim-empty text-red-400">Failed to load comparison data. Please try again.</div>}
+        {data?.vendors.map((summary) => {
+          if (!summary) return null;
+          const critHigh = (summary.bySeverity.CRITICAL ?? 0) + (summary.bySeverity.HIGH ?? 0);
+          return (
+            <section className="sim-card sim-compare-card" key={summary.vendorId}>
+              <header>
+                <h3>{summary.vendorName}</h3>
+                <button className="sim-clear" onClick={() => toggleVendor(summary.vendorId)} aria-label={`Remove ${summary.vendorName}`}>×</button>
+              </header>
+              <SeverityMixBar bySeverity={summary.bySeverity} total={summary.total} />
+              <div className="sim-mini-stats">
+                <div><b>{summary.total}</b><span>Total</span></div>
+                <div><b className="text-red-400">{critHigh}</b><span>Crit/High</span></div>
+                <div><b className="text-amber-400">{summary.kevCount}</b><span>KEV</span></div>
+                <div><b className="text-cyan-400">{summary.epssHighCount}</b><span>EPSS≥90%</span></div>
+              </div>
+              {summary.cpeTokens.length === 0 && <p className="mt-3 text-center text-[9px] text-slate-500">No confirmed CPE mappings</p>}
+            </section>
+          );
+        })}
+        {data && <DataAsOf ts={data.dataAsOf} />}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -908,6 +1203,8 @@ type Tab = "overview" | "cves" | "compare";
 
 export default function SecurityPage() {
   const { hasFeature, isLoading: authLoading } = useAuth();
+  const [location] = useLocation();
+  const mobileMode = location === "/mobile/security" || location.startsWith("/mobile/security/");
   const [tab, setTab] = useState<Tab>("overview");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
@@ -941,6 +1238,53 @@ export default function SecurityPage() {
     { id: "cves", label: "CVE Table" },
     { id: "compare", label: "Compare" },
   ];
+
+  if (mobileMode) {
+    return (
+      <main className="sim">
+        <div className="sim-shell">
+          <header className="sim-top">
+            <SpectioLogo size="md" className="sim-wordmark" />
+            <small>SECURITY / EVIDENCE</small>
+          </header>
+          <section className="sim-hero">
+            <div className="sim-kicker">Security intelligence</div>
+            <h1>CVE Intelligence</h1>
+            <p>Vulnerability exposure across your vendor landscape · NVD data</p>
+            <div className="sim-meta">
+              <span>Evidence workspace</span><i />
+              <span>Current NVD snapshot</span>
+            </div>
+          </section>
+          {tab !== "compare" && (
+            <div className="sim-vendor">
+              <span>Vendor</span>
+              {vendorsLoading ? (
+                <span className="sim-select animate-pulse" />
+              ) : vendors.length === 0 ? (
+                <span>No confirmed CPE mappings</span>
+              ) : (
+                <select className="sim-select" value={selectedVendorId} onChange={(event) => setSelectedVendorId(event.target.value)} aria-label="Vendor">
+                  {vendors.map((vendor) => <option value={vendor.id} key={vendor.id}>{vendor.name}</option>)}
+                </select>
+              )}
+            </div>
+          )}
+          <nav className="sim-tabs" aria-label="Security intelligence sections">
+            {tabs.map(({ id, label }) => (
+              <button className={tab === id ? "active" : ""} onClick={() => setTab(id)} aria-current={tab === id ? "page" : undefined} key={id}>{label}</button>
+            ))}
+          </nav>
+          {tab === "overview" && selectedVendorId && <OverviewTab vendorId={selectedVendorId} mobileMode />}
+          {tab === "cves" && selectedVendorId && <CveTableTab vendorId={selectedVendorId} vendorName={selectedVendor?.name ?? ""} mobileMode />}
+          {tab === "compare" && <CompareTab vendors={vendors} mobileMode />}
+          {tab !== "compare" && !selectedVendorId && !vendorsLoading && (
+            <div className="sim-content"><div className="sim-empty">Select a vendor to view CVE intelligence.</div></div>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">

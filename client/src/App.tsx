@@ -192,6 +192,7 @@ function Router() {
         <Route path="/battle-cards">{() => <ProtectedRoute component={BattleCardsIndexPage} />}</Route>
         <Route path="/battle-cards/:marketId">{() => <ProtectedRoute component={BattleCardDetailPage} />}</Route>
         <Route path="/security">{() => <ProtectedRoute component={SecurityPage} />}</Route>
+        <Route path="/mobile/security">{() => <ProtectedRoute component={SecurityPage} />}</Route>
         <Route path="/lead-gen/:userId">{() => <ProtectedRoute component={LeadGenDetailPage} requireAdmin={true} />}</Route>
         <Route path="/me/market-builder">{() => <ProtectedRoute component={MyMarketBuilderPage} />}</Route>
         <Route path="/forecast-builder">{() => <ForecastThemeProvider><ProtectedRoute component={ForecastBuilderPage} /></ForecastThemeProvider>}</Route>
