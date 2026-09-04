@@ -59,7 +59,6 @@ export function FixedAIChat() {
         <button type="submit" disabled={!question.trim() || analyzing} aria-label="Send question"><Send size={16}/></button>
       </form>
       {error && <p className="simple-ai-error">{error}</p>}
-      <p className="simple-ai-note">Answers use stored market evidence only.</p>
     </main>
   </div>;
 }
