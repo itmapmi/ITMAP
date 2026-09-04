@@ -1,3 +1,22 @@
+/* Desktop Markets light chat surfaces; the CTA keeps its cyan-to-violet identity. */
+.ai-page{--ai-cyan:#13a8f0 !important;--ai-navy:#0f1418 !important;--ai-coral:#f52d3a !important}
+.ai-page .ai-scope{background:#dcebf6;border-color:#b9d8ec}
+.ai-page .ai-context{border-color:#dfe8ed}
+.ai-page .ai-context .status{background:#00b890;box-shadow:0 0 0 4px #d9f4ed}
+.ai-page .ai-scope code,.ai-page .ai-scope button{color:#087fca}
+.ai-page .ai-msg.user .ai-bubble{background:#0f1418;color:#fff}
+.ai-page .ai-msg.assistant .ai-bubble{background:#fff;border-color:#dfe8ed}
+.ai-page .ai-avatar{background:#dcebf6;color:#087fca}
+.ai-page .ai-cite{background:#dcebf6;color:#087fca}
+.ai-page .ai-table th{background:#e6f0f5;color:#53636c}
+.ai-page .ai-table th,.ai-page .ai-table td{border-color:#dfe8ed}
+.ai-page .ai-table td:last-child{color:#087fca}
+.ai-page .ai-prompts button{border-color:#b9d8ec;background:#f5f9fb;color:#087fca}
+.ai-page .ai-composer{background:#f7f9f9;border-color:#dfe8ed}
+.ai-page .ai-composer textarea{background:#fff;color:#0f1418;border-color:#dfe8ed}
+.ai-page .ai-composer textarea:focus{border-color:#12a9f1;box-shadow:0 0 0 2px rgba(18,169,241,.15)}
+.ai-page .ai-send{background:linear-gradient(135deg,#13a8f0,#7c3aed)}
+.ai-page .ai-error{background:#fff3f4;border-left-color:#f52d3a;color:#9d2632}
 /* Typography correction: scoped chat overrides. */
 .ai-context small,.ai-scope code,.ai-avatar,.ai-cite,.ai-table td:last-child{font-family:Menlo,monospace!important}
 .ai-composer textarea{font-family:Montserrat,sans-serif!important}

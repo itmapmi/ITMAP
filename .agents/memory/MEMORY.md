@@ -33,3 +33,4 @@
 - [Security Intelligence mobile boundary](security-intelligence-mobile-boundary.md) — redesign uses a black evidence workspace and must preserve the existing CVE feature set exactly.
 - [RFP Builder mobile boundary](rfp-builder-mobile-boundary.md) — buyer workflow stays black and preserves Projects plus the exact six-step RFP wizard.
 - [Cross-device typography consistency](cross-device-typography.md) — mobile Markets, CVE, and RFP designs must use the desktop ITMAP logo and font system exactly.
+- [Markets desktop palette parity](markets-desktop-palette.md) — mobile Markets must use desktop semantic colors, retaining only data-bearing chart/status colors.

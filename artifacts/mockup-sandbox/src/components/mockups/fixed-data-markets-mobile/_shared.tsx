@@ -64,6 +64,6 @@ export function NotesPopup({note,onClose}:{note:NotePayload|null;onClose:()=>voi
  </div>
 }
 export function Harvey({level}:{level:number}){return <span className="fdm-ball" style={{"--level":level} as CSSProperties} aria-label={`${level} of 4 support`}/> }
-export function Legend(){return <div className="fdm-legend"><span><i style={{background:"#e5ebe4"}}/>0 none</span><span><i style={{background:"#c9a95f"}}/>1 limited</span><span><i style={{background:"#8b9d65"}}/>2 partial</span><span><i style={{background:"#4f8c86"}}/>3 good</span><span><i style={{background:"#087f83"}}/>4 full</span></div>}
+export function Legend(){return <div className="fdm-legend"><span><i style={{background:"#e6e6e6"}}/>0 none</span><span><i style={{background:"#f7b51e"}}/>1 limited</span><span><i style={{background:"#00b890"}}/>2 partial</span><span><i style={{background:"#18bf72"}}/>3 good</span><span><i style={{background:"#13a8f0"}}/>4 full</span></div>}
 export function IconFor({type}:{type:string}){return type==="News"?<Newspaper size={15}/>:type==="Signals"?<Radar size={15}/>:type==="Reports"?<FileText size={15}/>:type==="Ecosystem"?<Network size={15}/>:<BarChart3 size={15}/>}
 export function useDisclosure(initial=false){return useState(initial)}

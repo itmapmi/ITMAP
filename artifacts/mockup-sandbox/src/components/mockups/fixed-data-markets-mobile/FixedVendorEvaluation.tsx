@@ -75,7 +75,7 @@ export function FixedVendorEvaluation() {
               >
                 Viability →
               </text>
-              <text x="335" y="54" fontSize="10" fill="#087f83" fontWeight="700">
+              <text x="335" y="54" fontSize="10" fill="#13a8f0" fontWeight="700">
                 LEADERS
               </text>
               {vendors.map((vendor) => {
@@ -105,7 +105,7 @@ export function FixedVendorEvaluation() {
                       cy={cy}
                       r="7"
                       fill={vendor.color}
-                      stroke="#fffdf8"
+                      stroke="#ffffff"
                       strokeWidth="3"
                     />
                     {isSelected && (
