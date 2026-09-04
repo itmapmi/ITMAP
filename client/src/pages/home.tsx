@@ -531,13 +531,16 @@ function PublicStats() {
   );
 }
 
+// Each tile deep-links into the product. Security Intelligence and the RFP
+// builder sit behind sign-in, so anonymous visitors land on the login page
+// for those two; the four market-centric tiles open the markets list.
 const HERO_FEATURES = [
-  { label: "Access to all markets", icon: <Globe2 className="h-5 w-5" /> },
-  { label: "Real-time vendor maps", icon: <BarChart3 className="h-5 w-5" /> },
-  { label: "In-depth product comparisons", icon: <Layers className="h-5 w-5" /> },
-  { label: "Vendor Intelligence", icon: <TrendingUp className="h-5 w-5" /> },
-  { label: "Security Intelligence", icon: <Shield className="h-5 w-5" /> },
-  { label: "RFP builder", icon: <ClipboardList className="h-5 w-5" /> },
+  { label: "Access to all markets", href: "/markets", icon: <Globe2 className="h-5 w-5" /> },
+  { label: "Real-time vendor maps", href: "/markets", icon: <BarChart3 className="h-5 w-5" /> },
+  { label: "In-depth product comparisons", href: "/markets", icon: <Layers className="h-5 w-5" /> },
+  { label: "Vendor Intelligence", href: "/markets", icon: <TrendingUp className="h-5 w-5" /> },
+  { label: "Security Intelligence", href: "/security", icon: <Shield className="h-5 w-5" /> },
+  { label: "RFP builder", href: "/me/rfps", icon: <ClipboardList className="h-5 w-5" /> },
 ];
 
 function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
@@ -585,12 +588,17 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
           {/* What buyers get */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35 }} className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
             {HERO_FEATURES.map((f) => (
-              <div key={f.label} className="group relative bg-slate-900 border border-white/8 hover:border-cyan-500/40 rounded-2xl p-5 transition-all duration-300 hover:shadow-[0_0_40px_rgba(14,165,233,0.1)]">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/10 flex items-center justify-center mb-3 text-cyan-400 group-hover:text-violet-300 transition-colors">
-                  {f.icon}
+              <Link key={f.label} href={f.href}>
+                <div
+                  className="group relative h-full bg-slate-900 border border-white/8 hover:border-cyan-500/40 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:shadow-[0_0_40px_rgba(14,165,233,0.1)]"
+                  data-testid={`hero-feature-${f.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
+                >
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 border border-white/10 flex items-center justify-center mb-3 text-cyan-400 group-hover:text-violet-300 transition-colors">
+                    {f.icon}
+                  </div>
+                  <p className="text-sm font-semibold text-white leading-snug">{f.label}</p>
                 </div>
-                <p className="text-sm font-semibold text-white leading-snug">{f.label}</p>
-              </div>
+              </Link>
             ))}
           </motion.div>
 
