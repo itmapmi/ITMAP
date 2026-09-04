@@ -4,6 +4,7 @@ import { ExternalLink, Newspaper, Radio, Users } from "lucide-react";
 import { format } from "date-fns";
 import type { NewPlayer, NewsArticle, Vendor } from "@shared/schema";
 import type { SignalData } from "@/components/signal-card";
+import { decodeHtmlEntities } from "@/lib/decode-html-entities";
 import "./mobile-market-intelligence.css";
 
 type IntelligenceTab = "news" | "signals" | "players";
@@ -132,9 +133,9 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
         ) : !signals.data?.data.length ? (
           <EmptyState title="No signals collected yet"><span>Stored signals for this market appear here.</span></EmptyState>
         ) : <div className="mmi-card">{signals.data.data.map(signal => <article className="mmi-item" key={signal.id} style={{ "--mmi-accent": sourceAccents.get(signal.sourceType) || NEUTRAL_ACCENT } as CSSProperties} data-testid={`mmi-signal-${signal.id}`}>
-          <div className="mmi-signal-head"><span className="mmi-source mmi-keyed"><i className="mmi-swatch" aria-hidden="true" />{signal.sourceType}</span><strong>{signal.title}</strong></div>
+          <div className="mmi-signal-head"><span className="mmi-source mmi-keyed"><i className="mmi-swatch" aria-hidden="true" />{signal.sourceType}</span><strong>{decodeHtmlEntities(signal.title)}</strong></div>
           {signal.vendorName && <span className="mmi-label">{signal.vendorName}</span>}
-          {signal.content && <p className="mmi-signal-content">{signal.content}</p>}
+          {signal.content && <p className="mmi-signal-content">{decodeHtmlEntities(signal.content)}</p>}
           {signal.url && <a className="mmi-player-link" href={signal.url} target="_blank" rel="noopener noreferrer">View source <ExternalLink size={12} aria-hidden="true" /></a>}
         </article>)}</div>}
       </div>}

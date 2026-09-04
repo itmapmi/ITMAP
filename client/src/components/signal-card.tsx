@@ -2,6 +2,7 @@ import { ExternalLink, Zap, Briefcase, Code2, Shield, AlertTriangle } from "luci
 import { SiYcombinator, SiReddit, SiGithub } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { decodeHtmlEntities } from "@/lib/decode-html-entities";
 
 export interface SignalData {
   id: string;
@@ -204,10 +205,12 @@ function CveDetails({ rawData, url }: { rawData: any; url: string | null }) {
 
 export function SignalCard({ signal, compact = false, showVendor = false, onCreateSuggestion, onDelete, onViewRaw }: SignalCardProps) {
   const isCve = signal.sourceType === "cve";
-  const excerpt = signal.content
-    ? signal.content.length > 160
-      ? signal.content.slice(0, 160) + "…"
-      : signal.content
+  const title = decodeHtmlEntities(signal.title);
+  const content = decodeHtmlEntities(signal.content);
+  const excerpt = content
+    ? content.length > 160
+      ? content.slice(0, 160) + "…"
+      : content
     : null;
 
   if (compact) {
@@ -224,7 +227,7 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
           )}
           <span className="ml-auto text-[11px] text-gray-400 shrink-0">{relativeTime(signal.collectedAt)}</span>
         </div>
-        <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{signal.title}</p>
+        <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{title}</p>
         {!isCve && excerpt && (
           <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{excerpt}</p>
         )}
@@ -262,7 +265,7 @@ export function SignalCard({ signal, compact = false, showVendor = false, onCrea
         {showVendor && (
           <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">{signal.vendorName}</p>
         )}
-        <p className="text-sm font-semibold text-gray-900 leading-snug">{signal.title}</p>
+        <p className="text-sm font-semibold text-gray-900 leading-snug">{title}</p>
         {excerpt && (
           <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{excerpt}</p>
         )}
