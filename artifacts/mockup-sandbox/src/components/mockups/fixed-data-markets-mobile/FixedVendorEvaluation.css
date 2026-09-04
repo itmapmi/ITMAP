@@ -21,6 +21,78 @@
   overflow: hidden;
 }
 
+.fdm-shell .fdm-chart-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 11px;
+  min-height: 34px;
+}
+
+.fdm-shell .fdm-chart-tools > div {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.fdm-shell .fdm-chart-tools button {
+  min-width: 34px;
+  height: 32px;
+  border: 1px solid #dfe8ed;
+  background: #f5f9fb;
+  color: #087fca;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.fdm-shell .fdm-chart-tools button:active {
+  background: #dcebf6;
+}
+
+.fdm-shell .fdm-chart-hint {
+  color: #778486;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.fdm-shell .fdm-chart-viewport {
+  height: 292px;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  overscroll-behavior: contain;
+  background: #fff;
+  border: 1px solid #dfe8ed;
+  cursor: grab;
+}
+
+.fdm-shell .fdm-chart-viewport:active {
+  cursor: grabbing;
+}
+
+.fdm-shell .fdm-chart-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 760px;
+  height: 547px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.fdm-shell .fdm-chart-layer svg {
+  display: block;
+  width: 760px;
+  height: 547px;
+  max-width: none;
+}
+
 .fdm-shell .fdm-chart-caption {
   width: 100%;
 }
