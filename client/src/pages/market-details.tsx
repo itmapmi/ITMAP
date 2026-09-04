@@ -411,6 +411,62 @@ export default function MarketDetails() {
     );
   }
 
+  if (isLoading && mobileMode) {
+    // Mobile-shaped skeleton: the real chip strip is already in place so the
+    // page doesn't visibly "switch" from a desktop-looking layout once the
+    // market data arrives. Chips are inert until the market has loaded.
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" aria-busy="true">
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="mb-6 space-y-4">
+            <Skeleton className="h-7 w-56" />
+            <div className="mt-3 border border-slate-200 bg-slate-50 p-3 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+            <div className="flex justify-center"><Skeleton className="h-9 w-28 rounded-full" /></div>
+          </div>
+          <div
+            className="sticky top-14 z-30 -mx-4 mb-6 border-b border-slate-200 bg-white/95 backdrop-blur font-[Montserrat]"
+            data-testid="mobile-market-section-strip"
+          >
+            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Market sections">
+              {MOBILE_SECTION_TABS.map(([value, number, label, fullLabel]) => {
+                const active = activeTab === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={fullLabel}
+                    title={fullLabel}
+                    disabled
+                    className={cn(
+                      "flex h-10 shrink-0 items-center gap-2 border px-3 text-xs font-bold whitespace-nowrap",
+                      active ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600"
+                    )}
+                    data-testid={`mobile-section-${value}`}
+                  >
+                    <span className={cn("font-[Menlo] text-[10px]", active ? "text-cyan-300" : "text-sky-600")}>{number}</span>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white via-white/80 to-transparent" />
+          </div>
+          <div className="flex items-center gap-3 mb-4">
+            <LoadingSpinner size="sm" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          {activeTab === "vendor-evaluation" ? <ChartLoading /> : <SkeletonCard lines={6} className="h-80" />}
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -25,7 +25,7 @@ import { PersonaRegistrationForm } from "@/components/persona-registration-form"
 // penalty. Only once they've dismissed it a second time does access actually
 // get restricted — see `GRACE_DISMISS_COUNT` below.
 
-const TEASER_DURATION_MS = 45_000;
+const TEASER_DURATION_MS = 90_000;
 const REOPEN_INTERVAL_MS = 30_000;
 const MAX_AUTO_REOPENS = 3;
 // Number of dismissals granted free access for before restricting. The
