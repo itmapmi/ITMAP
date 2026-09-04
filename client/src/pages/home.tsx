@@ -9,7 +9,7 @@ import { track, trackDwell } from "@/lib/track";
 import { vendorScopePresentation, type VendorScopeResponse } from "@/lib/vendor-scope";
 import { Button } from "@/components/ui/button";
 import { BentoCard } from "@/components/bento-card";
-import type { BentoAccent, BentoSize } from "@/components/bento-card";
+import type { BentoAccent } from "@/components/bento-card";
 import type { Market } from "@shared/schema";
 import type { LockableFeatureKey } from "@shared/features";
 import {
@@ -30,17 +30,6 @@ const fadeUp = {
 };
 
 // ─── Bento config types ──────────────────────────────────────────────────────
-
-interface BentoCfg {
-  label: string;
-  description: string;
-  icon: JSX.Element;
-  href: string;
-  accent: BentoAccent;
-  size?: BentoSize;
-  stat?: string;
-  statLabel?: string;
-}
 
 interface VendorBentoCfg {
   label: string;
@@ -106,14 +95,6 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     href: "/forecast-builder",
     featureKey: "forecast_builder",
     accent: "violet",
-  },
-  {
-    label: "Datasheets",
-    description: "Side-by-side vendor feature comparisons — shareable with prospects.",
-    icon: <Layers className="h-5 w-5" />,
-    href: "/datasheets",
-    featureKey: "datasheets",
-    accent: "cyan",
   },
   {
     label: "Fact Review",
@@ -263,93 +244,75 @@ function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Mar
     staleTime: 30_000,
     retry: false,
   });
-  const { data: savedSheets } = useQuery<any[]>({
-    queryKey: ["/api/me/datasheet-comparisons"],
-    staleTime: 30_000,
-    retry: false,
-  });
-  const buyerBento: BentoCfg[] = [
-    {
-      label: "Markets",
-      description: "Explore AI-scored vendor evaluations across all live IT markets — interactive quadrant maps, feature matrices, news impact and research reports.",
-      icon: <BarChart3 className="h-5 w-5" />,
-      href: "/markets",
-      accent: "cyan",
-      size: "1x2",
-      stat: markets != null ? `${markets.length}` : "—",
-      statLabel: "live markets",
-    },
-    {
-      label: "RFP Builder",
-      description: "Create, manage and send RFPs to vendors with AI assistance.",
-      icon: <ClipboardList className="h-5 w-5" />,
-      href: "/me/rfps",
-      accent: "cyan",
-      stat: rfpStatus != null ? `${rfpStatus.activeCount}` : "—",
-      statLabel: "active RFPs",
-    },
-    {
-      label: "Datasheets",
-      description: "Side-by-side vendor feature comparisons, shareable with your team.",
-      icon: <Layers className="h-5 w-5" />,
-      href: "/datasheets",
-      accent: "violet",
-      stat: savedSheets != null ? `${savedSheets.length}` : "—",
-      statLabel: "saved comparisons",
-    },
-    {
-      label: "Security Intelligence",
-      description: "Track CVE vulnerabilities, CISA KEV alerts and EPSS exploit probability scores across vendors.",
-      icon: <Shield className="h-5 w-5" />,
-      href: "/security",
-      accent: "violet",
-    },
-    {
-      label: "Methodology",
-      description: "How we score and evaluate vendors — transparent, independent criteria.",
-      icon: <BookOpen className="h-5 w-5" />,
-      href: "/platform",
-      accent: "emerald",
-    },
-  ];
 
   return (
-    <div className="min-h-screen bg-[#1e2130]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Welcome header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold">
-              {user?.firstName?.[0] ?? "U"}
-            </div>
-            <span className="text-slate-400 text-sm">Welcome back, <span className="text-white font-medium">{user?.firstName}</span></span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-1">Your Intelligence Dashboard</h1>
-          <p className="text-slate-400">All platform features are unlocked for your account.</p>
-        </motion.div>
-
-        {/* Config-driven bento grid */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-          {buyerBento.map((card) => (
-            <BentoCard key={card.label} {...card} />
-          ))}
-        </motion.div>
-
-        {/* Market grid */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen overflow-hidden bg-[#1e2130]">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-11 lg:px-8">
+        <motion.header initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="relative mb-8 overflow-hidden rounded-3xl border border-cyan-300/10 bg-slate-900 px-6 py-7 sm:px-9 sm:py-9">
+          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="absolute right-24 top-0 h-full w-px bg-gradient-to-b from-transparent via-violet-400/20 to-transparent" />
+          <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <SectionLabel accent="cyan">Live Markets</SectionLabel>
-              <h2 className="text-2xl font-bold text-white">Explore Markets</h2>
+              <div className="mb-3 flex items-center gap-2.5 text-sm text-slate-400">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10 text-xs font-bold text-cyan-300">{user?.firstName?.[0] ?? "U"}</span>
+                Intelligence workspace
+              </div>
+              <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">Make the next technology decision with evidence.</h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">Welcome back{user?.firstName ? `, ${user.firstName}` : ""}. Start with the market, build the request, and keep security context close.</p>
             </div>
-            <Link href="/markets">
-              <Button variant="outline" size="sm" className="border-white/10 text-slate-300 hover:text-white hover:border-white/20 bg-transparent">
-                View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
+            <div className="grid grid-cols-2 divide-x divide-white/10 self-start overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 lg:self-auto">
+              <div className="min-w-[130px] px-5 py-3.5">
+                <p className="text-2xl font-bold tabular-nums text-cyan-300">{markets != null ? markets.length : "—"}</p>
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Live markets</p>
+              </div>
+              <div className="min-w-[130px] px-5 py-3.5">
+                <p className="text-2xl font-bold tabular-nums text-violet-300">{rfpStatus != null ? rfpStatus.activeCount : "—"}</p>
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Active RFPs</p>
+              </div>
+            </div>
+          </div>
+        </motion.header>
+
+        <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.08 }} className="mb-12">
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <SectionLabel accent="cyan">Decision tools</SectionLabel>
+              <h2 className="text-xl font-bold text-white sm:text-2xl">Your research workflow</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12">
+            <Link href="/markets" className="group relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/15 via-slate-900 to-slate-900 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-400/40 lg:col-span-5">
+              <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-400/10 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+              <div className="relative flex h-full min-h-[155px] flex-col">
+                <div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300"><BarChart3 className="h-5 w-5" /></div><ArrowRight className="h-5 w-5 text-cyan-300 transition-transform duration-200 group-hover:translate-x-1" /></div>
+                <div className="mt-auto"><p className="text-lg font-semibold text-white">Markets</p><p className="mt-1 max-w-sm text-sm leading-relaxed text-slate-400">Evaluate vendors through live market research, product context and signals.</p></div>
+              </div>
             </Link>
+            <Link href="/me/rfps" className="group rounded-2xl border border-white/10 bg-slate-900 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400/35 lg:col-span-4">
+              <div className="flex h-full min-h-[155px] flex-col"><div className="flex items-start justify-between"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><ClipboardList className="h-5 w-5" /></div><ArrowRight className="h-4 w-4 text-slate-500 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-violet-300" /></div><div className="mt-auto"><p className="font-semibold text-white">RFP Builder</p><p className="mt-1 text-sm leading-relaxed text-slate-400">Create, manage and send vendor requests.</p></div></div>
+            </Link>
+            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-1">
+              <Link href="/security" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 transition-all duration-300 hover:border-violet-400/35">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300"><Shield className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">Security Intelligence</p><p className="truncate text-xs text-slate-500">Vulnerabilities and alerts</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-violet-300" />
+              </Link>
+              <Link href="/platform" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 transition-all duration-300 hover:border-emerald-400/35">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300"><BookOpen className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-white">Methodology</p><p className="truncate text-xs text-slate-500">How ITMAP evaluates</p></div><ChevronRight className="ml-auto h-4 w-4 text-slate-600 group-hover:text-emerald-300" />
+              </Link>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.16 }}>
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <SectionLabel accent="cyan">Research coverage</SectionLabel>
+              <h2 className="text-2xl font-bold text-white">Live markets</h2>
+              <p className="mt-1 text-sm text-slate-500">Current market intelligence ready for review.</p>
+            </div>
+            <Link href="/markets" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-cyan-400/30 hover:text-white sm:inline-flex">View all <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
           <MarketGrid markets={markets} isLoading={isLoading} />
-        </motion.div>
+        </motion.section>
       </div>
     </div>
   );

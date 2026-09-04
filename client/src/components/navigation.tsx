@@ -87,7 +87,6 @@ export default function Navigation() {
   const buyerNavItems = [
     { href: "/markets", label: "Markets" },
     { href: "/me/rfps", label: "RFP Builder" },
-    { href: "/datasheets", label: "Datasheets" },
     { href: "/security", label: "Security Intelligence" },
     { href: "/platform", label: "Methodology" },
   ];
@@ -102,11 +101,10 @@ export default function Navigation() {
     { href: "/lead-gen/me", label: "Lead Generator", featureKey: "lead_gen" },
     { href: "/rfp-responder", label: "RFP Responder", featureKey: "rfp" },
     { href: "/battle-cards", label: "Battle Cards", featureKey: "battle_cards" },
-    { href: "/datasheets", label: "Datasheets", featureKey: "datasheets" },
     { href: "/security", label: "Security Intelligence", featureKey: "cve_intelligence" },
   ];
 
-  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/datasheets") || location.startsWith("/lead-gen/me") || location.startsWith("/security");
+  const isToolsActive = location.startsWith("/rfp-responder") || location.startsWith("/battle-cards") || location.startsWith("/lead-gen/me") || location.startsWith("/security");
   const isIntelligenceActive = isForecastBuilderActive || isMarketBuilderActive;
   const intelligenceAllLocked = intelligenceItems.every(i => !hasFeature(i.featureKey));
   const toolsAllLocked = toolsItems.every(i => !hasFeature(i.featureKey));
