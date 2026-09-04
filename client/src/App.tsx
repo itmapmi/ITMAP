@@ -57,6 +57,35 @@ import { captureRedditClickId, trackRedditPageVisit } from "@/lib/reddit-pixel";
 import { TeaserGateProvider } from "@/hooks/use-registration-teaser";
 import { VerificationBlockScreen, VerificationReminderDialog, usePendingVerificationBlock } from "@/components/email-verification-gate";
 import { PENDING_VERIFICATION_KEY } from "@/hooks/useAuth";
+import { VIEW_MODE_COOKIE, readCookieValue, resolveMobileRedirect } from "@shared/mobile-paths";
+
+/**
+ * Client-side mirror of server/mobileRedirect.ts. The server only sees cold
+ * page loads and hard refreshes; every in-app tap (dashboard → market card,
+ * nav → Security Intelligence, → RFP Builder, ...) is routed by wouter and
+ * never leaves the browser. Without this, a phone user who arrived on the
+ * home page could tap through the whole app and only ever see the desktop
+ * pages. Returns the /mobile/* path the current location should become, or
+ * null when the current location is already correct.
+ */
+function useMobileRedirectTarget(location: string): string | null {
+  if (typeof document === "undefined") return null;
+  return resolveMobileRedirect(
+    location,
+    readCookieValue(document.cookie, VIEW_MODE_COOKIE),
+    navigator.userAgent,
+  );
+}
+
+function MobileRouteGuard({ target }: { target: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    // `replace` so the desktop URL never lands in history — otherwise Back
+    // would bounce straight into another redirect.
+    navigate(target + window.location.search + window.location.hash, { replace: true });
+  }, [navigate, target]);
+  return null;
+}
 
 function TrafficPageTracker() {
   const [location] = useLocation();
@@ -118,6 +147,13 @@ function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const pendingBlock = usePendingVerificationBlock();
   const [location] = useLocation();
+  const mobileRedirectTarget = useMobileRedirectTarget(location);
+
+  // Decided before anything else renders so the desktop page never mounts
+  // (and never fires its queries / page-view tracking) on a phone.
+  if (mobileRedirectTarget) {
+    return <MobileRouteGuard target={mobileRedirectTarget} />;
+  }
 
   if (isLoading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;

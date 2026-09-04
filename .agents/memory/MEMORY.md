@@ -27,7 +27,7 @@
 - [Preview iframe session cookies](preview-iframe-session-cookies.md) — Replit preview pane is a cross-site iframe; Lax/unpartitioned cookies never persist there, causing a fake "reload loop" that isn't a real app bug.
 - [Admin session death — ruled out, real cause elsewhere](admin-session-death-investigation.md) — "spontaneous session swap" was a real logout/login account switch; not a bug. See wouter-route-remount-flicker.md for the actual periodic-reload cause.
 - [Wouter inline component prop remount flicker](wouter-route-remount-flicker.md) — `component={() => <.../>}` in a Route gets a new identity every parent re-render, forcing a full remount; use the children-function form instead.
-- [Mobile route-flag architecture](mobile-route-flag-architecture.md) — structural mobile UI gates on explicit `mobileMode` (from `/mobile/...` URL), not the viewport `useIsMobile()` hook; tsc catches scope bugs HMR misses.
+- [Mobile route-flag architecture](mobile-route-flag-architecture.md) — structural mobile UI gates on explicit `mobileMode` (from `/mobile/...` URL); the redirect rule must run on BOTH server and client router, and be verified via real tap paths, not direct URL loads.
 - [Markets fixed-data UI boundary](markets-fixed-data-ui-boundary.md) — Markets UX may reorganize stored evidence, but must not invent journeys, summaries, rankings, or on-the-fly data.
 - [Markets AI chat grounding](markets-ai-chat-grounding.md) — AI chat is the exception to static presentation: generated answers must remain strictly grounded in stored market evidence.
 - [Security Intelligence mobile boundary](security-intelligence-mobile-boundary.md) — redesign uses a black evidence workspace and must preserve the existing CVE feature set exactly.

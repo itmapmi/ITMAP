@@ -14,6 +14,13 @@ The app has two ways to detect "mobile":
 
 **How to apply:** Server-side UA sniffing + a `view_mode` cookie (no `cookie-parser` dep — parsed manually in `server/`) redirect phone visitors into `/mobile/...`; a manual toggle lets users cross either way, cookie persists the choice. Path-scope/translation logic for what counts as an in-scope route lives in `shared/mobile-paths.ts`. Pages compute `mobileMode` from `location` (wouter) and pass it down as a prop; leaf components that need it declare `mobileMode?: boolean` in props and **must actually destructure it** in the function signature — a prop declared in the interface but missing from the destructured parameters compiles fine at the call site but throws `Cannot find name` at every use inside the component (hit this in `magic-quadrant.tsx`; caught only by `tsc --noEmit`, not Vite HMR).
 
+## Pitfall: a server-only redirect never fires on SPA taps (Sept 2026 incident)
+The `/mobile/...` redirect originally lived only in Express middleware. That only sees cold loads and hard refreshes; every in-app tap (dashboard → market card, nav → Security, → RFP Builder) is handled by wouter with no server round-trip, so phone users who entered on the home page saw the OLD desktop UI on every redesigned page — across two republishes — while direct `/mobile/...` loads (which is all that had been verified) looked fine.
+
+**Rule:** the mobile-vs-desktop decision is `resolveMobileRedirect()` in `shared/mobile-paths.ts` and BOTH the server middleware and the client `Router` (a guard rendered before the `<Switch>`, navigating with `replace`) must call it. Never add a routing rule to only one side.
+
+**Verification lesson:** for any URL-based experience switch, test the *entry path a real user takes* (land on an out-of-scope page, then tap) in a phone-UA headless browser — not just direct loads of the target URL.
+
 ## Pitfall: HMR does not catch scope/type errors
 Vite's dev server will happily hot-reload a component that references an undefined identifier used only inside JSX conditionals not hit by the current render path — the browser stays clean until that branch renders. Always run `tsc --noEmit` (or equivalent) across touched files before declaring a session done; don't rely solely on "no HMR/browser console errors so far."
 

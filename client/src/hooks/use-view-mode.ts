@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { useLocation } from "wouter";
-import { isMobileEligiblePath, isMobileRoutePath, toDesktopPath, toMobilePath } from "@shared/mobile-paths";
+import { VIEW_MODE_COOKIE, isMobileEligiblePath, isMobileRoutePath, toDesktopPath, toMobilePath } from "@shared/mobile-paths";
 
-const COOKIE_NAME = "view_mode";
+const COOKIE_NAME = VIEW_MODE_COOKIE;
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 function setViewModeCookie(mode: "mobile" | "desktop") {
