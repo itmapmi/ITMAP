@@ -697,13 +697,13 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         </CardContent>
 
         <Dialog open={!!selectedNotes} onOpenChange={(open) => !open && setSelectedNotes(null)}>
-          <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-none border-[#d6dcd6] p-0">
+          <DialogContent className="flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md flex-col gap-0 overflow-hidden rounded-none border-[#d6dcd6] p-0">
             <DialogHeader className="border-b border-[#d6dcd6] bg-[#f4f5ef] px-4 py-4 pr-12">
               <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#16877c]">Evaluation notes</p>
               <DialogTitle className="text-left text-base text-[#18394b]">{selectedNotes?.featureName}</DialogTitle>
             </DialogHeader>
             {selectedNotes && (
-              <div className="min-h-0 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="ecosystem-notes-body">
                 <div className="grid grid-cols-2 border-b border-[#d6dcd6] px-4">
                   <div className="py-3 pr-2">
                     <span className="font-mono text-[9px] font-bold uppercase text-[#7a8787]">Vendor</span>
