@@ -71,11 +71,21 @@ function ensureStarted(): void {
   if (started || typeof window === "undefined") return;
   started = true;
   flushTimer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
-  // Flush remaining events when the tab is hidden / unloaded.
+  // When the tab is hidden / unloaded, close out any open dwell segments first
+  // so single-page visits (land → read → close tab) still record time spent,
+  // then flush everything with a beacon.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void flush(true);
+    if (document.visibilityState === "hidden") {
+      pauseActiveDwells();
+      void flush(true);
+    } else if (document.visibilityState === "visible") {
+      resumeActiveDwells();
+    }
   });
-  window.addEventListener("pagehide", () => void flush(true));
+  window.addEventListener("pagehide", () => {
+    pauseActiveDwells();
+    void flush(true);
+  });
 }
 
 function currentTrafficContext(): Pick<
@@ -156,11 +166,47 @@ export function trackPageView(): void {
 export function trackDwell(
   context: { marketId?: string | null; vendorId?: string | null; metadata?: Record<string, unknown> },
 ): () => void {
-  const start = Date.now();
+  ensureStarted();
+  const session: DwellSession = { context, segmentStart: Date.now() };
+  ACTIVE_DWELLS.add(session);
   return () => {
-    const durationMs = Date.now() - start;
-    // Ignore trivially short views (likely accidental navigations).
-    if (durationMs < 1500) return;
-    track("page_dwell", { ...context, durationMs });
+    ACTIVE_DWELLS.delete(session);
+    emitDwellSegment(session);
   };
+}
+
+// ── Dwell bookkeeping ────────────────────────────────────────────────────────
+// Dwell is recorded as one or more segments: time between mount and unmount,
+// split wherever the tab goes hidden. Emitting a segment on `hidden` is what
+// makes time spent visible for visitors who leave without navigating inside
+// the app (the unmount callback never runs when a tab is closed). The server
+// sums segments per visitor.
+
+interface DwellSession {
+  context: { marketId?: string | null; vendorId?: string | null; metadata?: Record<string, unknown> };
+  /** Start of the current open segment, or null while the tab is hidden. */
+  segmentStart: number | null;
+}
+
+const ACTIVE_DWELLS = new Set<DwellSession>();
+// Ignore trivially short segments (accidental navigations, quick tab flips).
+const MIN_DWELL_SEGMENT_MS = 1500;
+
+function emitDwellSegment(session: DwellSession): void {
+  if (session.segmentStart === null) return;
+  const durationMs = Date.now() - session.segmentStart;
+  session.segmentStart = null;
+  if (durationMs < MIN_DWELL_SEGMENT_MS) return;
+  track("page_dwell", { ...session.context, durationMs });
+}
+
+function pauseActiveDwells(): void {
+  ACTIVE_DWELLS.forEach((session) => emitDwellSegment(session));
+}
+
+function resumeActiveDwells(): void {
+  const now = Date.now();
+  ACTIVE_DWELLS.forEach((session) => {
+    if (session.segmentStart === null) session.segmentStart = now;
+  });
 }
