@@ -99,6 +99,8 @@ export interface IStorage {
   updateCompanyProfile(id: string, updates: { companyName: string; designation: string; companyEmail: string }): Promise<User>;
   setCompanyEmailVerificationToken(id: string, token: string): Promise<User>;
   verifyCompanyEmail(id: string, token: string, companyEmail: string): Promise<User | undefined>;
+  markCompanyEmailVerifiedByAdmin(id: string): Promise<User | undefined>;
+  clearCompanyEmail(id: string): Promise<User>;
   updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User>;
 
   getAllMarkets(): Promise<Market[]>;

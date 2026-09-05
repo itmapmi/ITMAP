@@ -6,11 +6,11 @@ import { sql, eq } from "drizzle-orm";
 import { requireAdmin, canStartUnverifiedSession } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
-import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
+import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, type User } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
 import { calculateDerivedFeatureScore, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 import { sendVerificationEmail, sendCustomEmail } from "../emailService";
-import { issueAndSendVerification } from "./auth";
+import { issueAndSendVerification, issueAndSendCompanyVerification } from "./auth";
 
 interface CollectionLogEntry {
   id: string;
@@ -207,6 +207,79 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error updating user vendor scope:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update vendor scope" });
+    }
+  });
+
+  // ── Company-profile verification (support overrides) ─────────────────────
+  // The self-service flow (server/routes/me.ts) is token-bound and
+  // cooldown-limited; these admin actions bypass both so support can fix
+  // "the link never arrived" / "wrong company email" without a DB edit.
+  // Every response echoes the same row shape as GET /api/admin/users so the
+  // client can merge it in place.
+  const adminUserView = (u: User) => {
+    const rest = toPublicUser(u);
+    return { ...rest, verificationLocked: isVerificationLocked(rest), factReviewEnabled: hasFactReviewAccess(rest) };
+  };
+
+  app.post("/api/admin/users/:id/company-email/verify", requireAdmin, async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (!target.companyEmail) return res.status(400).json({ error: "This user has no company email to verify." });
+      if (target.companyEmailVerified) return res.status(400).json({ error: "This company email is already verified." });
+
+      const holder = await storage.getUserWithVerifiedCompanyEmail(target.companyEmail);
+      if (holder && holder.id !== target.id) {
+        return res.status(409).json({ error: `This company email is already verified on another account (${holder.email}).` });
+      }
+
+      let updated;
+      try {
+        updated = await storage.markCompanyEmailVerifiedByAdmin(target.id);
+      } catch (err: any) {
+        if (err?.code === "23505") {
+          return res.status(409).json({ error: "This company email is already verified on another account." });
+        }
+        throw err;
+      }
+      if (!updated) return res.status(400).json({ error: "This user has no company email to verify." });
+      res.json(adminUserView(updated));
+    } catch (error) {
+      console.error("Error marking company email verified:", error);
+      res.status(500).json({ error: "Failed to mark company email verified" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/company-email/clear", requireAdmin, async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (!target.companyEmail) return res.status(400).json({ error: "This user has no company email set." });
+      const updated = await storage.clearCompanyEmail(target.id);
+      res.json(adminUserView(updated));
+    } catch (error) {
+      console.error("Error clearing company email:", error);
+      res.status(500).json({ error: "Failed to clear company email" });
+    }
+  });
+
+  // Admin-triggered, so the per-account 60s self-service cooldown doesn't
+  // apply (same policy as the account-verification reminder below).
+  app.post("/api/admin/users/:id/company-email/resend", requireAdmin, async (req, res) => {
+    try {
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (!target.companyEmail) return res.status(400).json({ error: "This user has no company email to verify." });
+      if (target.companyEmailVerified) return res.status(400).json({ error: "This company email is already verified." });
+
+      const sent = await issueAndSendCompanyVerification(target.id, target.companyEmail, target.companyName ?? null);
+      if (!sent) return res.status(502).json({ error: "Could not send the verification email. Please try again shortly." });
+
+      const current = await storage.getUser(target.id);
+      res.json({ sent: true, ...adminUserView(current ?? target) });
+    } catch (error) {
+      console.error("Error resending company verification:", error);
+      res.status(500).json({ error: "Failed to resend company verification email" });
     }
   });
 

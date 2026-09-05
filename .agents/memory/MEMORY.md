@@ -38,3 +38,4 @@
 - [Mobile mockup graduation fidelity](mobile-mockup-graduation-fidelity.md) — approved mobile designs require complete production branches, not partial restyling of desktop UI.
 - [Google OAuth callback host + signup marker](google-oauth-callback-host.md) — derive callback from request host (PUBLIC_BASE_URL is prod even in dev); new-account signal lives in session, not URL; email_verified must be exactly true.
 - [Company-email profile gate](company-email-gate.md) — gate lives inside requireFeature after RBAC; client matches `company_email_required` in error text; unverified claims are not unique.
+- [Admin company-email overrides](admin-company-email-overrides.md) — support actions need dedicated token-free storage fns; keep the unique-index guard; curl admin routes via HTTPS dev domain (Secure cookie).

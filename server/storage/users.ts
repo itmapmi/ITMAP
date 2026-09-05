@@ -194,6 +194,41 @@ export async function verifyCompanyEmail(id: string, token: string, companyEmail
   return updated;
 }
 
+/**
+ * Admin override of the emailed link: flips the flag for whatever company
+ * address is currently on the row (no token needed) and voids any pending
+ * link. Returns undefined when the account has no company email to verify.
+ * Throws the Postgres unique-violation (code 23505) if the address is
+ * already verified on another account — the same DB constraint that guards
+ * the self-service path.
+ */
+export async function markCompanyEmailVerifiedByAdmin(id: string): Promise<User | undefined> {
+  const [updated] = await db
+    .update(users)
+    .set({ companyEmailVerified: true, companyEmailVerificationToken: null, updatedAt: new Date() })
+    .where(and(eq(users.id, id), sql`${users.companyEmail} IS NOT NULL`))
+    .returning();
+  return updated;
+}
+
+// Admin support action: drop the company email and every trace of its
+// verification so the user can enter the right address from scratch.
+// Company name and designation are left alone.
+export async function clearCompanyEmail(id: string): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({
+      companyEmail: null,
+      companyEmailVerified: false,
+      companyEmailVerificationToken: null,
+      companyEmailVerificationSentAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 export async function updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User> {
   const [updated] = await db
     .update(users)

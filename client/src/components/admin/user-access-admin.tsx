@@ -35,7 +35,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Mail, Clock, X, Building2, CheckCircle2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Trash2, Mail, Clock, X, Building2, CheckCircle2, MoreHorizontal, ShieldCheck, Send, Eraser,
+  ArrowUpDown, ArrowUp, ArrowDown,
+} from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -46,6 +57,23 @@ type AdminUser = Omit<User, "password">;
 
 type FilterTab = "all" | "invited" | "active";
 type PersonaFilter = "all" | "buyer" | "vendor";
+// Company-email verification state. "none" = no company email on file yet.
+type VerificationFilter = "all" | "verified" | "unverified" | "none";
+type VerificationSort = "none" | "verified-first" | "unverified-first";
+
+type CompanyEmailAction = "verify" | "clear" | "resend";
+
+function verificationState(u: AdminUser): Exclude<VerificationFilter, "all"> {
+  if (!u.companyEmail) return "none";
+  return u.companyEmailVerified ? "verified" : "unverified";
+}
+
+// Sort rank per direction: the requested state first, the other state next,
+// accounts with no company email always last.
+const VERIFICATION_RANK: Record<Exclude<VerificationSort, "none">, Record<Exclude<VerificationFilter, "all">, number>> = {
+  "verified-first": { verified: 0, unverified: 1, none: 2 },
+  "unverified-first": { unverified: 0, verified: 1, none: 2 },
+};
 
 const stripMarket = (name: string | null | undefined) =>
   (name ?? "").replace(/^ITMAP for /i, "");
@@ -177,6 +205,141 @@ function VendorScopePicker({ user, vendors, markets, onSave, isPending }: Vendor
   );
 }
 
+// ── Company-profile cell ────────────────────────────────────────────────────
+// Read-only summary plus the support overrides (mark verified / resend /
+// clear). Clearing is confirmed first since it drops the address entirely.
+function CompanyProfileCell({
+  user,
+  onAction,
+  isPending,
+}: {
+  user: AdminUser;
+  onAction: (action: CompanyEmailAction) => void;
+  isPending: boolean;
+}) {
+  const [confirmClear, setConfirmClear] = useState(false);
+  const hasEmail = !!user.companyEmail;
+  const verified = !!user.companyEmailVerified;
+  const hasProfile = !!(user.companyName || user.companyEmail || user.designation);
+
+  return (
+    <div className="flex items-start justify-between gap-2">
+      {hasProfile ? (
+        <div className="flex flex-col gap-0.5 text-xs min-w-0">
+          {(user.companyName || user.designation) && (
+            <span className="text-gray-900 font-medium flex items-center gap-1">
+              <Building2 className="h-3 w-3 text-gray-400 shrink-0" />
+              {user.companyName ?? "—"}
+              {user.designation && <span className="text-gray-500 font-normal">· {user.designation}</span>}
+            </span>
+          )}
+          {user.companyEmail && (
+            <span className="flex items-center gap-1 text-gray-500 flex-wrap">
+              <span className="truncate">{user.companyEmail}</span>
+              {verified ? (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0 text-[10px] font-semibold text-emerald-700"
+                  data-testid={`badge-company-verified-${user.id}`}
+                >
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Verified
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0 text-[10px] font-semibold text-amber-700"
+                  data-testid={`badge-company-unverified-${user.id}`}
+                >
+                  Unverified
+                </span>
+              )}
+            </span>
+          )}
+          {!verified && user.companyEmailVerificationSentAt && (
+            <span className="text-[10px] text-gray-400">
+              Link sent {formatRelativeTime(new Date(user.companyEmailVerificationSentAt))}
+            </span>
+          )}
+        </div>
+      ) : (
+        <span className="text-xs text-gray-400">—</span>
+      )}
+
+      {hasEmail && (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 text-gray-400 hover:text-gray-700"
+                disabled={isPending}
+                aria-label="Company email actions"
+                data-testid={`button-company-actions-${user.id}`}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs font-normal text-gray-500 truncate">
+                {user.companyEmail}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={verified}
+                onSelect={() => onAction("verify")}
+                data-testid={`menu-company-verify-${user.id}`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                Mark verified
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={verified}
+                onSelect={() => onAction("resend")}
+                data-testid={`menu-company-resend-${user.id}`}
+              >
+                <Send className="h-3.5 w-3.5 mr-2 text-gray-500" />
+                Resend verification
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-700"
+                onSelect={() => setConfirmClear(true)}
+                data-testid={`menu-company-clear-${user.id}`}
+              >
+                <Eraser className="h-3.5 w-3.5 mr-2" />
+                Clear company email
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear this company email?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes <strong>{user.companyEmail}</strong> from the account
+                  {verified ? " and revokes its verified status" : " and voids any pending verification link"}.
+                  Company name and designation are kept. The user will need to enter a company
+                  email and verify it again before gated features unlock.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onAction("clear")}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  data-testid={`button-confirm-clear-company-${user.id}`}
+                >
+                  Clear company email
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Access-control cell ─────────────────────────────────────────────────────
 function AccessControlCell({
   user,
@@ -293,6 +456,8 @@ export function UserAccessAdmin() {
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [personaFilter, setPersonaFilter] = useState<PersonaFilter>("all");
+  const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>("all");
+  const [verificationSort, setVerificationSort] = useState<VerificationSort>("none");
 
   const { data: users, isLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
@@ -401,6 +566,53 @@ export function UserAccessAdmin() {
     },
   });
 
+  const companyEmailMutation = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: CompanyEmailAction }) =>
+      apiRequestJson(`/api/admin/users/${id}/company-email/${action}`, "POST"),
+    onSuccess: (updated: any, { action }) => {
+      queryClient.setQueryData<AdminUser[]>(["/api/admin/users"], (old) =>
+        (old ?? []).map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
+      );
+      toast({
+        title:
+          action === "verify" ? "Company email marked verified"
+          : action === "clear" ? "Company email cleared"
+          : "Verification email sent",
+        description: action === "resend" ? `A fresh link was sent to ${updated.companyEmail}.` : undefined,
+      });
+    },
+    onError: (err: Error, { action }) => {
+      // apiRequest throws "<status>: <body>" — surface the server's message.
+      let detail = err.message;
+      try {
+        const body = JSON.parse(detail.replace(/^\d+:\s*/, ""));
+        if (body?.error) detail = body.error;
+      } catch { /* keep raw message */ }
+      toast({
+        title:
+          action === "verify" ? "Could not mark verified"
+          : action === "clear" ? "Could not clear company email"
+          : "Could not resend verification",
+        description: detail,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+  });
+
+  const verificationCounts = useMemo(() => {
+    const counts = { verified: 0, unverified: 0, none: 0 };
+    for (const u of users ?? []) counts[verificationState(u)]++;
+    return counts;
+  }, [users]);
+
+  const cycleVerificationSort = () =>
+    setVerificationSort((s) =>
+      s === "none" ? "unverified-first" : s === "unverified-first" ? "verified-first" : "none",
+    );
+
   const filtered = useMemo(() => {
     const list = users ?? [];
     const q = search.trim().toLowerCase();
@@ -419,22 +631,39 @@ export function UserAccessAdmin() {
         ? tabFiltered
         : tabFiltered.filter((u) => u.persona === personaFilter);
 
-    // Apply text search
-    const searched = q
-      ? personaFiltered.filter((u) => {
-          const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
-          return name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
-        })
-      : personaFiltered;
+    // Apply company-email verification filter
+    const verificationFiltered =
+      verificationFilter === "all"
+        ? personaFiltered
+        : personaFiltered.filter((u) => verificationState(u) === verificationFilter);
 
-    // Sort: invited placeholders first, then by createdAt desc
+    // Apply text search (name, login email, company name / email)
+    const searched = q
+      ? verificationFiltered.filter((u) => {
+          const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
+          return (
+            name.includes(q) ||
+            (u.email ?? "").toLowerCase().includes(q) ||
+            (u.companyName ?? "").toLowerCase().includes(q) ||
+            (u.companyEmail ?? "").toLowerCase().includes(q)
+          );
+        })
+      : verificationFiltered;
+
+    // Sort: explicit verification sort when chosen; otherwise invited
+    // placeholders first, then the server order (createdAt desc).
     return [...searched].sort((a, b) => {
+      if (verificationSort !== "none") {
+        const rank = VERIFICATION_RANK[verificationSort];
+        const diff = rank[verificationState(a)] - rank[verificationState(b)];
+        if (diff !== 0) return diff;
+      }
       const aInvited = !!a.invitedAt;
       const bInvited = !!b.invitedAt;
       if (aInvited !== bInvited) return aInvited ? -1 : 1;
       return 0;
     });
-  }, [users, search, filterTab, personaFilter]);
+  }, [users, search, filterTab, personaFilter, verificationFilter, verificationSort]);
 
   const toggleFeature = (user: AdminUser, key: LockableFeatureKey, enabled: boolean) => {
     const current = (user.featureAccess ?? []) as string[];
@@ -501,27 +730,62 @@ export function UserAccessAdmin() {
           ))}
         </div>
 
-        {/* Persona filter pills */}
-        <div className="flex items-center gap-1.5 pb-1">
-          <span className="text-xs text-gray-500 mr-0.5">Persona:</span>
-          {(["all", "buyer", "vendor"] as PersonaFilter[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPersonaFilter(p)}
-              data-testid={`pill-persona-${p}`}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                personaFilter === p
-                  ? p === "buyer"
-                    ? "bg-cyan-100 border-cyan-300 text-cyan-800"
-                    : p === "vendor"
-                    ? "bg-violet-100 border-violet-300 text-violet-800"
-                    : "bg-gray-200 border-gray-300 text-gray-800"
-                  : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              {p === "all" ? "All" : p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
+        <div className="flex items-center gap-4 flex-wrap pb-1">
+          {/* Persona filter pills */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 mr-0.5">Persona:</span>
+            {(["all", "buyer", "vendor"] as PersonaFilter[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPersonaFilter(p)}
+                data-testid={`pill-persona-${p}`}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  personaFilter === p
+                    ? p === "buyer"
+                      ? "bg-cyan-100 border-cyan-300 text-cyan-800"
+                      : p === "vendor"
+                      ? "bg-violet-100 border-violet-300 text-violet-800"
+                      : "bg-gray-200 border-gray-300 text-gray-800"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {p === "all" ? "All" : p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Company-email verification filter pills */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 mr-0.5">Company email:</span>
+            {(
+              [
+                { key: "all", label: "All", count: null },
+                { key: "verified", label: "Verified", count: verificationCounts.verified },
+                { key: "unverified", label: "Unverified", count: verificationCounts.unverified },
+                { key: "none", label: "Not set", count: verificationCounts.none },
+              ] as { key: VerificationFilter; label: string; count: number | null }[]
+            ).map((v) => (
+              <button
+                key={v.key}
+                onClick={() => setVerificationFilter(v.key)}
+                data-testid={`pill-verification-${v.key}`}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors inline-flex items-center gap-1.5 ${
+                  verificationFilter === v.key
+                    ? v.key === "verified"
+                      ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                      : v.key === "unverified"
+                      ? "bg-amber-100 border-amber-300 text-amber-800"
+                      : "bg-gray-200 border-gray-300 text-gray-800"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {v.label}
+                {v.count !== null && (
+                  <span className="text-[10px] tabular-nums opacity-70">{v.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -531,7 +795,32 @@ export function UserAccessAdmin() {
             <TableRow>
               <TableHead className="min-w-[200px]">User</TableHead>
               <TableHead className="whitespace-nowrap">Persona</TableHead>
-              <TableHead className="min-w-[200px] whitespace-nowrap">Company profile</TableHead>
+              <TableHead className="min-w-[240px] whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={cycleVerificationSort}
+                  className={`inline-flex items-center gap-1 hover:text-gray-900 ${
+                    verificationSort !== "none" ? "text-gray-900" : ""
+                  }`}
+                  title={
+                    verificationSort === "none"
+                      ? "Sort by verification status"
+                      : verificationSort === "unverified-first"
+                      ? "Unverified first — click for verified first"
+                      : "Verified first — click to clear sort"
+                  }
+                  data-testid="button-sort-verification"
+                >
+                  Company profile
+                  {verificationSort === "none" ? (
+                    <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                  ) : verificationSort === "unverified-first" ? (
+                    <ArrowDown className="h-3 w-3 text-amber-600" />
+                  ) : (
+                    <ArrowUp className="h-3 w-3 text-emerald-600" />
+                  )}
+                </button>
+              </TableHead>
               {LOCKABLE_FEATURES.map((f) => (
                 <TableHead key={f.key} className="text-center whitespace-nowrap">
                   {f.label}
@@ -601,33 +890,13 @@ export function UserAccessAdmin() {
                       )}
                     </TableCell>
                     <TableCell data-testid={`cell-company-${user.id}`}>
-                      {user.companyName || user.companyEmail || user.designation ? (
-                        <div className="flex flex-col gap-0.5 text-xs">
-                          {(user.companyName || user.designation) && (
-                            <span className="text-gray-900 font-medium flex items-center gap-1">
-                              <Building2 className="h-3 w-3 text-gray-400" />
-                              {user.companyName ?? "—"}
-                              {user.designation && <span className="text-gray-500 font-normal">· {user.designation}</span>}
-                            </span>
-                          )}
-                          {user.companyEmail && (
-                            <span className="flex items-center gap-1 text-gray-500">
-                              {user.companyEmail}
-                              {user.companyEmailVerified ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0 text-[10px] font-semibold text-emerald-700">
-                                  <CheckCircle2 className="h-2.5 w-2.5" /> Verified
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0 text-[10px] font-semibold text-amber-700">
-                                  Unverified
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
+                      <CompanyProfileCell
+                        user={user}
+                        isPending={
+                          companyEmailMutation.isPending && companyEmailMutation.variables?.id === user.id
+                        }
+                        onAction={(action) => companyEmailMutation.mutate({ id: user.id, action })}
+                      />
                     </TableCell>
                     {LOCKABLE_FEATURES.map((f) => (
                       <TableCell key={f.key} className="text-center">
