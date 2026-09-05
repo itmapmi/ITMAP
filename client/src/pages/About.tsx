@@ -272,7 +272,7 @@ export default function About() {
                   >
                     Send Message <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <p className="text-xs text-slate-600 text-center">By sending this message you agree to our <Link href="/privacy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.</p>
+                  <p className="text-xs text-slate-600 text-center">By sending this message you agree to our <Link href="/privacy-policy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.</p>
                 </div>
               </div>
             </motion.div>

@@ -234,7 +234,7 @@ export function PersonaRegistrationForm({ persona, compact = false, forced = fal
                 />
                 <label htmlFor={`terms-${persona}`} className="text-sm text-slate-300 leading-relaxed cursor-pointer">
                   I have read and agree to the{" "}
-                  <Link href="/terms?returnTo=/buyer" className="text-cyan-400 hover:text-cyan-300 hover:underline">
+                  <Link href="/termsofservice?returnTo=/buyer" className="text-cyan-400 hover:text-cyan-300 hover:underline">
                     ITMAP Terms of Service
                   </Link>
                   .
@@ -264,7 +264,7 @@ export function PersonaRegistrationForm({ persona, compact = false, forced = fal
           {!isVendorPersona && (
             <p className="text-center text-xs text-slate-500">
               By continuing with Google you agree to the{" "}
-              <Link href="/terms?returnTo=/buyer" className="text-slate-400 hover:text-slate-200 hover:underline">
+              <Link href="/termsofservice?returnTo=/buyer" className="text-slate-400 hover:text-slate-200 hover:underline">
                 ITMAP Terms of Service
               </Link>
               .

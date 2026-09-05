@@ -41,7 +41,7 @@ const EXPIRY_TRACKED_KEY = "itmap_teaser_expiry_tracked";
 
 // Pages an anonymous visitor may be deliberately on where the modal (or the
 // underlying teaser mechanics) shouldn't interrupt or auto-pop.
-const EXEMPT_PATHS = new Set(["/login", "/register", "/terms", "/privacy", "/contact"]);
+const EXEMPT_PATHS = new Set(["/login", "/register", "/terms", "/privacy", "/termsofservice", "/privacy-policy", "/contact"]);
 
 interface TeaserGateContextValue {
   /**

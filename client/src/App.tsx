@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -35,7 +35,7 @@ import Register from "@/pages/Register";
 import BuyerLandingPage from "@/pages/buyer";
 import VendorLandingPage from "@/pages/vendor";
 import TermsPage from "@/pages/terms";
-import PrivacyPage from "@/pages/privacy";
+import PrivacyPage, { PRIVACY_POLICY_PATH, TERMS_OF_SERVICE_PATH } from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import DatasheetsIndexPage from "@/pages/datasheets/index";
 import DatasheetComparePage from "@/pages/datasheets/compare";
@@ -196,8 +196,11 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/buyer" component={BuyerLandingPage} />
         <Route path="/vendor" component={VendorLandingPage} />
-        <Route path="/terms" component={TermsPage} />
-        <Route path="/privacy" component={PrivacyPage} />
+        <Route path={TERMS_OF_SERVICE_PATH} component={TermsPage} />
+        <Route path={PRIVACY_POLICY_PATH} component={PrivacyPage} />
+        {/* Legacy legal URLs — keep old links (emails, search results) working. */}
+        <Route path="/terms">{() => <Redirect to={`${TERMS_OF_SERVICE_PATH}${window.location.search}`} replace />}</Route>
+        <Route path="/privacy">{() => <Redirect to={PRIVACY_POLICY_PATH} replace />}</Route>
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />

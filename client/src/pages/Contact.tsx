@@ -228,7 +228,7 @@ export default function Contact() {
                 </Button>
 
                 <p className="text-xs text-slate-600 text-center">
-                  By sending this message you agree to our <Link href="/privacy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.
+                  By sending this message you agree to our <Link href="/privacy-policy" className="text-cyan-500 hover:text-cyan-400">privacy policy</Link>.
                 </p>
               </form>
             </div>

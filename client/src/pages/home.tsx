@@ -744,7 +744,8 @@ function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: 
             <Link href="/about"><span className="hover:text-white transition-colors cursor-pointer">About</span></Link>
             <Link href="/licensing"><span className="hover:text-white transition-colors cursor-pointer">Licensing</span></Link>
             <Link href="/contact"><span className="hover:text-white transition-colors cursor-pointer">Contact</span></Link>
-             <Link href="/privacy"><span className="hover:text-white transition-colors cursor-pointer">Privacy</span></Link>
+             <Link href="/privacy-policy"><span className="hover:text-white transition-colors cursor-pointer">Privacy</span></Link>
+            <Link href="/termsofservice"><span className="hover:text-white transition-colors cursor-pointer">Terms</span></Link>
              <a
                href="https://www.linkedin.com/company/itmap-ai"
                target="_blank"

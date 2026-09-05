@@ -121,6 +121,8 @@ export function registerAuthRoutes(app: Express): void {
       { loc: '/about',     lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.7' },
       { loc: '/licensing', lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
       { loc: '/contact',   lastmod: '2026-05-11', changefreq: 'monthly', priority: '0.6' },
+      { loc: '/privacy-policy', lastmod: '2026-09-05', changefreq: 'yearly', priority: '0.3' },
+      { loc: '/termsofservice', lastmod: '2026-09-05', changefreq: 'yearly', priority: '0.3' },
     ];
 
     function marketSlug(name: string): string {
