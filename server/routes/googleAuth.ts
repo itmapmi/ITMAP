@@ -11,7 +11,7 @@ import { sendRedditConversionEvent } from "../lib/redditConversions";
 // unverified-session allowance: a new account is created verified, and an
 // existing email-form account with the same address is linked and verified.
 //
-// Flow: GET /auth/google?persona=&returnTo=  →  Google consent  →
+// Flow: GET /auth/google?returnTo=  →  Google consent  →
 //       GET /auth/google/callback  →  302 to returnTo?auth=google[&new=1]
 //
 // The callback URL is derived from the request host (proxy-aware), so the
@@ -90,9 +90,8 @@ function readCookie(req: Request, name: string): string | null {
   return null;
 }
 
-function loginFailureRedirect(reason: GoogleAuthFailure, persona?: Persona): string {
+function loginFailureRedirect(reason: GoogleAuthFailure, _persona?: Persona): string {
   const params = new URLSearchParams({ oauth: reason });
-  if (persona) params.set("persona", persona);
   return `/login?${params.toString()}`;
 }
 
@@ -203,8 +202,10 @@ export function registerGoogleAuthRoutes(app: Express, { establishSession }: Goo
   }
 
   app.get(GOOGLE_START_PATH, (req: Request, res: Response, next: NextFunction) => {
-    const persona: Persona = req.query.persona === "vendor" ? "vendor" : "buyer";
-    if (!isGoogleAuthConfigured()) return res.redirect(loginFailureRedirect("unavailable", persona));
+    // Persona is no longer chosen at sign-up (see /auth/register); any
+    // ?persona= left over from old links is ignored.
+    const persona: Persona = "buyer";
+    if (!isGoogleAuthConfigured()) return res.redirect(loginFailureRedirect("unavailable"));
 
     const context: OAuthContext = {
       persona,

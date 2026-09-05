@@ -217,10 +217,13 @@ export function registerAuthRoutes(app: Express): void {
         return logInAndRespond(req, res, existingUser, 200);
       }
 
+      // Self-service sign-up is one flow. Vendor seats are provisioned by
+      // admins (vendor scoping); a client-supplied persona is ignored so it
+      // can't be used to skip the Terms checkbox or the company-email gate.
       const user = await storage.createUser({
         email: userData.email,
         role: 'user',
-        persona: userData.persona ?? "buyer",
+        persona: "buyer",
         emailVerified: false,
       });
 

@@ -203,7 +203,7 @@ export default function BuyerLandingPage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }}>
-              <PersonaRegistrationForm persona="buyer" />
+              <PersonaRegistrationForm />
             </motion.div>
           </div>
         </div>

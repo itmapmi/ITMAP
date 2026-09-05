@@ -200,7 +200,7 @@ function Router() {
         <Route path={PRIVACY_POLICY_PATH} component={PrivacyPage} />
         {/* Legacy legal URLs — keep old links (emails, search results) working. */}
         <Route path="/terms">{() => <Redirect to={`${TERMS_OF_SERVICE_PATH}${window.location.search}`} replace />}</Route>
-        <Route path="/privacy">{() => <Redirect to={PRIVACY_POLICY_PATH} replace />}</Route>
+        <Route path="/privacy">{() => <Redirect to={`${PRIVACY_POLICY_PATH}${window.location.search}`} replace />}</Route>
         <Route path="/markets" component={Markets} />
         <Route path="/markets/:marketId" component={MarketDetails} />
         <Route path="/market/:marketId" component={MarketDetails} />

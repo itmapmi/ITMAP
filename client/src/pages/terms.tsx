@@ -1,6 +1,6 @@
 import { useSeo } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { PRIVACY_POLICY_PATH, TERMS_OF_SERVICE_PATH } from "@/pages/privacy";
 
@@ -31,8 +31,15 @@ export default function TermsPage() {
     path: TERMS_OF_SERVICE_PATH,
   });
 
-  const [location, setLocation] = useLocation();
-  const returnTo = new URLSearchParams(location.split("?")[1]).get("returnTo") || "/buyer";
+  const [, setLocation] = useLocation();
+  // wouter's location is pathname-only; the query string comes from useSearch.
+  // Only same-origin paths are honoured so this can't be used as an open redirect.
+  const search = useSearch();
+  const requestedReturn = new URLSearchParams(search).get("returnTo");
+  const returnTo =
+    requestedReturn && requestedReturn.startsWith("/") && !requestedReturn.startsWith("//")
+      ? requestedReturn
+      : "/buyer";
 
   const acceptTerms = () => {
     localStorage.setItem("itmap_terms_accepted", "true");

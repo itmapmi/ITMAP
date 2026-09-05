@@ -544,9 +544,9 @@ const HERO_FEATURES = [
 
 function PublicLanding({ markets, isLoading }: { markets?: Market[]; isLoading: boolean }) {
   const { teaserActive } = useTeaserGate();
-  const handlePersonaSelect = (persona: "buyer" | "vendor") => {
-    localStorage.setItem("spectio_persona", persona);
-    window.location.href = `/${persona}`;
+  // Landing pages only — there is no buyer/vendor split at sign-up any more.
+  const handlePersonaSelect = (page: "buyer" | "vendor") => {
+    window.location.href = `/${page}`;
   };
 
   return (

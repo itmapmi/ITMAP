@@ -249,7 +249,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
             onPointerDownOutside={forced ? (e) => e.preventDefault() : undefined}
             onInteractOutside={forced ? (e) => e.preventDefault() : undefined}
           >
-            <PersonaRegistrationForm persona="buyer" compact forced={forced} />
+            <PersonaRegistrationForm compact forced={forced} />
           </DialogContent>
         </Dialog>
       )}

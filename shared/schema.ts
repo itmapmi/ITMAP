@@ -507,6 +507,8 @@ export const setPasswordSchema = z.object({
 
 export const registerUserSchema = z.object({
   email: z.string().email(),
+  // Legacy: older clients sent a persona. It is accepted for compatibility
+  // but ignored — self-service accounts are always created as "buyer".
   persona: z.enum(["buyer", "vendor"]).optional().default("buyer"),
 });
 

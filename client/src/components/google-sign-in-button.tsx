@@ -21,8 +21,8 @@ export function currentPathForReturn(): string {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
-export function googleSignInHref(persona: "buyer" | "vendor", returnTo: string = currentPathForReturn()): string {
-  const params = new URLSearchParams({ persona, returnTo });
+export function googleSignInHref(returnTo: string = currentPathForReturn()): string {
+  const params = new URLSearchParams({ returnTo });
   return `${GOOGLE_SIGN_IN_PATH}?${params.toString()}`;
 }
 
@@ -38,7 +38,6 @@ function GoogleMark({ className }: { className?: string }) {
 }
 
 interface GoogleSignInButtonProps {
-  persona: "buyer" | "vendor";
   /** Same-origin path to return to after Google; defaults to the current page. */
   returnTo?: string;
   label?: string;
@@ -47,7 +46,6 @@ interface GoogleSignInButtonProps {
 }
 
 export function GoogleSignInButton({
-  persona,
   returnTo,
   label = "Continue with Google",
   className,
@@ -55,7 +53,7 @@ export function GoogleSignInButton({
 }: GoogleSignInButtonProps) {
   return (
     <a
-      href={googleSignInHref(persona, returnTo)}
+      href={googleSignInHref(returnTo)}
       target="_top"
       rel="noopener"
       data-testid={testId}

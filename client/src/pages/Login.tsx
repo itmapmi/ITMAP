@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { LogIn, Users, Building2, Lock, MailCheck } from "lucide-react";
+import { LogIn, Lock, MailCheck } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
 import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
 
@@ -30,23 +30,10 @@ function getGoogleSignInError(): string | null {
   return GOOGLE_SIGN_IN_ERRORS[reason] ?? GOOGLE_SIGN_IN_ERRORS.failed;
 }
 
-function getPersona(): "buyer" | "vendor" | null {
-  const params = new URLSearchParams(window.location.search);
-  const qp = params.get("persona");
-  if (qp === "buyer" || qp === "vendor") return qp;
-  const stored = localStorage.getItem("spectio_persona");
-  if (stored === "buyer" || stored === "vendor") return stored;
-  return null;
-}
-
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login, loginError, isLoggingIn, resendVerification, isResendingVerification } = useAuth();
   const { toast } = useToast();
-  const persona = getPersona();
-  const isVendorPersona = persona === "vendor";
-  const isBuyerPersona = persona === "buyer";
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [needsPassword, setNeedsPassword] = useState(false);
@@ -92,11 +79,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1e2130] py-12 px-4 sm:px-6 lg:px-8 relative">
       <div className="absolute inset-0 pointer-events-none">
-        <div className={`absolute inset-0 ${
-          isVendorPersona
-            ? "bg-[radial-gradient(ellipse_at_50%_30%,rgba(139,92,246,0.10),transparent_60%)]"
-            : "bg-[radial-gradient(ellipse_at_50%_30%,rgba(14,165,233,0.10),transparent_60%)]"
-        }`} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(14,165,233,0.10),transparent_60%)]" />
       </div>
 
       <Card className="relative w-full max-w-md bg-slate-900 border border-white/8 shadow-2xl">
@@ -105,31 +88,10 @@ export default function Login() {
             <SpectioLogo size="lg" />
           </div>
 
-          {persona && (
-            <div className={`flex items-center justify-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold mx-auto w-fit ${
-              isVendorPersona
-                ? "bg-violet-500/15 text-violet-300 border border-violet-400/20"
-                : "bg-cyan-500/15 text-cyan-300 border border-cyan-400/20"
-            }`}>
-              {isVendorPersona ? <Building2 className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-              {isVendorPersona ? "Vendor Access" : "Buyer Access"}
-            </div>
-          )}
-
           <div className="text-center">
-            <CardTitle className="text-xl text-white">
-              {isVendorPersona
-                ? "Sign in to your Vendor Hub"
-                : isBuyerPersona
-                ? "Sign in to your Intelligence Dashboard"
-                : "Welcome back"}
-            </CardTitle>
+            <CardTitle className="text-xl text-white">Sign in</CardTitle>
             <CardDescription className="mt-1 text-slate-400">
-              {isVendorPersona
-                ? "Monitor your market position and access vendor tools"
-                : isBuyerPersona
-                ? "Independent IT vendor intelligence, built for enterprise buyers"
-                : "Sign in to access your technology intelligence platform"}
+              Independent IT vendor intelligence, built for enterprise buyers
             </CardDescription>
           </div>
         </CardHeader>
@@ -150,11 +112,7 @@ export default function Login() {
               <Button
                 onClick={handleResend}
                 disabled={isResendingVerification || resendSent}
-                className={`w-full text-white border-0 font-semibold ${
-                  isVendorPersona
-                    ? "bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400"
-                    : "bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
-                }`}
+                className="w-full text-white border-0 font-semibold bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
               >
                 {resendSent ? "Email sent — check your inbox" : isResendingVerification ? "Sending…" : "Resend verification email"}
               </Button>
@@ -217,11 +175,7 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className={`w-full text-white border-0 font-semibold ${
-                  isVendorPersona
-                    ? "bg-gradient-to-r from-violet-500 to-cyan-500 hover:from-violet-400 hover:to-cyan-400"
-                    : "bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
-                }`}
+                className="w-full text-white border-0 font-semibold bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500"
                 disabled={isLoggingIn}
               >
                 <LogIn className="mr-2 h-4 w-4" />
@@ -233,7 +187,7 @@ export default function Login() {
           {!needsVerification && (
             <>
               <OrDivider />
-              <GoogleSignInButton persona={persona ?? "buyer"} returnTo="/" data-testid="button-google-sign-in-login" />
+              <GoogleSignInButton returnTo="/" data-testid="button-google-sign-in-login" />
             </>
           )}
 
@@ -244,21 +198,10 @@ export default function Login() {
 
           <div className="text-center text-sm text-slate-400">
             Don't have an account?{" "}
-            <Link href={`/register${persona ? `?persona=${persona}` : ""}`} className="text-cyan-400 hover:text-cyan-300 hover:underline">
+            <Link href="/register" className="text-cyan-400 hover:text-cyan-300 hover:underline">
               Create account
             </Link>
           </div>
-
-          {persona && (
-            <div className="text-center">
-              <button
-                onClick={() => { localStorage.removeItem("spectio_persona"); window.location.href = "/login"; }}
-                className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
-              >
-                Wrong access type? Switch persona
-              </button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
