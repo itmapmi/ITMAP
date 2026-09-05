@@ -12,6 +12,7 @@ import SpectioLogo from "@/components/spectio-logo";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
 import { Lock } from "lucide-react";
 import { VerificationBanner } from "@/components/email-verification-gate";
+import { CompanyProfilePromptBanner } from "@/components/company-profile-prompt";
 import type { LockableFeatureKey } from "@shared/features";
 
 const ADMIN_PATHS = ["/admin", "/market-builder", "/lead-gen"];
@@ -113,6 +114,7 @@ export default function Navigation() {
     return (
       <>
         <VerificationBanner />
+        <CompanyProfilePromptBanner />
         <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
@@ -152,6 +154,7 @@ export default function Navigation() {
     <>
       <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50">
         <VerificationBanner />
+        <CompanyProfilePromptBanner />
         <nav className="bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center h-16">

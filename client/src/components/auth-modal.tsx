@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { LogIn, UserPlus, MailCheck } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
+import { COMPANY_PROFILE_PATH, isConsumerEmailDomain } from "@shared/company-email";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -222,6 +223,23 @@ export default function AuthModal({ isOpen, onClose, selectedMarketId }: AuthMod
                 >
                   Continue to itmap.ai
                 </Button>
+                {/* Consumer-domain sign-ups are gated out of Reports / News /
+                    the Intelligence Feed until a company email is verified
+                    (shared/company-email.ts) — point them at the profile now. */}
+                {isConsumerEmailDomain(sentTo) && (
+                  <p className="text-xs text-gray-500" data-testid="text-company-profile-hint">
+                    Using a personal email? Complete your short company profile to unlock Reports, News and the
+                    Intelligence Feed —{" "}
+                    <button
+                      type="button"
+                      className="text-blue-600 hover:text-blue-700 underline underline-offset-2"
+                      onClick={() => { onClose(); setLocation(COMPANY_PROFILE_PATH); }}
+                    >
+                      complete it now
+                    </button>
+                    .
+                  </p>
+                )}
               </div>
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">

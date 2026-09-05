@@ -1,3 +1,4 @@
+// hint: Logic changed on both sides. Requires understanding intent of each change.
 - [Market-scoped endpoint read auth](market-read-auth.md) — new marketId endpoints must enforce canReadMarket (404 on fail).
 - [PDF template bundling](pdf-template-bundling.md) — bundle the report HTML into TS; do not readFile it at runtime (esbuild skips .html → prod EIO 500).
 - [Puppeteer Chromium in deploy](puppeteer-chromium-deploy.md) — path existing != launchable; ship project-local Chrome + declare nix libs; launch-probe candidates, don't trust access().
@@ -39,3 +40,4 @@
 - [Google OAuth callback host + signup marker](google-oauth-callback-host.md) — derive callback from request host (PUBLIC_BASE_URL is prod even in dev); new-account signal lives in session, not URL; email_verified must be exactly true.
 - [Company-email profile gate](company-email-gate.md) — gate lives inside requireFeature after RBAC; client matches `company_email_required` in error text; unverified claims are not unique.
 - [Admin company-email overrides](admin-company-email-overrides.md) — support actions need dedicated token-free storage fns; keep the unique-index guard; curl admin routes via HTTPS dev domain (Secure cookie).
+- [E2E / curl auth must use HTTPS dev domain](e2e-secure-cookie-https.md) — Secure-only session cookie: http://127.0.0.1 looks like a broken post-signup redirect; header banners need solid backgrounds.

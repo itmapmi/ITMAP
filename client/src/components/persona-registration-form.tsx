@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
 import { UserPlus, Users, Building2, Mail, MailCheck } from "lucide-react";
 import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
+import { COMPANY_PROFILE_PATH, isConsumerEmailDomain } from "@shared/company-email";
 import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
 
 // Shown under the heading of the buyer sign-up prompt. Personal and company
@@ -141,6 +142,20 @@ export function PersonaRegistrationForm({ persona, compact = false, forced = fal
           >
             Continue to itmap.ai
           </Button>
+          {/* Consumer-domain buyers are gated out of Reports / News / the
+              Intelligence Feed until they verify a company email
+              (shared/company-email.ts). Say so up front instead of letting
+              them discover it from a locked tab. */}
+          {!isVendorPersona && isConsumerEmailDomain(sentTo) && (
+            <p className="text-xs text-slate-500" data-testid="text-company-profile-hint">
+              Using a personal email? Complete your short company profile to unlock Reports, News and the
+              Intelligence Feed —{" "}
+              <Link href={COMPANY_PROFILE_PATH} className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2">
+                complete it now
+              </Link>
+              .
+            </p>
+          )}
         </div>
       </div>
     );

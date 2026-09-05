@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Monitor } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
 import { useViewMode } from "@/hooks/use-view-mode";
+import { CompanyProfilePromptBanner } from "@/components/company-profile-prompt";
 
 /**
  * Minimal header for the /mobile/* experience. Deliberately not a port of
@@ -14,6 +15,7 @@ export default function MobileNavigation() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#1e2130]/95 backdrop-blur-xl border-b border-white/5">
+      <CompanyProfilePromptBanner />
       <div className="flex items-center justify-between px-4 h-14">
         <Link href="/">
           <SpectioLogo />
