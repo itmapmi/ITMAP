@@ -392,9 +392,29 @@ export default function Navigation() {
 
             <div className="pt-3 border-t border-white/5 flex flex-col gap-2">
               {isAuthenticated ? (
-                <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full justify-start text-slate-400">
-                  <LogOut className="mr-2 h-4 w-4" /> Sign out
-                </Button>
+                <>
+                  <Link href="/me/profile">
+                    <div
+                      className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer flex items-center gap-2 ${location === "/me/profile" ? "text-white bg-white/10" : "text-slate-400"}`}
+                      onClick={() => setMobileOpen(false)}
+                      data-testid="link-mobile-profile"
+                    >
+                      <User className="h-4 w-4" /> Profile
+                    </div>
+                  </Link>
+                  <Link href="/me/settings">
+                    <div
+                      className={`px-4 py-3 text-sm font-medium rounded-lg cursor-pointer flex items-center gap-2 ${location === "/me/settings" ? "text-white bg-white/10" : "text-slate-400"}`}
+                      onClick={() => setMobileOpen(false)}
+                      data-testid="link-mobile-settings"
+                    >
+                      <Settings className="h-4 w-4" /> Settings
+                    </div>
+                  </Link>
+                  <Button variant="ghost" onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full justify-start text-slate-400">
+                    <LogOut className="mr-2 h-4 w-4" /> Sign out
+                  </Button>
+                </>
               ) : (
                 <>
                   <Link href="/login"><Button variant="ghost" className="w-full text-slate-300 border border-white/10" onClick={() => setMobileOpen(false)}>Sign In</Button></Link>

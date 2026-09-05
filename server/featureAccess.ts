@@ -6,10 +6,18 @@
 // via shared/features.ts so the two never drift.
 import type { Request, Response, NextFunction } from "express";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/schema";
+import {
+  COMPANY_EMAIL_REQUIRED,
+  isCompanyEmailGatedFeature,
+  needsCompanyEmailVerification,
+} from "@shared/company-email";
 
 // Require authentication AND access to a specific lockable feature.
-// Admins always pass. Buyers (non-vendor users) always pass.
-// Vendor-scoped users must have the feature explicitly granted.
+// Admins always pass. Buyers (non-vendor users) always pass — except that
+// Reports / News / Intelligence Feed additionally require buyers on a
+// consumer-domain login email to have verified a company email
+// (shared/company-email.ts). Vendor-scoped users must have the feature
+// explicitly granted.
 export function requireFeature(featureKey: LockableFeatureKey) {
   return (req: Request, res: Response, next: NextFunction) => {
     const isAuth = (req as any).isAuthenticated?.();
@@ -20,6 +28,13 @@ export function requireFeature(featureKey: LockableFeatureKey) {
     const isVendorScoped = !!(user.vendorScopeId || user.vendorScopeIds?.length);
     const isVendorPersona = user.persona === "vendor";
     if (hasFeatureAccess(user.role, user.featureAccess, featureKey, isVendorScoped, isVendorPersona)) {
+      if (isCompanyEmailGatedFeature(featureKey) && needsCompanyEmailVerification(user)) {
+        return res.status(403).json({
+          error: COMPANY_EMAIL_REQUIRED,
+          code: "COMPANY_EMAIL_REQUIRED",
+          feature: featureKey,
+        });
+      }
       return next();
     }
     return res.status(403).json({

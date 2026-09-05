@@ -4,6 +4,7 @@ import { FileText, Download, ExternalLink, Calendar, ChevronDown, FileIcon, File
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
 import type { ResearchReport } from "@shared/schema";
 
 interface ResearchReportsProps {
@@ -64,6 +65,8 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
     queryKey: ["/api/markets", marketId, "research-reports"],
   });
 
+  const companyLocked = isCompanyEmailRequiredError(error);
+
   if (mobileMode) {
     const errorMessage = error instanceof Error ? error.message : "";
     const isLocked = /^40[13]:/.test(errorMessage);
@@ -96,6 +99,8 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
               </div>
             ))}
           </div>
+        ) : companyLocked ? (
+          <CompanyProfileLockedPanel feature="The report library" variant="mobile" />
         ) : error ? (
           <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-9 text-center" role={isLocked ? undefined : "alert"}>
             {isLocked ? (
@@ -223,6 +228,10 @@ export function ResearchReports({ marketId, mobileMode = false }: ResearchReport
         ))}
       </div>
     );
+  }
+
+  if (companyLocked) {
+    return <CompanyProfileLockedPanel feature="Research reports" />;
   }
 
   if (!reports || reports.length === 0) {

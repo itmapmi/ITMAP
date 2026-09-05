@@ -687,6 +687,24 @@ export async function runStartupMigrations(): Promise<void> {
         ON users (google_id) WHERE google_id IS NOT NULL;
     `);
 
+    // 33. Company profile + separately verified company email. Buyers on a
+    //     consumer-domain login email must verify a company address before
+    //     Reports / News / Intelligence Feed unlock (shared/company-email.ts).
+    //     Token is one-time and unique like the account-verification token.
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS designation text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email_verified boolean NOT NULL DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email_verification_token text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS company_email_verification_sent_at timestamp;
+      CREATE UNIQUE INDEX IF NOT EXISTS users_company_email_verification_token_unique
+        ON users (company_email_verification_token) WHERE company_email_verification_token IS NOT NULL;
+      -- A company email may be *verified* on one account only (unverified claims are free).
+      CREATE UNIQUE INDEX IF NOT EXISTS users_company_email_verified_unique
+        ON users (lower(company_email)) WHERE company_email_verified = true AND company_email IS NOT NULL;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

@@ -80,6 +80,17 @@ export const users = pgTable("users", {
   // so linking also flips emailVerified to true.
   googleId: text("google_id").unique(),
 
+  // Company profile (see shared/company-email.ts). Buyers who signed up with
+  // a consumer-domain address complete this to unlock Reports / News /
+  // Intelligence Feed. The company email is verified separately and never
+  // replaces the login `email`.
+  companyName: text("company_name"),
+  designation: text("designation"),
+  companyEmail: text("company_email"),
+  companyEmailVerified: boolean("company_email_verified").notNull().default(false),
+  companyEmailVerificationToken: text("company_email_verification_token"),
+  companyEmailVerificationSentAt: timestamp("company_email_verification_sent_at"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

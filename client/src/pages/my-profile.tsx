@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { User, Mail, Save, ChevronLeft, Shield, Calendar } from "lucide-react";
+import { CompanyProfileCard } from "@/components/company-profile-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +17,10 @@ export default function MyProfile() {
 
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName]   = useState(user?.lastName ?? "");
-  const [email, setEmail]         = useState(user?.email ?? "");
 
   const save = useMutation({
     mutationFn: () =>
-      apiRequest("/api/me/profile", "PATCH", { firstName, lastName, email }).then(r => r.json()),
+      apiRequest("/api/me/profile", "PATCH", { firstName, lastName }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Profile updated" });
@@ -123,11 +123,14 @@ export default function MyProfile() {
                 <Input
                   id="email"
                   type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="bg-slate-800 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 rounded-xl pl-10"
+                  value={user?.email ?? ""}
+                  readOnly
+                  aria-readonly="true"
+                  className="bg-slate-800/60 border-white/10 text-slate-300 rounded-xl pl-10 cursor-not-allowed"
+                  data-testid="input-login-email"
                 />
               </div>
+              <p className="text-xs text-slate-500">Your sign-in email can't be changed. Company details go in the Company profile section below.</p>
             </div>
 
             <div className="pt-2">
@@ -142,6 +145,10 @@ export default function MyProfile() {
             </div>
           </div>
         </motion.div>
+
+        {/* Company profile — unlocks Reports / News / Intelligence Feed for
+            consumer-domain sign-ups once the company email is verified. */}
+        <CompanyProfileCard />
 
         {/* Quick links */}
         <motion.div

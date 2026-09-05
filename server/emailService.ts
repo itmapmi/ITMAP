@@ -160,6 +160,73 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
   }
 }
 
+function buildCompanyVerificationEmailHtml(verifyUrl: string, companyName: string | null): string {
+  const org = companyName ? ` at ${escapeHtml(companyName)}` : "";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:system-ui,sans-serif;color:#111827;max-width:560px;margin:0 auto;padding:24px;">
+  <h2 style="margin-bottom:4px;">Verify your company email</h2>
+  <p style="color:#374151;">
+    You added this address as your company email on itmap.ai${org}. Confirm it to
+    unlock research reports, market news and the intelligence feed — access is free.
+    Your sign-in email stays the same.
+  </p>
+  <p style="margin:28px 0;">
+    <a href="${escapeHtml(verifyUrl)}"
+       style="background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;display:inline-block;">
+      Verify company email
+    </a>
+  </p>
+  <p style="color:#6b7280;font-size:13px;">
+    Or paste this link into your browser:<br />
+    <a href="${escapeHtml(verifyUrl)}" style="color:#2563eb;word-break:break-all;">${escapeHtml(verifyUrl)}</a>
+  </p>
+  <p style="margin-top:24px;color:#9ca3af;font-size:12px;">
+    If you didn't add this address to an itmap.ai profile, you can safely ignore this email.
+  </p>
+</body>
+</html>`;
+}
+
+// Sends the company-email verification link (profile gate, see
+// shared/company-email.ts). Same Resend connection and sender as account
+// verification; only the copy and the landing route differ.
+export async function sendCompanyVerificationEmail(
+  to: string,
+  verifyUrl: string,
+  companyName: string | null,
+): Promise<SendVerificationResult> {
+  try {
+    const connectors = new ReplitConnectors();
+    const response = await connectors.proxy('resend', '/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: VERIFICATION_FROM,
+        to: [to],
+        subject: 'Verify your company email — itmap.ai',
+        html: buildCompanyVerificationEmailHtml(verifyUrl, companyName),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[EmailService] Resend company verification email failed (${response.status}): ${body}`);
+      return { sent: false, reason: `Resend error ${response.status}: ${body.slice(0, 300)}` };
+    }
+
+    const responseBody = await response.json().catch(() => null);
+    const resendId = responseBody?.id ? ` (resend id: ${responseBody.id})` : '';
+    console.log(`[EmailService] Company verification email sent to ${to}${resendId}`);
+    return { sent: true };
+  } catch (err) {
+    console.error('[EmailService] Failed to send company verification email:', err);
+    return { sent: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // Wraps an admin-authored free-text message in the same visual shell as the
 // verification email. Line breaks in the free text are preserved; everything
 // else is escaped since this is admin-authored but still user-facing content.

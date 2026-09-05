@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { toPublicUser } from "../lib/publicUser";
 import { storage } from "../storage";
 import { pool, db } from "../db";
 import { sql, eq } from "drizzle-orm";
@@ -115,11 +116,14 @@ export function registerAdminRoutes(app: Express): void {
       const users = await storage.getAllUsers();
       // Never leak password hashes to the admin UI. Add derived status flags
       // used by the Operations verification panel and Mail Management tab.
-      const safe = users.map(({ password, ...rest }) => ({
-        ...rest,
-        verificationLocked: isVerificationLocked(rest),
-        factReviewEnabled: hasFactReviewAccess(rest),
-      }));
+      const safe = users.map((u) => {
+        const rest = toPublicUser(u);
+        return {
+          ...rest,
+          verificationLocked: isVerificationLocked(rest),
+          factReviewEnabled: hasFactReviewAccess(rest),
+        };
+      });
       res.json(safe);
     } catch (error) {
       console.error("Error listing users:", error);
@@ -156,8 +160,7 @@ export function registerAdminRoutes(app: Express): void {
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ error: "User not found" });
       const updated = await storage.updateUserFeatureAccess(req.params.id, unique);
-      const { password, ...safe } = updated;
-      res.json(safe);
+      res.json(toPublicUser(updated));
     } catch (error) {
       console.error("Error updating user feature access:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update feature access" });
@@ -181,8 +184,7 @@ export function registerAdminRoutes(app: Express): void {
         updates.accessExpiresAt = body.accessExpiresAt ? new Date(body.accessExpiresAt) : null;
       }
       const updated = await storage.updateUserAccessControl(req.params.id, updates);
-      const { password, ...safe } = updated;
-      res.json(safe);
+      res.json(toPublicUser(updated));
     } catch (error) {
       console.error("Error updating user access control:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update access control" });
@@ -201,8 +203,7 @@ export function registerAdminRoutes(app: Express): void {
         if (!vendor) return res.status(404).json({ error: `Vendor ${vid} not found` });
       }
       const updated = await storage.updateUserVendorScope(req.params.id, vendorScopeIds);
-      const { password, ...safe } = updated;
-      res.json(safe);
+      res.json(toPublicUser(updated));
     } catch (error) {
       console.error("Error updating user vendor scope:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update vendor scope" });

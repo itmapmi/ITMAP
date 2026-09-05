@@ -22,6 +22,9 @@ import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { insertPromptRepositorySchema } from "@shared/schema";
+import { isConsumerEmailDomain, needsCompanyEmailVerification } from "@shared/company-email";
+import { issueAndSendCompanyVerification, VERIFICATION_RESEND_COOLDOWN_MS } from "./auth";
+import { toPublicUser } from "../lib/publicUser";
 
 /**
  * Lightweight "ping" against each LLM provider — used by the /me/llm-keys
@@ -89,30 +92,145 @@ export function registerMeRoutes(app: Express): void {
         email:     z.string().email().optional(),
       }).parse(req.body);
 
-      if (email && email !== user.email) {
-        const existing = await storage.getUserByEmail(email);
-        if (existing && existing.id !== user.id) {
-          return res.status(400).json({ error: "Email already in use" });
-        }
+      // The sign-in email is immutable from self-service: it is the account's
+      // identity for passwordless login and drives the company-email profile
+      // gate (shared/company-email.ts), so letting a user swap a consumer
+      // address for a business one here would bypass verification entirely.
+      if (email && email.toLowerCase() !== (user.email ?? "").toLowerCase()) {
+        return res.status(400).json({ error: "Your sign-in email can't be changed. Add a company email in the Company profile section instead." });
       }
 
       const updated = await storage.updateUser(user.id, {
         ...(firstName !== undefined && { firstName }),
         ...(lastName  !== undefined && { lastName }),
-        ...(email     !== undefined && { email }),
       });
 
       // Refresh the passport session object so the client sees the new name.
       (req as any).user = updated;
 
-      const { password, ...safe } = updated as any;
-      res.json(safe);
+      res.json(toPublicUser(updated));
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
   });
 
   // ── Password ─────────────────────────────────────────────────────────────
+
+  // ── Company profile (shared/company-email.ts) ──────────────────────────
+  //
+  // Buyers on a consumer-domain login email complete this to unlock Reports /
+  // News / Intelligence Feed. The company email is verified by an emailed
+  // link and never replaces the login email.
+
+  const companyProfileView = (user: any) => ({
+    companyName: user.companyName ?? null,
+    designation: user.designation ?? null,
+    companyEmail: user.companyEmail ?? null,
+    companyEmailVerified: !!user.companyEmailVerified,
+    companyEmailVerificationSentAt: user.companyEmailVerificationSentAt ?? null,
+    needsCompanyEmailVerification: needsCompanyEmailVerification(user),
+  });
+
+  const resendCooldownRemainingMs = (sentAt: Date | string | null | undefined) => {
+    if (!sentAt) return 0;
+    const elapsed = Date.now() - new Date(sentAt).getTime();
+    return Math.max(0, VERIFICATION_RESEND_COOLDOWN_MS - elapsed);
+  };
+
+  app.get("/api/me/company-profile", requireAuth, async (req, res) => {
+    res.json(companyProfileView(req.user as any));
+  });
+
+  const companyProfileSchema = z.object({
+    companyName: z.string().trim().min(2, "Company name is required").max(120),
+    designation: z.string().trim().min(2, "Designation is required").max(120),
+    companyEmail: z.string().trim().toLowerCase().email("Enter a valid company email").max(254),
+  });
+
+  app.put("/api/me/company-profile", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const parsed = companyProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid profile" });
+      }
+      const { companyName, designation, companyEmail } = parsed.data;
+
+      if (isConsumerEmailDomain(companyEmail)) {
+        return res.status(400).json({
+          error: "Please use your work email address — personal mailboxes (Gmail, Yahoo, Outlook, …) can't be used as a company email.",
+          code: "CONSUMER_DOMAIN",
+        });
+      }
+
+      const holder = await storage.getUserWithVerifiedCompanyEmail(companyEmail);
+      if (holder && holder.id !== user.id) {
+        return res.status(409).json({
+          error: "This company email is already verified on another account.",
+          code: "COMPANY_EMAIL_TAKEN",
+        });
+      }
+
+      const sameEmail = (user.companyEmail ?? "").toLowerCase() === companyEmail;
+      const previouslyVerified = !!user.companyEmailVerified && sameEmail;
+      // Re-saving the same unverified address (e.g. fixing a typo in the
+      // job title) must not bypass the resend cooldown.
+      const withinCooldown = sameEmail && !previouslyVerified &&
+        resendCooldownRemainingMs(user.companyEmailVerificationSentAt) > 0;
+
+      const updated = await storage.updateCompanyProfile(user.id, { companyName, designation, companyEmail });
+      (req as any).user = updated;
+
+      // Saving an already-verified address (e.g. editing only the job title)
+      // keeps it verified; otherwise a fresh link goes out immediately.
+      let emailSent = false;
+      if (!previouslyVerified && !withinCooldown) {
+        emailSent = await issueAndSendCompanyVerification(user.id, companyEmail, companyName);
+        if (!emailSent) {
+          const current = await storage.getUser(user.id);
+          return res.status(502).json({
+            error: "Your profile was saved, but the verification email could not be sent. Please use “Resend verification link” in a moment.",
+            code: "EMAIL_SEND_FAILED",
+            profile: companyProfileView(current ?? updated),
+          });
+        }
+      }
+
+      const current = await storage.getUser(user.id);
+      res.json({ ...companyProfileView(current ?? updated), emailSent });
+    } catch (err: any) {
+      console.error("[Me] Failed to save company profile:", err);
+      res.status(500).json({ error: "Failed to save company profile" });
+    }
+  });
+
+  app.post("/api/me/company-profile/resend", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyEmail) {
+        return res.status(400).json({ error: "Add your company email first." });
+      }
+      if (user.companyEmailVerified) {
+        return res.status(400).json({ error: "Your company email is already verified." });
+      }
+      const remaining = resendCooldownRemainingMs(user.companyEmailVerificationSentAt);
+      if (remaining > 0) {
+        return res.status(429).json({
+          error: `Please wait ${Math.ceil(remaining / 1000)}s before requesting another email.`,
+          retryAfterMs: remaining,
+        });
+      }
+      const sent = await issueAndSendCompanyVerification(user.id, user.companyEmail, user.companyName ?? null);
+      if (!sent) {
+        return res.status(502).json({ error: "Could not send the verification email. Please try again shortly." });
+      }
+      const current = await storage.getUser(user.id);
+      res.json({ sent: true, ...companyProfileView(current ?? user) });
+    } catch (err: any) {
+      console.error("[Me] Failed to resend company verification:", err);
+      res.status(500).json({ error: "Failed to resend verification email" });
+    }
+  });
 
   app.patch("/api/me/password", requireAuth, async (req, res) => {
     try {

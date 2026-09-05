@@ -94,6 +94,11 @@ export interface IStorage {
   verifyUserEmail(id: string): Promise<User>;
   reserveUnverifiedSession(id: string): Promise<User | undefined>;
   setEmailVerificationToken(id: string, token: string): Promise<User>;
+  getUserByCompanyVerificationToken(token: string): Promise<User | undefined>;
+  getUserWithVerifiedCompanyEmail(companyEmail: string): Promise<User | undefined>;
+  updateCompanyProfile(id: string, updates: { companyName: string; designation: string; companyEmail: string }): Promise<User>;
+  setCompanyEmailVerificationToken(id: string, token: string): Promise<User>;
+  verifyCompanyEmail(id: string, token: string, companyEmail: string): Promise<User | undefined>;
   updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User>;
 
   getAllMarkets(): Promise<Market[]>;

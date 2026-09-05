@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Mail, Clock, X } from "lucide-react";
+import { Trash2, Mail, Clock, X, Building2, CheckCircle2 } from "lucide-react";
 import {
   LOCKABLE_FEATURES,
   type LockableFeatureKey,
@@ -531,6 +531,7 @@ export function UserAccessAdmin() {
             <TableRow>
               <TableHead className="min-w-[200px]">User</TableHead>
               <TableHead className="whitespace-nowrap">Persona</TableHead>
+              <TableHead className="min-w-[200px] whitespace-nowrap">Company profile</TableHead>
               {LOCKABLE_FEATURES.map((f) => (
                 <TableHead key={f.key} className="text-center whitespace-nowrap">
                   {f.label}
@@ -544,7 +545,7 @@ export function UserAccessAdmin() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={LOCKABLE_FEATURES.length + 5} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={LOCKABLE_FEATURES.length + 6} className="text-center text-gray-500 py-8">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -597,6 +598,35 @@ export function UserAccessAdmin() {
                         <span className="inline-flex items-center rounded-full bg-gray-100 border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-400">
                           —
                         </span>
+                      )}
+                    </TableCell>
+                    <TableCell data-testid={`cell-company-${user.id}`}>
+                      {user.companyName || user.companyEmail || user.designation ? (
+                        <div className="flex flex-col gap-0.5 text-xs">
+                          {(user.companyName || user.designation) && (
+                            <span className="text-gray-900 font-medium flex items-center gap-1">
+                              <Building2 className="h-3 w-3 text-gray-400" />
+                              {user.companyName ?? "—"}
+                              {user.designation && <span className="text-gray-500 font-normal">· {user.designation}</span>}
+                            </span>
+                          )}
+                          {user.companyEmail && (
+                            <span className="flex items-center gap-1 text-gray-500">
+                              {user.companyEmail}
+                              {user.companyEmailVerified ? (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0 text-[10px] font-semibold text-emerald-700">
+                                  <CheckCircle2 className="h-2.5 w-2.5" /> Verified
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0 text-[10px] font-semibold text-amber-700">
+                                  Unverified
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </TableCell>
                     {LOCKABLE_FEATURES.map((f) => (

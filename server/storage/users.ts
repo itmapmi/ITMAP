@@ -116,6 +116,84 @@ export async function setEmailVerificationToken(id: string, token: string): Prom
   return updated!;
 }
 
+// ── Company profile (shared/company-email.ts) ──────────────────────────────
+
+export async function getUserByCompanyVerificationToken(token: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.companyEmailVerificationToken, token));
+  return user || undefined;
+}
+
+// Another account that has already *verified* this company address. Only a
+// verified claim blocks reuse — an unverified typo on someone else's profile
+// must not lock the rightful owner out.
+export async function getUserWithVerifiedCompanyEmail(companyEmail: string): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(and(
+      sql`lower(${users.companyEmail}) = lower(${companyEmail})`,
+      eq(users.companyEmailVerified, true),
+    ))
+    .limit(1);
+  return user || undefined;
+}
+
+// Save the profile fields. When the company email changes, verification is
+// reset (flag false, token cleared) — the caller decides whether to issue a
+// fresh verification email. An unchanged address keeps its verified state.
+export async function updateCompanyProfile(
+  id: string,
+  updates: { companyName: string; designation: string; companyEmail: string },
+): Promise<User> {
+  const [current] = await db.select().from(users).where(eq(users.id, id));
+  const emailChanged = (current?.companyEmail ?? "").toLowerCase() !== updates.companyEmail.toLowerCase();
+  const [updated] = await db
+    .update(users)
+    .set({
+      companyName: updates.companyName,
+      designation: updates.designation,
+      companyEmail: updates.companyEmail,
+      ...(emailChanged && {
+        companyEmailVerified: false,
+        companyEmailVerificationToken: null,
+        companyEmailVerificationSentAt: null,
+      }),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
+export async function setCompanyEmailVerificationToken(id: string, token: string): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({ companyEmailVerificationToken: token, companyEmailVerificationSentAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
+/**
+ * Atomically flips the company-email flag — only if the row still carries
+ * exactly this token for exactly this address. Returns undefined when the
+ * token was consumed/replaced or the address changed since it was issued.
+ * Throws the Postgres unique-violation (code 23505) if the address is
+ * already verified on another account.
+ */
+export async function verifyCompanyEmail(id: string, token: string, companyEmail: string): Promise<User | undefined> {
+  const [updated] = await db
+    .update(users)
+    .set({ companyEmailVerified: true, companyEmailVerificationToken: null, updatedAt: new Date() })
+    .where(and(
+      eq(users.id, id),
+      eq(users.companyEmailVerificationToken, token),
+      sql`lower(${users.companyEmail}) = lower(${companyEmail})`,
+    ))
+    .returning();
+  return updated;
+}
+
 export async function updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User> {
   const [updated] = await db
     .update(users)

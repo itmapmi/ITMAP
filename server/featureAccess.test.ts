@@ -6,7 +6,7 @@ import { requireFeature } from "./featureAccess";
 // exactly how requireFeature responds in each authz scenario.
 function makeCtx(opts: {
   isAuthenticated?: boolean;
-  user?: { role?: string; featureAccess?: string[] } | null;
+  user?: Record<string, unknown> | null;
 }) {
   const statusFn = vi.fn().mockReturnThis();
   const jsonFn = vi.fn().mockReturnThis();
@@ -83,5 +83,55 @@ describe("requireFeature middleware", () => {
     requireFeature("news")(req, res, next);
     expect(statusFn).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
+  });
+
+  describe("company-email profile gate", () => {
+    const consumerBuyer = { role: "user", email: "buyer@gmail.com", companyEmailVerified: false };
+
+    it("returns 403 company_email_required for a consumer-domain buyer on a gated feature", () => {
+      for (const feature of ["research_reports", "news", "intelligence_feed"] as const) {
+        const { req, res, next, statusFn, jsonFn } = makeCtx({ isAuthenticated: true, user: consumerBuyer });
+        requireFeature(feature)(req, res, next);
+        expect(statusFn).toHaveBeenCalledWith(403);
+        expect(jsonFn).toHaveBeenCalledWith({
+          error: "company_email_required",
+          code: "COMPANY_EMAIL_REQUIRED",
+          feature,
+        });
+        expect(next).not.toHaveBeenCalled();
+      }
+    });
+
+    it("does not gate non-gated features for the same buyer", () => {
+      const { req, res, next, statusFn } = makeCtx({ isAuthenticated: true, user: consumerBuyer });
+      requireFeature("market_builder")(req, res, next);
+      expect(statusFn).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
+    });
+
+    it("passes once the company email is verified", () => {
+      const { req, res, next, statusFn } = makeCtx({
+        isAuthenticated: true,
+        user: { ...consumerBuyer, companyEmailVerified: true },
+      });
+      requireFeature("research_reports")(req, res, next);
+      expect(statusFn).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
+    });
+
+    it("never gates business-domain buyers, admins, or vendor seats", () => {
+      const cases = [
+        { role: "user", email: "cio@acme.com", companyEmailVerified: false },
+        { role: "admin", email: "ops@gmail.com", companyEmailVerified: false },
+        { role: "user", email: "rep@outlook.com", companyEmailVerified: false, persona: "vendor", featureAccess: ["news"] },
+        { role: "user", email: "rep@yahoo.com", companyEmailVerified: false, vendorScopeId: "v1", featureAccess: ["news"] },
+      ];
+      for (const user of cases) {
+        const { req, res, next, statusFn } = makeCtx({ isAuthenticated: true, user });
+        requireFeature("news")(req, res, next);
+        expect(statusFn, JSON.stringify(user)).not.toHaveBeenCalled();
+        expect(next, JSON.stringify(user)).toHaveBeenCalled();
+      }
+    });
   });
 });

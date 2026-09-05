@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import type { Vendor } from "@shared/schema";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
 
 interface VendorSignalsPage {
   data: SignalData[];
@@ -45,9 +46,13 @@ export function IntelligenceFeed({ marketId, vendors }: IntelligenceFeedProps) {
     return `${base}${vendor}${source}`;
   })();
 
-  const { data: page, isLoading } = useQuery<VendorSignalsPage>({
+  const { data: page, isLoading, error } = useQuery<VendorSignalsPage>({
     queryKey: [signalsUrl],
   });
+
+  if (isCompanyEmailRequiredError(error)) {
+    return <CompanyProfileLockedPanel feature="The intelligence feed" />;
+  }
 
   return (
     <div className="space-y-4">

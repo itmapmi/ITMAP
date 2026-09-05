@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -153,7 +154,7 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       ? { key: 'vendor_id', value: selectedVendor }
       : null;
 
-  const { data: articles, isLoading } = useQuery<NewsArticleExtended[]>({
+  const { data: articles, isLoading, error: newsError } = useQuery<NewsArticleExtended[]>({
     queryKey: ['/api/news', {
       market: marketId,
       vendorFilter: vendorFilterParam,
@@ -181,11 +182,20 @@ export function MarketNews({ marketId }: MarketNewsProps) {
       if (since) queryParams.append('since', since);
       if (params.limit) queryParams.append('limit', String(params.limit));
 
-      const response = await fetch(`/api/news?${queryParams}`);
-      if (!response.ok) throw new Error('Failed to fetch news');
+      const response = await fetch(`/api/news?${queryParams}`, { credentials: 'include' });
+      if (!response.ok) {
+        // Surface the server's reason so the company-email gate can be
+        // recognised (403 company_email_required) instead of a generic error.
+        const body = await response.json().catch(() => null);
+        throw new Error(`${response.status}: ${body?.error || 'Failed to fetch news'}`);
+      }
       return response.json();
     }
   });
+
+  if (isCompanyEmailRequiredError(newsError)) {
+    return <CompanyProfileLockedPanel feature="Market news" />;
+  }
 
   const toggleExpanded = (articleId: string) => {
     setExpandedArticles(prev => {

@@ -25,6 +25,8 @@ import { IntelligenceFeed } from "@/components/intelligence-feed";
 import { MobileMarketIntelligence } from "@/components/mobile-market-intelligence";
 import { VendorNewsroomManager } from "@/components/vendor-newsroom-manager";
 import { LockedFeatureTooltip } from "@/components/locked-feature-tooltip";
+import { CompanyProfileLockTooltip } from "@/components/company-profile-lock";
+import { COMPANY_PROFILE_PATH } from "@shared/company-email";
 import { useTeaserGate } from "@/hooks/use-registration-teaser";
 import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
@@ -91,7 +93,7 @@ export default function MarketDetails() {
   const pathPrefix = mobileMode ? "/mobile" : "";
   const [location, navigate] = useLocation();
   const isMobile = useIsMobile();
-  const { isAuthenticated, user, isAdmin, hasFeature } = useAuth();
+  const { isAuthenticated, user, isAdmin, hasFeature, isCompanyProfileLocked } = useAuth();
   const { teaserActive, openRegistrationModal } = useTeaserGate();
   const createRfpMutation = useCreateRfpForMarket(pathPrefix);
   const { toast } = useToast();
@@ -685,9 +687,12 @@ export default function MarketDetails() {
         </FadeInSection>
 
         {(() => {
-          const intelligenceItems: { value: string; label: string; locked?: boolean }[] = [
-            { value: "news", label: "News", locked: !hasFeature("news") },
-            ...(isAuthenticated || teaserActive ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") }] : []),
+          // `companyLock` marks items locked by the company-email profile gate
+          // (shared/company-email.ts) rather than a missing admin grant — the
+          // tooltip and click target differ (Profile page vs. contact sales).
+          const intelligenceItems: { value: string; label: string; locked?: boolean; companyLock?: boolean }[] = [
+            { value: "news", label: "News", locked: !hasFeature("news") || isCompanyProfileLocked("news"), companyLock: isCompanyProfileLocked("news") },
+            ...(isAuthenticated || teaserActive ? [{ value: "intelligence-feed", label: "Intelligence Feed", locked: !hasFeature("intelligence_feed") || isCompanyProfileLocked("intelligence_feed"), companyLock: isCompanyProfileLocked("intelligence_feed") }] : []),
             { value: "new-players", label: "New Players" },
             ...(canManageVendors ? [{ value: "vendors", label: "Vendor Newsroom URLs" }] : []),
           ];
@@ -697,7 +702,8 @@ export default function MarketDetails() {
           // hasFeature() alone can't be trusted here: it evaluates to "unlocked"
           // for any non-vendor-scoped user, authenticated or not.
           const anonymousReportsLock = !isAuthenticated && !isFreeMarket;
-          const researchReportsLocked = anonymousReportsLock || !hasFeature("research_reports");
+          const companyReportsLock = isCompanyProfileLocked("research_reports");
+          const researchReportsLocked = anonymousReportsLock || companyReportsLock || !hasFeature("research_reports");
           const isInGroup = (items: { value: string }[]) => items.some(i => i.value === activeTab);
           const activeChildLabel = (items: { value: string; label: string }[]) =>
             items.find(i => i.value === activeTab)?.label;
@@ -748,6 +754,7 @@ export default function MarketDetails() {
                           onClick={() => {
                             if (reportsLocked) {
                               if (anonymousReportsLock) openRegistrationModal();
+                              else if (companyReportsLock) navigate(COMPANY_PROFILE_PATH);
                               return;
                             }
                             selectMarketSection(value);
@@ -792,7 +799,18 @@ export default function MarketDetails() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     {intelligenceItems.map(item => (
-                      item.locked ? (
+                      item.companyLock ? (
+                        <CompanyProfileLockTooltip key={item.value}>
+                          <DropdownMenuItem
+                            onSelect={() => navigate(COMPANY_PROFILE_PATH)}
+                            className="flex items-center justify-between gap-2 text-muted-foreground"
+                            data-testid={`tab-${item.value}-locked`}
+                          >
+                            <span>{item.label}</span>
+                            <Lock className="h-3 w-3" />
+                          </DropdownMenuItem>
+                        </CompanyProfileLockTooltip>
+                      ) : item.locked ? (
                         <LockedFeatureTooltip key={item.value}>
                           <div
                             className="flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed select-none"
@@ -830,6 +848,21 @@ export default function MarketDetails() {
                       Reports
                       <Lock className="h-3 w-3" />
                     </button>
+                  ) : companyReportsLock ? (
+                    <CompanyProfileLockTooltip>
+                      <button
+                        type="button"
+                        onClick={() => navigate(COMPANY_PROFILE_PATH)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
+                          isMobile && "flex-shrink-0 px-2 text-[10px]"
+                        )}
+                        data-testid="tab-research-reports-locked"
+                      >
+                        Reports
+                        <Lock className="h-3 w-3" />
+                      </button>
+                    </CompanyProfileLockTooltip>
                   ) : (
                     <LockedFeatureTooltip>
                       <span

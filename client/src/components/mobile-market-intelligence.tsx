@@ -1,10 +1,12 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Newspaper, Radio, Users } from "lucide-react";
+import { ExternalLink, Lock, Newspaper, Radio, Users } from "lucide-react";
 import { format } from "date-fns";
 import type { NewPlayer, NewsArticle, Vendor } from "@shared/schema";
 import type { SignalData } from "@/components/signal-card";
 import { decodeHtmlEntities } from "@/lib/decode-html-entities";
+import { useAuth } from "@/hooks/useAuth";
+import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
 import "./mobile-market-intelligence.css";
 
 type IntelligenceTab = "news" | "signals" | "players";
@@ -71,16 +73,22 @@ function EmptyState({ title, children }: { title: string; children: ReactNode })
 }
 
 export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketIntelligenceProps) {
+  // Company-email profile gate (shared/company-email.ts): News and Signals
+  // stay locked until the buyer verifies a company email; New Players is not
+  // gated. The server refuses the gated requests anyway, so don't fire them.
+  const { isCompanyProfileLocked } = useAuth();
+  const newsLocked = isCompanyProfileLocked("news");
+  const signalsLocked = isCompanyProfileLocked("intelligence_feed");
   const [tab, setTab] = useState<IntelligenceTab>("news");
   const news = useQuery<NewsArticleExtended[]>({
     queryKey: ["/api/news", { market: marketId, limit: 50 }],
     queryFn: () => fetchJson(`/api/news?${new URLSearchParams({ market: marketId, limit: "50" })}`),
-    enabled: tab === "news",
+    enabled: tab === "news" && !newsLocked,
   });
   const signals = useQuery<VendorSignalsPage>({
     queryKey: ["/api/markets", marketId, "vendor-signals", 20],
     queryFn: () => fetchJson(`/api/markets/${marketId}/vendor-signals?limit=20`),
-    enabled: tab === "signals",
+    enabled: tab === "signals" && !signalsLocked,
   });
   const players = useQuery<NewPlayer[]>({
     queryKey: ["/api/markets", marketId, "new-players"],
@@ -93,25 +101,26 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
   const sourceAccents = buildAccentMap((signals.data?.data ?? []).map(signal => signal.sourceType));
 
   const tabs = [
-    { id: "news" as const, label: "News", icon: Newspaper },
-    { id: "signals" as const, label: "Signals", icon: Radio },
-    { id: "players" as const, label: "New Players", icon: Users },
+    { id: "news" as const, label: "News", icon: Newspaper, locked: newsLocked },
+    { id: "signals" as const, label: "Signals", icon: Radio, locked: signalsLocked },
+    { id: "players" as const, label: "New Players", icon: Users, locked: false },
   ];
 
   return (
     <section className="mobile-market-intelligence" aria-labelledby="mobile-intelligence-heading">
       <h2 id="mobile-intelligence-heading" className="mmi-heading"><span>01</span>Stored-data views</h2>
       <div className="mmi-tabs" role="tablist" aria-label="Market intelligence views">
-        {tabs.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon, locked }) => (
           <button key={id} id={`mmi-tab-${id}`} type="button" role="tab" aria-selected={tab === id}
-            aria-controls={`mmi-panel-${id}`} onClick={() => setTab(id)}>
-            <Icon size={14} aria-hidden="true" />{label}
+            aria-controls={`mmi-panel-${id}`} onClick={() => setTab(id)} data-locked={locked || undefined}
+            title={locked ? "Complete your short profile to unlock — it's free" : undefined}>
+            <Icon size={14} aria-hidden="true" />{label}{locked && <Lock size={11} aria-label="Locked" />}
           </button>
         ))}
       </div>
 
       {tab === "news" && <div id="mmi-panel-news" role="tabpanel" aria-labelledby="mmi-tab-news">
-        {news.isLoading ? <LoadingState /> : news.isError ? (
+        {newsLocked || isCompanyEmailRequiredError(news.error) ? <CompanyProfileLockedPanel feature="Market news" variant="mobile" /> : news.isLoading ? <LoadingState /> : news.isError ? (
           <EmptyState title="News is unavailable"><span>{news.error.message}</span><button type="button" onClick={() => news.refetch()}>Try again</button></EmptyState>
         ) : !news.data?.length ? (
           <EmptyState title="No news articles found"><span>News appears here when stored articles are available for this market.</span></EmptyState>
@@ -128,7 +137,7 @@ export function MobileMarketIntelligence({ marketId, vendors }: MobileMarketInte
       </div>}
 
       {tab === "signals" && <div id="mmi-panel-signals" role="tabpanel" aria-labelledby="mmi-tab-signals">
-        {signals.isLoading ? <LoadingState /> : signals.isError ? (
+        {signalsLocked || isCompanyEmailRequiredError(signals.error) ? <CompanyProfileLockedPanel feature="Signals" variant="mobile" /> : signals.isLoading ? <LoadingState /> : signals.isError ? (
           <EmptyState title="Signals are unavailable"><span>{signals.error.message}</span><button type="button" onClick={() => signals.refetch()}>Try again</button></EmptyState>
         ) : !signals.data?.data.length ? (
           <EmptyState title="No signals collected yet"><span>Stored signals for this market appear here.</span></EmptyState>

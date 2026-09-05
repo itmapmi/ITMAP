@@ -4,6 +4,7 @@ import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
+import { needsCompanyEmailVerification, isCompanyEmailGatedFeature } from "@shared/company-email";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
 import {
   GOOGLE_RETURN_PARAM,
@@ -206,6 +207,10 @@ export function useAuth() {
 
   const isVendorScoped = !!(user?.vendorScopeId || (user as any)?.vendorScopeIds?.length);
   const isVendorPersona = (user as any)?.persona === "vendor";
+  // Company-email profile gate (shared/company-email.ts): consumer-domain
+  // sign-ups must verify a company email before Reports / News /
+  // Intelligence Feed open. Mirrors the server's requireFeature check.
+  const needsCompanyProfile = needsCompanyEmailVerification(user ?? null);
 
   return {
     user,
@@ -223,6 +228,12 @@ export function useAuth() {
     // Buyers get all features unlocked; vendor users (scoped or persona) are gated
     hasFeature: (featureKey: LockableFeatureKey) =>
       hasFeatureAccess(user?.role, user?.featureAccess, featureKey, isVendorScoped, isVendorPersona),
+    needsCompanyProfile,
+    // True when `featureKey` is locked *because of* the company-email gate
+    // (as opposed to a missing admin grant). Callers use it to pick the
+    // "complete your profile" tooltip over the "contact sales" one.
+    isCompanyProfileLocked: (featureKey: LockableFeatureKey) =>
+      needsCompanyProfile && isCompanyEmailGatedFeature(featureKey),
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,

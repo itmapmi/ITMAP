@@ -6,8 +6,10 @@ import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
-import { sendVerificationEmail } from "../emailService";
+import { sendVerificationEmail, sendCompanyVerificationEmail } from "../emailService";
 import { registerGoogleAuthRoutes } from "./googleAuth";
+import { COMPANY_PROFILE_PATH } from "@shared/company-email";
+import { toPublicUser } from "../lib/publicUser";
 
 // Hardened base-URL resolution for the emailed verification link — same
 // pattern used for datasheet digest links. Never lets a misconfigured env
@@ -29,8 +31,10 @@ export function newVerificationToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-// Minimum time between "resend verification email" calls for the same account.
-const RESEND_COOLDOWN_MS = 60 * 1000;
+// Minimum time between "resend verification email" calls for the same
+// account (account verification and company-email verification alike).
+export const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const RESEND_COOLDOWN_MS = VERIFICATION_RESEND_COOLDOWN_MS;
 
 const loggedSessions = new Set<string>();
 
@@ -44,6 +48,23 @@ export async function issueAndSendVerification(userId: string, email: string): P
   const result = await sendVerificationEmail(email, verifyUrl);
   if (!result.sent) {
     console.error(`[Auth] Could not send verification email to ${email}: ${result.reason}`);
+  }
+  return result.sent;
+}
+
+// Company-email counterpart (profile gate, shared/company-email.ts). Exported
+// so the /api/me/company-profile routes can reuse the token/URL plumbing.
+export async function issueAndSendCompanyVerification(
+  userId: string,
+  companyEmail: string,
+  companyName: string | null,
+): Promise<boolean> {
+  const token = newVerificationToken();
+  await storage.setCompanyEmailVerificationToken(userId, token);
+  const verifyUrl = `${resolveAppBaseUrl()}/auth/verify-company-email?token=${token}`;
+  const result = await sendCompanyVerificationEmail(companyEmail, verifyUrl, companyName);
+  if (!result.sent) {
+    console.error(`[Auth] Could not send company verification email to ${companyEmail}: ${result.reason}`);
   }
   return result.sent;
 }
@@ -177,10 +198,9 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   function stripPrivateFields(user: any) {
-    const { password, emailVerificationToken, ...safe } = user;
     // Never send the hash itself, but admins' Security settings need to know
     // whether one is already set (to ask for "current password" vs not).
-    return { ...safe, hasPassword: !!password };
+    return { ...toPublicUser(user), hasPassword: !!user.password };
   }
 
   app.post("/auth/register", async (req, res) => {
@@ -378,6 +398,32 @@ export function registerAuthRoutes(app: Express): void {
       }
       res.redirect(`${loginLandingPath(verified)}?verify=success`);
     });
+  });
+
+  // Company-email verification link (profile gate). Clicked from the email
+  // client, so it's a GET that lands on the Profile page with a status flag.
+  // It never logs anyone in or touches the login email: it only flips the
+  // company-email flag on the account that issued the token.
+  app.get("/auth/verify-company-email", async (req, res) => {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) return res.redirect(`${COMPANY_PROFILE_PATH}?company=invalid`);
+
+    const user = await storage.getUserByCompanyVerificationToken(token);
+    if (!user || !user.companyEmail) return res.redirect(`${COMPANY_PROFILE_PATH}?company=invalid`);
+
+    // Verification is a single conditional UPDATE bound to the token AND the
+    // address it was issued for: if the profile email changed in between
+    // (which resets the token) the old link is dead, not transferred. The
+    // partial unique index on verified company emails makes "verified on one
+    // account only" hold even under concurrent clicks.
+    try {
+      const verified = await storage.verifyCompanyEmail(user.id, token, user.companyEmail);
+      if (!verified) return res.redirect(`${COMPANY_PROFILE_PATH}?company=invalid`);
+    } catch (err: any) {
+      if (err?.code === "23505") return res.redirect(`${COMPANY_PROFILE_PATH}?company=taken`);
+      throw err;
+    }
+    res.redirect(`${COMPANY_PROFILE_PATH}?company=verified`);
   });
 
   // Resend the verification email — rate-limited so the mailbox can't be

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Calendar, ArrowLeft, FileText } from "lucide-react";
 import { format } from "date-fns";
 import type { ResearchReport } from "@shared/schema";
+import { CompanyProfileLockedPanel, isCompanyEmailRequiredError } from "@/components/company-profile-lock";
 
 export default function ReportViewer() {
   // Registered at both /report/:reportId and its /mobile/report/:reportId
@@ -82,6 +83,14 @@ export default function ReportViewer() {
             </CardContent>
           </Card>
         </div>
+      </div>
+    );
+  }
+
+  if (isCompanyEmailRequiredError(error)) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <CompanyProfileLockedPanel feature="This report" variant={mobileMode ? "mobile" : "light"} className={mobileMode ? "mx-4" : undefined} />
       </div>
     );
   }
