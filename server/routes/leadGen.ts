@@ -149,6 +149,19 @@ function isValidUuid(s: string): boolean {
   return UUID_RE.test(s);
 }
 
+function issueVisitorId(res: Response): string {
+  const newId = crypto.randomUUID();
+  res.cookie(VISITOR_COOKIE, newId, {
+    httpOnly: true,
+    sameSite: "lax",
+    // secure in production only
+    secure: process.env.NODE_ENV === "production",
+    maxAge: VISITOR_COOKIE_MAX_AGE_S * 1000,
+    path: "/",
+  });
+  return newId;
+}
+
 export function getOrCreateVisitorId(req: Request, res: Response): string {
   let existing: string | undefined;
   try {
@@ -161,16 +174,7 @@ export function getOrCreateVisitorId(req: Request, res: Response): string {
   if (typeof existing === "string" && existing.length > 0 && isValidUuid(existing)) {
     return existing;
   }
-  const newId = crypto.randomUUID();
-  res.cookie(VISITOR_COOKIE, newId, {
-    httpOnly: true,
-    sameSite: "lax",
-    // secure in production only
-    secure: process.env.NODE_ENV === "production",
-    maxAge: VISITOR_COOKIE_MAX_AGE_S * 1000,
-    path: "/",
-  });
-  return newId;
+  return issueVisitorId(res);
 }
 
 function getOrCreateTrafficSessionId(req: Request, res: Response): string {
@@ -302,7 +306,17 @@ function canReadMarket(market: any, req: Request): boolean {
 export async function linkVisitorOnLogin(req: Request, res: Response, userId: string): Promise<void> {
   try {
     // Issue / read visitor cookie (first-time login callers receive it here).
-    const anonymousId = getOrCreateVisitorId(req, res);
+    let anonymousId = getOrCreateVisitorId(req, res);
+
+    // A browser visitor row belongs to exactly one account. When a browser that
+    // is already linked to account A signs in as account B (e.g. an admin
+    // testing a new sign-up from their everyday browser), rotate the visitor
+    // cookie so B gets its own row instead of silently taking over A's row —
+    // otherwise B never appears in the Operations visitor list.
+    const existingVisitor = await storage.getTrafficVisitorByAnonymousId(anonymousId);
+    if (existingVisitor?.userId && existingVisitor.userId !== userId) {
+      anonymousId = issueVisitorId(res);
+    }
 
     // Server-derived IP — never read x-forwarded-for; use req.ip then socket.
     const ip = (req.ip ?? req.socket?.remoteAddress ?? "").trim();

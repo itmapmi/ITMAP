@@ -42,3 +42,4 @@
 - [Admin company-email overrides](admin-company-email-overrides.md) — support actions need dedicated token-free storage fns; keep the unique-index guard; curl admin routes via HTTPS dev domain (Secure cookie).
 - [E2E / curl auth must use HTTPS dev domain](e2e-secure-cookie-https.md) — Secure-only session cookie: http://127.0.0.1 looks like a broken post-signup redirect; header banners need solid backgrounds.
 - [Legal pages must be server-rendered](legal-pages-server-rendered.md) — Google brand review reads raw HTML; SPA shell = "insufficient content". Server .tsx needs explicit React import (classic JSX in esbuild).
+- [Traffic visitor row ownership](traffic-visitor-row-ownership.md) — visitor rows are per browser cookie and never reassigned; account switch on a shared browser rotates the cookie. "Missing" logins are usually this.

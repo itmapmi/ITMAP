@@ -6,6 +6,7 @@ import request from "supertest";
 const h = vi.hoisted(() => {
   const storage = {
     upsertTrafficVisitor: vi.fn(),
+    getTrafficVisitorByAnonymousId: vi.fn(),
     writeTrafficEvent: vi.fn(),
     incrementLoginCount: vi.fn(),
     trackEvent: vi.fn(),
@@ -99,6 +100,7 @@ beforeEach(() => {
   h.storage.upsertTrafficVisitor.mockImplementation(async (input: any) => ({
     id: `visitor-${input.anonymousId}`,
   }));
+  h.storage.getTrafficVisitorByAnonymousId.mockResolvedValue(null);
   h.storage.writeTrafficEvent.mockResolvedValue({});
   h.storage.incrementLoginCount.mockResolvedValue(undefined);
   h.storage.trackEvent.mockResolvedValue({});
@@ -210,6 +212,65 @@ describe("POST /api/track identity and ingestion", () => {
         source: "client",
       }),
     );
+  });
+
+  it("gives a second account its own visitor identity instead of taking over the first account's row", async () => {
+    const browser = request.agent(app);
+
+    currentUser = { id: "user-1", role: "user" };
+    const firstLogin = await browser
+      .post("/__test/login")
+      .set("x-test-ip", testIp("switch"));
+    expect(firstLogin.status).toBe(200);
+    const firstAnonymousId =
+      h.storage.upsertTrafficVisitor.mock.calls[0][0].anonymousId;
+    const firstCookie = cookiePair(firstLogin, "tv_vid");
+    expect(firstCookie).toContain(firstAnonymousId);
+
+    // The browser's visitor row is now linked to user-1.
+    h.storage.getTrafficVisitorByAnonymousId.mockImplementation(
+      async (anonymousId: string) =>
+        anonymousId === firstAnonymousId
+          ? { id: "visitor-1", anonymousId, userId: "user-1" }
+          : null,
+    );
+
+    currentUser = { id: "user-2", role: "user" };
+    const secondLogin = await browser
+      .post("/__test/login")
+      .set("x-test-ip", testIp("switch"));
+    expect(secondLogin.status).toBe(200);
+
+    const secondInput = h.storage.upsertTrafficVisitor.mock.calls[1][0];
+    expect(secondInput.userId).toBe("user-2");
+    expect(secondInput.anonymousId).not.toBe(firstAnonymousId);
+    // The browser receives the rotated visitor cookie so later page views
+    // attach to user-2's row, not user-1's.
+    expect(cookiePair(secondLogin, "tv_vid")).toContain(secondInput.anonymousId);
+    expect(h.storage.writeTrafficEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        anonymousId: secondInput.anonymousId,
+        userId: "user-2",
+        eventType: "login",
+      }),
+    );
+
+    // Signing back in as user-1 from the same browser (now carrying user-2's
+    // cookie) rotates again rather than reassigning user-2's row.
+    h.storage.getTrafficVisitorByAnonymousId.mockImplementation(
+      async (anonymousId: string) =>
+        anonymousId === secondInput.anonymousId
+          ? { id: "visitor-2", anonymousId, userId: "user-2" }
+          : null,
+    );
+    currentUser = { id: "user-1", role: "user" };
+    const thirdLogin = await browser
+      .post("/__test/login")
+      .set("x-test-ip", testIp("switch"));
+    expect(thirdLogin.status).toBe(200);
+    const thirdInput = h.storage.upsertTrafficVisitor.mock.calls[2][0];
+    expect(thirdInput.userId).toBe("user-1");
+    expect(thirdInput.anonymousId).not.toBe(secondInput.anonymousId);
   });
 });
 

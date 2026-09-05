@@ -47,6 +47,18 @@ export interface UpsertVisitorInput {
   userAgent?: string | null;
 }
 
+/** Returns the visitor row for a browser visitor cookie, or null when unknown. */
+export async function getTrafficVisitorByAnonymousId(
+  anonymousId: string,
+): Promise<TrafficVisitor | null> {
+  const [row] = await db
+    .select()
+    .from(trafficVisitors)
+    .where(eq(trafficVisitors.anonymousId, anonymousId))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Creates or updates a traffic_visitors row. Returns the row. */
 export async function upsertTrafficVisitor(
   input: UpsertVisitorInput,
@@ -97,7 +109,13 @@ export async function upsertTrafficVisitor(
       end
     `;
   }
-  if (input.userId) updates.userId = input.userId;
+  // A visitor row belongs to the first account that claims it; never reassign
+  // it to another user. Account switches on a shared browser get a fresh
+  // visitor ID in linkVisitorOnLogin instead. Done in SQL so concurrent
+  // claims can't interleave a read-then-write.
+  if (input.userId) {
+    updates.userId = sql`coalesce(${trafficVisitors.userId}, ${input.userId})`;
+  }
   if (input.ipAddress) updates.ipAddress = input.ipAddress;
   if (input.countryCode) updates.countryCode = input.countryCode;
   if (input.country) updates.country = input.country;

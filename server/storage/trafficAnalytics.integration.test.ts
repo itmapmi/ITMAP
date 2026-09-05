@@ -223,6 +223,29 @@ describe.sequential("traffic analytics PostgreSQL integration", () => {
     });
   });
 
+  it("keeps a visitor row with the first account that claimed it", async () => {
+    const firstUserId = fixtureId();
+    const secondUserId = fixtureId();
+    await db.insert(users).values([
+      { id: firstUserId, email: `${runPrefix}first-owner@example.test` },
+      { id: secondUserId, email: `${runPrefix}second-owner@example.test` },
+    ]);
+    const anonymousId = fixtureId();
+
+    const anonymous = await upsertTrafficVisitor({ anonymousId, sessionId: fixtureId() });
+    expect(anonymous.userId).toBeNull();
+
+    const claimed = await upsertTrafficVisitor({ anonymousId, sessionId: fixtureId(), userId: firstUserId });
+    expect(claimed.userId).toBe(firstUserId);
+
+    // A different account on the same visitor cookie must not take the row over
+    // (linkVisitorOnLogin rotates the cookie instead). Same owner is a no-op.
+    const contested = await upsertTrafficVisitor({ anonymousId, sessionId: fixtureId(), userId: secondUserId });
+    expect(contested.userId).toBe(firstUserId);
+    const sameOwner = await upsertTrafficVisitor({ anonymousId, sessionId: fixtureId(), userId: firstUserId });
+    expect(sameOwner.userId).toBe(firstUserId);
+  });
+
   it("validates trend, geo, top-market, and visitor-list queries from seeded fixtures", async () => {
     const userId = fixtureId();
     const marketOneId = fixtureId();
