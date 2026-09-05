@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { externalRouter } from "./external";
 import { registerAuthRoutes } from "./routes/auth";
+import { registerLegalRoutes } from "./routes/legal";
 import { registerMarketRoutes } from "./routes/markets";
 import { registerFileRoutes } from "./routes/files";
 import { registerNewsRoutes } from "./routes/news";
@@ -29,6 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Domain modules
   registerAuthRoutes(app);
+  registerLegalRoutes(app);
   registerMarketRoutes(app);
   registerFileRoutes(app);
   registerNewsRoutes(app);

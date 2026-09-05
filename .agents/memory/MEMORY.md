@@ -41,3 +41,4 @@
 - [Company-email profile gate](company-email-gate.md) — gate lives inside requireFeature after RBAC; client matches `company_email_required` in error text; unverified claims are not unique.
 - [Admin company-email overrides](admin-company-email-overrides.md) — support actions need dedicated token-free storage fns; keep the unique-index guard; curl admin routes via HTTPS dev domain (Secure cookie).
 - [E2E / curl auth must use HTTPS dev domain](e2e-secure-cookie-https.md) — Secure-only session cookie: http://127.0.0.1 looks like a broken post-signup redirect; header banners need solid backgrounds.
+- [Legal pages must be server-rendered](legal-pages-server-rendered.md) — Google brand review reads raw HTML; SPA shell = "insufficient content". Server .tsx needs explicit React import (classic JSX in esbuild).
