@@ -89,6 +89,7 @@ export interface IStorage {
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   verifyUserEmail(id: string): Promise<User>;
+  reserveUnverifiedSession(id: string): Promise<User | undefined>;
   setEmailVerificationToken(id: string, token: string): Promise<User>;
   updateUser(id: string, updates: Partial<Pick<User, "firstName" | "lastName" | "email" | "password" | "profileImageUrl">>): Promise<User>;
 

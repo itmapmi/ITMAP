@@ -185,14 +185,14 @@ export default function BuyerLandingPage() {
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Start evaluating for free today</h2>
               <p className="text-slate-400 text-lg leading-relaxed mb-8">
-                Registration is free and access is free — today and always. Create your buyer account with a company email and unlock every feature.
+                Registration is free and access is free — today and always. Create your buyer account with any email address and unlock every feature.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
                   "No credit card required",
                   "No vendor sponsorships or paid placements",
                   "All buyer features included at no cost",
-                  "Company email required to keep the community enterprise-grade",
+                  "Personal or company email — either works",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-slate-300">
                     <CheckCircle2 className="h-5 w-5 text-cyan-400 flex-shrink-0" />

@@ -21,8 +21,8 @@ type AdminUser = Omit<User, "password"> & {
 type GroupKey = "inactive" | "active" | "vendorFactReview";
 
 const GROUPS: { key: GroupKey; label: string; description: string; icon: typeof Users }[] = [
-  { key: "inactive", label: "Inactive members", description: "Locked out — unverified past the grace period", icon: UserX },
-  { key: "active", label: "Active members", description: "Verified, or still within the grace window", icon: Users },
+  { key: "inactive", label: "Inactive members", description: "Locked out — unverified with no sign-in sessions left", icon: UserX },
+  { key: "active", label: "Active members", description: "Verified, or still within their unverified sessions", icon: Users },
   { key: "vendorFactReview", label: "Vendors (Fact Review enabled)", description: "Vendor accounts with a fact-review seat assigned", icon: ShieldCheck },
 ];
 

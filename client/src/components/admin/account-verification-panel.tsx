@@ -26,7 +26,7 @@ function formatRelative(date: Date): string {
 }
 
 // Shown on the Operations page: which self-registered accounts are active
-// vs. locked out for never clicking the verification link within the grace
+// vs. locked out for never clicking the verification link within their unverified-session
 // window. Lets an admin bulk-resend the verification email to any subset of
 // the locked-out (or still-pending) list in one action.
 export default function AccountVerificationPanel() {
@@ -85,7 +85,7 @@ export default function AccountVerificationPanel() {
             <p className="font-mono text-[10px] font-bold uppercase tracking-[.18em] text-cyan-700">Account verification</p>
             <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-900">Active vs. locked-out accounts</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Accounts lock out once the 10-minute email-verification grace period passes without the link being clicked.
+              Accounts lock out once they have used their 3 unverified sign-in sessions without clicking the verification link.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -185,7 +185,7 @@ export default function AccountVerificationPanel() {
                       ) : u.verificationLocked ? (
                         <span className="text-rose-600">Locked out</span>
                       ) : (
-                        <span className="text-amber-600">Pending (in grace)</span>
+                        <span className="text-amber-600">Pending (sessions left)</span>
                       )}
                     </td>
                   </tr>

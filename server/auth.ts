@@ -4,7 +4,6 @@ import connectPg from 'connect-pg-simple';
 import bcrypt from 'bcryptjs';
 import type { Express } from 'express';
 import { storage } from './storage';
-import type { User } from '@shared/schema';
 
 // Password support is opt-in, per account: the platform is passwordless by
 // default (see loginUserSchema), but admin accounts can set a password
@@ -21,18 +20,12 @@ export async function comparePassword(plain: string, hash: string): Promise<bool
   return bcrypt.compare(plain, hash);
 }
 
-// New self-registered accounts get this long to click the verification link
-// mailed to them before access is blocked. Kept here (not just in the route
-// that sends the email) so the grace period is enforced in exactly one place.
-export const EMAIL_VERIFICATION_GRACE_MS = 10 * 60 * 1000; // 10 minutes
-
-// Whether a user is allowed to remain signed in: verified accounts always
-// pass; unverified accounts pass only inside their grace window.
-export function isWithinVerificationGrace(user: Pick<User, 'emailVerified' | 'createdAt'>): boolean {
-  if (user.emailVerified) return true;
-  if (!user.createdAt) return false;
-  return Date.now() - new Date(user.createdAt).getTime() < EMAIL_VERIFICATION_GRACE_MS;
-}
+// Verification policy: an unverified self-registered account gets a fixed
+// number of independent sessions (MAX_UNVERIFIED_SESSIONS) before it must
+// click the emailed verification link. The counter lives on the user row and
+// is only ever incremented in logInAndRespond (server/routes/auth.ts).
+import { canStartUnverifiedSession, hasUnverifiedSessionAllowance } from "@shared/verification";
+export { canStartUnverifiedSession, hasUnverifiedSessionAllowance };
 
 // Temporary diagnostic logging for the admin-console "reload" investigation.
 // Toggle off by setting ADMIN_AUTH_DEBUG=false once the issue is understood —
@@ -145,12 +138,12 @@ export function setupPassport(app: Express) {
           if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: access expired', { id, email: user.email, accessExpiresAt: user.accessExpiresAt });
           return done(null, false as any);
         }
-        // Passwordless signup: an unverified account only keeps its session
-        // for the EMAIL_VERIFICATION_GRACE_MS grace period. Past that, every request is treated
-        // as logged out until they follow the verification link mailed to
-        // them (which re-establishes a session on success).
-        if (!isWithinVerificationGrace(user)) {
-          if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: verification grace expired', { id, email: user.email });
+        // Passwordless signup: an unverified account only keeps working for
+        // its first MAX_UNVERIFIED_SESSIONS independent sessions. Past that,
+        // every request is treated as logged out until they follow the
+        // verification link mailed to them (which re-establishes a session).
+        if (!hasUnverifiedSessionAllowance(user)) {
+          if (authDiagnosticsEnabled()) console.log('[AuthDiag] deserializeUser: unverified session allowance exhausted', { id, email: user.email, unverifiedSessionCount: user.unverifiedSessionCount });
           return done(null, false as any);
         }
       }

@@ -1,43 +1,39 @@
 ---
 name: Passwordless auth with delayed email verification
-description: Why login has no password field, and how the 2-hour verification grace period is enforced (this project).
+description: Why login has no password field, personal emails are allowed, and verification is enforced after 3 unverified sessions (not a time window).
 ---
 
 ## Decision
-Registration and login take only a company email — no password anywhere in the
-public auth flow. Submitting the register form creates the account immediately
-and grants a full session right away (not gated behind clicking anything
-first). A verification link is emailed in the background; the account has a
-hard grace window (measured from `createdAt`, not renewed per login) to
-verify before access is cut — currently 10 minutes, set via the single
-constant `EMAIL_VERIFICATION_GRACE_MS` in `server/auth.ts` (mirrored as
-`GRACE_MS` in `client/src/components/email-verification-gate.tsx` for the
-UI countdown — the two must be kept in sync manually, there's no shared
-import between server and client for this value). Existing/admin-created
-accounts default `emailVerified: true` at the DB column level so this never
-retroactively locks out anyone who predates the feature. Partway through the
-window (`REMINDER_AFTER_MS`, currently half of the grace period) a
-one-time dismissible popup (`VerificationReminderDialog`) nudges the user to
-verify; dismissing it is remembered per-email in localStorage so it doesn't
-reappear on refresh, but it never pauses or extends the real deadline —
-that's still enforced server-side only.
+Registration and login take only an email — no password anywhere in the
+public auth flow, and (since Sept 2026) personal/consumer domains are
+accepted; the old company-email-only blocklist was removed on purpose after
+a Reddit campaign produced ~200 clicks and zero sign-ups. Submitting the
+register form creates the account immediately and grants a full session
+right away. A verification link is emailed in the background.
 
-**Why 10 minutes, not the original 2 hours:** product decision to tighten
-the window once the flow was working end-to-end — 2 hours was judged too
-long for an account with unverified email to retain full access.
+**Verification policy is session-count based, not wall-clock (Sept 2026).**
+An unverified account gets `MAX_UNVERIFIED_SESSIONS` (3) *independent
+sessions* — each register/login that mints a new server session counts one;
+a session merely restored from its cookie does not. The 4th sign-in is
+refused with `403 verification_required` until the emailed link is clicked.
+Constant + predicates live in `shared/verification.ts` (imported by both
+server and client — no manual sync). Counter is `users.unverified_session_count`,
+reserved with ONE atomic conditional UPDATE (`reserveUnverifiedSession`) —
+never check-then-increment, concurrent passwordless logins would overshoot
+and lock the account early. Admin accounts and pre-existing accounts
+(`emailVerified` defaults true, count defaults 0) are unaffected.
 
-**Why:** explicit product decision after iterating through several simpler
-options (password removal → fully passwordless/no-verification → this
-delayed-verification model) — the user wanted zero signup friction but still
-wanted a way to confirm the email is real.
+**Why sessions, not minutes:** the earlier 2h → 10-minute grace locked
+campaign visitors out mid-first-visit; the product decision was to let a
+new user come back a couple of times before forcing verification.
 
-**How to apply:** the grace check lives in exactly one place,
-`isWithinVerificationGrace()` in `server/auth.ts`, used both by the passport
-`deserializeUser` (the real security boundary — every request re-checks it)
-and by the `/auth/register` and `/auth/login` route handlers (so a
-freshly-issued session can't bypass the check on its very first response).
-Do not reintroduce password fields or `passport-local` without revisiting
-this decision with the user for non-admin accounts.
+**How to apply:** enforcement is in `deserializeUser` (every request,
+`count <= MAX`) and `logInAndRespond` (reservation, `count < MAX`). The
+client mirrors state in the `itmap_pending_verification` localStorage
+marker (`sessionsUsed`, `verificationRequired`) and updates it via a window
+event, not polling — polling at the Router level caused route remounts.
+Do not reintroduce password fields or `passport-local` for non-admin
+accounts without revisiting this with the user.
 
 **Update (admin-only exception, now live):** `role === 'admin'` accounts are
 the one exception — login now requires a password when `users.password` is
@@ -72,6 +68,6 @@ whatever host manages itmap.ai's DNS — these live under `send.` /
 `resend._domainkey`, not the root domain's MX, so the team's existing
 `support@itmap.ai` mailbox (receiving) is unaffected. Resend is
 outbound-only and has no bearing on receiving. Until those records are
-added, registration still works end-to-end (account creation, grace-period
+added, registration still works end-to-end (account creation, unverified-session
 access, login) — only the actual email delivery fails, which is visible in
 server logs as `[EmailService] Resend verification email failed (403)`.

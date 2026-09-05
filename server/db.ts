@@ -670,6 +670,14 @@ export async function runStartupMigrations(): Promise<void> {
         ON users (email_verification_token) WHERE email_verification_token IS NOT NULL;
     `);
 
+    // 31. Unverified accounts are allowed a fixed number of independent
+    //     sign-in sessions (MAX_UNVERIFIED_SESSIONS in shared/verification.ts)
+    //     instead of a wall-clock grace period. Counter is incremented at
+    //     login/register only.
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS unverified_session_count integer NOT NULL DEFAULT 0;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

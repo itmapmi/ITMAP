@@ -22,7 +22,8 @@
 - [Making a requireFeature route anon-readable](intelligence-feed-teaser-access.md) — requireFeature() 401s anon before the handler runs; deleting a redundant inline auth check does nothing, must bypass the middleware itself.
 - [Reddit Pixel + CAPI integration](reddit-capi-integration.md) — CAPI v3 endpoint/schema, session-uuid dedup (not conversion_id), and why only SIGN_UP (not PAGE_VISIT) gets server-side CAPI.
 - [Vendor portal scoping model](vendor-portal-scoping.md) — /me/leads shows the whole market visitor pool (marketIds filter), not vendor-attributed events; watchlist feature was fully removed.
-- [Passwordless auth + verification grace](passwordless-auth-verification.md) — no password anywhere; 2h grace from createdAt enforced in isWithinVerificationGrace(); Resend needs itmap.ai DNS verified to actually send.
+- [Passwordless auth + verification policy](passwordless-auth-verification.md) — any email accepted; 3 unverified sessions via atomic reservation, not a time window; Resend needs itmap.ai DNS verified.
+- [Anonymous teaser timing](anonymous-teaser-timing.md) — clock starts only on market detail routes; 2 min soft prompt, 10 min forced; test by editing itmap_teaser_start_at in sessionStorage.
 - [Emailed links must use PUBLIC_BASE_URL](emailed-links-public-base-url.md) — REPLIT_DEV_DOMAIN fallback leaks into emailed links sent from the dev workspace, showing recipients a broken Replit placeholder page.
 - [Preview iframe session cookies](preview-iframe-session-cookies.md) — Replit preview pane is a cross-site iframe; Lax/unpartitioned cookies never persist there, causing a fake "reload loop" that isn't a real app bug.
 - [Admin session death — ruled out, real cause elsewhere](admin-session-death-investigation.md) — "spontaneous session swap" was a real logout/login account switch; not a bug. See wouter-route-remount-flicker.md for the actual periodic-reload cause.

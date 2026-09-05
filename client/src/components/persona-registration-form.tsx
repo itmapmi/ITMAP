@@ -7,22 +7,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
 import { UserPlus, Users, Building2, Mail, MailCheck } from "lucide-react";
+import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
 
-// Consumer email domains not accepted — company/work emails only.
-export const CONSUMER_DOMAINS = new Set([
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
-  "live.com", "aol.com", "protonmail.com", "me.com", "msn.com",
-  "ymail.com", "googlemail.com", "yahoo.co.uk", "yahoo.co.in",
-  "qq.com", "163.com", "126.com", "sina.com", "foxmail.com",
-  "yandex.com", "mail.ru", "gmx.com", "gmx.net", "zoho.com",
-]);
+// Shown under the heading of the buyer sign-up prompt. Personal and company
+// email addresses are both accepted.
+export const BUYER_VALUE_PROPOSITION =
+  "Free, forever. No card. Unlock vendor scores, comparisons, create RFPs, security insights, and reports for all markets.";
 
 interface PersonaRegistrationFormProps {
   persona: "buyer" | "vendor";
   compact?: boolean;
+  /**
+   * The visitor's free preview has ended and this prompt can no longer be
+   * dismissed — adjust the heading so it's clear an email is required to
+   * continue.
+   */
+  forced?: boolean;
 }
 
-export function PersonaRegistrationForm({ persona, compact = false }: PersonaRegistrationFormProps) {
+export function PersonaRegistrationForm({ persona, compact = false, forced = false }: PersonaRegistrationFormProps) {
   const [, setLocation] = useLocation();
   const {
     register, registerError, isRegistering,
@@ -42,11 +45,6 @@ export function PersonaRegistrationForm({ persona, compact = false }: PersonaReg
 
     if (!email.includes("@")) {
       newErrors.email = "Valid email is required";
-    } else {
-      const domain = email.split("@")[1]?.toLowerCase() ?? "";
-      if (CONSUMER_DOMAINS.has(domain)) {
-        newErrors.email = "Please use your company email address. Consumer email providers are not accepted.";
-      }
     }
 
     if (!isVendorPersona && !termsAccepted) {
@@ -130,7 +128,7 @@ export function PersonaRegistrationForm({ persona, compact = false }: PersonaReg
           <h3 className="text-lg sm:text-xl font-bold text-white">You're in — check your inbox</h3>
           <p className="text-sm text-slate-400">
             We've sent a verification link to <strong className="text-slate-200">{sentTo}</strong>. You have full
-            access for the next 10 minutes — click the link anytime in that window to keep it permanently.
+            access right now — click the link within your first {MAX_UNVERIFIED_SESSIONS} visits to keep it permanently.
           </p>
           <Button
             className={`w-full text-white border-0 font-semibold ${
@@ -160,8 +158,17 @@ export function PersonaRegistrationForm({ persona, compact = false }: PersonaReg
             {isVendorPersona ? "Vendor Access" : "Buyer Access"}
           </div>
           <h3 className="text-lg sm:text-xl font-bold text-white">
-            {isVendorPersona ? "Create your Vendor account" : "Create your account"}
+            {isVendorPersona
+              ? "Create your Vendor account"
+              : forced
+              ? "Your free preview has ended — enter your email to continue"
+              : "Create your account"}
           </h3>
+          {!isVendorPersona && (
+            <p className="text-sm leading-relaxed text-slate-300" data-testid="text-registration-value-prop">
+              {BUYER_VALUE_PROPOSITION}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -173,7 +180,7 @@ export function PersonaRegistrationForm({ persona, compact = false }: PersonaReg
 
           <div className="space-y-2">
             <Label htmlFor={`email-${persona}`} className="text-sm font-semibold text-white">
-              Company email address
+              Enter email
             </Label>
             <div className="relative">
               <Mail className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
@@ -183,7 +190,7 @@ export function PersonaRegistrationForm({ persona, compact = false }: PersonaReg
                 id={`email-${persona}`}
                 type="email"
                 inputMode="email"
-                placeholder="you@company.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={`h-14 pl-11 text-lg bg-white/5 text-white placeholder:text-slate-500 border-2 focus-visible:ring-0 ${

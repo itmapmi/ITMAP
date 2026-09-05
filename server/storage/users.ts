@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
 
 export async function getUser(id: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -41,6 +42,25 @@ export async function verifyUserEmail(id: string): Promise<User> {
     .where(eq(users.id, id))
     .returning();
   return updated!;
+}
+
+// Atomically reserve one more independent session for an unverified account.
+// The check and the increment happen in a single conditional UPDATE so that
+// concurrent sign-ins can never overshoot the allowance (which would lock the
+// account out prematurely). Returns the updated row, or undefined when no
+// allowance was left (or the account is no longer unverified) — callers must
+// re-read the user to tell those two cases apart.
+export async function reserveUnverifiedSession(id: string): Promise<User | undefined> {
+  const [updated] = await db
+    .update(users)
+    .set({ unverifiedSessionCount: sql`${users.unverifiedSessionCount} + 1`, updatedAt: new Date() })
+    .where(and(
+      eq(users.id, id),
+      eq(users.emailVerified, false),
+      sql`${users.unverifiedSessionCount} < ${MAX_UNVERIFIED_SESSIONS}`,
+    ))
+    .returning();
+  return updated;
 }
 
 // (Re)issue a verification token and stamp the send time, used both at

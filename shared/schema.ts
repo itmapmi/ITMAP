@@ -58,13 +58,18 @@ export const users = pgTable("users", {
   lastInviteSentAt: timestamp("last_invite_sent_at"),
 
   // Passwordless signup: a new self-registered account starts unverified and
-  // gets a short grace period (measured from createdAt, see
-  // EMAIL_VERIFICATION_GRACE_MS in server/auth.ts) to browse freely while a
-  // verification email is out for delivery. Defaults to true so
-  // pre-existing accounts and any account created outside the public
-  // /auth/register flow (admin-created, etc.) are never retroactively locked.
+  // may sign in for a limited number of independent sessions (see
+  // MAX_UNVERIFIED_SESSIONS in shared/verification.ts) before verification
+  // is required. Defaults to true so pre-existing accounts and any account
+  // created outside the public /auth/register flow (admin-created, etc.) are
+  // never retroactively locked.
   emailVerified: boolean("email_verified").notNull().default(true),
   emailVerificationToken: text("email_verification_token"),
+  // Number of independent sessions (register/login → new session) granted to
+  // this account while still unverified. Incremented in one place
+  // (logInAndRespond in server/routes/auth.ts); never decremented, and
+  // irrelevant once emailVerified is true.
+  unverifiedSessionCount: integer("unverified_session_count").notNull().default(0),
   // Stamped whenever a verification email is (re)sent; used to rate-limit
   // the "resend" action.
   emailVerificationSentAt: timestamp("email_verification_sent_at"),
@@ -464,11 +469,12 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
-// Authentication schemas — passwordless. Entering a company email either
-// creates a new account or logs into the existing one matching that email;
-// new accounts must verify the email (link sent on registration) within a
-// short grace period (EMAIL_VERIFICATION_GRACE_MS in server/auth.ts) or
-// access is blocked until they do.
+// Authentication schemas — passwordless. Entering an email (personal or
+// company) either creates a new account or logs into the existing one
+// matching that email; new accounts must verify the email (link sent on
+// registration) within their first MAX_UNVERIFIED_SESSIONS independent
+// sessions (shared/verification.ts) or further sign-ins are blocked until
+// they do.
 export const loginUserSchema = z.object({
   email: z.string().email(),
   // Only required for accounts that have set a password (currently just

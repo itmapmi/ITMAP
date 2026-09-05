@@ -19,7 +19,7 @@ export default function Register() {
 
   useSeo({
     title: isVendorPersona ? "Register as Vendor — ITMAP" : "Register as Buyer — ITMAP",
-    description: "Create a free ITMAP account. Company email required. No credit card needed.",
+    description: "Create a free ITMAP account with any email address. No credit card needed.",
     path: "/register",
   });
 

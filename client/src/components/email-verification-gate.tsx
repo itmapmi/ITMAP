@@ -3,21 +3,29 @@ import { MailCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, getPendingVerification, type PendingVerification } from "@/hooks/useAuth";
+import {
+  useAuth,
+  getPendingVerification,
+  PENDING_VERIFICATION_EVENT,
+  type PendingVerification,
+} from "@/hooks/useAuth";
+import { MAX_UNVERIFIED_SESSIONS, unverifiedSessionsRemaining } from "@shared/verification";
 
-const GRACE_MS = 10 * 60 * 1000; // keep in sync with server/auth.ts EMAIL_VERIFICATION_GRACE_MS
-// After this much of the grace period has elapsed, show a one-time dismissible
-// reminder popup. Dismissing it does not extend access — the account is still
-// blocked at GRACE_MS regardless.
-const REMINDER_AFTER_MS = 5 * 60 * 1000;
+// Verification policy (enforced server-side, see shared/verification.ts): an
+// unverified account gets MAX_UNVERIFIED_SESSIONS independent sign-in
+// sessions. The reminder popup is shown once per account when they start
+// their last allowed session; dismissing it changes nothing — the next
+// sign-in is refused until the emailed link has been clicked.
 const REMINDER_DISMISSED_KEY = "itmap_verification_reminder_dismissed";
 
-function formatRemaining(ms: number): string {
-  if (ms <= 0) return "0m 0s";
-  const totalSeconds = Math.ceil(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s`;
+function sessionsWord(n: number): string {
+  return n === 1 ? "session" : "sessions";
+}
+
+// Number of unverified sessions the signed-in user has consumed so far, as
+// reported by the server on the user row.
+function sessionsUsedOf(user: any): number {
+  return typeof user?.unverifiedSessionCount === "number" ? user.unverifiedSessionCount : 0;
 }
 
 function useNow(intervalMs = 5_000) {
@@ -30,8 +38,8 @@ function useNow(intervalMs = 5_000) {
 }
 
 // Dismissal is remembered per-account (keyed by email) so a page refresh
-// within the grace window doesn't re-show a popup the user already closed,
-// but a different / newly-registered account still gets its own reminder.
+// during the last allowed session doesn't re-show a popup the user already
+// closed, but a different / newly-registered account still gets its own.
 function isReminderDismissed(email: string): boolean {
   try {
     return localStorage.getItem(REMINDER_DISMISSED_KEY) === email;
@@ -79,23 +87,24 @@ function ResendButton({ email, className }: { email: string; className?: string 
 }
 
 // Slim, dismissible-by-nature (goes away once verified) banner shown while a
-// signed-in user is still inside their verification grace period.
+// signed-in user still has unverified sessions available.
 export function VerificationBanner() {
   const { user } = useAuth();
-  const now = useNow();
 
-  if (!user || (user as any).emailVerified !== false || !user.createdAt) return null;
+  if (!user || (user as any).emailVerified !== false) return null;
 
-  const deadline = new Date(user.createdAt as unknown as string).getTime() + GRACE_MS;
-  const remaining = deadline - now;
-  if (remaining <= 0) return null; // server will cut the session shortly; avoid a flash of a "0m" banner
+  const used = sessionsUsedOf(user);
+  const remaining = unverifiedSessionsRemaining({ emailVerified: false, unverifiedSessionCount: used });
 
   return (
     <div className="bg-amber-500/15 border-b border-amber-400/30 text-amber-200 text-sm">
       <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-center gap-3 text-center">
         <MailCheck className="h-4 w-4 shrink-0" />
-        <span>
-          Verify <strong>{user.email}</strong> to keep your access — {formatRemaining(remaining)} left.
+        <span data-testid="text-verification-banner">
+          Verify <strong>{user.email}</strong> to keep your access —{" "}
+          {remaining > 0
+            ? `${remaining} more free ${sessionsWord(remaining)} after this one.`
+            : "this is your last session before verification is required."}
         </span>
         <ResendButton email={user.email!} className="border-amber-400/40 text-amber-100 hover:bg-amber-400/10 bg-transparent h-7" />
       </div>
@@ -103,11 +112,11 @@ export function VerificationBanner() {
   );
 }
 
-// Full-screen block shown once the grace period has expired for an account
-// that never clicked the verification link. Session-based access has
-// already been cut server-side by this point; this reads the client-only
-// "pending verification" marker (see useAuth) to explain why, since the
-// generic logged-out state would otherwise look identical.
+// Full-screen block shown once an account has used all of its unverified
+// sessions without clicking the verification link. Session-based access has
+// already been cut (or refused) server-side by this point; this reads the
+// client-only "pending verification" marker (see useAuth) to explain why,
+// since the generic logged-out state would otherwise look identical.
 export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
   pending: PendingVerification;
   onUseDifferentEmail: () => void;
@@ -121,8 +130,8 @@ export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
         <div>
           <h1 className="text-xl font-bold text-white">Verify your email to continue</h1>
           <p className="text-sm text-slate-400 mt-2">
-            Your 10-minute trial access for <strong className="text-slate-200">{pending.email}</strong> has ended.
-            Click the verification link we emailed you to unlock your account again.
+            <strong className="text-slate-200">{pending.email}</strong> has used its {MAX_UNVERIFIED_SESSIONS} free
+            sessions. Click the verification link we emailed you to unlock your account again.
           </p>
         </div>
         <div className="flex flex-col gap-2">
@@ -139,26 +148,21 @@ export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
   );
 }
 
-// One-time popup shown partway through the grace period (once REMINDER_AFTER_MS
-// has elapsed) nudging the user to verify. Closing it does not pause or extend
-// the countdown — the account is still blocked once the full grace period is up.
+// One-time popup shown when an unverified user starts their LAST allowed
+// session, nudging them to verify. Closing it changes nothing — the next
+// sign-in is refused until the link has been clicked.
 export function VerificationReminderDialog() {
   const { user } = useAuth();
-  const now = useNow();
   const [manuallyDismissed, setManuallyDismissed] = useState(false);
 
-  const unverified = !!user && (user as any).emailVerified === false && !!user.createdAt;
+  const unverified = !!user && (user as any).emailVerified === false;
   const email = unverified ? (user!.email as string) : null;
-  const createdAtMs = unverified ? new Date(user!.createdAt as unknown as string).getTime() : 0;
-  const elapsed = unverified ? now - createdAtMs : 0;
-  const deadline = createdAtMs + GRACE_MS;
-  const remaining = deadline - now;
+  const onLastSession = unverified && sessionsUsedOf(user) >= MAX_UNVERIFIED_SESSIONS;
 
   const shouldShow =
     unverified &&
     !!email &&
-    elapsed >= REMINDER_AFTER_MS &&
-    remaining > 0 &&
+    onLastSession &&
     !manuallyDismissed &&
     !isReminderDismissed(email);
 
@@ -174,10 +178,10 @@ export function VerificationReminderDialog() {
           <div className="mx-auto h-12 w-12 rounded-full bg-amber-500/15 flex items-center justify-center mb-2">
             <MailCheck className="h-6 w-6 text-amber-500" />
           </div>
-          <DialogTitle className="text-center">Don't forget to verify your email</DialogTitle>
+          <DialogTitle className="text-center">Last session before verification</DialogTitle>
           <DialogDescription className="text-center">
-            We sent a verification link to <strong>{email}</strong>. Verify now to keep your access —
-            you have {email ? formatRemaining(remaining) : ""} left before it's locked.
+            We sent a verification link to <strong>{email}</strong>. This is the last of your{" "}
+            {MAX_UNVERIFIED_SESSIONS} free sessions — click the link before your next visit to keep your access.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 pt-2">
@@ -192,27 +196,32 @@ export function VerificationReminderDialog() {
 }
 
 // Decides whether the app should render the full-screen verification block
-// instead of the normal router. Only true when there's no live session
-// (server already denied it) AND the locally-remembered pending signup has
-// passed its grace deadline.
+// instead of the normal router. Only true when there's no live session AND
+// the locally-remembered pending signup has run out of unverified sessions —
+// either because the server refused the last sign-in attempt, or because the
+// last allowed session has ended (cookie expired) and any new one would be
+// refused.
+//
+// Deliberately event-driven rather than polled: a periodic re-render here
+// forces the top-level Router to re-render for every visitor (see the note
+// on Route definitions in App.tsx).
 export function usePendingVerificationBlock(): PendingVerification | null {
   const { isAuthenticated, isLoading } = useAuth();
-  // Only tick the 1/sec clock while it can actually matter (logged-out with
-  // a pending marker to expire). Ticking unconditionally forced this hook's
-  // caller (the top-level Router) to re-render every few seconds for every
-  // visitor, including signed-in admins — which, combined with routes
-  // declared as `component={() => <.../>}` (a fresh function identity each
-  // render), made React treat the current route as a new component type and
-  // remount it wholesale, replaying its mount animations. That looked like
-  // the whole page "reloading" itself every couple of seconds. See
-  // App.tsx's Route definitions, which now avoid the `component` prop
-  // pattern entirely so this class of bug can't recur even if this hook's
-  // timing changes again.
-  const pending = !isLoading && !isAuthenticated ? getPendingVerification() : null;
-  const now = useNow(pending ? 5_000 : 60_000);
+  const [pending, setPending] = useState<PendingVerification | null>(() => getPendingVerification());
+
+  useEffect(() => {
+    const refresh = () => setPending(getPendingVerification());
+    window.addEventListener(PENDING_VERIFICATION_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(PENDING_VERIFICATION_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
 
   if (isLoading || isAuthenticated || !pending) return null;
-  const deadline = new Date(pending.createdAt).getTime() + GRACE_MS;
-  if (now < deadline) return null;
-  return pending;
+  const exhausted =
+    pending.verificationRequired === true ||
+    (typeof pending.sessionsUsed === "number" && pending.sessionsUsed >= MAX_UNVERIFIED_SESSIONS);
+  return exhausted ? pending : null;
 }

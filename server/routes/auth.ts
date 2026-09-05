@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import crypto from "crypto";
 import { storage } from "../storage";
-import { setupSession, setupPassport, requireAuth, isWithinVerificationGrace, hashPassword, comparePassword, adminAuthDiagnostics } from "../auth";
+import { setupSession, setupPassport, requireAuth, hashPassword, comparePassword, adminAuthDiagnostics } from "../auth";
 import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/schema";
 import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
@@ -148,13 +148,6 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // Consumer email domains that are not allowed — enterprise/company emails only.
-  const CONSUMER_EMAIL_DOMAINS = new Set([
-    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
-    "live.com", "aol.com", "protonmail.com", "me.com", "msn.com",
-    "ymail.com", "googlemail.com", "yahoo.co.uk", "yahoo.co.in",
-  ]);
-
   function stripPrivateFields(user: any) {
     const { password, emailVerificationToken, ...safe } = user;
     // Never send the hash itself, but admins' Security settings need to know
@@ -164,15 +157,8 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/auth/register", async (req, res) => {
     try {
+      // Personal and company email addresses are both accepted.
       const userData = registerUserSchema.parse(req.body);
-
-      // Reject consumer/free email providers — company emails only.
-      const emailDomain = userData.email.split("@")[1]?.toLowerCase() ?? "";
-      if (CONSUMER_EMAIL_DOMAINS.has(emailDomain)) {
-        return res.status(400).json({
-          error: "Please use your company email address. Consumer email providers are not accepted.",
-        });
-      }
 
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -214,29 +200,52 @@ export function registerAuthRoutes(app: Express): void {
 
   // Shared by /auth/register (new + returning) and /auth/login: establishes
   // the session and writes the JSON response. Enforces the same block/expiry/
-  // verification-grace rules as the passport deserializer so a freshly issued
+  // verification rules as the passport deserializer so a freshly issued
   // session can't bypass them on its very first response.
-  function logInAndRespond(req: any, res: any, user: any, status: number, extra: Record<string, unknown> = {}) {
-    return new Promise<void>((resolve) => {
-      if (user.role !== 'admin') {
-        if (user.isBlocked) {
-          res.status(403).json({ error: "This account has been blocked." });
-          return resolve();
-        }
-        if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
-          res.status(403).json({ error: "Access to this account has expired." });
-          return resolve();
-        }
-        if (!isWithinVerificationGrace(user)) {
-          res.status(403).json({
-            error: "verification_required",
-            message: "Please verify your email to continue — check your inbox for the verification link.",
-            email: user.email,
-          });
-          return resolve();
+  //
+  // Each successful call mints a new server session, which is what counts as
+  // one "independent session" for the unverified-account allowance. The
+  // allowance is reserved here (and only here) with a single atomic
+  // conditional UPDATE, so concurrent sign-ins can't overshoot it and a
+  // refused sign-in never consumes it.
+  async function logInAndRespond(req: any, res: any, user: any, status: number, extra: Record<string, unknown> = {}) {
+    if (user.role !== 'admin') {
+      if (user.isBlocked) {
+        res.status(403).json({ error: "This account has been blocked." });
+        return;
+      }
+      if (user.accessExpiresAt && new Date(user.accessExpiresAt) < new Date()) {
+        res.status(403).json({ error: "Access to this account has expired." });
+        return;
+      }
+      if (!user.emailVerified) {
+        try {
+          const reserved = await storage.reserveUnverifiedSession(user.id);
+          if (reserved) {
+            user = reserved;
+          } else {
+            // Either the allowance is exhausted, or the account was verified
+            // between our read and the reservation — re-read to tell apart.
+            const fresh = await storage.getUser(user.id);
+            if (!fresh || !fresh.emailVerified) {
+              res.status(403).json({
+                error: "verification_required",
+                message: "Please verify your email to continue — check your inbox for the verification link.",
+                email: user.email,
+              });
+              return;
+            }
+            user = fresh;
+          }
+        } catch (error) {
+          console.error("Error reserving unverified session:", error);
+          res.status(500).json({ error: "Login failed" });
+          return;
         }
       }
+    }
 
+    return new Promise<void>((resolve) => {
       req.logIn(user, async (err: unknown) => {
         if (err) {
           res.status(500).json({ error: "Login failed" });

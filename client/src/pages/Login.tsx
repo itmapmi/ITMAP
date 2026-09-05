@@ -158,7 +158,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-cyan-500/50"
@@ -212,7 +212,7 @@ export default function Login() {
 
           <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
             <Lock className="h-3 w-3" />
-            <span>Company email required · Enterprise access only</span>
+            <span>Free, forever · No card required</span>
           </div>
 
           <div className="text-center text-sm text-slate-400">

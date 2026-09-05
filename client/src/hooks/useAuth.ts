@@ -6,21 +6,28 @@ import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
 
-// Passwordless signup: a brand-new account gets a short grace period (see
-// GRACE_MS in email-verification-gate.tsx / EMAIL_VERIFICATION_GRACE_MS on
-// the server) to browse before it must be verified. The server enforces this
-// on every
-// request (the session itself stops working past the deadline), but once
-// that happens `/api/auth/user` looks identical to "never signed up" —
-// there is no session left to read `createdAt`/`emailVerified` off of. This
-// localStorage marker is purely a client-side memory of "someone signed up
-// with this email and needs to verify it", so the UI can show a specific
+// Passwordless signup: a brand-new account may sign in for a limited number
+// of independent sessions (MAX_UNVERIFIED_SESSIONS in shared/verification.ts)
+// before it must be verified. The server enforces this at login and on every
+// request, but once a session is refused or has ended `/api/auth/user` looks
+// identical to "never signed up" — there is no session left to read
+// `emailVerified` / the session counter off of. This localStorage marker is
+// purely a client-side memory of "someone signed up with this email and
+// needs to verify it" (plus how many sessions they have used, and whether
+// the server has already refused them), so the UI can show a specific
 // "verify your email" screen instead of the generic logged-out state.
 export const PENDING_VERIFICATION_KEY = "itmap_pending_verification";
+// Fired on `window` whenever the marker changes so hooks can react at once
+// instead of waiting for their next poll.
+export const PENDING_VERIFICATION_EVENT = "itmap:pending-verification-changed";
 
 export interface PendingVerification {
   email: string;
   createdAt: string;
+  /** Independent sessions this account has used while unverified (last known). */
+  sessionsUsed?: number;
+  /** True once the server has refused a sign-in with `verification_required`. */
+  verificationRequired?: boolean;
 }
 
 export function getPendingVerification(): PendingVerification | null {
@@ -42,12 +49,21 @@ function setPendingVerification(value: PendingVerification | null) {
   } catch {
     // Storage can be unavailable (private browsing, quota) — non-critical.
   }
+  try {
+    window.dispatchEvent(new Event(PENDING_VERIFICATION_EVENT));
+  } catch {
+    // SSR / non-browser — nothing to notify.
+  }
 }
 
 function syncPendingVerificationFromUser(user: any) {
   if (!user) return;
   if (user.emailVerified === false && user.email && user.createdAt) {
-    setPendingVerification({ email: user.email, createdAt: user.createdAt });
+    setPendingVerification({
+      email: user.email,
+      createdAt: user.createdAt,
+      sessionsUsed: typeof user.unverifiedSessionCount === "number" ? user.unverifiedSessionCount : undefined,
+    });
   } else if (user.emailVerified === true) {
     setPendingVerification(null);
   }
@@ -88,7 +104,14 @@ async function postAuth(url: string, data: unknown): Promise<any> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (body?.error === "verification_required") {
-      setPendingVerification({ email: body.email, createdAt: new Date().toISOString() });
+      const previous = getPendingVerification();
+      const sameAccount = previous !== null && previous.email === body.email;
+      setPendingVerification({
+        email: body.email,
+        createdAt: sameAccount ? previous.createdAt : new Date().toISOString(),
+        sessionsUsed: sameAccount ? previous.sessionsUsed : undefined,
+        verificationRequired: true,
+      });
       throw new VerificationRequiredError(body.message || "Please verify your email to continue.", body.email);
     }
     if (body?.error === "password_required") {

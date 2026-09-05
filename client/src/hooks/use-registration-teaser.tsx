@@ -8,31 +8,31 @@ import { PersonaRegistrationForm } from "@/components/persona-registration-form"
 
 // ── Timed free-access teaser ────────────────────────────────────────────────
 //
-// Anonymous visitors get a short window of fully unlocked browsing (starting
-// on their very first page load, from whatever page they land on) before a
-// registration prompt starts nudging them. The prompt reopens on a cooldown a
-// limited number of times, then backs off into a small persistent pill rather
-// than nagging forever.
+// Anonymous visitors get a window of fully unlocked browsing before a
+// registration prompt starts nudging them. The clock starts the first time
+// they open a *market detail* page (the market listing, home page, etc. never
+// start it) and then keeps running across in-app navigation for the rest of
+// the tab session.
+//
+// Two phases after the free window:
+//   1. Soft (TEASER_DURATION_MS → FORCED_AFTER_MS): a dismissible prompt that
+//      reopens on a cooldown a limited number of times, then backs off into
+//      a small persistent pill. Access stays fully unlocked throughout.
+//   2. Forced (≥ FORCED_AFTER_MS): the prompt can no longer be dismissed and
+//      market features lock until the visitor signs up.
 //
 // All "should the modal be showing right now" state is derived on every tick
 // from values persisted in sessionStorage (start time, dismiss count, last
 // shown time) rather than from refs that reset on remount — a page refresh
 // must never re-arm nagging that has already been dismissed or backed off.
-//
-// Dismissing the registration prompt does not immediately lock the visitor
-// out: the first dismissal (after the initial free window expires) still
-// leaves full access open, so the prompt can reopen once more without
-// penalty. Only once they've dismissed it a second time does access actually
-// get restricted — see `GRACE_DISMISS_COUNT` below.
 
-const TEASER_DURATION_MS = 90_000;
+const TEASER_DURATION_MS = 2 * 60_000;
+const FORCED_AFTER_MS = 10 * 60_000;
 const REOPEN_INTERVAL_MS = 30_000;
 const MAX_AUTO_REOPENS = 3;
-// Number of dismissals granted free access for before restricting. The
-// prompt shown right at expiry counts as the first; dismissing that one still
-// leaves access open. Dismissing the second (auto-reopened) prompt is what
-// triggers the restriction.
-const GRACE_DISMISS_COUNT = 2;
+
+// Only these routes start the free-access clock.
+const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets\/[^/]+/;
 
 const START_KEY = "itmap_teaser_start_at";
 const DISMISS_COUNT_KEY = "itmap_teaser_dismiss_count";
@@ -46,10 +46,9 @@ const EXEMPT_PATHS = new Set(["/login", "/register", "/terms", "/privacy", "/con
 interface TeaserGateContextValue {
   /**
    * True while an anonymous visitor still has full access to market
-   * features: either inside the initial free-access window, or in the grace
-   * period after it expires where they've dismissed the registration prompt
-   * at most once. Turns false once they've dismissed the prompt a second
-   * time (see `GRACE_DISMISS_COUNT`) or once they've signed in.
+   * features: before the free-access clock has started, inside the free
+   * window, and throughout the soft-prompt phase. Turns false once the
+   * forced prompt takes over (`FORCED_AFTER_MS`) or once they've signed in.
    */
   teaserActive: boolean;
   /** Milliseconds remaining in the free-access window (0 once expired). */
@@ -104,7 +103,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   const [now, setNow] = useState(() => Date.now());
   const [modalOpen, setModalOpen] = useState(false);
 
-  const startRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(readIntOrNull(START_KEY));
   // Total number of times the auto-cadence modal has been shown & dismissed
   // this session. Drives both the reopen interval and the permanent backoff.
   const dismissCountRef = useRef(readInt(DISMISS_COUNT_KEY));
@@ -113,21 +112,20 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   const lastShownAtRef = useRef<number | null>(readIntOrNull(LAST_SHOWN_AT_KEY));
   const expiryTrackedRef = useRef(readBool(EXPIRY_TRACKED_KEY));
 
-  // Establish (or resume) the session-wide teaser start timestamp once. It
-  // persists across in-app navigation via sessionStorage and only resets on
-  // a brand new tab/session — regardless of which page the visitor lands on.
+  const onMarketDetail = MARKET_DETAIL_PATH.test(location);
+
+  // Start the session-wide teaser clock the first time an anonymous visitor
+  // lands on a market detail page. It then persists across in-app navigation
+  // via sessionStorage and only resets on a brand new tab/session.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const existing = window.sessionStorage.getItem(START_KEY);
-    if (existing) {
-      startRef.current = parseInt(existing, 10);
-    } else {
-      const ts = Date.now();
-      window.sessionStorage.setItem(START_KEY, String(ts));
-      startRef.current = ts;
-      track("teaser_started");
-    }
-  }, []);
+    if (startRef.current !== null || !onMarketDetail || isLoading || isAuthenticated) return;
+    const ts = Date.now();
+    window.sessionStorage.setItem(START_KEY, String(ts));
+    startRef.current = ts;
+    setNow(ts);
+    track("teaser_started");
+  }, [onMarketDetail, isLoading, isAuthenticated]);
 
   // Tick every second so consumers (this provider included) re-render as the
   // teaser window elapses.
@@ -136,31 +134,33 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     return () => clearInterval(id);
   }, []);
 
-  const elapsed = startRef.current !== null ? now - startRef.current : 0;
+  const anonymous = !isLoading && !isAuthenticated;
+  const clockStarted = startRef.current !== null;
+  const elapsed = clockStarted ? now - (startRef.current as number) : 0;
   // Whether the visitor is still inside their initial, no-strings-attached
-  // free window (drives the countdown badge).
-  const withinInitialWindow = !isLoading && !isAuthenticated && elapsed < TEASER_DURATION_MS;
+  // free window (drives the countdown badge). Before the clock has started
+  // there is nothing to count down, but access is equally unrestricted.
+  const withinInitialWindow = anonymous && clockStarted && elapsed < TEASER_DURATION_MS;
   const teaserRemainingMs = withinInitialWindow ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
-  const expired = !isLoading && !isAuthenticated && startRef.current !== null && elapsed >= TEASER_DURATION_MS;
+  const expired = anonymous && clockStarted && elapsed >= TEASER_DURATION_MS;
+  const forced = anonymous && clockStarted && elapsed >= FORCED_AFTER_MS;
   const isExempt = EXEMPT_PATHS.has(location);
   const backoffReached = dismissCountRef.current >= MAX_AUTO_REOPENS;
-  // Access stays unlocked through the initial window AND through the grace
-  // period after expiry — the visitor can dismiss the first post-expiry
-  // prompt for free. Only dismissing a second time restricts access.
-  const teaserActive =
-    withinInitialWindow || (expired && !isAuthenticated && dismissCountRef.current < GRACE_DISMISS_COUNT);
+  // Access stays unlocked until the forced prompt takes over.
+  const teaserActive = anonymous && !forced;
 
   const nextAutoShowAt =
     lastShownAtRef.current !== null
       ? lastShownAtRef.current + REOPEN_INTERVAL_MS
       : (startRef.current ?? 0) + TEASER_DURATION_MS;
 
-  // Never auto-pop while the visitor is deliberately on an auth-adjacent or
-  // legal page, once they've exhausted the reopen budget, or once signed in.
+  // Soft phase: never auto-pop while the visitor is deliberately on an
+  // auth-adjacent or legal page, once they've exhausted the reopen budget, or
+  // once signed in. Forced phase: always open (off exempt pages).
   const eligibleToAutoShow =
-    expired && !isExempt && !backoffReached && now >= nextAutoShowAt;
+    expired && !isExempt && (forced || (!backoffReached && now >= nextAutoShowAt));
 
-  const showBanner = expired && !isExempt && !isAuthenticated && backoffReached;
+  const showBanner = expired && !forced && !isExempt && !isAuthenticated && backoffReached;
 
   // Once the visitor registers, stop nudging entirely.
   useEffect(() => {
@@ -194,9 +194,9 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
       track("teaser_expired");
     }
     track("registration_modal_shown", {
-      metadata: { trigger: isFirstShow ? "expiry" : "reopen", count: dismissCountRef.current },
+      metadata: { trigger: forced ? "forced" : isFirstShow ? "expiry" : "reopen", count: dismissCountRef.current },
     });
-  }, [eligibleToAutoShow, modalOpen, isAuthenticated]);
+  }, [eligibleToAutoShow, modalOpen, isAuthenticated, forced]);
 
   const openRegistrationModal = useCallback(() => {
     if (isAuthenticated || isExempt) return;
@@ -206,6 +206,9 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
+      // Once forced, the prompt cannot be dismissed — only signing up (which
+      // flips isAuthenticated and closes it) or leaving for an exempt page.
+      if (!open && forced && !isAuthenticated) return;
       setModalOpen(open);
       if (!open && !isAuthenticated) {
         track("registration_modal_dismissed");
@@ -217,7 +220,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         }
       }
     },
-    [isAuthenticated]
+    [isAuthenticated, forced]
   );
 
   const value: TeaserGateContextValue = { teaserActive, teaserRemainingMs, openRegistrationModal };
@@ -237,8 +240,16 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
 
       {canShowChrome && (
         <Dialog open={modalOpen} onOpenChange={handleOpenChange}>
-          <DialogContent className="max-w-md p-0 bg-transparent border-0 shadow-none [&_button]:text-white/80 [&_button]:opacity-100">
-            <PersonaRegistrationForm persona="buyer" compact />
+          <DialogContent
+            data-testid={forced ? "dialog-registration-forced" : "dialog-registration-soft"}
+            className={`max-w-md p-0 bg-transparent border-0 shadow-none [&_button]:text-white/80 [&_button]:opacity-100 ${
+              forced ? "[&>button.absolute]:hidden" : ""
+            }`}
+            onEscapeKeyDown={forced ? (e) => e.preventDefault() : undefined}
+            onPointerDownOutside={forced ? (e) => e.preventDefault() : undefined}
+            onInteractOutside={forced ? (e) => e.preventDefault() : undefined}
+          >
+            <PersonaRegistrationForm persona="buyer" compact forced={forced} />
           </DialogContent>
         </Dialog>
       )}

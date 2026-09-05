@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { pool, db } from "../db";
 import { sql, eq } from "drizzle-orm";
-import { requireAdmin, isWithinVerificationGrace } from "../auth";
+import { requireAdmin, canStartUnverifiedSession } from "../auth";
 import crypto from "crypto";
 import { z } from "zod";
 import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS } from "@shared/schema";
@@ -99,14 +99,14 @@ export function registerAdminRoutes(app: Express): void {
     return !!(user.vendorScopeId || (user.vendorScopeIds && user.vendorScopeIds.length > 0));
   }
 
-  // Mirrors the passwordless grace-period rule enforced on every request
-  // (server/auth.ts isWithinVerificationGrace): an account is "locked out"
-  // once it's unverified AND past its grace deadline. Admin accounts are
-  // never subject to this.
-  function isVerificationLocked(user: { role: string; emailVerified: boolean }): boolean {
+  // Mirrors the passwordless session-allowance rule enforced on every
+  // request (shared/verification.ts): an account is "locked out" once it's
+  // unverified AND has used up its MAX_UNVERIFIED_SESSIONS independent
+  // sessions. Admin accounts are never subject to this.
+  function isVerificationLocked(user: { role: string; emailVerified: boolean; unverifiedSessionCount: number | null }): boolean {
     if (user.role === "admin") return false;
     if (user.emailVerified) return false;
-    return !isWithinVerificationGrace(user as any);
+    return !canStartUnverifiedSession(user);
   }
 
   // ── User Feature Access (RBAC) ───────────────────────────────────────────
