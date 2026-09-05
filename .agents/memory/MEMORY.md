@@ -36,3 +36,4 @@
 - [Cross-device typography consistency](cross-device-typography.md) — mobile Markets, CVE, and RFP designs must use the desktop ITMAP logo and font system exactly.
 - [Markets desktop palette parity](markets-desktop-palette.md) — mobile Markets must use desktop semantic colors, retaining only data-bearing chart/status colors.
 - [Mobile mockup graduation fidelity](mobile-mockup-graduation-fidelity.md) — approved mobile designs require complete production branches, not partial restyling of desktop UI.
+- [Google OAuth callback host + signup marker](google-oauth-callback-host.md) — derive callback from request host (PUBLIC_BASE_URL is prod even in dev); new-account signal lives in session, not URL; email_verified must be exactly true.

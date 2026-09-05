@@ -86,6 +86,9 @@ import * as trafficAnalyticsStorage from "./trafficAnalytics";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByEmailInsensitive(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  linkGoogleAccount(id: string, google: { googleId: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   verifyUserEmail(id: string): Promise<User>;

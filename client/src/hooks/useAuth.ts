@@ -1,10 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, getQueryFn } from "@/lib/queryClient";
 import { apiRequestJson } from "@/lib/queryClient";
 import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
+import {
+  GOOGLE_RETURN_PARAM,
+  GOOGLE_RETURN_VALUE,
+  GOOGLE_SIGNUP_EVENT_PATH,
+} from "@/components/google-sign-in-button";
 
 // Passwordless signup: a brand-new account may sign in for a limited number
 // of independent sessions (MAX_UNVERIFIED_SESSIONS in shared/verification.ts)
@@ -232,4 +237,39 @@ export function useAuth() {
     isSettingPassword: setPasswordMutation.isPending,
     setPasswordError: setPasswordMutation.error?.message,
   };
+}
+// Landing back from "Continue with Google". The server has already minted
+// the session and 302'd to the page the user started on with `?auth=google`;
+// this hook (mounted once, app-wide) tidies up:
+//   - strips the flag from the URL so a refresh cannot replay it;
+//   - drops any stale "verify your email" marker — a Google-authenticated
+//     address is verified, so the session-count block no longer applies;
+//   - refreshes the session user;
+//   - asks the server (single-use, bound to the new session) whether this
+//     sign-in created a brand-new account, and if so fires the client-side
+//     Reddit SignUp pixel once with the server-supplied conversionId (the
+//     same id the server's Conversions API event carried). A returning
+//     sign-in, a refresh, or a hand-typed `?auth=google` never tracks.
+export function useGoogleSignInReturn() {
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (handled.current || typeof window === "undefined") return;
+    handled.current = true;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(GOOGLE_RETURN_PARAM) !== GOOGLE_RETURN_VALUE) return;
+    url.searchParams.delete(GOOGLE_RETURN_PARAM);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+
+    setPendingVerification(null);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+
+    apiRequestJson(GOOGLE_SIGNUP_EVENT_PATH, "POST")
+      .then((body: { conversionId?: string | null } | null) => {
+        if (body?.conversionId) trackRedditSignUp(body.conversionId);
+      })
+      .catch(() => {
+        // Tracking is best-effort; the sign-in itself already succeeded.
+      });
+  }, []);
 }

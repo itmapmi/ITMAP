@@ -9,6 +9,26 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { LogIn, Users, Building2, Lock, MailCheck } from "lucide-react";
 import SpectioLogo from "@/components/spectio-logo";
+import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
+
+// Readable copy for `/login?oauth=<reason>` — where the server sends a
+// "Continue with Google" attempt that could not complete.
+const GOOGLE_SIGN_IN_ERRORS: Record<string, string> = {
+  unavailable: "Google sign-in isn't available right now. Please sign in with your email instead.",
+  cancelled: "Google sign-in was cancelled. You can try again or sign in with your email.",
+  failed: "We couldn't complete Google sign-in. Please try again or sign in with your email.",
+  no_email: "Google didn't share an email address for that account. Please sign in with your email instead.",
+  unverified_email: "That Google account's email address isn't verified with Google. Please sign in with your email instead.",
+  admin: "Admin accounts sign in with email and password, not Google.",
+  blocked: "This account has been blocked. Please contact support.",
+  expired: "This account's access has expired. Please contact support.",
+};
+
+function getGoogleSignInError(): string | null {
+  const reason = new URLSearchParams(window.location.search).get("oauth");
+  if (!reason) return null;
+  return GOOGLE_SIGN_IN_ERRORS[reason] ?? GOOGLE_SIGN_IN_ERRORS.failed;
+}
 
 function getPersona(): "buyer" | "vendor" | null {
   const params = new URLSearchParams(window.location.search);
@@ -30,7 +50,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [needsPassword, setNeedsPassword] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() => getGoogleSignInError());
   const [needsVerification, setNeedsVerification] = useState<string | null>(null);
   const [resendSent, setResendSent] = useState(false);
 
@@ -154,7 +174,7 @@ export default function Login() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300">Work email</Label>
+                <Label htmlFor="email" className="text-slate-300">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -167,7 +187,7 @@ export default function Login() {
                   disabled={needsPassword}
                 />
                 {!needsPassword && (
-                  <p className="text-xs text-slate-500">No password needed — just your work email.</p>
+                  <p className="text-xs text-slate-500">No password needed — just your email, or continue with Google.</p>
                 )}
               </div>
 
@@ -210,9 +230,16 @@ export default function Login() {
             </form>
           )}
 
+          {!needsVerification && (
+            <>
+              <OrDivider />
+              <GoogleSignInButton persona={persona ?? "buyer"} returnTo="/" data-testid="button-google-sign-in-login" />
+            </>
+          )}
+
           <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600">
             <Lock className="h-3 w-3" />
-            <span>Free, forever · No card required</span>
+            <span>Free, forever · No card required · Email or Google</span>
           </div>
 
           <div className="text-center text-sm text-slate-400">

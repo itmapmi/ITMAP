@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useLocation } from "wouter";
 import { UserPlus, Users, Building2, Mail, MailCheck } from "lucide-react";
 import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
+import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
 
 // Shown under the heading of the buyer sign-up prompt. Personal and company
 // email addresses are both accepted.
@@ -241,6 +242,20 @@ export function PersonaRegistrationForm({ persona, compact = false, forced = fal
              {isRegistering ? "Signing up…" : "Sign up"}
           </Button>
         </form>
+
+        <OrDivider />
+        <div className="space-y-2">
+          <GoogleSignInButton persona={persona} data-testid={`button-google-sign-in-${persona}`} />
+          {!isVendorPersona && (
+            <p className="text-center text-xs text-slate-500">
+              By continuing with Google you agree to the{" "}
+              <Link href="/terms?returnTo=/buyer" className="text-slate-400 hover:text-slate-200 hover:underline">
+                ITMAP Terms of Service
+              </Link>
+              .
+            </p>
+          )}
+        </div>
 
         <div className="text-center text-sm text-slate-400">
           Already have an account?{" "}

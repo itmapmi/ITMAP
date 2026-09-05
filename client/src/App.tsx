@@ -4,7 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, useGoogleSignInReturn } from "@/hooks/useAuth";
 import Navigation from "@/components/navigation";
 import MobileNavigation from "@/components/mobile-navigation";
 import Home from "@/pages/home";
@@ -84,6 +84,11 @@ function MobileRouteGuard({ target }: { target: string }) {
     // would bounce straight into another redirect.
     navigate(target + window.location.search + window.location.hash, { replace: true });
   }, [navigate, target]);
+  return null;
+}
+
+function GoogleSignInReturnHandler() {
+  useGoogleSignInReturn();
   return null;
 }
 
@@ -178,6 +183,7 @@ function Router() {
       <VerificationReminderDialog />
       {isMobileRoute ? <MobileNavigation /> : <Navigation />}
       <TrafficPageTracker />
+      <GoogleSignInReturnHandler />
       <TeaserGateProvider>
         <Switch>
         <Route path="/" component={Home} />

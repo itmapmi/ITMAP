@@ -678,6 +678,15 @@ export async function runStartupMigrations(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS unverified_session_count integer NOT NULL DEFAULT 0;
     `);
 
+    // 32. "Continue with Google": Google account subject id linked to a user.
+    //     Nullable (email-only accounts never set it); unique so one Google
+    //     account can only ever map to one user.
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id text;
+      CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique
+        ON users (google_id) WHERE google_id IS NOT NULL;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

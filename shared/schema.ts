@@ -74,6 +74,12 @@ export const users = pgTable("users", {
   // the "resend" action.
   emailVerificationSentAt: timestamp("email_verification_sent_at"),
 
+  // Google account subject id ("sub") once the user has signed in with
+  // Google. Set on first Google sign-in (new account or linked to an existing
+  // email account). A Google-authenticated email is verified by definition,
+  // so linking also flips emailVerified to true.
+  googleId: text("google_id").unique(),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

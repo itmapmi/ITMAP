@@ -10,6 +10,7 @@ import {
   type PendingVerification,
 } from "@/hooks/useAuth";
 import { MAX_UNVERIFIED_SESSIONS, unverifiedSessionsRemaining } from "@shared/verification";
+import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
 
 // Verification policy (enforced server-side, see shared/verification.ts): an
 // unverified account gets MAX_UNVERIFIED_SESSIONS independent sign-in
@@ -136,6 +137,10 @@ export function VerificationBlockScreen({ pending, onUseDifferentEmail }: {
         </div>
         <div className="flex flex-col gap-2">
           <ResendButton email={pending.email} className="w-full border-white/10 text-slate-200 hover:bg-white/5 bg-transparent" />
+          <OrDivider className="my-1" />
+          {/* Google has already verified the address, so this both signs in
+              and completes verification in one step. */}
+          <GoogleSignInButton persona="buyer" label="Verify instantly with Google" data-testid="button-google-sign-in-verify" />
           <button
             onClick={onUseDifferentEmail}
             className="text-xs text-slate-500 hover:text-slate-300 transition-colors"

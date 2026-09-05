@@ -21,6 +21,48 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   return user || undefined;
 }
 
+// Case-insensitive email lookup. Google reports addresses lower-cased while
+// email-form sign-ups are stored exactly as typed, so an exact match alone
+// could create a duplicate account for the same mailbox.
+export async function getUserByEmailInsensitive(email: string): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(sql`lower(${users.email}) = lower(${email})`)
+    .orderBy(users.createdAt)
+    .limit(1);
+  return user || undefined;
+}
+
+export async function getUserByGoogleId(googleId: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+  return user || undefined;
+}
+
+// Attach a Google account to an existing user. Google has already verified
+// the address, so this also completes email verification (and clears any
+// outstanding token) — the unverified-session limit stops applying.
+// Name/avatar are only filled in where the account has none yet.
+export async function linkGoogleAccount(
+  id: string,
+  google: { googleId: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null },
+): Promise<User> {
+  const [updated] = await db
+    .update(users)
+    .set({
+      googleId: google.googleId,
+      emailVerified: true,
+      emailVerificationToken: null,
+      firstName: sql`COALESCE(${users.firstName}, ${google.firstName ?? null})`,
+      lastName: sql`COALESCE(${users.lastName}, ${google.lastName ?? null})`,
+      profileImageUrl: sql`COALESCE(${users.profileImageUrl}, ${google.profileImageUrl ?? null})`,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, id))
+    .returning();
+  return updated!;
+}
+
 export async function getUserByVerificationToken(token: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
   return user || undefined;

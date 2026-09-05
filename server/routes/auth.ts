@@ -7,6 +7,7 @@ import path from "path";
 import { linkVisitorOnLogin } from "./leadGen";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
 import { sendVerificationEmail } from "../emailService";
+import { registerGoogleAuthRoutes } from "./googleAuth";
 
 // Hardened base-URL resolution for the emailed verification link — same
 // pattern used for datasheet digest links. Never lets a misconfigured env
@@ -47,6 +48,32 @@ export async function issueAndSendVerification(userId: string, email: string): P
   return result.sent;
 }
 
+// Mint the server session for `user` and record the login. Shared by every
+// sign-in path (email register/login, emailed verification link, Google
+// OAuth). Callers are responsible for the access checks (block / expiry /
+// verification allowance) BEFORE calling this; it only rejects if passport
+// itself fails to establish the session.
+export function establishSession(req: any, res: any, user: any): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    req.logIn(user, async (err: unknown) => {
+      if (err) return reject(err);
+      try {
+        await storage.recordUserLogin({
+          userId: user.id,
+          sessionId: req.sessionID,
+          ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+          userAgent: req.get('user-agent') || 'unknown',
+          loginAt: new Date(),
+        });
+        await linkVisitorOnLogin(req, res, user.id);
+      } catch (error) {
+        console.error("Error recording login:", error);
+      }
+      resolve();
+    });
+  });
+}
+
 // Decide where a user lands after a successful login. Admins go to the admin
 // portal; everyone else (buyers and vendor seats) goes to the home page where
 // the dashboard branches by persona.
@@ -59,6 +86,7 @@ export function registerAuthRoutes(app: Express): void {
   setupSession(app);
   setupPassport(app);
   app.use(adminAuthDiagnostics);
+  registerGoogleAuthRoutes(app, { establishSession });
 
   // Serve sitemap dynamically so market pages are included
   app.get('/sitemap.xml', async (_req, res) => {
@@ -245,28 +273,14 @@ export function registerAuthRoutes(app: Express): void {
       }
     }
 
-    return new Promise<void>((resolve) => {
-      req.logIn(user, async (err: unknown) => {
-        if (err) {
-          res.status(500).json({ error: "Login failed" });
-          return resolve();
-        }
-        try {
-          await storage.recordUserLogin({
-            userId: user.id,
-            sessionId: req.sessionID,
-            ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
-            userAgent: req.get('user-agent') || 'unknown',
-            loginAt: new Date(),
-          });
-          await linkVisitorOnLogin(req, res, user.id);
-        } catch (error) {
-          console.error("Error recording login:", error);
-        }
-        res.status(status).json({ ...stripPrivateFields(user), ...extra });
-        resolve();
-      });
-    });
+    try {
+      await establishSession(req, res, user);
+    } catch (error) {
+      console.error("Error establishing session:", error);
+      res.status(500).json({ error: "Login failed" });
+      return;
+    }
+    res.status(status).json({ ...stripPrivateFields(user), ...extra });
   }
 
   app.post("/auth/login", async (req, res) => {
