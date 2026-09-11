@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "test:traffic": "vitest run server/routes/trafficAnalytics.test.ts server/storage/trafficAnalytics.integration.test.ts",
     "test:company-email": "vitest run server/routes/companyEmailGate.integration.test.ts",
+    "test:teaser-funnel": "vitest run client/src/lib/teaser-schedule.test.ts client/src/lib/high-intent.test.ts client/src/lib/registration-copy.test.ts",
     "test:magic-quadrant": "node scripts/test-magic-quadrant-browser.mjs",
     "check": "tsc",
     "db:push": "drizzle-kit push"

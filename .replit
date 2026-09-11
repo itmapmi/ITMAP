@@ -46,6 +46,10 @@ args = "Start application"
 task = "workflow.run"
 args = "traffic-analytics"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "teaser-funnel"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -62,6 +66,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run test:traffic"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "teaser-funnel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test:teaser-funnel"
 
 [workflows.workflow.metadata]
 isValidation = true

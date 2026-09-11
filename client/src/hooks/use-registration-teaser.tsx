@@ -5,6 +5,7 @@ import { Timer, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
 import { getHighIntentEarliestPromptAt, getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
+import { computeTeaserSchedule, canDismissTeaserModal, MAX_AUTO_REOPENS } from "@/lib/teaser-schedule";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PersonaRegistrationForm, BUYER_VALUE_PROPOSITION } from "@/components/persona-registration-form";
 import type { Market } from "@shared/schema";
@@ -28,11 +29,6 @@ import type { Market } from "@shared/schema";
 // from values persisted in sessionStorage (start time, dismiss count, last
 // shown time) rather than from refs that reset on remount — a page refresh
 // must never re-arm nagging that has already been dismissed or backed off.
-
-const TEASER_DURATION_MS = 2 * 60_000;
-const FORCED_AFTER_MS = 10 * 60_000;
-const REOPEN_INTERVAL_MS = 30_000;
-const MAX_AUTO_REOPENS = 3;
 
 // Only these routes start the free-access clock.
 const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets\/[^/]+/;
@@ -159,51 +155,31 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const anonymous = !isLoading && !isAuthenticated;
-  const clockStarted = startRef.current !== null;
-  const elapsed = clockStarted ? now - (startRef.current as number) : 0;
-  // Whether the visitor is still inside their initial, no-strings-attached
-  // free window (drives the countdown badge). Before the clock has started
-  // there is nothing to count down, but access is equally unrestricted.
-  const withinInitialWindow = anonymous && clockStarted && elapsed < TEASER_DURATION_MS;
-  const teaserRemainingMs = withinInitialWindow ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
-  const expired = anonymous && clockStarted && elapsed >= TEASER_DURATION_MS;
   const isExempt = EXEMPT_PATHS.has(location);
-  const backoffReached = dismissCountRef.current >= MAX_AUTO_REOPENS;
 
-  // A high-intent action (vendor/product/ecosystem comparison, Intelligence
-  // Feed) guarantees at least HIGH_INTENT_GRACE_MS of uninterrupted time
-  // after it fires before any prompt auto-shows. This can only ever push the
-  // eligible time later than the base schedule already allows — it never
-  // brings a prompt forward.
-  const highIntentGateOpenAt = getHighIntentEarliestPromptAt() ?? 0;
-  const highIntentGateOpen = now >= highIntentGateOpenAt;
-
-  // The forced (access-locking) phase must never activate ahead of the
-  // prompt that explains it: if a high-intent action's grace period is still
-  // running when the 10-minute mark passes, access stays unlocked until the
-  // grace ends too, so the moment the visitor is actually locked out, the
-  // forced dialog is already eligible to open in the same tick — never a
-  // silent lock with no explanation. Once forced has genuinely activated it
-  // latches permanently (via forcedTriggeredRef/sessionStorage) so a later
-  // high-intent action can't accidentally re-open access by pushing
-  // highIntentGateOpen back to false.
-  const pastForcedThreshold = anonymous && clockStarted && elapsed >= FORCED_AFTER_MS;
-  const forced = forcedTriggeredRef.current || (pastForcedThreshold && highIntentGateOpen);
-  // Access stays unlocked until the forced prompt takes over.
-  const teaserActive = anonymous && !forced;
-
-  const nextAutoShowAt =
-    lastShownAtRef.current !== null
-      ? lastShownAtRef.current + REOPEN_INTERVAL_MS
-      : (startRef.current ?? 0) + TEASER_DURATION_MS;
-
-  // Soft phase: never auto-pop while the visitor is deliberately on an
-  // auth-adjacent or legal page, once they've exhausted the reopen budget, or
-  // once signed in. Forced phase: always open (off exempt pages).
-  const eligibleToAutoShow =
-    expired && !isExempt && highIntentGateOpen && (forced || (!backoffReached && now >= nextAutoShowAt));
-
-  const showBanner = expired && !forced && !isExempt && !isAuthenticated && backoffReached;
+  // All the timing math (when the soft/forced prompts become eligible, the
+  // high-intent grace gate, the forced latch) lives in the pure
+  // computeTeaserSchedule so it stays independently unit-testable — see
+  // client/src/lib/teaser-schedule.ts.
+  const schedule = computeTeaserSchedule({
+    now,
+    anonymous,
+    startAt: startRef.current,
+    dismissCount: dismissCountRef.current,
+    lastShownAt: lastShownAtRef.current,
+    forcedTriggered: forcedTriggeredRef.current,
+    highIntentEarliestPromptAt: getHighIntentEarliestPromptAt(),
+    isExempt,
+  });
+  const {
+    withinInitialWindow,
+    teaserRemainingMs,
+    expired,
+    forced,
+    teaserActive,
+    eligibleToAutoShow,
+    showBanner,
+  } = schedule;
 
   // Persist the forced latch the instant it activates so it survives a page
   // refresh and can never be undone by a subsequent high-intent action.
@@ -268,7 +244,7 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     (open: boolean) => {
       // Once forced, the prompt cannot be dismissed — only signing up (which
       // flips isAuthenticated and closes it) or leaving for an exempt page.
-      if (!open && forced && !isAuthenticated) return;
+      if (!open && !canDismissTeaserModal({ forced, isAuthenticated })) return;
       setModalOpen(open);
       if (!open && !isAuthenticated) {
         track("registration_modal_dismissed");
