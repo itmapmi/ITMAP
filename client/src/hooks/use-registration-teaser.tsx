@@ -6,7 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
 import { getHighIntentEarliestPromptAt, getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
 import { computeTeaserSchedule, canDismissTeaserModal, MAX_AUTO_REOPENS } from "@/lib/teaser-schedule";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { resolveRegistrationCopy } from "@/lib/registration-copy";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PersonaRegistrationForm, BUYER_VALUE_PROPOSITION } from "@/components/persona-registration-form";
 import type { Market } from "@shared/schema";
 
@@ -268,6 +270,15 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     ? `Free, forever. No card. Unlock full vendor scores, comparisons, RFPs, security insights, and reports for ${currentMarket.name}.`
     : BUYER_VALUE_PROPOSITION;
 
+  // Same heading/body the form renders visibly, reused here so the dialog's
+  // accessible title/description (see VisuallyHidden below) always matches
+  // what's on screen instead of drifting into a second, separate copy.
+  const { heading: registrationHeading, bodyValueProp: registrationBody } = resolveRegistrationCopy({
+    forced,
+    valueProposition: marketValueProposition,
+    highIntentAction: shownForAction,
+  });
+
   // Never render the popover/banner chrome on auth-adjacent or legal pages,
   // and never once the visitor is signed in.
   const canShowChrome = !isLoading && !isAuthenticated && !isExempt;
@@ -292,6 +303,15 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
             onPointerDownOutside={forced ? (e) => e.preventDefault() : undefined}
             onInteractOutside={forced ? (e) => e.preventDefault() : undefined}
           >
+            {/* The form below already renders this same copy visibly as its
+                own heading/paragraph (styled to match the card, not the
+                dialog chrome) — this visually-hidden pair exists solely so
+                Radix can announce a title/description to screen readers
+                without a duplicate on-screen heading. */}
+            <VisuallyHidden>
+              <DialogTitle>{registrationHeading}</DialogTitle>
+              <DialogDescription>{registrationBody}</DialogDescription>
+            </VisuallyHidden>
             <PersonaRegistrationForm
               compact
               forced={forced}
