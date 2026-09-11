@@ -279,6 +279,95 @@ export async function sendCustomEmail(to: string, subject: string, bodyText: str
   }
 }
 
+// Minimal shape needed to notify a vendor of a Fact Review decision. Kept
+// local (rather than importing AdminFactCheckFlagRow) to avoid a storage ->
+// emailService dependency; the admin route passes the fields through.
+export interface FactReviewDecisionContext {
+  status: string; // "approved" | "rejected"
+  vendorName: string;
+  itemName: string;
+  categoryName: string;
+  targetType: "feature_support" | "vendor_evaluation";
+  currentSupportLevel: number | null;
+  currentScore: number | null;
+  currentComments: string | null;
+  adminNotes: string | null;
+}
+
+const HARVEY_LABELS = ["None", "Minimal", "Partial", "Mostly", "Full"];
+
+function buildFactReviewDecisionEmailHtml(ctx: FactReviewDecisionContext): string {
+  const approved = ctx.status === "approved";
+  const scoreLine = approved
+    ? ctx.targetType === "vendor_evaluation"
+      ? ctx.currentScore != null
+        ? `<p style="color:#374151;"><strong>Updated score:</strong> ${ctx.currentScore.toFixed(1)} / 10</p>`
+        : ""
+      : ctx.currentSupportLevel != null
+        ? `<p style="color:#374151;"><strong>Updated support level:</strong> ${HARVEY_LABELS[ctx.currentSupportLevel] ?? ctx.currentSupportLevel}</p>`
+        : ""
+    : "";
+  const commentaryLine = approved && ctx.currentComments
+    ? `<p style="color:#374151;"><strong>Updated write-up:</strong></p><p style="color:#374151;white-space:pre-line;">${escapeHtml(ctx.currentComments)}</p>`
+    : "";
+  const adminNoteLine = !approved && ctx.adminNotes
+    ? `<p style="color:#374151;"><strong>Note from our team:</strong></p><p style="color:#374151;white-space:pre-line;">${escapeHtml(ctx.adminNotes)}</p>`
+    : "";
+  const summary = approved
+    ? `Your fact review submission for <strong>${escapeHtml(ctx.itemName)}</strong> (${escapeHtml(ctx.categoryName)}) has been approved and applied to your ${escapeHtml(ctx.vendorName)} evaluation.`
+    : `Your fact review submission for <strong>${escapeHtml(ctx.itemName)}</strong> (${escapeHtml(ctx.categoryName)}) was not approved. No changes were made to your ${escapeHtml(ctx.vendorName)} evaluation.`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:system-ui,sans-serif;color:#111827;max-width:560px;margin:0 auto;padding:24px;">
+  <h2 style="margin-bottom:4px;">Fact review ${approved ? "approved" : "rejected"}</h2>
+  <p style="color:#374151;">${summary}</p>
+  ${scoreLine}
+  ${commentaryLine}
+  ${adminNoteLine}
+  <p style="margin-top:24px;color:#9ca3af;font-size:12px;">
+    You can review the full history of your submissions in the Fact Review tab on itmap.ai.
+  </p>
+</body>
+</html>`;
+}
+
+// Notifies the vendor user who submitted a Fact Review flag once an admin
+// approves or rejects it, including the final score/level and write-up.
+export async function sendFactReviewDecisionEmail(
+  to: string,
+  ctx: FactReviewDecisionContext,
+): Promise<SendVerificationResult> {
+  try {
+    const connectors = new ReplitConnectors();
+    const approved = ctx.status === "approved";
+    const response = await connectors.proxy('resend', '/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: VERIFICATION_FROM,
+        to: [to],
+        subject: `Fact review ${approved ? "approved" : "rejected"} — ${ctx.itemName} — itmap.ai`,
+        html: buildFactReviewDecisionEmailHtml(ctx),
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[EmailService] Resend fact-review decision email failed (${response.status}): ${body}`);
+      return { sent: false, reason: `Resend error ${response.status}: ${body.slice(0, 300)}` };
+    }
+
+    console.log(`[EmailService] Fact review decision email sent to ${to}`);
+    return { sent: true };
+  } catch (err) {
+    console.error('[EmailService] Failed to send fact review decision email:', err);
+    return { sent: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function sendNewsroomAlertEmail(
   broken: UrlHealthResult[],
   recipients: string[],

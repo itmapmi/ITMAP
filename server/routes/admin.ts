@@ -9,7 +9,7 @@ import { z } from "zod";
 import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, type User } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
 import { calculateDerivedFeatureScore, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
-import { sendVerificationEmail, sendCustomEmail } from "../emailService";
+import { sendVerificationEmail, sendCustomEmail, sendFactReviewDecisionEmail } from "../emailService";
 import { issueAndSendVerification, issueAndSendCompanyVerification } from "./auth";
 
 interface CollectionLogEntry {
@@ -1826,25 +1826,41 @@ export function registerAdminRoutes(app: Express): void {
       const schema = z.object({
         status: z.enum(["approved", "rejected"]),
         updatedSupportLevel: z.number().int().min(0).max(4).optional(),
+        updatedScore: z.number().min(0).max(10).optional(),
         updatedComments: z.string().optional(),
         adminNotes: z.string().optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request body" });
       const reviewedByUserId = (req.user as any).id as string;
-      const { status, updatedSupportLevel, updatedComments, adminNotes } = parsed.data;
+      const { status, updatedSupportLevel, updatedScore, updatedComments, adminNotes } = parsed.data;
       let flag;
       if (status === "approved") {
         const existing = await storage.getFactCheckFlagById(req.params.id);
         if (!existing) return res.status(404).json({ error: "Flag not found" });
         if (existing.vendorScoreId && updatedSupportLevel !== undefined) {
-          return res.status(400).json({ error: "Vendor evaluation scores cannot be changed through Fact Review" });
+          return res.status(400).json({ error: "Vendor evaluation items use a score, not a support level" });
         }
-        flag = await storage.approveFactCheckFlag(req.params.id, reviewedByUserId, updatedSupportLevel, updatedComments);
+        if (existing.featureSupportId && updatedScore !== undefined) {
+          return res.status(400).json({ error: "Product/ecosystem items use a support level, not a decimal score" });
+        }
+        flag = await storage.approveFactCheckFlag(req.params.id, reviewedByUserId, updatedSupportLevel, updatedComments, updatedScore);
       } else {
         flag = await storage.rejectFactCheckFlag(req.params.id, reviewedByUserId, adminNotes);
       }
       if (!flag) return res.status(404).json({ error: "Flag not found" });
+
+      // Best-effort vendor notification — never fail the review itself if the
+      // email doesn't go out (e.g. reporter has no email, Resend hiccup).
+      try {
+        const [detail] = await storage.getAllFactCheckFlags(flag.id);
+        if (detail?.reportedByEmail) {
+          await sendFactReviewDecisionEmail(detail.reportedByEmail, detail);
+        }
+      } catch (notifyErr) {
+        console.error("[fact-check] failed to send vendor notification email:", notifyErr);
+      }
+
       res.json(flag);
     } catch (err) {
       console.error("[fact-check] admin review error:", err);

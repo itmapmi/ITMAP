@@ -58,6 +58,7 @@ export interface AdminFactCheckFlagRow {
   categoryName: string;
   isEcosystem: boolean;
   currentSupportLevel: number | null;
+  currentScore: number | null;
   currentComments: string | null;
   proposedSupportLevel: number | null;
   evidenceLinks: string | null;
@@ -473,7 +474,9 @@ export async function createFactCheckFlag(data: {
 
 // ── Admin queries ───────────────────────────────────────────────────────────
 
-export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
+// When flagId is supplied, only that flag is returned (used to fetch a single
+// row's fully-joined context, e.g. for the post-review notification email).
+export async function getAllFactCheckFlags(flagId?: string): Promise<AdminFactCheckFlagRow[]> {
   const rows = await db
     .select({
       id: vendorFactCheckFlags.id,
@@ -490,6 +493,7 @@ export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
       featureComments: vendorFeatureSupport.comments,
       featureSupportId: vendorFeatureSupport.id,
       vendorScoreId: vendorScores.id,
+      vendorScoreValue: vendorScores.score,
       criterionId: criteria.id,
       criterionName: criteria.name,
       criterionCategory: criteria.category,
@@ -511,6 +515,7 @@ export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
     .leftJoin(vendorScores, eq(vendorFactCheckFlags.vendorScoreId, vendorScores.id))
     .leftJoin(criteria, eq(vendorScores.criteriaId, criteria.id))
     .leftJoin(users, eq(vendorFactCheckFlags.reportedByUserId, users.id))
+    .where(flagId ? eq(vendorFactCheckFlags.id, flagId) : sql`true`)
     .orderBy(sql`${vendorFactCheckFlags.createdAt} desc`);
 
   return rows.map((r) => ({
@@ -526,6 +531,7 @@ export async function getAllFactCheckFlags(): Promise<AdminFactCheckFlagRow[]> {
     categoryName: r.criterionCategory ?? r.featureCategoryName ?? "Vendor Evaluation",
     isEcosystem: r.isEcosystem ?? false,
     currentSupportLevel: r.currentSupportLevel ?? null,
+    currentScore: r.vendorScoreValue != null ? Number(r.vendorScoreValue) : null,
     currentComments: r.vendorScoreComments ?? r.featureComments ?? null,
     proposedSupportLevel: r.proposedSupportLevel ?? null,
     evidenceLinks: r.evidenceLinks ?? null,
@@ -556,25 +562,32 @@ export async function getFactCheckFlagById(id: string): Promise<VendorFactCheckF
 }
 
 // Approve a flag: apply the revised write-up to the correctly typed target,
-// and optionally apply a support level for legacy feature-support flags.
+// and optionally apply a support level (feature-support flags) or a score
+// (vendor-evaluation flags).
 export async function approveFactCheckFlag(
   flagId: string,
   reviewedByUserId: string,
   updatedSupportLevel?: number,
   updatedComments?: string,
+  updatedScore?: number,
 ): Promise<VendorFactCheckFlag | null> {
   const flag = await getFactCheckFlagById(flagId);
   if (!flag) return null;
 
   if (flag.vendorScoreId) {
     if (updatedSupportLevel !== undefined) return null;
-    if (updatedComments !== undefined) {
+    if (updatedScore !== undefined || updatedComments !== undefined) {
       await db
         .update(vendorScores)
-        .set({ notes: updatedComments, updatedAt: new Date() })
+        .set({
+          ...(updatedScore !== undefined ? { score: updatedScore.toString() } : {}),
+          ...(updatedComments !== undefined ? { notes: updatedComments } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(vendorScores.id, flag.vendorScoreId));
     }
   } else if (flag.featureSupportId && (updatedSupportLevel !== undefined || updatedComments !== undefined)) {
+    if (updatedScore !== undefined) return null;
     await db
       .update(vendorFeatureSupport)
       .set({

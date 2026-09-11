@@ -30,6 +30,7 @@ interface FlagRow {
   categoryName: string;
   isEcosystem: boolean;
   currentSupportLevel: number | null;
+  currentScore: number | null;
   currentComments: string | null;
   proposedSupportLevel: number | null;
   evidenceLinks: string | null;
@@ -86,6 +87,7 @@ export function FactCheckFlagsAdmin() {
   const [approveFlag, setApproveFlag] = useState<FlagRow | null>(null);
   const [rejectFlag, setRejectFlag] = useState<FlagRow | null>(null);
   const [approveLevel, setApproveLevel] = useState<number>(0);
+  const [approveScore, setApproveScore] = useState<number>(5);
   const [approveComments, setApproveComments] = useState("");
   const [rejectNotes, setRejectNotes] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -122,6 +124,7 @@ export function FactCheckFlagsAdmin() {
   function openApprove(flag: FlagRow) {
     setApproveFlag(flag);
     setApproveLevel(flag.proposedSupportLevel ?? flag.currentSupportLevel ?? 0);
+    setApproveScore(flag.currentScore ?? 5);
     setApproveComments(flag.currentComments ?? "");
   }
 
@@ -131,7 +134,9 @@ export function FactCheckFlagsAdmin() {
       id: approveFlag.id,
       body: {
         status: "approved",
-        ...(approveFlag.targetType === "feature_support" ? { updatedSupportLevel: approveLevel } : {}),
+        ...(approveFlag.targetType === "feature_support"
+          ? { updatedSupportLevel: approveLevel }
+          : { updatedScore: approveScore }),
         updatedComments: approveComments,
       },
     });
@@ -196,6 +201,9 @@ export function FactCheckFlagsAdmin() {
             <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-gray-500">
               {flag.targetType === "feature_support" && flag.currentSupportLevel != null && (
                 <span>Current: <span className="font-medium text-gray-700">{HARVEY_LABELS[flag.currentSupportLevel] ?? flag.currentSupportLevel}</span></span>
+              )}
+              {flag.targetType === "vendor_evaluation" && flag.currentScore != null && (
+                <span>Current score: <span className="font-medium text-gray-700">{flag.currentScore.toFixed(1)} / 10</span></span>
               )}
               {flag.proposedSupportLevel != null && (
                 <span>Proposed: <span className="font-medium text-blue-700">{HARVEY_LABELS[flag.proposedSupportLevel] ?? flag.proposedSupportLevel}</span></span>
@@ -358,7 +366,7 @@ export function FactCheckFlagsAdmin() {
                   <p><span className="text-gray-500">Proposed level:</span> <span className="font-medium text-blue-700">{HARVEY_LABELS[approveFlag.proposedSupportLevel]}</span></p>
                 )}
               </div>
-              {approveFlag.targetType === "feature_support" && (
+              {approveFlag.targetType === "feature_support" ? (
                 <div className="space-y-1.5">
                   <Label>Support level to apply (0–4)</Label>
                   <div className="flex gap-2">
@@ -373,6 +381,19 @@ export function FactCheckFlagsAdmin() {
                       </button>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>Score to apply (0–10)</Label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.1}
+                    value={approveScore}
+                    onChange={(e) => setApproveScore(Math.min(10, Math.max(0, Number(e.target.value))))}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
                 </div>
               )}
               <div className="space-y-1.5">
