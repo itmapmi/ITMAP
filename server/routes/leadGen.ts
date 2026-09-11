@@ -303,7 +303,24 @@ function canReadMarket(market: any, req: Request): boolean {
 // traffic-only 'login' event into traffic_events.
 // Must only be called on EXPLICIT register/login — NOT on session-restore middleware.
 
-export async function linkVisitorOnLogin(req: Request, res: Response, userId: string): Promise<void> {
+export interface LinkVisitorOnLoginOptions {
+  // "signup" = brand-new account just created (register or first Google sign-in).
+  // "verify" = auto-login immediately after clicking the email verification link.
+  // "login"  = everything else (default) — an ordinary returning sign-in.
+  // The Operations conversion funnel's "login" step counts only "login"
+  // context, so a signup's own login and a post-verification auto-login never
+  // double-count as a "repeat login".
+  context?: "signup" | "login" | "verify";
+  method?: "email" | "google";
+}
+
+export async function linkVisitorOnLogin(
+  req: Request,
+  res: Response,
+  userId: string,
+  opts: LinkVisitorOnLoginOptions = {},
+): Promise<void> {
+  const context = opts.context ?? "login";
   try {
     // Issue / read visitor cookie (first-time login callers receive it here).
     let anonymousId = getOrCreateVisitorId(req, res);
@@ -342,13 +359,11 @@ export async function linkVisitorOnLogin(req: Request, res: Response, userId: st
     // Increment per-user login counter.
     await storage.incrementLoginCount(userId);
 
-    // Write a traffic-only 'login' event (does NOT go to user_events).
-    await storage.writeTrafficEvent({
+    const baseEvent = {
       visitorId: visitor.id,
       anonymousId,
       userId,
       sessionId,
-      eventType: "login",
       pagePath: null,
       referrer: null,
       utmSource: null,
@@ -366,8 +381,33 @@ export async function linkVisitorOnLogin(req: Request, res: Response, userId: st
       region: geo.region,
       city: geo.city,
       userAgent,
-      metadata: null,
+    };
+
+    // Write a traffic-only 'login' event (does NOT go to user_events). Tagged
+    // with context so the Operations funnel can tell a signup's own login and
+    // a post-verification auto-login apart from an ordinary repeat login.
+    await storage.writeTrafficEvent({
+      ...baseEvent,
+      eventType: "login",
+      metadata: { context },
     });
+
+    // Server-only funnel milestones — bypass the client-beacon allowlist,
+    // same as the raw 'login' write above, since these can only ever be
+    // fired from a trusted server-side call site.
+    if (context === "signup") {
+      await storage.writeTrafficEvent({
+        ...baseEvent,
+        eventType: "signup_completed",
+        metadata: opts.method ? { method: opts.method } : null,
+      });
+    } else if (context === "verify") {
+      await storage.writeTrafficEvent({
+        ...baseEvent,
+        eventType: "email_verified",
+        metadata: null,
+      });
+    }
   } catch (err) {
     console.error("[traffic] linkVisitorOnLogin error:", err);
   }
@@ -531,6 +571,14 @@ export function registerLeadGenRoutes(app: Express): void {
       // Fired once per beacon batch.
       const geo = await resolveGeo(ip);
 
+      // Landing attribution: the first event in the batch is treated as the
+      // "arrival" context. In practice this is virtually always a lone
+      // page_view fired on load, so its pagePath/marketId/UTM are the
+      // visitor's true landing context. upsertTrafficVisitor only ever
+      // applies these once (COALESCE), so a later batch from the same
+      // visitor navigating elsewhere can't overwrite it.
+      const landingEvent = valid[0];
+
       // Upsert the visitor row. visitCount increments only on new session.
       const visitor = await storage.upsertTrafficVisitor({
         anonymousId,
@@ -542,6 +590,13 @@ export function registerLeadGenRoutes(app: Express): void {
         region: geo.region,
         city: geo.city,
         userAgent,
+        landingPath: landingEvent?.pagePath ?? null,
+        landingMarketId: landingEvent?.marketId ?? null,
+        landingUtmSource: landingEvent?.utmSource ?? null,
+        landingUtmMedium: landingEvent?.utmMedium ?? null,
+        landingUtmCampaign: landingEvent?.utmCampaign ?? null,
+        landingUtmTerm: landingEvent?.utmTerm ?? null,
+        landingUtmContent: landingEvent?.utmContent ?? null,
       });
 
       let accepted = 0;

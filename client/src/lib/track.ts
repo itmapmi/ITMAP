@@ -22,7 +22,15 @@ export type ClientEventType =
   | "teaser_expired"
   | "registration_modal_shown"
   | "registration_modal_dismissed"
-  | "registration_prompt_backoff";
+  | "registration_prompt_backoff"
+  // High-intent actions — anonymous-safe (unlike the authed-only, trusted
+  // /api/markets/:id/track-vendor-comparison endpoint). Each also feeds the
+  // registration teaser's 60s post-action grace period.
+  | "vendor_comparison_opened"
+  | "product_comparison_opened"
+  | "ecosystem_comparison_opened"
+  | "intelligence_feed_viewed"
+  | "signup_started";
 
 interface QueuedEvent {
   eventType: ClientEventType;

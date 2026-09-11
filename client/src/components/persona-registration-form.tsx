@@ -10,11 +10,37 @@ import { UserPlus, Mail, MailCheck } from "lucide-react";
 import { MAX_UNVERIFIED_SESSIONS } from "@shared/verification";
 import { COMPANY_PROFILE_PATH, isConsumerEmailDomain } from "@shared/company-email";
 import { GoogleSignInButton, OrDivider } from "@/components/google-sign-in-button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { HighIntentAction } from "@/lib/high-intent";
 
 // Shown under the heading of the sign-up prompt. Personal and company
-// email addresses are both accepted.
+// email addresses are both accepted. Overridden by a dynamic per-market or
+// per-action value proposition wherever one is available (see
+// use-registration-teaser.tsx) — this generic line is only the fallback.
 export const BUYER_VALUE_PROPOSITION =
   "Free, forever. No card. Unlock vendor scores, comparisons, create RFPs, security insights, and reports for all markets.";
+
+// Popup copy tailored to the high-intent action that triggered the prompt
+// (Task #81): a visitor who was just comparing vendors sees copy about
+// saving that comparison, not a generic pitch.
+const HIGH_INTENT_COPY: Record<HighIntentAction, { heading: string; body: string }> = {
+  vendor_comparison_opened: {
+    heading: "Comparing vendors? Save your work.",
+    body: "Create a free account to save this comparison, generate a vendor RFP, and unlock full scoring detail across every vendor.",
+  },
+  product_comparison_opened: {
+    heading: "Comparing product capabilities? Save your work.",
+    body: "Create a free account to save this comparison, unlock feature-by-feature scoring detail, and generate an RFP from your shortlist.",
+  },
+  ecosystem_comparison_opened: {
+    heading: "Comparing ecosystem support? Save your work.",
+    body: "Create a free account to save this comparison, unlock full integration and partner scoring, and generate an RFP from your shortlist.",
+  },
+  intelligence_feed_viewed: {
+    heading: "Stay ahead of vendor news.",
+    body: "Create a free account to keep tracking market-moving vendor news, security advisories, and product updates in your Intelligence Feed.",
+  },
+};
 
 // There is a single self-service sign-up. Vendor seats are provisioned by
 // admins (vendor scoping), never chosen at registration — so this form no
@@ -29,10 +55,21 @@ interface PersonaRegistrationFormProps {
    * continue.
    */
   forced?: boolean;
+  /** Dynamic value proposition (e.g. mentioning the current market) to show instead of the generic line. */
+  valueProposition?: string;
+  /** The high-intent action (if any) that this specific prompt was shown for — drives tailored copy. */
+  highIntentAction?: HighIntentAction | null;
 }
 
-export function PersonaRegistrationForm({ compact = false, forced = false, googleReturnTo }: PersonaRegistrationFormProps) {
+export function PersonaRegistrationForm({
+  compact = false,
+  forced = false,
+  googleReturnTo,
+  valueProposition,
+  highIntentAction,
+}: PersonaRegistrationFormProps) {
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const {
     register, registerError, isRegistering,
     resendVerification, isResendingVerification,
@@ -155,19 +192,18 @@ export function PersonaRegistrationForm({ compact = false, forced = false, googl
     );
   }
 
-  return (
-    <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "w-full max-w-md mx-auto"}`}>
-      <div className="p-5 sm:p-8 space-y-5">
-        <div className="text-center space-y-2">
-          <h3 className="text-lg sm:text-xl font-bold text-white" data-testid="text-registration-heading">
-            {forced ? "Your free preview has ended — enter your email to continue" : "Sign up"}
-          </h3>
-          <p className="text-sm leading-relaxed text-slate-300" data-testid="text-registration-value-prop">
-            {BUYER_VALUE_PROPOSITION}
-          </p>
-        </div>
+  // Forced (free preview ended) always wins the heading — it's the more
+  // urgent, action-required message. Otherwise, tailor to the high-intent
+  // action that triggered this prompt when we have one, then fall back to
+  // the dynamic (or generic) value proposition.
+  const tailoredCopy = highIntentAction ? HIGH_INTENT_COPY[highIntentAction] : null;
+  const heading = forced
+    ? "Your free preview has ended — enter your email to continue"
+    : tailoredCopy?.heading ?? "Sign up";
+  const bodyValueProp = tailoredCopy?.body ?? valueProposition ?? BUYER_VALUE_PROPOSITION;
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+  const emailForm = (
+    <form onSubmit={handleSubmit} className="space-y-4">
           {registerError && (
             <Alert variant="destructive">
               <AlertDescription>{registerError}</AlertDescription>
@@ -225,19 +261,50 @@ export function PersonaRegistrationForm({ compact = false, forced = false, googl
             <UserPlus className="mr-2 h-4 w-4" />
              {isRegistering ? "Signing up…" : "Sign up"}
           </Button>
-        </form>
+    </form>
+  );
 
-        <OrDivider />
-        <div className="space-y-2">
-          <GoogleSignInButton returnTo={googleReturnTo} data-testid="button-google-sign-in" />
-          <p className="text-center text-xs text-slate-500">
-              By continuing with Google you agree to the{" "}
-              <Link href="/termsofservice?returnTo=/buyer" className="text-slate-400 hover:text-slate-200 hover:underline">
-                ITMAP Terms of Service
-              </Link>
-              .
-            </p>
+  const googleBlock = (
+    <div className="space-y-2">
+      <GoogleSignInButton returnTo={googleReturnTo} data-testid="button-google-sign-in" />
+      <p className="text-center text-xs text-slate-500">
+        By continuing with Google you agree to the{" "}
+        <Link href="/termsofservice?returnTo=/buyer" className="text-slate-400 hover:text-slate-200 hover:underline">
+          ITMAP Terms of Service
+        </Link>
+        .
+      </p>
+    </div>
+  );
+
+  return (
+    <div className={`bg-slate-900 border border-white/8 rounded-2xl shadow-2xl overflow-hidden ${compact ? "" : "w-full max-w-md mx-auto"}`}>
+      <div className="p-5 sm:p-8 space-y-5">
+        <div className="text-center space-y-2">
+          <h3 className="text-lg sm:text-xl font-bold text-white" data-testid="text-registration-heading">
+            {heading}
+          </h3>
+          <p className="text-sm leading-relaxed text-slate-300" data-testid="text-registration-value-prop">
+            {bodyValueProp}
+          </p>
         </div>
+
+        {/* Google is the fastest signup path (no typing, no verification
+            email to wait for) — lead with it on mobile where every extra
+            step costs more conversion. */}
+        {isMobile ? (
+          <>
+            {googleBlock}
+            <OrDivider />
+            {emailForm}
+          </>
+        ) : (
+          <>
+            {emailForm}
+            <OrDivider />
+            {googleBlock}
+          </>
+        )}
 
         <div className="text-center text-sm text-slate-400">
           Already have an account?{" "}

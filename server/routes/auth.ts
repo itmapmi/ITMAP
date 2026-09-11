@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { setupSession, setupPassport, requireAuth, hashPassword, comparePassword, adminAuthDiagnostics } from "../auth";
 import { registerUserSchema, loginUserSchema, setPasswordSchema } from "@shared/schema";
 import path from "path";
-import { linkVisitorOnLogin } from "./leadGen";
+import { linkVisitorOnLogin, type LinkVisitorOnLoginOptions } from "./leadGen";
 import { sendRedditConversionEvent } from "../lib/redditConversions";
 import { sendVerificationEmail, sendCompanyVerificationEmail } from "../emailService";
 import { registerGoogleAuthRoutes } from "./googleAuth";
@@ -74,7 +74,12 @@ export async function issueAndSendCompanyVerification(
 // OAuth). Callers are responsible for the access checks (block / expiry /
 // verification allowance) BEFORE calling this; it only rejects if passport
 // itself fails to establish the session.
-export function establishSession(req: any, res: any, user: any): Promise<void> {
+export function establishSession(
+  req: any,
+  res: any,
+  user: any,
+  visitorLinkOpts?: LinkVisitorOnLoginOptions,
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     req.logIn(user, async (err: unknown) => {
       if (err) return reject(err);
@@ -86,7 +91,7 @@ export function establishSession(req: any, res: any, user: any): Promise<void> {
           userAgent: req.get('user-agent') || 'unknown',
           loginAt: new Date(),
         });
-        await linkVisitorOnLogin(req, res, user.id);
+        await linkVisitorOnLogin(req, res, user.id, visitorLinkOpts);
       } catch (error) {
         console.error("Error recording login:", error);
       }
@@ -214,7 +219,7 @@ export function registerAuthRoutes(app: Express): void {
       if (existingUser) {
         // No password to check — re-registering with an email that already
         // has an account is just how a returning user signs back in.
-        return logInAndRespond(req, res, existingUser, 200);
+        return logInAndRespond(req, res, existingUser, 200, {}, { context: "login" });
       }
 
       // Self-service sign-up is one flow. Vendor seats are provisioned by
@@ -244,7 +249,7 @@ export function registerAuthRoutes(app: Express): void {
         conversionId: user.id,
       });
 
-      await logInAndRespond(req, res, user, 201, { emailSent });
+      await logInAndRespond(req, res, user, 201, { emailSent }, { context: "signup", method: "email" });
     } catch (error) {
       console.error("Registration error:", error);
       res.status(400).json({ error: "Registration failed" });
@@ -261,7 +266,14 @@ export function registerAuthRoutes(app: Express): void {
   // allowance is reserved here (and only here) with a single atomic
   // conditional UPDATE, so concurrent sign-ins can't overshoot it and a
   // refused sign-in never consumes it.
-  async function logInAndRespond(req: any, res: any, user: any, status: number, extra: Record<string, unknown> = {}) {
+  async function logInAndRespond(
+    req: any,
+    res: any,
+    user: any,
+    status: number,
+    extra: Record<string, unknown> = {},
+    visitorLinkOpts?: LinkVisitorOnLoginOptions,
+  ) {
     if (user.role !== 'admin') {
       if (user.isBlocked) {
         res.status(403).json({ error: "This account has been blocked." });
@@ -299,7 +311,7 @@ export function registerAuthRoutes(app: Express): void {
     }
 
     try {
-      await establishSession(req, res, user);
+      await establishSession(req, res, user, visitorLinkOpts);
     } catch (error) {
       console.error("Error establishing session:", error);
       res.status(500).json({ error: "Login failed" });
@@ -330,7 +342,7 @@ export function registerAuthRoutes(app: Express): void {
         }
       }
 
-      await logInAndRespond(req, res, user, 200);
+      await logInAndRespond(req, res, user, 200, {}, { context: "login" });
     } catch (error) {
       console.error("Login error:", error);
       res.status(400).json({ error: "Login failed" });
@@ -397,7 +409,7 @@ export function registerAuthRoutes(app: Express): void {
           userAgent: req.get('user-agent') || 'unknown',
           loginAt: new Date(),
         });
-        await linkVisitorOnLogin(req, res, verified.id);
+        await linkVisitorOnLogin(req, res, verified.id, { context: "verify" });
       } catch (error) {
         console.error("Error recording post-verification login:", error);
       }

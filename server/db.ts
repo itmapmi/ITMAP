@@ -705,6 +705,37 @@ export async function runStartupMigrations(): Promise<void> {
         ON users (lower(company_email)) WHERE company_email_verified = true AND company_email IS NOT NULL;
     `);
 
+    // 34. Landing attribution on traffic_visitors (Task #81 — Operations
+    //     conversion funnel + ad registration conversion). Set once, never
+    //     overwritten, so every downstream funnel step (including server-only
+    //     signup/verification/login events that carry no marketId) can be
+    //     grouped by where the visitor first landed and which campaign sent them.
+    await client.query(`
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_path text;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_market_id varchar
+        REFERENCES markets(id) ON DELETE SET NULL;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_utm_source text;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_utm_medium text;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_utm_campaign text;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_utm_term text;
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_utm_content text;
+    `);
+
+    // 35. Atomicity guard for landing attribution (Task #81 follow-up fix).
+    //     Previously each landing_* column was COALESCEd independently, so a
+    //     visitor landing on a non-market page could still have
+    //     landing_market_id backfilled from a later, unrelated market visit.
+    //     landing_captured_at gates ALL landing_* columns together in one
+    //     UPDATE so they are set exactly once, atomically, from the same event.
+    await client.query(`
+      ALTER TABLE traffic_visitors ADD COLUMN IF NOT EXISTS landing_captured_at timestamp;
+      UPDATE traffic_visitors SET landing_captured_at = first_seen_at
+        WHERE landing_captured_at IS NULL
+          AND (landing_path IS NOT NULL OR landing_market_id IS NOT NULL OR landing_utm_source IS NOT NULL
+               OR landing_utm_medium IS NOT NULL OR landing_utm_campaign IS NOT NULL
+               OR landing_utm_term IS NOT NULL OR landing_utm_content IS NOT NULL);
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

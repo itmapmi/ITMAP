@@ -171,7 +171,12 @@ export async function resolveGoogleUser(profile: Profile, persona: Persona): Pro
 interface GoogleAuthDeps {
   // Session-minting helper shared with the email sign-in routes (injected
   // rather than imported to keep this module free of a cycle with ./auth).
-  establishSession: (req: Request, res: Response, user: any) => Promise<void>;
+  establishSession: (
+    req: Request,
+    res: Response,
+    user: any,
+    visitorLinkOpts?: { context?: "signup" | "login" | "verify"; method?: "email" | "google" },
+  ) => Promise<void>;
 }
 
 export function registerGoogleAuthRoutes(app: Express, { establishSession }: GoogleAuthDeps): void {
@@ -260,7 +265,12 @@ export function registerGoogleAuthRoutes(app: Express, { establishSession }: Goo
         }
 
         // req.logIn regenerates the session, so the marker goes on the new one.
-        await establishSession(req, res, result.user);
+        await establishSession(
+          req,
+          res,
+          result.user,
+          result.created ? { context: "signup", method: "google" } : { context: "login" },
+        );
         if (result.created) (req.session as any)[SESSION_SIGNUP_KEY] = result.user.id;
         return res.redirect(appendReturnParams(context.returnTo));
       } catch (error) {

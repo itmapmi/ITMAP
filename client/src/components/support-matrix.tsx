@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
+import { recordHighIntentAction } from "@/lib/high-intent";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
 
 interface SupportMatrixProps {
@@ -575,6 +576,12 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
             metadata: { context: "product_evaluation", vendorName: v.name },
           }),
         );
+      if (selectedVendors.size >= 2) {
+        recordHighIntentAction("product_comparison_opened", {
+          marketId,
+          metadata: { vendorCount: selectedVendors.size },
+        });
+      }
       setShowVendorSelection(false);
     }
   };

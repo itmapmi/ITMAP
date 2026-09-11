@@ -1285,6 +1285,15 @@ export const LEAD_GEN_EVENT_DEFS = {
   registration_modal_shown:     { label: "Registration modal shown",     weight: 1, origin: "client" },
   registration_modal_dismissed: { label: "Registration modal dismissed", weight: 1, origin: "client" },
   registration_prompt_backoff:  { label: "Registration prompt backed off", weight: 1, origin: "client" },
+  // ── High-intent actions (client beacon; fire for anonymous + authenticated
+  //    alike, unlike the trusted-but-auth-only comparison_run endpoint). Each
+  //    also feeds the registration-teaser's 60s post-action grace period and
+  //    the Operations conversion funnel's "meaningful interaction" step. ──
+  vendor_comparison_opened:    { label: "Compared vendors (Vendor Evaluation)",     weight: 6, origin: "client" },
+  product_comparison_opened:   { label: "Compared products (Product Evaluation)",  weight: 6, origin: "client" },
+  ecosystem_comparison_opened: { label: "Compared ecosystem support",              weight: 6, origin: "client" },
+  intelligence_feed_viewed:    { label: "Opened Intelligence Feed",                weight: 4, origin: "client" },
+  signup_started:              { label: "Started sign-up",                        weight: 1, origin: "client" },
 } as const;
 
 export type LeadGenEventType = keyof typeof LEAD_GEN_EVENT_DEFS;
@@ -2511,6 +2520,26 @@ export const trafficVisitors = pgTable("traffic_visitors", {
   visitCount: integer("visit_count").notNull().default(1),
   // The most recently seen session ID – used to deduplicate same-session batches.
   lastSessionId: text("last_session_id"),
+  // ── Landing attribution (set ONCE, atomically, on the first beacon batch
+  //    ever seen for this visitor; never overwritten by later navigation).
+  //    landingCapturedAt is the atomicity guard: all landing_* columns below
+  //    are written together in the same UPDATE, gated on this being null, so
+  //    a later page/market visit can never fill in a field the true landing
+  //    event left blank (e.g. a home-page landing must never gain a
+  //    landing_market_id from a market the visitor merely browsed to next).
+  //    Lets the Operations conversion funnel group every downstream step —
+  //    including server-only events like signup/verification/login that
+  //    carry no marketId of their own — by where the visitor first arrived
+  //    and which campaign brought them, regardless of how many pages/markets
+  //    they browse afterward. ──
+  landingCapturedAt: timestamp("landing_captured_at"),
+  landingPath: text("landing_path"),
+  landingMarketId: varchar("landing_market_id").references(() => markets.id, { onDelete: "set null" }),
+  landingUtmSource: text("landing_utm_source"),
+  landingUtmMedium: text("landing_utm_medium"),
+  landingUtmCampaign: text("landing_utm_campaign"),
+  landingUtmTerm: text("landing_utm_term"),
+  landingUtmContent: text("landing_utm_content"),
 }, (t) => ({
   anonIdIdx:     index("tv_anon_id_idx").on(t.anonymousId),
   userIdx:       index("tv_user_idx").on(t.userId),

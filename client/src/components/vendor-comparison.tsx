@@ -8,6 +8,7 @@ import { Download, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Vendor, VendorScore, Criteria } from "@shared/schema";
+import { recordHighIntentAction } from "@/lib/high-intent";
 
 interface VendorComparisonProps {
   marketId: string;
@@ -101,6 +102,13 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
         body: JSON.stringify({ vendorIds: [...selectedVendors] }),
       }).catch(() => {
         // Best-effort tracking — never disrupt the comparison experience.
+      });
+      // Anonymous-safe beacon (the fetch above requires auth and silently
+      // no-ops for anonymous ad visitors — the exact audience the
+      // registration teaser's high-intent grace period targets).
+      recordHighIntentAction("vendor_comparison_opened", {
+        marketId,
+        metadata: { vendorCount: selectedVendors.length },
       });
     }, 1500);
     return () => clearTimeout(timer);

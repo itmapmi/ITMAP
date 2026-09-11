@@ -1,10 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Timer, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
+import { getHighIntentEarliestPromptAt, getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { PersonaRegistrationForm } from "@/components/persona-registration-form";
+import { PersonaRegistrationForm, BUYER_VALUE_PROPOSITION } from "@/components/persona-registration-form";
+import type { Market } from "@shared/schema";
 
 // ── Timed free-access teaser ────────────────────────────────────────────────
 //
@@ -33,11 +36,15 @@ const MAX_AUTO_REOPENS = 3;
 
 // Only these routes start the free-access clock.
 const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets\/[^/]+/;
+// Captures the market slug/id segment so the dynamic value proposition can
+// look up which market the visitor is actually reading right now.
+const MARKET_DETAIL_ID = /^\/(?:mobile\/)?markets\/([^/]+)/;
 
 const START_KEY = "itmap_teaser_start_at";
 const DISMISS_COUNT_KEY = "itmap_teaser_dismiss_count";
 const LAST_SHOWN_AT_KEY = "itmap_teaser_last_shown_at";
 const EXPIRY_TRACKED_KEY = "itmap_teaser_expiry_tracked";
+const FORCED_TRIGGERED_KEY = "itmap_teaser_forced_triggered";
 
 // Pages an anonymous visitor may be deliberately on where the modal (or the
 // underlying teaser mechanics) shouldn't interrupt or auto-pop.
@@ -102,6 +109,9 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   const [location] = useLocation();
   const [now, setNow] = useState(() => Date.now());
   const [modalOpen, setModalOpen] = useState(false);
+  // Captured at the moment the modal is auto-shown, so the copy stays stable
+  // for the lifetime of that one prompt even if the visitor keeps browsing.
+  const [shownForAction, setShownForAction] = useState<HighIntentAction | null>(null);
 
   const startRef = useRef<number | null>(readIntOrNull(START_KEY));
   // Total number of times the auto-cadence modal has been shown & dismissed
@@ -111,8 +121,22 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   // next-eligible-time can be recomputed correctly even after a page refresh.
   const lastShownAtRef = useRef<number | null>(readIntOrNull(LAST_SHOWN_AT_KEY));
   const expiryTrackedRef = useRef(readBool(EXPIRY_TRACKED_KEY));
+  // Latches permanently once the forced phase has genuinely activated, so a
+  // later high-intent action can never re-open access it already locked
+  // (see `forced` below — its eligibility can move forward in time via the
+  // high-intent grace gate, but must never move backward once crossed).
+  const forcedTriggeredRef = useRef(readBool(FORCED_TRIGGERED_KEY));
 
   const onMarketDetail = MARKET_DETAIL_PATH.test(location);
+
+  // The market the visitor is currently reading, if any — drives the dynamic
+  // value proposition. Keyed identically to market-details.tsx's own query so
+  // the two share a cache entry instead of double-fetching.
+  const currentMarketId = location.match(MARKET_DETAIL_ID)?.[1] ?? null;
+  const { data: currentMarket } = useQuery<Market>({
+    queryKey: ["/api/markets", currentMarketId],
+    enabled: !!currentMarketId,
+  });
 
   // Start the session-wide teaser clock the first time an anonymous visitor
   // lands on a market detail page. It then persists across in-app navigation
@@ -143,9 +167,28 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   const withinInitialWindow = anonymous && clockStarted && elapsed < TEASER_DURATION_MS;
   const teaserRemainingMs = withinInitialWindow ? Math.max(0, TEASER_DURATION_MS - elapsed) : 0;
   const expired = anonymous && clockStarted && elapsed >= TEASER_DURATION_MS;
-  const forced = anonymous && clockStarted && elapsed >= FORCED_AFTER_MS;
   const isExempt = EXEMPT_PATHS.has(location);
   const backoffReached = dismissCountRef.current >= MAX_AUTO_REOPENS;
+
+  // A high-intent action (vendor/product/ecosystem comparison, Intelligence
+  // Feed) guarantees at least HIGH_INTENT_GRACE_MS of uninterrupted time
+  // after it fires before any prompt auto-shows. This can only ever push the
+  // eligible time later than the base schedule already allows — it never
+  // brings a prompt forward.
+  const highIntentGateOpenAt = getHighIntentEarliestPromptAt() ?? 0;
+  const highIntentGateOpen = now >= highIntentGateOpenAt;
+
+  // The forced (access-locking) phase must never activate ahead of the
+  // prompt that explains it: if a high-intent action's grace period is still
+  // running when the 10-minute mark passes, access stays unlocked until the
+  // grace ends too, so the moment the visitor is actually locked out, the
+  // forced dialog is already eligible to open in the same tick — never a
+  // silent lock with no explanation. Once forced has genuinely activated it
+  // latches permanently (via forcedTriggeredRef/sessionStorage) so a later
+  // high-intent action can't accidentally re-open access by pushing
+  // highIntentGateOpen back to false.
+  const pastForcedThreshold = anonymous && clockStarted && elapsed >= FORCED_AFTER_MS;
+  const forced = forcedTriggeredRef.current || (pastForcedThreshold && highIntentGateOpen);
   // Access stays unlocked until the forced prompt takes over.
   const teaserActive = anonymous && !forced;
 
@@ -158,9 +201,18 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   // auth-adjacent or legal page, once they've exhausted the reopen budget, or
   // once signed in. Forced phase: always open (off exempt pages).
   const eligibleToAutoShow =
-    expired && !isExempt && (forced || (!backoffReached && now >= nextAutoShowAt));
+    expired && !isExempt && highIntentGateOpen && (forced || (!backoffReached && now >= nextAutoShowAt));
 
   const showBanner = expired && !forced && !isExempt && !isAuthenticated && backoffReached;
+
+  // Persist the forced latch the instant it activates so it survives a page
+  // refresh and can never be undone by a subsequent high-intent action.
+  useEffect(() => {
+    if (forced && !forcedTriggeredRef.current) {
+      forcedTriggeredRef.current = true;
+      writeBool(FORCED_TRIGGERED_KEY, true);
+    }
+  }, [forced]);
 
   // Once the visitor registers, stop nudging entirely.
   useEffect(() => {
@@ -185,23 +237,31 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     if (!eligibleToAutoShow || modalOpen || isAuthenticated) return;
     const shownAt = Date.now();
     const isFirstShow = dismissCountRef.current === 0;
+    const recentAction = getRecentHighIntentAction();
     lastShownAtRef.current = shownAt;
     writeInt(LAST_SHOWN_AT_KEY, shownAt);
     setModalOpen(true);
+    setShownForAction(recentAction);
     if (isFirstShow && !expiryTrackedRef.current) {
       expiryTrackedRef.current = true;
       writeBool(EXPIRY_TRACKED_KEY, true);
       track("teaser_expired");
     }
     track("registration_modal_shown", {
-      metadata: { trigger: forced ? "forced" : isFirstShow ? "expiry" : "reopen", count: dismissCountRef.current },
+      metadata: {
+        trigger: forced ? "forced" : isFirstShow ? "expiry" : "reopen",
+        count: dismissCountRef.current,
+        highIntentAction: recentAction,
+      },
     });
   }, [eligibleToAutoShow, modalOpen, isAuthenticated, forced]);
 
   const openRegistrationModal = useCallback(() => {
     if (isAuthenticated || isExempt) return;
+    const recentAction = getRecentHighIntentAction();
     setModalOpen(true);
-    track("registration_modal_shown", { metadata: { trigger: "manual" } });
+    setShownForAction(recentAction);
+    track("registration_modal_shown", { metadata: { trigger: "manual", highIntentAction: recentAction } });
   }, [isAuthenticated, isExempt]);
 
   const handleOpenChange = useCallback(
@@ -224,6 +284,13 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   );
 
   const value: TeaserGateContextValue = { teaserActive, teaserRemainingMs, openRegistrationModal };
+
+  // Dynamic, per-market value proposition (never a hardcoded generic line
+  // when we know what the visitor is actually looking at). Falls back to the
+  // generic copy off market pages or before the market has loaded.
+  const marketValueProposition = currentMarket
+    ? `Free, forever. No card. Unlock full vendor scores, comparisons, RFPs, security insights, and reports for ${currentMarket.name}.`
+    : BUYER_VALUE_PROPOSITION;
 
   // Never render the popover/banner chrome on auth-adjacent or legal pages,
   // and never once the visitor is signed in.
@@ -249,7 +316,12 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
             onPointerDownOutside={forced ? (e) => e.preventDefault() : undefined}
             onInteractOutside={forced ? (e) => e.preventDefault() : undefined}
           >
-            <PersonaRegistrationForm compact forced={forced} />
+            <PersonaRegistrationForm
+              compact
+              forced={forced}
+              highIntentAction={shownForAction}
+              valueProposition={marketValueProposition}
+            />
           </DialogContent>
         </Dialog>
       )}

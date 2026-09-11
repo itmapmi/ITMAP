@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Users, Eye, ChevronDown, ChevronRight, FileText, Filter, Network, Globe, TrendingUp, Info, FileDown, Lock, Check } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
+import { recordHighIntentAction } from "@/lib/high-intent";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -222,6 +223,12 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
             metadata: { context: "ecosystem_evaluation", vendorName: v.name },
           }),
         );
+      if (selectedVendors.size >= 2) {
+        recordHighIntentAction("ecosystem_comparison_opened", {
+          marketId,
+          metadata: { vendorCount: selectedVendors.size },
+        });
+      }
       setShowVendorSelection(false);
     }
   };

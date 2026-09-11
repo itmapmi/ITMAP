@@ -6,6 +6,7 @@ import type { User, LoginUser, RegisterUser } from "@shared/schema";
 import { hasFeatureAccess, type LockableFeatureKey } from "@shared/features";
 import { needsCompanyEmailVerification, isCompanyEmailGatedFeature } from "@shared/company-email";
 import { getRedditClickId, getRedditUuid, trackRedditSignUp } from "@/lib/reddit-pixel";
+import { track } from "@/lib/track";
 import {
   GOOGLE_RETURN_PARAM,
   GOOGLE_RETURN_VALUE,
@@ -168,6 +169,9 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterUser) => {
+      // Best-effort funnel signal: fired before the request goes out so it
+      // captures every attempt, not just successful ones.
+      track("signup_started", { metadata: { method: "email" } });
       // Forward Reddit Ads match keys (if present) so the server can pair
       // this signup with a Conversions API event for the same conversion.
       const redditClickId = getRedditClickId();

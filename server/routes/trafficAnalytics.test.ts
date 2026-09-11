@@ -17,6 +17,7 @@ const h = vi.hoisted(() => {
     getTabStats: vi.fn(),
     getTrafficFilters: vi.fn(),
     listVisitors: vi.fn(),
+    getConversionFunnel: vi.fn(),
   };
   const resolveGeo = vi.fn();
   return { storage, resolveGeo };
@@ -371,6 +372,58 @@ describe("admin traffic authorization", () => {
       expect.objectContaining({ visitorType: "registered" }),
       "week",
     );
+  });
+});
+
+describe("admin conversion funnel authorization (Task #81)", () => {
+  it("rejects anonymous and non-admin funnel requests", async () => {
+    currentUser = null;
+    const anonymous = await request(app).get("/api/admin/operations/funnel");
+    expect(anonymous.status).toBe(403);
+
+    currentUser = { id: "user-1", role: "user" };
+    const nonAdmin = await request(app).get("/api/admin/operations/funnel");
+    expect(nonAdmin.status).toBe(403);
+
+    expect(h.storage.getConversionFunnel).not.toHaveBeenCalled();
+  });
+
+  it("returns funnel rows to an admin and validates query params", async () => {
+    currentUser = { id: "admin-1", role: "admin" };
+    h.storage.getConversionFunnel.mockResolvedValueOnce([
+      {
+        landingMarketId: "market-1",
+        landingLabel: "ITMAP for AI Gateways",
+        landing: 10,
+        meaningfulInteraction: 4,
+        promptDisplayed: 3,
+        signupStarted: 2,
+        signupCompleted: 1,
+        verified: 1,
+        login: 0,
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/api/admin/operations/funnel")
+      .query({ days: 14, trafficBucket: "campaign" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.rows).toHaveLength(1);
+    expect(response.body.rows[0]).toMatchObject({ landingLabel: "ITMAP for AI Gateways", landing: 10 });
+    expect(h.storage.getConversionFunnel).toHaveBeenCalledWith(
+      expect.objectContaining({ trafficBucket: "campaign" }),
+    );
+
+    const badBucket = await request(app)
+      .get("/api/admin/operations/funnel")
+      .query({ trafficBucket: "bogus" });
+    expect(badBucket.status).toBe(400);
+
+    const badDays = await request(app)
+      .get("/api/admin/operations/funnel")
+      .query({ days: 0 });
+    expect(badDays.status).toBe(400);
   });
 });
 

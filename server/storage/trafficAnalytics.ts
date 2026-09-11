@@ -45,6 +45,17 @@ export interface UpsertVisitorInput {
   region?: string | null;
   city?: string | null;
   userAgent?: string | null;
+  // Landing attribution — only ever used to SET the landing_* columns the
+  // first time a visitor is seen (see upsertTrafficVisitor). Never applied
+  // on later calls, so a visitor's later navigation can't overwrite where
+  // they actually first landed or which campaign brought them.
+  landingPath?: string | null;
+  landingMarketId?: string | null;
+  landingUtmSource?: string | null;
+  landingUtmMedium?: string | null;
+  landingUtmCampaign?: string | null;
+  landingUtmTerm?: string | null;
+  landingUtmContent?: string | null;
 }
 
 /** Returns the visitor row for a browser visitor cookie, or null when unknown. */
@@ -70,6 +81,15 @@ export async function upsertTrafficVisitor(
     .limit(1);
 
   if (!existing) {
+    // Same atomicity rule as the update branch below: only mark the landing
+    // snapshot captured when this very call actually carries landing data.
+    // A row created with none (e.g. linkVisitorOnLogin, which never passes
+    // landing fields) leaves landing_captured_at null so a genuine landing
+    // beacon can still capture it later instead of being permanently blocked.
+    const hasLandingInputOnInsert = Boolean(
+      input.landingPath || input.landingMarketId || input.landingUtmSource ||
+      input.landingUtmMedium || input.landingUtmCampaign || input.landingUtmTerm || input.landingUtmContent
+    );
     const [row] = await db
       .insert(trafficVisitors)
       .values({
@@ -83,6 +103,14 @@ export async function upsertTrafficVisitor(
         userAgent: input.userAgent ?? null,
         visitCount: 1,
         lastSessionId: input.sessionId ?? null,
+        landingCapturedAt: hasLandingInputOnInsert ? new Date() : null,
+        landingPath: input.landingPath ?? null,
+        landingMarketId: input.landingMarketId ?? null,
+        landingUtmSource: input.landingUtmSource ?? null,
+        landingUtmMedium: input.landingUtmMedium ?? null,
+        landingUtmCampaign: input.landingUtmCampaign ?? null,
+        landingUtmTerm: input.landingUtmTerm ?? null,
+        landingUtmContent: input.landingUtmContent ?? null,
       })
       .onConflictDoNothing({ target: trafficVisitors.anonymousId })
       .returning();
@@ -122,6 +150,28 @@ export async function upsertTrafficVisitor(
   if (input.region !== undefined) updates.region = input.region;
   if (input.city !== undefined) updates.city = input.city;
   if (input.userAgent) updates.userAgent = input.userAgent;
+  // Landing attribution: all landing_* columns must be set together, exactly
+  // once, from the same arrival event — never filled in piecemeal. A visitor
+  // who landed on a non-market page must keep landing_market_id null forever,
+  // even if they later browse to a market; that later visit is not where
+  // they landed. `landing_captured_at IS NULL` gates every column below with
+  // the SAME condition evaluated against the pre-update row, in one UPDATE,
+  // so the whole snapshot commits atomically exactly once.
+  const hasLandingInput = Boolean(
+    input.landingPath || input.landingMarketId || input.landingUtmSource ||
+    input.landingUtmMedium || input.landingUtmCampaign || input.landingUtmTerm || input.landingUtmContent
+  );
+  if (hasLandingInput) {
+    const notYetCaptured = sql`${trafficVisitors.landingCapturedAt} is null`;
+    updates.landingCapturedAt = sql`case when ${notYetCaptured} then now() else ${trafficVisitors.landingCapturedAt} end`;
+    updates.landingPath = sql`case when ${notYetCaptured} then ${input.landingPath ?? null} else ${trafficVisitors.landingPath} end`;
+    updates.landingMarketId = sql`case when ${notYetCaptured} then ${input.landingMarketId ?? null} else ${trafficVisitors.landingMarketId} end`;
+    updates.landingUtmSource = sql`case when ${notYetCaptured} then ${input.landingUtmSource ?? null} else ${trafficVisitors.landingUtmSource} end`;
+    updates.landingUtmMedium = sql`case when ${notYetCaptured} then ${input.landingUtmMedium ?? null} else ${trafficVisitors.landingUtmMedium} end`;
+    updates.landingUtmCampaign = sql`case when ${notYetCaptured} then ${input.landingUtmCampaign ?? null} else ${trafficVisitors.landingUtmCampaign} end`;
+    updates.landingUtmTerm = sql`case when ${notYetCaptured} then ${input.landingUtmTerm ?? null} else ${trafficVisitors.landingUtmTerm} end`;
+    updates.landingUtmContent = sql`case when ${notYetCaptured} then ${input.landingUtmContent ?? null} else ${trafficVisitors.landingUtmContent} end`;
+  }
 
   const [updated] = await db
     .update(trafficVisitors)
@@ -585,4 +635,129 @@ export async function listVisitors(
   }));
 
   return { visitors, total: countRow?.total ?? 0 };
+}
+
+// ── Ad registration conversion funnel (Task #81) ─────────────────────────────
+//
+// Every step is counted as DISTINCT VISITORS (traffic_visitors.id — one row
+// per browser, stable across sessions), not raw event counts, so a visitor
+// who triggers the same step twice is only counted once per step. Steps are
+// grouped by LANDING market/page (traffic_visitors.landing_*), set once on
+// first sight of the visitor, so a visitor who later browses other markets
+// still counts against the campaign/page that actually acquired them.
+//
+// "meaningful interaction" = any of the four high-intent client actions
+// (vendor/product/ecosystem comparison, Intelligence Feed) or the
+// authenticated-only trusted comparison_run event.
+// "login" = a *repeat* login (traffic_events.metadata->>'context' = 'login'),
+// deliberately excluding the login event fired as part of signup itself
+// (context 'signup') or a post-verification auto-login (context 'verify') —
+// otherwise every signup would double-count as its own first "login".
+
+const HIGH_INTENT_EVENT_TYPES = [
+  "vendor_comparison_opened",
+  "product_comparison_opened",
+  "ecosystem_comparison_opened",
+  "intelligence_feed_viewed",
+  "comparison_run",
+] as const;
+
+export interface FunnelFilter {
+  since: Date;
+  until?: Date;
+  /** "campaign" restricts to visitors whose landing hit carried a UTM source/campaign. */
+  trafficBucket: "all" | "campaign";
+}
+
+export interface FunnelRow {
+  landingMarketId: string | null;
+  /** Market name, or the raw landing page path when there's no market, or "Unknown". */
+  landingLabel: string;
+  landing: number;
+  meaningfulInteraction: number;
+  promptDisplayed: number;
+  signupStarted: number;
+  signupCompleted: number;
+  verified: number;
+  login: number;
+}
+
+export async function getConversionFunnel(f: FunnelFilter): Promise<FunnelRow[]> {
+  const untilCond = f.until
+    ? sql`and tv.first_seen_at <= ${f.until.toISOString()}`
+    : sql``;
+  const campaignCond = f.trafficBucket === "campaign"
+    ? sql`and (tv.landing_utm_source is not null or tv.landing_utm_campaign is not null)`
+    : sql``;
+
+  const result = await db.execute<{
+    landing_market_id: string | null;
+    landing_label: string;
+    landing: number;
+    meaningful_interaction: number;
+    prompt_displayed: number;
+    signup_started: number;
+    signup_completed: number;
+    verified: number;
+    login: number;
+  }>(sql`
+    with scoped_visitors as (
+      select tv.id, tv.landing_market_id, tv.landing_path
+      from traffic_visitors tv
+      where tv.first_seen_at >= ${f.since.toISOString()} ${untilCond} ${campaignCond}
+    ),
+    high_intent as (
+      select distinct visitor_id from traffic_events
+      where event_type in (${sql.join(HIGH_INTENT_EVENT_TYPES.map((t) => sql`${t}`), sql`, `)})
+    ),
+    prompt as (
+      select distinct visitor_id from traffic_events where event_type = 'registration_modal_shown'
+    ),
+    started as (
+      select distinct visitor_id from traffic_events where event_type = 'signup_started'
+    ),
+    completed as (
+      select distinct visitor_id from traffic_events where event_type = 'signup_completed'
+    ),
+    verified_step as (
+      select distinct visitor_id from traffic_events where event_type = 'email_verified'
+    ),
+    repeat_login as (
+      select distinct visitor_id from traffic_events
+      where event_type = 'login' and metadata->>'context' = 'login'
+    )
+    select
+      sv.landing_market_id,
+      coalesce(m.name, sv.landing_path, 'Unknown') as landing_label,
+      count(distinct sv.id)::int as landing,
+      count(distinct hi.visitor_id)::int as meaningful_interaction,
+      count(distinct p.visitor_id)::int as prompt_displayed,
+      count(distinct st.visitor_id)::int as signup_started,
+      count(distinct c.visitor_id)::int as signup_completed,
+      count(distinct v.visitor_id)::int as verified,
+      count(distinct rl.visitor_id)::int as login
+    from scoped_visitors sv
+    left join markets m on m.id = sv.landing_market_id
+    left join high_intent hi on hi.visitor_id = sv.id
+    left join prompt p on p.visitor_id = sv.id
+    left join started st on st.visitor_id = sv.id
+    left join completed c on c.visitor_id = sv.id
+    left join verified_step v on v.visitor_id = sv.id
+    left join repeat_login rl on rl.visitor_id = sv.id
+    group by sv.landing_market_id, coalesce(m.name, sv.landing_path, 'Unknown')
+    order by landing desc
+    limit 50
+  `);
+
+  return (result.rows as any[]).map((r) => ({
+    landingMarketId: r.landing_market_id,
+    landingLabel: r.landing_label,
+    landing: Number(r.landing) || 0,
+    meaningfulInteraction: Number(r.meaningful_interaction) || 0,
+    promptDisplayed: Number(r.prompt_displayed) || 0,
+    signupStarted: Number(r.signup_started) || 0,
+    signupCompleted: Number(r.signup_completed) || 0,
+    verified: Number(r.verified) || 0,
+    login: Number(r.login) || 0,
+  }));
 }

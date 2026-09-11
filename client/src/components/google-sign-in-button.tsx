@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/track";
 
 // "Continue with Google" — an optional shortcut next to the passwordless
 // email form. It is a plain top-level navigation to the server's OAuth start
@@ -57,6 +58,7 @@ export function GoogleSignInButton({
       target="_top"
       rel="noopener"
       data-testid={testId}
+      onClick={() => track("signup_started", { metadata: { method: "google" } })}
       className={cn(
         "inline-flex w-full items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-2.5",
         "text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-100",

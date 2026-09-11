@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { track, trackDwell } from "@/lib/track";
+import { recordHighIntentAction } from "@/lib/high-intent";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, FileDown, Lock, ArrowRight, ExternalLink, Move, Save, X, ChevronDown, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -215,11 +216,14 @@ export default function MarketDetails() {
     return endDwell;
   }, [resolvedId, market?.id]);
 
-  // Tab switches are meaningful intent signals (e.g. opening News).
+  // Tab switches are meaningful intent signals (e.g. opening News or the
+  // Intelligence Feed — one of the tracked high-intent actions).
   useEffect(() => {
     if (!resolvedId) return;
     if (activeTab === "news") {
       track("news_viewed", { marketId: resolvedId, metadata: { tab: activeTab } });
+    } else if (activeTab === "intelligence-feed") {
+      recordHighIntentAction("intelligence_feed_viewed", { marketId: resolvedId, metadata: { tab: activeTab } });
     } else {
       track("filter_applied", { marketId: resolvedId, tabId: activeTab, metadata: { tab: activeTab } });
     }

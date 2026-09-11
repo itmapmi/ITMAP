@@ -2128,4 +2128,38 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to fetch visitors" });
     }
   });
+
+  /**
+   * GET /api/admin/operations/funnel
+   * Ad registration conversion funnel (Task #81): landing → meaningful
+   * interaction → prompt displayed → signup started → signup completed →
+   * verified → repeat login, grouped by landing market/page.
+   * Query params:
+   *   days: 1..730  (default 30)
+   *   trafficBucket: "all" | "campaign"  (default "all")
+   */
+  app.get("/api/admin/operations/funnel", requireAdmin, async (req, res) => {
+    try {
+      const daysRaw = parseInt(String(req.query.days ?? "30"), 10);
+      if (!Number.isFinite(daysRaw) || daysRaw < 1 || daysRaw > 730) {
+        return res.status(400).json({ error: "days must be an integer between 1 and 730" });
+      }
+      const days = daysRaw;
+
+      const trafficBucketRaw = String(req.query.trafficBucket ?? "all");
+      if (!["all", "campaign"].includes(trafficBucketRaw)) {
+        return res.status(400).json({ error: "trafficBucket must be all or campaign" });
+      }
+      const trafficBucket = trafficBucketRaw as "all" | "campaign";
+
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      const rows = await storage.getConversionFunnel({ since, trafficBucket });
+      res.json({ rows, days, trafficBucket });
+    } catch (error) {
+      console.error("Error fetching conversion funnel:", error);
+      res.status(500).json({ error: "Failed to fetch conversion funnel" });
+    }
+  });
 }
