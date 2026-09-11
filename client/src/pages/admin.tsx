@@ -152,21 +152,19 @@ export default function Admin() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.35 }}
       >
-        <Link href="/market-builder">
-          <a className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100 transition-colors group">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-600 p-2">
-                <Wand2 className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="font-semibold text-blue-900 text-sm">AI Market Builder</p>
-                <p className="text-xs text-blue-600 mt-0.5">
-                  Generate a complete market — vendors, criteria, features, scores and support levels — from a description
-                </p>
-              </div>
+        <Link href="/market-builder" className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100 transition-colors group">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2">
+              <Wand2 className="h-5 w-5 text-white" />
             </div>
-            <ArrowRight className="h-5 w-5 text-blue-400 group-hover:text-blue-600 transition-colors shrink-0" />
-          </a>
+            <div>
+              <p className="font-semibold text-blue-900 text-sm">AI Market Builder</p>
+              <p className="text-xs text-blue-600 mt-0.5">
+                Generate a complete market — vendors, criteria, features, scores and support levels — from a description
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-blue-400 group-hover:text-blue-600 transition-colors shrink-0" />
         </Link>
       </motion.div>
 
@@ -176,21 +174,19 @@ export default function Admin() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
       >
-        <Link href="/lead-gen">
-          <a className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 hover:bg-violet-100 transition-colors group">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 p-2">
-                <Radar className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="font-semibold text-violet-900 text-sm">Lead-Gen Activity Intelligence</p>
-                <p className="text-xs text-violet-600 mt-0.5">
-                  Track buyer activity and surface high-intent leads with deterministic scoring, timelines and exports
-                </p>
-              </div>
+        <Link href="/lead-gen" className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 hover:bg-violet-100 transition-colors group">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-gradient-to-br from-cyan-500 to-violet-600 p-2">
+              <Radar className="h-5 w-5 text-white" />
             </div>
-            <ArrowRight className="h-5 w-5 text-violet-400 group-hover:text-violet-600 transition-colors shrink-0" />
-          </a>
+            <div>
+              <p className="font-semibold text-violet-900 text-sm">Lead-Gen Activity Intelligence</p>
+              <p className="text-xs text-violet-600 mt-0.5">
+                Track buyer activity and surface high-intent leads with deterministic scoring, timelines and exports
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-violet-400 group-hover:text-violet-600 transition-colors shrink-0" />
         </Link>
       </motion.div>
 
