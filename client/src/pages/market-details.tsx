@@ -73,7 +73,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MOBILE_SECTION_TABS: Array<[value: string, number: string, label: string, fullLabel: string]> = [
   ["vendor-evaluation", "01", "Vendor Eval", "Vendor Evaluation"],
   ["support-matrix", "02", "Compare", "Compare Products"],
-  ["ecosystem-support", "03", "Support", "Support Matrix"],
+  ["ecosystem-support", "03", "Interop", "Interop"],
   ["vendor-intelligence", "04", "Intelligence", "Vendor Intelligence"],
   ["research-reports", "05", "Reports", "Research Reports"],
 ];
