@@ -72,8 +72,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Full section names remain as each section's own heading.
 const MOBILE_SECTION_TABS: Array<[value: string, number: string, label: string, fullLabel: string]> = [
   ["vendor-evaluation", "01", "Vendor Eval", "Vendor Evaluation"],
-  ["support-matrix", "02", "Product Eval", "Product Evaluation"],
-  ["ecosystem-support", "03", "Ecosystem", "Ecosystem Evaluation"],
+  ["support-matrix", "02", "Compare", "Compare Products"],
+  ["ecosystem-support", "03", "Support", "Support Matrix"],
   ["vendor-intelligence", "04", "Intelligence", "Vendor Intelligence"],
   ["research-reports", "05", "Reports", "Research Reports"],
 ];
@@ -499,10 +499,10 @@ export default function MarketDetails() {
                 {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
               </TabsTrigger>
               <TabsTrigger value="support-matrix" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Product Eval' : 'Product Evaluation'}
+                {isMobile ? 'Compare' : 'Compare Products'}
               </TabsTrigger>
               <TabsTrigger value="ecosystem-support" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
-                {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
+                {isMobile ? 'Support' : 'Support Matrix'}
               </TabsTrigger>
               <TabsTrigger value="research-methodology" className="flex-shrink-0 whitespace-nowrap px-3 text-xs">
                 {isMobile ? 'Method' : 'Methodology'}
@@ -787,10 +787,10 @@ export default function MarketDetails() {
                   {isMobile ? 'Vendor Eval' : 'Vendor Evaluation'}
                 </TabsTrigger>
                 <TabsTrigger value="support-matrix" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-support-matrix">
-                  {isMobile ? 'Product Eval' : 'Product Evaluation'}
+                  {isMobile ? 'Compare' : 'Compare Products'}
                 </TabsTrigger>
                 <TabsTrigger value="ecosystem-support" className={cn(isMobile ? "flex-shrink-0 px-2 text-[10px]" : "whitespace-nowrap")} data-testid="tab-ecosystem-support">
-                  {isMobile ? 'Ecosystem' : 'Ecosystem Evaluation'}
+                  {isMobile ? 'Support' : 'Support Matrix'}
                 </TabsTrigger>
 
                 <DropdownMenu>
