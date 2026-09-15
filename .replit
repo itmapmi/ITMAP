@@ -10,6 +10,7 @@ packages = ["chromium", "jq"]
 deploymentTarget = "vm"
 build = ["sh", "-c", "npx puppeteer browsers install chrome && npm run build"]
 run = ["npm", "run", "start"]
+ignorePorts = false
 
 [[ports]]
 localPort = 5000
