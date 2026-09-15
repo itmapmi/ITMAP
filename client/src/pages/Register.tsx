@@ -3,6 +3,7 @@ import { useSeo } from "@/hooks/use-seo";
 import { PersonaRegistrationForm } from "@/components/persona-registration-form";
 import SpectioLogo from "@/components/spectio-logo";
 import { track, trackDwell } from "@/lib/track";
+import { trackGoogleAdsRegisterPageView } from "@/lib/google-ads-conversion";
 
 export default function Register() {
   useSeo({
@@ -23,6 +24,7 @@ export default function Register() {
     localStorage.removeItem("spectio_persona");
 
     track("filter_applied", { metadata: { context: "register" } });
+    trackGoogleAdsRegisterPageView();
     const endDwell = trackDwell({ metadata: { page: "register" } });
     return endDwell;
   }, []);
