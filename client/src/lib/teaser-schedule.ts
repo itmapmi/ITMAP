@@ -6,7 +6,7 @@
 // (Task #86). The hook is the only caller; keep this module's behavior in
 // lockstep with it.
 
-export const TEASER_DURATION_MS = 2 * 60_000;
+export const TEASER_DURATION_MS = 45_000;
 export const FORCED_AFTER_MS = 10 * 60_000;
 export const REOPEN_INTERVAL_MS = 30_000;
 export const MAX_AUTO_REOPENS = 3;
