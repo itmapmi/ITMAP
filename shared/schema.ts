@@ -2492,7 +2492,8 @@ export type SyncRun = typeof syncRun.$inferSelect;
 //  traffic_visitors  – one row per stable browser identity (cookie-keyed).
 //                      userId is nullable and linked when the visitor authenticates.
 //  traffic_events    – raw append-only event stream (one row per beacon event).
-//                      Anonymous events have a null userId.
+//                      Events from visitors explicitly linked to a user carry
+//                      that userId even if the request's auth cookie is absent.
 //  traffic_login_counts – per-user login counter table, incremented only on
 //                      explicit register / activate / login (not session restore).
 //
@@ -2552,7 +2553,8 @@ export const trafficEvents = pgTable("traffic_events", {
   // Visitor identity
   visitorId: varchar("visitor_id").references(() => trafficVisitors.id, { onDelete: "set null" }),
   anonymousId: text("anonymous_id").notNull(),
-  // Null for anonymous events; set when authenticated
+  // Null for visitors with no explicit account link; set for authenticated
+  // requests and returning visitors whose stable identity is already linked.
   userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
   sessionId: text("session_id"),
   // Event classification

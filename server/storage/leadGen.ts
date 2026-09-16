@@ -7,9 +7,13 @@ import {
   userActivityLogs,
   vendors,
   markets,
+  trafficEvents,
+  trafficVisitors,
+  CLIENT_BEACON_EVENT_TYPES,
 } from "@shared/schema";
 import { db } from "../db";
-import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { unionAll } from "drizzle-orm/pg-core";
 
 // ── Write ──────────────────────────────────────────────────────────────────
 
@@ -30,12 +34,67 @@ export interface LeadGenFilter {
   vendorId?: string;
 }
 
-function buildConditions(f: LeadGenFilter) {
+/**
+ * Leadgen is sourced from the authenticated event stream plus client-beacon
+ * events whose visitor was explicitly linked to a user. The latter is needed
+ * for returning identified browsers whose auth cookie was unavailable to the
+ * beacon request (the visitor link remains authoritative).
+ *
+ * Raw traffic events with a non-null user_id are excluded from the second
+ * branch because the beacon route mirrors those events into user_events. This
+ * keeps authenticated events from being counted twice.
+ */
+function leadEventSource() {
+  const authenticatedEvents = db
+    .select({
+      id: userEvents.id,
+      userId: userEvents.userId,
+      eventType: userEvents.eventType,
+      marketId: userEvents.marketId,
+      vendorId: userEvents.vendorId,
+      metadata: userEvents.metadata,
+      durationMs: userEvents.durationMs,
+      createdAt: userEvents.createdAt,
+    })
+    .from(userEvents);
+
+  const linkedTrafficEvents = db
+    .select({
+      id: trafficEvents.id,
+      userId: sql<string>`${trafficVisitors.userId}`,
+      eventType: trafficEvents.eventType,
+      marketId: trafficEvents.marketId,
+      vendorId: trafficEvents.vendorId,
+      metadata: trafficEvents.metadata,
+      durationMs: trafficEvents.durationMs,
+      createdAt: trafficEvents.createdAt,
+    })
+    .from(trafficEvents)
+    .innerJoin(trafficVisitors, eq(trafficEvents.visitorId, trafficVisitors.id))
+    .where(
+      and(
+        isNotNull(trafficVisitors.userId),
+        isNull(trafficEvents.userId),
+        inArray(trafficEvents.eventType, CLIENT_BEACON_EVENT_TYPES),
+      ),
+    );
+
+  return unionAll(authenticatedEvents, linkedTrafficEvents).as("lead_events");
+}
+
+function buildConditions(
+  f: LeadGenFilter,
+  source: {
+    createdAt: any;
+    marketId: any;
+    vendorId: any;
+  },
+) {
   const conds = [];
-  if (f.since) conds.push(gte(userEvents.createdAt, f.since));
-  if (f.marketId) conds.push(eq(userEvents.marketId, f.marketId));
-  else if (f.marketIds?.length) conds.push(inArray(userEvents.marketId, f.marketIds));
-  if (f.vendorId) conds.push(eq(userEvents.vendorId, f.vendorId));
+  if (f.since) conds.push(gte(source.createdAt, f.since));
+  if (f.marketId) conds.push(eq(source.marketId, f.marketId));
+  else if (f.marketIds?.length) conds.push(inArray(source.marketId, f.marketIds));
+  if (f.vendorId) conds.push(eq(source.vendorId, f.vendorId));
   return conds;
 }
 
@@ -49,18 +108,19 @@ export interface UserTypeCount {
 }
 
 export async function getEventCountsByUserAndType(f: LeadGenFilter): Promise<UserTypeCount[]> {
-  const conds = buildConditions(f);
+  const source = leadEventSource();
+  const conds = buildConditions(f, source);
   let q = db
     .select({
-      userId: userEvents.userId,
-      eventType: userEvents.eventType,
+      userId: source.userId,
+      eventType: source.eventType,
       count: sql<number>`count(*)::int`,
-      lastAt: sql<string>`max(${userEvents.createdAt})`,
+      lastAt: sql<string>`max(${source.createdAt})`,
     })
-    .from(userEvents)
+    .from(source)
     .$dynamic();
   if (conds.length) q = q.where(and(...conds));
-  return await q.groupBy(userEvents.userId, userEvents.eventType);
+  return await q.groupBy(source.userId, source.eventType);
 }
 
 // ── Per-user top vendor (most-engaged vendor for each buyer) ──────────────────
@@ -72,16 +132,17 @@ export interface UserVendorCount {
 }
 
 export async function getVendorCountsByUser(f: LeadGenFilter): Promise<UserVendorCount[]> {
-  const conds = [...buildConditions(f), isNotNull(userEvents.vendorId)];
+  const source = leadEventSource();
+  const conds = [...buildConditions(f, source), isNotNull(source.vendorId)];
   return await db
     .select({
-      userId: userEvents.userId,
-      vendorId: sql<string>`${userEvents.vendorId}`,
+      userId: source.userId,
+      vendorId: sql<string>`${source.vendorId}`,
       count: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
+    .from(source)
     .where(and(...conds))
-    .groupBy(userEvents.userId, userEvents.vendorId);
+    .groupBy(source.userId, source.vendorId);
 }
 
 // ── Login frequency from user_activity_logs (reused, not duplicated) ──────────
@@ -128,49 +189,52 @@ export interface OverviewStats {
 }
 
 export async function getOverviewStats(f: LeadGenFilter): Promise<OverviewStats> {
-  const conds = buildConditions(f);
+  const source = leadEventSource();
+  const conds = buildConditions(f, source);
   const whereClause = conds.length ? and(...conds) : undefined;
 
   // Headline aggregate counts in a single pass.
   const [agg] = await db
     .select({
-      activeBuyers: sql<number>`count(distinct ${userEvents.userId})::int`,
+      activeBuyers: sql<number>`count(distinct ${source.userId})::int`,
       totalEvents: sql<number>`count(*)::int`,
-      totalComparisons: sql<number>`count(*) filter (where ${userEvents.eventType} in ('comparison_run','comparison_saved'))::int`,
-      totalDownloads: sql<number>`count(*) filter (where ${userEvents.eventType} in ('report_downloaded','datasheet_exported'))::int`,
-      totalChatQuestions: sql<number>`count(*) filter (where ${userEvents.eventType} = 'chat_question_asked')::int`,
+      totalComparisons: sql<number>`count(*) filter (where ${source.eventType} in ('comparison_run','comparison_saved'))::int`,
+      totalDownloads: sql<number>`count(*) filter (where ${source.eventType} in ('report_downloaded','datasheet_exported'))::int`,
+      totalChatQuestions: sql<number>`count(*) filter (where ${source.eventType} = 'chat_question_asked')::int`,
     })
-    .from(userEvents)
+    .from(source)
     .where(whereClause as any);
 
   // Top vendors by distinct buyers.
-  const vendorConds = [...conds, isNotNull(userEvents.vendorId)];
+  const vendorConds = [...conds, isNotNull(source.vendorId)];
   const topVendors = await db
     .select({
-      vendorId: sql<string>`${userEvents.vendorId}`,
+      vendorId: sql<string>`${source.vendorId}`,
       vendorName: vendors.name,
-      buyers: sql<number>`count(distinct ${userEvents.userId})::int`,
+      buyers: sql<number>`count(distinct ${source.userId})::int`,
       events: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
-    .innerJoin(vendors, eq(userEvents.vendorId, vendors.id))
+    .from(source)
+    .innerJoin(vendors, eq(source.vendorId, vendors.id))
     .where(and(...vendorConds))
-    .groupBy(userEvents.vendorId, vendors.name)
-    .orderBy(sql`count(distinct ${userEvents.userId}) desc`)
+    .groupBy(source.vendorId, vendors.name)
+    .orderBy(sql`count(distinct ${source.userId}) desc`)
     .limit(8);
 
   // Events per day (trend).
+  const trendSource = leadEventSource();
   let dayQ = db
     .select({
-      day: sql<string>`date_trunc('day', ${userEvents.createdAt})::date`,
+      day: sql<string>`date_trunc('day', ${trendSource.createdAt})::date`,
       count: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
+    .from(trendSource)
     .$dynamic();
-  if (whereClause) dayQ = dayQ.where(whereClause);
+  const trendConds = buildConditions(f, trendSource);
+  if (trendConds.length) dayQ = dayQ.where(and(...trendConds));
   const eventsByDay = await dayQ
-    .groupBy(sql`date_trunc('day', ${userEvents.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${userEvents.createdAt})`);
+    .groupBy(sql`date_trunc('day', ${trendSource.createdAt})`)
+    .orderBy(sql`date_trunc('day', ${trendSource.createdAt})`);
 
   return {
     activeBuyers: agg?.activeBuyers ?? 0,
@@ -198,26 +262,27 @@ export interface TimelineEvent {
 }
 
 export async function getUserTimeline(userId: string, limit = 100, since?: Date, marketId?: string): Promise<TimelineEvent[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
-  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
+  if (marketId) conds.push(eq(source.marketId, marketId));
   return await db
     .select({
-      id: userEvents.id,
-      eventType: userEvents.eventType,
-      marketId: userEvents.marketId,
+      id: source.id,
+      eventType: source.eventType,
+      marketId: source.marketId,
       marketName: markets.name,
-      vendorId: userEvents.vendorId,
+      vendorId: source.vendorId,
       vendorName: vendors.name,
-      metadata: userEvents.metadata,
-      durationMs: userEvents.durationMs,
-      createdAt: userEvents.createdAt,
+      metadata: source.metadata,
+      durationMs: source.durationMs,
+      createdAt: source.createdAt,
     })
-    .from(userEvents)
-    .leftJoin(markets, eq(userEvents.marketId, markets.id))
-    .leftJoin(vendors, eq(userEvents.vendorId, vendors.id))
+    .from(source)
+    .leftJoin(markets, eq(source.marketId, markets.id))
+    .leftJoin(vendors, eq(source.vendorId, vendors.id))
     .where(and(...conds))
-    .orderBy(desc(userEvents.createdAt))
+    .orderBy(desc(source.createdAt))
     .limit(limit);
 }
 
@@ -229,20 +294,21 @@ export interface UserVendorBreakdown {
 }
 
 export async function getUserVendorBreakdown(userId: string, since?: Date, marketId?: string): Promise<UserVendorBreakdown[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
-  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
+  if (marketId) conds.push(eq(source.marketId, marketId));
   return await db
     .select({
-      vendorId: sql<string>`${userEvents.vendorId}`,
+      vendorId: sql<string>`${source.vendorId}`,
       vendorName: vendors.name,
       events: sql<number>`count(*)::int`,
-      lastAt: sql<string>`max(${userEvents.createdAt})`,
+      lastAt: sql<string>`max(${source.createdAt})`,
     })
-    .from(userEvents)
-    .innerJoin(vendors, eq(userEvents.vendorId, vendors.id))
+    .from(source)
+    .innerJoin(vendors, eq(source.vendorId, vendors.id))
     .where(and(...conds))
-    .groupBy(userEvents.vendorId, vendors.name)
+    .groupBy(source.vendorId, vendors.name)
     .orderBy(sql`count(*) desc`);
 }
 
@@ -251,34 +317,36 @@ export async function getUserVendorEventTypeBreakdown(
   userId: string,
   since?: Date,
 ): Promise<{ vendorId: string; vendorName: string; eventType: string; count: number; lastAt: string }[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
   return await db
     .select({
-      vendorId: sql<string>`${userEvents.vendorId}`,
+      vendorId: sql<string>`${source.vendorId}`,
       vendorName: vendors.name,
-      eventType: userEvents.eventType,
+      eventType: source.eventType,
       count: sql<number>`count(*)::int`,
-      lastAt: sql<string>`max(${userEvents.createdAt})`,
+      lastAt: sql<string>`max(${source.createdAt})`,
     })
-    .from(userEvents)
-    .innerJoin(vendors, eq(userEvents.vendorId, vendors.id))
+    .from(source)
+    .innerJoin(vendors, eq(source.vendorId, vendors.id))
     .where(and(...conds))
-    .groupBy(userEvents.vendorId, vendors.name, userEvents.eventType);
+    .groupBy(source.vendorId, vendors.name, source.eventType);
 }
 
 export async function getUserTypeBreakdownForUser(userId: string, since?: Date, marketId?: string): Promise<{ eventType: string; count: number }[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
-  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
+  if (marketId) conds.push(eq(source.marketId, marketId));
   return await db
     .select({
-      eventType: userEvents.eventType,
+      eventType: source.eventType,
       count: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
+    .from(source)
     .where(and(...conds))
-    .groupBy(userEvents.eventType);
+    .groupBy(source.eventType);
 }
 
 // Same as above but also extracts a sub-type key from JSONB metadata for
@@ -290,40 +358,42 @@ export async function getUserContextBreakdownForUser(
   since?: Date,
   marketId?: string,
 ): Promise<{ eventType: string; subType: string | null; count: number }[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
-  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
+  if (marketId) conds.push(eq(source.marketId, marketId));
   const subTypeExpr = sql<string | null>`
     CASE
-      WHEN ${userEvents.eventType} = 'market_viewed' THEN ${userEvents.metadata}->>'context'
-      WHEN ${userEvents.eventType} = 'page_dwell'    THEN ${userEvents.metadata}->>'page'
+      WHEN ${source.eventType} = 'market_viewed' THEN ${source.metadata}->>'context'
+      WHEN ${source.eventType} = 'page_dwell'    THEN ${source.metadata}->>'page'
       ELSE NULL
     END`;
   return await db
     .select({
-      eventType: userEvents.eventType,
+      eventType: source.eventType,
       subType: subTypeExpr,
       count: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
+    .from(source)
     .where(and(...conds))
-    .groupBy(userEvents.eventType, subTypeExpr);
+    .groupBy(source.eventType, subTypeExpr);
 }
 
 // Day-by-day activity counts for one user (sparkline / activity trend).
 export async function getUserActivityByDay(userId: string, since?: Date, marketId?: string): Promise<{ day: string; count: number }[]> {
-  const conds = [eq(userEvents.userId, userId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
-  if (marketId) conds.push(eq(userEvents.marketId, marketId));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId)];
+  if (since) conds.push(gte(source.createdAt, since));
+  if (marketId) conds.push(eq(source.marketId, marketId));
   return await db
     .select({
-      day: sql<string>`date_trunc('day', ${userEvents.createdAt})::date`,
+      day: sql<string>`date_trunc('day', ${source.createdAt})::date`,
       count: sql<number>`count(*)::int`,
     })
-    .from(userEvents)
+    .from(source)
     .where(and(...conds))
-    .groupBy(sql`date_trunc('day', ${userEvents.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${userEvents.createdAt})`);
+    .groupBy(sql`date_trunc('day', ${source.createdAt})`)
+    .orderBy(sql`date_trunc('day', ${source.createdAt})`);
 }
 
 // Per-market page view aggregates for one user — shows which markets/pages
@@ -337,20 +407,21 @@ export interface UserMarketView {
 }
 
 export async function getUserMarketBreakdown(userId: string, since?: Date): Promise<UserMarketView[]> {
-  const conds = [eq(userEvents.userId, userId), isNotNull(userEvents.marketId)];
-  if (since) conds.push(gte(userEvents.createdAt, since));
+  const source = leadEventSource();
+  const conds = [eq(source.userId, userId), isNotNull(source.marketId)];
+  if (since) conds.push(gte(source.createdAt, since));
   return await db
     .select({
-      marketId: sql<string>`${userEvents.marketId}`,
+      marketId: sql<string>`${source.marketId}`,
       marketName: markets.name,
       events: sql<number>`count(*)::int`,
-      dwellMs: sql<number>`coalesce(sum(${userEvents.durationMs}), 0)::int`,
-      lastAt: sql<string>`max(${userEvents.createdAt})`,
+      dwellMs: sql<number>`coalesce(sum(${source.durationMs}), 0)::int`,
+      lastAt: sql<string>`max(${source.createdAt})`,
     })
-    .from(userEvents)
-    .innerJoin(markets, eq(userEvents.marketId, markets.id))
+    .from(source)
+    .innerJoin(markets, eq(source.marketId, markets.id))
     .where(and(...conds))
-    .groupBy(userEvents.marketId, markets.name)
+    .groupBy(source.marketId, markets.name)
     .orderBy(sql`count(*) desc`);
 }
 

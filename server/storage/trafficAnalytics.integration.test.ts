@@ -18,6 +18,7 @@ import {
   trafficVisitors,
   userEvents,
   users,
+  vendors,
 } from "@shared/schema";
 import { db, pool } from "../db";
 import { registerAuthRoutes } from "../routes/auth";
@@ -32,6 +33,11 @@ import {
   listVisitors,
   upsertTrafficVisitor,
 } from "./trafficAnalytics";
+import {
+  getEventCountsByUserAndType,
+  getOverviewStats,
+  getUserTimeline,
+} from "./leadGen";
 
 vi.mock("../db", async () => {
   const [
@@ -54,6 +60,7 @@ vi.mock("../db", async () => {
   const tables = [
     "users",
     "markets",
+    "vendors",
     "user_activity_logs",
     "user_events",
     "traffic_visitors",
@@ -244,6 +251,114 @@ describe.sequential("traffic analytics PostgreSQL integration", () => {
     expect(contested.userId).toBe(firstUserId);
     const sameOwner = await upsertTrafficVisitor({ anonymousId, sessionId: fixtureId(), userId: firstUserId });
     expect(sameOwner.userId).toBe(firstUserId);
+  });
+
+  it("includes linked anonymous traffic in Leadgen without duplicating mirrored events", async () => {
+    const userId = fixtureId();
+    const marketId = fixtureId();
+    const vendorId = fixtureId();
+    const visitorId = fixtureId();
+    const anonymousId = `${runPrefix}linked-lead`;
+    const sessionId = fixtureId();
+    const since = new Date("2099-02-01T00:00:00.000Z");
+
+    await db.insert(users).values({
+      id: userId,
+      email: `${runPrefix}linked-lead@example.test`,
+    });
+    await db.insert(markets).values({
+      id: marketId,
+      name: `${runPrefix}Linked Lead Market`,
+    });
+    await db.insert(vendors).values({
+      id: vendorId,
+      name: `${runPrefix}Linked Lead Vendor`,
+      marketId,
+    });
+    await db.insert(trafficVisitors).values({
+      id: visitorId,
+      anonymousId,
+      userId,
+      lastSessionId: sessionId,
+    });
+
+    // These represent activity captured while the auth cookie was unavailable,
+    // but the stable visitor row was already linked to the account.
+    await db.insert(trafficEvents).values([
+      {
+        id: fixtureId(),
+        visitorId,
+        anonymousId,
+        userId: null,
+        sessionId,
+        eventType: "market_viewed",
+        marketId,
+        createdAt: new Date("2099-02-01T12:00:00.000Z"),
+      },
+      {
+        id: fixtureId(),
+        visitorId,
+        anonymousId,
+        userId: null,
+        sessionId,
+        eventType: "vendor_selected",
+        marketId,
+        vendorId,
+        createdAt: new Date("2099-02-01T12:01:00.000Z"),
+      },
+      // This is the traffic mirror of the authenticated user_events row below.
+      // Its non-null user_id keeps it out of the linked-anonymous branch.
+      {
+        id: fixtureId(),
+        visitorId,
+        anonymousId,
+        userId,
+        sessionId,
+        eventType: "market_viewed",
+        marketId,
+        createdAt: new Date("2099-02-01T12:02:00.000Z"),
+      },
+      // Traffic-only events never become Leadgen events.
+      {
+        id: fixtureId(),
+        visitorId,
+        anonymousId,
+        userId: null,
+        sessionId,
+        eventType: "page_view",
+        marketId,
+        createdAt: new Date("2099-02-01T12:03:00.000Z"),
+      },
+    ]);
+    await db.insert(userEvents).values({
+      id: fixtureId(),
+      userId,
+      sessionId,
+      eventType: "market_viewed",
+      marketId,
+      source: "client",
+      createdAt: new Date("2099-02-01T12:02:00.000Z"),
+    });
+
+    expect(await getEventCountsByUserAndType({ since })).toEqual(expect.arrayContaining([
+      { userId, eventType: "market_viewed", count: 2, lastAt: "2099-02-01 12:02:00" },
+      { userId, eventType: "vendor_selected", count: 1, lastAt: "2099-02-01 12:01:00" },
+    ]));
+
+    const overview = await getOverviewStats({ since });
+    expect(overview.activeBuyers).toBe(1);
+    expect(overview.totalEvents).toBe(3);
+    expect(overview.topVendors).toEqual([
+      expect.objectContaining({ vendorId, buyers: 1, events: 1 }),
+    ]);
+
+    const timeline = await getUserTimeline(userId, 10, since);
+    expect(timeline).toHaveLength(3);
+    expect(timeline.map((event) => event.eventType)).toEqual([
+      "market_viewed",
+      "vendor_selected",
+      "market_viewed",
+    ]);
   });
 
   it("validates trend, geo, top-market, and visitor-list queries from seeded fixtures", async () => {

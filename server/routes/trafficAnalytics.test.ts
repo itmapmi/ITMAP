@@ -169,6 +169,34 @@ describe("POST /api/track identity and ingestion", () => {
     expect(h.storage.trackEvent).not.toHaveBeenCalled();
   });
 
+  it("continues recording lead-gen activity for a visitor explicitly linked to a user", async () => {
+    const linkedUserId = "user-identified";
+    h.storage.upsertTrafficVisitor.mockResolvedValue({
+      id: "visitor-linked",
+      userId: linkedUserId,
+    });
+
+    const response = await request(app)
+      .post("/api/track")
+      .set("x-test-ip", testIp("linked-visitor"))
+      .send({ events: [event("market_viewed")] });
+
+    expect(response.status).toBe(200);
+    expect(h.storage.writeTrafficEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "market_viewed",
+        userId: linkedUserId,
+      }),
+    );
+    expect(h.storage.trackEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: linkedUserId,
+        eventType: "market_viewed",
+        source: "client",
+      }),
+    );
+  });
+
   it("links the stable visitor on login without duplicating lead-generation events", async () => {
     const browser = request.agent(app);
     const anonymous = await browser

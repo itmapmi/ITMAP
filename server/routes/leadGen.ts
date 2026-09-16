@@ -598,6 +598,11 @@ export function registerLeadGenRoutes(app: Express): void {
         landingUtmTerm: landingEvent?.utmTerm ?? null,
         landingUtmContent: landingEvent?.utmContent ?? null,
       });
+      // An explicit visitor-to-user link remains authoritative when the
+      // browser's auth cookie is unavailable to this beacon request. This
+      // lets returning identified visitors continue contributing to Leadgen
+      // without inferring identity from IP, user-agent, or email.
+      const attributedUserId = userId ?? visitor.userId ?? null;
 
       let accepted = 0;
       for (const e of valid) {
@@ -609,7 +614,7 @@ export function registerLeadGenRoutes(app: Express): void {
         await storage.writeTrafficEvent({
           visitorId: visitor.id,
           anonymousId,
-          userId,
+          userId: attributedUserId,
           sessionId,
           eventType: e.eventType,
           pagePath: e.pagePath ?? null,
@@ -632,12 +637,13 @@ export function registerLeadGenRoutes(app: Express): void {
           metadata: safeMetadata,
         });
 
-        // Write to user_events only when authenticated AND the event is a
-        // lead-gen type. Traffic-only types (page_view, login) never go into
+        // Write to user_events when the request is authenticated or its stable
+        // visitor has an explicit account link, and the event is a lead-gen
+        // type. Traffic-only types (page_view, login) never go into
         // user_events.
-        if (userId && allowedBeaconTypes.has(e.eventType)) {
+        if (attributedUserId && allowedBeaconTypes.has(e.eventType)) {
           await storage.trackEvent({
-            userId,
+            userId: attributedUserId,
             sessionId,
             eventType: e.eventType,
             marketId: e.marketId ?? null,
