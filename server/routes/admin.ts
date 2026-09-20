@@ -954,7 +954,7 @@ export function registerAdminRoutes(app: Express): void {
             spacer(),
             heading2("12.2 Auto-Calculated Score Formula"),
             body("For each feature: Harvey Ball 4 → 1.0 pts, 3 → 0.75 pts, 2 → 0.5 pts, 1 → 0.25 pts, 0 → 0 pts."),
-            body("Normalized Score (0-10) = (Sum of feature points / Number of features) × 10"),
+            body("Weighted coverage = Sum of feature points / Number of features. The persisted 0–10 score is mapped through the fixed rubric anchors 0% → 0, 55% → 5, and 100% → 10."),
             spacer(),
             heading2("12.3 Criteria Weighting"),
             body("Each criterion contributes in direct proportion to the percentage shown in Criteria Weights. Within each axis, its contribution is the criterion weight divided by the total of that axis's criterion weights."),
