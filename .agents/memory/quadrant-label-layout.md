@@ -1,50 +1,28 @@
 ---
-name: Quadrant chart label collision-avoidance layout
-description: How vendor labels avoid overlapping each other in the magic-quadrant chart, and subtle bug classes to avoid reintroducing.
+name: Quadrant chart label positioning — free-drag, no collision avoidance
+description: Vendor label placement in the magic-quadrant chart is intentionally simple free-form dragging; do not reintroduce spiral collision-avoidance or a connector line.
 ---
 
-**Rule:** all three canvases (desktop chart, dedicated mobile-app canvas, and
-the narrow "responsive web" `compactChart` view) share one spiral-search label
-layout — there is no separate hide-on-collision path anymore. Labels are
-placed with a spiral search outward from each dot (ring-based candidate
-positions at increasing radius); a label pushed past the first ring gets a
-thin dashed connector line back to its dot. Manually dragged positions are
-always treated as fixed obstacles that other labels must avoid, never the
-other way around.
+**Current rule (Sep 2026):** all three canvases (desktop chart, dedicated
+mobile-app canvas, and the narrow "responsive web" `compactChart` view) share
+one simple label-placement path: a label with no saved position renders at a
+small fixed offset from its dot; a label with a saved position renders exactly
+there, unconditionally, with no distance limit from the dot and no check
+against other labels or dots. There is no connector line, ever.
 
-**Why:** with absolute (non-roster-relative) dot positioning, several vendors
-can legitimately score within a few pixels of each other, so a fixed
-right/left/top/bottom slot per label is not enough — the old algorithm rendered
-every candidate unconditionally on desktop and produced literally overlapping
-text (e.g. Pure Storage vs NetApp in High-End General Purpose Storage Arrays).
-`compactChart` used to fall back to hiding a label outright on collision
-instead; it now reuses the exact same spiral+connector code path.
+**Why:** a prior collision-avoidance spiral-search layout (ring search outward
+from each dot, connector line for labels pushed past the first ring, and a
+90px "tether" that discarded a dragged position and fell back to
+auto-placement if it landed too far from the dot) made manual dragging feel
+broken — a label dropped near its dot could still visually jump elsewhere on
+the next render because the algorithm forced `text-anchor: start` onto every
+custom position regardless of the anchor it was originally rendered with. The
+user explicitly asked to revert to plain, always-honored free-form dragging
+and to remove the dashed connector line entirely, trading automatic
+overlap-avoidance for predictable manual control.
 
-**Bug class — dot-collision check:** when checking whether a candidate label
-position "hits" a dot, do NOT test distance from the label's anchor point to
-the dot — test distance from the dot to the *nearest point of the label's
-rectangle*. A long vendor name's rectangle can extend well past its own anchor
-and land on a completely different, nearby dot that's nowhere near the anchor
-itself; anchor-to-dot distance alone misses that collision. Use a rect-vs-circle
-nearest-point check (clamp the dot's x/y into the rect's bounds, then measure
-distance) everywhere a label rect is tested against a dot.
-
-**Bug class — label-width estimate must scale with font size:** the collision
-math approximates each label's pixel width as `name.length * charW` rather
-than measuring rendered text. `compactChart` renders labels at 9px vs 11px
-elsewhere; using the same `charW` constant for both overstates the compact
-canvas's label footprint by ~35%, which starves the spiral search of slots it
-would otherwise find on that canvas's much smaller drawable area (this alone
-produced visible overlapping text in a dense cluster — MinIO/Cloudian/Scality/
-IBM/Dell Technologies in the Object Storage Platforms market — before it was
-scaled down). Keep `charW` keyed off which canvas is rendering.
-
-**Bug class — pathological-density fallback:** when every ring is exhausted
-for a vendor (an extremely dense cluster with more labels than the canvas has
-room for), don't fall back to a single fixed obstacle-blind slot next to the
-dot — multiple exhausted vendors near each other all land on the same relative
-offset and stack directly on top of each other. Instead track the best
-(lowest label/dot overlap) candidate seen across the whole ring search as a
-graceful-degradation fallback. This matters most on the narrowest canvas
-(`compactChart`), where exhaustion is far more common than on the wide desktop
-canvas.
+**How to apply:** if labels overlap in a dense cluster, that is expected and
+left to the admin to fix by dragging — do not silently reintroduce
+auto-placement logic to "solve" it. If asked to add collision avoidance back,
+confirm with the user first since it was deliberately removed for UX reasons,
+not as an oversight.
