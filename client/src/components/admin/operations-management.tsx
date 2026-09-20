@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Globe2, MapPin, RefreshCw,
+  Activity, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Globe2, MapPin, RefreshCw,
   Search, Users, UserCheck, PanelRightOpen, X, Smartphone, Monitor, Clock
 } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import AccountVerificationPanel from "@/components/admin/account-verification-panel";
 
 type Granularity = "day" | "week" | "month";
@@ -93,6 +94,7 @@ export default function OperationsManagement() {
   const [search, setSearch] = useState("");
   const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
   const [funnelBucket, setFunnelBucket] = useState<TrafficBucket>("all");
+  const [funnelOpen, setFunnelOpen] = useState(true);
   const limit = 25;
   const params = useMemo(() => {
     const query = new URLSearchParams({ granularity, days: String(days) });
@@ -149,54 +151,70 @@ export default function OperationsManagement() {
         </div>
         <Card className="border-slate-200/80 bg-slate-950 text-white shadow-sm"><CardContent className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-start gap-3">{<BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />}<div><p className="font-mono text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Drill-down context</p><p className="mt-1 text-sm font-semibold">{selectedMarket ? sortedMarkets.find((market) => market.marketId === selectedMarket)?.marketName ?? "Selected market" : "All markets overview"}</p><p className="mt-1 text-xs text-slate-400">{selectedMarket ? "All charts and visitor records are now scoped to this market." : "Select a market above to isolate its demand footprint."}</p></div></div><div className="flex flex-wrap items-center gap-5">{traffic.tabs.slice(0, 5).map((tab) => <div key={tab.tab}><p className="font-mono text-lg font-semibold text-white">{compact(tab.visits)}</p><p className="text-[10px] uppercase tracking-wider text-slate-400">{tab.tab}</p></div>)}{selectedMarket && <Button variant="outline" size="sm" className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white" onClick={() => { setSelectedMarket(null); setMarketId("all"); setPage(1); }}><X className="mr-1.5 h-3.5 w-3.5" />Clear drill-down</Button>}</div></CardContent></Card>
         <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-          <CardHeader className="border-b border-slate-100 pb-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <SectionTitle eyebrow="Ad registration conversion" title="Signup funnel" action={<span className="font-mono text-[10px] text-slate-400">{days}-day window</span>} />
-              <div className="flex h-8 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5">
-                {(["all", "campaign"] as TrafficBucket[]).map((bucket) => (
-                  <button key={bucket} onClick={() => setFunnelBucket(bucket)} className={`px-3 text-xs font-semibold capitalize transition-colors ${funnelBucket === bucket ? "rounded bg-slate-950 text-white" : "text-slate-500 hover:text-slate-900"}`}>
-                    {bucket === "all" ? "All traffic" : "Campaign traffic"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">Landing → meaningful interaction (vendor/product/ecosystem comparison or Intelligence Feed) → registration prompt shown → signup started → completed → verified → repeat login, by landing market/page.</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              {funnelQuery.isLoading ? (
-                <div className="space-y-2 p-5">{[1, 2, 3].map((item) => <div className="h-12 animate-pulse rounded bg-slate-100" key={item} />)}</div>
-              ) : !funnel || funnel.rows.length === 0 ? (
-                <div className="py-14 text-center">
-                  <BarChart3 className="mx-auto h-8 w-8 text-slate-300" />
-                  <p className="mt-3 text-sm font-medium text-slate-600">No funnel activity in this window</p>
-                  <p className="mt-1 text-xs text-slate-400">Try widening the date range or switching traffic buckets.</p>
-                </div>
-              ) : (
-                <table className="w-full min-w-[980px] text-left text-xs">
-                  <thead className="bg-slate-50/90 font-mono text-[10px] uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-5 py-3 font-semibold">Landing market / page</th>
-                      {FUNNEL_STEPS.map((step) => <th key={step.key} className="px-3 py-3 text-right font-semibold">{step.label}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {funnel.rows.map((row) => (
-                      <tr key={row.landingMarketId ?? row.landingLabel} className="transition-colors hover:bg-cyan-50/40">
-                        <td className="px-5 py-3 font-semibold text-slate-800">{row.landingLabel}</td>
-                        {FUNNEL_STEPS.map((step) => (
-                          <td key={step.key} className="px-3 py-3 text-right">
-                            <span className="font-mono font-semibold text-slate-700">{number(row[step.key] as number)}</span>
-                            {step.key !== "landing" && <span className="ml-1.5 text-[10px] text-slate-400">{pct(row[step.key] as number, row.landing)}</span>}
-                          </td>
-                        ))}
-                      </tr>
+          <Collapsible open={funnelOpen} onOpenChange={setFunnelOpen}>
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <SectionTitle eyebrow="Ad registration conversion" title="Signup funnel" action={<span className="font-mono text-[10px] text-slate-400">{days}-day window</span>} />
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5">
+                    {(["all", "campaign"] as TrafficBucket[]).map((bucket) => (
+                      <button key={bucket} onClick={() => setFunnelBucket(bucket)} className={`px-3 text-xs font-semibold capitalize transition-colors ${funnelBucket === bucket ? "rounded bg-slate-950 text-white" : "text-slate-500 hover:text-slate-900"}`}>
+                        {bucket === "all" ? "All traffic" : "Campaign traffic"}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </CardContent>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={funnelOpen ? "Collapse signup funnel" : "Expand signup funnel"}
+                      data-testid="button-toggle-signup-funnel"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${funnelOpen ? "" : "-rotate-90"}`} />
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">Landing → meaningful interaction (vendor/product/ecosystem comparison or Intelligence Feed) → registration prompt shown → signup started → completed → verified → repeat login, by landing market/page.</p>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  {funnelQuery.isLoading ? (
+                    <div className="space-y-2 p-5">{[1, 2, 3].map((item) => <div className="h-12 animate-pulse rounded bg-slate-100" key={item} />)}</div>
+                  ) : !funnel || funnel.rows.length === 0 ? (
+                    <div className="py-14 text-center">
+                      <BarChart3 className="mx-auto h-8 w-8 text-slate-300" />
+                      <p className="mt-3 text-sm font-medium text-slate-600">No funnel activity in this window</p>
+                      <p className="mt-1 text-xs text-slate-400">Try widening the date range or switching traffic buckets.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full min-w-[980px] text-left text-xs">
+                      <thead className="bg-slate-50/90 font-mono text-[10px] uppercase tracking-wider text-slate-500">
+                        <tr>
+                          <th className="px-5 py-3 font-semibold">Landing market / page</th>
+                          {FUNNEL_STEPS.map((step) => <th key={step.key} className="px-3 py-3 text-right font-semibold">{step.label}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {funnel.rows.map((row) => (
+                          <tr key={row.landingMarketId ?? row.landingLabel} className="transition-colors hover:bg-cyan-50/40">
+                            <td className="px-5 py-3 font-semibold text-slate-800">{row.landingLabel}</td>
+                            {FUNNEL_STEPS.map((step) => (
+                              <td key={step.key} className="px-3 py-3 text-right">
+                                <span className="font-mono font-semibold text-slate-700">{number(row[step.key] as number)}</span>
+                                {step.key !== "landing" && <span className="ml-1.5 text-[10px] text-slate-400">{pct(row[step.key] as number, row.landing)}</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
         <Card className="overflow-hidden border-slate-200/80 shadow-sm"><CardHeader className="border-b border-slate-100 pb-4"><div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle eyebrow="Audience register" title="Visitor activity" action={<Badge variant="outline" className="ml-2 font-mono text-[10px]">{visitors ? number(visitors.total) : "—"} records</Badge>} /><div className="relative w-full sm:w-64"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search identity, IP, city…" className="h-8 pl-8 text-xs" /></div></div></CardHeader><CardContent className="p-0"><div className="overflow-x-auto">{visitorsQuery.isLoading ? <div className="space-y-2 p-5">{[1,2,3,4].map((item) => <div className="h-12 animate-pulse rounded bg-slate-100" key={item} />)}</div> : filteredVisitors.length === 0 ? <div className="py-14 text-center"><Users className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-sm font-medium text-slate-600">No visitors match these filters</p><p className="mt-1 text-xs text-slate-400">Try widening the date range or identity filter.</p></div> : <table className="w-full min-w-[1180px] text-left text-xs"><thead className="bg-slate-50/90 font-mono text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3 font-semibold">Identity</th><th className="px-3 py-3 font-semibold">Network / location</th><th className="px-3 py-3 font-semibold">Device</th><th className="px-3 py-3 font-semibold">Time spent</th><th className="px-3 py-3 font-semibold">First seen</th><th className="px-3 py-3 font-semibold">Last seen</th><th className="px-3 py-3 text-right font-semibold">Visits</th><th className="px-5 py-3 text-right font-semibold">Logins</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredVisitors.map((item) => <tr key={item.id} className="group transition-colors hover:bg-cyan-50/40"><td className="px-5 py-3"><div className="flex items-center gap-2.5"><div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-mono text-[10px] font-bold ${item.identityType === "registered" ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500"}`}>{item.identityType === "registered" ? (item.firstName?.[0] ?? "R") + (item.lastName?.[0] ?? "") : "AN"}</div><div className="min-w-0"><p className="truncate font-semibold text-slate-800">{item.identityType === "registered" ? [item.firstName, item.lastName].filter(Boolean).join(" ") || item.email : item.anonymousId || "Anonymous visitor"}</p><p className="truncate text-[11px] text-slate-400">{item.identityType === "registered" ? item.email : "Unregistered identity"}</p></div></div></td><td className="px-3 py-3"><p className="flex items-center gap-1.5 font-mono text-[11px] text-slate-700"><MapPin className="h-3 w-3 text-cyan-600" />{item.ipAddress || "—"}</p><p className="mt-1 text-[11px] text-slate-400">{[item.city, item.region, item.country].filter(Boolean).join(", ") || "Location unavailable"}</p></td><td className="px-3 py-3"><span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium ${item.deviceType === "phone" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{item.deviceType === "phone" ? <Smartphone className="h-3 w-3" /> : <Monitor className="h-3 w-3" />}{item.deviceType === "phone" ? "Phone" : "Desktop"}</span></td><td className="px-3 py-3"><p className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-slate-700"><Clock className="h-3 w-3 text-slate-400" />{item.dwellMs > 0 ? duration(item.dwellMs) : "—"}</p></td><td className="px-3 py-3 whitespace-nowrap text-slate-500">{prettyDate(item.firstSeenAt)}</td><td className="px-3 py-3 whitespace-nowrap text-slate-500">{prettyDate(item.lastSeenAt)}</td><td className="px-3 py-3 text-right font-mono font-semibold text-slate-700">{number(item.visitCount)}</td><td className="px-5 py-3 text-right font-mono font-semibold text-violet-700">{number(item.loginCount)}</td></tr>)}</tbody></table>}</div>{visitors && visitors.total > 0 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500"><span>Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, visitors.total)} of {number(visitors.total)}</span><div className="flex items-center gap-2"><Button variant="outline" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft className="h-3.5 w-3.5" /></Button><span className="font-mono text-[11px]">{page} / {totalPages}</span><Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}><ChevronRight className="h-3.5 w-3.5" /></Button></div></div>}</CardContent></Card>
       </>}
