@@ -49,3 +49,4 @@
 - [Vitest .tsx import failures](vitest-jsx-tsx-import.md) — vitest's bundled Vite is version-skewed from @vitejs/plugin-react; extract pure logic to .ts modules instead of testing .tsx directly.
 - [Feature-derived criteria persistence](derived-criteria-persistence.md) — notes-only saves keep coverage; legacy "flag OR name" partition; writers refuse changed derived scores; empty partition deletes rows.
 - [Recovering a clobbered dev row](dev-db-row-recovery.md) — backup bucket is unreadable from the workspace; dev shares PKs with prod, so restore text from the prod read replica.
+- [Quadrant label collision-avoidance layout](quadrant-label-layout.md) — spiral placement + connector lines; check dot vs nearest point of label RECT, not anchor-to-dot distance.
