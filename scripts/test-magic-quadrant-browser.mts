@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import puppeteer from "puppeteer";
+import puppeteer, { type Page } from "puppeteer";
+import { DEFAULT_QUADRANT_THRESHOLDS, positionFromComposites } from "../shared/quadrant-positioning";
 
+// Browser regression for the historical slider: stored snapshots are raw
+// weighted composites in rubric units (0–10) and the chart re-plots them
+// through the market's thresholds with the shared piecewise transform — the
+// same engine used here to compute the expected pixel coordinates.
 const baseUrl = process.env.MAGIC_QUADRANT_TEST_BASE_URL || "http://127.0.0.1:5000";
 const marketSlug = "historical-browser-fixture";
 const marketId = "historical-browser-fixture";
@@ -16,6 +21,25 @@ const market = {
   visibility: "public",
   isVisible: true,
   marketType: "mature",
+  executionThresholdLow: DEFAULT_QUADRANT_THRESHOLDS.executionLow.toFixed(2),
+  executionThresholdHigh: DEFAULT_QUADRANT_THRESHOLDS.executionHigh.toFixed(2),
+  viabilityThreshold: DEFAULT_QUADRANT_THRESHOLDS.viability.toFixed(2),
+};
+
+// Published chart configuration as served by GET /api/markets/:id/chart-config.
+const chartConfig = {
+  marketId,
+  marketType: "mature",
+  thresholds: { ...DEFAULT_QUADRANT_THRESHOLDS },
+  weights: [],
+  weightsById: {},
+  weightVersion: null,
+};
+
+// Composite scores (0–10) for the two snapshots the slider should reach.
+const selectedScores = {
+  old: { execution: 2, viability: 3 },
+  new: { execution: 7, viability: 6 },
 };
 
 const vendors = [
@@ -28,40 +52,41 @@ const allHistory = [
     id: "history-alpha-old",
     vendorId,
     marketId,
-    executionScore: "15",
-    viabilityScore: "25",
+    executionScore: "1.5",
+    viabilityScore: "2.5",
     recordedAt: new Date(Date.now() - 730 * dayMs).toISOString(),
   },
   {
     id: "history-alpha-new",
     vendorId,
     marketId,
-    executionScore: "75",
-    viabilityScore: "65",
+    executionScore: "7.5",
+    viabilityScore: "6.5",
     recordedAt: new Date(Date.now() - 365 * dayMs).toISOString(),
   },
   {
     id: "history-beta-old",
     vendorId: "vendor-beta",
     marketId,
-    executionScore: "85",
-    viabilityScore: "75",
+    executionScore: "8.5",
+    viabilityScore: "7.5",
     recordedAt: new Date(Date.now() - 730 * dayMs).toISOString(),
   },
   {
     id: "history-beta-new",
     vendorId: "vendor-beta",
     marketId,
-    executionScore: "25",
-    viabilityScore: "35",
+    executionScore: "2.5",
+    viabilityScore: "3.5",
     recordedAt: new Date(Date.now() - 365 * dayMs).toISOString(),
   },
 ];
 
-const selectedWeekRequests = [];
-const allHistoryRequests = [];
+type HistoricalRow = { id: string; vendorId: string; marketId: string; executionScore: string; viabilityScore: string; recordedAt?: string };
+const selectedWeekRequests: Array<{ date: string; positions: HistoricalRow[] }> = [];
+const allHistoryRequests: Array<{ positions: HistoricalRow[] }> = [];
 
-function selectedPositions(dateValue) {
+function selectedPositions(dateValue: string) {
   // The six-month slider's early and late positions should resolve to distinct
   // historical snapshots. Use the browser's requested date so the test stays
   // stable as calendar months vary in length.
@@ -70,16 +95,30 @@ function selectedPositions(dateValue) {
   const older = date < threshold;
   return older
     ? [
-        { id: "selected-alpha-old", vendorId, marketId, executionScore: "20", viabilityScore: "30" },
-        { id: "selected-beta-old", vendorId: "vendor-beta", marketId, executionScore: "80", viabilityScore: "70" },
+        { id: "selected-alpha-old", vendorId, marketId, executionScore: String(selectedScores.old.execution), viabilityScore: String(selectedScores.old.viability) },
+        { id: "selected-beta-old", vendorId: "vendor-beta", marketId, executionScore: "8", viabilityScore: "7" },
       ]
     : [
-        { id: "selected-alpha-new", vendorId, marketId, executionScore: "70", viabilityScore: "60" },
-        { id: "selected-beta-new", vendorId: "vendor-beta", marketId, executionScore: "30", viabilityScore: "40" },
+        { id: "selected-alpha-new", vendorId, marketId, executionScore: String(selectedScores.new.execution), viabilityScore: String(selectedScores.new.viability) },
+        { id: "selected-beta-new", vendorId: "vendor-beta", marketId, executionScore: "3", viabilityScore: "4" },
       ];
 }
 
-function jsonResponse(body) {
+/**
+ * Where the chart must draw a stored composite pair: through the shared
+ * piecewise transform (thresholds → 33 / 67 / 50 dividers) into the 0–100
+ * canvas, then through the desktop chart's linear pixel scales (60 px left
+ * / 20 px right margins, 44 px top / 82 px bottom).
+ */
+function expectedPixel(scores: { execution: number; viability: number }, width: number, height: number) {
+  const { x, y } = positionFromComposites(scores, chartConfig.thresholds);
+  return {
+    x: 60 + (x / 100) * (width - 80),
+    y: height - 82 - (y / 100) * (height - 126),
+  };
+}
+
+function jsonResponse(body: unknown) {
   return {
     status: 200,
     contentType: "application/json",
@@ -87,7 +126,7 @@ function jsonResponse(body) {
   };
 }
 
-async function waitFor(predicate, description, timeoutMs = 10_000) {
+async function waitFor(predicate: () => boolean | Promise<boolean>, description: string, timeoutMs = 10_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await predicate()) return;
@@ -118,7 +157,7 @@ async function ensureServer() {
   return child;
 }
 
-async function setSliderValue(page, value) {
+async function setSliderValue(page: Page, value: number) {
   const slider = await page.$('[data-testid="timeline-slider"] [role="slider"]');
   assert.ok(slider, "timeline slider thumb should be rendered");
   await slider.focus();
@@ -137,7 +176,7 @@ async function setSliderValue(page, value) {
   );
 }
 
-async function readVendorCoordinates(page) {
+async function readVendorCoordinates(page: Page) {
   return page.$eval(
     `[data-vendor-id="${vendorId}"] .vendor-dot`,
     dot => {
@@ -152,22 +191,25 @@ async function readVendorCoordinates(page) {
   );
 }
 
-async function waitForVendorCoordinates(page, scores) {
+async function waitForVendorCoordinates(page: Page, scores: { execution: number; viability: number }) {
+  // The canvas position (0–100) is computed here with the shared engine; the
+  // browser only has to apply the chart's pixel scales for its current size.
+  const canvas = positionFromComposites(scores, chartConfig.thresholds);
   await page.waitForFunction(
-    ({ vendorId: expectedVendorId, execution, viability }) => {
+    ({ vendorId: expectedVendorId, x, y }) => {
       const dot = document.querySelector(`[data-vendor-id="${expectedVendorId}"] .vendor-dot`);
       const svg = dot?.ownerSVGElement;
       if (!dot || !svg) return false;
 
       const width = Number(svg.getAttribute("width"));
       const height = Number(svg.getAttribute("height"));
-      const expectedX = 60 + (execution / 100) * (width - 80);
-      const expectedY = height - 82 - (viability / 100) * (height - 126);
+      const expectedX = 60 + (x / 100) * (width - 80);
+      const expectedY = height - 82 - (y / 100) * (height - 126);
       return Math.abs(Number(dot.getAttribute("cx")) - expectedX) < 0.1
         && Math.abs(Number(dot.getAttribute("cy")) - expectedY) < 0.1;
     },
     {},
-    { vendorId, ...scores },
+    { vendorId, x: canvas.x, y: canvas.y },
   );
   return readVendorCoordinates(page);
 }
@@ -213,6 +255,11 @@ async function run() {
         return;
       }
 
+      if (url.pathname === `/api/markets/${marketId}/chart-config`) {
+        await request.respond(jsonResponse(chartConfig));
+        return;
+      }
+
       if (url.pathname === `/api/markets/${marketId}/historical-positions`) {
         const date = url.searchParams.get("date");
         if (date) {
@@ -235,8 +282,8 @@ async function run() {
     await waitFor(() => allHistoryRequests.length === 1, "the all-history trajectory response");
     assert.equal(allHistoryRequests[0].positions.length, allHistory.length);
 
-    const coordinatesByWeek = new Map();
-    const requestsByWeek = new Map();
+    const coordinatesByWeek = new Map<number, { x: number; y: number; width: number; height: number }>();
+    const requestsByWeek = new Map<number, { date: string; positions: HistoricalRow[] } | undefined>();
     for (const week of historicalTestWeeks) {
       await setSliderValue(page, week);
       const expectedPositionId = week === historicalTestWeeks[0] ? "selected-alpha-old" : "selected-alpha-new";
@@ -255,7 +302,7 @@ async function run() {
         week,
         await waitForVendorCoordinates(
           page,
-          week === historicalTestWeeks[0] ? { execution: 20, viability: 30 } : { execution: 70, viability: 60 },
+          week === historicalTestWeeks[0] ? selectedScores.old : selectedScores.new,
         ),
       );
       requestsByWeek.set(week, selectedWeekRequests.find(request =>
@@ -274,13 +321,14 @@ async function run() {
       coordinatesByWeek.get(historicalTestWeeks[1]),
       "vendor coordinates should change between selected weeks",
     );
-    for (const [week, scores] of [
-      [historicalTestWeeks[0], { execution: 20, viability: 30 }],
-      [historicalTestWeeks[1], { execution: 70, viability: 60 }],
-    ]) {
+    const expectedByWeek: Array<[number, { execution: number; viability: number }]> = [
+      [historicalTestWeeks[0], selectedScores.old],
+      [historicalTestWeeks[1], selectedScores.new],
+    ];
+    for (const [week, scores] of expectedByWeek) {
       const coordinates = coordinatesByWeek.get(week);
-      const expectedX = 60 + (scores.execution / 100) * (coordinates.width - 80);
-      const expectedY = coordinates.height - 82 - (scores.viability / 100) * (coordinates.height - 126);
+      assert.ok(coordinates, `coordinates should have been captured for week ${week}`);
+      const { x: expectedX, y: expectedY } = expectedPixel(scores, coordinates.width, coordinates.height);
       assert.ok(
         Math.abs(coordinates.x - expectedX) < 0.1,
         `week ${week} execution score should reach the rendered x coordinate (${JSON.stringify({ coordinates, expectedX })})`,

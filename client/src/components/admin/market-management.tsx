@@ -20,9 +20,11 @@ import {
   DEFAULT_QUADRANT_THRESHOLDS,
   EMERGING_WEIGHT_OVERRIDES,
   getDefaultCriterionWeight,
+  positionVendor,
   validateThresholds,
   type PublishedChartConfig,
   type PublishedChartWeightVersion,
+  type QuadrantBoxKey,
   type QuadrantThresholds,
 } from "@shared/quadrant-positioning";
 
@@ -30,6 +32,26 @@ type WeightVersionRow = PublishedChartWeightVersion & {
   weights: Array<{ criteriaId: string; name: string; weight: number }>;
   thresholds: QuadrantThresholds;
 };
+
+/** Subset of GET /api/markets/:id/chart-provenance the preview needs. */
+type ChartProvenance = PublishedChartConfig & {
+  vendors: Array<{ vendorId: string; name: string; scores: Record<string, number> }>;
+};
+
+const BOX_ORDER: Array<[QuadrantBoxKey, string]> = [
+  ["leaders", "Leaders"],
+  ["contenders", "Contenders"],
+  ["custodians", "Custodians"],
+  ["catalysts", "Catalysts"],
+  ["specialists", "Specialists"],
+  ["emerging_players", "Emerging Players"],
+];
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 /** Threshold inputs are edited as text so a half-typed "4." is not clobbered. */
 type ThresholdDraft = { executionLow: string; executionHigh: string; viability: string };
@@ -80,6 +102,12 @@ export default function MarketManagement() {
     queryKey: ["/api/admin/markets", editingMarket?.id, "weight-versions"],
     enabled: !!editingMarket,
   });
+  // Every vendor's stored criterion scores, so the dialog can preview where
+  // the draft weights + thresholds would place them before anything is saved.
+  const { data: provenance } = useQuery<ChartProvenance>({
+    queryKey: ["/api/markets", editingMarket?.id, "chart-provenance"],
+    enabled: !!editingMarket,
+  });
 
   // Local weight state keyed by criteria id (0–100) and the three box
   // thresholds (rubric units, 0–10) that decide Custodians / Contenders /
@@ -88,6 +116,34 @@ export default function MarketManagement() {
   const [thresholdDraft, setThresholdDraft] = useState<ThresholdDraft>(draftFromThresholds(DEFAULT_QUADRANT_THRESHOLDS));
   const [changeNote, setChangeNote] = useState("");
   const thresholdProblem = validateThresholds(thresholdsFromDraft(thresholdDraft));
+
+  // Live preview: the same positioning engine the chart uses, run over the
+  // market's scored vendors with the *draft* weights and thresholds. Only
+  // vendors with at least one score on both axes are counted.
+  const boxPreview = (() => {
+    if (!editingMarket || !criteria || !provenance || thresholdProblem) return null;
+    const thresholds = thresholdsFromDraft(thresholdDraft);
+    const positioningCriteria = criteria.map(c => ({ id: c.id, name: c.name, category: c.category }));
+    const counts: Record<QuadrantBoxKey, number> = {
+      leaders: 0, contenders: 0, custodians: 0, catalysts: 0, specialists: 0, emerging_players: 0,
+    };
+    const execution: number[] = [];
+    const viability: number[] = [];
+    for (const vendor of provenance.vendors) {
+      const hasExecution = criteria.some(c => c.category === "execution" && c.id in vendor.scores);
+      const hasViability = criteria.some(c => c.category === "viability" && c.id in vendor.scores);
+      if (!hasExecution || !hasViability) continue;
+      const position = positionVendor(positioningCriteria, criteriaWeights, vendor.scores, thresholds);
+      counts[position.box.key] += 1;
+      execution.push(position.execution);
+      viability.push(position.viability);
+    }
+    if (!execution.length) return { scored: 0, counts, execution: null, viability: null };
+    const summarize = (values: number[]) => ({
+      min: Math.min(...values), median: median(values), max: Math.max(...values),
+    });
+    return { scored: execution.length, counts, execution: summarize(execution), viability: summarize(viability) };
+  })();
 
   const form = useForm<InsertMarket>({
     resolver: zodResolver(insertMarketSchema),
@@ -144,46 +200,39 @@ export default function MarketManagement() {
     setCriteriaWeights(next);
   }, [criteria, dialogSession, watchedMarketType]);
 
-  // Save the chart configuration after the market itself is persisted. The
-  // server records a new weight version only when the effective weights or
-  // thresholds actually changed. Failures must not fail the whole mutation
-  // (the market is already saved) — surface a warning instead.
-  const saveChartConfig = async (marketId: string) => {
-    if (!criteria) return;
-    try {
-      const weights: Record<string, number> = {};
-      criteria.forEach(c => { weights[c.id] = criteriaWeights[c.id] ?? 100; });
-      await apiRequest(`/api/markets/${marketId}/chart-config`, "PUT", {
-        weights,
-        thresholds: thresholdsFromDraft(thresholdDraft),
-        note: changeNote.trim() || undefined,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-config"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-provenance"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets", marketId, "weight-versions"] });
-    } catch (err) {
-      console.error("Failed to save chart configuration:", err);
-      toast({
-        title: "Chart configuration not saved",
-        description: err instanceof Error && err.message
-          ? err.message
-          : "The market was saved, but its criteria weights / thresholds failed to save. Re-open the market and update them again.",
-        variant: "destructive",
-      });
-    }
+  // The dialog's weights + thresholds travel in the same request as the
+  // market fields; the server commits both (and the resulting weight version)
+  // in one transaction, so a rejected threshold rejects the whole save.
+  const chartConfigPayload = () => {
+    if (!criteria) return undefined;
+    const weights: Record<string, number> = {};
+    criteria.forEach(c => { weights[c.id] = criteriaWeights[c.id] ?? getDefaultCriterionWeight(c.name, watchedMarketType); });
+    return { weights, thresholds: thresholdsFromDraft(thresholdDraft), note: changeNote.trim() || undefined };
+  };
+
+  const invalidateChartQueries = (marketId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-config"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-provenance"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/markets", marketId, "weight-versions"] });
+  };
+
+  /** Server error bodies are JSON `{ error }` prefixed with the status by apiRequest. */
+  const describeError = (error: unknown, fallback: string) => {
+    if (!(error instanceof Error) || !error.message) return fallback;
+    const match = error.message.match(/^\d{3}: ([\s\S]*)$/);
+    const body = match ? match[1] : error.message;
+    try { return (JSON.parse(body) as { error?: string }).error || fallback; } catch { return body || fallback; }
   };
 
   const createMarketMutation = useMutation({
     mutationFn: async (data: InsertMarket) => {
-      const response = await apiRequest("/api/markets", "POST", data);
-      const created = await response.json();
-      // Persist the chosen criteria weights + thresholds for the new market.
-      if (created?.id) await saveChartConfig(created.id);
-      return created;
+      const response = await apiRequest("/api/markets", "POST", { ...data, chartConfig: chartConfigPayload() });
+      return response.json() as Promise<Market>;
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
+      if (created?.id) invalidateChartQueries(created.id);
       form.reset();
       setShowCreateDialog(false);
       toast({
@@ -191,10 +240,11 @@ export default function MarketManagement() {
         description: "Market created successfully",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error("Market create error:", error);
       toast({
         title: "Error",
-        description: "Failed to create market",
+        description: describeError(error, "Failed to create market"),
         variant: "destructive",
       });
     },
@@ -202,15 +252,13 @@ export default function MarketManagement() {
 
   const updateMarketMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertMarket }) => {
-      const response = await apiRequest(`/api/markets/${id}`, "PUT", data);
-      const updated = await response.json();
-      // Persist any weight / threshold changes made in the edit dialog.
-      await saveChartConfig(id);
-      return updated;
+      const response = await apiRequest(`/api/markets/${id}`, "PUT", { ...data, chartConfig: chartConfigPayload() });
+      return response.json() as Promise<Market>;
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["/api/markets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
+      if (updated?.id) invalidateChartQueries(updated.id);
       setEditingMarket(null);
       setShowEditDialog(false);
       form.reset();
@@ -223,7 +271,7 @@ export default function MarketManagement() {
       console.error("Market update error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update market",
+        description: describeError(error, "Failed to update market"),
         variant: "destructive",
       });
     },
@@ -548,6 +596,30 @@ export default function MarketManagement() {
               </div>
             ))}
           </div>
+          {boxPreview && (
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1" data-testid="text-box-preview">
+              {boxPreview.scored === 0 ? (
+                <p className="text-muted-foreground">No scored vendors yet — the preview appears once vendors have scores on both axes.</p>
+              ) : (
+                <>
+                  <p>
+                    <span className="font-medium">With these weights and thresholds</span>
+                    <span className="text-muted-foreground"> ({boxPreview.scored} scored vendor{boxPreview.scored === 1 ? "" : "s"}): </span>
+                    {BOX_ORDER.map(([key, label], i) => (
+                      <span key={key} data-testid={`text-box-preview-${key}`}>
+                        {i > 0 && <span className="text-muted-foreground"> · </span>}
+                        {label} <span className="font-semibold">{boxPreview.counts[key]}</span>
+                      </span>
+                    ))}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Execution composites {boxPreview.execution!.min.toFixed(1)}–{boxPreview.execution!.max.toFixed(1)} (median {boxPreview.execution!.median.toFixed(1)});
+                    Viability {boxPreview.viability!.min.toFixed(1)}–{boxPreview.viability!.max.toFixed(1)} (median {boxPreview.viability!.median.toFixed(1)}).
+                  </p>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <p className={`text-xs ${thresholdProblem ? "text-destructive" : "text-muted-foreground"}`} data-testid="text-threshold-status">
               {thresholdProblem ?? `Defaults: ${DEFAULT_QUADRANT_THRESHOLDS.executionLow} / ${DEFAULT_QUADRANT_THRESHOLDS.executionHigh} / ${DEFAULT_QUADRANT_THRESHOLDS.viability}.`}

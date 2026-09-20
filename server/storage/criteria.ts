@@ -3,7 +3,7 @@ import {
   type VendorScore, type InsertVendorScore,
   type MarketCriteriaWeight,
   type MarketWeightVersion, type InsertMarketWeightVersion,
-  type Market,
+  type Market, type InsertMarket,
   type Vendor,
   criteria, vendorScores, marketCriteriaWeights, marketWeightVersions, markets, vendors,
 } from "@shared/schema";
@@ -172,6 +172,21 @@ export async function withLockedMarket<T>(
 ): Promise<T> {
   return await db.transaction(async (tx) => {
     const [market] = await tx.select().from(markets).where(eq(markets.id, marketId)).for("update");
+    return await fn(tx, market);
+  });
+}
+
+/**
+ * Inserts a market and runs `fn` in the same transaction, so a new market and
+ * its first chart-config version are committed together or not at all. No
+ * lock is needed: the row is invisible to other writers until commit.
+ */
+export async function withCreatedMarket<T>(
+  marketData: InsertMarket,
+  fn: (tx: DbExecutor, market: Market) => Promise<T>,
+): Promise<T> {
+  return await db.transaction(async (tx) => {
+    const [market] = await tx.insert(markets).values(marketData).returning();
     return await fn(tx, market);
   });
 }

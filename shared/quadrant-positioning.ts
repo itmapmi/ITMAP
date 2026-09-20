@@ -166,11 +166,11 @@ export function getDefaultCriterionWeight(
  */
 export function resolveEffectiveWeights(
   criteria: CriterionForPositioning[],
-  savedWeights: Iterable<{ criteriaId: string; weight: number }>,
+  savedWeights: ReadonlyArray<{ criteriaId: string; weight: number }>,
   marketType: string | null | undefined,
 ): Record<string, number> {
   const saved = new Map<string, number>();
-  for (const row of savedWeights) {
+  for (const row of Array.from(savedWeights)) {
     if (Number.isFinite(row.weight)) saved.set(row.criteriaId, Math.max(0, row.weight));
   }
   const effective: Record<string, number> = {};
@@ -182,14 +182,21 @@ export function resolveEffectiveWeights(
 
 // ── Thresholds ──────────────────────────────────────────────────────────────
 
+/** Thresholds are stored as numeric(4,2); every consumer works at that precision. */
+export const THRESHOLD_DECIMALS = 2;
+
 function finiteOr(value: unknown, fallback: number): number {
   const n = typeof value === "string" ? Number(value) : value;
-  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
+  if (typeof n !== "number" || !Number.isFinite(n)) return fallback;
+  const factor = 10 ** THRESHOLD_DECIMALS;
+  return Math.round(n * factor) / factor;
 }
 
 /**
  * Coerces whatever a market record / request body carries (numbers, numeric
- * strings, nulls) into a complete threshold set, filling gaps with defaults.
+ * strings, nulls) into a complete threshold set at the stored precision,
+ * filling gaps with defaults. Rounding here means a request for 4.555 is
+ * compared, persisted and versioned as the same 4.56 the database keeps.
  */
 export function normalizeThresholds(input?: {
   executionLow?: unknown;

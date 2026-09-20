@@ -8,9 +8,10 @@
  * The positioning maths itself lives in shared/quadrant-positioning.ts and is
  * shared verbatim with the client chart, the snapshot cron and the exports.
  */
-import type { Criteria, Market, MarketWeightVersion } from "@shared/schema";
+import type { Criteria, InsertMarket, Market, MarketWeightVersion } from "@shared/schema";
 import {
   DEFAULT_QUADRANT_THRESHOLDS,
+  getDefaultCriterionWeight,
   normalizeThresholds,
   positionVendor,
   resolveEffectiveWeights,
@@ -27,8 +28,11 @@ import {
   getMarketCriteriaWeights,
   updateMarketCriteriaWeight,
   updateMarketThresholds,
+  withCreatedMarket,
   withLockedMarket,
 } from "./storage/criteria";
+import { updateMarket } from "./storage/markets";
+import type { DbExecutor } from "./db";
 
 /** What the chart, the exports and API consumers need to reproduce a dot. */
 export type MarketChartConfig = PublishedChartConfig;
@@ -116,22 +120,14 @@ export async function getMarketChartConfig(marketId: string, preloadedMarket?: M
   return buildConfig(market, criteria, savedWeights, latestVersion);
 }
 
-/**
- * Persists weights and/or thresholds and records a new version when the
- * effective configuration actually changed. Returns the resulting config and
- * whether a version row was written (idempotent re-saves write nothing).
- *
- * Runs in one transaction under a row lock on the market, so two admins (or
- * an admin and a Market Builder republish) saving the same market serialise:
- * the version row always snapshots exactly the weights and thresholds that
- * were committed with it, and version numbers never collide.
- */
-export async function saveMarketChartConfig(
-  marketId: string,
-  input: SaveChartConfigInput,
-  actor: ChartActor,
-): Promise<{ config: MarketChartConfig; versionCreated: boolean }> {
-  // Reference data and input validation happen before the lock is taken.
+interface PreparedChartConfigInput {
+  criteria: Criteria[];
+  weightUpdates: Array<{ criteriaId: string; weight: number }>;
+  requestedThresholds?: QuadrantThresholds;
+}
+
+/** Validates a save request against the current criteria — before any lock or write. */
+async function prepareChartConfigInput(input: SaveChartConfigInput): Promise<PreparedChartConfigInput> {
   const criteria = await storage.getAllCriteria();
   const criteriaById = new Map(criteria.map((c) => [c.id, c]));
 
@@ -147,54 +143,150 @@ export async function saveMarketChartConfig(
   }
   let requestedThresholds: QuadrantThresholds | undefined;
   if (input.thresholds) {
+    // Normalised to the stored precision, so the value compared, persisted
+    // and recorded in the version row is one and the same.
     requestedThresholds = normalizeThresholds(input.thresholds);
     const problem = validateThresholds(requestedThresholds);
     if (problem) throw new ChartConfigError(problem);
   }
+  return { criteria, weightUpdates, requestedThresholds };
+}
 
+/**
+ * The write itself. Runs inside the caller's transaction on an already
+ * locked (or freshly inserted) market: upserts weights, updates thresholds,
+ * and appends a version row when the effective configuration differs from
+ * the latest one. Returns the resulting config and whether a version was
+ * written (idempotent re-saves write nothing).
+ */
+async function commitChartConfig(
+  tx: DbExecutor,
+  market: Market,
+  prepared: PreparedChartConfigInput,
+  actor: ChartActor,
+): Promise<{ config: MarketChartConfig; versionCreated: boolean }> {
+  const { criteria, weightUpdates, requestedThresholds } = prepared;
+  const savedWeights = await getMarketCriteriaWeights(market.id, tx);
+  const latestVersion = await getLatestMarketWeightVersion(market.id, tx);
+  const thresholds = requestedThresholds ?? thresholdsFromMarket(market);
+
+  for (const update of weightUpdates) {
+    await updateMarketCriteriaWeight(market.id, update.criteriaId, update.weight, tx);
+  }
+  let updatedMarket = market;
+  if (requestedThresholds && !sameThresholds(thresholds, thresholdsFromMarket(market))) {
+    updatedMarket = await updateMarketThresholds(market.id, {
+      executionThresholdLow: thresholds.executionLow.toFixed(2),
+      executionThresholdHigh: thresholds.executionHigh.toFixed(2),
+      viabilityThreshold: thresholds.viability.toFixed(2),
+    }, tx);
+  }
+
+  const mergedSaved = new Map(savedWeights.map((w) => [w.criteriaId, w.weight] as const));
+  for (const update of weightUpdates) mergedSaved.set(update.criteriaId, update.weight);
+  const mergedSavedList = Array.from(mergedSaved, ([criteriaId, weight]) => ({ criteriaId, weight }));
+  const effectiveWeights = resolveEffectiveWeights(criteria, mergedSavedList, updatedMarket.marketType);
+
+  const unchanged =
+    !!latestVersion &&
+    sameWeights(latestVersion.weights ?? {}, effectiveWeights) &&
+    sameThresholds(normalizeThresholds(latestVersion.thresholds), thresholds);
+
+  let version = latestVersion;
+  if (!unchanged) {
+    version = await createMarketWeightVersion({
+      marketId: market.id,
+      weights: effectiveWeights,
+      criteriaNames: Object.fromEntries(criteria.map((c) => [c.id, c.name])),
+      thresholds,
+      createdByUserId: actor.userId ?? null,
+      createdByLabel: actor.label,
+      note: actor.note ?? null,
+    }, tx);
+  }
+
+  return { config: buildConfig(updatedMarket, criteria, mergedSavedList, version), versionCreated: !unchanged };
+}
+
+/**
+ * Persists weights and/or thresholds and records a new version when the
+ * effective configuration actually changed.
+ *
+ * Runs in one transaction under a row lock on the market, so two admins (or
+ * an admin and a Market Builder republish) saving the same market serialise:
+ * the version row always snapshots exactly the weights and thresholds that
+ * were committed with it, and version numbers never collide.
+ */
+export async function saveMarketChartConfig(
+  marketId: string,
+  input: SaveChartConfigInput,
+  actor: ChartActor,
+): Promise<{ config: MarketChartConfig; versionCreated: boolean }> {
+  const prepared = await prepareChartConfigInput(input);
   return await withLockedMarket(marketId, async (tx, market) => {
     if (!market) throw new ChartConfigError("Market not found", 404);
-    const savedWeights = await getMarketCriteriaWeights(market.id, tx);
-    const latestVersion = await getLatestMarketWeightVersion(market.id, tx);
-    const thresholds = requestedThresholds ?? thresholdsFromMarket(market);
-
-    for (const update of weightUpdates) {
-      await updateMarketCriteriaWeight(market.id, update.criteriaId, update.weight, tx);
-    }
-    let updatedMarket = market;
-    if (requestedThresholds && !sameThresholds(thresholds, thresholdsFromMarket(market))) {
-      updatedMarket = await updateMarketThresholds(market.id, {
-        executionThresholdLow: thresholds.executionLow.toFixed(2),
-        executionThresholdHigh: thresholds.executionHigh.toFixed(2),
-        viabilityThreshold: thresholds.viability.toFixed(2),
-      }, tx);
-    }
-
-    const mergedSaved = new Map(savedWeights.map((w) => [w.criteriaId, w.weight] as const));
-    for (const update of weightUpdates) mergedSaved.set(update.criteriaId, update.weight);
-    const mergedSavedList = Array.from(mergedSaved, ([criteriaId, weight]) => ({ criteriaId, weight }));
-    const effectiveWeights = resolveEffectiveWeights(criteria, mergedSavedList, updatedMarket.marketType);
-
-    const unchanged =
-      !!latestVersion &&
-      sameWeights(latestVersion.weights ?? {}, effectiveWeights) &&
-      sameThresholds(normalizeThresholds(latestVersion.thresholds), thresholds);
-
-    let version = latestVersion;
-    if (!unchanged) {
-      version = await createMarketWeightVersion({
-        marketId: market.id,
-        weights: effectiveWeights,
-        criteriaNames: Object.fromEntries(criteria.map((c) => [c.id, c.name])),
-        thresholds,
-        createdByUserId: actor.userId ?? null,
-        createdByLabel: actor.label,
-        note: actor.note ?? null,
-      }, tx);
-    }
-
-    return { config: buildConfig(updatedMarket, criteria, mergedSavedList, version), versionCreated: !unchanged };
+    return await commitChartConfig(tx, market, prepared, actor);
   });
+}
+
+/** Saved weights that make a market's effective weights equal its type defaults. */
+function typeDefaultWeights(criteria: Criteria[], marketType: string): Record<string, number> {
+  return Object.fromEntries(criteria.map((c) => [c.id, getDefaultCriterionWeight(c.name, marketType)]));
+}
+
+/**
+ * Creates a market together with its first chart-config version in a single
+ * transaction: a market can never exist unversioned, and a failed version
+ * write rolls the market back instead of leaving a half-created record.
+ * Weights not supplied by the caller start at the market type's defaults.
+ */
+export async function createMarketWithChartConfig(
+  marketData: InsertMarket,
+  input: SaveChartConfigInput,
+  actor: ChartActor,
+): Promise<{ market: Market; config: MarketChartConfig }> {
+  const prepared = await prepareChartConfigInput(input);
+  return await withCreatedMarket(marketData, async (tx, market) => {
+    const { config } = await commitChartConfig(tx, market, prepared, actor);
+    return { market: { ...market, ...thresholdColumns(config.thresholds) }, config };
+  });
+}
+
+/**
+ * Updates a market's own fields and its chart configuration atomically. When
+ * the market type changes and the caller sent no weights, the saved weights
+ * are reset to the new type's defaults so the chart follows the type switch
+ * (a saved value always wins over a default, so this must be explicit).
+ */
+export async function updateMarketWithChartConfig(
+  marketId: string,
+  marketData: Partial<InsertMarket>,
+  input: SaveChartConfigInput,
+  actor: ChartActor,
+): Promise<{ market: Market; config: MarketChartConfig; versionCreated: boolean }> {
+  const prepared = await prepareChartConfigInput(input);
+  return await withLockedMarket(marketId, async (tx, previous) => {
+    if (!previous) throw new ChartConfigError("Market not found", 404);
+    const market = Object.keys(marketData).length ? await updateMarket(marketId, marketData, tx) : previous;
+    const typeChanged = !!marketData.marketType && marketData.marketType !== previous.marketType;
+    if (typeChanged && !input.weights) {
+      const defaults = typeDefaultWeights(prepared.criteria, market.marketType);
+      prepared.weightUpdates = Object.entries(defaults).map(([criteriaId, weight]) => ({ criteriaId, weight }));
+    }
+    const effectiveActor = typeChanged && !actor.note
+      ? { ...actor, note: `Market type changed to ${market.marketType}` }
+      : actor;
+    const result = await commitChartConfig(tx, market, prepared, effectiveActor);
+    return { market: { ...market, ...thresholdColumns(result.config.thresholds) }, ...result };
+  });
+}
+
+function thresholdColumns(t: QuadrantThresholds) {
+  return {
+    executionThresholdLow: t.executionLow.toFixed(2),
+    executionThresholdHigh: t.executionHigh.toFixed(2),
+    viabilityThreshold: t.viability.toFixed(2),
+  };
 }
 
 export async function listMarketWeightVersions(marketId: string): Promise<Array<ChartWeightVersionSummary & {

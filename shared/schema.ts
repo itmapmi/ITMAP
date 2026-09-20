@@ -552,10 +552,16 @@ export const insertCanonicalVendorSchema = createInsertSchema(canonicalVendors).
   updatedAt: true,
 });
 
+// Quadrant thresholds are deliberately not part of the generic market payload:
+// they only change through the versioned chart-config service so the live
+// chart can never drift from the weight version it cites.
 export const insertMarketSchema = createInsertSchema(markets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  executionThresholdLow: true,
+  executionThresholdHigh: true,
+  viabilityThreshold: true,
 });
 
 export const insertVendorSchema = createInsertSchema(vendors).omit({

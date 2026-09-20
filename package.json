@@ -10,7 +10,7 @@
     "test:traffic": "vitest run server/routes/trafficAnalytics.test.ts server/storage/trafficAnalytics.integration.test.ts",
     "test:company-email": "vitest run server/routes/companyEmailGate.integration.test.ts",
     "test:teaser-funnel": "vitest run client/src/lib/teaser-schedule.test.ts client/src/lib/high-intent.test.ts client/src/lib/registration-copy.test.ts",
-    "test:magic-quadrant": "node scripts/test-magic-quadrant-browser.mjs",
+    "test:magic-quadrant": "tsx scripts/test-magic-quadrant-browser.mts",
     "test:derived-scores": "vitest run shared/derived-feature-scores.test.ts server/derivedFeatureScores.test.ts",
     "test:quadrant": "vitest run shared/quadrant-positioning.test.ts shared/quadrant-export.test.ts",
     "derive:backfill": "tsx server/scripts/rederive-feature-criteria.ts",

@@ -10,8 +10,10 @@ import {
   getMarketChartConfig,
   listMarketWeightVersions,
   saveMarketChartConfig,
+  createMarketWithChartConfig,
+  updateMarketWithChartConfig,
 } from "../quadrantConfig";
-import { EMERGING_WEIGHT_OVERRIDES, MATURE_DEFAULT_WEIGHTS, isPlausibleStoredComposite } from "@shared/quadrant-positioning";
+import { isPlausibleStoredComposite } from "@shared/quadrant-positioning";
 
 /**
  * Centralized read-authorization for any /api/markets/:marketId/* endpoint.
@@ -43,6 +45,27 @@ async function requireMarketAccess(req: Request, res: Response, next: NextFuncti
     return res.status(500).json({ error: err.message });
   }
 }
+/**
+ * Chart configuration as accepted from clients: on the dedicated chart-config
+ * route and, optionally, embedded as `chartConfig` in market create/update
+ * bodies so a market and its version are committed together.
+ */
+const chartConfigBodySchema = z.object({
+  weights: z.record(z.string(), z.number().min(0).max(100)).optional(),
+  thresholds: z.object({
+    executionLow: z.number(),
+    executionHigh: z.number(),
+    viability: z.number(),
+  }).optional(),
+  note: z.string().max(500).optional(),
+});
+
+function chartConfigErrorResponse(res: Response, error: unknown): boolean {
+  if (error instanceof ChartConfigError) { res.status(error.status).json({ error: error.message }); return true; }
+  if (error instanceof z.ZodError) { res.status(400).json({ error: error.errors.map(e => e.message).join("; ") }); return true; }
+  return false;
+}
+
 /** Who is changing a market's chart configuration, for the weight-version audit trail. */
 function chartActor(req: Request, note?: string) {
   const user = (req as any).user as { id?: string; email?: string | null } | undefined;
@@ -187,55 +210,43 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
+  // Market + its first chart-config version are committed in one transaction,
+  // so no market ever exists without a version. `chartConfig` is optional;
+  // omitted weights start at the market type's defaults.
   app.post("/api/markets", requireAdmin, async (req, res) => {
     try {
       const marketData = insertMarketSchema.parse(req.body);
-      const market = await storage.createMarket(marketData);
-      // For emerging markets, persist the non-default weights immediately
-      // so they are picked up by the frontend without guessing. Goes through
-      // the chart-config service so the change is versioned.
-      if (market.marketType === "emerging") {
-        const allCriteria = await storage.getAllCriteria();
-        const weights: Record<string, number> = {};
-        for (const c of allCriteria) {
-          const w = EMERGING_WEIGHT_OVERRIDES[c.name];
-          if (w !== undefined) weights[c.id] = w;
-        }
-        await saveMarketChartConfig(market.id, { weights }, chartActor(req, "Market created as emerging"));
-      }
+      const chartConfig = chartConfigBodySchema.parse(req.body?.chartConfig ?? {});
+      const { market } = await createMarketWithChartConfig(
+        marketData,
+        { weights: chartConfig.weights, thresholds: chartConfig.thresholds },
+        chartActor(req, chartConfig.note ?? "Market created"),
+      );
       res.status(201).json(market);
     } catch (error) {
+      if (chartConfigErrorResponse(res, error)) return;
       console.error("Error creating market:", error);
       res.status(400).json({ error: "Failed to create market" });
     }
   });
 
+  // Market fields and chart configuration are saved atomically. A market type
+  // change without explicit weights resets the saved weights to the new
+  // type's defaults (versioned) so the chart follows the switch.
   app.put("/api/markets/:id", requireAdmin, async (req, res) => {
     try {
       console.log("Market update request:", { id: req.params.id, body: req.body });
       const marketData = insertMarketSchema.partial().parse(req.body);
-      const previous = await storage.getMarketById(req.params.id);
-      const market = await storage.updateMarket(req.params.id, marketData);
-      // When switching an existing market to emerging, apply the weight overrides.
-      // When switching back to mature, apply the mature defaults so the chart
-      // resets. Only on an actual change — admin market management PUTs the
-      // whole form and saves its own weights right after.
-      if (
-        (marketData.marketType === "emerging" || marketData.marketType === "mature") &&
-        previous && previous.marketType !== marketData.marketType
-      ) {
-        const allCriteria = await storage.getAllCriteria();
-        const weights: Record<string, number> = {};
-        for (const c of allCriteria) {
-          const w = marketData.marketType === "emerging"
-            ? EMERGING_WEIGHT_OVERRIDES[c.name]
-            : (c.name in EMERGING_WEIGHT_OVERRIDES ? MATURE_DEFAULT_WEIGHTS[c.name] : undefined);
-          if (w !== undefined) weights[c.id] = w;
-        }
-        await saveMarketChartConfig(market.id, { weights }, chartActor(req, `Market type changed to ${marketData.marketType}`));
-      }
+      const chartConfig = chartConfigBodySchema.parse(req.body?.chartConfig ?? {});
+      const { market } = await updateMarketWithChartConfig(
+        req.params.id,
+        marketData,
+        { weights: chartConfig.weights, thresholds: chartConfig.thresholds },
+        chartActor(req, chartConfig.note),
+      );
       res.json(market);
     } catch (error) {
+      if (chartConfigErrorResponse(res, error)) return;
       console.error("Error updating market:", error);
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update market" });
     }
@@ -636,15 +647,7 @@ export function registerMarketRoutes(app: Express): void {
   // version whenever the effective configuration changes.
   app.put("/api/markets/:marketId/chart-config", requireAdmin, async (req, res) => {
     try {
-      const body = z.object({
-        weights: z.record(z.string(), z.number().min(0).max(100)).optional(),
-        thresholds: z.object({
-          executionLow: z.number(),
-          executionHigh: z.number(),
-          viability: z.number(),
-        }).optional(),
-        note: z.string().max(500).optional(),
-      }).parse(req.body ?? {});
+      const body = chartConfigBodySchema.parse(req.body ?? {});
       const result = await saveMarketChartConfig(
         req.params.marketId,
         { weights: body.weights, thresholds: body.thresholds },
@@ -652,8 +655,7 @@ export function registerMarketRoutes(app: Express): void {
       );
       res.json(result);
     } catch (error) {
-      if (error instanceof ChartConfigError) return res.status(error.status).json({ error: error.message });
-      if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors.map(e => e.message).join("; ") });
+      if (chartConfigErrorResponse(res, error)) return;
       console.error("Error saving chart config:", error);
       res.status(500).json({ error: "Failed to save chart configuration" });
     }

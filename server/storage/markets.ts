@@ -5,7 +5,7 @@ import {
   type VendorLabelPosition, type InsertVendorLabelPosition,
   markets, vendors, historicalPositions, vendorLabelPositions, marketBuilderJobs,
 } from "@shared/schema";
-import { db } from "../db";
+import { db, type DbExecutor } from "../db";
 import { eq, desc, and, or, isNull, inArray, count, sql, getTableColumns } from "drizzle-orm";
 
 // ── Slug helpers ────────────────────────────────────────────────────────────
@@ -109,13 +109,13 @@ export async function getMarketByIdForViewer(
   return market || undefined;
 }
 
-export async function createMarket(market: InsertMarket): Promise<Market> {
-  const [newMarket] = await db.insert(markets).values(market).returning();
+export async function createMarket(market: InsertMarket, executor: DbExecutor = db): Promise<Market> {
+  const [newMarket] = await executor.insert(markets).values(market).returning();
   return newMarket;
 }
 
-export async function updateMarket(id: string, market: Partial<InsertMarket>): Promise<Market> {
-  const [updatedMarket] = await db.update(markets).set({ ...market, updatedAt: new Date() }).where(eq(markets.id, id)).returning();
+export async function updateMarket(id: string, market: Partial<InsertMarket>, executor: DbExecutor = db): Promise<Market> {
+  const [updatedMarket] = await executor.update(markets).set({ ...market, updatedAt: new Date() }).where(eq(markets.id, id)).returning();
   return updatedMarket;
 }
 
