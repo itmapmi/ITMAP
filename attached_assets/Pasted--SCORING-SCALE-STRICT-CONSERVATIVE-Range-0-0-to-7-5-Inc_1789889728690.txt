@@ -1,0 +1,51 @@
+## SCORING SCALE — STRICT CONSERVATIVE
+
+**Range: 0.0 to 7.5. Increments of 0.1 only. The maximum possible score is 7.5. There is no 8, 9, or 10. The scale is not a 0–10 scale with the top sliced off — it is a deliberately compressed scale with intentional headroom above 7.5 left empty as a hedge against future outliers.**
+
+### Why this scale exists (read before scoring)
+- No vendor is "perfect" on any criterion — there is always a gap, a risk, or a trade-off. A score above 7.5 would assert the absence of any weakness, which is never true in practice.
+- 7.5 represents the structural category leader on this specific criterion, today, with no material weakness visible in the evidence base. It is a rare designation.
+- Most criteria across most markets will produce **zero 7.5 scores**. If your scoring ends up with multiple 7.5s, you have not been conservative enough.
+
+### Anchor Definitions (apply rigorously)
+
+| Band | Range | Meaning |
+|---|---|---|
+| Category-defining | 7.5 | The single best vendor in **{MARKET_NAME}** on this criterion, with overwhelming multi-tier evidence and no material weakness. |
+| Clear leader | 6.5–7.4 | Demonstrably ahead of category on this criterion. Identifiable gaps that do not threaten leadership. Competitors openly benchmark against this vendor. |
+| Strong performer | 5.5–6.4 | Above category median with specific evidenced strengths. Visible weaknesses that buyers work around. Solid but not category-shaping. |
+| Category median / competent | 4.5–5.4 | Meets baseline. Neither a buying reason nor an avoidance reason. **Default landing zone when evidence is mixed or unremarkable.** |
+| Below median / has real gaps | 3.5–4.4 | Identifiable deficits versus category norms. Buyers will encounter friction. Known soft spot. |
+| Weak | 2.5–3.4 | Material deficiency. Evidence of customer pain, execution failure, or strategic neglect. |
+| Severely deficient | 1.5–2.4 | Broken, abandoned, or actively eroding. Multiple independent failure signals. |
+| Effectively absent | 0.5–1.4 | Vendor does not credibly participate. Evidence missing or uniformly negative. |
+| Non-existent / disqualifying | 0.0–0.4 | No evidence vendor addresses this criterion, or a disqualifying event (bankruptcy, discontinuation, fraud disclosure). |
+
+## CONSERVATISM RULES — NON-NEGOTIABLE
+
+These rules are the spine of the scoring methodology. Every score must be defensible against them.
+
+### Rule 1: Start at 5.0 and move freely in either direction
+**The default starting position for every vendor on every criterion is 5.0.** You do not start at "what feels right" and adjust. You start at 5.0 and move up or down based on specific cited evidence. In your justification, state the starting position and the evidence that moved the score off it.
+
+**Downward movement is just as important as upward movement.** 5.0 is not a floor — it is a neutral starting point. In any given market, most vendors will score below 5.0 on at least two or three criteria. A scorecard where all eight criteria land in the 4.5–7.0 band is almost certainly inflated. Expect roughly:
+- 1–2 criteria where the vendor genuinely excels (above 5.5)
+- 2–4 criteria at or near the median (4.5–5.4)
+- 2–4 criteria with real gaps (below 4.5)
+
+If your output for a single vendor has zero scores below 4.5, re-examine. Every vendor has weak criteria. If you cannot identify them, you have not analyzed the vendor critically enough — you have summarized their marketing.
+
+### Rule 2: Asymmetric evidence requirements (upward bar is higher)
+Moving above 6.0 requires more evidence than moving below 4.0, because upward inflation is the dominant failure mode in vendor scoring. Specifically:
+
+**Upward movement (harder):**
+- To score above 6.5: cite at least three distinct evidence points from at least two source tiers.
+- To score above 7.0: evidence must be multi-source AND recent (within the last 12 months).
+- To score 7.5: cite at least five distinct evidence points across both tiers, all within 12 months, and no contradicting practitioner sentiment.
+
+**Downward movement (easier — but still evidence-based):**
+- To score below 4.5: cite at least one specific gap, deficit, or negative signal from either tier.
+- To score below 3.5: cite at least one Tier B source confirming practitioner-level pain, OR one Tier A signal of strategic neglect (discontinued product line, frozen roadmap, missing core capability).
+- To score below 2.5: cite at least two independent sources (either tier) confirming material failure.
+- To score below 1.5: cite multiple sources confirming the vendor is effectively absent, abandoned, or disqualified on this criterion.
+
