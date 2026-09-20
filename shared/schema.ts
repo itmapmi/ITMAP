@@ -592,6 +592,17 @@ export const insertVendorScoreSchema = createInsertSchema(vendorScores).omit({
   derivedFeatureCount: z.number().int().min(0).nullable().optional(),
 });
 
+// Client-facing subset for the admin vendor-scores API route. The derived
+// audit columns (coverage / feature count) are written only by the internal
+// feature-derivation pipeline (refreshDerivedFeatureScores) — exposing them
+// on the HTTP route would let a caller fake the audit trail on a notes-only
+// save, since createOrUpdateVendorScore trusts caller-provided audit values
+// whenever they're present.
+export const clientInsertVendorScoreSchema = insertVendorScoreSchema.omit({
+  derivedCoverage: true,
+  derivedFeatureCount: true,
+});
+
 export const insertFeatureCategorySchema = createInsertSchema(featureCategories).omit({
   id: true,
   createdAt: true,

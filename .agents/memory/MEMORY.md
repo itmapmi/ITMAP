@@ -1,5 +1,6 @@
 // hint: Logic changed on both sides. Requires understanding intent of each change.
 - [Market-scoped endpoint read auth](market-read-auth.md) — new marketId endpoints must enforce canReadMarket (404 on fail).
+- [Criteria/feature mutation auth model](market-mutation-auth.md) — criteria/feature-category/feature/vendor-feature-support writes are requireAdmin-only, no owner branch; only admin UI calls them.
 - [PDF template bundling](pdf-template-bundling.md) — bundle the report HTML into TS; do not readFile it at runtime (esbuild skips .html → prod EIO 500).
 - [Puppeteer Chromium in deploy](puppeteer-chromium-deploy.md) — path existing != launchable; ship project-local Chrome + declare nix libs; launch-probe candidates, don't trust access().
 - [PDF browser-free fallback](pdf-browser-free-fallback.md) — pdfmake fails in prod too (pdfkit EIO); renderHtmlWithPdfmake now try-catches and falls back to renderHtmlWithPdfLib (pdf-lib, pure JS).

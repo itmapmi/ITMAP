@@ -78,7 +78,7 @@ function chartActor(req: Request, note?: string) {
 
 import {
   insertMarketSchema, insertVendorSchema, insertCriteriaSchema,
-  insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema,
+  insertVendorScoreSchema, clientInsertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema,
   insertVendorFeatureSupportSchema, insertVendorLabelPositionSchema,
   insertResearchReportSchema,
 } from "@shared/schema";
@@ -556,7 +556,10 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/criteria", async (req, res) => {
+  // Criteria are a global (not market-scoped) rubric definition shared by
+  // every market, so — like the chart-config weights they're scored
+  // against — mutating them is admin-only; there is no owner escape hatch.
+  app.post("/api/criteria", requireAdmin, async (req, res) => {
     try {
       const criteriaData = insertCriteriaSchema.parse(req.body);
       const criteria = await storage.createCriteria(criteriaData);
@@ -567,7 +570,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/criteria/:id", async (req, res) => {
+  app.put("/api/criteria/:id", requireAdmin, async (req, res) => {
     try {
       const criteriaData = insertCriteriaSchema.partial().parse(req.body);
       const criteria = await storage.updateCriteria(req.params.id, criteriaData);
@@ -578,7 +581,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.delete("/api/criteria/:id", async (_req, res) => {
+  app.delete("/api/criteria/:id", requireAdmin, async (_req, res) => {
     try {
       await storage.deleteCriteria(_req.params.id);
       res.status(204).send();
@@ -607,7 +610,7 @@ export function registerMarketRoutes(app: Express): void {
   // reverted by the next refresh.
   app.post("/api/vendor-scores", requireAdmin, async (req, res) => {
     try {
-      const scoreData = insertVendorScoreSchema.parse(req.body);
+      const scoreData = clientInsertVendorScoreSchema.parse(req.body);
       const verdict = await checkDerivedScoreWrite(scoreData);
       if (!verdict.allowed) return res.status(400).json({ error: verdict.message });
       const score = await storage.createOrUpdateVendorScore(scoreData);
@@ -737,7 +740,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/feature-categories", async (req, res) => {
+  app.post("/api/feature-categories", requireAdmin, async (req, res) => {
     try {
       const categoryData = insertFeatureCategorySchema.parse(req.body);
       const category = await storage.createFeatureCategory(categoryData);
@@ -748,7 +751,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/feature-categories/:id", async (req, res) => {
+  app.put("/api/feature-categories/:id", requireAdmin, async (req, res) => {
     try {
       const categoryData = insertFeatureCategorySchema.parse(req.body);
       const category = await storage.updateFeatureCategory(req.params.id, categoryData);
@@ -762,7 +765,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.delete("/api/feature-categories/:id", async (req, res) => {
+  app.delete("/api/feature-categories/:id", requireAdmin, async (req, res) => {
     try {
       const category = await storage.getFeatureCategoryById(req.params.id);
       await storage.deleteFeatureCategory(req.params.id);
@@ -786,7 +789,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/features", async (req, res) => {
+  app.post("/api/features", requireAdmin, async (req, res) => {
     try {
       const featureData = insertFeatureSchema.parse(req.body);
       const feature = await storage.createFeature(featureData);
@@ -800,7 +803,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/features/:id", async (req, res) => {
+  app.put("/api/features/:id", requireAdmin, async (req, res) => {
     try {
       const { name, description } = z.object({ name: z.string().min(1), description: z.string().optional() }).parse(req.body);
       const feature = await storage.updateFeature(req.params.id, { name, description });
@@ -811,7 +814,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.delete("/api/features/:id", async (req, res) => {
+  app.delete("/api/features/:id", requireAdmin, async (req, res) => {
     try {
       const marketId = await storage.getFeatureMarketId(req.params.id);
       await storage.deleteFeature(req.params.id);
@@ -835,7 +838,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/vendor-feature-support", async (req, res) => {
+  app.post("/api/vendor-feature-support", requireAdmin, async (req, res) => {
     try {
       const supportData = insertVendorFeatureSupportSchema.parse(req.body);
       const support = await storage.createOrUpdateVendorFeatureSupport(supportData);
@@ -847,7 +850,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/vendor-feature-support", async (req, res) => {
+  app.put("/api/vendor-feature-support", requireAdmin, async (req, res) => {
     try {
       const { vendorId, featureId, supportLevel } = z.object({
         vendorId: z.string(), featureId: z.string(), supportLevel: z.number().min(0).max(4),
@@ -861,7 +864,7 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/vendor-feature-support/with-comments", async (req, res) => {
+  app.put("/api/vendor-feature-support/with-comments", requireAdmin, async (req, res) => {
     try {
       const { vendorId, featureId, supportLevel, comments } = z.object({
         vendorId: z.string(), featureId: z.string(), supportLevel: z.number().min(0).max(4), comments: z.string().optional(),
