@@ -12,13 +12,12 @@ import { recordHighIntentAction } from "@/lib/high-intent";
 
 interface VendorComparisonProps {
   marketId: string;
-  computedScores?: Record<string, Record<string, number>>;
   mobileMode?: boolean;
   mobileSelectedVendors?: string[];
   onMobileSelectedVendorsChange?: (vendorIds: string[]) => void;
 }
 
-export default function VendorComparison({ marketId, computedScores, mobileMode = false, mobileSelectedVendors, onMobileSelectedVendorsChange }: VendorComparisonProps) {
+export default function VendorComparison({ marketId, mobileMode = false, mobileSelectedVendors, onMobileSelectedVendorsChange }: VendorComparisonProps) {
   const [localSelectedVendors, setLocalSelectedVendors] = useState<string[]>([]);
   const selectedVendors = mobileMode && mobileSelectedVendors ? mobileSelectedVendors : localSelectedVendors;
   const setSelectedVendors = (updater: (previous: string[]) => string[]) => {
@@ -53,9 +52,8 @@ export default function VendorComparison({ marketId, computedScores, mobileMode 
   };
 
   const getVendorScore = (vendorId: string, criteriaId: string): number => {
-    // Prefer live-computed score (Product Capabilities, ISV Ecosystem) over stale DB value
-    const computed = computedScores?.[vendorId]?.[criteriaId];
-    if (computed !== undefined) return computed;
+    // All eight criteria, including the feature-derived Product Capabilities
+    // and ISV Ecosystem, are read as persisted on the vendor score row.
     const score = scores?.find(s => s.vendorId === vendorId && s.criteriaId === criteriaId);
     return score?.score ? parseFloat(score.score.toString()) : 0;
   };

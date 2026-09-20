@@ -19,8 +19,8 @@ import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
-import { calculateDerivedFeatureScore } from "@shared/derived-feature-scores";
 import { calculateAxisWeightShares } from "@shared/axis-weighting";
+import { useAuth } from "@/hooks/useAuth";
 import {
   allHistoricalPositionsQueryKey,
   historicalPositionsQueryKey,
@@ -85,6 +85,9 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
   const [evidenceVendor, setEvidenceVendor] = useState<{ vendor: VendorWithScores; pixelX: number; pixelY: number } | null>(null);
   const [criteriaWeights, setCriteriaWeights] = useState<{ [id: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  // The criteria-notes editor writes shared analyst commentary through the
+  // admin-only score endpoint, so only admins get the tab at all.
+  const { isAdmin } = useAuth();
   const [labelPositions, setLabelPositions] = useState<{ [vendorId: string]: { x: number; y: number } }>({});
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -249,15 +252,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       observer.disconnect();
     };
   }, [mobileMode, marketId, vendorsLoading, scoresLoading, weightsLoading]);
-
-  // Query support matrix data for product capabilities scoring
-  const { data: features } = useQuery<any[]>({
-    queryKey: ["/api/markets", marketId, "features"],
-  });
-
-  const { data: supportMatrix } = useQuery<any[]>({
-    queryKey: ["/api/markets", marketId, "feature-support"],
-  });
 
   // Query historical positions for the selected date
   const { data: historicalPositions } = useQuery<any[]>({
@@ -543,52 +537,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       });
     }
 
-    // Product Capabilities and ISV Ecosystem are calculated from the same
-    // feature-support data exported in the companion Excel sheets.
-    const productCapabilitiesCriteria = criteria?.find(c => 
-      c.name.toLowerCase().includes('product') && c.name.toLowerCase().includes('capabilities')
-    );
-    if (productCapabilitiesCriteria && features && supportMatrix) {
-      const supportMatrixScore = calculateDerivedFeatureScore(
-        vendor.id, features, supportMatrix, "productCapabilities",
-      );
-      if (supportMatrixScore !== null) {
-        const weightShare = axisWeightShares[productCapabilitiesCriteria.id] ?? 0;
-
-        // Replace the stored score so the chart, comparison, and export use
-        // the same feature-derived value.
-        if (Object.hasOwn(vendorScores, productCapabilitiesCriteria.id)) {
-          // Subtract the old database score from execution.
-          const oldScore = vendorScores[productCapabilitiesCriteria.id];
-          executionRawScore -= oldScore * weightShare;
-        }
-
-        // Add the feature-derived score.
-        executionRawScore += supportMatrixScore * weightShare;
-        vendorScores[productCapabilitiesCriteria.id] = supportMatrixScore;
-      }
-    }
-
-    const isvEcosystemCriteria = criteria?.find(c => 
-      c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
-    );
-    if (isvEcosystemCriteria && features && supportMatrix) {
-      const ecosystemScore = calculateDerivedFeatureScore(
-        vendor.id, features, supportMatrix, "isvEcosystem",
-      );
-      if (ecosystemScore !== null) {
-        const weightShare = axisWeightShares[isvEcosystemCriteria.id] ?? 0;
-
-        // Replace (do not add to) the stored ISV score. Previously both values
-        // were counted, giving ISV Ecosystem twice the intended influence.
-        if (Object.hasOwn(vendorScores, isvEcosystemCriteria.id)) {
-          const oldScore = vendorScores[isvEcosystemCriteria.id];
-          executionRawScore -= oldScore * weightShare;
-        }
-        executionRawScore += ecosystemScore * weightShare;
-        vendorScores[isvEcosystemCriteria.id] = ecosystemScore;
-      }
-    }
+    // Product Capabilities and ISV Ecosystem arrive already derived: the
+    // server persists them (with their coverage roll-up) from the feature
+    // support matrix via shared/derived-feature-scores.ts, so the chart uses
+    // the stored value like every other criterion instead of recomputing.
 
     return {
       vendor,
@@ -599,12 +551,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
   });
 
-  // Build live-computed scores map for VendorComparison so the comparison table
-  // shows the same Product Capabilities and ISV Ecosystem scores as the chart/eval tabs
-  const computedScoresForComparison: Record<string, Record<string, number>> =
-    (features && supportMatrix)
-      ? Object.fromEntries(vendorsWithRawScores.map(v => [v.vendor.id, v.vendorScores]))
-      : {};
 
   // Separate current and historical vendors for normalization
   const currentVendors = vendorsWithRawScores.filter(v => !v.isHistorical);
@@ -1593,7 +1539,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       <div className="mt-8">
         <VendorComparison
           marketId={marketId}
-          computedScores={computedScoresForComparison}
           mobileMode={mobileMode}
           mobileSelectedVendors={mobileSelectedVendors}
           onMobileSelectedVendorsChange={setMobileSelectedVendors}
@@ -1641,10 +1586,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
           
           {selectedVendor && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-2"}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="scores">Scores</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
+                {isAdmin && <TabsTrigger value="notes">Notes</TabsTrigger>}
               </TabsList>
               
               <TabsContent value="overview" className="mt-4">
@@ -1731,6 +1676,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 </div>
               </TabsContent>
               
+              {isAdmin && (
               <TabsContent value="notes" className="mt-4">
                 <h4 className="font-medium text-gray-900 mb-4">Criteria Notes</h4>
                 <div className="space-y-4">
@@ -1805,6 +1751,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                   })}
                 </div>
               </TabsContent>
+              )}
             </Tabs>
           )}
         </DialogContent>

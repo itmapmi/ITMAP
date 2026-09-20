@@ -24,7 +24,7 @@
 - [Reddit Pixel + CAPI integration](reddit-capi-integration.md) — CAPI v3 endpoint/schema, session-uuid dedup (not conversion_id), and why only SIGN_UP (not PAGE_VISIT) gets server-side CAPI.
 - [Vendor portal scoping model](vendor-portal-scoping.md) — /me/leads shows the whole market visitor pool (marketIds filter), not vendor-attributed events; watchlist feature was fully removed.
 - [Passwordless auth + verification policy](passwordless-auth-verification.md) — any email accepted; 3 unverified sessions via atomic reservation, not a time window; Resend needs itmap.ai DNS verified.
-- [Anonymous teaser timing](anonymous-teaser-timing.md) — clock starts only on market detail routes; 2 min soft prompt, 10 min forced; test by editing itmap_teaser_start_at in sessionStorage.
+- [Anonymous teaser timing](anonymous-teaser-timing.md) — clock starts only on market detail routes; 45 s soft prompt (constant, was 2 min), 10 min forced; tests must anchor on the constant.
 - [Emailed links must use PUBLIC_BASE_URL](emailed-links-public-base-url.md) — REPLIT_DEV_DOMAIN fallback leaks into emailed links sent from the dev workspace, showing recipients a broken Replit placeholder page.
 - [Preview iframe session cookies](preview-iframe-session-cookies.md) — Replit preview pane is a cross-site iframe; Lax/unpartitioned cookies never persist there, causing a fake "reload loop" that isn't a real app bug.
 - [Admin session death — ruled out, real cause elsewhere](admin-session-death-investigation.md) — "spontaneous session swap" was a real logout/login account switch; not a bug. See wouter-route-remount-flicker.md for the actual periodic-reload cause.
@@ -45,3 +45,5 @@
 - [Traffic visitor row ownership](traffic-visitor-row-ownership.md) — visitor rows are per browser cookie and never reassigned; account switch on a shared browser rotates the cookie. "Missing" logins are usually this.
 - [Identified visitor Leadgen attribution](identified-visitor-leadgen.md) — explicit visitor links can attribute client activity; never infer identity from IP, device, or email.
 - [Vitest .tsx import failures](vitest-jsx-tsx-import.md) — vitest's bundled Vite is version-skewed from @vitejs/plugin-react; extract pure logic to .ts modules instead of testing .tsx directly.
+- [Feature-derived criteria persistence](derived-criteria-persistence.md) — notes-only saves keep coverage; legacy "flag OR name" partition; writers refuse changed derived scores; empty partition deletes rows.
+- [Recovering a clobbered dev row](dev-db-row-recovery.md) — backup bucket is unreadable from the workspace; dev shares PKs with prod, so restore text from the prod read replica.

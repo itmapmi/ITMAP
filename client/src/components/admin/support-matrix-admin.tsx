@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
+import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +85,10 @@ export function SupportMatrixAdmin() {
     enabled: !!selectedMarket,
   });
 
+  // Persisted ISV Ecosystem score per vendor (must stay above the early
+  // return below so the hook order is stable across renders).
+  const { byVendor: persistedEcosystemScores } = useDerivedCriterionScores(selectedMarket, "isvEcosystem");
+
   // Create lookup map for quick access to support levels
   const supportLookup = new Map<string, { level: number; comments: string }>();
   supportMatrix.forEach(support => {
@@ -127,6 +133,8 @@ export function SupportMatrixAdmin() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
       await queryClient.refetchQueries({ queryKey: ["/api/markets", selectedMarket, "feature-support"] });
+      // The server re-derives Product Capabilities / ISV Ecosystem after the save.
+      await queryClient.invalidateQueries({ queryKey: ["/api/markets", selectedMarket, "scores"] });
       toast({
         title: "Support Updated",
         description: "Vendor feature support has been updated successfully.",
@@ -248,52 +256,41 @@ export function SupportMatrixAdmin() {
     (a, b) => a.category.displayOrder - b.category.displayOrder
   );
 
-  // Calculate ecosystem support totals — use isEcosystem flag (set by Market
-  // Builder) so domain-specific category names like "Applicant Tracking &
-  // Recruiting Systems" are correctly identified as ecosystem, not product.
-  const ecosystemFeatures = features.filter((feature: any) =>
-    feature.category?.isEcosystem === true,
-  );
+  // Ecosystem partition and raw roll-up come from the same shared module the
+  // server persists with, so the "Total / out of" figures here always match
+  // the ISV Ecosystem criterion's coverage. The /10 score itself is read from
+  // the persisted vendor score row — never recomputed in the browser.
+  const ecosystemFeatures = getFeaturesForDerivedScore(features as any, "isvEcosystem");
 
   const getEcosystemTotals = () => {
-    const vendorTotals: Record<string, { totalScore: number; maxScore: number; normalizedScore: number }> = {};
-    
+    const vendorTotals: Record<string, { totalScore: number; maxScore: number }> = {};
     vendors.forEach(vendor => {
       let totalScore = 0;
-      let maxScore = 0;
-      
       ecosystemFeatures.forEach(feature => {
-        const supportKey = `${vendor.id}-${feature.id}`;
-        const support = supportLookup.get(supportKey);
-        const level = support?.level || 0;
-        
-        // Convert support level to score
-        let score = 0;
-        switch (level) {
-          case 4: score = 1.0; break;    // Full support
-          case 3: score = 0.75; break;   // Good support  
-          case 2: score = 0.5; break;    // Partial support
-          case 1: score = 0; break;      // Limited support
-          case 0: score = 0; break;      // No support
-        }
-        
-        totalScore += score;
-        maxScore += 1.0;
+        const support = supportLookup.get(`${vendor.id}-${feature.id}`);
+        totalScore += supportLevelContribution(support?.level);
       });
-      
-      const normalizedScore = maxScore > 0 ? (totalScore / maxScore) * 10 : 0;
-      
       vendorTotals[vendor.id] = {
         totalScore: Number(totalScore.toFixed(2)),
-        maxScore,
-        normalizedScore: Number(normalizedScore.toFixed(2))
+        maxScore: ecosystemFeatures.length,
       };
     });
-    
     return vendorTotals;
   };
 
   const ecosystemTotals = getEcosystemTotals();
+  const renderPersistedEcosystemScore = (vendorId: string) => {
+    const entry = persistedEcosystemScores.get(vendorId);
+    return (
+      <div
+        className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1"
+        title={describeDerivedScore("isvEcosystem", entry)}
+        data-testid={`admin-derived-score-ecosystem-${vendorId}`}
+      >
+        {entry ? `${entry.score.toFixed(1)}/10` : "—/10"}
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -628,9 +625,7 @@ export function SupportMatrixAdmin() {
                           <div className="text-xs text-gray-500 mb-2">
                             out of {totals.maxScore}
                           </div>
-                          <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
-                            {totals.normalizedScore}/10
-                          </div>
+                          {renderPersistedEcosystemScore(vendor.id)}
                         </div>
                       );
                     })}
@@ -657,9 +652,7 @@ export function SupportMatrixAdmin() {
                             <div className="text-xs text-gray-500 mb-2">
                               out of {totals.maxScore}
                             </div>
-                            <div className="text-sm font-bold text-indigo-600 bg-indigo-100 rounded px-2 py-1">
-                              {totals.normalizedScore}/10
-                            </div>
+                            {renderPersistedEcosystemScore(vendor.id)}
                           </div>
                         );
                       })}
@@ -668,7 +661,7 @@ export function SupportMatrixAdmin() {
                 )}
                 
                 <div className="mt-4 text-sm text-purple-700 bg-purple-100 rounded-lg p-3">
-                  <strong>Note:</strong> Click "Update ISV Ecosystem" to sync these normalized scores (/10) with the ISV Ecosystem criteria in the Vendor Evaluation chart.
+                  <strong>Note:</strong> The /10 value is the persisted ISV Ecosystem criterion score: weighted coverage (Total ÷ out of) mapped onto the 0–10 rubric (0% → 0, 55% → 5, 100% → 10). It is re-derived automatically after each support edit; "Update ISV Ecosystem" forces a full re-derivation for the market.
                 </div>
               </div>
             )}

@@ -736,6 +736,17 @@ export async function runStartupMigrations(): Promise<void> {
                OR landing_utm_term IS NOT NULL OR landing_utm_content IS NOT NULL);
     `);
 
+    // 36. Audit columns for the feature-derived criteria (Product
+    //     Capabilities, ISV Ecosystem): raw weighted-coverage roll-up and the
+    //     feature count it was computed over, alongside the calibrated score.
+    //     Nullable, additive. Values are populated by the idempotent backfill
+    //     (npm run derive:backfill / POST /api/admin/derived-scores/rederive)
+    //     and kept current by server/derivedFeatureScores.ts.
+    await client.query(`
+      ALTER TABLE vendor_scores ADD COLUMN IF NOT EXISTS derived_coverage numeric(5,4);
+      ALTER TABLE vendor_scores ADD COLUMN IF NOT EXISTS derived_feature_count integer;
+    `);
+
     console.log('[DB] Startup migrations applied successfully');
   } catch (err) {
     console.error('[DB] Startup migration error:', err);

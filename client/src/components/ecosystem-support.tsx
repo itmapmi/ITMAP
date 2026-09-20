@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
+import { formatCoveragePercent } from "@shared/derived-feature-scores";
+import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface EcosystemSupportProps {
   marketId: string;
@@ -130,6 +132,10 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   >({
     queryKey: ["/api/markets", marketId, "feature-support"],
   });
+
+  // Persisted ISV Ecosystem scores (derived server-side from this matrix);
+  // the final score row reads these rather than recomputing.
+  const isvEcosystemScores = useDerivedCriterionScores(marketId, "isvEcosystem");
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
 
@@ -751,7 +757,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
   // Calculate ecosystem support totals for each vendor
   const getEcosystemTotals = () => {
-    const vendorTotals: Record<string, { totalScore: number; maxScore: number; normalizedScore: number }> = {};
+    // Raw roll-up only ("Total Score" / "Maximum"). The 0–10 ISV Ecosystem
+    // criterion is derived and persisted server-side; see useDerivedCriterionScores.
+    const vendorTotals: Record<string, { totalScore: number; maxScore: number }> = {};
     
     vendors.forEach(vendor => {
       let totalScore = 0;
@@ -776,12 +784,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         maxScore += 1.0;
       });
       
-      const normalizedScore = maxScore > 0 ? (totalScore / maxScore) * 10 : 0;
-      
       vendorTotals[vendor.id] = {
         totalScore: Number(totalScore.toFixed(2)),
         maxScore,
-        normalizedScore: Number(normalizedScore.toFixed(2))
       };
     });
     
@@ -1234,25 +1239,29 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                         Final Ecosystem Support Score
                       </div>
                       <div className="text-sm text-gray-600">
-                        Normalized score out of 10 points
+                        ISV Ecosystem criterion on the 0–10 rubric, derived from the coverage above
                       </div>
                     </div>
                     
                     {vendors.map(vendor => {
-                      const vendorTotals = ecosystemTotals[vendor.id];
-                      const finalScore = vendorTotals?.normalizedScore || 0;
+                      const derived = isvEcosystemScores.byVendor.get(vendor.id);
+                      const coverageLabel = formatCoveragePercent(derived?.coverage);
                       
                       return (
                         <div key={vendor.id} className="flex justify-center items-center">
-                          <div className="text-center p-3 bg-white rounded-lg border-2 border-green-200 shadow-sm">
+                          <div
+                            className="text-center p-3 bg-white rounded-lg border-2 border-green-200 shadow-sm"
+                            title={describeDerivedScore("isvEcosystem", derived)}
+                            data-testid={`derived-score-ecosystem-${vendor.id}`}
+                          >
                             <div className="font-bold text-xl text-green-700">
-                              {finalScore.toFixed(1)}
+                              {derived ? derived.score.toFixed(1) : "—"}
                             </div>
                             <div className="text-xs text-gray-500">
                               out of 10
                             </div>
                             <div className="text-xs text-green-600 font-medium">
-                              Ecosystem Score
+                              {coverageLabel ? `${coverageLabel} coverage` : derived ? "Ecosystem Score" : "Not derived yet"}
                             </div>
                           </div>
                         </div>

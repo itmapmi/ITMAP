@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
 import { requireFeature } from "../featureAccess";
+import { checkDerivedScoreWrite, refreshDerivedFeatureScoresSafely } from "../derivedFeatureScores";
 
 /**
  * Centralized read-authorization for any /api/markets/:marketId/* endpoint.
@@ -594,9 +595,16 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/vendor-scores", async (req, res) => {
+  // Generic score writer used by the admin Vendor Management grid and the
+  // chart's notes editor. Product Capabilities / ISV Ecosystem are derived
+  // from the feature matrix, so only notes-only saves (score unchanged) are
+  // accepted for them; a changed value is refused rather than silently
+  // reverted by the next refresh.
+  app.post("/api/vendor-scores", requireAdmin, async (req, res) => {
     try {
       const scoreData = insertVendorScoreSchema.parse(req.body);
+      const verdict = await checkDerivedScoreWrite(scoreData);
+      if (!verdict.allowed) return res.status(400).json({ error: verdict.message });
       const score = await storage.createOrUpdateVendorScore(scoreData);
       res.json(score);
     } catch (error) {
@@ -751,6 +759,9 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const categoryData = insertFeatureCategorySchema.parse(req.body);
       const category = await storage.updateFeatureCategory(req.params.id, categoryData);
+      // Renaming or re-flagging a category can move its features between the
+      // Product Capabilities and ISV Ecosystem partitions.
+      await refreshDerivedFeatureScoresSafely({ marketId: category.marketId }, "feature-category update");
       res.json(category);
     } catch (error) {
       console.error("Error updating feature category:", error);
@@ -760,7 +771,9 @@ export function registerMarketRoutes(app: Express): void {
 
   app.delete("/api/feature-categories/:id", async (req, res) => {
     try {
+      const category = await storage.getFeatureCategoryById(req.params.id);
       await storage.deleteFeatureCategory(req.params.id);
+      if (category) await refreshDerivedFeatureScoresSafely({ marketId: category.marketId }, "feature-category delete");
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting feature category:", error);
@@ -784,6 +797,9 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const featureData = insertFeatureSchema.parse(req.body);
       const feature = await storage.createFeature(featureData);
+      // A new feature widens the roll-up denominator for every vendor.
+      const category = await storage.getFeatureCategoryById(feature.categoryId);
+      if (category) await refreshDerivedFeatureScoresSafely({ marketId: category.marketId }, "feature create");
       res.status(201).json(feature);
     } catch (error) {
       console.error("Error creating feature:", error);
@@ -804,7 +820,9 @@ export function registerMarketRoutes(app: Express): void {
 
   app.delete("/api/features/:id", async (req, res) => {
     try {
+      const marketId = await storage.getFeatureMarketId(req.params.id);
       await storage.deleteFeature(req.params.id);
+      if (marketId) await refreshDerivedFeatureScoresSafely({ marketId }, "feature delete");
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting feature:", error);
@@ -828,6 +846,7 @@ export function registerMarketRoutes(app: Express): void {
     try {
       const supportData = insertVendorFeatureSupportSchema.parse(req.body);
       const support = await storage.createOrUpdateVendorFeatureSupport(supportData);
+      await refreshDerivedFeatureScoresSafely({ vendorId: support.vendorId }, "feature-support save");
       res.json(support);
     } catch (error) {
       console.error("Error saving feature support:", error);
@@ -841,6 +860,7 @@ export function registerMarketRoutes(app: Express): void {
         vendorId: z.string(), featureId: z.string(), supportLevel: z.number().min(0).max(4),
       }).parse(req.body);
       const support = await storage.createOrUpdateVendorFeatureSupport({ vendorId, featureId, supportLevel });
+      await refreshDerivedFeatureScoresSafely({ vendorId }, "feature-support update");
       res.json(support);
     } catch (error) {
       console.error("Error updating feature support:", error);
@@ -854,6 +874,7 @@ export function registerMarketRoutes(app: Express): void {
         vendorId: z.string(), featureId: z.string(), supportLevel: z.number().min(0).max(4), comments: z.string().optional(),
       }).parse(req.body);
       const support = await storage.createOrUpdateVendorFeatureSupport({ vendorId, featureId, supportLevel, comments });
+      await refreshDerivedFeatureScoresSafely({ vendorId }, "feature-support update with comments");
       res.json(support);
     } catch (error) {
       console.error("Error updating feature support with comments:", error);

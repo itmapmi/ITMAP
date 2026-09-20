@@ -8,7 +8,15 @@ import crypto from "crypto";
 import { z } from "zod";
 import { insertPromptRepositorySchema, LOCKABLE_FEATURE_KEYS, type User } from "@shared/schema";
 import type { SignalCollectionResult } from "../signals/orchestrator";
-import { calculateDerivedFeatureScore, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
+import {
+  backfillDerivedFeatureScores,
+  checkDerivedScoreWrite,
+  getCriteriaDistribution,
+  getDerivedKindForVendorScore,
+  refreshDerivedFeatureScores,
+  refreshDerivedFeatureScoresSafely,
+} from "../derivedFeatureScores";
+import { DERIVED_CRITERION_NAMES } from "@shared/derived-feature-scores";
 import { sendVerificationEmail, sendCustomEmail, sendFactReviewDecisionEmail } from "../emailService";
 import { issueAndSendVerification, issueAndSendCompanyVerification } from "./auth";
 
@@ -683,6 +691,7 @@ export function registerAdminRoutes(app: Express): void {
           console.log(`Skipping support record - vendor: ${support.vendorProduct}, feature: ${support.featureName}`);
         }
       }
+      await refreshDerivedFeatureScoresSafely({ marketId: market.id }, "bulk support-matrix upload");
       res.json({ success: true, created: { categories: createdCategories, features: createdFeatures, supportRecords: updatedSupport } });
     } catch (error) {
       console.error("Error bulk uploading support matrix:", error);
@@ -696,39 +705,23 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const { marketId } = req.body;
       if (!marketId) return res.status(400).json({ error: "Market ID is required" });
-      const vendors = await storage.getVendorsByMarket(marketId);
-      const allFeatures = await storage.getMarketFeatures(marketId);
-      const features = allFeatures.filter(feature => {
-        const categoryName = feature.category?.name?.toLowerCase() || '';
-        // isEcosystem flag is primary; name-keyword fallback mirrors the frontend filter exactly
-        if ((feature.category as any)?.isEcosystem === true) return false;
-        return !categoryName.includes('ecosystem') &&
-               !categoryName.includes('integration') &&
-               !categoryName.includes('partnership') &&
-               !categoryName.includes('third-party') &&
-               !categoryName.includes('isv');
+      const market = await storage.getMarketById(marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
+
+      // Same shared derivation as Market Builder / import / backfill; the
+      // persisted score and coverage roll-up are what every reader shows.
+      const summary = await refreshDerivedFeatureScores(marketId, { kinds: ["productCapabilities"] });
+      const skipped = summary.skipped[0];
+      if (skipped) return res.status(400).json({ error: `Product Capabilities not derived: ${skipped.reason}` });
+
+      const updatedScores = summary.results.length;
+      res.json({
+        success: true,
+        message: `Updated Product Capabilities scores for ${updatedScores} vendors`,
+        updatedScores,
+        changed: summary.written,
+        marketId,
       });
-      const supportData = await storage.getVendorFeatureSupport(marketId);
-      const allCriteria = await storage.getAllCriteria();
-      const productCapabilitiesCriteria = allCriteria.find(c => c.name === 'Product Capabilities');
-      if (!productCapabilitiesCriteria) return res.status(404).json({ error: "Product Capabilities criteria not found" });
-      const supportLookup = new Map<string, number>();
-      supportData.forEach(support => supportLookup.set(`${support.vendorId}-${support.featureId}`, support.supportLevel));
-      let updatedScores = 0;
-      for (const vendor of vendors) {
-        const totalScore = features.reduce((sum, feature) => {
-          const supportLevel = supportLookup.get(`${vendor.id}-${feature.id}`) || 0;
-          let score = 0;
-          switch (supportLevel) { case 4: score = 1.0; break; case 3: score = 0.75; break; case 2: score = 0.5; break; }
-          return sum + score;
-        }, 0);
-        const maxScore = features.length * 1.0;
-        const normalizedScore = maxScore > 0 ? Number(((Number(totalScore.toFixed(2)) / maxScore) * 10).toFixed(1)) : 0;
-        await storage.createOrUpdateVendorScore({ vendorId: vendor.id, criteriaId: productCapabilitiesCriteria.id, score: normalizedScore });
-        updatedScores++;
-        console.log(`Updated Product Capabilities score for ${vendor.name}: ${normalizedScore}/10`);
-      }
-      res.json({ success: true, message: `Updated Product Capabilities scores for ${updatedScores} vendors`, updatedScores, marketId });
     } catch (error) {
       console.error("Error updating product capabilities scores:", error);
       res.status(500).json({ error: "Failed to update product capabilities scores" });
@@ -739,60 +732,79 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const { marketId } = req.body;
       if (!marketId) return res.status(400).json({ error: "Market ID is required" });
+      const market = await storage.getMarketById(marketId);
+      if (!market) return res.status(404).json({ error: "Market not found" });
 
-      const marketVendors = await storage.getVendorsByMarket(marketId);
-      const allFeatures = await storage.getMarketFeatures(marketId);
-      const ecosystemFeatures = getFeaturesForDerivedScore(allFeatures, "isvEcosystem");
-      const supportRows = await storage.getVendorFeatureSupport(marketId);
-      console.log(`[ISV Ecosystem] Market ${marketId}: ${ecosystemFeatures.length} ecosystem features`);
+      const summary = await refreshDerivedFeatureScores(marketId, { kinds: ["isvEcosystem"] });
+      const skipped = summary.skipped[0];
+      if (skipped) return res.status(400).json({ error: `ISV Ecosystem not derived: ${skipped.reason}` });
 
-      if (ecosystemFeatures.length === 0) {
-        return res.status(400).json({ error: "No ecosystem features found" });
-      }
-
-      // Find ISV Ecosystem criterion — search by 'isv' OR 'ecosystem', not AND
-      const allCriteria = await storage.getAllCriteria();
-      let isvEcosystemCriteria = allCriteria.find(c =>
-        c.name.toLowerCase().includes('isv') && c.name.toLowerCase().includes('ecosystem')
-      );
-      if (!isvEcosystemCriteria) {
-        // Widen: just look for 'isv' or 'ecosystem' in the criterion name
-        isvEcosystemCriteria = allCriteria.find(c =>
-          c.name.toLowerCase().includes('isv') || c.name.toLowerCase().includes('ecosystem')
-        );
-      }
-      if (!isvEcosystemCriteria) {
-        // Last resort: check market criteria weights for any criterion linked to this market
-        const weights = await storage.getMarketCriteriaWeights(marketId);
-        const found = weights.find(w =>
-          w.criteria.name.toLowerCase().includes('isv') || w.criteria.name.toLowerCase().includes('ecosystem')
-        );
-        if (found) isvEcosystemCriteria = found.criteria;
-      }
-      if (!isvEcosystemCriteria) {
-        return res.status(404).json({
-          error: `ISV Ecosystem criteria not found. Available: ${allCriteria.map(c => c.name).join(', ')}`
-        });
-      }
-
-      let updatedScores = 0;
-      for (const vendor of marketVendors) {
-        const normalizedScore = calculateDerivedFeatureScore(
-          vendor.id,
-          allFeatures,
-          supportRows,
-          "isvEcosystem",
-        );
-        if (normalizedScore === null) continue;
-        await storage.createOrUpdateVendorScore({ vendorId: vendor.id, criteriaId: isvEcosystemCriteria.id, score: normalizedScore });
-        updatedScores++;
-        console.log(`[ISV Ecosystem] ${vendor.name}: ${normalizedScore}/10`);
-      }
-
-      res.json({ success: true, message: `Updated ISV Ecosystem scores for ${updatedScores} vendors`, updatedScores, marketId, ecosystemFeatures: ecosystemFeatures.length });
+      const updatedScores = summary.results.length;
+      const ecosystemFeatures = summary.results[0]?.derived.featureCount ?? 0;
+      res.json({
+        success: true,
+        message: `Updated ISV Ecosystem scores for ${updatedScores} vendors`,
+        updatedScores,
+        changed: summary.written,
+        marketId,
+        ecosystemFeatures,
+      });
     } catch (error) {
       console.error("Error updating ISV ecosystem scores:", error);
       res.status(500).json({ error: "Failed to update ISV ecosystem scores" });
+    }
+  });
+
+  // Idempotent re-derivation of both feature-derived criteria for every
+  // market (or one market). This is the production path for the backfill:
+  // POST with an admin session; pass { dryRun: true } to preview.
+  app.post("/api/admin/derived-scores/rederive", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({
+        marketId: z.string().optional(),
+        dryRun: z.boolean().optional(),
+      }).parse(req.body ?? {});
+      const report = await backfillDerivedFeatureScores({
+        dryRun: body.dryRun,
+        marketIds: body.marketId ? [body.marketId] : undefined,
+        log: (line) => console.log(`[derived-scores] ${line}`),
+      });
+      res.json({
+        dryRun: report.dryRun,
+        totals: report.totals,
+        markets: report.markets.map((m) => ({
+          marketId: m.marketId,
+          marketName: m.marketName,
+          vendorsEvaluated: m.vendorsEvaluated,
+          written: m.written,
+          unchanged: m.unchanged,
+          skipped: m.skipped,
+          changes: m.results
+            .filter((r) => r.changed)
+            .map((r) => ({
+              vendor: r.vendorName,
+              criterion: r.kind,
+              from: r.previousScore,
+              to: r.derived.score,
+              coverage: r.derived.coverage,
+              featureCount: r.derived.featureCount,
+            })),
+        })),
+      });
+    } catch (error) {
+      console.error("Error re-deriving feature scores:", error);
+      res.status(500).json({ error: "Failed to re-derive feature scores" });
+    }
+  });
+
+  // Read-only distribution check: per-market min/avg/max of all criteria.
+  app.get("/api/admin/derived-scores/distribution", requireAdmin, async (req, res) => {
+    try {
+      const visibleOnly = req.query.visibleOnly !== "false";
+      res.json(await getCriteriaDistribution({ visibleOnly }));
+    } catch (error) {
+      console.error("Error computing criteria distribution:", error);
+      res.status(500).json({ error: "Failed to compute criteria distribution" });
     }
   });
 
@@ -1052,10 +1064,13 @@ export function registerAdminRoutes(app: Express): void {
       }
 
       if (evalType === 'vendor_evaluation') {
+        const verdict = await checkDerivedScoreWrite({ vendorId: suggestion.vendorId, criteriaId: subjectId, score: finalValue });
+        if (!verdict.allowed) return res.status(400).json({ error: verdict.message });
         await storage.createOrUpdateVendorScore({ vendorId: suggestion.vendorId, criteriaId: subjectId, score: finalValue, notes: finalCommentary });
       } else {
         // product_evaluation or ecosystem_evaluation — both update feature support
         await storage.createOrUpdateVendorFeatureSupport({ vendorId: suggestion.vendorId, featureId: subjectId, supportLevel: Math.round(finalValue), comments: finalCommentary });
+        await refreshDerivedFeatureScoresSafely({ vendorId: suggestion.vendorId }, "AI suggestion approval");
       }
 
       const updated = await storage.updateAiSuggestionStatus(suggestion.id, 'approved');
@@ -1442,9 +1457,9 @@ export function registerAdminRoutes(app: Express): void {
       step('inserting vendor_scores');
       for (const s of srcVs) {
         await db.execute(sql`
-          INSERT INTO vendor_scores (id, vendor_id, criteria_id, score, notes, created_at, updated_at)
+          INSERT INTO vendor_scores (id, vendor_id, criteria_id, score, notes, derived_coverage, derived_feature_count, created_at, updated_at)
           VALUES (${crypto.randomUUID()}, ${vendorIdMap.get(s.vendor_id)}, ${s.criteria_id},
-            ${s.score}, ${s.notes ?? null}, NOW(), NOW())
+            ${s.score}, ${s.notes ?? null}, ${s.derived_coverage ?? null}, ${s.derived_feature_count ?? null}, NOW(), NOW())
         `);
       }
 
@@ -1844,7 +1859,21 @@ export function registerAdminRoutes(app: Express): void {
         if (existing.featureSupportId && updatedScore !== undefined) {
           return res.status(400).json({ error: "Product/ecosystem items use a support level, not a decimal score" });
         }
+        if (existing.vendorScoreId && updatedScore !== undefined) {
+          // Product Capabilities / ISV Ecosystem are derived from the feature
+          // matrix; a manual score here would be overwritten by the next
+          // refresh, so refuse it explicitly instead of silently reverting.
+          const derivedKind = await getDerivedKindForVendorScore(existing.vendorScoreId);
+          if (derivedKind) {
+            return res.status(400).json({
+              error: `${DERIVED_CRITERION_NAMES[derivedKind]} is derived from feature support and cannot be set directly — approve a support-level change on the underlying feature instead`,
+            });
+          }
+        }
         flag = await storage.approveFactCheckFlag(req.params.id, reviewedByUserId, updatedSupportLevel, updatedComments, updatedScore);
+        if (flag && existing.featureSupportId && updatedSupportLevel !== undefined) {
+          await refreshDerivedFeatureScoresSafely({ vendorId: existing.vendorId }, "fact-review approval");
+        }
       } else {
         flag = await storage.rejectFactCheckFlag(req.params.id, reviewedByUserId, adminNotes);
       }

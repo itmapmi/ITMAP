@@ -34,6 +34,21 @@ export async function getVendorScores(vendorId: string): Promise<VendorScore[]> 
   return await db.select().from(vendorScores).where(eq(vendorScores.vendorId, vendorId));
 }
 
+export async function getVendorScoreById(id: string): Promise<VendorScore | undefined> {
+  const [row] = await db.select().from(vendorScores).where(eq(vendorScores.id, id));
+  return row;
+}
+
+/** Removes one criterion's score rows for the given vendors; returns the count removed. */
+export async function deleteVendorScoresForCriterion(vendorIds: string[], criteriaId: string): Promise<number> {
+  if (vendorIds.length === 0) return 0;
+  const removed = await db
+    .delete(vendorScores)
+    .where(and(inArray(vendorScores.vendorId, vendorIds), eq(vendorScores.criteriaId, criteriaId)))
+    .returning({ id: vendorScores.id });
+  return removed.length;
+}
+
 export async function getMarketIdsWithScoresForVendors(vendorIds: string[]): Promise<string[]> {
   if (!vendorIds.length) return [];
   const rows = await db
@@ -54,6 +69,8 @@ export async function getMarketVendorScores(
       criteriaId: vendorScores.criteriaId,
       score: vendorScores.score,
       notes: vendorScores.notes,
+      derivedCoverage: vendorScores.derivedCoverage,
+      derivedFeatureCount: vendorScores.derivedFeatureCount,
       createdAt: vendorScores.createdAt,
       updatedAt: vendorScores.updatedAt,
       vendor: vendors,
@@ -65,19 +82,44 @@ export async function getMarketVendorScores(
     .where(eq(vendors.marketId, marketId));
 }
 
+/**
+ * Upserts one vendor score. The derived-coverage audit columns are written
+ * only when the caller is the shared feature derivation. Any other writer
+ * (LLM rubric score, admin override, import) that CHANGES the score clears
+ * them, so a stale coverage can never sit next to a score it did not produce;
+ * a write that leaves the score unchanged (e.g. a notes-only save that
+ * re-posts the current score) keeps the audit columns intact.
+ */
 export async function createOrUpdateVendorScore(score: InsertVendorScore): Promise<VendorScore> {
   const existing = await db
     .select()
     .from(vendorScores)
     .where(and(eq(vendorScores.vendorId, score.vendorId), eq(vendorScores.criteriaId, score.criteriaId)));
 
+  const callerProvidedAudit = score.derivedCoverage !== undefined || score.derivedFeatureCount !== undefined;
+  const derivedCoverage = score.derivedCoverage === undefined || score.derivedCoverage === null
+    ? null
+    : score.derivedCoverage.toFixed(4);
+  const derivedFeatureCount = score.derivedFeatureCount ?? null;
+
   if (existing.length > 0) {
-    const updateData: any = { score: score.score.toString(), updatedAt: new Date() };
+    const scoreUnchanged = Number(existing[0].score) === Number(score.score);
+    const updateData: Partial<typeof vendorScores.$inferInsert> = {
+      score: score.score.toString(),
+      updatedAt: new Date(),
+    };
+    if (callerProvidedAudit || !scoreUnchanged) {
+      updateData.derivedCoverage = derivedCoverage;
+      updateData.derivedFeatureCount = derivedFeatureCount;
+    }
     if (score.notes !== undefined) updateData.notes = score.notes;
     const [updated] = await db.update(vendorScores).set(updateData).where(eq(vendorScores.id, existing[0].id)).returning();
     return updated;
   } else {
-    const [newScore] = await db.insert(vendorScores).values({ ...score, score: score.score.toString() }).returning();
+    const [newScore] = await db
+      .insert(vendorScores)
+      .values({ ...score, score: score.score.toString(), derivedCoverage, derivedFeatureCount })
+      .returning();
     return newScore;
   }
 }

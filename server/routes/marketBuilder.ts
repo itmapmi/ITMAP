@@ -9,6 +9,8 @@ import { fetchUrlContent } from "../market-builder/sources";
 import { listMarketBuilderJobsWithStageSummaries } from "../storage/marketBuilder";
 import { listInFlightVendors } from "../market-builder/inflight";
 import { parseStageImport, generateStageTemplate, ImportValidationError } from "../market-builder/import";
+import { refreshDerivedFeatureScores, resolveDerivedCriterion } from "../derivedFeatureScores";
+import { DERIVED_FEATURE_SCORE_KINDS } from "@shared/derived-feature-scores";
 
 // Per-user rate limits for end-user Market Builder runs.
 // These are intentionally generous; tighten if abuse appears.
@@ -785,11 +787,21 @@ export function registerMarketBuilderRoutes(app: Express): void {
         await storage.updateMarketCriteriaWeight(market.id, c.id, w);
       }
 
-      // Save vendor scores per criterion (commentary + sources appended)
+      // Save vendor scores per criterion (commentary + sources appended).
+      // Stage 2 carries score-0 placeholders for the two feature-derived
+      // criteria; those are never persisted — the derivation at the end of
+      // this publish writes them, and a market whose phase never ran stays
+      // unscored instead of showing a fake 0.
+      const derivedCriterionIds = new Set(
+        DERIVED_FEATURE_SCORE_KINDS
+          .map((kind) => resolveDerivedCriterion(allCriteria, kind)?.id)
+          .filter((id): id is string => !!id),
+      );
       for (const s of (stage2.scores ?? [])) {
         const vendorId = vendorIdMap.get(s.vendorName);
         const criterionId = findCriterionId(s.criterionName);
         if (!vendorId || !criterionId) continue;
+        if (derivedCriterionIds.has(criterionId)) continue;
         const rawCommentary = s.commentary ?? s.notes ?? "";
         const srcList: string[] = Array.isArray(s.sources) ? s.sources.filter(Boolean) : [];
         const notes = srcList.length > 0
@@ -984,57 +996,24 @@ export function registerMarketBuilderRoutes(app: Express): void {
         }
       }
 
-      // ── Auto-compute Product Capabilities & ISV Ecosystem scores ─────────
-      // These two Vendor Evaluation criteria are derived from Harvey Ball data,
-      // not scored by the Stage 2 AI. Formula (same as admin panel):
-      //   Harvey Ball 4→1.0, 3→0.75, 2→0.5, 0-1→0.0
-      //   normalizedScore = (sum / (featureCount * 1.0)) * 10, rounded to 1dp
-      const harveyWeight = (level: number) =>
-        level === 4 ? 1.0 : level === 3 ? 0.75 : level === 2 ? 0.5 : 0.0;
-
-      const productCapCriterionId = findCriterionId("Product Capabilities");
-      const isvEcoCriterionId     = findCriterionId("ISV Ecosystem");
-
-      const productFeatureIds = new Set(productFeatureIdMap.values());
-      const ecoFeatureIds     = new Set(ecoFeatureIdMap.values());
-
-      for (const [vendorName, vendorId] of vendorIdMap) {
-        // Product Capabilities — from stage4.support (only when product phase ran)
-        if (havePhaseProduct && productCapCriterionId && productFeatureIds.size > 0) {
-          const prodSupport = (stage4.support ?? []).filter((s: any) => s.vendorName === vendorName);
-          // Only write the score if this vendor appears in the stage result.
-          // In incremental ("new only") runs the stage result only contains the new
-          // vendor; skipping absent vendors prevents overwriting their existing scores
-          // with 0.
-          if (prodSupport.length > 0) {
-            const prodSum = prodSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
-            const prodScore = Number(((prodSum / productFeatureIds.size) * 10).toFixed(1));
-            await storage.createOrUpdateVendorScore({
-              vendorId,
-              criteriaId: productCapCriterionId,
-              score: prodScore,
-              notes: `Auto-computed from ${productFeatureIds.size} product evaluation features.`,
-            });
-          }
-        }
-
-        // ISV Ecosystem — from stage6.support (only when ecosystem phase ran)
-        if (havePhaseEcosystem && isvEcoCriterionId && ecoFeatureIds.size > 0) {
-          const ecoSupport = (stage6.support ?? []).filter((s: any) => s.vendorName === vendorName);
-          // Same guard: skip vendors absent from the incremental stage result so
-          // their existing Harvey Ball scores are not reset to 0.
-          if (ecoSupport.length > 0) {
-            const ecoSum = ecoSupport.reduce((acc: number, s: any) => acc + harveyWeight(s.supportLevel ?? 0), 0);
-            const ecoScore = Number(((ecoSum / ecoFeatureIds.size) * 10).toFixed(1));
-            await storage.createOrUpdateVendorScore({
-              vendorId,
-              criteriaId: isvEcoCriterionId,
-              score: ecoScore,
-              notes: `Auto-computed from ${ecoFeatureIds.size} ISV ecosystem features.`,
-            });
-          }
-        }
+      // ── Derive Product Capabilities & ISV Ecosystem scores ───────────────
+      // These two Vendor Evaluation criteria are not scored by the Stage 2 AI;
+      // they are derived from the persisted Harvey-Ball matrix by the single
+      // shared derivation (shared/derived-feature-scores.ts), which also
+      // stores the raw coverage roll-up for audit. Deriving from the database
+      // rather than the stage payload makes incremental ("new only") runs safe:
+      // existing vendors keep their stored support rows and are re-derived
+      // against the current feature list instead of being reset to 0. Markets
+      // whose product or ecosystem phase never ran have no features in that
+      // partition and are skipped, never written as 0.
+      const derivedSummary = await refreshDerivedFeatureScores(market.id);
+      for (const skipped of derivedSummary.skipped) {
+        console.log(`[market-builder] derived score skipped for ${market.name}: ${skipped.reason}`);
       }
+      console.log(
+        `[market-builder] derived scores for ${market.name}: ${derivedSummary.written} rewritten, `
+        + `${derivedSummary.unchanged} unchanged across ${derivedSummary.vendorsEvaluated} vendors`,
+      );
 
       await storage.updateMarketBuilderJob(job.id, { status: "published", marketId: market.id });
       return { ok: true, marketId: market.id, isVisible };

@@ -69,6 +69,21 @@ export async function getMarketFeatures(marketId: string): Promise<FeatureWithCa
     .orderBy(featureCategories.displayOrder, features.displayOrder) as FeatureWithCategory[];
 }
 
+export async function getFeatureCategoryById(id: string): Promise<FeatureCategory | undefined> {
+  const [category] = await db.select().from(featureCategories).where(eq(featureCategories.id, id));
+  return category;
+}
+
+/** Resolves the market a feature belongs to (feature → category → market). */
+export async function getFeatureMarketId(featureId: string): Promise<string | undefined> {
+  const [row] = await db
+    .select({ marketId: featureCategories.marketId })
+    .from(features)
+    .innerJoin(featureCategories, eq(features.categoryId, featureCategories.id))
+    .where(eq(features.id, featureId));
+  return row?.marketId;
+}
+
 export async function getCategoryFeatures(categoryId: string): Promise<Feature[]> {
   return await db.select().from(features).where(eq(features.categoryId, categoryId)).orderBy(features.displayOrder, features.name);
 }

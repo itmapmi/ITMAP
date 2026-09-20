@@ -144,11 +144,12 @@ describe("computeTeaserSchedule — high-intent grace period is delay-only", () 
     expect(afterGraceEnds.teaserActive).toBe(false);
   });
 
-  it("never accelerates the soft prompt ahead of the base 2-minute schedule", () => {
+  it("never accelerates the soft prompt ahead of the base free-window schedule", () => {
     // A high-intent gate that already opened in the past must not make an
-    // early, still-within-the-free-window moment eligible.
+    // early, still-within-the-free-window moment eligible. Anchor on the
+    // constant so the test follows the window length (currently 45s).
     const schedule = computeTeaserSchedule(
-      baseInput({ now: BASE_START + 60_000, highIntentEarliestPromptAt: BASE_START }),
+      baseInput({ now: BASE_START + TEASER_DURATION_MS - 1_000, highIntentEarliestPromptAt: BASE_START }),
     );
     expect(schedule.expired).toBe(false);
     expect(schedule.eligibleToAutoShow).toBe(false);

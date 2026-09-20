@@ -16,6 +16,23 @@ import { Edit, Trash2, Building2, Save, AlertTriangle, WifiOff, CheckCircle2, Re
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { insertVendorSchema, type InsertVendor, type Vendor, type Market, type Criteria, type VendorScore, type CanonicalVendor } from "@shared/schema";
+import { getDerivedKindForCriterionName } from "@shared/derived-feature-scores";
+
+const DERIVED_SCORE_HINT =
+  "Derived from the feature support matrix — edit feature support to change it. Notes remain editable.";
+
+/** Surfaces the server's error text ("400: {\"error\":\"…\"}") instead of a generic message. */
+function describeApiError(error: unknown, fallback: string): string {
+  const raw = error instanceof Error ? error.message : "";
+  const body = raw.replace(/^\d{3}:\s*/, "");
+  try {
+    const parsed = JSON.parse(body);
+    if (parsed && typeof parsed.error === "string") return parsed.error;
+  } catch {
+    // not JSON — fall through
+  }
+  return body || fallback;
+}
 
 interface UrlHealthResult {
   vendorId: string;
@@ -276,10 +293,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
         description: "Score and notes saved successfully",
       });
     },
-    onError: () => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: "Failed to save score",
+        description: describeApiError(error, "Failed to save score"),
         variant: "destructive",
       });
     },
@@ -314,10 +331,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
         description: "Notes saved successfully",
       });
     },
-    onError: () => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: "Failed to save notes",
+        description: describeApiError(error, "Failed to save notes"),
         variant: "destructive",
       });
     },
@@ -1040,6 +1057,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                               const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
                               const pendingNotes = vendorNotes[key];
+                              const isDerived = getDerivedKindForCriterionName(criterion.name) !== null;
                               return (
                                 <TableCell key={criterion.id} className="text-center">
                                   <div className="space-y-2">
@@ -1057,6 +1075,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                       }}
                                       className="w-20 text-center"
                                       placeholder="0-10"
+                                      readOnly={isDerived}
+                                      aria-readonly={isDerived}
+                                      title={isDerived ? DERIVED_SCORE_HINT : undefined}
+                                      data-testid={`score-input-${vendor.id}-${criterion.id}`}
                                     />
                                     <Textarea
                                       placeholder="Add notes..."
@@ -1259,6 +1281,7 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                               const key = `${vendor.id}:::${criterion.id}`;
                               const pendingScore = vendorScores[key];
                               const pendingNotes = vendorNotes[key];
+                              const isDerived = getDerivedKindForCriterionName(criterion.name) !== null;
                               return (
                                 <TableCell key={criterion.id} className="text-center">
                                   <div className="space-y-2">
@@ -1276,6 +1299,10 @@ export default function VendorManagement({ initialEditVendor, onInitialEditConsu
                                       }}
                                       className="w-20 text-center"
                                       placeholder="0-10"
+                                      readOnly={isDerived}
+                                      aria-readonly={isDerived}
+                                      title={isDerived ? DERIVED_SCORE_HINT : undefined}
+                                      data-testid={`score-input-${vendor.id}-${criterion.id}`}
                                     />
                                     <Textarea
                                       placeholder="Add notes..."

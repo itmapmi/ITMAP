@@ -225,6 +225,12 @@ export const vendorScores = pgTable("vendor_scores", {
   criteriaId: varchar("criteria_id").notNull().references(() => criteria.id, { onDelete: "cascade" }),
   score: decimal("score", { precision: 4, scale: 2 }).notNull(), // 0-10, allows decimal values like 8.64
   notes: text("notes"), // Notes for the score
+  // Audit trail for the feature-derived criteria (Product Capabilities, ISV
+  // Ecosystem): raw weighted-coverage roll-up (0–1) and the number of features
+  // it was computed over. Null for rubric-scored criteria and for any score
+  // written outside the shared derivation (see shared/derived-feature-scores.ts).
+  derivedCoverage: decimal("derived_coverage", { precision: 5, scale: 4 }),
+  derivedFeatureCount: integer("derived_feature_count"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -548,6 +554,8 @@ export const insertVendorScoreSchema = createInsertSchema(vendorScores).omit({
 }).extend({
   score: z.number().min(0, "Score must be at least 0").max(10, "Score cannot exceed 10"),
   notes: z.string().optional(),
+  derivedCoverage: z.number().min(0).max(1).nullable().optional(),
+  derivedFeatureCount: z.number().int().min(0).nullable().optional(),
 });
 
 export const insertFeatureCategorySchema = createInsertSchema(featureCategories).omit({

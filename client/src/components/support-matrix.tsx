@@ -14,6 +14,8 @@ import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { recordHighIntentAction } from "@/lib/high-intent";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
+import { formatCoveragePercent } from "@shared/derived-feature-scores";
+import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface SupportMatrixProps {
   marketId: string;
@@ -484,6 +486,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
   const { data: supportMatrix, isLoading: supportLoading } = useQuery<VendorFeatureSupport[]>({
     queryKey: ["/api/markets", marketId, "feature-support"],
   });
+
+  // Persisted Product Capabilities scores (derived server-side from this
+  // matrix); the score row below reads these rather than recomputing.
+  const productCapabilityScores = useDerivedCriterionScores(marketId, "productCapabilities");
 
   const isLoading = featuresLoading || vendorsLoading || supportLoading;
 
@@ -1332,11 +1338,8 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 );
               })()}
 
-              {/* Normalized Score Row - Product Capabilities out of 10 */}
+              {/* Product Capabilities criterion (persisted 0–10 rubric score) */}
               {productCapabilityFeatures && productCapabilityFeatures.length > 0 && (() => {
-                const overallTotals = calculateOverallTotals(productCapabilityFeatures, vendors);
-                const maxScore = calculateMaximumScore(productCapabilityFeatures);
-                
                 return (
                   <div className="mt-4 pt-6 border-t-2 border-gradient-to-r from-purple-200 to-blue-200 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
                     <div 
@@ -1352,25 +1355,29 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                           Product Capabilities Score
                         </div>
                         <div className="text-sm text-gray-600">
-                          Normalized score out of 10 points
+                          Vendor Evaluation criterion on the 0–10 rubric, derived from the coverage above
                         </div>
                       </div>
                       
                       {vendors.map(vendor => {
-                        const vendorTotal = overallTotals.find(t => t.vendorId === vendor.id)?.total || 0;
-                        const normalizedScore = maxScore > 0 ? (vendorTotal / maxScore) * 10 : 0;
+                        const derived = productCapabilityScores.byVendor.get(vendor.id);
+                        const coverageLabel = formatCoveragePercent(derived?.coverage);
                         
                         return (
                           <div key={vendor.id} className="flex justify-center items-center">
-                            <div className="text-center p-3 bg-white rounded-lg border-2 border-purple-200 shadow-sm">
+                            <div
+                              className="text-center p-3 bg-white rounded-lg border-2 border-purple-200 shadow-sm"
+                              title={describeDerivedScore("productCapabilities", derived)}
+                              data-testid={`derived-score-product-${vendor.id}`}
+                            >
                               <div className="font-bold text-xl text-purple-700">
-                                {normalizedScore.toFixed(1)}
+                                {derived ? derived.score.toFixed(1) : "—"}
                               </div>
                               <div className="text-xs text-gray-500">
                                 out of 10
                               </div>
                               <div className="text-xs text-purple-600 font-medium">
-                                Product Score
+                                {coverageLabel ? `${coverageLabel} coverage` : derived ? "Product Score" : "Not derived yet"}
                               </div>
                             </div>
                           </div>

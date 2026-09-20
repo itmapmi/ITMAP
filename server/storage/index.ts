@@ -131,6 +131,8 @@ export interface IStorage {
 
   getVendorScores(vendorId: string): Promise<VendorScore[]>;
   getMarketVendorScores(marketId: string): Promise<(VendorScore & { vendor: Vendor; criteria: Criteria })[]>;
+  getVendorScoreById(id: string): Promise<VendorScore | undefined>;
+  deleteVendorScoresForCriterion(vendorIds: string[], criteriaId: string): Promise<number>;
   createOrUpdateVendorScore(score: InsertVendorScore): Promise<VendorScore>;
 
   getMarketCriteriaWeights(marketId: string): Promise<(MarketCriteriaWeight & { criteria: Criteria })[]>;
@@ -142,6 +144,8 @@ export interface IStorage {
   deleteFeatureCategory(id: string): Promise<void>;
 
   getMarketFeatures(marketId: string): Promise<FeatureWithCategory[]>;
+  getFeatureCategoryById(id: string): Promise<FeatureCategory | undefined>;
+  getFeatureMarketId(featureId: string): Promise<string | undefined>;
   getCategoryFeatures(categoryId: string): Promise<Feature[]>;
   createFeature(feature: InsertFeature): Promise<Feature>;
   updateFeature(id: string, feature: Partial<InsertFeature>): Promise<Feature>;
