@@ -12,7 +12,9 @@
     "test:teaser-funnel": "vitest run client/src/lib/teaser-schedule.test.ts client/src/lib/high-intent.test.ts client/src/lib/registration-copy.test.ts",
     "test:magic-quadrant": "node scripts/test-magic-quadrant-browser.mjs",
     "test:derived-scores": "vitest run shared/derived-feature-scores.test.ts server/derivedFeatureScores.test.ts",
+    "test:quadrant": "vitest run shared/quadrant-positioning.test.ts shared/quadrant-export.test.ts",
     "derive:backfill": "tsx server/scripts/rederive-feature-criteria.ts",
+    "weights:seed-versions": "tsx server/scripts/seed-weight-versions.ts",
     "derive:check": "tsx server/scripts/check-criteria-distribution.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push"

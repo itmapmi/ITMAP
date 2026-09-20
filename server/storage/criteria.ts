@@ -2,11 +2,13 @@ import {
   type Criteria, type InsertCriteria,
   type VendorScore, type InsertVendorScore,
   type MarketCriteriaWeight,
+  type MarketWeightVersion, type InsertMarketWeightVersion,
+  type Market,
   type Vendor,
-  criteria, vendorScores, marketCriteriaWeights, vendors,
+  criteria, vendorScores, marketCriteriaWeights, marketWeightVersions, markets, vendors,
 } from "@shared/schema";
-import { db } from "../db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, type DbExecutor } from "../db";
+import { eq, and, inArray, desc, sql } from "drizzle-orm";
 
 // ── Criteria ───────────────────────────────────────────────────────────────
 
@@ -127,9 +129,10 @@ export async function createOrUpdateVendorScore(score: InsertVendorScore): Promi
 // ── Market Criteria Weights ────────────────────────────────────────────────
 
 export async function getMarketCriteriaWeights(
-  marketId: string
+  marketId: string,
+  executor: DbExecutor = db,
 ): Promise<(MarketCriteriaWeight & { criteria: Criteria })[]> {
-  return await db
+  return await executor
     .select({
       id: marketCriteriaWeights.id,
       marketId: marketCriteriaWeights.marketId,
@@ -142,19 +145,94 @@ export async function getMarketCriteriaWeights(
     .where(eq(marketCriteriaWeights.marketId, marketId));
 }
 
+/** Upsert on (market, criterion) — concurrent writers cannot create duplicates. */
 export async function updateMarketCriteriaWeight(
-  marketId: string, criteriaId: string, weight: number
+  marketId: string, criteriaId: string, weight: number, executor: DbExecutor = db,
 ): Promise<MarketCriteriaWeight> {
-  const existing = await db
-    .select()
-    .from(marketCriteriaWeights)
-    .where(and(eq(marketCriteriaWeights.marketId, marketId), eq(marketCriteriaWeights.criteriaId, criteriaId)));
+  const [row] = await executor
+    .insert(marketCriteriaWeights)
+    .values({ marketId, criteriaId, weight })
+    .onConflictDoUpdate({
+      target: [marketCriteriaWeights.marketId, marketCriteriaWeights.criteriaId],
+      set: { weight },
+    })
+    .returning();
+  return row;
+}
 
-  if (existing.length > 0) {
-    const [updated] = await db.update(marketCriteriaWeights).set({ weight }).where(eq(marketCriteriaWeights.id, existing[0].id)).returning();
-    return updated;
-  } else {
-    const [newWeight] = await db.insert(marketCriteriaWeights).values({ marketId, criteriaId, weight }).returning();
-    return newWeight;
-  }
+/**
+ * Runs `fn` inside a transaction that holds a row lock on the market, so
+ * writers of the market's chart configuration (weights, thresholds, version
+ * rows) serialise per market and either all of their writes land or none do.
+ * `market` is undefined when no such market exists.
+ */
+export async function withLockedMarket<T>(
+  marketId: string,
+  fn: (tx: DbExecutor, market: Market | undefined) => Promise<T>,
+): Promise<T> {
+  return await db.transaction(async (tx) => {
+    const [market] = await tx.select().from(markets).where(eq(markets.id, marketId)).for("update");
+    return await fn(tx, market);
+  });
+}
+
+/** Threshold columns only; participates in the caller's transaction. */
+export async function updateMarketThresholds(
+  marketId: string,
+  thresholds: { executionThresholdLow: string; executionThresholdHigh: string; viabilityThreshold: string },
+  executor: DbExecutor = db,
+): Promise<Market> {
+  const [updated] = await executor
+    .update(markets)
+    .set({ ...thresholds, updatedAt: new Date() })
+    .where(eq(markets.id, marketId))
+    .returning();
+  return updated;
+}
+
+// ── Market Weight Versions (admin-only audit trail) ────────────────────────
+
+export async function getMarketWeightVersions(marketId: string): Promise<MarketWeightVersion[]> {
+  return await db
+    .select()
+    .from(marketWeightVersions)
+    .where(eq(marketWeightVersions.marketId, marketId))
+    .orderBy(desc(marketWeightVersions.version));
+}
+
+export async function getLatestMarketWeightVersion(marketId: string, executor: DbExecutor = db): Promise<MarketWeightVersion | undefined> {
+  const [latest] = await executor
+    .select()
+    .from(marketWeightVersions)
+    .where(eq(marketWeightVersions.marketId, marketId))
+    .orderBy(desc(marketWeightVersions.version))
+    .limit(1);
+  return latest;
+}
+
+/**
+ * Appends the next version for a market. The version number is derived from
+ * the current maximum inside the insert so two concurrent writers cannot both
+ * claim the same number (the unique index makes the loser fail loudly).
+ */
+export async function createMarketWeightVersion(
+  input: Omit<InsertMarketWeightVersion, "id" | "version" | "createdAt">,
+  executor: DbExecutor = db,
+): Promise<MarketWeightVersion> {
+  const [created] = await executor
+    .insert(marketWeightVersions)
+    .values({
+      ...input,
+      version: sql<number>`(SELECT COALESCE(MAX(${marketWeightVersions.version}), 0) + 1 FROM ${marketWeightVersions} WHERE ${marketWeightVersions.marketId} = ${input.marketId})`,
+    })
+    .returning();
+  return created;
+}
+
+/** Market ids that have at least one recorded weight version. */
+export async function getMarketIdsWithWeightVersions(): Promise<Set<string>> {
+  const rows = await db
+    .selectDistinct({ marketId: marketWeightVersions.marketId })
+    .from(marketWeightVersions);
+  return new Set(rows.map((r) => r.marketId));
 }

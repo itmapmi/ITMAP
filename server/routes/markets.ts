@@ -4,6 +4,14 @@ import { storage } from "../storage";
 import { requireAdmin } from "../auth";
 import { requireFeature } from "../featureAccess";
 import { checkDerivedScoreWrite, refreshDerivedFeatureScoresSafely } from "../derivedFeatureScores";
+import {
+  ChartConfigError,
+  buildMarketChartProvenance,
+  getMarketChartConfig,
+  listMarketWeightVersions,
+  saveMarketChartConfig,
+} from "../quadrantConfig";
+import { EMERGING_WEIGHT_OVERRIDES, MATURE_DEFAULT_WEIGHTS, isPlausibleStoredComposite } from "@shared/quadrant-positioning";
 
 /**
  * Centralized read-authorization for any /api/markets/:marketId/* endpoint.
@@ -35,6 +43,16 @@ async function requireMarketAccess(req: Request, res: Response, next: NextFuncti
     return res.status(500).json({ error: err.message });
   }
 }
+/** Who is changing a market's chart configuration, for the weight-version audit trail. */
+function chartActor(req: Request, note?: string) {
+  const user = (req as any).user as { id?: string; email?: string | null } | undefined;
+  return {
+    userId: user?.id ?? null,
+    label: user?.email || (user?.id ? `user ${user.id}` : "admin"),
+    note,
+  };
+}
+
 import {
   insertMarketSchema, insertVendorSchema, insertCriteriaSchema,
   insertVendorScoreSchema, insertFeatureCategorySchema, insertFeatureSchema,
@@ -174,18 +192,16 @@ export function registerMarketRoutes(app: Express): void {
       const marketData = insertMarketSchema.parse(req.body);
       const market = await storage.createMarket(marketData);
       // For emerging markets, persist the non-default weights immediately
-      // so they are picked up by the frontend without guessing.
+      // so they are picked up by the frontend without guessing. Goes through
+      // the chart-config service so the change is versioned.
       if (market.marketType === "emerging") {
-        const EMERGING_OVERRIDES: Record<string, number> = {
-          "Business Model": 10,
-          "Revenue": 10,
-          "Partner Ecosystem": 10,
-        };
         const allCriteria = await storage.getAllCriteria();
+        const weights: Record<string, number> = {};
         for (const c of allCriteria) {
-          const w = EMERGING_OVERRIDES[c.name];
-          if (w !== undefined) await storage.updateMarketCriteriaWeight(market.id, c.id, w);
+          const w = EMERGING_WEIGHT_OVERRIDES[c.name];
+          if (w !== undefined) weights[c.id] = w;
         }
+        await saveMarketChartConfig(market.id, { weights }, chartActor(req, "Market created as emerging"));
       }
       res.status(201).json(market);
     } catch (error) {
@@ -198,18 +214,25 @@ export function registerMarketRoutes(app: Express): void {
     try {
       console.log("Market update request:", { id: req.params.id, body: req.body });
       const marketData = insertMarketSchema.partial().parse(req.body);
+      const previous = await storage.getMarketById(req.params.id);
       const market = await storage.updateMarket(req.params.id, marketData);
       // When switching an existing market to emerging, apply the weight overrides.
-      // When switching back to mature, apply the mature defaults so the chart resets.
-      if (marketData.marketType === "emerging" || marketData.marketType === "mature") {
-        const EMERGING_WEIGHTS: Record<string, number> = { "Business Model": 10, "Revenue": 10, "Partner Ecosystem": 10 };
-        const MATURE_WEIGHTS: Record<string, number>   = { "Business Model": 50, "Revenue": 100, "Partner Ecosystem": 75 };
-        const overrides = marketData.marketType === "emerging" ? EMERGING_WEIGHTS : MATURE_WEIGHTS;
+      // When switching back to mature, apply the mature defaults so the chart
+      // resets. Only on an actual change — admin market management PUTs the
+      // whole form and saves its own weights right after.
+      if (
+        (marketData.marketType === "emerging" || marketData.marketType === "mature") &&
+        previous && previous.marketType !== marketData.marketType
+      ) {
         const allCriteria = await storage.getAllCriteria();
+        const weights: Record<string, number> = {};
         for (const c of allCriteria) {
-          const w = overrides[c.name];
-          if (w !== undefined) await storage.updateMarketCriteriaWeight(market.id, c.id, w);
+          const w = marketData.marketType === "emerging"
+            ? EMERGING_WEIGHT_OVERRIDES[c.name]
+            : (c.name in EMERGING_WEIGHT_OVERRIDES ? MATURE_DEFAULT_WEIGHTS[c.name] : undefined);
+          if (w !== undefined) weights[c.id] = w;
         }
+        await saveMarketChartConfig(market.id, { weights }, chartActor(req, `Market type changed to ${marketData.marketType}`));
       }
       res.json(market);
     } catch (error) {
@@ -434,35 +457,6 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  // ── Quadrant Settings (per-market two-band chart config) ─────────────────
-
-  app.patch("/api/admin/markets/:id/quadrant-settings", requireAdmin, async (req, res) => {
-    try {
-      const schema = z.object({
-        quadrantDividerY: z.number().min(0).max(100),
-        quadrantTopLabel: z.enum(["ITMAP Leaders", "ITMAP Top 5", "ITMAP Top 3", "Market Leaders"]),
-        quadrantColorTheme: z.enum(["dark-blue-gold", "emerald-coral", "violet-rose"]),
-      });
-      const data = schema.parse(req.body);
-      console.log("[quadrant-settings] IN  body:", JSON.stringify(req.body));
-      const market = await storage.updateMarket(req.params.id, {
-        quadrantDividerY: String(data.quadrantDividerY),
-        quadrantTopLabel: data.quadrantTopLabel,
-        quadrantColorTheme: data.quadrantColorTheme,
-      });
-      console.log("[quadrant-settings] OUT market:", JSON.stringify({
-        id: market.id,
-        quadrantDividerY: market.quadrantDividerY,
-        quadrantTopLabel: market.quadrantTopLabel,
-        quadrantColorTheme: market.quadrantColorTheme,
-      }));
-      res.json(market);
-    } catch (error) {
-      console.error("Error saving quadrant settings:", error);
-      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to save quadrant settings" });
-    }
-  });
-
   // ── Vendor Label Positions ─────────────────────────────────────────────────
 
   app.get("/api/markets/:marketId/label-positions", requireMarketAccess, async (req, res) => {
@@ -613,11 +607,11 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  // ── Market Criteria Weights ───────────────────────────────────────────────
+  // ── Market Criteria Weights & Quadrant Chart Config ──────────────────────
 
   app.get("/api/markets/:marketId/weights", requireMarketAccess, async (req, res) => {
     try {
-      const weights = await storage.getMarketCriteriaWeights(req.params.marketId);
+      const weights = await storage.getMarketCriteriaWeights((req as any).market.id);
       res.json(weights);
     } catch (error) {
       console.error("Error fetching criteria weights:", error);
@@ -625,14 +619,64 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.put("/api/markets/:marketId/weights/:criteriaId", requireAdmin, async (req, res) => {
+  // Published chart configuration: effective weights (saved or default),
+  // the market's box thresholds and the current weight version. The chart
+  // renders its published view from this; buyer-facing UI never shows the
+  // version, it is carried for exports and API consumers.
+  app.get("/api/markets/:marketId/chart-config", requireMarketAccess, async (req, res) => {
     try {
-      const { weight } = z.object({ weight: z.number().min(0).max(100) }).parse(req.body);
-      const weightRecord = await storage.updateMarketCriteriaWeight(req.params.marketId, req.params.criteriaId, weight);
-      res.json(weightRecord);
+      res.json(await getMarketChartConfig((req as any).market.id, (req as any).market));
     } catch (error) {
-      console.error("Error updating criteria weight:", error);
-      res.status(400).json({ error: "Failed to update criteria weight" });
+      console.error("Error fetching chart config:", error);
+      res.status(500).json({ error: "Failed to fetch chart configuration" });
+    }
+  });
+
+  // Admin: save weights and/or thresholds in one call. Records a new weight
+  // version whenever the effective configuration changes.
+  app.put("/api/markets/:marketId/chart-config", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({
+        weights: z.record(z.string(), z.number().min(0).max(100)).optional(),
+        thresholds: z.object({
+          executionLow: z.number(),
+          executionHigh: z.number(),
+          viability: z.number(),
+        }).optional(),
+        note: z.string().max(500).optional(),
+      }).parse(req.body ?? {});
+      const result = await saveMarketChartConfig(
+        req.params.marketId,
+        { weights: body.weights, thresholds: body.thresholds },
+        chartActor(req, body.note),
+      );
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ChartConfigError) return res.status(error.status).json({ error: error.message });
+      if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors.map(e => e.message).join("; ") });
+      console.error("Error saving chart config:", error);
+      res.status(500).json({ error: "Failed to save chart configuration" });
+    }
+  });
+
+  // Reproducibility block for published-chart consumers (exports, MCP/API):
+  // config + every vendor's own scores, composites, canvas coordinates and box.
+  app.get("/api/markets/:marketId/chart-provenance", requireMarketAccess, async (req, res) => {
+    try {
+      res.json(await buildMarketChartProvenance((req as any).market.id, (req as any).market));
+    } catch (error) {
+      console.error("Error building chart provenance:", error);
+      res.status(500).json({ error: "Failed to build chart provenance" });
+    }
+  });
+
+  // Admin-only audit trail of saved weights / thresholds.
+  app.get("/api/admin/markets/:marketId/weight-versions", requireAdmin, async (req, res) => {
+    try {
+      res.json(await listMarketWeightVersions(req.params.marketId));
+    } catch (error) {
+      console.error("Error listing weight versions:", error);
+      res.status(500).json({ error: "Failed to list weight versions" });
     }
   });
 
@@ -641,15 +685,19 @@ export function registerMarketRoutes(app: Express): void {
   app.get("/api/markets/:marketId/historical-positions", requireMarketAccess, async (req, res) => {
     try {
       const { date, vendorId } = req.query;
-      const positions = await storage.getHistoricalPositions(req.params.marketId, vendorId as string | undefined);
-      let filteredPositions = positions;
+      const positions = await storage.getHistoricalPositions((req as any).market.id, vendorId as string | undefined);
+      // Stored values are raw composites in rubric units (0–10). Anything
+      // else predates the retired synthetic generator and is never served.
+      let filteredPositions = positions.filter(
+        pos => isPlausibleStoredComposite(pos.executionScore) && isPlausibleStoredComposite(pos.viabilityScore),
+      );
       if (date) {
         const targetDate = new Date(date as string);
         const startOfWeek = new Date(targetDate);
         startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(endOfWeek.getDate() + 7);
-        filteredPositions = positions.filter(pos => {
+        filteredPositions = filteredPositions.filter(pos => {
           const recordedAt = new Date(pos.recordedAt);
           return recordedAt >= startOfWeek && recordedAt < endOfWeek;
         });
@@ -661,74 +709,17 @@ export function registerMarketRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/historical-positions", async (req, res) => {
-    try {
-      const positionData = z.object({
-        vendorId: z.string(),
-        marketId: z.string(),
-        executionScore: z.string(),
-        viabilityScore: z.string(),
-        recordedAt: z.coerce.date(),
-      }).parse(req.body);
-      const position = await storage.saveHistoricalPosition(positionData);
-      res.status(201).json(position);
-    } catch (error) {
-      console.error("Error saving historical position:", error);
-      res.status(400).json({ error: "Failed to save historical position" });
-    }
-  });
-
   // Last N historical positions for a single vendor, used for trajectory vectors on the quadrant.
   app.get("/api/markets/:marketId/vendors/:vendorId/trajectory", requireMarketAccess, async (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string, 10) || 3, 12);
-      const positions = await storage.getRecentHistoricalPositionsForVendor(req.params.marketId, req.params.vendorId, limit);
-      res.json(positions);
+      const positions = await storage.getRecentHistoricalPositionsForVendor((req as any).market.id, req.params.vendorId, limit);
+      res.json(positions.filter(
+        pos => isPlausibleStoredComposite(pos.executionScore) && isPlausibleStoredComposite(pos.viabilityScore),
+      ));
     } catch (error) {
       console.error("Error fetching vendor trajectory:", error);
       res.status(500).json({ error: "Failed to fetch vendor trajectory" });
-    }
-  });
-
-  app.post("/api/markets/:marketId/generate-historical-data", requireMarketAccess, async (req, res) => {
-    try {
-      const marketId = req.params.marketId;
-      const vendors = await storage.getVendorsByMarket(marketId);
-      const scores = await storage.getMarketVendorScores(marketId);
-      if (vendors.length === 0) return res.status(400).json({ error: "No vendors found for this market" });
-      const now = new Date();
-      const generatedPositions = [];
-      for (let weekOffset = 1; weekOffset <= 156; weekOffset++) {
-        const recordDate = new Date(now);
-        recordDate.setDate(recordDate.getDate() - (weekOffset * 7));
-        if (weekOffset % 4 === 0) {
-          for (const vendor of vendors) {
-            const currentVendorScores = scores.filter(s => s.vendorId === vendor.id);
-            const executionVariation = (Math.random() - 0.5) * 10;
-            const viabilityVariation = (Math.random() - 0.5) * 10;
-            let executionScore = 50, viabilityScore = 50;
-            if (currentVendorScores.length > 0) {
-              const execScores = currentVendorScores.filter(s => s.criteria.category === 'execution');
-              const viabilityScores = currentVendorScores.filter(s => s.criteria.category === 'viability');
-              if (execScores.length > 0) executionScore = execScores.reduce((sum, s) => sum + parseFloat(s.score), 0) / execScores.length;
-              if (viabilityScores.length > 0) viabilityScore = viabilityScores.reduce((sum, s) => sum + parseFloat(s.score), 0) / viabilityScores.length;
-            }
-            executionScore = Math.max(0, Math.min(100, executionScore + executionVariation));
-            viabilityScore = Math.max(0, Math.min(100, viabilityScore + viabilityVariation));
-            const position = await storage.saveHistoricalPosition({
-              vendorId: vendor.id, marketId,
-              executionScore: executionScore.toString(),
-              viabilityScore: viabilityScore.toString(),
-              recordedAt: recordDate,
-            });
-            generatedPositions.push(position);
-          }
-        }
-      }
-      res.json({ message: `Generated ${generatedPositions.length} historical positions`, count: generatedPositions.length });
-    } catch (error) {
-      console.error("Error generating historical data:", error);
-      res.status(500).json({ error: "Failed to generate historical data" });
     }
   });
 

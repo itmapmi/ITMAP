@@ -1,5 +1,7 @@
 import { storage } from "../storage";
 import type { ChatContext } from "./ai-service";
+import { getMarketChartConfig } from "../quadrantConfig";
+import { getDefaultCriterionWeight, positionVendor } from "@shared/quadrant-positioning";
 
 /**
  * Build comprehensive context for AI chat by fetching all relevant market data.
@@ -11,15 +13,18 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
     console.log(`[Context Builder] Starting context build for market: ${marketId}`);
 
     // ── Fetch top-level data in parallel ────────────────────────────────────
-    const [market, vendors, allFeatureSupport, allCriteria, weights] = await Promise.all([
+    const [market, vendors, allFeatureSupport, allCriteria] = await Promise.all([
       storage.getMarketById(marketId),
       storage.getVendorsByMarket(marketId),
       storage.getVendorFeatureSupport(marketId),
       storage.getAllCriteria(),
-      storage.getMarketCriteriaWeights(marketId),
     ]);
 
     if (!market) throw new Error(`Market not found: ${marketId}`);
+    // Published chart configuration (effective weights + thresholds) so the
+    // assistant describes exactly the positions and boxes the chart shows.
+    const chartConfig = await getMarketChartConfig(market.id, market);
+    const positioningCriteria = allCriteria.map((c) => ({ id: c.id, name: c.name, category: c.category }));
     console.log(`[Context Builder] Market found: ${market.name}`);
     console.log(`[Context Builder] Found ${vendors.length} vendors`);
     console.log(`[Context Builder] Found ${allFeatureSupport.length} feature support records`);
@@ -33,30 +38,18 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
     const enrichedVendors = vendors.map((vendor, i) => {
       const scores = vendorScoresAll[i];
 
-      const executionScores = scores.filter((s) =>
-        executionCriteria.some((c) => c.id === s.criteriaId)
-      );
-      const viabilityScores = scores.filter((s) =>
-        viabilityCriteria.some((c) => c.id === s.criteriaId)
-      );
-
-      const executionScore =
-        executionScores.length > 0
-          ? Math.round(
-              (executionScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) /
-                executionScores.length) *
-                10
-            )
-          : null;
-
-      const viabilityScore =
-        viabilityScores.length > 0
-          ? Math.round(
-              (viabilityScores.reduce((sum, s) => sum + parseFloat(s.score.toString()), 0) /
-                viabilityScores.length) *
-                10
-            )
-          : null;
+      // Same weighted composites (0–10) and box the published chart uses.
+      const scoresByCriterionId: Record<string, number> = {};
+      for (const s of scores) {
+        const value = parseFloat(s.score.toString());
+        if (Number.isFinite(value)) scoresByCriterionId[s.criteriaId] = value;
+      }
+      const position = positionVendor(positioningCriteria, chartConfig.weightsById, scoresByCriterionId, chartConfig.thresholds);
+      const hasExecution = executionCriteria.some((c) => c.id in scoresByCriterionId);
+      const hasViability = viabilityCriteria.some((c) => c.id in scoresByCriterionId);
+      const executionScore = hasExecution ? Math.round(position.execution * 10) / 10 : null;
+      const viabilityScore = hasViability ? Math.round(position.viability * 10) / 10 : null;
+      const quadrantBox = hasExecution && hasViability ? position.box.label : null;
 
       const enrichedScores = scores.map((score) => {
         const criterion = allCriteria.find((c) => c.id === score.criteriaId);
@@ -69,14 +62,16 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
 
       const featureSupport = allFeatureSupport.filter((s) => s.vendorId === vendor.id);
 
-      return { ...vendor, executionScore, viabilityScore, scores: enrichedScores, featureSupport };
+      return { ...vendor, executionScore, viabilityScore, quadrantBox, plotX: position.x, plotY: position.y, scores: enrichedScores, featureSupport };
     });
 
     // ── Enriched criteria ────────────────────────────────────────────────────
-    const enrichedCriteria = allCriteria.map((criterion) => {
-      const weight = weights.find((w) => w.criteriaId === criterion.id);
-      return { ...criterion, weight: weight?.weight || 25 };
-    });
+    // Effective published weights (saved value or the market-type default —
+    // a saved 0 is a real weight, not a missing one).
+    const enrichedCriteria = allCriteria.map((criterion) => ({
+      ...criterion,
+      weight: chartConfig.weightsById[criterion.id] ?? getDefaultCriterionWeight(criterion.name, market.marketType),
+    }));
 
     // ── Feature categories + features (parallel) ─────────────────────────────
     const categories = await storage.getMarketFeatureCategories(marketId);
@@ -135,12 +130,16 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
       vendors: enrichedVendors.map((v) => ({
         id: v.id,
         name: v.name,
-        x: v.executionScore || 0,
-        y: v.viabilityScore || 0,
-        quadrant: determineQuadrant(v.executionScore || 0, v.viabilityScore || 0),
+        executionComposite: v.executionScore,
+        viabilityComposite: v.viabilityScore,
+        x: v.plotX,
+        y: v.plotY,
+        quadrant: v.quadrantBox ?? "Unscored",
       })),
-      xAxisLabel: "Execution",
-      yAxisLabel: "Viability",
+      thresholds: chartConfig.thresholds,
+      weights: chartConfig.weights.map((w) => ({ criterion: w.name, axis: w.category, weight: w.weight })),
+      xAxisLabel: "Product Strategy & Execution",
+      yAxisLabel: "Vendor Viability",
     };
 
     const contextData: ChatContext = {
@@ -168,12 +167,6 @@ export async function buildMarketContext(marketId: string): Promise<ChatContext>
   }
 }
 
-function determineQuadrant(execution: number, viability: number): string {
-  if (execution >= 50 && viability >= 50) return "Leader";
-  if (execution >= 50 && viability < 50) return "Challenger";
-  if (execution < 50 && viability >= 50) return "Visionary";
-  return "Niche";
-}
 
 export function generateConversationTitle(firstMessage: string): string {
   let title = firstMessage.substring(0, 50);

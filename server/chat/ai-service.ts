@@ -171,9 +171,10 @@ export function buildContextSummary(context: ChatContext): string {
   if (context.vendors.length > 0) {
     parts.push("\n**Vendors in this market:**");
     context.vendors.forEach((vendor: any) => {
-      const execScore = vendor.executionScore || "N/A";
-      const viabScore = vendor.viabilityScore || "N/A";
-      parts.push(`\n**${vendor.name}** (Execution: ${execScore}, Viability: ${viabScore})`);
+      const execScore = vendor.executionScore ?? "N/A";
+      const viabScore = vendor.viabilityScore ?? "N/A";
+      const box = vendor.quadrantBox ? `, chart box: ${vendor.quadrantBox}` : "";
+      parts.push(`\n**${vendor.name}** (Execution composite: ${execScore}/10, Viability composite: ${viabScore}/10${box})`);
       if (vendor.scores && vendor.scores.length > 0) {
         const executionScores = vendor.scores.filter((s: any) => s.criteriaCategory === "execution");
         const viabilityScores = vendor.scores.filter((s: any) => s.criteriaCategory === "viability");
@@ -259,7 +260,8 @@ export function buildContextSummary(context: ChatContext): string {
   }
 
   if (context.quadrantData) {
-    parts.push(`\n**Quadrant Classification Available:** Yes`);
+    const t = context.quadrantData.thresholds;
+    parts.push(`\n**Vendor Evaluation chart:** six boxes (Custodians / Contenders / Leaders on the top row, Emerging Players / Specialists / Catalysts on the bottom). Box membership comes from each vendor's weighted composites against this market's thresholds${t ? ` (Contenders from ${t.executionLow}, Leaders from ${t.executionHigh} on Execution; top row from ${t.viability} on Viability)` : ""}.`);
   }
 
   return parts.join("\n");

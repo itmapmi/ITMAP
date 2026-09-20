@@ -11,6 +11,7 @@ import {
   type ResearchReport, type InsertResearchReport,
   type ResearchMethodology, type InsertResearchMethodology,
   type MarketCriteriaWeight,
+  type MarketWeightVersion, type InsertMarketWeightVersion,
   type HistoricalPosition,
   type VendorLabelPosition, type InsertVendorLabelPosition,
   type NewPlayer, type InsertNewPlayer,
@@ -137,6 +138,10 @@ export interface IStorage {
 
   getMarketCriteriaWeights(marketId: string): Promise<(MarketCriteriaWeight & { criteria: Criteria })[]>;
   updateMarketCriteriaWeight(marketId: string, criteriaId: string, weight: number): Promise<MarketCriteriaWeight>;
+  getMarketWeightVersions(marketId: string): Promise<MarketWeightVersion[]>;
+  getLatestMarketWeightVersion(marketId: string): Promise<MarketWeightVersion | undefined>;
+  createMarketWeightVersion(input: Omit<InsertMarketWeightVersion, "id" | "version" | "createdAt">): Promise<MarketWeightVersion>;
+  getMarketIdsWithWeightVersions(): Promise<Set<string>>;
 
   getMarketFeatureCategories(marketId: string): Promise<(FeatureCategory & { features: Feature[] })[]>;
   createFeatureCategory(category: InsertFeatureCategory): Promise<FeatureCategory>;

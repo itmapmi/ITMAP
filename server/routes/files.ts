@@ -12,6 +12,13 @@ import {
   getFeaturesForDerivedScore,
 } from "@shared/derived-feature-scores";
 import { refreshDerivedFeatureScores } from "../derivedFeatureScores";
+import { buildMarketChartProvenance } from "../quadrantConfig";
+import {
+  CHART_CONFIG_SHEET,
+  QUADRANT_POSITIONS_SHEET,
+  buildChartConfigSheetRows,
+  buildQuadrantPositionSheetRows,
+} from "@shared/quadrant-export";
 import { recordEvent } from "./leadGen";
 
 /**
@@ -231,6 +238,13 @@ export function registerFileRoutes(app: Express): void {
       if (omitted.length > 0) {
         xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(omitted), 'Notes');
       }
+      // Chart provenance: the published weights, thresholds and weight
+      // version plus every vendor's composites, canvas coordinates and box —
+      // enough to rebuild the quadrant from this workbook alone. Ignored by
+      // the importer, which reads sheets by name.
+      const provenance = await buildMarketChartProvenance(marketId, market);
+      xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildChartConfigSheetRows(provenance)), CHART_CONFIG_SHEET);
+      xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(buildQuadrantPositionSheetRows(provenance)), QUADRANT_POSITIONS_SHEET);
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       res.setHeader('Content-Disposition', `attachment; filename="${market.name.replace(/[^a-z0-9]/gi, '_')}_export.xlsx"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -794,6 +808,7 @@ export function registerFileRoutes(app: Express): void {
           console.warn(`[PDF] Failed to fetch news for vendor ${vendor.id} (${vendor.name}):`, err);
         }
       }
+      const provenance = await buildMarketChartProvenance(marketId, market);
       const content = pdfService.generateFullReportContent(
         market, vendors, scores,
         includeProduct ? productFeatures : [],
@@ -801,7 +816,7 @@ export function registerFileRoutes(app: Express): void {
         includeProduct ? productSupport : [],
         includeEcosystem ? ecosystemFeatures : [],
         includeEcosystem ? ecosystemSupport : [],
-        newsByVendor, signalsByVendor,
+        newsByVendor, signalsByVendor, provenance,
       );
       const pdfBuffer = await pdfService.generatePDF({ marketName: market.name, reportTitle: 'Complete Market Analysis', reportType: 'Full Market Report', content });
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
@@ -826,7 +841,8 @@ export function registerFileRoutes(app: Express): void {
       if (vendorIds && vendorIds.length > 0) vendors = vendors.filter(v => vendorIds.includes(v.id));
       const allScores = await storage.getMarketVendorScores(marketId);
       const scores = allScores.map(s => ({ ...s, category: s.criteria.category }));
-      const content = pdfService.generateVendorEvaluationContent(market, vendors, scores);
+      const provenance = await buildMarketChartProvenance(marketId, market);
+      const content = pdfService.generateVendorEvaluationContent(market, vendors, scores, provenance);
       const pdfBuffer = await pdfService.generatePDF({ marketName: market.name, reportTitle: 'Vendor Evaluation Report', reportType: 'Vendor Evaluation', content });
       const cleanMarketName = market.name.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim().replace(/\s+/g, ' ');
       const filename = `Spectio for ${cleanMarketName} - Vendor Evaluation.pdf`;

@@ -117,10 +117,13 @@ export const markets = pgTable("markets", {
   // Legacy Vendor Evaluation chart image (kept to preserve historical data; not actively populated)
   quadrantImageUrl: text("quadrant_image_url"),
   quadrantImageUpdatedAt: timestamp("quadrant_image_updated_at"),
-  // Two-band Spectio chart settings (per market, admin-configurable)
-  quadrantDividerY: numeric("quadrant_divider_y").default("50"),
-  quadrantTopLabel: text("quadrant_top_label").default("ITMAP Leaders"),
-  quadrantColorTheme: text("quadrant_color_theme").default("dark-blue-gold"),
+  // Vendor Evaluation quadrant thresholds, in rubric score units (0–10).
+  // Box membership and dot position are derived from a vendor's own weighted
+  // composite against these — see shared/quadrant-positioning.ts. Admin-editable
+  // per market; every change is recorded in market_weight_versions.
+  executionThresholdLow: numeric("execution_threshold_low", { precision: 4, scale: 2 }).notNull().default("4.50"),
+  executionThresholdHigh: numeric("execution_threshold_high", { precision: 4, scale: 2 }).notNull().default("5.50"),
+  viabilityThreshold: numeric("viability_threshold", { precision: 4, scale: 2 }).notNull().default("5.00"),
   isVisible: boolean("is_visible").notNull().default(true), // Toggle to show/hide market in frontend
   isInReview: boolean("is_in_review").notNull().default(false), // Flag market as "In Review" on frontend cards
   // 'mature' | 'emerging'. Affects default criteria weights.
@@ -217,7 +220,32 @@ export const marketCriteriaWeights = pgTable("market_criteria_weights", {
   marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
   criteriaId: varchar("criteria_id").notNull().references(() => criteria.id, { onDelete: "cascade" }),
   weight: integer("weight").notNull().default(25), // 0-100
-});
+}, (t) => ({
+  // One saved weight per market × criterion; lets writers upsert atomically.
+  marketCriteriaIdx: uniqueIndex("market_criteria_weights_market_criteria_idx").on(t.marketId, t.criteriaId),
+}));
+
+// Admin-only audit trail of a market's published chart configuration. A new
+// row is written whenever the saved criteria weights or thresholds change, so
+// any exported chart (which cites its version) can be reproduced later.
+// Nothing version-related is rendered on buyer-facing surfaces.
+export const marketWeightVersions = pgTable("market_weight_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketId: varchar("market_id").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(), // 1, 2, 3… per market
+  // Effective weight of every criterion at the time (saved or default): { [criteriaId]: weight }
+  weights: jsonb("weights").$type<Record<string, number>>().notNull(),
+  // Criterion names at the time so the snapshot stays readable if criteria are renamed
+  criteriaNames: jsonb("criteria_names").$type<Record<string, string>>().notNull().default({}),
+  thresholds: jsonb("thresholds").$type<{ executionLow: number; executionHigh: number; viability: number }>().notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  // Who/what wrote it, frozen as text: an admin's email, "market-builder", "seed", …
+  createdByLabel: text("created_by_label").notNull(),
+  note: text("note"),
+}, (t) => ({
+  marketVersionIdx: uniqueIndex("market_weight_versions_market_version_idx").on(t.marketId, t.version),
+}));
 
 export const vendorScores = pgTable("vendor_scores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -697,6 +725,8 @@ export type InsertResearchMethodology = z.infer<typeof insertResearchMethodology
 export type ResearchMethodology = typeof researchMethodology.$inferSelect;
 
 export type MarketCriteriaWeight = typeof marketCriteriaWeights.$inferSelect;
+export type MarketWeightVersion = typeof marketWeightVersions.$inferSelect;
+export type InsertMarketWeightVersion = typeof marketWeightVersions.$inferInsert;
 export type HistoricalPosition = typeof historicalPositions.$inferSelect;
 
 export type InsertVendorLabelPosition = z.infer<typeof insertVendorLabelPositionSchema>;

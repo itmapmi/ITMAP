@@ -11,6 +11,8 @@ import { listInFlightVendors } from "../market-builder/inflight";
 import { parseStageImport, generateStageTemplate, ImportValidationError } from "../market-builder/import";
 import { refreshDerivedFeatureScores, resolveDerivedCriterion } from "../derivedFeatureScores";
 import { DERIVED_FEATURE_SCORE_KINDS } from "@shared/derived-feature-scores";
+import { MATURE_DEFAULT_WEIGHTS, getDefaultCriterionWeight } from "@shared/quadrant-positioning";
+import { saveMarketChartConfig } from "../quadrantConfig";
 
 // Per-user rate limits for end-user Market Builder runs.
 // These are intentionally generous; tighten if abuse appears.
@@ -768,24 +770,25 @@ export function registerMarketBuilderRoutes(app: Express): void {
         // fallback: use the criterionId embedded in the stage2 result
         stage2.criteriaWeights?.find((cw: any) => cw.criterionName === name)?.criterionId;
 
-      // Save market-specific weights — use product-defined defaults for new markets,
-      // ignoring whatever the LLM proposed. Admins can adjust per-market via the UI.
-      const isEmerging = (job as any).marketType === "emerging";
-      const DEFAULT_WEIGHTS: Record<string, number> = {
-        'ISV Ecosystem': 100,
-        'Innovation': 50,
-        'Pricing Strategy': 100,
-        'Product Capabilities': 100,
-        'Business Model': isEmerging ? 10 : 50,
-        'Customer Experience': 100,
-        'Partner Ecosystem': isEmerging ? 10 : 75,
-        'Revenue': isEmerging ? 10 : 100,
-      };
+      // Save market-specific weights — the product-defined defaults for the
+      // market type (shared with the chart and admin UI), ignoring whatever
+      // the LLM proposed. Admins can adjust per-market via the UI. Goes through
+      // the chart-config service so the (re)publish is recorded as a weight
+      // version when it changes anything.
+      const publishedWeights: Record<string, number> = {};
       for (const c of allCriteria) {
-        const w = DEFAULT_WEIGHTS[c.name];
-        if (w === undefined) continue;
-        await storage.updateMarketCriteriaWeight(market.id, c.id, w);
+        if (!(c.name in MATURE_DEFAULT_WEIGHTS)) continue;
+        publishedWeights[c.id] = getDefaultCriterionWeight(c.name, (job as any).marketType ?? "mature");
       }
+      await saveMarketChartConfig(
+        market.id,
+        { weights: publishedWeights },
+        {
+          userId: owner?.id ?? null,
+          label: owner?.email ? `market-builder (${owner.email})` : "market-builder",
+          note: `Market Builder ${job.marketId ? "republish" : "publish"}: default weights applied`,
+        },
+      );
 
       // Save vendor scores per criterion (commentary + sources appended).
       // Stage 2 carries score-0 placeholders for the two feature-derived

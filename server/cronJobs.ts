@@ -481,61 +481,47 @@ export class CronJobManager {
   }
 
   /**
-   * Backup vendor positions for historical tracking
+   * Snapshot every vendor's published composites (rubric units, 0–10) for
+   * the history slider. Uses the same shared engine, effective weights
+   * (saved or market-type defaults) and scored-criteria handling as the
+   * chart, so a stored row replayed through the plot transform lands exactly
+   * where the live dot was.
    */
   private async backupVendorPositions(): Promise<void> {
     try {
       const { storage } = await import('./storage');
+      const { getMarketChartConfig } = await import('./quadrantConfig');
+      const { computeAxisComposites } = await import('@shared/quadrant-positioning');
       const markets = await storage.getAllMarkets();
-      
+
       for (const market of markets) {
-        const vendors = await storage.getVendorsByMarket(market.id);
-        const scores = await storage.getMarketVendorScores(market.id);
-        
+        const [vendors, scores, config] = await Promise.all([
+          storage.getVendorsByMarket(market.id),
+          storage.getMarketVendorScores(market.id),
+          getMarketChartConfig(market.id, market),
+        ]);
+        const criteria = config.weights.map(w => ({ id: w.criteriaId, name: w.name, category: w.category }));
+        const recordedAt = new Date();
+
         for (const vendor of vendors) {
-          // Calculate aggregate scores for execution and viability
-          const vendorScores = scores.filter(s => s.vendorId === vendor.id);
-          
-          if (vendorScores.length === 0) continue;
-          
-          // Get criteria weights for proper calculation
-          const weights = await storage.getMarketCriteriaWeights(market.id);
-          const weightMap = new Map(weights.map(w => [w.criteriaId, w.weight]));
-          
-          let executionTotal = 0;
-          let viabilityTotal = 0;
-          let executionWeight = 0;
-          let viabilityWeight = 0;
-          
-          for (const score of vendorScores) {
-            const weightValue = weightMap.get(score.criteriaId) || '50'; // Default 50% if no weight set
-            const weight = Number(weightValue);
-            const scoreValue = Number(score.score);
-            const category = score.criteria.category.toLowerCase();
-            
-            if (category.includes('execution')) {
-              executionTotal += scoreValue * weight;
-              executionWeight += weight;
-            } else if (category.includes('viability') || category.includes('vision')) {
-              viabilityTotal += scoreValue * weight;
-              viabilityWeight += weight;
-            }
+          const scoresByCriterionId: Record<string, number> = {};
+          for (const s of scores) {
+            if (s.vendorId !== vendor.id) continue;
+            const value = Number(s.score);
+            if (Number.isFinite(value)) scoresByCriterionId[s.criteriaId] = value;
           }
-          
-          const executionScore = executionWeight > 0 ? (executionTotal / executionWeight).toString() : '0';
-          const viabilityScore = viabilityWeight > 0 ? (viabilityTotal / viabilityWeight).toString() : '0';
-          
-          // Save historical position
+          if (Object.keys(scoresByCriterionId).length === 0) continue;
+
+          const { execution, viability } = computeAxisComposites(criteria, config.weightsById, scoresByCriterionId);
           await storage.saveHistoricalPosition({
             vendorId: vendor.id,
             marketId: market.id,
-            executionScore,
-            viabilityScore,
-            recordedAt: new Date()
+            executionScore: execution.toFixed(2),
+            viabilityScore: viability.toFixed(2),
+            recordedAt,
           });
-          
-          console.log(`Backed up position for ${vendor.name}: execution=${executionScore}, viability=${viabilityScore}`);
         }
+        console.log(`[Snapshot] ${market.name}: recorded ${vendors.length} vendor position(s) (weights v${config.weightVersion?.version ?? '–'})`);
       }
     } catch (error) {
       console.error('Error backing up vendor positions:', error);

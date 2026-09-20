@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,31 +16,44 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Edit, Trash2, TrendingUp, Plus, Eye, EyeOff, Sprout, Building2 } from "lucide-react";
 import { insertMarketSchema, type InsertMarket, type Market, type Criteria } from "@shared/schema";
 import { SimpleImageUploader } from "@/components/SimpleImageUploader";
+import {
+  DEFAULT_QUADRANT_THRESHOLDS,
+  EMERGING_WEIGHT_OVERRIDES,
+  getDefaultCriterionWeight,
+  validateThresholds,
+  type PublishedChartConfig,
+  type PublishedChartWeightVersion,
+  type QuadrantThresholds,
+} from "@shared/quadrant-positioning";
 
-// Default criteria weights — mirror the defaults used by the Magic Quadrant so
-// the dot positions match what admins see when no explicit weight is set.
-const MATURE_DEFAULT_WEIGHTS: { [name: string]: number } = {
-  'ISV Ecosystem': 100,
-  'Innovation': 50,
-  'Pricing Strategy': 100,
-  'Product Capabilities': 100,
-  'Business Model': 50,
-  'Customer Experience': 100,
-  'Partner Ecosystem': 75,
-  'Revenue': 100,
-};
-const EMERGING_WEIGHT_OVERRIDES: { [name: string]: number } = {
-  'Business Model': 50,
-  'Revenue': 25,
-  'Partner Ecosystem': 25,
+type WeightVersionRow = PublishedChartWeightVersion & {
+  weights: Array<{ criteriaId: string; name: string; weight: number }>;
+  thresholds: QuadrantThresholds;
 };
 
-function defaultWeightFor(criterionName: string, marketType: string | null | undefined): number {
-  const base = MATURE_DEFAULT_WEIGHTS[criterionName] ?? 100;
-  if (marketType === "emerging" && criterionName in EMERGING_WEIGHT_OVERRIDES) {
-    return EMERGING_WEIGHT_OVERRIDES[criterionName];
-  }
-  return base;
+/** Threshold inputs are edited as text so a half-typed "4." is not clobbered. */
+type ThresholdDraft = { executionLow: string; executionHigh: string; viability: string };
+
+function draftFromThresholds(t: QuadrantThresholds): ThresholdDraft {
+  return { executionLow: String(t.executionLow), executionHigh: String(t.executionHigh), viability: String(t.viability) };
+}
+
+function thresholdsFromDraft(d: ThresholdDraft): QuadrantThresholds {
+  return { executionLow: Number(d.executionLow), executionHigh: Number(d.executionHigh), viability: Number(d.viability) };
+}
+
+/** e.g. "Business Model, Revenue and Partner Ecosystem default to 10%" — from the shared defaults. */
+const EMERGING_DEFAULTS_COPY = (() => {
+  const names = Object.keys(EMERGING_WEIGHT_OVERRIDES);
+  const values = Array.from(new Set(Object.values(EMERGING_WEIGHT_OVERRIDES)));
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] ?? "";
+  return values.length === 1
+    ? `${list} default to ${values[0]}%`
+    : names.map(n => `${n} ${EMERGING_WEIGHT_OVERRIDES[n]}%`).join(", ");
+})();
+
+function formatVersionDate(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 export default function MarketManagement() {
@@ -57,14 +70,24 @@ export default function MarketManagement() {
     queryKey: ["/api/criteria"],
   });
 
-  // Saved weights for the market being edited
-  const { data: savedWeights, isFetched: savedWeightsFetched } = useQuery<{ criteriaId: string; weight: number }[]>({
-    queryKey: [`/api/markets/${editingMarket?.id}/weights`],
+  // Published chart configuration (effective weights + thresholds) for the
+  // market being edited, and its admin-only weight version history.
+  const { data: chartConfig, isFetched: chartConfigFetched } = useQuery<PublishedChartConfig>({
+    queryKey: ["/api/markets", editingMarket?.id, "chart-config"],
+    enabled: !!editingMarket,
+  });
+  const { data: weightVersions } = useQuery<WeightVersionRow[]>({
+    queryKey: ["/api/admin/markets", editingMarket?.id, "weight-versions"],
     enabled: !!editingMarket,
   });
 
-  // Local weight state keyed by criteria id (0–100)
+  // Local weight state keyed by criteria id (0–100) and the three box
+  // thresholds (rubric units, 0–10) that decide Custodians / Contenders /
+  // Leaders and the top / bottom row.
   const [criteriaWeights, setCriteriaWeights] = useState<{ [criteriaId: string]: number }>({});
+  const [thresholdDraft, setThresholdDraft] = useState<ThresholdDraft>(draftFromThresholds(DEFAULT_QUADRANT_THRESHOLDS));
+  const [changeNote, setChangeNote] = useState("");
+  const thresholdProblem = validateThresholds(thresholdsFromDraft(thresholdDraft));
 
   const form = useForm<InsertMarket>({
     resolver: zodResolver(insertMarketSchema),
@@ -82,37 +105,69 @@ export default function MarketManagement() {
 
   const watchedMarketType = form.watch("marketType");
 
-  // Initialize weights: saved values when editing, marketType defaults when creating.
+  // Seed weights + thresholds exactly once per dialog session: from the
+  // published configuration when editing (once it has loaded), from the
+  // marketType defaults when creating. Keyed by session so a background
+  // refetch of the config never clobbers edits in progress.
+  const dialogSession = editingMarket ? `edit:${editingMarket.id}` : showCreateDialog ? "create" : null;
+  const seededSessionRef = useRef<string | null>(null);
+  const seededMarketTypeRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!criteria) return;
-    // In edit mode, wait for the saved weights to load before seeding —
-    // otherwise defaults could briefly populate and overwrite saved values on a fast submit.
-    if (editingMarket && !savedWeightsFetched) return;
+    if (!dialogSession) { seededSessionRef.current = null; return; }
+    if (!criteria || seededSessionRef.current === dialogSession) return;
+    // In edit mode, wait for the config to load before seeding — otherwise
+    // defaults could briefly populate and overwrite saved values on a fast submit.
+    if (editingMarket && !chartConfigFetched) return;
     const next: { [id: string]: number } = {};
     criteria.forEach(c => {
-      const saved = editingMarket ? savedWeights?.find(w => w.criteriaId === c.id) : undefined;
-      next[c.id] = saved ? saved.weight : defaultWeightFor(c.name, watchedMarketType);
+      const published = editingMarket ? chartConfig?.weightsById[c.id] : undefined;
+      next[c.id] = published ?? getDefaultCriterionWeight(c.name, watchedMarketType);
     });
     setCriteriaWeights(next);
+    setThresholdDraft(draftFromThresholds(editingMarket && chartConfig ? chartConfig.thresholds : DEFAULT_QUADRANT_THRESHOLDS));
+    setChangeNote("");
+    seededSessionRef.current = dialogSession;
+    seededMarketTypeRef.current = watchedMarketType;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [criteria, savedWeights, editingMarket, watchedMarketType, showCreateDialog]);
+  }, [criteria, chartConfig, chartConfigFetched, editingMarket, dialogSession, watchedMarketType]);
 
-  // Save weights after the market itself is persisted. Weight failures must not
-  // fail the whole mutation (the market is already saved) — surface a warning instead.
-  const saveWeights = async (marketId: string) => {
+  // Switching the market type after seeding is an explicit choice: reset the
+  // weights to that type's defaults (the server applies the same defaults when
+  // the type change is saved, so the follow-up chart-config save is a no-op
+  // unless the admin adjusts them further). Thresholds and the note are kept.
+  useEffect(() => {
+    if (!criteria || !dialogSession || seededSessionRef.current !== dialogSession) return;
+    if (seededMarketTypeRef.current === watchedMarketType) return;
+    seededMarketTypeRef.current = watchedMarketType;
+    const next: { [id: string]: number } = {};
+    criteria.forEach(c => { next[c.id] = getDefaultCriterionWeight(c.name, watchedMarketType); });
+    setCriteriaWeights(next);
+  }, [criteria, dialogSession, watchedMarketType]);
+
+  // Save the chart configuration after the market itself is persisted. The
+  // server records a new weight version only when the effective weights or
+  // thresholds actually changed. Failures must not fail the whole mutation
+  // (the market is already saved) — surface a warning instead.
+  const saveChartConfig = async (marketId: string) => {
     if (!criteria) return;
     try {
-      await Promise.all(
-        criteria.map(c =>
-          apiRequest(`/api/markets/${marketId}/weights/${c.id}`, "PUT", { weight: criteriaWeights[c.id] ?? 100 })
-        )
-      );
-      queryClient.invalidateQueries({ queryKey: [`/api/markets/${marketId}/weights`] });
+      const weights: Record<string, number> = {};
+      criteria.forEach(c => { weights[c.id] = criteriaWeights[c.id] ?? 100; });
+      await apiRequest(`/api/markets/${marketId}/chart-config`, "PUT", {
+        weights,
+        thresholds: thresholdsFromDraft(thresholdDraft),
+        note: changeNote.trim() || undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/markets", marketId, "chart-provenance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/markets", marketId, "weight-versions"] });
     } catch (err) {
-      console.error("Failed to save criteria weights:", err);
+      console.error("Failed to save chart configuration:", err);
       toast({
-        title: "Weights not fully saved",
-        description: "The market was saved, but some criteria weights failed to save. Re-open the market and update them again.",
+        title: "Chart configuration not saved",
+        description: err instanceof Error && err.message
+          ? err.message
+          : "The market was saved, but its criteria weights / thresholds failed to save. Re-open the market and update them again.",
         variant: "destructive",
       });
     }
@@ -122,8 +177,8 @@ export default function MarketManagement() {
     mutationFn: async (data: InsertMarket) => {
       const response = await apiRequest("/api/markets", "POST", data);
       const created = await response.json();
-      // Persist the chosen criteria weights for the new market.
-      if (created?.id) await saveWeights(created.id);
+      // Persist the chosen criteria weights + thresholds for the new market.
+      if (created?.id) await saveChartConfig(created.id);
       return created;
     },
     onSuccess: () => {
@@ -149,8 +204,8 @@ export default function MarketManagement() {
     mutationFn: async ({ id, data }: { id: string; data: InsertMarket }) => {
       const response = await apiRequest(`/api/markets/${id}`, "PUT", data);
       const updated = await response.json();
-      // Persist any weight changes made in the edit dialog.
-      await saveWeights(id);
+      // Persist any weight / threshold changes made in the edit dialog.
+      await saveChartConfig(id);
       return updated;
     },
     onSuccess: () => {
@@ -230,6 +285,10 @@ export default function MarketManagement() {
   };
 
   const onSubmit = (data: InsertMarket) => {
+    if (thresholdProblem) {
+      toast({ title: "Check the quadrant thresholds", description: thresholdProblem, variant: "destructive" });
+      return;
+    }
     if (editingMarket) {
       updateMarketMutation.mutate({ id: editingMarket.id, data });
     } else {
@@ -281,8 +340,10 @@ export default function MarketManagement() {
     });
   };
 
-  // Reusable form component
-  const MarketFormContent = () => (
+  // Reusable form body. A plain render function (not an inline component):
+  // an inline component gets a new identity on every parent re-render, which
+  // would remount the form and drop focus while typing in the inputs below.
+  const renderMarketForm = () => (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
@@ -416,7 +477,7 @@ export default function MarketManagement() {
                     <Sprout className="h-4 w-4 shrink-0" />
                     <div>
                       <div className="font-medium text-sm">Emerging</div>
-                      <div className="text-xs text-muted-foreground">Business Model defaults to 50%, Revenue &amp; Partner Ecosystem to 25%</div>
+                      <div className="text-xs text-muted-foreground">{EMERGING_DEFAULTS_COPY}</div>
                     </div>
                   </button>
                 </div>
@@ -432,7 +493,8 @@ export default function MarketManagement() {
             <div>
               <div className="text-base font-medium">Vendor Evaluation Criteria Weights</div>
               <div className="text-sm text-muted-foreground">
-                Dot positions on the quadrant are calculated from these weights. End users can still adjust them with sliders on the market page.
+                The published chart positions every vendor from its own scores and these saved weights. Buyers can move
+                sliders on the market page for a what-if view, but that never changes the published chart.
               </div>
             </div>
             {criteria.map(c => (
@@ -451,6 +513,102 @@ export default function MarketManagement() {
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Quadrant thresholds — rubric-unit cut-offs for the six boxes. */}
+        <div className="rounded-lg border p-4 space-y-4">
+          <div>
+            <div className="text-base font-medium">Quadrant Thresholds</div>
+            <div className="text-sm text-muted-foreground">
+              Weighted composites are on the 0–10 scoring scale. A vendor enters Contenders / Leaders when its
+              Execution composite reaches these values, and the top row when its Viability composite reaches the
+              third. Dividers are always drawn at 33 / 67 / 50; the thresholds decide which composite lands on them.
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              ["executionLow", "Contenders from (Execution)"],
+              ["executionHigh", "Leaders from (Execution)"],
+              ["viability", "Top row from (Viability)"],
+            ] as const).map(([key, label]) => (
+              <div key={key} className="space-y-1">
+                <label className="text-sm font-medium" htmlFor={`threshold-${key}`}>{label}</label>
+                <Input
+                  id={`threshold-${key}`}
+                  type="number"
+                  inputMode="decimal"
+                  min={0.1}
+                  max={9.9}
+                  step={0.1}
+                  value={thresholdDraft[key]}
+                  onChange={(e) => setThresholdDraft(prev => ({ ...prev, [key]: e.target.value }))}
+                  data-testid={`input-threshold-${key}`}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className={`text-xs ${thresholdProblem ? "text-destructive" : "text-muted-foreground"}`} data-testid="text-threshold-status">
+              {thresholdProblem ?? `Defaults: ${DEFAULT_QUADRANT_THRESHOLDS.executionLow} / ${DEFAULT_QUADRANT_THRESHOLDS.executionHigh} / ${DEFAULT_QUADRANT_THRESHOLDS.viability}.`}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setThresholdDraft(draftFromThresholds(DEFAULT_QUADRANT_THRESHOLDS))}
+              data-testid="button-reset-thresholds"
+            >
+              Reset to defaults
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="chart-config-note">Change note (optional)</label>
+            <Input
+              id="chart-config-note"
+              placeholder="Why the weights or thresholds changed — recorded in the version history"
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              maxLength={500}
+              data-testid="input-chart-config-note"
+            />
+          </div>
+        </div>
+
+        {/* Admin-only audit trail. Nothing version-related appears on buyer surfaces. */}
+        {editingMarket && (
+          <div className="rounded-lg border p-4 space-y-3">
+            <div>
+              <div className="text-base font-medium">Weight Version History</div>
+              <div className="text-sm text-muted-foreground">
+                Every saved change to the published weights or thresholds is recorded here. Exports cite the version they were produced from.
+              </div>
+            </div>
+            {!weightVersions ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : weightVersions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No versions recorded yet — the first save will create v1.</p>
+            ) : (
+              <ol className="space-y-2 max-h-64 overflow-y-auto pr-1" data-testid="list-weight-versions">
+                {weightVersions.map((v, index) => (
+                  <li key={v.version} className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={`row-weight-version-${v.version}`}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <span className="font-medium">
+                        v{v.version}{index === 0 ? " · current" : ""}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatVersionDate(v.createdAt)} · {v.createdByLabel}
+                      </span>
+                    </div>
+                    {v.note && <p className="mt-1 text-xs text-muted-foreground">{v.note}</p>}
+                    <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                      Thresholds {v.thresholds.executionLow} / {v.thresholds.executionHigh} / {v.thresholds.viability} ·{" "}
+                      {v.weights.map(w => `${w.name} ${w.weight}`).join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
 
@@ -541,7 +699,7 @@ export default function MarketManagement() {
             <DialogHeader>
               <DialogTitle>Create New Market</DialogTitle>
             </DialogHeader>
-            <MarketFormContent />
+            {renderMarketForm()}
           </DialogContent>
         </Dialog>
       </div>
@@ -645,7 +803,7 @@ export default function MarketManagement() {
           <DialogHeader>
             <DialogTitle>Edit Market: {editingMarket?.name}</DialogTitle>
           </DialogHeader>
-          <MarketFormContent />
+          {renderMarketForm()}
         </DialogContent>
       </Dialog>
     </div>

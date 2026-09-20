@@ -5,6 +5,8 @@ import { execSync } from 'child_process';
 import path from 'path';
 import type { Market, Vendor } from '@shared/schema';
 import { REPORT_TEMPLATE } from './report-template';
+import { PLOT_DIVIDERS, SCORE_SCALE_MAX } from '@shared/quadrant-positioning';
+import type { MarketChartProvenance } from '../quadrantConfig';
 
 // Build an ordered list of Chromium executable candidates to try.
 //
@@ -461,7 +463,74 @@ export class PDFService {
     return Buffer.from(bytes);
   }
 
-  generateVendorEvaluationContent(market: Market, vendors: any[], scores: any[]): string {
+  /**
+   * Reproducibility block for the vendor-evaluation section: the published
+   * weights, the three thresholds, the weight version and each vendor's
+   * composites, canvas coordinates and box. Everything needed to redraw the
+   * chart from the PDF alone. Only vendors present in `vendors` are listed so
+   * a filtered report does not leak the rest of the roster.
+   */
+  generateChartProvenanceContent(provenance: MarketChartProvenance, vendors: Array<{ id: string }>): string {
+    const included = new Set(vendors.map(v => v.id));
+    const rows = provenance.vendors
+      .filter(v => included.has(v.vendorId))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const weightCells = (axis: 'execution' | 'viability') => provenance.weights
+      .filter(w => w.category === axis)
+      .map(w => `<tr><td>${this.escapeHtml(w.name)}</td><td style="text-align: center;">${axis === 'execution' ? 'Execution' : 'Viability'}</td><td style="text-align: center;">${w.weight}</td></tr>`)
+      .join('');
+    const version = provenance.weightVersion;
+    const versionText = version
+      ? `v${version.version} (recorded ${this.escapeHtml(new Date(version.createdAt).toISOString().slice(0, 10))} by ${this.escapeHtml(version.createdByLabel)})`
+      : 'unversioned';
+    const t = provenance.thresholds;
+    return `
+      <div class="content-section" style="margin-top: 35px;">
+        <h3 class="section-subtitle">Chart Configuration</h3>
+        <p class="section-description">
+          Each vendor's position on the quadrant is computed from its own criterion scores (0&ndash;${SCORE_SCALE_MAX}),
+          the market's published weights and the thresholds below; no vendor's position depends on any other vendor.
+          Published weights ${this.escapeHtml(versionText)}.
+        </p>
+        <table>
+          <thead><tr><th>Threshold</th><th style="text-align: center;">Composite (0&ndash;${SCORE_SCALE_MAX})</th><th style="text-align: center;">Divider drawn at</th></tr></thead>
+          <tbody>
+            <tr><td>Contenders from (Execution)</td><td style="text-align: center;">${t.executionLow}</td><td style="text-align: center;">${PLOT_DIVIDERS.executionLow}%</td></tr>
+            <tr><td>Leaders from (Execution)</td><td style="text-align: center;">${t.executionHigh}</td><td style="text-align: center;">${PLOT_DIVIDERS.executionHigh}%</td></tr>
+            <tr><td>Top row from (Viability)</td><td style="text-align: center;">${t.viability}</td><td style="text-align: center;">${PLOT_DIVIDERS.viability}%</td></tr>
+          </tbody>
+        </table>
+        <table style="margin-top: 12px;">
+          <thead><tr><th>Criterion weight</th><th style="text-align: center;">Axis</th><th style="text-align: center;">Weight</th></tr></thead>
+          <tbody>${weightCells('execution')}${weightCells('viability')}</tbody>
+        </table>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th style="text-align: center;">Execution composite</th>
+              <th style="text-align: center;">Viability composite</th>
+              <th style="text-align: center;">Chart (x, y)</th>
+              <th>Box</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(v => `
+              <tr>
+                <td><strong>${this.escapeHtml(v.name)}</strong></td>
+                <td style="text-align: center;">${v.execution.toFixed(2)}</td>
+                <td style="text-align: center;">${v.viability.toFixed(2)}</td>
+                <td style="text-align: center;">${v.x.toFixed(1)}, ${v.y.toFixed(1)}</td>
+                <td>${this.escapeHtml(v.box.label)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  generateVendorEvaluationContent(market: Market, vendors: any[], scores: any[], provenance?: MarketChartProvenance): string {
     let content = `
       <div class="content-section">
         <h2 class="section-title">Vendor Evaluation</h2>
@@ -481,6 +550,8 @@ export class PDFService {
         </p>
       </div>
     `;
+
+    if (provenance) content += this.generateChartProvenanceContent(provenance, vendors);
 
     vendors.forEach((vendor) => {
       const vendorScores = scores.filter(s => s.vendorId === vendor.id);
@@ -1173,7 +1244,8 @@ export class PDFService {
     ecosystemFeatures: any[],
     ecosystemSupport: any[],
     newsByVendor?: Record<string, any[]>,
-    signalsByVendor?: Record<string, any[]>
+    signalsByVendor?: Record<string, any[]>,
+    provenance?: MarketChartProvenance,
   ): string {
     let content = '';
 
@@ -1181,7 +1253,7 @@ export class PDFService {
     console.log('[PDF] Generating vendor evaluation content...');
     console.log('[PDF] Vendors count:', vendors.length);
     console.log('[PDF] Scores count:', scores.length);
-    const vendorEvalContent = this.generateVendorEvaluationContent(market, vendors, scores);
+    const vendorEvalContent = this.generateVendorEvaluationContent(market, vendors, scores, provenance);
     console.log('[PDF] Vendor evaluation content length:', vendorEvalContent.length);
     content += vendorEvalContent;
 

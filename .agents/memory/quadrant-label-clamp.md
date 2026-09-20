@@ -37,3 +37,13 @@ already-accepted label's rect — leave the dot visible/tappable so the name is
 still reachable (e.g. via a tap-to-reveal evidence popover). Desktop renders
 every candidate unconditionally, exactly as before, since its canvas is the
 size positions were actually saved/computed for.
+
+**Absolute-positioning corollary (Sep 2026):** dots moved from roster-relative
+(min/max stretched) to absolute composites, so every label position saved
+before the cutover points at empty space. Two guards now apply at load/render:
+saved rows older than the cutover date are ignored (auto-placed until an admin
+re-drags), and any saved label more than the tether radius (90 px) from its
+dot falls back to auto-placement — there is no connector line, so a far label
+reads as orphaned. Keep the tether generous: an admin dragging a label out of
+a dense cluster must not have the drag silently snap back. If dots ever change
+coordinate system again, bump the cutover date rather than deleting rows.

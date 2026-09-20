@@ -16,6 +16,7 @@ import {
   refreshDerivedFeatureScores,
   refreshDerivedFeatureScoresSafely,
 } from "../derivedFeatureScores";
+import { seedInitialWeightVersions } from "../quadrantConfig";
 import { DERIVED_CRITERION_NAMES } from "@shared/derived-feature-scores";
 import { sendVerificationEmail, sendCustomEmail, sendFactReviewDecisionEmail } from "../emailService";
 import { issueAndSendVerification, issueAndSendCompanyVerification } from "./auth";
@@ -794,6 +795,22 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error re-deriving feature scores:", error);
       res.status(500).json({ error: "Failed to re-derive feature scores" });
+    }
+  });
+
+  // Idempotent seed of the quadrant weight-version audit trail (version 1 for
+  // every market that has none). Also runs on every boot; this endpoint exists
+  // so production can be seeded/verified by hand. Pass { dryRun: true } to preview.
+  app.post("/api/admin/weight-versions/seed", requireAdmin, async (req, res) => {
+    try {
+      const body = z.object({
+        marketId: z.string().optional(),
+        dryRun: z.boolean().optional(),
+      }).parse(req.body ?? {});
+      res.json(await seedInitialWeightVersions(body));
+    } catch (error) {
+      console.error("Error seeding weight versions:", error);
+      res.status(500).json({ error: "Failed to seed weight versions" });
     }
   });
 

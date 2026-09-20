@@ -14,12 +14,20 @@ import { apiRequest } from "@/lib/queryClient";
 import { track } from "@/lib/track";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Vendor, VendorScore, Criteria, MarketCriteriaWeight } from "@shared/schema";
+import type { Vendor, VendorScore, Criteria } from "@shared/schema";
 import VendorComparison from "./vendor-comparison";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { VendorSelectionModal } from "./vendor-selection-modal";
-import { calculateAxisWeightShares } from "@shared/axis-weighting";
+import {
+  DEFAULT_QUADRANT_THRESHOLDS,
+  computeAxisComposites,
+  isPlausibleStoredComposite,
+  positionFromComposites,
+  type PublishedChartConfig,
+  type QuadrantBox,
+} from "@shared/quadrant-positioning";
+import { buildChartProvenanceLines } from "@shared/quadrant-export";
 import { useAuth } from "@/hooks/useAuth";
 import {
   allHistoricalPositionsQueryKey,
@@ -40,10 +48,16 @@ interface MagicQuadrantProps {
 
 interface VendorWithScores extends Vendor {
   scores: { [criteriaId: string]: number };
+  /** Canvas X (0–100) — the plotted position, from the vendor's own composite. */
   executionScore: number;
+  /** Canvas Y (0–100). */
   viabilityScore: number;
-  rawExecutionScore?: number;
-  rawViabilityScore?: number;
+  /** Weighted composites in rubric units (0–10). */
+  executionComposite: number;
+  viabilityComposite: number;
+  box: QuadrantBox;
+  /** True when this dot comes from a stored history snapshot (slider). */
+  isHistorical: boolean;
 }
 
 interface VendorModalData {
@@ -69,6 +83,18 @@ interface HistoricalPoint {
   recordedAt: string | Date;
 }
 
+
+/** Max distance (px, chart coordinates) a saved label may sit from its dot. */
+const LABEL_TETHER_PX = 90;
+
+/**
+ * Dot positions switched from roster-relative (min/max stretched) to
+ * absolute composites on this date. Label positions dragged against the old
+ * layout are absolute pixels with no relation to where the dots are now, so
+ * anything saved before the cutover is ignored (auto-placed) until an admin
+ * re-drags it; positions saved afterwards are honoured as usual.
+ */
+const LABEL_POSITIONS_VALID_FROM = Date.parse("2026-09-20T00:00:00Z");
 
 const HISTORICAL_WEEKS = 26; // Six months, shown in two-week intervals
 const HISTORICAL_TICK_INTERVAL = 2;
@@ -232,8 +258,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     staleTime: 0, // Always refetch to ensure fresh data
   });
 
-  const { data: weights, isLoading: weightsLoading } = useQuery<(MarketCriteriaWeight & { criteria: Criteria })[]>({
-    queryKey: ["/api/markets", marketId, "weights"],
+  // Published chart configuration: effective saved weights, the market's box
+  // thresholds and (for exports only) the current weight version.
+  const { data: chartConfig, isLoading: weightsLoading } = useQuery<PublishedChartConfig>({
+    queryKey: ["/api/markets", marketId, "chart-config"],
   });
 
   const { data: criteria } = useQuery<Criteria[]>({
@@ -378,50 +406,20 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     }
   }, [scores]);
 
-  // Initialize weights when data loads
+  // Slider state starts at the market's published (saved) weights. Moving a
+  // slider is the buyer's what-if view; "Reset to published" restores these.
   useEffect(() => {
-    if (weights && criteria) {
-      // Default weights vary by market maturity type.
-      // Emerging markets use lower weights for Business Model, Revenue, and Partner Ecosystem.
-      const matureDefaults: { [name: string]: number } = {
-        'ISV Ecosystem': 100,
-        'Innovation': 50,
-        'Pricing Strategy': 100,
-        'Product Capabilities': 100,
-        'Business Model': 50,
-        'Customer Experience': 100,
-        'Partner Ecosystem': 75,
-        'Revenue': 100,
-      };
-      const emergingOverrides: { [name: string]: number } = {
-        'Business Model': 50,
-        'Revenue': 25,
-        'Partner Ecosystem': 25,
-      };
-      const defaultWeightsByName = marketType === "emerging"
-        ? { ...matureDefaults, ...emergingOverrides }
-        : matureDefaults;
+    if (chartConfig) setCriteriaWeights({ ...chartConfig.weightsById });
+  }, [chartConfig]);
 
-      const initialWeights: { [id: string]: number } = {};
-      criteria.forEach(c => {
-        const existingWeight = weights.find(w => w.criteriaId === c.id);
-        if (existingWeight) {
-          // Use existing saved weight
-          initialWeights[c.id] = existingWeight.weight;
-        } else {
-          // Use default weight based on criteria name, fallback to 100
-          initialWeights[c.id] = defaultWeightsByName[c.name] || 100;
-        }
-      });
-      setCriteriaWeights(initialWeights);
-    }
-  }, [weights, criteria, marketType]);
-
-  // Load saved label positions
+  // Load saved label positions, skipping any dragged before the absolute-
+  // positioning cutover (see LABEL_POSITIONS_VALID_FROM).
   useEffect(() => {
     if (savedLabelPositions) {
       const positions: { [vendorId: string]: { x: number; y: number } } = {};
       savedLabelPositions.forEach((pos: any) => {
+        const savedAt = Date.parse(pos.updatedAt ?? pos.createdAt ?? "");
+        if (!Number.isFinite(savedAt) || savedAt < LABEL_POSITIONS_VALID_FROM) return;
         positions[pos.vendorId] = { 
           x: parseFloat(pos.labelX), 
           y: parseFloat(pos.labelY) 
@@ -473,121 +471,73 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     setMobileSelectedVendors(vendors.slice(0, 2).map(vendor => vendor.id));
   }, [mobileMode, vendors, marketId]);
 
-  // Each criterion's share is its configured percentage relative to the other
-  // criteria on the same axis. This keeps the chart aligned with the panel:
-  // four 100% criteria each contribute 25%, while 25/50/12.5/12.5 stays exact.
-  const axisWeightShares = criteria
-    ? {
-        ...calculateAxisWeightShares(criteria, criteriaWeights, "execution"),
-        ...calculateAxisWeightShares(criteria, criteriaWeights, "viability"),
-      }
-    : {};
+  // ── Positioning ────────────────────────────────────────────────────────────
+  // Every dot depends only on the vendor's own scores, the weights in play and
+  // the market's thresholds (shared/quadrant-positioning.ts). No roster-relative
+  // normalisation: adding or removing another vendor never moves a dot, and a
+  // market may legitimately have an empty Leaders box.
+  const thresholds = chartConfig?.thresholds ?? DEFAULT_QUADRANT_THRESHOLDS;
+  const publishedWeights = chartConfig?.weightsById ?? {};
+  const positioningCriteria = criteria ?? [];
+  // True while any slider differs from the market's saved weights.
+  const isWhatIf = positioningCriteria.some(
+    c => (criteriaWeights[c.id] ?? publishedWeights[c.id]) !== publishedWeights[c.id],
+  );
 
-  // Min-max normalization function
-  const normalizeToRange = (values: number[], min: number = 18, max: number = 82): number[] => {
-    if (values.length === 0) return [];
-    
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
-    
-    // If all values are the same, set all to middle value
-    if (rawMax === rawMin) {
-      return values.map(() => 50);
-    }
-    
-    return values.map(value => 
-      min + (max - min) * (value - rawMin) / (rawMax - rawMin)
-    );
-  };
-
-  // Calculate raw scores for all vendors first
-  const vendorsWithRawScores = (vendors || []).map(vendor => {
+  const vendorsWithScores: VendorWithScores[] = (vendors || []).map(vendor => {
     const vendorScores: { [criteriaId: string]: number } = {};
-    let executionRawScore = 0;
-    let viabilityRawScore = 0;
+    if (scores) {
+      for (const score of scores) {
+        if (score.vendorId !== vendor.id) continue;
+        const value = parseFloat(score.score);
+        if (Number.isFinite(value)) vendorScores[score.criteriaId] = value;
+      }
+    }
 
-    // Use historical positions if available and not current week
+    // History slider: stored rows are the composites the snapshot cron
+    // computed with the weights published at the time, so they go through the
+    // same plot transform as live dots (sliders cannot re-weight history).
     if (weeksAgo > 0 && historicalPositions) {
-      const historicalPosition = historicalPositions.find(pos => pos.vendorId === vendor.id);
-      if (historicalPosition) {
+      const historical = historicalPositions.find(pos => pos.vendorId === vendor.id);
+      if (
+        historical &&
+        isPlausibleStoredComposite(historical.executionScore) &&
+        isPlausibleStoredComposite(historical.viabilityScore)
+      ) {
+        const position = positionFromComposites(
+          { execution: Number(historical.executionScore), viability: Number(historical.viabilityScore) },
+          thresholds,
+        );
         return {
-          vendor,
-          vendorScores,
-          executionRawScore: parseFloat(historicalPosition.executionScore) || 50,
-          viabilityRawScore: parseFloat(historicalPosition.viabilityScore) || 50,
-          isHistorical: true
+          ...vendor,
+          scores: vendorScores,
+          executionScore: position.x,
+          viabilityScore: position.y,
+          executionComposite: position.execution,
+          viabilityComposite: position.viability,
+          box: position.box,
+          isHistorical: true,
         };
       }
-    }
-
-    // Calculate current scores using direct, axis-normalized weight shares.
-    if (scores && criteria) {
-      scores.forEach(score => {
-        if (score.vendorId === vendor.id) {
-          const scoreValue = parseFloat(score.score);
-          vendorScores[score.criteriaId] = scoreValue;
-          const weightShare = axisWeightShares[score.criteriaId] ?? 0;
-          
-          if (score.criteria.category === "execution") {
-            executionRawScore += scoreValue * weightShare;
-          } else if (score.criteria.category === "viability") {
-            viabilityRawScore += scoreValue * weightShare;
-          }
-        }
-      });
     }
 
     // Product Capabilities and ISV Ecosystem arrive already derived: the
     // server persists them (with their coverage roll-up) from the feature
     // support matrix via shared/derived-feature-scores.ts, so the chart uses
     // the stored value like every other criterion instead of recomputing.
-
+    const position = positionFromComposites(
+      computeAxisComposites(positioningCriteria, criteriaWeights, vendorScores),
+      thresholds,
+    );
     return {
-      vendor,
-      vendorScores,
-      executionRawScore,
-      viabilityRawScore,
-      isHistorical: false
-    };
-  });
-
-
-  // Separate current and historical vendors for normalization
-  const currentVendors = vendorsWithRawScores.filter(v => !v.isHistorical);
-  const historicalVendors = vendorsWithRawScores.filter(v => v.isHistorical);
-
-  // Normalize current vendors' scores
-  let normalizedExecutionScores: number[] = [];
-  let normalizedViabilityScores: number[] = [];
-
-  if (currentVendors.length > 0) {
-    const executionRawScores = currentVendors.map(v => v.executionRawScore);
-    const viabilityRawScores = currentVendors.map(v => v.viabilityRawScore);
-    
-    normalizedExecutionScores = normalizeToRange(executionRawScores);
-    normalizedViabilityScores = normalizeToRange(viabilityRawScores);
-  }
-
-  // Create final vendor scores array
-  const vendorsWithScores: VendorWithScores[] = vendorsWithRawScores.map((vendorData, index) => {
-    if (vendorData.isHistorical) {
-      return {
-        ...vendorData.vendor,
-        scores: vendorData.vendorScores,
-        executionScore: vendorData.executionRawScore,
-        viabilityScore: vendorData.viabilityRawScore,
-      };
-    }
-    
-    const currentIndex = currentVendors.findIndex(v => v.vendor.id === vendorData.vendor.id);
-    
-    return {
-      ...vendorData.vendor,
-      scores: vendorData.vendorScores,
-      executionScore: normalizedExecutionScores[currentIndex] || 50,
-      viabilityScore: normalizedViabilityScores[currentIndex] || 50,
-      rawExecutionScore: vendorData.executionRawScore,
-      rawViabilityScore: vendorData.viabilityRawScore,
+      ...vendor,
+      scores: vendorScores,
+      executionScore: position.x,
+      viabilityScore: position.y,
+      executionComposite: position.execution,
+      viabilityComposite: position.viability,
+      box: position.box,
+      isHistorical: false,
     };
   });
 
@@ -1032,9 +982,17 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     };
 
     const labelCandidates: LabelCandidate[] = adjustedVendors.map((vendor, index) => {
+      const dotX = xScale(vendor.adjustedX);
+      const dotY = yScale(vendor.adjustedY);
+      // A dragged label is saved as an absolute pixel captured against where
+      // the dot was at drag time. Dots move (re-scoring, what-if sliders, the
+      // history slider), and there is no connector line, so a saved label
+      // further than the tether radius from its dot would float unattached.
+      // Beyond it, fall back to auto-placement; a fresh drag re-saves.
       const customPos = labelPositions[vendor.id];
-      const labelPos = customPos
-        ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX: xScale(vendor.adjustedX), dotY: yScale(vendor.adjustedY) }
+      const customUsable = !!customPos && Math.hypot(customPos.x - dotX, customPos.y - dotY) <= LABEL_TETHER_PX;
+      const labelPos = customPos && customUsable
+        ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX, dotY }
         : calculateLabelPosition(vendor, index, adjustedVendors);
 
       // Keep every label inside the drawable chart area. Saved/auto positions
@@ -1169,6 +1127,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     }));
   };
 
+  const resetWeightsToPublished = () => {
+    if (chartConfig) setCriteriaWeights({ ...chartConfig.weightsById });
+  };
+
   if (vendorsLoading || scoresLoading || weightsLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -1231,9 +1193,34 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const pdfDoc = await PDFDocument.create();
       const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const png = await pdfDoc.embedPng(pngDataUrl);
 
-      // Landscape page sized around the chart's aspect ratio
+      // Provenance block: everything needed to reproduce every dot from the
+      // page alone — the weights in play (published version or what-if), the
+      // thresholds and each vendor's composites and box.
+      const provenance = buildChartProvenanceLines({
+        chartConfig,
+        criteria: positioningCriteria,
+        weightsInPlay: criteriaWeights,
+        isWhatIf,
+        thresholds,
+        vendors: vendorsWithScores,
+        historicalDate: weeksAgo > 0 ? formatDate(selectedDate) : null,
+      });
+      // Standard PDF fonts only encode WinAnsi; swap anything else (e.g. CJK
+      // vendor names) for "?" rather than failing the whole export.
+      const winAnsiSafe = (text: string) =>
+        text.replace(/[^\x20-\x7E\xA0-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC\u2122]/g, "?");
+      for (const line of provenance) line.text = winAnsiSafe(line.text);
+      const safeMarketName = winAnsiSafe(marketName);
+      const bodySize = 8;
+      const lineH = 10.5;
+      const blockGap = 18;
+      const blockH = provenance.length * lineH + blockGap;
+
+      // Landscape page sized around the chart's aspect ratio, extended by the
+      // provenance block (same page, below the chart).
       const margin = 40;
       const titleSize = 18;
       const titleGap = 24;
@@ -1242,12 +1229,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const ratio = Math.min(maxImgWidth / svgWidth, maxImgHeight / svgHeight);
       const imgW = svgWidth * ratio;
       const imgH = svgHeight * ratio;
-      const pageW = Math.max(imgW + margin * 2, font.widthOfTextAtSize(marketName, titleSize) + margin * 2);
-      const pageH = imgH + margin * 2 + titleSize + titleGap;
+      const widestLine = Math.max(...provenance.map(l => bodyFont.widthOfTextAtSize(l.text, l.bold ? bodySize + 1 : bodySize)));
+      const pageW = Math.max(imgW + margin * 2, font.widthOfTextAtSize(safeMarketName, titleSize) + margin * 2, widestLine + margin * 2);
+      const pageH = imgH + margin * 2 + titleSize + titleGap + blockH;
       const page = pdfDoc.addPage([pageW, pageH]);
 
-      page.drawText(marketName, {
-        x: (pageW - font.widthOfTextAtSize(marketName, titleSize)) / 2,
+      page.drawText(safeMarketName, {
+        x: (pageW - font.widthOfTextAtSize(safeMarketName, titleSize)) / 2,
         y: pageH - margin - titleSize,
         size: titleSize,
         font,
@@ -1255,10 +1243,22 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       });
       page.drawImage(png, {
         x: (pageW - imgW) / 2,
-        y: margin,
+        y: margin + blockH,
         width: imgW,
         height: imgH,
       });
+      let cursorY = margin + blockH - blockGap + lineH * (provenance.length - 1);
+      const blockX = (pageW - Math.max(imgW, widestLine)) / 2;
+      for (const line of provenance) {
+        page.drawText(line.text, {
+          x: blockX,
+          y: cursorY,
+          size: line.bold ? bodySize + 1 : bodySize,
+          font: line.bold ? font : bodyFont,
+          color: line.bold ? rgb(0.06, 0.09, 0.16) : rgb(0.28, 0.33, 0.41),
+        });
+        cursorY -= lineH;
+      }
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -1303,6 +1303,15 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                 </div>
               ) : <CardTitle className={isMobile ? "text-lg" : ""}>{marketName}</CardTitle>}
               <div className="flex items-center gap-2">
+              {!mobileMode && isWhatIf && (
+                <span
+                  className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                  title="Dots are positioned with your slider weights. Reset the sliders to see the published chart."
+                  data-testid="badge-what-if"
+                >
+                  What-if weights
+                </span>
+              )}
               {!mobileMode && (
               <button
                 onClick={handleExportPdf}
@@ -1484,6 +1493,24 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
             <Card className="h-full flex flex-col bg-white border border-[rgba(226,232,240,0.8)] shadow-[0_4px_16px_rgba(30,41,59,0.14),0_0_0_1px_rgba(79,70,229,0.05)]">
               <CardHeader className={isMobile ? "pb-3" : ""}>
                 <CardTitle className={isMobile ? "text-lg" : ""}>Criteria Weights</CardTitle>
+                <p className="text-xs text-gray-500 leading-snug" data-testid="text-weights-note">
+                  {isWhatIf
+                    ? "Showing your what-if view. The published chart uses this market's saved weights."
+                    : "Move a slider to build your own what-if view. The published chart uses this market's saved weights."}
+                </p>
+                {isWhatIf && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-fit"
+                    onClick={resetWeightsToPublished}
+                    data-testid="button-reset-weights"
+                  >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    Reset to published
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="flex-1 bg-[#F9FAFC] flex flex-col justify-between">
                 <div className="space-y-4">
@@ -1619,23 +1646,34 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
                     <h4 className="font-medium text-gray-900 mb-2">Quadrant Position</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Execution Score:</span>
-                        <span className="font-medium">
-                          {selectedVendor.vendor.executionScore.toFixed(1)}
+                        <span className="text-gray-600">Execution composite:</span>
+                        <span className="font-medium" data-testid="text-execution-composite">
+                          {selectedVendor.vendor.executionComposite.toFixed(2)} / 10
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Viability Score:</span>
-                        <span className="font-medium">
-                          {selectedVendor.vendor.viabilityScore.toFixed(1)}
+                        <span className="text-gray-600">Viability composite:</span>
+                        <span className="font-medium" data-testid="text-viability-composite">
+                          {selectedVendor.vendor.viabilityComposite.toFixed(2)} / 10
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Position:</span>
+                        <span className="text-gray-600">Box:</span>
+                        <span className="font-medium" data-testid="text-quadrant-box">
+                          {selectedVendor.vendor.box.label}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Chart position:</span>
                         <span className="font-medium">
                           ({selectedVendor.position.x.toFixed(1)}, {selectedVendor.position.y.toFixed(1)})
                         </span>
                       </div>
+                      {isWhatIf && !selectedVendor.vendor.isHistorical && (
+                        <p className="text-xs text-amber-700">
+                          Computed with your what-if slider weights, not the published weights.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

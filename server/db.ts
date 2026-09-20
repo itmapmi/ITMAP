@@ -14,6 +14,13 @@ if (!process.env.DATABASE_URL) {
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle({ client: pool, schema });
 
+/**
+ * Either the shared database handle or a transaction created from it. Storage
+ * functions that must take part in a caller's transaction accept this as an
+ * optional last argument and default to `db`.
+ */
+export type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 class FactReviewMigrationError extends Error {
   constructor(message: string) {
     super(message);
@@ -745,6 +752,39 @@ export async function runStartupMigrations(): Promise<void> {
     await client.query(`
       ALTER TABLE vendor_scores ADD COLUMN IF NOT EXISTS derived_coverage numeric(5,4);
       ALTER TABLE vendor_scores ADD COLUMN IF NOT EXISTS derived_feature_count integer;
+    `);
+
+    // 37. Absolute quadrant positioning: per-market box thresholds (rubric
+    //     score units) and the admin-only weight-version audit trail. The three
+    //     legacy two-band columns (divider Y / top label / colour theme) were
+    //     never read anywhere and are dropped. Initial versions are seeded
+    //     idempotently by seedInitialWeightVersions() right after this runs.
+    await client.query(`
+      ALTER TABLE markets ADD COLUMN IF NOT EXISTS execution_threshold_low numeric(4,2) NOT NULL DEFAULT 4.50;
+      ALTER TABLE markets ADD COLUMN IF NOT EXISTS execution_threshold_high numeric(4,2) NOT NULL DEFAULT 5.50;
+      ALTER TABLE markets ADD COLUMN IF NOT EXISTS viability_threshold numeric(4,2) NOT NULL DEFAULT 5.00;
+      ALTER TABLE markets DROP COLUMN IF EXISTS quadrant_divider_y;
+      ALTER TABLE markets DROP COLUMN IF EXISTS quadrant_top_label;
+      ALTER TABLE markets DROP COLUMN IF EXISTS quadrant_color_theme;
+      CREATE TABLE IF NOT EXISTS market_weight_versions (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        market_id varchar NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
+        version integer NOT NULL,
+        weights jsonb NOT NULL,
+        criteria_names jsonb NOT NULL DEFAULT '{}'::jsonb,
+        thresholds jsonb NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        created_by_user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+        created_by_label text NOT NULL,
+        note text
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS market_weight_versions_market_version_idx
+        ON market_weight_versions (market_id, version);
+      DELETE FROM market_criteria_weights a
+        USING market_criteria_weights b
+        WHERE a.market_id = b.market_id AND a.criteria_id = b.criteria_id AND a.ctid < b.ctid;
+      CREATE UNIQUE INDEX IF NOT EXISTS market_criteria_weights_market_criteria_idx
+        ON market_criteria_weights (market_id, criteria_id);
     `);
 
     console.log('[DB] Startup migrations applied successfully');

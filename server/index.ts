@@ -74,6 +74,16 @@ app.use((req, res, next) => {
   // Apply any additive schema changes that may not have been db:pushed yet
   await runStartupMigrations();
 
+  // Record weight version 1 for any market that has none yet (idempotent;
+  // no-op once every market is versioned). Failure must not block boot.
+  try {
+    const { seedInitialWeightVersions } = await import("./quadrantConfig");
+    const seeded = await seedInitialWeightVersions();
+    if (seeded.seeded.length > 0) log(`[QuadrantConfig] Seeded initial weight version for ${seeded.seeded.length} market(s)`);
+  } catch (err) {
+    log("Warning: Could not seed initial weight versions:", String(err));
+  }
+
   // Recover any stages left in "running" state from a previous server crash/deploy
   try {
     const { resetOrphanedRunningStages } = await import("./storage/marketBuilder");
