@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
-import { formatCoveragePercent } from "@shared/derived-feature-scores";
+import { formatCoveragePercent, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface EcosystemSupportProps {
@@ -184,15 +184,11 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     }
   };
 
-  // Filter features to only include ecosystem-related categories
-  // Uses isEcosystem flag (new) with fallback to name-based check (backward compat)
-  const ecosystemFeatures = features?.filter(feature =>
-    (feature.category as any).isEcosystem === true ||
-    feature.category.name.toLowerCase().includes('ecosystem') ||
-    feature.category.name.toLowerCase().includes('integration') ||
-    feature.category.name.toLowerCase().includes('partnership') ||
-    feature.category.name.toLowerCase().includes('third-party')
-  ) || [];
+  // Same partition the persisted ISV Ecosystem score is derived from
+  // (shared/derived-feature-scores.ts), so this tab always matches the chart.
+  const ecosystemFeatures = features
+    ? (getFeaturesForDerivedScore(features, "isvEcosystem") as FeatureWithCategory[])
+    : [];
 
   // Do not auto-select vendors - require user selection
 

@@ -14,7 +14,7 @@ import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { recordHighIntentAction } from "@/lib/high-intent";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
-import { formatCoveragePercent } from "@shared/derived-feature-scores";
+import { formatCoveragePercent, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface SupportMatrixProps {
@@ -592,15 +592,11 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     }
   };
 
-  // Filter out ecosystem-related features from product capabilities scoring
-  // Uses isEcosystem flag (new) with fallback to name-based check (backward compat)
-  const productCapabilityFeatures = features?.filter(feature =>
-    (feature.category as any).isEcosystem !== true &&
-    !feature.category.name.toLowerCase().includes('ecosystem') &&
-    !feature.category.name.toLowerCase().includes('integration') &&
-    !feature.category.name.toLowerCase().includes('partnership') &&
-    !feature.category.name.toLowerCase().includes('third-party')
-  ) || [];
+  // Same partition the persisted Product Capabilities score is derived from
+  // (shared/derived-feature-scores.ts), so this tab always matches the chart.
+  const productCapabilityFeatures = features
+    ? (getFeaturesForDerivedScore(features, "productCapabilities") as FeatureWithCategory[])
+    : [];
 
   const toggleVendor = (vendorId: string) => {
     setSelectedVendors(prev => {

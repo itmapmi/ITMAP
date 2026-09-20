@@ -37,6 +37,7 @@ import { useLocation } from "wouter";
 import { marketSlug } from "@/lib/market-slug";
 import { useMutation } from "@tanstack/react-query";
 import type { Market, Vendor } from "@shared/schema";
+import { isEcosystemFeature } from "@shared/derived-feature-scores";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { FadeInSection } from "@/components/ui/animated-card";
@@ -281,10 +282,10 @@ export default function MarketDetails() {
     queryKey: ["/api/markets", resolvedId, "feature-categories"],
     enabled: !!resolvedId && showOwnerControls,
   });
-  const hasProductPhase = featureCategories.some((c: any) =>
-    c.isEcosystem === false || (!c.isEcosystem && !/(ecosystem|integration|partnership|third-party|isv)/i.test(c.name)));
-  const hasEcosystemPhase = featureCategories.some((c: any) =>
-    c.isEcosystem === true || (c.isEcosystem !== false && /(ecosystem|integration|partnership|third-party|isv)/i.test(c.name)));
+  // Same isEcosystemFeature() check the persisted derived scores use, so the
+  // "no features yet" placeholder never disagrees with the evaluation tabs.
+  const hasProductPhase = featureCategories.some((c: any) => !isEcosystemFeature({ id: c.id, category: c }));
+  const hasEcosystemPhase = featureCategories.some((c: any) => isEcosystemFeature({ id: c.id, category: c }));
   const { data: myJobs = [] } = useQuery<any[]>({
     queryKey: ["/api/market-builder/jobs"],
     enabled: showOwnerControls,
