@@ -11,7 +11,7 @@
  *
  * Step 1 — raw roll-up ("weighted coverage")
  *   Each feature in the partition contributes 4 → 1.00, 3 → 0.75, 2 → 0.50,
- *   1 → 0, 0/missing → 0. coverage = Σ contribution / feature count (0–1).
+ *   1 → 0.25, 0/missing → 0. coverage = Σ contribution / feature count (0–1).
  *   This is exactly the "Total Score / Maximum" the evaluation tabs display
  *   and is persisted as `derived_coverage` for audit.
  *
@@ -81,7 +81,7 @@ export const SUPPORT_LEVEL_CONTRIBUTION: Readonly<Record<number, number>> = {
   4: 1,
   3: 0.75,
   2: 0.5,
-  1: 0,
+  1: 0.25,
   0: 0,
 };
 

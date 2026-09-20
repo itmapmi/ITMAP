@@ -47,11 +47,11 @@ describe("mapCoverageToRubricScore", () => {
 });
 
 describe("deriveFeatureScore", () => {
-  it("rolls Harvey Ball levels up with the 1 / 0.75 / 0.5 / 0 / 0 contributions", () => {
+  it("rolls Harvey Ball levels up with the 1 / 0.75 / 0.5 / 0.25 / 0 contributions", () => {
     const feature = ecosystemFeature("isv-1");
     const expected = new Map<number, { coverage: number; score: number }>([
       [0, { coverage: 0, score: 0 }],
-      [1, { coverage: 0, score: 0 }],
+      [1, { coverage: 0.25, score: 2.3 }],
       [2, { coverage: 0.5, score: 4.5 }],
       [3, { coverage: 0.75, score: 7.2 }],
       [4, { coverage: 1, score: 10 }],
@@ -70,6 +70,40 @@ describe("deriveFeatureScore", () => {
       expect(derived!.score).toBe(want.score);
       expect(derived!.score).toBe(mapCoverageToRubricScore(derived!.coverage));
     }
+  });
+
+  it("gives level-1 support partial credit while preserving higher-support ordering", () => {
+    const features = [
+      productFeature("p1"),
+      productFeature("p2"),
+      productFeature("p3"),
+      productFeature("p4"),
+    ];
+    const levelOne = deriveFeatureScore(
+      "vendor-level-one",
+      features,
+      features.map((feature) => ({
+        vendorId: "vendor-level-one",
+        featureId: feature.id,
+        supportLevel: 1,
+      })),
+      "productCapabilities",
+    );
+    const higherSupport = deriveFeatureScore(
+      "vendor-higher-support",
+      features,
+      features.map((feature) => ({
+        vendorId: "vendor-higher-support",
+        featureId: feature.id,
+        supportLevel: 2,
+      })),
+      "productCapabilities",
+    );
+
+    expect(levelOne).toMatchObject({ supportedTotal: 1, coverage: 0.25, score: 2.3 });
+    expect(higherSupport).toMatchObject({ supportedTotal: 2, coverage: 0.5, score: 4.5 });
+    expect(levelOne!.score).toBeGreaterThan(0);
+    expect(levelOne!.score).toBeLessThan(higherSupport!.score);
   });
 
   it("treats missing support rows as zero and ignores other vendors", () => {

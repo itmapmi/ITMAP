@@ -661,7 +661,7 @@ export function SupportMatrixAdmin() {
                 )}
                 
                 <div className="mt-4 text-sm text-purple-700 bg-purple-100 rounded-lg p-3">
-                  <strong>Note:</strong> The /10 value is the persisted ISV Ecosystem criterion score: weighted coverage (Total ÷ out of) mapped onto the 0–10 rubric (0% → 0, 55% → 5, 100% → 10). It is re-derived automatically after each support edit; "Update ISV Ecosystem" forces a full re-derivation for the market.
+                  <strong>Note:</strong> The /10 value is the persisted ISV Ecosystem criterion score: weighted coverage (support contributions 4 → 1.0, 3 → 0.75, 2 → 0.5, 1 → 0.25, 0 → 0; Total ÷ out of) mapped onto the 0–10 rubric (0% → 0, 55% → 5, 100% → 10). It is re-derived automatically after each support edit; "Update ISV Ecosystem" forces a full re-derivation for the market.
                 </div>
               </div>
             )}

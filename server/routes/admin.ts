@@ -953,7 +953,7 @@ export function registerAdminRoutes(app: Express): void {
             ]),
             spacer(),
             heading2("12.2 Auto-Calculated Score Formula"),
-            body("For each feature: Harvey Ball 4 → 1.0 pts, 3 → 0.75 pts, 2 → 0.5 pts, 1 → 0 pts, 0 → 0 pts."),
+            body("For each feature: Harvey Ball 4 → 1.0 pts, 3 → 0.75 pts, 2 → 0.5 pts, 1 → 0.25 pts, 0 → 0 pts."),
             body("Normalized Score (0-10) = (Sum of feature points / Number of features) × 10"),
             spacer(),
             heading2("12.3 Criteria Weighting"),
