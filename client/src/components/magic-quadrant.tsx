@@ -846,131 +846,6 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         track("vendor_viewed", { marketId, vendorId: (d as any).id ?? null, metadata: { vendorName: (d as any).name } });
       });
 
-    // Enhanced four-direction label positioning with collision detection.
-    // Used only by the narrow "responsive web" mobile canvas (compactChart)
-    // below — see the spiral collision-avoidance placement further down for
-    // the normal desktop chart and the dedicated mobile-app canvas.
-    const calculateLabelPosition = (vendor: typeof adjustedVendors[0], index: number, allVendors: typeof adjustedVendors): { 
-      labelX: number, labelY: number, anchor: string, dotX: number, dotY: number, side: string
-    } => {
-      const dotX = xScale(vendor.adjustedX);
-      const dotY = yScale(vendor.adjustedY);
-      const labelOffset = 12; // Direct adjacent positioning
-      const textWidth = vendor.name.length * 7.5;
-      const labelHeight = 16;
-      
-      // All four positions: right, left, top, bottom
-      const positions = [
-        { x: dotX + labelOffset, y: dotY + 4, anchor: "start", side: "right" }, // right (preferred)
-        { x: dotX - labelOffset, y: dotY + 4, anchor: "end", side: "left" },     // left
-        { x: dotX, y: dotY - labelOffset - 4, anchor: "middle", side: "top" },   // top
-        { x: dotX, y: dotY + labelOffset + 12, anchor: "middle", side: "bottom" } // bottom
-      ];
-      
-      // Check each position for conflicts
-      for (const position of positions) {
-        let hasConflict = false;
-        
-        // Calculate label bounds based on position
-        let labelLeft, labelRight, labelTop, labelBottom;
-        
-        if (position.side === "right" || position.side === "left") {
-          // Horizontal labels
-          labelLeft = position.anchor === "end" ? position.x - textWidth : position.x;
-          labelRight = labelLeft + textWidth;
-          labelTop = position.y - 12;
-          labelBottom = position.y + 4;
-        } else {
-          // Vertical labels (top/bottom)
-          labelLeft = position.x - textWidth / 2;
-          labelRight = position.x + textWidth / 2;
-          labelTop = position.y - 12;
-          labelBottom = position.y + 4;
-        }
-        
-        // Check chart bounds
-        if (labelLeft < margin.left + 5 || labelRight > width - margin.right - 5 || 
-            labelTop < margin.top + 5 || labelBottom > height - margin.bottom - 5) {
-          continue;
-        }
-        
-        // Check conflicts with other vendor dots and labels
-        for (let i = 0; i < allVendors.length; i++) {
-          if (i === index) continue;
-          
-          const otherVendor = allVendors[i];
-          const otherX = xScale(otherVendor.adjustedX);
-          const otherY = yScale(otherVendor.adjustedY);
-          
-          // Check distance to other dots (minimum 15px clearance)
-          const distanceToOtherDot = Math.sqrt((position.x - otherX) ** 2 + (position.y - otherY) ** 2);
-          if (distanceToOtherDot < 15) {
-            hasConflict = true;
-            break;
-          }
-          
-          // Check for label overlap with other potential label positions
-          const otherTextWidth = otherVendor.name.length * 7.5;
-          const otherLabelPositions = [
-            { x: otherX + labelOffset, anchor: "start", side: "right" },
-            { x: otherX - labelOffset, anchor: "end", side: "left" },
-            { x: otherX, anchor: "middle", side: "top" },
-            { x: otherX, anchor: "middle", side: "bottom" }
-          ];
-          
-          for (const otherPos of otherLabelPositions) {
-            let otherLabelLeft, otherLabelRight, otherLabelTop, otherLabelBottom;
-            
-            if (otherPos.side === "right" || otherPos.side === "left") {
-              otherLabelLeft = otherPos.anchor === "end" ? otherPos.x - otherTextWidth : otherPos.x;
-              otherLabelRight = otherLabelLeft + otherTextWidth;
-              otherLabelTop = otherY - 8;
-              otherLabelBottom = otherY + 8;
-            } else {
-              otherLabelLeft = otherPos.x - otherTextWidth / 2;
-              otherLabelRight = otherPos.x + otherTextWidth / 2;
-              otherLabelTop = otherPos.side === "top" ? otherY - labelOffset - 16 : otherY + labelOffset;
-              otherLabelBottom = otherLabelTop + 16;
-            }
-            
-            // Check for rectangle overlap
-            if (!(labelRight < otherLabelLeft || labelLeft > otherLabelRight || 
-                  labelBottom < otherLabelTop || labelTop > otherLabelBottom)) {
-              hasConflict = true;
-              break;
-            }
-          }
-          
-          if (hasConflict) break;
-        }
-        
-        if (!hasConflict) {
-          return {
-            labelX: position.x,
-            labelY: position.y,
-            anchor: position.anchor,
-            side: position.side,
-            dotX,
-            dotY
-          };
-        }
-      }
-      
-      // Fallback to right position (may overlap but at least visible). On
-      // mobile, a later pass over ALL labels (auto-placed and manually
-      // dragged) culls whatever still ends up overlapping once every label's
-      // final, clamped position is known — see the mobile de-overlap pass
-      // below — so this fallback doesn't need to self-censor.
-      return {
-        labelX: dotX + labelOffset,
-        labelY: dotY + 4,
-        anchor: "start",
-        side: "right",
-        dotX,
-        dotY
-      };
-    };
-
     type LabelCandidate = {
       vendor: typeof adjustedVendors[0];
       index: number;
@@ -1012,64 +887,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     let labelCandidates: LabelCandidate[];
     let acceptedIndices: Set<number>;
 
-    if (compactChart) {
-      // First pass: work out every vendor's intended label position (manually
-      // dragged custom position if one is saved, otherwise the best slot found
-      // by collision-aware auto-placement above) and clamp it inside the
-      // drawable chart area.
-      const firstPass: LabelCandidate[] = adjustedVendors.map((vendor, index) => {
-        const dotX = xScale(vendor.adjustedX);
-        const dotY = yScale(vendor.adjustedY);
-        // A dragged label is saved as an absolute pixel captured against where
-        // the dot was at drag time. Dots move (re-scoring, what-if sliders, the
-        // history slider), and there is no connector line, so a saved label
-        // further than the tether radius from its dot would float unattached.
-        // Beyond it, fall back to auto-placement; a fresh drag re-saves.
-        const customPos = labelPositions[vendor.id];
-        const customUsable = !!customPos && Math.hypot(customPos.x - dotX, customPos.y - dotY) <= LABEL_TETHER_PX;
-        const labelPos = customPos && customUsable
-          ? { labelX: customPos.x, labelY: customPos.y, anchor: "start", side: "custom", dotX, dotY }
-          : calculateLabelPosition(vendor, index, adjustedVendors);
-
-        // Keep every label inside the drawable chart area. Saved/auto positions
-        // can land outside the box (e.g. after the chart was made smaller), which
-        // clips the text off-screen — the dot stays but its label "disappears".
-        // Clamping is a no-op for labels already in bounds, so nothing else moves.
-        const lblWidth = vendor.name.length * 7.5;
-        const labelX = clampAnchoredX(labelPos.labelX, labelPos.anchor, lblWidth);
-        const labelY = clampLabelY(labelPos.labelY);
-
-        return { vendor, index, labelX, labelY, anchor: labelPos.anchor, lblWidth, dotX, dotY, showConnector: false };
-      });
-
-      // Second pass (mobile only): a manually dragged position is an absolute
-      // pixel saved from whatever chart size was on screen at drag time — almost
-      // always the wider desktop canvas. Reapplied verbatim on the much
-      // narrower mobile canvas, several different vendors' saved (or
-      // auto-placed) labels can still land on top of each other once clamped
-      // into the smaller box, stacking into unreadable overlapping text. Walk
-      // the candidates in order and drop (hide) any label whose final box
-      // collides with an already-accepted label or a dot that isn't its own;
-      // the dot itself always stays visible and tappable regardless.
-      acceptedIndices = new Set<number>();
-      const acceptedRects: ReturnType<typeof rectForLabel>[] = [];
-      for (const candidate of firstPass) {
-        const rect = rectForLabel(candidate.labelX, candidate.labelY, candidate.anchor, candidate.lblWidth);
-        const collidesWithDot = adjustedVendors.some((other, i) => {
-          if (i === candidate.index) return false;
-          const otherX = xScale(other.adjustedX);
-          const otherY = yScale(other.adjustedY);
-          return dotHitsRect(rect, otherX, otherY, 15);
-        });
-        const collidesWithLabel = acceptedRects.some(other => rectsOverlap(rect, other));
-        if (collidesWithDot || collidesWithLabel) continue;
-        acceptedIndices.add(candidate.index);
-        acceptedRects.push(rect);
-      }
-      labelCandidates = firstPass;
-    } else {
-      // Real collision-free layout for the normal desktop chart and the
-      // dedicated mobile-app canvas. A manually dragged position is a fixed
+    {
+      // Real collision-free layout, shared by every canvas (the normal
+      // desktop chart, the narrow "responsive web" mobile view, and the
+      // dedicated mobile-app canvas). A manually dragged position is a fixed
       // obstacle — it never moves and always wins, exactly as before. Every
       // other label is walked outward from its own dot through a spiral of
       // candidate rings (right/left/top/bottom, then the four diagonals, at
@@ -1083,6 +904,13 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       // orphaned once it's no longer touching the dot.
       const SEARCH_RADII = [16, 28, 42, 58, 76, 96, 118, 142, 168, 196];
       const DOT_CLEARANCE = 15;
+      // Estimated px per character for the label rendered below (9px on the
+      // narrow compactChart canvas, 11px elsewhere). Using the wider desktop
+      // estimate for the smaller compact font overstates every label's real
+      // footprint, which makes far more candidate slots look "occupied" than
+      // actually are — a compact canvas already has the least room to spare,
+      // so this matters most exactly where it's most cramped.
+      const charW = compactChart ? 5.5 : 7.5;
 
       const ringCandidates = (dotX: number, dotY: number, r: number) => [
         { x: dotX + r, y: dotY + 4, anchor: "start" as const },
@@ -1104,7 +932,7 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
         const customPos = labelPositions[vendor.id];
         const customUsable = !!customPos && Math.hypot(customPos.x - dotX, customPos.y - dotY) <= LABEL_TETHER_PX;
         if (customUsable && customPos) {
-          const lblWidth = vendor.name.length * 7.5;
+          const lblWidth = vendor.name.length * charW;
           const labelX = clampAnchoredX(customPos.x, "start", lblWidth);
           const labelY = clampLabelY(customPos.y);
           fixed.push({
@@ -1132,31 +960,57 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
       const acceptedRects: ReturnType<typeof rectForLabel>[] = fixed.map(c => rectForLabel(c.labelX, c.labelY, c.anchor, c.lblWidth));
       const placed: LabelCandidate[] = [];
 
+      // Overlap area between two rects (0 when they don't intersect) — used
+      // to grade candidates that don't fully clear every obstacle, so the
+      // exhausted-search fallback below can pick the least-bad option
+      // instead of a fixed, obstacle-blind slot.
+      const overlapArea = (a: { left: number; right: number; top: number; bottom: number }, b: { left: number; right: number; top: number; bottom: number }) => {
+        const ox = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+        const oy = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return ox * oy;
+      };
+
       toPlace.forEach(index => {
         const vendor = adjustedVendors[index];
         const { x: dotX, y: dotY } = dotPositions[index];
-        const lblWidth = vendor.name.length * 7.5;
+        const lblWidth = vendor.name.length * charW;
         let found: { labelX: number; labelY: number; anchor: string; ring: number } | null = null;
+        // Best imperfect candidate seen so far (still in bounds, but hits a
+        // dot and/or overlaps an already-placed label). On a small canvas
+        // (e.g. the narrow mobile-browser chart) with a dense vendor
+        // cluster, every ring can be genuinely out of room; tracking the
+        // least-bad option across all of them beats collapsing every
+        // exhausted vendor onto the same fixed slot next to its dot, which
+        // stacks them all on top of each other.
+        let bestFallback: { labelX: number; labelY: number; anchor: string; ring: number; score: number } | null = null;
 
         for (let ring = 0; ring < SEARCH_RADII.length && !found; ring++) {
           for (const cand of ringCandidates(dotX, dotY, SEARCH_RADII[ring])) {
             const rect = rectForLabel(cand.x, cand.y, cand.anchor, lblWidth);
             if (rect.left < minLabelX || rect.right > maxLabelX || rect.top < minLabelY || rect.bottom > maxLabelY) continue;
             const hitsDot = dotPositions.some((p, i) => i !== index && dotHitsRect(rect, p.x, p.y, DOT_CLEARANCE));
-            if (hitsDot) continue;
-            const hitsLabel = acceptedRects.some(r => rectsOverlap(rect, r));
-            if (hitsLabel) continue;
-            found = { labelX: cand.x, labelY: cand.y, anchor: cand.anchor, ring };
-            break;
+            const labelOverlap = acceptedRects.reduce((sum, r) => sum + overlapArea(rect, r), 0);
+            if (!hitsDot && labelOverlap === 0) {
+              found = { labelX: cand.x, labelY: cand.y, anchor: cand.anchor, ring };
+              break;
+            }
+            // Landing on a dot reads far worse than a partial label/label
+            // overlap (it obscures a marker, not just crowds some text), so
+            // it always outweighs any amount of label overlap.
+            const score = (hitsDot ? 1_000_000 : 0) + labelOverlap;
+            if (!bestFallback || score < bestFallback.score) {
+              bestFallback = { labelX: cand.x, labelY: cand.y, anchor: cand.anchor, ring, score };
+            }
           }
         }
 
         // Every ring exhausted — an extremely dense cluster with more
-        // vendors than the chart has room to space out. Fall back to the
-        // closest slot to the right of the dot; it may still touch a
+        // vendors than the chart has room to fully space out. Fall back to
+        // the least-bad candidate evaluated above (or, failing that, the
+        // closest slot to the right of the dot); it may still touch a
         // neighbour, but a visible, slightly-crowded label beats a silently
         // dropped one, and it still gets a connector line back to its dot.
-        const finalPos = found ?? { labelX: dotX + SEARCH_RADII[0], labelY: dotY + 4, anchor: "start" as const, ring: SEARCH_RADII.length };
+        const finalPos = found ?? bestFallback ?? { labelX: dotX + SEARCH_RADII[0], labelY: dotY + 4, anchor: "start" as const, ring: SEARCH_RADII.length };
         const labelX = clampAnchoredX(finalPos.labelX, finalPos.anchor, lblWidth);
         const labelY = clampLabelY(finalPos.labelY);
 
@@ -1175,9 +1029,10 @@ export default function MagicQuadrant({ marketId, marketName, marketType = "matu
     // Add vendor labels positioned around dots, with a thin connector line
     // back to the dot for any label that had to move away from it.
     labelCandidates.forEach(({ vendor, index, labelX, labelY, anchor, lblWidth, dotX, dotY, showConnector }) => {
-      // No room for this label on the crowded mobile canvas — leave the dot
-      // as the only visible marker. It's still tappable and its name is
-      // still reachable via the evidence popover, so nothing is truly lost.
+      // Defensive: every vendor is always placed by the spiral layout above
+      // (as a fixed custom position or a found/fallback ring slot), so this
+      // never actually skips a label. Kept as a guard in case that ever
+      // changes — the dot stays visible and tappable either way.
       if (!acceptedIndices.has(index)) return;
 
       const labelGroup = vendorGroups.filter((d, i) => i === index);
