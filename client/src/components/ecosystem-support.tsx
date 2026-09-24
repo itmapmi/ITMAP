@@ -102,6 +102,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [categoriesInitialized, setCategoriesInitialized] = useState(false);
   const [showVendorSelection, setShowVendorSelection] = useState(true); // Show selection by default
   const [selectedNotes, setSelectedNotes] = useState<{
     vendorName: string;
@@ -210,6 +211,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
       container.removeEventListener('scroll', handleScroll);
     };
   }, [allVendors, selectedVendors]); // Re-run when vendor data changes to ensure DOM is ready
+
+  // Initialize with all categories collapsed when features load (only once)
+  useEffect(() => {
+    if (features && !categoriesInitialized) {
+      const uniqueCategoryIds = new Set(features.map(f => f.category.id));
+      setCollapsedCategories(uniqueCategoryIds);
+      setCategoriesInitialized(true);
+    }
+  }, [features, categoriesInitialized]);
 
   // Filter vendors based on selection
   const vendors = allVendors?.filter(vendor => selectedVendors.has(vendor.id)) || [];
