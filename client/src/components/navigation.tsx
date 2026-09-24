@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, User, Settings, Menu, X, ChevronRight, Store, ChevronDown, FileText, ClipboardList, Star, MessageSquare, Shield, Smartphone } from "lucide-react";
 import { useViewMode } from "@/hooks/use-view-mode";
@@ -23,23 +23,6 @@ export default function Navigation() {
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { canToggle: canToggleMobileView, switchToMobile } = useViewMode();
-
-  // The fixed header (verification banner + nav) is measured at runtime and
-  // that measurement drives the spacer below it, so the two can never drift
-  // out of sync — no hardcoded height assumption, regardless of whether the
-  // banner is present or wraps to multiple lines.
-  const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    const el = headerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const { data: vendorScope } = useQuery<{ vendor: { name?: string } }>({
     queryKey: ["/api/lead-gen/me/scope"],
@@ -152,7 +135,7 @@ export default function Navigation() {
 
   return (
     <>
-      <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50">
+      <div className="sticky top-0 z-50">
         <VerificationBanner />
         <CompanyProfilePromptBanner />
         <nav className="bg-[#1e2130]/80 backdrop-blur-xl border-b border-white/5">
@@ -429,7 +412,6 @@ export default function Navigation() {
         )}
       </nav>
       </div>
-      <div style={{ height: headerHeight }} />
     </>
   );
 }

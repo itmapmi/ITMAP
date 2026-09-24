@@ -239,38 +239,12 @@ function SectionLabel({ accent, children }: { accent: "cyan" | "violet"; childre
 // ─── BUYER DASHBOARD ─────────────────────────────────────────────────────────
 
 function BuyerDashboard({ user, markets, isLoading }: { user: any; markets?: Market[]; isLoading: boolean }) {
-  const { data: rfpStatus } = useQuery<{ activeCount: number; last24hCount: number }>({
-    queryKey: ["/api/me/rfps-status"],
-    staleTime: 30_000,
-    retry: false,
-  });
-
   return (
     <div className="min-h-screen overflow-hidden bg-[#1e2130]">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 sm:py-11 lg:px-8">
-        <motion.header initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="relative mb-8 overflow-hidden rounded-3xl border border-cyan-300/10 bg-slate-900 px-6 py-7 sm:px-9 sm:py-9">
-          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-          <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="mb-3 flex items-center gap-2.5 text-sm text-slate-400">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10 text-xs font-bold text-cyan-300">{user?.firstName?.[0] ?? "U"}</span>
-                Intelligence workspace
-              </div>
-              <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">Make the next technology decision with evidence.</h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">Welcome back{user?.firstName ? `, ${user.firstName}` : ""}. Start with the market, build the request, and keep security context close.</p>
-            </div>
-            <div className="grid grid-cols-2 divide-x divide-white/10 self-start overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 lg:self-auto">
-              <div className="min-w-[130px] px-5 py-3.5">
-                <p className="text-2xl font-bold tabular-nums text-cyan-300">{markets != null ? markets.length : "—"}</p>
-                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Live markets</p>
-              </div>
-              <div className="min-w-[130px] px-5 py-3.5">
-                <p className="text-2xl font-bold tabular-nums text-violet-300">{rfpStatus != null ? rfpStatus.activeCount : "—"}</p>
-                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">Active RFPs</p>
-              </div>
-            </div>
-          </div>
-        </motion.header>
+        <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mb-8 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          Welcome back{user?.firstName ? `, ${user.firstName}` : ""}.
+        </motion.h1>
 
         <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.08 }} className="mb-12">
           <div className="mb-5 flex items-end justify-between">

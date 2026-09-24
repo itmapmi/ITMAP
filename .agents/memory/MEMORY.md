@@ -50,3 +50,4 @@
 - [Feature-derived criteria persistence](derived-criteria-persistence.md) — notes-only saves keep coverage; legacy "flag OR name" partition; writers refuse changed derived scores; empty partition deletes rows.
 - [Recovering a clobbered dev row](dev-db-row-recovery.md) — backup bucket is unreadable from the workspace; dev shares PKs with prod, so restore text from the prod read replica.
 - [Quadrant label free-drag positioning](quadrant-label-layout.md) — no collision avoidance, no connector line, no tether; a saved drag position is always honored as-is (reverted per user request).
+- [Sticky header vs fixed+JS-spacer](sticky-header-vs-fixed-spacer.md) — fixed nav + ResizeObserver-measured spacer is racy (content can render behind header); use position:sticky instead.
