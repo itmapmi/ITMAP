@@ -2176,6 +2176,60 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   /**
+   * GET /api/admin/operations/top-markets-by-date
+   * Top 10 markets for a single date or an arbitrary date range, optionally
+   * scoped to one country. Always includes both registered and anonymous
+   * visitors (no identity filter) — that's the whole point of the widget.
+   * Query params:
+   *   from: "YYYY-MM-DD" (required) — start of range, or the single date
+   *         when `to` is omitted.
+   *   to: "YYYY-MM-DD" (optional, defaults to `from`) — end of range.
+   *   country: ISO alpha-2 code, max 10 chars (optional)
+   */
+  app.get("/api/admin/operations/top-markets-by-date", requireAdmin, async (req, res) => {
+    try {
+      const dateShape = /^\d{4}-\d{2}-\d{2}$/;
+
+      const fromRaw = String(req.query.from ?? "");
+      if (!dateShape.test(fromRaw)) {
+        return res.status(400).json({ error: "from must be a date in YYYY-MM-DD format" });
+      }
+      const toRaw = String(req.query.to ?? fromRaw);
+      if (!dateShape.test(toRaw)) {
+        return res.status(400).json({ error: "to must be a date in YYYY-MM-DD format" });
+      }
+
+      // Whole-day bounds in UTC so a single date covers that entire day.
+      const since = new Date(`${fromRaw}T00:00:00.000Z`);
+      const until = new Date(`${toRaw}T23:59:59.999Z`);
+      if (Number.isNaN(since.getTime()) || Number.isNaN(until.getTime())) {
+        return res.status(400).json({ error: "from/to must be valid calendar dates" });
+      }
+      if (until < since) {
+        return res.status(400).json({ error: "to must not be before from" });
+      }
+
+      // country: max 10 chars, alpha only
+      const countryRaw = req.query.country;
+      let country: string | undefined;
+      if (countryRaw !== undefined && countryRaw !== "") {
+        const s = String(countryRaw);
+        if (s.length > 10 || !/^[A-Za-z]+$/.test(s)) {
+          return res.status(400).json({ error: "country must be a short alphabetic country code" });
+        }
+        country = s.toUpperCase();
+      }
+
+      const rows = await storage.getTopMarkets({ since, until, visitorType: "all", country });
+
+      res.json({ topMarkets: rows.slice(0, 10), from: fromRaw, to: toRaw, country: country ?? null });
+    } catch (error) {
+      console.error("Error fetching top markets by date:", error);
+      res.status(500).json({ error: "Failed to fetch top markets by date" });
+    }
+  });
+
+  /**
    * GET /api/admin/operations/funnel
    * Ad registration conversion funnel (Task #81): landing → meaningful
    * interaction → prompt displayed → signup started → signup completed →

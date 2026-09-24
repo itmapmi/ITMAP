@@ -33,6 +33,8 @@ type Visitor = {
   loginCount: number; userAgent?: string; deviceType: "phone" | "desktop"; dwellMs: number;
 };
 type VisitorResponse = { visitors: Visitor[]; total: number; page: number; limit: number };
+type DateMode = "point" | "range";
+type TopMarketsByDateResponse = { topMarkets: { marketId: string; marketName: string; visits: number; visitors: number; dwellMs: number }[]; from: string; to: string; country: string | null };
 type TrafficBucket = "all" | "campaign";
 type FunnelRow = {
   landingMarketId: string | null;
@@ -71,6 +73,13 @@ const dateLabel = (period: string, granularity: Granularity) => {
   return date.toLocaleDateString("en-US", granularity === "month" ? { month: "short" } : { month: "short", day: "numeric" });
 };
 const prettyDate = (value?: string) => value ? new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+const todayIso = () => isoDate(new Date());
+const daysAgoIso = (days: number) => { const d = new Date(); d.setDate(d.getDate() - days); return isoDate(d); };
+const prettyRangeLabel = (from: string, to: string) => {
+  const fmt = (value: string) => new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`;
+};
 
 function Metric({ icon: Icon, label, value, detail, accent }: { icon: typeof Users; label: string; value: number; detail: string; accent: string }) {
   return <div className="group relative overflow-hidden rounded-lg border border-slate-200/80 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,.03)] transition-all hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-[0_8px_24px_rgba(14,116,144,.10)]">
@@ -95,6 +104,11 @@ export default function OperationsManagement() {
   const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
   const [funnelBucket, setFunnelBucket] = useState<TrafficBucket>("all");
   const [funnelOpen, setFunnelOpen] = useState(true);
+  const [byDateCountry, setByDateCountry] = useState("all");
+  const [byDateMode, setByDateMode] = useState<DateMode>("point");
+  const [byDatePoint, setByDatePoint] = useState(todayIso());
+  const [byDateFrom, setByDateFrom] = useState(daysAgoIso(7));
+  const [byDateTo, setByDateTo] = useState(todayIso());
   const limit = 25;
   const params = useMemo(() => {
     const query = new URLSearchParams({ granularity, days: String(days) });
@@ -109,12 +123,21 @@ export default function OperationsManagement() {
     if (country !== "all") query.set("country", country);
     return query.toString();
   }, [page, days, marketId, visitorType, country]);
+  const byDateFromValue = byDateMode === "point" ? byDatePoint : byDateFrom;
+  const byDateToValue = byDateMode === "point" ? byDatePoint : byDateTo;
+  const byDateParams = useMemo(() => {
+    const query = new URLSearchParams({ from: byDateFromValue, to: byDateToValue });
+    if (byDateCountry !== "all") query.set("country", byDateCountry);
+    return query.toString();
+  }, [byDateFromValue, byDateToValue, byDateCountry]);
   const trafficQuery = useQuery<Traffic>({ queryKey: [`/api/admin/operations/traffic?${params}`], retry: false });
+  const topMarketsByDateQuery = useQuery<TopMarketsByDateResponse>({ queryKey: [`/api/admin/operations/top-markets-by-date?${byDateParams}`], retry: false, enabled: Boolean(byDateFromValue && byDateToValue && byDateToValue >= byDateFromValue) });
   const visitorsQuery = useQuery<VisitorResponse>({ queryKey: [`/api/admin/operations/visitors?${visitorParams}`], retry: false });
   const funnelQuery = useQuery<FunnelResponse>({ queryKey: [`/api/admin/operations/funnel?days=${days}&trafficBucket=${funnelBucket}`], retry: false });
   const traffic = trafficQuery.data;
   const visitors = visitorsQuery.data;
   const funnel = funnelQuery.data;
+  const topMarketsByDate = topMarketsByDateQuery.data;
   const filteredVisitors = useMemo(() => (visitors?.visitors ?? []).filter((item) => {
     const needle = search.toLowerCase();
     return !needle || [item.email, item.firstName, item.lastName, item.anonymousId, item.ipAddress, item.city].some((value) => value?.toLowerCase().includes(needle));
@@ -149,6 +172,59 @@ export default function OperationsManagement() {
           <Card className="border-slate-200/80 shadow-sm"><CardHeader className="pb-0"><SectionTitle eyebrow="Where demand lands" title="Geo traffic" action={<Globe2 className="h-4 w-4 text-cyan-600" />} /></CardHeader><CardContent>{traffic.geo.length === 0 ? <div className="py-12 text-center text-sm text-slate-500">No geographic signal in this window.</div> : <div className="space-y-3">{traffic.geo.slice(0, 8).map((item, index) => { const max = traffic.geo[0]?.visitors || 1; return <div key={item.countryCode} className="group"><div className="mb-1.5 flex items-center justify-between text-xs"><span className="flex items-center gap-2 font-medium text-slate-700"><span className="w-4 font-mono text-[10px] text-slate-400">{String(index + 1).padStart(2, "0")}</span><span className="font-mono text-[10px] text-cyan-700">{item.countryCode}</span>{item.country}</span><span className="font-mono font-semibold text-slate-800">{number(item.visitors)}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500 group-hover:from-violet-500 group-hover:to-cyan-500" style={{ width: `${Math.max(3, item.visitors / max * 100)}%` }} /></div><div className="mt-1 text-right text-[10px] text-slate-400">{number(item.pageViews)} page views</div></div>})}</div>}</CardContent></Card>
           <Card className="border-slate-200/80 shadow-sm"><CardHeader className="pb-0"><SectionTitle eyebrow="Market intelligence" title="Top markets" action={<Select value={marketSort} onValueChange={(value: typeof marketSort) => setMarketSort(value)}><SelectTrigger className="h-8 w-[130px] text-[11px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="visits">By visits</SelectItem><SelectItem value="visitors">By visitors</SelectItem><SelectItem value="dwellMs">By dwell time</SelectItem></SelectContent></Select>} /></CardHeader><CardContent><div className="divide-y divide-slate-100">{sortedMarkets.slice(0, 7).map((market, index) => <button key={market.marketId} onClick={() => { setSelectedMarket(market.marketId); setMarketId(market.marketId); setPage(1); }} className={`flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-cyan-50/70 ${selectedMarket === market.marketId ? "bg-cyan-50" : ""}`}><span className="w-5 font-mono text-xs text-slate-400">{String(index + 1).padStart(2, "0")}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-800">{market.marketName}</span><span className="mt-0.5 block text-[10px] text-slate-400">{number(market.visitors)} unique · {duration(market.dwellMs)} dwell</span></span><span className="text-right"><span className="block font-mono text-sm font-semibold text-cyan-700">{marketSort === "dwellMs" ? duration(market.dwellMs) : number(market[marketSort])}</span><span className="text-[10px] uppercase tracking-wide text-slate-400">{marketSort === "visitors" ? "visitors" : marketSort === "dwellMs" ? "dwell" : "visits"}</span></span><PanelRightOpen className="h-3.5 w-3.5 text-slate-300" /></button>)}{sortedMarkets.length === 0 && <div className="py-12 text-center text-sm text-slate-500">No market activity in this window.</div>}</div></CardContent></Card>
         </div>
+        <Card className="border-slate-200/80 shadow-sm">
+          <CardHeader className="pb-0">
+            <SectionTitle eyebrow="Country · date" title="Top markets explorer" action={<span className="font-mono text-[10px] text-slate-400">{prettyRangeLabel(byDateFromValue, byDateToValue)}</span>} />
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <div className="flex h-9 overflow-hidden rounded-md border border-slate-200 bg-white p-0.5">
+                {(["point", "range"] as DateMode[]).map((mode) => (
+                  <button key={mode} onClick={() => setByDateMode(mode)} className={`px-3 text-xs font-semibold transition-colors ${byDateMode === mode ? "rounded bg-slate-950 text-white" : "text-slate-500 hover:text-slate-900"}`}>
+                    {mode === "point" ? "Single date" : "Date range"}
+                  </button>
+                ))}
+              </div>
+              {byDateMode === "point" ? (
+                <Input type="date" value={byDatePoint} max={todayIso()} onChange={(event) => setByDatePoint(event.target.value)} className="h-9 w-[150px] bg-white text-xs" />
+              ) : (
+                <>
+                  <Input type="date" value={byDateFrom} max={byDateTo} onChange={(event) => setByDateFrom(event.target.value)} className="h-9 w-[150px] bg-white text-xs" />
+                  <span className="text-xs text-slate-400">to</span>
+                  <Input type="date" value={byDateTo} min={byDateFrom} max={todayIso()} onChange={(event) => setByDateTo(event.target.value)} className="h-9 w-[150px] bg-white text-xs" />
+                </>
+              )}
+              <Select value={byDateCountry} onValueChange={setByDateCountry}>
+                <SelectTrigger className="h-9 min-w-[145px] bg-white text-xs"><SelectValue placeholder="All countries" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All countries</SelectItem>{traffic?.filters.countries.map((item) => <SelectItem key={item.code} value={item.code}>{item.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <span className="ml-auto font-mono text-[10px] uppercase tracking-wide text-slate-400">Registered + anonymous</span>
+            </div>
+            {topMarketsByDateQuery.isLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-10 animate-pulse rounded bg-slate-100" />)}</div>
+            ) : topMarketsByDateQuery.error ? (
+              <div className="py-12 text-center text-sm text-rose-600">Couldn't load this date selection. Check the range and try again.</div>
+            ) : !topMarketsByDate || topMarketsByDate.topMarkets.length === 0 ? (
+              <div className="py-12 text-center text-sm text-slate-500">No market activity for this country and date selection.</div>
+            ) : (
+              <div className="grid gap-x-6 sm:grid-cols-2">
+                {topMarketsByDate.topMarkets.map((market, index) => (
+                  <div key={market.marketId} className="flex items-center gap-3 border-b border-slate-100 py-3 sm:[&:nth-last-child(-n+2)]:border-b-0">
+                    <span className="w-5 font-mono text-xs text-slate-400">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-slate-800">{market.marketName}</span>
+                      <span className="mt-0.5 block text-[10px] text-slate-400">{number(market.visitors)} unique · {duration(market.dwellMs)} dwell</span>
+                    </span>
+                    <span className="text-right">
+                      <span className="block font-mono text-sm font-semibold text-cyan-700">{number(market.visits)}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-slate-400">visits</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
         <Card className="border-slate-200/80 bg-slate-950 text-white shadow-sm"><CardContent className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-start gap-3">{<BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />}<div><p className="font-mono text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Drill-down context</p><p className="mt-1 text-sm font-semibold">{selectedMarket ? sortedMarkets.find((market) => market.marketId === selectedMarket)?.marketName ?? "Selected market" : "All markets overview"}</p><p className="mt-1 text-xs text-slate-400">{selectedMarket ? "All charts and visitor records are now scoped to this market." : "Select a market above to isolate its demand footprint."}</p></div></div><div className="flex flex-wrap items-center gap-5">{traffic.tabs.slice(0, 5).map((tab) => <div key={tab.tab}><p className="font-mono text-lg font-semibold text-white">{compact(tab.visits)}</p><p className="text-[10px] uppercase tracking-wider text-slate-400">{tab.tab}</p></div>)}{selectedMarket && <Button variant="outline" size="sm" className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white" onClick={() => { setSelectedMarket(null); setMarketId("all"); setPage(1); }}><X className="mr-1.5 h-3.5 w-3.5" />Clear drill-down</Button>}</div></CardContent></Card>
         <Card className="overflow-hidden border-slate-200/80 shadow-sm">
           <Collapsible open={funnelOpen} onOpenChange={setFunnelOpen}>
