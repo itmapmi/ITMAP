@@ -20,6 +20,7 @@ import { seedInitialWeightVersions } from "../quadrantConfig";
 import { DERIVED_CRITERION_NAMES } from "@shared/derived-feature-scores";
 import { sendVerificationEmail, sendCustomEmail, sendFactReviewDecisionEmail } from "../emailService";
 import { issueAndSendVerification, issueAndSendCompanyVerification } from "./auth";
+import { getRegisteredUserCount } from "../storage/users";
 
 interface CollectionLogEntry {
   id: string;
@@ -48,6 +49,49 @@ function pushCollectionLog(scope: string, results: SignalCollectionResult[]): vo
   };
   collectionLog.unshift(entry);
   if (collectionLog.length > COLLECTION_LOG_MAX) collectionLog.length = COLLECTION_LOG_MAX;
+}
+
+// Shared by every Analytics-tab widget that takes a custom date range
+// (YYYY-MM-DD). Returns whole-day UTC bounds, or null after writing a 400
+// response — callers must `return` immediately when this returns null.
+function parseDateRangeQuery(
+  req: any,
+  res: any,
+): { since: Date; until: Date; fromRaw: string; toRaw: string } | null {
+  const dateShape = /^\d{4}-\d{2}-\d{2}$/;
+  const fromRaw = String(req.query.from ?? "");
+  if (!dateShape.test(fromRaw)) {
+    res.status(400).json({ error: "from must be a date in YYYY-MM-DD format" });
+    return null;
+  }
+  const toRaw = String(req.query.to ?? fromRaw);
+  if (!dateShape.test(toRaw)) {
+    res.status(400).json({ error: "to must be a date in YYYY-MM-DD format" });
+    return null;
+  }
+  const since = new Date(`${fromRaw}T00:00:00.000Z`);
+  const until = new Date(`${toRaw}T23:59:59.999Z`);
+  if (Number.isNaN(since.getTime()) || Number.isNaN(until.getTime())) {
+    res.status(400).json({ error: "from/to must be valid calendar dates" });
+    return null;
+  }
+  if (until < since) {
+    res.status(400).json({ error: "to must not be before from" });
+    return null;
+  }
+  return { since, until, fromRaw, toRaw };
+}
+
+// Shared optional `country` query param (ISO alpha code, max 10 chars).
+function parseOptionalCountryQuery(req: any, res: any): { country?: string } | null {
+  const countryRaw = req.query.country;
+  if (countryRaw === undefined || countryRaw === "") return { country: undefined };
+  const s = String(countryRaw);
+  if (s.length > 10 || !/^[A-Za-z]+$/.test(s)) {
+    res.status(400).json({ error: "country must be a short alphabetic country code" });
+    return null;
+  }
+  return { country: s.toUpperCase() };
 }
 
 export function registerAdminRoutes(app: Express): void {
@@ -2176,6 +2220,27 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   /**
+   * GET /api/admin/operations/filters
+   * Market/country option lists for the Logs tab's visitor-log filters.
+   * Query params: days: 1..3650 (default 3650 — effectively all-time)
+   */
+  app.get("/api/admin/operations/filters", requireAdmin, async (req, res) => {
+    try {
+      const daysRaw = req.query.days ? parseInt(String(req.query.days), 10) : 3650;
+      if (!Number.isFinite(daysRaw) || daysRaw < 1 || daysRaw > 3650) {
+        return res.status(400).json({ error: "days must be an integer between 1 and 3650" });
+      }
+      const since = new Date();
+      since.setDate(since.getDate() - daysRaw);
+      const filters = await storage.getTrafficFilters({ since, visitorType: "all" });
+      res.json(filters);
+    } catch (error) {
+      console.error("Error fetching operations filters:", error);
+      res.status(500).json({ error: "Failed to fetch operations filters" });
+    }
+  });
+
+  /**
    * GET /api/admin/operations/top-markets-by-date
    * Top 10 markets for a single date or an arbitrary date range, optionally
    * scoped to one country. Always includes both registered and anonymous
@@ -2188,37 +2253,12 @@ export function registerAdminRoutes(app: Express): void {
    */
   app.get("/api/admin/operations/top-markets-by-date", requireAdmin, async (req, res) => {
     try {
-      const dateShape = /^\d{4}-\d{2}-\d{2}$/;
-
-      const fromRaw = String(req.query.from ?? "");
-      if (!dateShape.test(fromRaw)) {
-        return res.status(400).json({ error: "from must be a date in YYYY-MM-DD format" });
-      }
-      const toRaw = String(req.query.to ?? fromRaw);
-      if (!dateShape.test(toRaw)) {
-        return res.status(400).json({ error: "to must be a date in YYYY-MM-DD format" });
-      }
-
-      // Whole-day bounds in UTC so a single date covers that entire day.
-      const since = new Date(`${fromRaw}T00:00:00.000Z`);
-      const until = new Date(`${toRaw}T23:59:59.999Z`);
-      if (Number.isNaN(since.getTime()) || Number.isNaN(until.getTime())) {
-        return res.status(400).json({ error: "from/to must be valid calendar dates" });
-      }
-      if (until < since) {
-        return res.status(400).json({ error: "to must not be before from" });
-      }
-
-      // country: max 10 chars, alpha only
-      const countryRaw = req.query.country;
-      let country: string | undefined;
-      if (countryRaw !== undefined && countryRaw !== "") {
-        const s = String(countryRaw);
-        if (s.length > 10 || !/^[A-Za-z]+$/.test(s)) {
-          return res.status(400).json({ error: "country must be a short alphabetic country code" });
-        }
-        country = s.toUpperCase();
-      }
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const countryParsed = parseOptionalCountryQuery(req, res);
+      if (!countryParsed) return;
+      const { since, until, fromRaw, toRaw } = range;
+      const { country } = countryParsed;
 
       const rows = await storage.getTopMarkets({ since, until, visitorType: "all", country });
 
@@ -2226,6 +2266,140 @@ export function registerAdminRoutes(app: Express): void {
     } catch (error) {
       console.error("Error fetching top markets by date:", error);
       res.status(500).json({ error: "Failed to fetch top markets by date" });
+    }
+  });
+
+  /**
+   * GET /api/admin/operations/registered-users-count
+   * All-time count of registered (non-admin) accounts — the "Total
+   * registered users so far" figure shown at the top of the Logs tab.
+   */
+  app.get("/api/admin/operations/registered-users-count", requireAdmin, async (_req, res) => {
+    try {
+      const count = await getRegisteredUserCount();
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching registered user count:", error);
+      res.status(500).json({ error: "Failed to fetch registered user count" });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/visitors-trend
+   * Analytics widget #1 — total visitors (registered + anonymous combined)
+   * over time, at day/week/month/quarter granularity, over a custom date
+   * range.
+   * Query params: from, to (YYYY-MM-DD), granularity: day|week|month|quarter
+   */
+  app.get("/api/admin/analytics/visitors-trend", requireAdmin, async (req, res) => {
+    try {
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const granularityRaw = String(req.query.granularity ?? "day");
+      if (!["day", "week", "month", "quarter"].includes(granularityRaw)) {
+        return res.status(400).json({ error: "granularity must be day, week, month, or quarter" });
+      }
+      const granularity = granularityRaw as "day" | "week" | "month" | "quarter";
+
+      const trend = await storage.getTrafficTrend({ since, until, visitorType: "all" }, granularity);
+      res.json({ trend, from: fromRaw, to: toRaw, granularity });
+    } catch (error) {
+      console.error("Error fetching visitors trend:", error);
+      res.status(500).json({ error: "Failed to fetch visitors trend" });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/markets-trend
+   * Analytics widget #2 — total visitors by market, bucketed by quarter or
+   * year, over a custom date range.
+   * Query params: from, to (YYYY-MM-DD), granularity: quarter|year
+   */
+  app.get("/api/admin/analytics/markets-trend", requireAdmin, async (req, res) => {
+    try {
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const granularityRaw = String(req.query.granularity ?? "quarter");
+      if (!["quarter", "year"].includes(granularityRaw)) {
+        return res.status(400).json({ error: "granularity must be quarter or year" });
+      }
+      const granularity = granularityRaw as "quarter" | "year";
+
+      const rows = await storage.getMarketTrend({ since, until, visitorType: "all" }, granularity);
+      res.json({ rows, from: fromRaw, to: toRaw, granularity });
+    } catch (error) {
+      console.error("Error fetching markets trend:", error);
+      res.status(500).json({ error: "Failed to fetch markets trend" });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/geography
+   * Analytics widget #3 — total visitors by country over a custom date
+   * range.
+   * Query params: from, to (YYYY-MM-DD)
+   */
+  app.get("/api/admin/analytics/geography", requireAdmin, async (req, res) => {
+    try {
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const geo = await storage.getTrafficGeo({ since, until, visitorType: "all" });
+      res.json({ geo, from: fromRaw, to: toRaw });
+    } catch (error) {
+      console.error("Error fetching geography analytics:", error);
+      res.status(500).json({ error: "Failed to fetch geography analytics" });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/market-geo-split
+   * Analytics widget #4 — country split of visitors for one market, over a
+   * custom date range.
+   * Query params: marketId (UUID, required), from, to (YYYY-MM-DD)
+   */
+  app.get("/api/admin/analytics/market-geo-split", requireAdmin, async (req, res) => {
+    try {
+      const marketIdRaw = req.query.marketId;
+      if (!marketIdRaw || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(marketIdRaw))) {
+        return res.status(400).json({ error: "marketId must be a valid UUID" });
+      }
+      const marketId = String(marketIdRaw);
+
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const rows = await storage.getMarketGeoSplit(marketId, { since, until, visitorType: "all" });
+      res.json({ rows, marketId, from: fromRaw, to: toRaw });
+    } catch (error) {
+      console.error("Error fetching market geo split:", error);
+      res.status(500).json({ error: "Failed to fetch market geo split" });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/tabs
+   * Tab engagement widget — visit counts per surface (vendor comparison,
+   * ecosystem, Intelligence Feed, etc.) over a custom date range.
+   * Query params: from, to (YYYY-MM-DD)
+   */
+  app.get("/api/admin/analytics/tabs", requireAdmin, async (req, res) => {
+    try {
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const tabs = await storage.getTabStats({ since, until, visitorType: "all" });
+      res.json({ tabs, from: fromRaw, to: toRaw });
+    } catch (error) {
+      console.error("Error fetching tab engagement analytics:", error);
+      res.status(500).json({ error: "Failed to fetch tab engagement analytics" });
     }
   });
 

@@ -12,6 +12,8 @@ import ImportExportAdmin from "@/components/admin/import-export-admin";
 import ResearchReportsManagement from "@/components/admin/research-reports-management";
 import ResearchMethodologyManagement from "@/components/admin/research-methodology-management";
 import OperationsManagement from "@/components/admin/operations-management";
+import AnalyticsDashboard from "@/components/admin/analytics-dashboard";
+import AccountVerificationPanel from "@/components/admin/account-verification-panel";
 import MailManagementAdmin from "@/components/admin/mail-management-admin";
 import GraphicManagement from "@/components/admin/graphic-management";
 import { NewPlayersAdmin } from "@/components/admin/new-players-admin";
@@ -39,7 +41,7 @@ const ADMIN_TAB_VALUES = new Set([
   "market-management", "user-access", "user-markets", "user-rfps", "contact-messages",
   "vendor-management", "canonical-vendors", "new-players", "news", "ai-suggestions",
   "signal-feed", "criteria-management", "feature-management", "support-matrix", "graphic",
-  "import-export", "research-reports", "research-methodology", "operations", "mail-management",
+  "import-export", "research-reports", "research-methodology", "operations", "analytics", "mail-management",
   "datasheets", "api-keys", "fact-check-flags", "cve-crosswalk", "security",
 ]);
 
@@ -222,7 +224,8 @@ export default function Admin() {
             <TabsTrigger value="import-export">Import/Export</TabsTrigger>
             <TabsTrigger value="research-reports">Reports</TabsTrigger>
             <TabsTrigger value="research-methodology">Methodology</TabsTrigger>
-            <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="operations">Logs</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="mail-management">Mail Management</TabsTrigger>
             <TabsTrigger value="datasheets">Datasheets</TabsTrigger>
             <TabsTrigger value="api-keys">API Keys</TabsTrigger>
@@ -238,7 +241,8 @@ export default function Admin() {
             <MarketManagement />
           </TabsContent>
 
-          <TabsContent value="user-access" className="mt-6">
+          <TabsContent value="user-access" className="mt-6 space-y-6">
+            <AccountVerificationPanel />
             <UserAccessAdmin />
           </TabsContent>
 
@@ -323,6 +327,10 @@ export default function Admin() {
 
           <TabsContent value="operations" className="mt-6">
             <OperationsManagement />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="mt-6">
+            <AnalyticsDashboard />
           </TabsContent>
 
           <TabsContent value="mail-management" className="mt-6">

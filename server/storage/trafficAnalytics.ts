@@ -374,12 +374,14 @@ export interface TrafficTrendRow {
   anonymous: number;
 }
 
+export type TrendGranularity = "day" | "week" | "month" | "quarter";
+
 export async function getTrafficTrend(
   f: TrafficFilter,
-  granularity: "day" | "week" | "month",
+  granularity: TrendGranularity,
 ): Promise<TrafficTrendRow[]> {
   const where = applyFilter(f);
-  const trunc = granularity === "month" ? "month" : granularity === "week" ? "week" : "day";
+  const trunc = granularity;
   const rows = await db
     .select({
       period:    sql<string>`date_trunc('${sql.raw(trunc)}', ${trafficEvents.createdAt})::date`,
@@ -449,6 +451,63 @@ export async function getTopMarkets(f: TrafficFilter): Promise<TopMarketRow[]> {
     .groupBy(trafficEvents.marketId, markets.name)
     .orderBy(sql`count(*) filter (where ${trafficEvents.eventType} = 'market_viewed') desc`)
     .limit(20);
+}
+
+export interface MarketTrendRow {
+  period: string;
+  marketId: string;
+  marketName: string;
+  visits: number;
+  visitors: number;
+}
+
+/** Visitors per market, bucketed by quarter or year — Analytics widget #2. */
+export async function getMarketTrend(
+  f: TrafficFilter,
+  granularity: "quarter" | "year",
+): Promise<MarketTrendRow[]> {
+  const where = and(applyFilter(f), isNotNull(trafficEvents.marketId));
+  const rows = await db
+    .select({
+      period:     sql<string>`date_trunc('${sql.raw(granularity)}', ${trafficEvents.createdAt})::date`,
+      marketId:   sql<string>`${trafficEvents.marketId}`,
+      marketName: markets.name,
+      visits:     sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'market_viewed')::int`,
+      visitors:   sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
+    })
+    .from(trafficEvents)
+    .innerJoin(markets, eq(trafficEvents.marketId, markets.id))
+    .where(where)
+    .groupBy(sql`date_trunc('${sql.raw(granularity)}', ${trafficEvents.createdAt})`, trafficEvents.marketId, markets.name)
+    .orderBy(sql`date_trunc('${sql.raw(granularity)}', ${trafficEvents.createdAt})`);
+  return rows.map((r) => ({ ...r, period: String(r.period) }));
+}
+
+export interface MarketGeoRow {
+  countryCode: string;
+  country: string;
+  visitors: number;
+  visits: number;
+}
+
+/** Country split of visitors for a single market — Analytics widget #4. */
+export async function getMarketGeoSplit(
+  marketId: string,
+  f: TrafficFilter,
+): Promise<MarketGeoRow[]> {
+  const where = and(applyFilter(f), eq(trafficEvents.marketId, marketId));
+  return await db
+    .select({
+      countryCode: sql<string>`coalesce(${trafficEvents.countryCode}, 'XX')`,
+      country:     sql<string>`coalesce(${trafficEvents.country}, 'Unknown')`,
+      visitors:    sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
+      visits:      sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'market_viewed')::int`,
+    })
+    .from(trafficEvents)
+    .where(where)
+    .groupBy(trafficEvents.countryCode, trafficEvents.country)
+    .orderBy(sql`count(distinct ${trafficEvents.anonymousId}) desc`)
+    .limit(50);
 }
 
 export interface TabStatsRow {

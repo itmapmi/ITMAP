@@ -16,6 +16,21 @@ export async function getUser(id: string): Promise<User | undefined> {
   return user || undefined;
 }
 
+/**
+ * All-time count of registered accounts, excluding internal admin accounts —
+ * this is the number shown at the top of the admin Logs tab ("Total
+ * registered users so far"). Not time-windowed and not the same as the
+ * traffic-analytics "registered visitors" figure, which counts distinct
+ * visitors active within a date range.
+ */
+export async function getRegisteredUserCount(): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(users)
+    .where(sql`${users.role} != 'admin'`);
+  return row?.count ?? 0;
+}
+
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const [user] = await db.select().from(users).where(eq(users.email, email));
   return user || undefined;

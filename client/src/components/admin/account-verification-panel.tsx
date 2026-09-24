@@ -25,7 +25,7 @@ function formatRelative(date: Date): string {
   return `${days}d ago`;
 }
 
-// Shown on the Operations page: which self-registered accounts are active
+// Shown on the User Access page: which self-registered accounts are active
 // vs. locked out for never clicking the verification link within their unverified-session
 // window. Lets an admin bulk-resend the verification email to any subset of
 // the locked-out (or still-pending) list in one action.
