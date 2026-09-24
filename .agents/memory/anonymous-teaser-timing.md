@@ -5,9 +5,9 @@ description: Product decisions behind the anonymous free-preview clock (start tr
 
 ## Decision (Sept 2026, Reddit campaign follow-up)
 - The free-preview clock starts ONLY the first time an anonymous visitor
-  opens a market detail route (`/markets/:id`, `/mobile/markets/:id`). The
-  listing, home and other pages never start it. Once started it persists in
-  sessionStorage for the tab session.
+  opens a market detail route (`/markets/:id`, `/market/:id`, and their
+  `/mobile/` variants). The listing (`/markets`), home and other pages never
+  start it. Once started it persists in sessionStorage for the tab session.
 - 45 seconds (TEASER_DURATION_MS; was 2 minutes until 2026-09-15) → soft, dismissible sign-up dialog; access stays fully unlocked. Tests must anchor on the constant, not a literal.
   through this phase (the old "lock after 2 dismissals" rule was removed).
 - 10 minutes (from clock start) → forced dialog: no close X, Escape and
