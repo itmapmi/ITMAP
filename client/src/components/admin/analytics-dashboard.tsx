@@ -468,6 +468,137 @@ function MarketGeoSplitWidget() {
   );
 }
 
+// ── Widget: Top vendors clicked per market (+ optional country) ─────────────
+
+interface TopVendorRow {
+  vendorId: string;
+  vendorName: string;
+  clicks: number;
+  visitors: number;
+  vendorEvaluationClicks: number;
+  compareProductsClicks: number;
+  supportMatrixClicks: number;
+}
+
+function TopVendorsWidget() {
+  const { toast } = useToast();
+  const { data: markets = [] } = useQuery<Market[]>({ queryKey: ["/api/markets"] });
+  const [marketId, setMarketId] = useState("");
+  const [country, setCountry] = useState<string>("all");
+  const [from, setFrom] = useState(daysAgoIso(30));
+  const [to, setTo] = useState(todayIso());
+  const [exporting, setExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!marketId && markets.length > 0) setMarketId(markets[0].id);
+  }, [markets, marketId]);
+
+  // Reset the country filter whenever the market changes — a country code
+  // that had traffic for the previous market may not apply to this one.
+  useEffect(() => { setCountry("all"); }, [marketId]);
+
+  // Country options are scoped to this specific market (reuses the same
+  // per-market country split the geo-split widget above already computes)
+  // rather than the site-wide country list.
+  const geoParams = useMemo(() => new URLSearchParams({ marketId, from, to }).toString(), [marketId, from, to]);
+  const geoQuery = useQuery<{ rows: MarketGeoRow[] }>({
+    queryKey: [`/api/admin/analytics/market-geo-split?${geoParams}`],
+    retry: false,
+    enabled: Boolean(marketId && from && to && to >= from),
+  });
+  const countryOptions = geoQuery.data?.rows ?? [];
+
+  const params = useMemo(() => {
+    const p = new URLSearchParams({ marketId, from, to, limit: "10" });
+    if (country !== "all") p.set("country", country);
+    return p.toString();
+  }, [marketId, country, from, to]);
+  const query = useQuery<{ rows: TopVendorRow[] }>({
+    queryKey: [`/api/admin/analytics/top-vendors-clicked?${params}`],
+    retry: false,
+    enabled: Boolean(marketId && from && to && to >= from),
+  });
+
+  const marketName = markets.find((m) => m.id === marketId)?.name ?? "";
+  const countryName = country === "all" ? "All countries" : (countryOptions.find((c) => c.countryCode === country)?.country ?? country);
+  const rows = query.data?.rows ?? [];
+  const chartHeight = Math.max(220, rows.length * 34);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const svgEl = chartRef.current?.querySelector("svg") ?? null;
+      await exportWidgetPdf({
+        title: `Top vendors clicked — ${marketName}`,
+        subtitle: `${countryName} · ${prettyRangeLabel(from, to)} · ${rows.length} vendors`,
+        filename: `top-vendors-clicked_${marketName.replace(/[^a-z0-9]+/gi, "_")}_${country}_${from}_to_${to}`,
+        svgEl,
+        table: {
+          columns: ["Vendor", "Total clicks", "Visitors", "Vendor Evaluation", "Compare Products", "Support Matrix"],
+          columnWeights: [1.6, 1, 1, 1, 1, 1],
+          rows: rows.map((r) => [r.vendorName, r.clicks, r.visitors, r.vendorEvaluationClicks, r.compareProductsClicks, r.supportMatrixClicks]),
+        },
+      });
+    } catch {
+      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <AnalyticsWidgetCard
+      eyebrow="Vendor engagement"
+      title="Top vendors clicked per market"
+      onExportPdf={rows.length > 0 ? handleExport : undefined}
+      exporting={exporting}
+      controls={
+        <>
+          <Select value={marketId} onValueChange={setMarketId}>
+            <SelectTrigger className="h-9 min-w-[220px] bg-white text-xs" data-testid="select-market-top-vendors"><SelectValue placeholder="Select a market" /></SelectTrigger>
+            <SelectContent>{markets.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="h-9 min-w-[170px] bg-white text-xs" data-testid="select-country-top-vendors"><SelectValue placeholder="All countries" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All countries</SelectItem>
+              {countryOptions.map((c) => <SelectItem key={c.countryCode} value={c.countryCode}>{c.country}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DateRangePicker from={from} to={to} onFrom={setFrom} onTo={setTo} />
+        </>
+      }
+    >
+      {!marketId ? <EmptyBlock message="Select a market to see its most-clicked vendors." /> : query.isLoading ? <LoadingBlock /> : query.error ? <ErrorBlock onRetry={() => query.refetch()} /> : rows.length === 0 ? <EmptyBlock message="No vendor clicks for this market in this range." /> : (
+        <div ref={chartRef}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
+              <CartesianGrid stroke="#e8eef5" horizontal={false} />
+              <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="vendorName" width={140} tick={{ fontSize: 11, fill: "#334155" }} tickLine={false} axisLine={false} />
+              <Tooltip
+                formatter={(value: number, name: string, item: any) => {
+                  const row = item?.payload as TopVendorRow | undefined;
+                  if (!row) return [number(value), "Clicks"];
+                  return [
+                    `${number(row.clicks)} total · ${number(row.visitors)} visitors  (Vendor Eval ${row.vendorEvaluationClicks} · Compare ${row.compareProductsClicks} · Support Matrix ${row.supportMatrixClicks})`,
+                    row.vendorName,
+                  ];
+                }}
+                contentStyle={{ borderRadius: 8, border: "1px solid #dbe5ef", fontSize: 12 }}
+              />
+              <Bar dataKey="clicks" radius={[0, 4, 4, 0]}>
+                {rows.map((_, i) => <Cell key={i} fill="#0891b2" fillOpacity={1 - i * 0.06} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </AnalyticsWidgetCard>
+  );
+}
+
 // ── Widget 5: Signup funnel (moved from Logs, unchanged) ────────────────────
 
 type FunnelRow = {
@@ -649,6 +780,7 @@ export default function AnalyticsDashboard() {
         <MarketsTrendWidget />
         <GeographyWidget />
         <MarketGeoSplitWidget />
+        <TopVendorsWidget />
         <SignupFunnelWidget />
         <DrillDownWidget />
       </div>

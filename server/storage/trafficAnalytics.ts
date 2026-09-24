@@ -23,6 +23,7 @@ import {
   userActivityLogs,
   markets,
   users,
+  vendors,
   type TrafficVisitor,
   type TrafficEvent,
 } from "@shared/schema";
@@ -508,6 +509,58 @@ export async function getMarketGeoSplit(
     .groupBy(trafficEvents.countryCode, trafficEvents.country)
     .orderBy(sql`count(distinct ${trafficEvents.anonymousId}) desc`)
     .limit(50);
+}
+
+export interface TopVendorRow {
+  vendorId: string;
+  vendorName: string;
+  clicks: number;
+  visitors: number;
+  // Per-surface breakdown — the three places a vendor click is recorded:
+  // the Vendor Evaluation quadrant chart, the Compare Products picker, and
+  // the Support Matrix (ecosystem) picker. Anonymous and registered
+  // visitors are aggregated together (traffic_events captures both).
+  vendorEvaluationClicks: number;
+  compareProductsClicks: number;
+  supportMatrixClicks: number;
+}
+
+const VENDOR_CLICK_EVENT_TYPES = ["vendor_viewed", "vendor_selected"] as const;
+
+/**
+ * Top vendors by click volume within a single market — Analytics widget.
+ * Counts `vendor_viewed` (Vendor Evaluation chart) and `vendor_selected`
+ * (Compare Products / Support Matrix pickers) events, optionally scoped to
+ * one country via `f.country`. Both anonymous and registered visitors are
+ * included: these raw events are written to traffic_events regardless of
+ * auth (see server/routes/leadGen.ts /api/track).
+ */
+export async function getTopVendorsClicked(
+  marketId: string,
+  f: TrafficFilter,
+  limit = 10,
+): Promise<TopVendorRow[]> {
+  const where = and(
+    applyFilter({ ...f, marketId }),
+    isNotNull(trafficEvents.vendorId),
+    inArray(trafficEvents.eventType, VENDOR_CLICK_EVENT_TYPES as unknown as string[]),
+  );
+  return await db
+    .select({
+      vendorId: sql<string>`${trafficEvents.vendorId}`,
+      vendorName: vendors.name,
+      clicks: sql<number>`count(*)::int`,
+      visitors: sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
+      vendorEvaluationClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_viewed')::int`,
+      compareProductsClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'product_evaluation')::int`,
+      supportMatrixClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'ecosystem_evaluation')::int`,
+    })
+    .from(trafficEvents)
+    .innerJoin(vendors, eq(trafficEvents.vendorId, vendors.id))
+    .where(where)
+    .groupBy(trafficEvents.vendorId, vendors.name)
+    .orderBy(sql`count(*) desc`)
+    .limit(limit);
 }
 
 export interface TabStatsRow {

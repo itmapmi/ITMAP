@@ -2384,6 +2384,46 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   /**
+   * GET /api/admin/analytics/top-vendors-clicked
+   * Analytics widget — top vendors by click volume within a single market,
+   * optionally scoped to one country. Counts vendor_viewed (Vendor
+   * Evaluation chart) and vendor_selected (Compare Products / Support
+   * Matrix pickers) clicks from anonymous AND registered visitors alike.
+   * Query params: marketId (UUID, required), country (ISO code, optional),
+   * from, to (YYYY-MM-DD), limit (1..50, default 10)
+   */
+  app.get("/api/admin/analytics/top-vendors-clicked", requireAdmin, async (req, res) => {
+    try {
+      const marketIdRaw = req.query.marketId;
+      if (!marketIdRaw || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(marketIdRaw))) {
+        return res.status(400).json({ error: "marketId must be a valid UUID" });
+      }
+      const marketId = String(marketIdRaw);
+
+      const range = parseDateRangeQuery(req, res);
+      if (!range) return;
+      const { since, until, fromRaw, toRaw } = range;
+
+      const country = req.query.country ? String(req.query.country) : undefined;
+
+      const limitRaw = parseInt(String(req.query.limit ?? "10"), 10);
+      if (!Number.isFinite(limitRaw) || limitRaw < 1 || limitRaw > 50) {
+        return res.status(400).json({ error: "limit must be an integer between 1 and 50" });
+      }
+
+      const rows = await storage.getTopVendorsClicked(
+        marketId,
+        { since, until, visitorType: "all", country },
+        limitRaw,
+      );
+      res.json({ rows, marketId, country: country ?? null, from: fromRaw, to: toRaw });
+    } catch (error) {
+      console.error("Error fetching top vendors clicked:", error);
+      res.status(500).json({ error: "Failed to fetch top vendors clicked" });
+    }
+  });
+
+  /**
    * GET /api/admin/analytics/tabs
    * Tab engagement widget — visit counts per surface (vendor comparison,
    * ecosystem, Intelligence Feed, etc.) over a custom date range.
