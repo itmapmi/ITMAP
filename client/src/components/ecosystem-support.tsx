@@ -761,6 +761,17 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
+  // Convert a Harvey ball support level to its score contribution (same as admin).
+  const getEcosystemFeatureScore = (level: number) => {
+    switch (level) {
+      case 4: return 1.0;    // Full support
+      case 3: return 0.75;   // Good support
+      case 2: return 0.5;    // Partial support
+      case 1: return 0;      // Limited support
+      case 0: default: return 0; // No support
+    }
+  };
+
   // Calculate ecosystem support totals for each vendor
   const getEcosystemTotals = () => {
     // Raw roll-up only ("Total Score" / "Maximum"). The 0–10 ISV Ecosystem
@@ -776,17 +787,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
         const support = supportLookup.get(supportKey);
         const level = support?.level || 0;
         
-        // Convert support level to score (same as admin)
-        let score = 0;
-        switch (level) {
-          case 4: score = 1.0; break;    // Full support
-          case 3: score = 0.75; break;   // Good support  
-          case 2: score = 0.5; break;    // Partial support
-          case 1: score = 0; break;      // Limited support
-          case 0: score = 0; break;      // No support
-        }
-        
-        totalScore += score;
+        totalScore += getEcosystemFeatureScore(level);
         maxScore += 1.0;
       });
       
@@ -800,6 +801,19 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
   };
 
   const ecosystemTotals = getEcosystemTotals();
+
+  // Per-category totals shown in the collapsed category header row — mirrors
+  // Compare Products' calculateCategoryTotals so both pages read the same way.
+  const calculateCategoryTotals = (categoryFeatures: FeatureWithCategory[], vendors: Vendor[]) => {
+    return vendors.map(vendor => {
+      const total = categoryFeatures.reduce((sum, feature) => {
+        const supportKey = `${vendor.id}-${feature.id}`;
+        const supportData = supportLookup.get(supportKey) || { level: 0 };
+        return sum + getEcosystemFeatureScore(supportData.level);
+      }, 0);
+      return { vendorId: vendor.id, total: Number(total.toFixed(2)) };
+    });
+  };
 
   const handleHarveyBallClick = (vendorName: string, featureName: string, supportLevel: number, notes?: string, key?: string) => {
     if (mobileMode) {
@@ -988,12 +1002,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               <div 
                 className="grid gap-4 py-4 px-6" 
                 style={{ 
-                  gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                  minWidth: `${200 + (vendors.length * 140)}px`
+                  gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                  minWidth: `${500 + (vendors.length * 140)}px`
                 }}
               >
                 <div className="font-semibold text-sm text-gray-700 flex items-center">
                   Features
+                </div>
+                <div className="font-semibold text-sm text-gray-700 flex items-center">
+                  Evaluation Criteria
                 </div>
                 {vendors.map(vendor => (
                   <div key={vendor.id} className="text-center min-w-0">
@@ -1012,7 +1029,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
             {/* Content with horizontal scrolling */}
             <div className={`${isMobile ? '' : 'overflow-x-auto'}`} ref={containerRef}>
-              <div className={`${isMobile ? 'px-4 py-6' : 'px-6 pt-6 pb-6'} space-y-8`} style={{ minWidth: isMobile ? 'auto' : `${200 + (vendors.length * 140)}px` }}>
+              <div className={`${isMobile ? 'px-4 py-6' : 'px-6 pt-6 pb-6'} space-y-8`} style={{ minWidth: isMobile ? 'auto' : `${500 + (vendors.length * 140)}px` }}>
               {ecosystemFeatures && (() => {
                 // Group features by category
                 const featuresByCategory = ecosystemFeatures.reduce((acc, feature) => {
@@ -1034,6 +1051,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
                 return sortedCategories.map(({ category, features: categoryFeatures }) => {
                   const isCollapsed = collapsedCategories.has(category.id);
+                  const categoryTotals = calculateCategoryTotals(categoryFeatures, vendors);
 
                   return (
                     <div key={category.id} className="space-y-4">
@@ -1056,11 +1074,11 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                           <div 
                             className="grid gap-4 px-4" 
                             style={{ 
-                              gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                              minWidth: `${200 + (vendors.length * 140)}px`
+                              gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                              minWidth: `${500 + (vendors.length * 140)}px`
                             }}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 col-span-2">
                               <button
                                 onClick={() => toggleCategory(category.id)}
                                 className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-green-600 transition-colors p-2 rounded-lg hover:bg-white/50"
@@ -1072,6 +1090,23 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                 </Badge>
                               </button>
                             </div>
+
+                            {/* Show totals when collapsed */}
+                            {isCollapsed && vendors.map(vendor => {
+                              const vendorTotal = categoryTotals.find(t => t.vendorId === vendor.id)?.total || 0;
+                              return (
+                                <div key={vendor.id} className="flex justify-center items-center">
+                                  <div className="text-center p-2 bg-white/70 rounded-lg border border-green-200">
+                                    <div className="font-bold text-lg text-green-700">
+                                      {vendorTotal}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Total Score
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1144,13 +1179,19 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                                 key={feature.id}
                                 className="grid gap-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-green-50/20 rounded-lg transition-colors px-2"
                                 style={{ 
-                                  gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                                  minWidth: `${200 + (vendors.length * 140)}px`
+                                  gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                                  minWidth: `${500 + (vendors.length * 140)}px`
                                 }}
                               >
                                 <div className="flex flex-col justify-center">
                                   <div className="font-medium text-sm text-gray-900">
                                     {feature.name}
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col justify-center">
+                                  <div className="text-sm text-gray-700 leading-relaxed">
+                                    {feature.description || 'No evaluation criteria specified'}
                                   </div>
                                 </div>
                                 
@@ -1185,15 +1226,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
                 const maxScore = ecosystemFeatures.length;
 
                 return (
-                  <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
+                  <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-green-200 to-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
                     <div 
                       className="grid gap-4 px-4 py-4" 
                       style={{ 
-                        gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                        minWidth: `${200 + (vendors.length * 140)}px`
+                        gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                        minWidth: `${500 + (vendors.length * 140)}px`
                       }}
                     >
-                      <div className="flex flex-col justify-center">
+                      <div className="flex flex-col justify-center col-span-2">
                         <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                           <TrendingUp className="h-5 w-5 text-green-500" />
                           Total Score
@@ -1231,15 +1272,15 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
 
               {/* Final Ecosystem Support Scores - Hidden on mobile */}
               {!isMobile && ecosystemFeatures && ecosystemFeatures.length > 0 && (
-                <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${200 + (vendors.length * 140)}px` }}>
+                <div className="mt-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm" style={{ minWidth: `${500 + (vendors.length * 140)}px` }}>
                   <div 
                     className="grid gap-4 px-4 py-4" 
                     style={{ 
-                      gridTemplateColumns: `minmax(200px, 200px) repeat(${vendors.length}, minmax(140px, 140px))`,
-                      minWidth: `${200 + (vendors.length * 140)}px`
+                      gridTemplateColumns: `minmax(200px, 200px) minmax(300px, 300px) repeat(${vendors.length}, minmax(140px, 140px))`,
+                      minWidth: `${500 + (vendors.length * 140)}px`
                     }}
                   >
-                    <div className="flex flex-col justify-center">
+                    <div className="flex flex-col justify-center col-span-2">
                       <div className="font-bold text-lg text-gray-900 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-green-500" />
                         Final Ecosystem Support Score
