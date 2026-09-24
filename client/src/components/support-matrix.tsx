@@ -183,7 +183,7 @@ const HarveyBall = ({
               variant="outline"
               size="sm"
               onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
-              className="shrink-0 rounded-none border-[#dfe8ed] px-2 text-[11px]"
+              className="hidden shrink-0 rounded-none border-[#dfe8ed] px-2 text-[11px]"
               data-testid="button-generate-product-evaluation-report"
             >
               {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
@@ -951,7 +951,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
                 onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
                 variant="outline"
                 size={isMobile ? "default" : "sm"}
-                className={`flex items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-blue-50 hover:border-blue-300'} ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
+                className={`hidden items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-blue-50 hover:border-blue-300'} ${isMobile ? 'flex-1 min-w-[120px]' : ''}`}
                 data-testid="button-generate-product-evaluation-report"
               >
                 {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}

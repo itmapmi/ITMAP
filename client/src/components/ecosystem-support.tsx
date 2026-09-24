@@ -607,7 +607,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               variant="outline"
               size="sm"
               onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
-              className="h-9 shrink-0 rounded-none border-[#cfd7d1] px-2 text-[11px]"
+              className="hidden h-9 shrink-0 rounded-none border-[#cfd7d1] px-2 text-[11px]"
               data-testid="button-generate-ecosystem-report"
             >
               {pdfLocked ? <Lock className="mr-1 h-3.5 w-3.5" /> : <FileDown className="mr-1 h-3.5 w-3.5" />}
@@ -855,7 +855,7 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
               onClick={() => (pdfLocked ? onPdfLockedClick?.() : setShowVendorModal(true))}
               variant="outline"
               size="sm"
-              className={`flex items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-green-50 hover:border-green-300'}`}
+              className={`hidden items-center gap-2 transition-all duration-200 ${pdfLocked ? 'text-muted-foreground' : 'hover:bg-green-50 hover:border-green-300'}`}
               data-testid="button-generate-ecosystem-report"
             >
               {pdfLocked ? <Lock className="h-4 w-4" /> : <FileDown className="h-4 w-4" />}
