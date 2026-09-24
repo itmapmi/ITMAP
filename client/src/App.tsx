@@ -92,6 +92,33 @@ function GoogleSignInReturnHandler() {
   return null;
 }
 
+/**
+ * wouter's client-side navigation never touches the browser's native scroll
+ * handling the way a full page load does, so without this, navigating to a
+ * new route leaves the window at whatever scroll depth the previous page was
+ * left at. Resets to the top on every route change, except when the new URL
+ * carries a hash (an in-page anchor link, which should scroll to that
+ * section instead).
+ */
+function ScrollToTop() {
+  const [location] = useLocation();
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    // Skip on first mount: this is a fresh page load, where the browser's
+    // own scroll position (or restored scroll, e.g. after a refresh) should
+    // be left alone.
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (window.location.hash) return;
+    window.scrollTo(0, 0);
+  }, [location]);
+
+  return null;
+}
+
 function TrafficPageTracker() {
   const [location] = useLocation();
   const isFirstRender = useRef(true);
@@ -182,6 +209,7 @@ function Router() {
     <div className="min-h-screen">
       <VerificationReminderDialog />
       {isMobileRoute ? <MobileNavigation /> : <Navigation />}
+      <ScrollToTop />
       <TrafficPageTracker />
       <GoogleSignInReturnHandler />
       <TeaserGateProvider>
