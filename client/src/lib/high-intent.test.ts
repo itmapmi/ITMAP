@@ -3,16 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 
-import {
-  recordHighIntentAction,
-  getHighIntentEarliestPromptAt,
-  getRecentHighIntentAction,
-  HIGH_INTENT_GRACE_MS,
-} from "./high-intent";
+import { recordHighIntentAction, getRecentHighIntentAction } from "./high-intent";
 
-// Task #86 — regression coverage for the delay-only grace-period contract
-// high-intent.ts promises to use-registration-teaser.tsx, plus the
-// recency window that drives tailored popup copy.
+// Task #86 — regression coverage for the recency window that drives
+// tailored popup copy. High-intent actions no longer affect the teaser's
+// timing (see teaser-schedule.test.ts) — only which copy an eventual prompt
+// uses.
 
 describe("high-intent action recording", () => {
   beforeEach(() => {
@@ -21,16 +17,7 @@ describe("high-intent action recording", () => {
   });
 
   it("has nothing on record before any action fires", () => {
-    expect(getHighIntentEarliestPromptAt()).toBeNull();
     expect(getRecentHighIntentAction()).toBeNull();
-  });
-
-  it("sets the earliest-prompt gate to exactly the grace period after the action", () => {
-    const now = 5_000_000;
-    vi.spyOn(Date, "now").mockReturnValue(now);
-    recordHighIntentAction("vendor_comparison_opened");
-    expect(getHighIntentEarliestPromptAt()).toBe(now + HIGH_INTENT_GRACE_MS);
-    vi.restoreAllMocks();
   });
 
   it("remembers the most recent action for tailored copy", () => {
@@ -47,7 +34,6 @@ describe("high-intent action recording", () => {
     recordHighIntentAction("product_comparison_opened");
 
     expect(getRecentHighIntentAction()).toBe("product_comparison_opened");
-    expect(getHighIntentEarliestPromptAt()).toBe(second + HIGH_INTENT_GRACE_MS);
     vi.restoreAllMocks();
   });
 
@@ -69,7 +55,6 @@ describe("high-intent action recording", () => {
 
   it("survives malformed sessionStorage content without throwing", () => {
     window.sessionStorage.setItem("itmap_high_intent_action", "{not json");
-    expect(getHighIntentEarliestPromptAt()).toBeNull();
     expect(getRecentHighIntentAction()).toBeNull();
   });
 });

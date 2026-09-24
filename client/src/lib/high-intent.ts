@@ -1,11 +1,11 @@
 // High-intent action tracking (Task #81 — ad registration conversion).
 //
 // A "high-intent" action (comparing vendors/products/ecosystem support,
-// opening the Intelligence Feed) is a strong buying signal. Firing one never
-// accelerates the registration teaser's existing 2-min soft / 10-min forced
-// schedule — it only guarantees at least HIGH_INTENT_GRACE_MS more
-// uninterrupted time after the action before any prompt can auto-show, and
-// lets the eventual prompt use action-tailored copy instead of generic copy.
+// opening the Intelligence Feed) is a strong buying signal. It no longer
+// affects the registration teaser's timing at all (see teaser-schedule.ts —
+// the cadence is strict and activity-independent by design, Sept 2026); it
+// only lets the eventual prompt use action-tailored copy instead of generic
+// copy.
 //
 // State lives in sessionStorage (same convention as use-registration-teaser)
 // so it survives in-app navigation for the rest of the tab session but never
@@ -21,13 +21,9 @@ export type HighIntentAction =
 
 const HIGH_INTENT_KEY = "itmap_high_intent_action";
 
-/** Minimum time after a high-intent action before an auto-shown prompt may appear. */
-export const HIGH_INTENT_GRACE_MS = 60_000;
-
 // A high-intent action still drives tailored popup copy for this long after
-// it fires — generous enough to cover the grace period plus the existing
-// reopen cadence, so the tailored message survives until the visitor
-// actually sees a prompt.
+// it fires — generous enough to survive until the visitor actually sees a
+// prompt on the fixed teaser cadence.
 const RECENT_ACTION_WINDOW_MS = 10 * 60_000;
 
 interface StoredHighIntentAction {
@@ -52,9 +48,9 @@ function readStoredAction(): StoredHighIntentAction | null {
 
 /**
  * Records a high-intent action: fires its tracking beacon and remembers the
- * timestamp so the teaser's grace period and tailored copy can pick it up.
- * Safe to call repeatedly (e.g. re-opening a comparison) — each call just
- * moves the grace window later, never earlier.
+ * timestamp so the eventual prompt can use tailored copy. Safe to call
+ * repeatedly (e.g. re-opening a comparison) — each call just overwrites the
+ * remembered action with the most recent one.
  */
 export function recordHighIntentAction(
   action: HighIntentAction,
@@ -64,18 +60,6 @@ export function recordHighIntentAction(
   if (typeof window === "undefined") return;
   const record: StoredHighIntentAction = { action, at: Date.now() };
   window.sessionStorage.setItem(HIGH_INTENT_KEY, JSON.stringify(record));
-}
-
-/**
- * The earliest time an auto-shown registration prompt may appear, given any
- * recorded high-intent action. Null when no action is on record — meaning no
- * additional constraint (delay-only: this must never be used to move a
- * prompt earlier than the base 2-min/10-min schedule already allows).
- */
-export function getHighIntentEarliestPromptAt(): number | null {
-  const stored = readStoredAction();
-  if (!stored) return null;
-  return stored.at + HIGH_INTENT_GRACE_MS;
 }
 
 /**

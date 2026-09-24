@@ -1391,7 +1391,7 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
 
       {/* Notes Modal */}
       <Dialog open={!!selectedNotes} onOpenChange={() => setSelectedNotes(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -1399,34 +1399,34 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
             </DialogTitle>
           </DialogHeader>
           {selectedNotes && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+            <div className="space-y-4 min-w-0">
+              <div className="grid grid-cols-2 gap-4 min-w-0">
+                <div className="min-w-0">
                   <label className="text-sm font-medium text-gray-700">Vendor</label>
-                  <p className="text-lg font-semibold">{selectedNotes.vendorName}</p>
+                  <p className="text-lg font-semibold break-words">{selectedNotes.vendorName}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-sm font-medium text-gray-700">Feature</label>
-                  <p className="text-lg font-semibold">{selectedNotes.featureName}</p>
+                  <p className="text-lg font-semibold break-words">{selectedNotes.featureName}</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg min-w-0">
                 <HarveyBall 
                   level={selectedNotes.supportLevel} 
                   vendorName="" 
                   featureName="" 
                   onClick={() => {}} 
                 />
-                <div>
+                <div className="min-w-0">
                   <span className="font-medium">{getSupportText(selectedNotes.supportLevel)}</span>
                   <p className="text-sm text-gray-600">Support Level: {selectedNotes.supportLevel}/4</p>
                 </div>
               </div>
               
-              <div>
+              <div className="min-w-0">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Notes</label>
-                <div className="p-4 bg-white border rounded-lg min-h-[100px] text-sm text-gray-900 whitespace-pre-wrap">
+                <div className="p-4 bg-white border rounded-lg min-h-[100px] text-sm text-gray-900 whitespace-pre-wrap break-words">
                   {selectedNotes.notes}
                 </div>
               </div>

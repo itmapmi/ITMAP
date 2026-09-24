@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Plus, Trash2, ArrowRight, AlertCircle } from "lucide-react";
-import Navigation from "@/components/navigation";
 import type { RfpProject, Market } from "@shared/schema";
 import "@/styles/rfp-builder-mobile.css";
 
@@ -192,7 +191,7 @@ export default function MyRfpsPage() {
               )}
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="ghost" className="text-[#edf3f4] hover:text-white" onClick={() => setOpen(false)}>Cancel</Button>
               <button
                 className="inline-flex h-10 items-center justify-center rounded-md bg-[#6ee7e4] px-4 text-sm font-semibold text-[#071113] disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={!title || !marketId || createMutation.isPending || !status?.hasOpenAiKey || !!atActiveLimit || !!atDailyLimit}
@@ -210,7 +209,6 @@ export default function MyRfpsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {!mobileMode && <Navigation />}
       <div className={mobileMode ? "px-4 py-6" : "max-w-6xl mx-auto px-6 py-12"}>
         <div className={mobileMode ? "mb-6" : "flex items-center justify-between mb-8"}>
           <div>
@@ -250,7 +248,7 @@ export default function MyRfpsPage() {
         ) : (
           <div className={mobileMode ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
             {rfps.map((rfp) => (
-              <Card key={rfp.id} className="bg-slate-900 border-white/5 hover:border-cyan-500/40 transition" data-testid={`card-rfp-${rfp.id}`}>
+              <Card key={rfp.id} className="bg-slate-900 border-white/5 hover:border-cyan-500/40 transition text-slate-100" data-testid={`card-rfp-${rfp.id}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base">{rfp.title}</CardTitle>
@@ -269,7 +267,7 @@ export default function MyRfpsPage() {
                   <p className="text-xs text-slate-500 mb-4">Updated {rfp.updatedAt ? new Date(rfp.updatedAt).toLocaleDateString() : "—"}</p>
                   <div className="flex items-center gap-2">
                     <Link href={`${mobileMode ? "/mobile" : ""}/me/rfps/${rfp.id}`} className="flex-1">
-                      <Button variant="outline" className="w-full bg-slate-800 border-white/10 hover:bg-slate-700" data-testid={`button-open-rfp-${rfp.id}`}>
+                      <Button variant="outline" className="w-full bg-slate-800 border-white/10 hover:bg-slate-700 text-slate-100" data-testid={`button-open-rfp-${rfp.id}`}>
                         Open <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </Link>
@@ -305,7 +303,7 @@ export default function MyRfpsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="ghost" className="text-slate-100 hover:text-white" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={() => createMutation.mutate()} disabled={!title || !marketId || createMutation.isPending || (status ? !status.hasOpenAiKey : false) || !!atActiveLimit || !!atDailyLimit} className="bg-gradient-to-r from-cyan-500 to-violet-600" data-testid="button-create-rfp">
               {createMutation.isPending ? "Starting…" : "Start interview"}
             </Button>

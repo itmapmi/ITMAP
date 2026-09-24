@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Timer, UserPlus } from "lucide-react";
+import { Timer } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { track } from "@/lib/track";
-import { getHighIntentEarliestPromptAt, getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
-import { computeTeaserSchedule, canDismissTeaserModal, MAX_AUTO_REOPENS } from "@/lib/teaser-schedule";
+import { getRecentHighIntentAction, type HighIntentAction } from "@/lib/high-intent";
+import { computeTeaserSchedule, canDismissTeaserModal } from "@/lib/teaser-schedule";
 import { resolveRegistrationCopy } from "@/lib/registration-copy";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -20,17 +20,22 @@ import type { Market } from "@shared/schema";
 // start it) and then keeps running across in-app navigation for the rest of
 // the tab session.
 //
-// Two phases after the free window:
-//   1. Soft (TEASER_DURATION_MS → FORCED_AFTER_MS): a dismissible prompt that
-//      reopens on a cooldown a limited number of times, then backs off into
-//      a small persistent pill. Access stays fully unlocked throughout.
-//   2. Forced (≥ FORCED_AFTER_MS): the prompt can no longer be dismissed and
-//      market features lock until the visitor signs up.
+// Fixed three-strike cadence, strictly time-driven — nothing the visitor
+// clicks or opens (comparisons, tabs, etc.) can defer any of it, only an
+// actual dismissal advances it:
+//   1. TEASER_DURATION_MS after the clock starts: a soft, dismissible prompt.
+//      Access stays fully unlocked.
+//   2. REOPEN_INTERVAL_MS after that prompt is dismissed: a second soft,
+//      dismissible prompt.
+//   3. REOPEN_INTERVAL_MS after THAT prompt is dismissed: a forced prompt —
+//      can no longer be dismissed, and market features lock until the
+//      visitor signs up.
 //
 // All "should the modal be showing right now" state is derived on every tick
 // from values persisted in sessionStorage (start time, dismiss count, last
 // shown time) rather than from refs that reset on remount — a page refresh
-// must never re-arm nagging that has already been dismissed or backed off.
+// must never re-arm nagging that has already been dismissed or lose track of
+// how far along the cadence already is.
 
 // Only these routes start the free-access clock.
 const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets\/[^/]+/;
@@ -53,7 +58,7 @@ interface TeaserGateContextValue {
    * True while an anonymous visitor still has full access to market
    * features: before the free-access clock has started, inside the free
    * window, and throughout the soft-prompt phase. Turns false once the
-   * forced prompt takes over (`FORCED_AFTER_MS`) or once they've signed in.
+   * forced prompt takes over (see teaser-schedule.ts) or once they've signed in.
    */
   teaserActive: boolean;
   /** Milliseconds remaining in the free-access window (0 once expired). */
@@ -159,10 +164,10 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
   const anonymous = !isLoading && !isAuthenticated;
   const isExempt = EXEMPT_PATHS.has(location);
 
-  // All the timing math (when the soft/forced prompts become eligible, the
-  // high-intent grace gate, the forced latch) lives in the pure
-  // computeTeaserSchedule so it stays independently unit-testable — see
-  // client/src/lib/teaser-schedule.ts.
+  // All the timing math (when each prompt becomes eligible, the forced
+  // latch) lives in the pure computeTeaserSchedule so it stays independently
+  // unit-testable — see client/src/lib/teaser-schedule.ts. It deliberately
+  // takes no signal about page activity: the cadence is strict.
   const schedule = computeTeaserSchedule({
     now,
     anonymous,
@@ -170,21 +175,12 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
     dismissCount: dismissCountRef.current,
     lastShownAt: lastShownAtRef.current,
     forcedTriggered: forcedTriggeredRef.current,
-    highIntentEarliestPromptAt: getHighIntentEarliestPromptAt(),
     isExempt,
   });
-  const {
-    withinInitialWindow,
-    teaserRemainingMs,
-    expired,
-    forced,
-    teaserActive,
-    eligibleToAutoShow,
-    showBanner,
-  } = schedule;
+  const { withinInitialWindow, teaserRemainingMs, expired, forced, teaserActive, eligibleToAutoShow } = schedule;
 
   // Persist the forced latch the instant it activates so it survives a page
-  // refresh and can never be undone by a subsequent high-intent action.
+  // refresh and can never be undone by a recomputed schedule.
   useEffect(() => {
     if (forced && !forcedTriggeredRef.current) {
       forcedTriggeredRef.current = true;
@@ -253,9 +249,6 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         const nextCount = dismissCountRef.current + 1;
         dismissCountRef.current = nextCount;
         writeInt(DISMISS_COUNT_KEY, nextCount);
-        if (nextCount >= MAX_AUTO_REOPENS) {
-          track("registration_prompt_backoff");
-        }
       }
     },
     [isAuthenticated, forced]
@@ -335,18 +328,6 @@ export function TeaserGateProvider({ children }: { children: React.ReactNode }) 
         </div>
       )}
 
-      {canShowChrome && showBanner && !modalOpen && (
-        <button
-          onClick={openRegistrationModal}
-          data-testid="button-teaser-register-pill"
-          // Same bottom offset as the countdown badge above, for the same
-          // reason: stay clear of the fixed AI chat button in the corner.
-          className="fixed bottom-24 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white text-sm font-semibold px-4 py-2.5 shadow-lg shadow-black/20 transition-all"
-        >
-          <UserPlus className="h-4 w-4" />
-          Register free
-        </button>
-      )}
     </TeaserGateContext.Provider>
   );
 }

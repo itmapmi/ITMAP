@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Send, Sparkles, FileDown, CheckCircle2, Clock, Upload, Trash2, SlidersHorizontal, FileText, RefreshCw, Trophy, Check, X, Mail, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Navigation from "@/components/navigation";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import type { RfpProject, RfpInterviewMessage, RfpRequirement, RfpSection, InsertRfpOutreachEntry } from "@shared/schema";
 import "@/styles/rfp-builder-mobile.css";
@@ -371,7 +370,6 @@ export default function MyRfpDetailPage() {
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 ${mobileMode ? "pb-24" : ""}`}>
-      {!mobileMode && <Navigation />}
       <div className={mobileMode ? "px-4 py-5" : "max-w-6xl mx-auto px-6 py-8"}>
         {mobileMode ? (
           <div className="mb-5">
@@ -436,7 +434,7 @@ export default function MyRfpDetailPage() {
 
           {/* ── Interview ─────────────────────────────────────────── */}
           <TabsContent value="interview">
-            <Card className="bg-slate-900 border-white/5">
+            <Card className="bg-slate-900 border-white/5 text-slate-100">
               <CardContent className="p-0">
                 <div className="h-[55vh] overflow-y-auto p-6 space-y-4">
                   {messages.map(m => (
@@ -479,7 +477,7 @@ export default function MyRfpDetailPage() {
 
           {/* ── Requirements ──────────────────────────────────────── */}
           <TabsContent value="requirements">
-            <Card className="bg-slate-900 border-white/5">
+            <Card className="bg-slate-900 border-white/5 text-slate-100">
               <CardHeader><CardTitle className="text-base">Requirements</CardTitle></CardHeader>
               <CardContent>
                 {requirements.length === 0 ? (
@@ -512,7 +510,7 @@ export default function MyRfpDetailPage() {
                               <div className="text-sm font-medium">{r.label}</div>
                               {r.description && <div className="text-xs text-slate-400 mt-0.5">{r.description}</div>}
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs flex-shrink-0">×</Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs flex-shrink-0 text-slate-100 hover:text-white">×</Button>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="flex-1">{prioritySelect}</div>
@@ -530,7 +528,7 @@ export default function MyRfpDetailPage() {
                           <div className="col-span-2">{weightSelect}</div>
                           <div className="col-span-2 text-xs text-slate-400">{r.kind}</div>
                           <div className="col-span-1 text-right">
-                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs">×</Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteReqMutation.mutate(r.id)} className="h-8 text-xs text-slate-100 hover:text-white">×</Button>
                           </div>
                         </div>
                       );
@@ -544,7 +542,7 @@ export default function MyRfpDetailPage() {
           {/* ── Preview (per-section, each with a Regenerate button) ─ */}
           <TabsContent value="preview">
             {sections.length === 0 ? (
-              <Card className="bg-slate-900 border-white/5">
+              <Card className="bg-slate-900 border-white/5 text-slate-100">
                 <CardContent className="p-6">
                   <p className="text-sm text-slate-400">Click <span className="font-medium">Generate RFP</span> above to produce the document.</p>
                 </CardContent>
@@ -552,7 +550,7 @@ export default function MyRfpDetailPage() {
             ) : (
               <div className="space-y-4">
                 {[...sections].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)).map(s => (
-                  <Card key={s.id} className="bg-slate-900 border-white/5" data-testid={`section-${s.sectionKey}`}>
+                  <Card key={s.id} className="bg-slate-900 border-white/5 text-slate-100" data-testid={`section-${s.sectionKey}`}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                       <CardTitle className="text-base">{s.title}</CardTitle>
                       <Button
@@ -560,7 +558,7 @@ export default function MyRfpDetailPage() {
                         variant="outline"
                         onClick={() => regenSectionMutation.mutate(s.sectionKey)}
                         disabled={regenSectionMutation.isPending}
-                        className="bg-slate-800 border-white/10 hover:bg-slate-700"
+                        className="bg-slate-800 border-white/10 hover:bg-slate-700 text-slate-100"
                         data-testid={`button-regenerate-${s.sectionKey}`}
                       >
                         <Sparkles className="w-3.5 h-3.5 mr-1.5" />
@@ -580,7 +578,7 @@ export default function MyRfpDetailPage() {
 
           {/* ── Shortlist ─────────────────────────────────────────── */}
           <TabsContent value="shortlist">
-            <Card className="bg-slate-900 border-white/5">
+            <Card className="bg-slate-900 border-white/5 text-slate-100">
               <CardHeader><CardTitle className="text-base">Vendor Shortlist (deterministic fit)</CardTitle></CardHeader>
               <CardContent>
                 {shortlist.length === 0 ? (
@@ -599,7 +597,7 @@ export default function MyRfpDetailPage() {
                           variant={s.isIncluded ? "default" : "outline"}
                           size="sm"
                           onClick={() => toggleShortlistMutation.mutate({ entryId: s.id, isIncluded: !s.isIncluded })}
-                          className={s.isIncluded ? "bg-gradient-to-r from-cyan-500 to-violet-600" : "bg-slate-800 border-white/10"}
+                          className={s.isIncluded ? "bg-gradient-to-r from-cyan-500 to-violet-600" : "bg-slate-800 border-white/10 text-slate-100"}
                           data-testid={`button-toggle-shortlist-${s.id}`}
                         >
                           {s.isIncluded ? "Included" : "Excluded"}
@@ -614,7 +612,7 @@ export default function MyRfpDetailPage() {
 
           {/* ── Outreach ──────────────────────────────────────────── */}
           <TabsContent value="outreach">
-            <Card className="bg-slate-900 border-white/5">
+            <Card className="bg-slate-900 border-white/5 text-slate-100">
               <CardHeader><CardTitle className="text-base">Vendor Outreach Tracker</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -731,7 +729,7 @@ export default function MyRfpDetailPage() {
 
           {/* ── Export ───────────────────────────────────────────── */}
           <TabsContent value="export">
-            <Card className="bg-slate-900 border-white/5">
+            <Card className="bg-slate-900 border-white/5 text-slate-100">
               <CardHeader><CardTitle className="text-base">Download</CardTitle></CardHeader>
               <CardContent>
                 {!rfp?.generatedMarkdown ? (
@@ -762,7 +760,7 @@ export default function MyRfpDetailPage() {
             variant="outline"
             onClick={() => goToStep(stepIndex - 1)}
             disabled={stepIndex === 0}
-            className="flex-1 bg-slate-800 border-white/10 hover:bg-slate-700"
+            className="flex-1 bg-slate-800 border-white/10 hover:bg-slate-700 text-slate-100"
             data-testid="button-wizard-back"
           >
             Back
