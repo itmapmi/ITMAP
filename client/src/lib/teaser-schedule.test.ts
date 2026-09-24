@@ -3,17 +3,18 @@ import {
   computeTeaserSchedule,
   canDismissTeaserModal,
   TEASER_DURATION_MS,
-  REOPEN_INTERVAL_MS,
+  SECOND_PROMPT_DELAY_MS,
+  FORCED_PROMPT_DELAY_MS,
   FORCE_AFTER_DISMISS_COUNT,
   type TeaserScheduleInput,
 } from "./teaser-schedule";
 
 // Task #86 / stricter-guardrails follow-up (Sept 2026) — regression coverage
 // for the free-preview signup funnel's fixed three-strike cadence: a soft
-// prompt at TEASER_DURATION_MS, a second soft prompt REOPEN_INTERVAL_MS
+// prompt at TEASER_DURATION_MS, a second soft prompt SECOND_PROMPT_DELAY_MS
 // after the first is dismissed, and a forced (undismissable, access-locking)
-// prompt REOPEN_INTERVAL_MS after the second is dismissed. Activity on the
-// page (clicks, comparisons, tab switches) must never defer any of this —
+// prompt FORCED_PROMPT_DELAY_MS after the second is dismissed. Activity on
+// the page (clicks, comparisons, tab switches) must never defer any of this —
 // these are pure-function tests: no DOM, no fake timers, no React.
 
 const BASE_START = 1_000_000; // arbitrary epoch ms the free-access clock started at
@@ -65,20 +66,20 @@ describe("computeTeaserSchedule — first soft prompt at TEASER_DURATION_MS", ()
   });
 });
 
-describe("computeTeaserSchedule — second soft prompt REOPEN_INTERVAL_MS after the first dismissal", () => {
+describe("computeTeaserSchedule — second soft prompt SECOND_PROMPT_DELAY_MS after the first dismissal", () => {
   const lastShownAt = BASE_START + TEASER_DURATION_MS;
 
-  it("is not eligible before the reopen interval elapses", () => {
+  it("is not eligible before the second-prompt delay elapses", () => {
     const schedule = computeTeaserSchedule(
-      baseInput({ now: lastShownAt + REOPEN_INTERVAL_MS - 1, lastShownAt, dismissCount: 1 }),
+      baseInput({ now: lastShownAt + SECOND_PROMPT_DELAY_MS - 1, lastShownAt, dismissCount: 1 }),
     );
     expect(schedule.eligibleToAutoShow).toBe(false);
     expect(schedule.forced).toBe(false);
   });
 
-  it("becomes eligible exactly REOPEN_INTERVAL_MS after the first prompt was dismissed", () => {
+  it("becomes eligible exactly SECOND_PROMPT_DELAY_MS after the first prompt was dismissed", () => {
     const schedule = computeTeaserSchedule(
-      baseInput({ now: lastShownAt + REOPEN_INTERVAL_MS, lastShownAt, dismissCount: 1 }),
+      baseInput({ now: lastShownAt + SECOND_PROMPT_DELAY_MS, lastShownAt, dismissCount: 1 }),
     );
     expect(schedule.eligibleToAutoShow).toBe(true);
     expect(schedule.forced).toBe(false);
@@ -87,11 +88,11 @@ describe("computeTeaserSchedule — second soft prompt REOPEN_INTERVAL_MS after 
 });
 
 describe("computeTeaserSchedule — third prompt is forced", () => {
-  const lastShownAt = BASE_START + TEASER_DURATION_MS + REOPEN_INTERVAL_MS;
+  const lastShownAt = BASE_START + TEASER_DURATION_MS + SECOND_PROMPT_DELAY_MS;
 
   it("forces and locks access once the dismiss count reaches the threshold", () => {
     const schedule = computeTeaserSchedule(
-      baseInput({ now: lastShownAt + REOPEN_INTERVAL_MS, lastShownAt, dismissCount: FORCE_AFTER_DISMISS_COUNT }),
+      baseInput({ now: lastShownAt + FORCED_PROMPT_DELAY_MS, lastShownAt, dismissCount: FORCE_AFTER_DISMISS_COUNT }),
     );
     expect(schedule.forced).toBe(true);
     expect(schedule.teaserActive).toBe(false);
@@ -101,7 +102,7 @@ describe("computeTeaserSchedule — third prompt is forced", () => {
   it("stays unforced right up until the dismiss threshold is reached", () => {
     const schedule = computeTeaserSchedule(
       baseInput({
-        now: lastShownAt + REOPEN_INTERVAL_MS,
+        now: lastShownAt + FORCED_PROMPT_DELAY_MS,
         lastShownAt,
         dismissCount: FORCE_AFTER_DISMISS_COUNT - 1,
       }),

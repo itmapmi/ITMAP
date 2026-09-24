@@ -5,19 +5,23 @@
 // timers (Task #86). The hook is the only caller; keep this module's
 // behavior in lockstep with it.
 //
-// Fixed three-strike cadence (Sept 2026, "stricter guardrails" follow-up):
+// Fixed three-strike cadence (Sept 2026, "stricter guardrails" follow-up;
+// second-prompt gap widened to 60s on 2026-09-24):
 // an anonymous visitor sees a strictly time-driven prompt regardless of what
 // else they do on the page — clicking around and opening comparisons no
 // longer defers it. Only actually dismissing a prompt advances the cadence.
 //   1. TEASER_DURATION_MS after the clock starts → soft, dismissible prompt.
-//   2. REOPEN_INTERVAL_MS after that prompt is dismissed → a second soft,
-//      dismissible prompt.
-//   3. REOPEN_INTERVAL_MS after THAT prompt is dismissed → a forced prompt:
-//      no close button, Escape/outside-click blocked, and market features
-//      lock (`teaserActive` false) until the visitor signs up.
+//   2. SECOND_PROMPT_DELAY_MS after that prompt is dismissed → a second
+//      soft, dismissible prompt.
+//   3. FORCED_PROMPT_DELAY_MS after THAT prompt is dismissed → a forced
+//      prompt: no close button, Escape/outside-click blocked, and market
+//      features lock (`teaserActive` false) until the visitor signs up.
 
 export const TEASER_DURATION_MS = 45_000;
-export const REOPEN_INTERVAL_MS = 45_000;
+/** Gap between the first soft prompt's dismissal and the second soft prompt. */
+export const SECOND_PROMPT_DELAY_MS = 60_000;
+/** Gap between the second soft prompt's dismissal and the forced prompt. */
+export const FORCED_PROMPT_DELAY_MS = 45_000;
 /** Number of soft (dismissible) prompts shown before the next one is forced. */
 export const FORCE_AFTER_DISMISS_COUNT = 2;
 
@@ -80,7 +84,13 @@ export function computeTeaserSchedule(input: TeaserScheduleInput): TeaserSchedul
   const forced = forcedTriggered || (anonymous && clockStarted && dismissCount >= FORCE_AFTER_DISMISS_COUNT);
   const teaserActive = anonymous && !forced;
 
-  const nextAutoShowAt = lastShownAt !== null ? lastShownAt + REOPEN_INTERVAL_MS : (startAt ?? 0) + TEASER_DURATION_MS;
+  // After the first prompt is dismissed (dismissCount reaches 1) the next
+  // one due is the second soft prompt, at the wider SECOND_PROMPT_DELAY_MS
+  // gap. Once that one has also been dismissed (dismissCount reaches
+  // FORCE_AFTER_DISMISS_COUNT), the next due is the forced prompt, at the
+  // narrower FORCED_PROMPT_DELAY_MS gap.
+  const reopenDelay = dismissCount >= FORCE_AFTER_DISMISS_COUNT ? FORCED_PROMPT_DELAY_MS : SECOND_PROMPT_DELAY_MS;
+  const nextAutoShowAt = lastShownAt !== null ? lastShownAt + reopenDelay : (startAt ?? 0) + TEASER_DURATION_MS;
 
   // Never auto-pop while the visitor is deliberately on an auth-adjacent/
   // legal page. Otherwise: strictly time-gated, regardless of dismiss count

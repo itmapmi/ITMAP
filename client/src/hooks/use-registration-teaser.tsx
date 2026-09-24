@@ -25,11 +25,11 @@ import type { Market } from "@shared/schema";
 // actual dismissal advances it:
 //   1. TEASER_DURATION_MS after the clock starts: a soft, dismissible prompt.
 //      Access stays fully unlocked.
-//   2. REOPEN_INTERVAL_MS after that prompt is dismissed: a second soft,
+//   2. SECOND_PROMPT_DELAY_MS after that prompt is dismissed: a second soft,
 //      dismissible prompt.
-//   3. REOPEN_INTERVAL_MS after THAT prompt is dismissed: a forced prompt —
-//      can no longer be dismissed, and market features lock until the
-//      visitor signs up.
+//   3. FORCED_PROMPT_DELAY_MS after THAT prompt is dismissed: a forced
+//      prompt — can no longer be dismissed, and market features lock until
+//      the visitor signs up.
 //
 // All "should the modal be showing right now" state is derived on every tick
 // from values persisted in sessionStorage (start time, dismiss count, last
