@@ -37,11 +37,15 @@ import type { Market } from "@shared/schema";
 // must never re-arm nagging that has already been dismissed or lose track of
 // how far along the cadence already is.
 
-// Only these routes start the free-access clock.
-const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets\/[^/]+/;
+// Only these routes start the free-access clock. Must include the legacy
+// singular `/market/:id` alias (see client/src/pages/market-details.tsx and
+// shared/mobile-paths.ts, both of which already treat it as the same page)
+// — otherwise a visitor landing on that alias gets the exact same market
+// content with the clock never starting and the pop-up never appearing.
+const MARKET_DETAIL_PATH = /^\/(?:mobile\/)?markets?\/[^/]+/;
 // Captures the market slug/id segment so the dynamic value proposition can
 // look up which market the visitor is actually reading right now.
-const MARKET_DETAIL_ID = /^\/(?:mobile\/)?markets\/([^/]+)/;
+const MARKET_DETAIL_ID = /^\/(?:mobile\/)?markets?\/([^/]+)/;
 
 const START_KEY = "itmap_teaser_start_at";
 const DISMISS_COUNT_KEY = "itmap_teaser_dismiss_count";
