@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { FeatureWithCategory, Feature, Vendor, VendorFeatureSupport } from "@shared/schema";
-import { formatCoveragePercent, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
+import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface EcosystemSupportProps {
@@ -761,16 +761,9 @@ export default function EcosystemSupport({ marketId, pdfLocked, onPdfLockedClick
     );
   }
 
-  // Convert a Harvey ball support level to its score contribution (same as admin).
-  const getEcosystemFeatureScore = (level: number) => {
-    switch (level) {
-      case 4: return 1.0;    // Full support
-      case 3: return 0.75;   // Good support
-      case 2: return 0.5;    // Partial support
-      case 1: return 0;      // Limited support
-      case 0: default: return 0; // No support
-    }
-  };
+  // Convert a Harvey ball support level to its score contribution, using the
+  // shared roll-up so this matches the persisted derived criterion scores.
+  const getEcosystemFeatureScore = (level: number) => supportLevelContribution(level);
 
   // Calculate ecosystem support totals for each vendor
   const getEcosystemTotals = () => {

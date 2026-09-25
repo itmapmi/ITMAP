@@ -14,7 +14,7 @@ import { VendorSelectionModal } from "./vendor-selection-modal";
 import { track } from "@/lib/track";
 import { recordHighIntentAction } from "@/lib/high-intent";
 import type { FeatureWithCategory, Vendor, VendorFeatureSupport } from "@shared/schema";
-import { formatCoveragePercent, getFeaturesForDerivedScore } from "@shared/derived-feature-scores";
+import { formatCoveragePercent, getFeaturesForDerivedScore, supportLevelContribution } from "@shared/derived-feature-scores";
 import { describeDerivedScore, useDerivedCriterionScores } from "@/hooks/use-derived-criterion-scores";
 
 interface SupportMatrixProps {
@@ -819,17 +819,10 @@ export default function SupportMatrix({ marketId, pdfLocked, onPdfLockedClick, m
     }
   };
 
-  // Calculate support level score
-  const getSupportScore = (level: number) => {
-    switch (level) {
-      case 4: return 1.0;    // Full support
-      case 3: return 0.75;   // Good support
-      case 2: return 0.5;    // Partial support
-      case 1: return 0;      // Limited support - no score
-      case 0: return 0;      // No support - no score
-      default: return 0;
-    }
-  };
+  // Calculate support level score. Delegates to the shared roll-up used for
+  // persisted Product Capabilities / ISV Ecosystem criterion scores, so this
+  // category "Total Score" always matches (Limited support = 0.25).
+  const getSupportScore = (level: number) => supportLevelContribution(level);
 
   // Calculate category totals for each vendor
   const calculateCategoryTotals = (categoryFeatures: FeatureWithCategory[], vendors: Vendor[]) => {

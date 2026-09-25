@@ -52,3 +52,4 @@
 - [Quadrant label free-drag positioning](quadrant-label-layout.md) — no collision avoidance, no connector line, no tether; a saved drag position is always honored as-is (reverted per user request).
 - [Sticky header vs fixed+JS-spacer](sticky-header-vs-fixed-spacer.md) — fixed nav + ResizeObserver-measured spacer is racy (content can render behind header); use position:sticky instead.
 - [Vendor click analytics aggregation](vendor-click-analytics.md) — dedupe chart_interacted vs vendor_viewed; anon+registered already unified in traffic_events; reuse per-market geo-split for country dropdown scoping.
+- [Duplicate support-score logic](duplicate-support-score-logic.md) — support-matrix.tsx & admin variant had local copies of the shared support-level scoring rule; grep repo-wide before declaring a constant change done.

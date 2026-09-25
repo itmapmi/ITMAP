@@ -385,15 +385,9 @@ export function SupportMatrixAdmin() {
                   const support = supportLookup.get(supportKey);
                   const level = support?.level || 0;
                   
-                  // Convert support level to score (same as frontend)
-                  let score = 0;
-                  switch (level) {
-                    case 4: score = 1.0; break;    // Full support
-                    case 3: score = 0.75; break;   // Good support  
-                    case 2: score = 0.5; break;    // Partial support
-                    case 1: score = 0; break;      // Limited support
-                    case 0: score = 0; break;      // No support
-                  }
+                  // Convert support level to score using the shared roll-up
+                  // (matches persisted Product Capabilities / ISV Ecosystem scores)
+                  const score = supportLevelContribution(level);
                   
                   totalScore += score;
                   maxScore += 1.0; // Each feature can contribute max 1.0
