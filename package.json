@@ -8,6 +8,7 @@
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "test:traffic": "vitest run server/routes/trafficAnalytics.test.ts server/storage/trafficAnalytics.integration.test.ts",
+    "test:market-trends": "vitest run server/routes/marketTrends.test.ts",
     "test:company-email": "vitest run server/routes/companyEmailGate.integration.test.ts",
     "test:teaser-funnel": "vitest run client/src/lib/teaser-schedule.test.ts client/src/lib/high-intent.test.ts client/src/lib/registration-copy.test.ts",
     "test:magic-quadrant": "tsx scripts/test-magic-quadrant-browser.mts",
