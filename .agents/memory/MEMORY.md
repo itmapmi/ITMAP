@@ -54,3 +54,4 @@
 - [Vendor click analytics aggregation](vendor-click-analytics.md) — dedupe chart_interacted vs vendor_viewed; anon+registered already unified in traffic_events; reuse per-market geo-split for country dropdown scoping.
 - [Duplicate support-score logic](duplicate-support-score-logic.md) — support-matrix.tsx & admin variant had local copies of the shared support-level scoring rule; grep repo-wide before declaring a constant change done.
 - [Percentage-only vendor analytics pattern](percentage-only-vendor-analytics.md) — strip raw counts server-side (not just UI); top-N+Other bucket; denominator from an uncapped query.
+- [Buyer-vs-vendor scoping in hasFeatureAccess](buyer-vendor-rbac-grant-scope.md) — plain buyers always pass requireFeature regardless of grants; news/intelligence_feed/cve_intelligence are free for vendors too — a non-vendor-scoped "no grant" test fixture is a no-op.
