@@ -53,3 +53,4 @@
 - [Sticky header vs fixed+JS-spacer](sticky-header-vs-fixed-spacer.md) — fixed nav + ResizeObserver-measured spacer is racy (content can render behind header); use position:sticky instead.
 - [Vendor click analytics aggregation](vendor-click-analytics.md) — dedupe chart_interacted vs vendor_viewed; anon+registered already unified in traffic_events; reuse per-market geo-split for country dropdown scoping.
 - [Duplicate support-score logic](duplicate-support-score-logic.md) — support-matrix.tsx & admin variant had local copies of the shared support-level scoring rule; grep repo-wide before declaring a constant change done.
+- [Percentage-only vendor analytics pattern](percentage-only-vendor-analytics.md) — strip raw counts server-side (not just UI); top-N+Other bucket; denominator from an uncapped query.

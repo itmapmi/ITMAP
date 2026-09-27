@@ -16,6 +16,11 @@ import {
   type LeadGenEventType,
 } from "@shared/schema";
 import { resolveGeo } from "../geoResolver";
+import {
+  vendorScopeIds,
+  vendorScopeDetails,
+  requireVendorScope,
+} from "../lib/vendorScope";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -206,46 +211,6 @@ function resolveScope(req: Request): { vendorId?: string; marketId?: string } {
   return { vendorId, marketId };
 }
 
-// Returns ALL vendor IDs assigned to this seat. Prefers the explicit
-// vendorScopeIds array (set by the multi-market picker); falls back to the
-// legacy single vendorScopeId for older seat records.
-function vendorScopeIds(req: Request): string[] {
-  const user = req.user as any;
-  const ids = user?.vendorScopeIds as string[] | null | undefined;
-  if (ids?.length) return ids;
-  const single = user?.vendorScopeId as string | null | undefined;
-  return single ? [single] : [];
-}
-
-// Returns the primary vendor ID (first in the list, or null if no seat).
-function vendorScopeId(req: Request): string | null {
-  return vendorScopeIds(req)[0] ?? null;
-}
-
-// Resolves the distinct markets this seat's assigned vendors belong to. A
-// seat can be assigned vendors across multiple markets; vendors that share a
-// market collapse into a single entry. Used by the vendor-facing self-service
-// surface, which shows the ENTIRE visitor pool for those markets — not just
-// events attributed to the assigned vendor(s).
-async function vendorScopeDetails(req: Request): Promise<{
-  vendors: { id: string; name: string; marketId: string | null }[];
-  markets: { id: string; name: string }[];
-}> {
-  const ids = vendorScopeIds(req);
-  const vendorBriefs = await Promise.all(ids.map((id) => storage.getVendorBrief(id)));
-  const vendors = vendorBriefs
-    .filter((v): v is NonNullable<typeof v> => !!v)
-    .map((v) => ({ id: v.id, name: v.name, marketId: v.marketId ?? null }));
-  const marketIds = Array.from(
-    new Set(vendors.filter((v) => !!v.marketId).map((v) => v.marketId as string)),
-  );
-  const marketRecords = await Promise.all(marketIds.map((id) => storage.getMarketById(id)));
-  const markets = marketRecords
-    .filter((m): m is NonNullable<typeof m> => !!m)
-    .map((m) => ({ id: m.id, name: m.name }));
-  return { vendors, markets };
-}
-
 // Fact Review uses only explicit server-side seat assignments. Matching vendor
 // names across markets is not an authorization boundary.
 function factReviewVendorIds(req: Request): string[] {
@@ -267,19 +232,6 @@ async function buildScopedVendorLeadDetail(
   if (!detail) return null;
   const inScope = detail.marketViews.some((mv) => allowedMarketIds.has(mv.marketId));
   return inScope ? detail : null;
-}
-
-// Gate for the vendor-facing surface: only authenticated users that have a
-// vendor seat assigned. Admins are not vendor-scoped, so they use the admin
-// panel rather than this self-service variant.
-function requireVendorScope(req: Request, res: Response, next: () => void) {
-  if (!req.isAuthenticated?.()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  if (vendorScopeIds(req).length === 0) {
-    return res.status(403).json({ error: "No vendor seat assigned to this account" });
-  }
-  next();
 }
 
 function parseSince(req: Request): Date | undefined {

@@ -126,6 +126,14 @@ const VENDOR_DASHBOARD_TOOLS_CFG: VendorBentoCfg[] = [
     featureKey: "cve_intelligence",
     accent: "violet",
   },
+  {
+    label: "Market Trends",
+    description: "Visitor and engagement share across markets, countries and competing vendors — as percentages.",
+    icon: <BarChart3 className="h-5 w-5" />,
+    href: "/market-trends/me",
+    featureKey: "market_trends",
+    accent: "cyan",
+  },
 ];
 
 // ─── Misc static data ────────────────────────────────────────────────────────

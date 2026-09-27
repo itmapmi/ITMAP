@@ -454,6 +454,34 @@ export async function getTopMarkets(f: TrafficFilter): Promise<TopMarketRow[]> {
     .limit(20);
 }
 
+export interface MarketVisitorTotal {
+  marketId: string;
+  marketName: string;
+  visitors: number;
+}
+
+/**
+ * Total visitors per market across the whole filter window — no period
+ * bucketing, no row cap. Unlike `getTopMarkets` (limited to 20 for display),
+ * this is meant as the accurate denominator/numerator source for
+ * percentage-of-total calculations, e.g. the vendor-facing Market Trends
+ * "visitors by market" chart, which must cover every market exactly once.
+ */
+export async function getMarketVisitorTotals(f: TrafficFilter): Promise<MarketVisitorTotal[]> {
+  const where = and(applyFilter(f), isNotNull(trafficEvents.marketId));
+  return await db
+    .select({
+      marketId:   sql<string>`${trafficEvents.marketId}`,
+      marketName: markets.name,
+      visitors:   sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
+    })
+    .from(trafficEvents)
+    .innerJoin(markets, eq(trafficEvents.marketId, markets.id))
+    .where(where)
+    .groupBy(trafficEvents.marketId, markets.name)
+    .orderBy(sql`count(distinct ${trafficEvents.anonymousId}) desc`);
+}
+
 export interface MarketTrendRow {
   period: string;
   marketId: string;

@@ -26,6 +26,7 @@ export const LOCKABLE_FEATURES = [
   { key: "lead_gen",          label: "Lead Generator"    },
   { key: "fact_review",       label: "Fact Review"       },
   { key: "cve_intelligence",  label: "CVE Intelligence"  },
+  { key: "market_trends",     label: "Market Trends"     },
 ] as const;
 
 export type LockableFeatureKey = (typeof LOCKABLE_FEATURES)[number]["key"];
