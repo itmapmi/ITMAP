@@ -252,6 +252,23 @@ function factReviewVendorIds(req: Request): string[] {
   return vendorScopeIds(req);
 }
 
+// Loads a single lead's detail for the vendor-facing self-service surface,
+// but only if that visitor actually shows up in one of the signed-in seat's
+// assigned markets. Vendors otherwise see the same detail as admins — this
+// is purely an authorization boundary, not a data-shape difference.
+async function buildScopedVendorLeadDetail(
+  req: Request,
+  userId: string,
+): Promise<NonNullable<Awaited<ReturnType<typeof buildLeadDetail>>> | null> {
+  const { markets } = await vendorScopeDetails(req);
+  if (markets.length === 0) return null;
+  const allowedMarketIds = new Set(markets.map((m) => m.id));
+  const detail = await buildLeadDetail(userId);
+  if (!detail) return null;
+  const inScope = detail.marketViews.some((mv) => allowedMarketIds.has(mv.marketId));
+  return inScope ? detail : null;
+}
+
 // Gate for the vendor-facing surface: only authenticated users that have a
 // vendor seat assigned. Admins are not vendor-scoped, so they use the admin
 // panel rather than this self-service variant.
@@ -878,86 +895,7 @@ export function registerLeadGenRoutes(app: Express): void {
     try {
       const detail = await buildLeadDetail(req.params.userId);
       if (!detail) return res.status(404).json({ error: "Lead not found" });
-      const name = fullName(detail.user);
-      const safe = name.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
-
-      if (req.params.fmt === "excel") {
-        const xlsx = await import("xlsx");
-        const wb = xlsx.utils.book_new();
-        const summary = [
-          ["Buyer", name],
-          ["Email", detail.user.email ?? ""],
-          ["Intent score", detail.intent.score],
-          ["Band", detail.intent.band],
-          ["Total events", detail.totalEvents],
-          ["Logins", detail.logins],
-          ["Last active", detail.lastActivityAt ? new Date(detail.lastActivityAt).toISOString() : ""],
-        ];
-        xlsx.utils.book_append_sheet(wb, xlsx.utils.aoa_to_sheet(summary), "Summary");
-        xlsx.utils.book_append_sheet(
-          wb,
-          xlsx.utils.aoa_to_sheet([["Vendor", "Events", "Last activity"], ...detail.vendorBreakdown.map((v) => [v.vendorName, v.events, v.lastAt])]),
-          "Per-vendor",
-        );
-        xlsx.utils.book_append_sheet(
-          wb,
-          xlsx.utils.aoa_to_sheet([
-            ["When", "Event", "Market", "Vendor"],
-            ...detail.timeline.map((t) => [
-              t.createdAt ? new Date(t.createdAt).toISOString() : "",
-              resolveEventLabel(t.eventType, t.metadata),
-              t.marketName ?? "",
-              t.vendorName ?? "",
-            ]),
-          ]),
-          "Timeline",
-        );
-
-        const sortedBreakdown = [...detail.contextBreakdown].sort((a, b) => {
-          const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
-          const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
-          return (wB * b.count) - (wA * a.count);
-        });
-        xlsx.utils.book_append_sheet(
-          wb,
-          xlsx.utils.aoa_to_sheet([
-            ["Event type", "Sub-type", "Count", "Weight", "Contribution"],
-            ...sortedBreakdown.map((t) => {
-              const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
-              const weight = def?.weight ?? 0;
-              const subLabel = t.subType ? (PAGE_VIEW_LABELS[t.subType] ?? t.subType) : "";
-              const baseLabel = def?.label ?? t.eventType;
-              const label = subLabel || baseLabel;
-              return [label, t.subType ?? "", t.count, weight, weight * t.count];
-            }),
-          ]),
-          "Activity breakdown",
-        );
-        xlsx.utils.book_append_sheet(
-          wb,
-          xlsx.utils.aoa_to_sheet([
-            ["Market", "Events", "Dwell time (ms)", "Last visited"],
-            ...detail.marketViews.map((m) => [
-              m.marketName.replace(/^ITMAP for /i, ""),
-              m.events,
-              m.dwellMs,
-              new Date(m.lastAt).toISOString(),
-            ]),
-          ]),
-          "Markets visited",
-        );
-
-        const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
-        res.setHeader("Content-Disposition", `attachment; filename="spectio_lead_${safe}.xlsx"`);
-        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        return res.send(buf);
-      }
-
-      const html = leadReportHtml(detail, name);
-      const pdf = await pdfService.htmlToPdf(html, { format: "A4" });
-      res.setHeader("Content-Disposition", `attachment; filename="spectio_lead_${safe}.pdf"`);
-      res.setHeader("Content-Type", "application/pdf");
-      res.send(pdf);
+      await sendLeadDetailExport(res, detail, req.params.fmt);
     } catch (err) {
       console.error("[lead-gen] lead export error:", err);
       res.status(500).json({ error: "Failed to export lead" });
@@ -973,6 +911,31 @@ export function registerLeadGenRoutes(app: Express): void {
       res.json(detail);
     } catch (err) {
       console.error("[lead-gen] lead detail error:", err);
+      res.status(500).json({ error: "Failed to load lead" });
+    }
+  });
+
+  // ── Vendor-facing single lead detail (mirrors the admin detail/export above,
+  //    scoped to visitors who actually appear in the signed-in seat's assigned
+  //    market(s) so a vendor can't probe arbitrary user IDs) ──
+  app.get("/api/lead-gen/me/leads/:userId/export/:fmt", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const detail = await buildScopedVendorLeadDetail(req, req.params.userId);
+      if (!detail) return res.status(404).json({ error: "Lead not found" });
+      await sendLeadDetailExport(res, detail, req.params.fmt);
+    } catch (err) {
+      console.error("[lead-gen] me lead export error:", err);
+      res.status(500).json({ error: "Failed to export lead" });
+    }
+  });
+
+  app.get("/api/lead-gen/me/leads/:userId", requireVendorScope, async (req: Request, res: Response) => {
+    try {
+      const detail = await buildScopedVendorLeadDetail(req, req.params.userId);
+      if (!detail) return res.status(404).json({ error: "Lead not found" });
+      res.json(detail);
+    } catch (err) {
+      console.error("[lead-gen] me lead detail error:", err);
       res.status(500).json({ error: "Failed to load lead" });
     }
   });
@@ -1051,6 +1014,97 @@ export function registerLeadGenRoutes(app: Express): void {
       res.status(500).json({ error: "Failed to submit flag" });
     }
   });
+}
+
+// Streams a single lead's PDF or Excel report to `res`. Shared by the admin
+// and vendor-facing single-lead export routes so both stay byte-for-byte
+// identical.
+async function sendLeadDetailExport(
+  res: Response,
+  detail: NonNullable<Awaited<ReturnType<typeof buildLeadDetail>>>,
+  fmt: string,
+): Promise<void> {
+  const name = fullName(detail.user);
+  const safe = name.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+
+  if (fmt === "excel") {
+    const xlsx = await import("xlsx");
+    const wb = xlsx.utils.book_new();
+    const summary = [
+      ["Buyer", name],
+      ["Email", detail.user.email ?? ""],
+      ["Intent score", detail.intent.score],
+      ["Band", detail.intent.band],
+      ["Total events", detail.totalEvents],
+      ["Logins", detail.logins],
+      ["Last active", detail.lastActivityAt ? new Date(detail.lastActivityAt).toISOString() : ""],
+    ];
+    xlsx.utils.book_append_sheet(wb, xlsx.utils.aoa_to_sheet(summary), "Summary");
+    xlsx.utils.book_append_sheet(
+      wb,
+      xlsx.utils.aoa_to_sheet([["Vendor", "Events", "Last activity"], ...detail.vendorBreakdown.map((v) => [v.vendorName, v.events, v.lastAt])]),
+      "Per-vendor",
+    );
+    xlsx.utils.book_append_sheet(
+      wb,
+      xlsx.utils.aoa_to_sheet([
+        ["When", "Event", "Market", "Vendor"],
+        ...detail.timeline.map((t) => [
+          t.createdAt ? new Date(t.createdAt).toISOString() : "",
+          resolveEventLabel(t.eventType, t.metadata),
+          t.marketName ?? "",
+          t.vendorName ?? "",
+        ]),
+      ]),
+      "Timeline",
+    );
+
+    const sortedBreakdown = [...detail.contextBreakdown].sort((a, b) => {
+      const wA = LEAD_GEN_EVENT_DEFS[a.eventType as LeadGenEventType]?.weight ?? 0;
+      const wB = LEAD_GEN_EVENT_DEFS[b.eventType as LeadGenEventType]?.weight ?? 0;
+      return (wB * b.count) - (wA * a.count);
+    });
+    xlsx.utils.book_append_sheet(
+      wb,
+      xlsx.utils.aoa_to_sheet([
+        ["Event type", "Sub-type", "Count", "Weight", "Contribution"],
+        ...sortedBreakdown.map((t) => {
+          const def = LEAD_GEN_EVENT_DEFS[t.eventType as LeadGenEventType];
+          const weight = def?.weight ?? 0;
+          const subLabel = t.subType ? (PAGE_VIEW_LABELS[t.subType] ?? t.subType) : "";
+          const baseLabel = def?.label ?? t.eventType;
+          const label = subLabel || baseLabel;
+          return [label, t.subType ?? "", t.count, weight, weight * t.count];
+        }),
+      ]),
+      "Activity breakdown",
+    );
+    xlsx.utils.book_append_sheet(
+      wb,
+      xlsx.utils.aoa_to_sheet([
+        ["Market", "Events", "Dwell time (ms)", "Last visited"],
+        ...detail.marketViews.map((m) => [
+          m.marketName.replace(/^ITMAP for /i, ""),
+          m.events,
+          m.dwellMs,
+          new Date(m.lastAt).toISOString(),
+        ]),
+      ]),
+      "Markets visited",
+    );
+
+    const buf = xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", `attachment; filename="spectio_lead_${safe}.xlsx"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+    return;
+  }
+
+  const html = leadReportHtml(detail, name);
+  const pdf = await pdfService.htmlToPdf(html, { format: "A4" });
+  res.setHeader("Content-Disposition", `attachment; filename="spectio_lead_${safe}.pdf"`);
+  res.setHeader("Content-Type", "application/pdf");
+  res.send(pdf);
 }
 
 function leadReportHtml(detail: Awaited<ReturnType<typeof buildLeadDetail>> & object, name: string): string {

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { FileDown, Building2, Flame, Radar } from "lucide-react";
+import { FileDown, Building2, Flame, Radar, ChevronRight } from "lucide-react";
 import {
   PanelShell, GlassCard, BandBadge, fullName, timeAgo,
   BAND_META, type LeadRow,
@@ -101,32 +102,37 @@ export default function LeadGenMyVendorPage() {
             {rows.map((r, i) => {
               const m = BAND_META[r.intent.band];
               return (
-                <motion.div key={r.userId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.015, 0.4) }} className="flex items-center gap-4 px-5 py-3.5">
-                  <div className="flex w-14 shrink-0 flex-col items-center">
-                    <span className={`text-xl font-bold tabular-nums ${m.text}`}>{Math.round(r.intent.score)}</span>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full" style={{ width: `${r.intent.score}%`, background: m.stroke }} />
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-white">{fullName(r)}</span>
-                      <BandBadge band={r.intent.band} />
-                    </div>
-                    <span className="truncate text-xs text-slate-500">{r.email}</span>
-                  </div>
-                  {r.topVendor && (
-                    <div className="hidden shrink-0 sm:block">
-                      <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300">
-                        Most engaged: {r.topVendor.vendorName}
-                      </span>
-                    </div>
-                  )}
-                  <div className="hidden w-28 shrink-0 text-right md:block">
-                    <div className="text-sm tabular-nums text-slate-200">{r.totalEvents} events</div>
-                    <div className="text-xs text-slate-500">{r.logins} logins</div>
-                  </div>
-                  <div className="hidden w-24 shrink-0 text-right text-xs text-slate-400 lg:block">{timeAgo(r.lastActivityAt)}</div>
+                <motion.div key={r.userId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.015, 0.4) }}>
+                  <Link href={`/lead-gen/me/${r.userId}`}>
+                    <a className="flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.03]">
+                      <div className="flex w-14 shrink-0 flex-col items-center">
+                        <span className={`text-xl font-bold tabular-nums ${m.text}`}>{Math.round(r.intent.score)}</span>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full rounded-full" style={{ width: `${r.intent.score}%`, background: m.stroke }} />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium text-white">{fullName(r)}</span>
+                          <BandBadge band={r.intent.band} />
+                        </div>
+                        <span className="truncate text-xs text-slate-500">{r.email}</span>
+                      </div>
+                      {r.topVendor && (
+                        <div className="hidden shrink-0 sm:block">
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300">
+                            Most engaged: {r.topVendor.vendorName}
+                          </span>
+                        </div>
+                      )}
+                      <div className="hidden w-28 shrink-0 text-right md:block">
+                        <div className="text-sm tabular-nums text-slate-200">{r.totalEvents} events</div>
+                        <div className="text-xs text-slate-500">{r.logins} logins</div>
+                      </div>
+                      <div className="hidden w-24 shrink-0 text-right text-xs text-slate-400 lg:block">{timeAgo(r.lastActivityAt)}</div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" />
+                    </a>
+                  </Link>
                 </motion.div>
               );
             })}

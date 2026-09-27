@@ -45,6 +45,7 @@ import LeadGenOverviewPage from "@/pages/lead-gen/index";
 import LeadGenDetailPage from "@/pages/lead-gen/detail";
 import LeadGenVendorPage from "@/pages/lead-gen/vendor";
 import LeadGenMyVendorPage from "@/pages/lead-gen/me";
+import LeadGenMyLeadDetailPage from "@/pages/lead-gen/me-detail";
 import FactReviewPage from "@/pages/lead-gen/fact-review";
 import RfpResponderPage from "@/pages/rfp-responder/index";
 import RfpSessionDetailPage from "@/pages/rfp-responder/session-detail";
@@ -260,6 +261,7 @@ function Router() {
         <Route path="/lead-gen/vendors/:vendorId">{() => <ProtectedRoute component={LeadGenVendorPage} requireAdmin={true} />}</Route>
         <Route path="/lead-gen/me">{() => <ProtectedRoute component={LeadGenMyVendorPage} />}</Route>
         <Route path="/lead-gen/me/fact-review">{() => <ProtectedRoute component={FactReviewPage} />}</Route>
+        <Route path="/lead-gen/me/:userId">{() => <ProtectedRoute component={LeadGenMyLeadDetailPage} />}</Route>
         <Route path="/rfp-responder">{() => <ProtectedRoute component={RfpResponderPage} />}</Route>
         <Route path="/rfp-responder/sessions/:id">{() => <ProtectedRoute component={RfpSessionDetailPage} />}</Route>
         <Route path="/battle-cards">{() => <ProtectedRoute component={BattleCardsIndexPage} />}</Route>
