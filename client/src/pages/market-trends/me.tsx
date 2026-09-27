@@ -17,6 +17,11 @@ const prettyRangeLabel = (from: string, to: string) => {
   return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`;
 };
 
+// Market display names are stored as "ITMAP for <Market>" — strip that
+// prefix everywhere a market name is shown to a vendor (dropdowns, chart
+// labels) so labels stay short and legible.
+const stripMarketPrefix = (name: string) => name.replace(/^ITMAP for\s+/i, "");
+
 function DateRangePicker({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
   return (
     <>
@@ -50,7 +55,7 @@ function MarketSelect({ markets, value, onChange, testId }: { markets: { id: str
       className="h-9 min-w-[220px] rounded-md border border-white/10 bg-slate-900/80 px-2 text-xs text-slate-200"
       data-testid={testId}
     >
-      {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+      {markets.map((m) => <option key={m.id} value={m.id}>{stripMarketPrefix(m.name)}</option>)}
     </select>
   );
 }
@@ -95,13 +100,29 @@ function ErrorBlock({ message }: { message: string }) {
   return <div className="py-10 text-center text-sm text-rose-400">{message}</div>;
 }
 
+// Y-axis category labels can run long (market/vendor names). Recharts'
+// default tick wraps long text onto multiple lines, which overlaps
+// neighboring bars at a compact row height. Render a single truncated line
+// instead — the full name is still available on hover via the bar tooltip.
+const MAX_LABEL_CHARS = 26;
+const truncateLabel = (label: string) => (label.length > MAX_LABEL_CHARS ? `${label.slice(0, MAX_LABEL_CHARS - 1).trimEnd()}…` : label);
+
+function AxisTick({ x, y, payload }: any) {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="#e2e8f0">
+      <title>{payload.value}</title>
+      {truncateLabel(String(payload.value))}
+    </text>
+  );
+}
+
 function PercentBarChart({ rows, dataKey, height }: { rows: { label: string; percent: number }[]; dataKey: "label"; height: number }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 32, left: 8, bottom: 0 }}>
         <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
         <XAxis type="number" domain={[0, "dataMax"]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey={dataKey} width={150} tick={{ fontSize: 11, fill: "#e2e8f0" }} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey={dataKey} width={190} tick={<AxisTick />} tickLine={false} axisLine={false} interval={0} />
         <Tooltip
           formatter={(value: number) => [`${value}%`, "Share"]}
           contentStyle={{ borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#0f172a", fontSize: 12, color: "#e2e8f0" }}
@@ -124,6 +145,7 @@ interface ScopeResponse {
 interface MarketPercentRow { marketId: string | null; marketName: string; percent: number }
 interface CountryPercentRow { countryCode: string | null; country: string; percent: number }
 interface VendorPercentRow { vendorId: string | null; vendorName: string; percent: number }
+interface PublicMarket { id: string; name: string }
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
@@ -143,11 +165,30 @@ export default function MarketTrendsMyVendorPage() {
     retry: false,
   });
 
-  const markets = scopeQuery.data?.markets ?? [];
+  // The vendor's own assigned market(s) — used only to pick the default
+  // selection. The dropdown itself offers every public market on the
+  // platform (see allMarketsQuery below), not just these.
+  const ownMarkets = scopeQuery.data?.markets ?? [];
+
+  const allMarketsQuery = useQuery<PublicMarket[]>({
+    queryKey: ["/api/markets"],
+    queryFn: async () => {
+      const res = await fetch("/api/markets", { credentials: "include" });
+      if (!res.ok) throw new Error(String(res.status));
+      return res.json();
+    },
+    retry: false,
+    enabled: !scopeQuery.error,
+  });
+
+  const marketOptions = useMemo(() => {
+    const list = (allMarketsQuery.data ?? []).map((m) => ({ id: m.id, name: m.name }));
+    return [...list].sort((a, b) => stripMarketPrefix(a.name).localeCompare(stripMarketPrefix(b.name)));
+  }, [allMarketsQuery.data]);
 
   useEffect(() => {
-    if (!marketId && markets.length > 0) setMarketId(markets[0].id);
-  }, [markets, marketId]);
+    if (!marketId && ownMarkets.length > 0) setMarketId(ownMarkets[0].id);
+  }, [ownMarkets, marketId]);
 
   useEffect(() => { setCountry("all"); }, [marketId]);
 
@@ -234,9 +275,9 @@ export default function MarketTrendsMyVendorPage() {
         >
           {visitorsByMarketQuery.isLoading ? <LoadingBlock /> : visitorsByMarketQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (visitorsByMarketQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No visitor activity in this range." /> : (
             <PercentBarChart
-              rows={(visitorsByMarketQuery.data?.rows ?? []).map((r) => ({ label: r.marketName, percent: r.percent }))}
+              rows={(visitorsByMarketQuery.data?.rows ?? []).map((r) => ({ label: stripMarketPrefix(r.marketName), percent: r.percent }))}
               dataKey="label"
-              height={Math.max(200, (visitorsByMarketQuery.data?.rows.length ?? 0) * 32)}
+              height={Math.max(220, (visitorsByMarketQuery.data?.rows.length ?? 0) * 34)}
             />
           )}
           <p className="mt-3 text-[11px] text-slate-500">Share of total visitors across every market on the platform — not limited to your assigned market(s).</p>
@@ -248,18 +289,19 @@ export default function MarketTrendsMyVendorPage() {
           title="Country split of visitors"
           controls={
             <>
-              {markets.length > 1 && <MarketSelect markets={markets} value={marketId} onChange={setMarketId} testId="select-market-country-split" />}
+              <MarketSelect markets={marketOptions} value={marketId} onChange={setMarketId} testId="select-market-country-split" />
               <DateRangePicker from={from} to={to} onFrom={setFrom} onTo={setTo} />
             </>
           }
         >
-          {!marketId ? <EmptyBlock message="No market assigned." /> : countrySplitQuery.isLoading ? <LoadingBlock /> : countrySplitQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (countrySplitQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No visitor activity for this market in this range." /> : (
+          {!marketId ? <EmptyBlock message="Choose a market above." /> : countrySplitQuery.isLoading ? <LoadingBlock /> : countrySplitQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (countrySplitQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No visitor activity for this market in this range." /> : (
             <PercentBarChart
               rows={(countrySplitQuery.data?.rows ?? []).map((r) => ({ label: r.country, percent: r.percent }))}
               dataKey="label"
-              height={Math.max(200, (countrySplitQuery.data?.rows.length ?? 0) * 32)}
+              height={Math.max(200, (countrySplitQuery.data?.rows.length ?? 0) * 34)}
             />
           )}
+          <p className="mt-3 text-[11px] text-slate-500">Pick any market on the platform — not limited to your own.</p>
         </WidgetShell>
 
         <WidgetShell
@@ -268,7 +310,7 @@ export default function MarketTrendsMyVendorPage() {
           title="Top vendors clicked"
           controls={
             <>
-              {markets.length > 1 && <MarketSelect markets={markets} value={marketId} onChange={setMarketId} testId="select-market-top-vendors" />}
+              <MarketSelect markets={marketOptions} value={marketId} onChange={setMarketId} testId="select-market-top-vendors" />
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
@@ -282,13 +324,14 @@ export default function MarketTrendsMyVendorPage() {
             </>
           }
         >
-          {!marketId ? <EmptyBlock message="No market assigned." /> : topVendorsQuery.isLoading ? <LoadingBlock /> : topVendorsQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (topVendorsQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No vendor clicks for this market in this range." /> : (
+          {!marketId ? <EmptyBlock message="Choose a market above." /> : topVendorsQuery.isLoading ? <LoadingBlock /> : topVendorsQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (topVendorsQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No vendor clicks for this market in this range." /> : (
             <PercentBarChart
               rows={(topVendorsQuery.data?.rows ?? []).map((r) => ({ label: r.vendorName, percent: r.percent }))}
               dataKey="label"
-              height={Math.max(200, (topVendorsQuery.data?.rows.length ?? 0) * 32)}
+              height={Math.max(200, (topVendorsQuery.data?.rows.length ?? 0) * 34)}
             />
           )}
+          <p className="mt-3 text-[11px] text-slate-500">Shows at least the market's top 5 vendors by clicks, even at 0% when there's no activity yet.</p>
         </WidgetShell>
       </div>
     </PanelShell>

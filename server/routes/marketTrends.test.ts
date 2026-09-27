@@ -3,9 +3,10 @@ import express, { type Express } from "express";
 import request from "supertest";
 
 // Regression coverage for Task #113: the vendor-facing Market Trends module
-// must NEVER leak raw visitor/click counts (percentages only) and must
-// reject any marketId outside the signed-in vendor seat's assigned
-// market(s). See server/routes/marketTrends.ts for the contract.
+// must NEVER leak raw visitor/click counts (percentages only). Country-split
+// and top-vendors let a vendor seat view ANY public market (not just its own
+// assigned market(s)) via a dropdown, but a private Market Builder market
+// must still stay owner/admin-only. See server/routes/marketTrends.ts.
 const h = vi.hoisted(() => {
   const storage = {
     getVendorBrief: vi.fn(),
@@ -45,6 +46,7 @@ const app = buildApp();
 
 const ASSIGNED_MARKET_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_MARKET_ID = "22222222-2222-2222-2222-222222222222";
+const PRIVATE_MARKET_ID = "44444444-4444-4444-4444-444444444444";
 const VENDOR_ID = "33333333-3333-3333-3333-333333333333";
 
 const vendorUser = (overrides: Partial<NonNullable<TestUser>> = {}): TestUser => ({
@@ -78,8 +80,9 @@ beforeEach(() => {
     marketId: ASSIGNED_MARKET_ID,
   });
   h.storage.getMarketById.mockImplementation(async (id: string) => {
-    if (id === ASSIGNED_MARKET_ID) return { id: ASSIGNED_MARKET_ID, name: "Assigned Market" };
-    if (id === OTHER_MARKET_ID) return { id: OTHER_MARKET_ID, name: "Other Vendor's Market" };
+    if (id === ASSIGNED_MARKET_ID) return { id: ASSIGNED_MARKET_ID, name: "Assigned Market", visibility: "public" };
+    if (id === OTHER_MARKET_ID) return { id: OTHER_MARKET_ID, name: "Other Public Market", visibility: "public" };
+    if (id === PRIVATE_MARKET_ID) return { id: PRIVATE_MARKET_ID, name: "Someone Else's Private Market", visibility: "private", ownerUserId: "some-other-buyer" };
     return undefined;
   });
 
@@ -135,24 +138,44 @@ describe("Market Trends percentage-only contract", () => {
   });
 });
 
-describe("Market Trends market-ownership boundary", () => {
-  it("rejects country-split for a market outside the vendor seat's assignment", async () => {
+describe("Market Trends market-visibility boundary", () => {
+  it("allows country-split for a public market outside the vendor seat's assignment", async () => {
     currentUser = vendorUser();
     const res = await request(app)
       .get("/api/market-trends/me/country-split")
       .query({ marketId: OTHER_MARKET_ID, from: "2026-01-01", to: "2026-01-31" });
 
-    expect(res.status).toBe(403);
-    expect(h.storage.getMarketGeoSplit).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(h.storage.getMarketGeoSplit).toHaveBeenCalledWith(OTHER_MARKET_ID, expect.anything());
   });
 
-  it("rejects top-vendors for a market outside the vendor seat's assignment", async () => {
+  it("allows top-vendors for a public market outside the vendor seat's assignment", async () => {
     currentUser = vendorUser();
     const res = await request(app)
       .get("/api/market-trends/me/top-vendors")
       .query({ marketId: OTHER_MARKET_ID, from: "2026-01-01", to: "2026-01-31" });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(h.storage.getTopVendorsClicked).toHaveBeenCalled();
+  });
+
+  it("rejects country-split for a private market not owned by the requester", async () => {
+    currentUser = vendorUser();
+    const res = await request(app)
+      .get("/api/market-trends/me/country-split")
+      .query({ marketId: PRIVATE_MARKET_ID, from: "2026-01-01", to: "2026-01-31" });
+
+    expect(res.status).toBe(404);
+    expect(h.storage.getMarketGeoSplit).not.toHaveBeenCalled();
+  });
+
+  it("rejects top-vendors for a private market not owned by the requester", async () => {
+    currentUser = vendorUser();
+    const res = await request(app)
+      .get("/api/market-trends/me/top-vendors")
+      .query({ marketId: PRIVATE_MARKET_ID, from: "2026-01-01", to: "2026-01-31" });
+
+    expect(res.status).toBe(404);
     expect(h.storage.getTopVendorsClicked).not.toHaveBeenCalled();
   });
 });

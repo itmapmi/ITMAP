@@ -9,10 +9,10 @@
 //    platform, regardless of which market(s) this vendor seat is assigned
 //    to — a vendor should see how its own market(s) compare to the whole
 //    portfolio, not just its own slice.
-//  - Country split of visitors per market: scoped to ONLY the market(s)
-//    assigned to this vendor seat.
-//  - Top vendors clicked per market: scoped to ONLY the market(s) assigned
-//    to this vendor seat.
+//  - Country split of visitors, and top vendors clicked: the vendor picks
+//    ANY public market from a dropdown (defaulting to their own assigned
+//    market on first load) — not restricted to their own market(s). Private
+//    Market Builder markets stay owner/admin-only via canReadMarket().
 import type { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { requireFeature } from "../featureAccess";
@@ -20,6 +20,20 @@ import { requireVendorScope, vendorScopeDetails } from "../lib/vendorScope";
 import { parseDateRangeQuery, parseOptionalCountryQuery } from "../lib/dateRangeQuery";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Private markets (owned by an individual buyer via Market Builder) are only
+// readable by their owner or an admin; public markets are readable by
+// anyone. Country-split and top-vendors are intentionally NOT limited to the
+// vendor seat's own assigned market(s) — a vendor may pick any public market
+// from the dropdown — but a private market must still stay private.
+function canReadMarket(market: any, req: Request): boolean {
+  if (!market) return false;
+  if (market.visibility !== "private") return true;
+  const user = req.user as any;
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return market.ownerUserId === user.id;
+}
 
 // Every route below requires both an assigned vendor seat AND the
 // "market_trends" feature to be explicitly granted by an admin.
@@ -93,8 +107,8 @@ export function registerMarketTrendsRoutes(app: Express): void {
 
   /**
    * GET /api/market-trends/me/country-split
-   * Percentage split of visitors by country, scoped to one of this seat's
-   * assigned markets.
+   * Percentage split of visitors by country for any public market (not
+   * limited to this seat's own assigned market).
    * Query params: marketId (UUID, required), from, to (YYYY-MM-DD)
    */
   app.get("/api/market-trends/me/country-split", ...guard, async (req: Request, res: Response) => {
@@ -105,10 +119,9 @@ export function registerMarketTrendsRoutes(app: Express): void {
       }
       const marketId = String(marketIdRaw);
 
-      const { markets } = await vendorScopeDetails(req);
-      const market = markets.find((m) => m.id === marketId);
-      if (!market) {
-        return res.status(403).json({ error: "This market is not assigned to your vendor seat" });
+      const market = await storage.getMarketById(marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Market not found" });
       }
 
       const range = parseDateRangeQuery(req, res);
@@ -130,8 +143,10 @@ export function registerMarketTrendsRoutes(app: Express): void {
 
   /**
    * GET /api/market-trends/me/top-vendors
-   * Percentage split of vendor clicks within one of this seat's assigned
-   * markets, optionally scoped to a single country.
+   * Percentage split of vendor clicks within any public market (not limited
+   * to this seat's own assigned market), optionally scoped to a single
+   * country. Always includes at least the market's top 5 vendors by rank
+   * (padding with 0%-click vendors when fewer than 5 have any activity).
    * Query params: marketId (UUID, required), country (ISO code, optional),
    * from, to (YYYY-MM-DD)
    */
@@ -143,10 +158,9 @@ export function registerMarketTrendsRoutes(app: Express): void {
       }
       const marketId = String(marketIdRaw);
 
-      const { markets } = await vendorScopeDetails(req);
-      const market = markets.find((m) => m.id === marketId);
-      if (!market) {
-        return res.status(403).json({ error: "This market is not assigned to your vendor seat" });
+      const market = await storage.getMarketById(marketId);
+      if (!market || !canReadMarket(market, req)) {
+        return res.status(404).json({ error: "Market not found" });
       }
 
       const range = parseDateRangeQuery(req, res);
@@ -157,16 +171,19 @@ export function registerMarketTrendsRoutes(app: Express): void {
       if (!countryParsed) return;
       const { country } = countryParsed;
 
-      // Pull a generous slice so the percentage total reflects (essentially)
-      // every vendor in this market, not just a display-limited top few.
+      // Pull every vendor in the market (getTopVendorsClicked left-joins so
+      // zero-click vendors are included too) so the chart always shows a
+      // full ranked list — not just whichever handful happen to have clicks
+      // — and the percentage total reflects every vendor in this market.
       const vendorRows = await storage.getTopVendorsClicked(
         marketId,
         { since, until, visitorType: "all", country },
-        50,
+        200,
+        { includeZeroClickVendors: true },
       );
       const rows = toPercentRows(
         vendorRows.map((r) => ({ vendorId: r.vendorId, vendorName: r.vendorName, count: r.clicks })),
-        10,
+        5,
         (percent) => ({ vendorId: null, vendorName: "Other vendors", percent }),
       );
       res.json({ rows, marketId, marketName: market.name, country: country ?? null, from: fromRaw, to: toRaw });

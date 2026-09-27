@@ -562,32 +562,64 @@ const VENDOR_CLICK_EVENT_TYPES = ["vendor_viewed", "vendor_selected"] as const;
  * one country via `f.country`. Both anonymous and registered visitors are
  * included: these raw events are written to traffic_events regardless of
  * auth (see server/routes/leadGen.ts /api/track).
+ *
+ * By default this only returns vendors that actually have qualifying clicks
+ * (INNER JOIN) — the long-standing behavior admin analytics relies on. Pass
+ * `includeZeroClickVendors: true` to instead start from the market's full
+ * vendor roster (LEFT JOIN) so vendors with zero clicks in the window still
+ * appear with clicks=0, giving callers a reliable minimum row count (e.g.
+ * the vendor-facing Market Trends "always show at least 5 vendors" chart).
  */
 export async function getTopVendorsClicked(
   marketId: string,
   f: TrafficFilter,
   limit = 10,
+  opts: { includeZeroClickVendors?: boolean } = {},
 ): Promise<TopVendorRow[]> {
+  const selectFields = {
+    vendorId: vendors.id,
+    vendorName: vendors.name,
+    clicks: sql<number>`count(${trafficEvents.id})::int`,
+    visitors: sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
+    vendorEvaluationClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_viewed')::int`,
+    compareProductsClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'product_evaluation')::int`,
+    supportMatrixClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'ecosystem_evaluation')::int`,
+  };
+
+  if (opts.includeZeroClickVendors) {
+    const eventConds = [
+      eq(trafficEvents.vendorId, vendors.id),
+      eq(trafficEvents.marketId, marketId),
+      inArray(trafficEvents.eventType, VENDOR_CLICK_EVENT_TYPES as unknown as string[]),
+      gte(trafficEvents.createdAt, f.since),
+    ];
+    if (f.until) eventConds.push(lte(trafficEvents.createdAt, f.until) as any);
+    if (f.country) eventConds.push(eq(trafficEvents.countryCode, f.country) as any);
+    if (f.visitorType === "registered") eventConds.push(isNotNull(trafficEvents.userId) as any);
+    if (f.visitorType === "anonymous") eventConds.push(isNull(trafficEvents.userId) as any);
+
+    return await db
+      .select(selectFields)
+      .from(vendors)
+      .leftJoin(trafficEvents, and(...eventConds))
+      .where(eq(vendors.marketId, marketId))
+      .groupBy(vendors.id, vendors.name)
+      .orderBy(sql`count(${trafficEvents.id}) desc`)
+      .limit(limit);
+  }
+
   const where = and(
     applyFilter({ ...f, marketId }),
     isNotNull(trafficEvents.vendorId),
     inArray(trafficEvents.eventType, VENDOR_CLICK_EVENT_TYPES as unknown as string[]),
   );
   return await db
-    .select({
-      vendorId: sql<string>`${trafficEvents.vendorId}`,
-      vendorName: vendors.name,
-      clicks: sql<number>`count(*)::int`,
-      visitors: sql<number>`count(distinct ${trafficEvents.anonymousId})::int`,
-      vendorEvaluationClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_viewed')::int`,
-      compareProductsClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'product_evaluation')::int`,
-      supportMatrixClicks: sql<number>`count(*) filter (where ${trafficEvents.eventType} = 'vendor_selected' and ${trafficEvents.metadata}->>'context' = 'ecosystem_evaluation')::int`,
-    })
+    .select(selectFields)
     .from(trafficEvents)
     .innerJoin(vendors, eq(trafficEvents.vendorId, vendors.id))
     .where(where)
-    .groupBy(trafficEvents.vendorId, vendors.name)
-    .orderBy(sql`count(*) desc`)
+    .groupBy(vendors.id, vendors.name)
+    .orderBy(sql`count(${trafficEvents.id}) desc`)
     .limit(limit);
 }
 
