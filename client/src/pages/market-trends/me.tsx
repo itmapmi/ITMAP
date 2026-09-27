@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LabelList,
 } from "recharts";
 import { BarChart3, Globe2, Trophy, Radar } from "lucide-react";
 import { PanelShell, GlassCard } from "../lead-gen/_shared";
@@ -60,24 +60,34 @@ function MarketSelect({ markets, value, onChange, testId }: { markets: { id: str
   );
 }
 
-const CHART_COLOR = "#22d3ee";
+// Two accent tracks (cyan / violet) echo the page header's cyan→violet
+// gradient so widgets aren't a flat cyan monochrome, and each accent is
+// brighter than the old cyan-400/slate-500 pairing, which read as barely
+// legible on the near-black panel background.
+type Accent = "cyan" | "violet";
+const ACCENT: Record<Accent, { text: string; iconBg: string; bar: string; topBorder: string }> = {
+  cyan: { text: "text-cyan-300", iconBg: "bg-cyan-500/15 ring-1 ring-inset ring-cyan-400/20 text-cyan-300", bar: "#22d3ee", topBorder: "before:bg-cyan-400/60" },
+  violet: { text: "text-violet-300", iconBg: "bg-violet-500/15 ring-1 ring-inset ring-violet-400/20 text-violet-300", bar: "#a78bfa", topBorder: "before:bg-violet-400/60" },
+};
 
 function WidgetShell({
-  icon, eyebrow, title, controls, children,
+  icon, eyebrow, title, accent, controls, children,
 }: {
   icon: React.ReactNode;
   eyebrow: string;
   title: string;
+  accent: Accent;
   controls?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const a = ACCENT[accent];
   return (
-    <GlassCard className="p-5">
+    <GlassCard className={`relative overflow-hidden p-5 transition-colors hover:border-white/15 before:absolute before:inset-x-0 before:top-0 before:h-[2px] ${a.topBorder}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-300">{icon}</span>
+          <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${a.iconBg}`}>{icon}</span>
           <div>
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[.18em] text-cyan-400">{eyebrow}</p>
+            <p className={`font-mono text-xs font-bold uppercase tracking-[.1em] ${a.text}`}>{eyebrow}</p>
             <h2 className="mt-0.5 text-base font-semibold text-white">{title}</h2>
           </div>
         </div>
@@ -116,12 +126,24 @@ function AxisTick({ x, y, payload }: any) {
   );
 }
 
-function PercentBarChart({ rows, dataKey, height }: { rows: { label: string; percent: number }[]; dataKey: "label"; height: number }) {
+// Bar values used to be visible only on hover (via the tooltip). Rendering
+// the percentage directly at the end of each bar keeps the data readable
+// without an interaction, and in a high-contrast slate tone rather than
+// relying on the (previously too-dim) cyan accent for legibility.
+function ValueLabel({ x, y, width, height, value }: any) {
+  return (
+    <text x={x + width + 8} y={y + height / 2} dy={4} fontSize={11} fontWeight={600} fill="#e2e8f0">
+      {value}%
+    </text>
+  );
+}
+
+function PercentBarChart({ rows, dataKey, height, color }: { rows: { label: string; percent: number }[]; dataKey: "label"; height: number; color: string }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 32, left: 8, bottom: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
-        <XAxis type="number" domain={[0, "dataMax"]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+      <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 44, left: 8, bottom: 0 }}>
+        <CartesianGrid stroke="rgba(255,255,255,0.07)" horizontal={false} />
+        <XAxis type="number" domain={[0, "dataMax"]} tick={false} tickLine={false} axisLine={false} />
         <YAxis type="category" dataKey={dataKey} width={190} tick={<AxisTick />} tickLine={false} axisLine={false} interval={0} />
         <Tooltip
           formatter={(value: number) => [`${value}%`, "Share"]}
@@ -129,7 +151,8 @@ function PercentBarChart({ rows, dataKey, height }: { rows: { label: string; per
           cursor={{ fill: "rgba(255,255,255,0.04)" }}
         />
         <Bar dataKey="percent" radius={[0, 4, 4, 0]}>
-          {rows.map((_, i) => <Cell key={i} fill={CHART_COLOR} fillOpacity={1 - i * 0.06} />)}
+          {rows.map((_, i) => <Cell key={i} fill={color} fillOpacity={Math.max(0.45, 1 - i * 0.08)} />)}
+          <LabelList dataKey="percent" content={<ValueLabel />} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -271,6 +294,7 @@ export default function MarketTrendsMyVendorPage() {
           icon={<BarChart3 className="h-5 w-5" />}
           eyebrow="Portfolio-wide"
           title="Visitors by market"
+          accent="cyan"
           controls={<DateRangePicker from={from} to={to} onFrom={setFrom} onTo={setTo} />}
         >
           {visitorsByMarketQuery.isLoading ? <LoadingBlock /> : visitorsByMarketQuery.error ? <ErrorBlock message="Couldn't load this chart." /> : (visitorsByMarketQuery.data?.rows.length ?? 0) === 0 ? <EmptyBlock message="No visitor activity in this range." /> : (
@@ -278,15 +302,17 @@ export default function MarketTrendsMyVendorPage() {
               rows={(visitorsByMarketQuery.data?.rows ?? []).map((r) => ({ label: stripMarketPrefix(r.marketName), percent: r.percent }))}
               dataKey="label"
               height={Math.max(220, (visitorsByMarketQuery.data?.rows.length ?? 0) * 34)}
+              color={ACCENT.cyan.bar}
             />
           )}
-          <p className="mt-3 text-[11px] text-slate-500">Share of total visitors across every market on the platform — not limited to your assigned market(s).</p>
+          <p className="mt-3 text-[11px] text-slate-400">Share of total visitors across every market on the platform — not limited to your assigned market(s).</p>
         </WidgetShell>
 
         <WidgetShell
           icon={<Globe2 className="h-5 w-5" />}
           eyebrow="Per-market"
           title="Country split of visitors"
+          accent="violet"
           controls={
             <>
               <MarketSelect markets={marketOptions} value={marketId} onChange={setMarketId} testId="select-market-country-split" />
@@ -299,15 +325,17 @@ export default function MarketTrendsMyVendorPage() {
               rows={(countrySplitQuery.data?.rows ?? []).map((r) => ({ label: r.country, percent: r.percent }))}
               dataKey="label"
               height={Math.max(200, (countrySplitQuery.data?.rows.length ?? 0) * 34)}
+              color={ACCENT.violet.bar}
             />
           )}
-          <p className="mt-3 text-[11px] text-slate-500">Pick any market on the platform — not limited to your own.</p>
+          <p className="mt-3 text-[11px] text-slate-400">Pick any market on the platform — not limited to your own.</p>
         </WidgetShell>
 
         <WidgetShell
           icon={<Trophy className="h-5 w-5" />}
           eyebrow="Per-market"
           title="Top vendors clicked"
+          accent="cyan"
           controls={
             <>
               <MarketSelect markets={marketOptions} value={marketId} onChange={setMarketId} testId="select-market-top-vendors" />
@@ -329,9 +357,10 @@ export default function MarketTrendsMyVendorPage() {
               rows={(topVendorsQuery.data?.rows ?? []).map((r) => ({ label: r.vendorName, percent: r.percent }))}
               dataKey="label"
               height={Math.max(200, (topVendorsQuery.data?.rows.length ?? 0) * 34)}
+              color={ACCENT.cyan.bar}
             />
           )}
-          <p className="mt-3 text-[11px] text-slate-500">Shows at least the market's top 5 vendors by clicks, even at 0% when there's no activity yet.</p>
+          <p className="mt-3 text-[11px] text-slate-400">Shows at least the market's top 5 vendors by clicks, even at 0% when there's no activity yet.</p>
         </WidgetShell>
       </div>
     </PanelShell>
