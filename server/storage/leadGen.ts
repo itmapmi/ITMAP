@@ -320,7 +320,7 @@ export async function getUserVendorEventTypeBreakdown(
   const source = leadEventSource();
   const conds = [eq(source.userId, userId)];
   if (since) conds.push(gte(source.createdAt, since));
-  return await db
+  const directRows = await db
     .select({
       vendorId: sql<string>`${source.vendorId}`,
       vendorName: vendors.name,
@@ -332,6 +332,58 @@ export async function getUserVendorEventTypeBreakdown(
     .innerJoin(vendors, eq(source.vendorId, vendors.id))
     .where(and(...conds))
     .groupBy(source.vendorId, vendors.name, source.eventType);
+
+  // Vendor Evaluation comparisons are recorded as a single market-level
+  // comparison_run event. Its selected vendor IDs live in metadata.vendorIds,
+  // not user_events.vendor_id, so the regular vendor join above cannot
+  // attribute that high-intent action to the vendors the buyer compared.
+  // Expand those trusted server events into one per-vendor comparison signal.
+  const comparisonConds = [
+    eq(userEvents.userId, userId),
+    eq(userEvents.eventType, "comparison_run"),
+  ];
+  if (since) comparisonConds.push(gte(userEvents.createdAt, since));
+  const comparisonEvents = await db
+    .select({ metadata: userEvents.metadata, createdAt: userEvents.createdAt })
+    .from(userEvents)
+    .where(and(...comparisonConds));
+
+  const comparisonsByVendor = new Map<string, { count: number; lastAt: Date }>();
+  for (const event of comparisonEvents) {
+    const metadata = event.metadata;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) continue;
+    const payload = metadata as Record<string, unknown>;
+    if (payload.context !== "vendor_evaluation" || !Array.isArray(payload.vendorIds)) continue;
+
+    // The recording endpoint validates market membership and de-duplicates
+    // IDs; keep the read path defensive in case older or malformed rows exist.
+    const selectedIds = Array.from(new Set(payload.vendorIds.filter((id): id is string => typeof id === "string")));
+    for (const vendorId of selectedIds) {
+      const current = comparisonsByVendor.get(vendorId);
+      if (current) {
+        current.count += 1;
+        if (event.createdAt > current.lastAt) current.lastAt = event.createdAt;
+      } else {
+        comparisonsByVendor.set(vendorId, { count: 1, lastAt: event.createdAt });
+      }
+    }
+  }
+
+  const vendorNames = await getVendorNamesByIds(Array.from(comparisonsByVendor.keys()));
+  const comparisonRows = Array.from(comparisonsByVendor.entries())
+    .flatMap(([vendorId, aggregate]) => {
+      const vendorName = vendorNames.get(vendorId);
+      if (!vendorName) return [];
+      return [{
+        vendorId,
+        vendorName,
+        eventType: "comparison_run",
+        count: aggregate.count,
+        lastAt: aggregate.lastAt.toISOString(),
+      }];
+    });
+
+  return [...directRows, ...comparisonRows];
 }
 
 export async function getUserTypeBreakdownForUser(userId: string, since?: Date, marketId?: string): Promise<{ eventType: string; count: number }[]> {

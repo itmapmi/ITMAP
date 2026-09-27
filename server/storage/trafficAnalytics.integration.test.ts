@@ -37,6 +37,7 @@ import {
   getEventCountsByUserAndType,
   getOverviewStats,
   getUserTimeline,
+  getUserVendorEventTypeBreakdown,
 } from "./leadGen";
 
 vi.mock("../db", async () => {
@@ -134,6 +135,84 @@ afterAll(async () => {
 });
 
 describe.sequential("traffic analytics PostgreSQL integration", () => {
+  it("attributes Vendor Evaluation comparisons to every selected vendor", async () => {
+    const userId = fixtureId();
+    const marketId = fixtureId();
+    const vendorOneId = fixtureId();
+    const vendorTwoId = fixtureId();
+    const unrelatedVendorId = fixtureId();
+    const since = new Date("2000-02-01T00:00:00.000Z");
+
+    await db.insert(users).values({
+      id: userId,
+      email: `${runPrefix}vendor-comparison@example.test`,
+    });
+    await db.insert(markets).values({
+      id: marketId,
+      name: `${runPrefix}Vendor Comparison Market`,
+    });
+    await db.insert(vendors).values([
+      { id: vendorOneId, name: `${runPrefix}Selected Vendor One`, marketId },
+      { id: vendorTwoId, name: `${runPrefix}Selected Vendor Two`, marketId },
+      { id: unrelatedVendorId, name: `${runPrefix}Unrelated Vendor`, marketId },
+    ]);
+    await db.insert(userEvents).values([
+      {
+        id: fixtureId(),
+        userId,
+        eventType: "comparison_run",
+        marketId,
+        metadata: {
+          context: "vendor_evaluation",
+          vendorIds: [vendorOneId, vendorTwoId, vendorOneId],
+          vendorCount: 2,
+        },
+        createdAt: new Date("2000-02-01T12:00:00.000Z"),
+      },
+      {
+        id: fixtureId(),
+        userId,
+        eventType: "comparison_run",
+        marketId,
+        metadata: {
+          context: "vendor_evaluation",
+          vendorIds: [vendorOneId, vendorTwoId],
+          vendorCount: 2,
+        },
+        createdAt: new Date("2000-02-01T12:05:00.000Z"),
+      },
+      {
+        id: fixtureId(),
+        userId,
+        eventType: "comparison_run",
+        marketId,
+        metadata: {
+          context: "product_evaluation",
+          vendorIds: [unrelatedVendorId],
+          vendorCount: 1,
+        },
+        createdAt: new Date("2000-02-01T12:10:00.000Z"),
+      },
+    ]);
+
+    const breakdown = await getUserVendorEventTypeBreakdown(userId, since);
+    expect(breakdown).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        vendorId: vendorOneId,
+        vendorName: `${runPrefix}Selected Vendor One`,
+        eventType: "comparison_run",
+        count: 2,
+      }),
+      expect.objectContaining({
+        vendorId: vendorTwoId,
+        vendorName: `${runPrefix}Selected Vendor Two`,
+        eventType: "comparison_run",
+        count: 2,
+      }),
+    ]));
+    expect(breakdown.some((row) => row.vendorId === unrelatedVendorId)).toBe(false);
+  });
+
   it("deduplicates same-session page views and counts a later session as returning", async () => {
     const anonymousId = `${runPrefix}lifetime`;
     const marketId = fixtureId();
